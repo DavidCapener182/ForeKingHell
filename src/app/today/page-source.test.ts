@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/today/page.tsx"), "utf8");
+const chartsSource = readFileSync(
+  join(process.cwd(), "src/app/today/today-shot-charts.tsx"),
+  "utf8",
+);
 
 describe("latest practice desktop dashboard", () => {
   it("uses the optional desktop AI rail for latest practice evidence", () => {
@@ -110,15 +114,22 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("Load challenge context");
   });
 
-  it("separates session quality from plan result and scoring control", () => {
-    expect(source).toContain("Session quality");
+  it("separates practice usefulness from the planned drill and scoring control", () => {
+    expect(source).toContain("Practice usefulness");
     expect(source).toContain("Scoring control");
-    expect(source).toContain("Plan result");
+    expect(source).toContain("Planned drill result");
     expect(source).toContain(
       '<ScoreMiniMetric label="Playable" value={score.playableRateLabel} />',
     );
-    expect(source).toContain("Quality, strike, scoring control and plan result separated.");
-    expect(source).toContain("The plan result is incomplete, but the session itself was not poor.");
+    expect(source).toContain(
+      "How useful the session was; scoring control and planned-drill result stay separate.",
+    );
+    expect(source).toContain("The session was useful. The planned drill was not fully proven.");
+    expect(source).toContain("Best scoring read");
+    expect(source).toContain("Most trusted long-term");
+    expect(source).toContain('scoringControl.label === "Mixed"');
+    expect(source).toContain('? "Productive"');
+    expect(source).not.toContain('label: "Most reliable"');
   });
 
   it("keeps raw shot history while explaining clean-scoring exclusions", () => {
@@ -156,5 +167,12 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("clubSessionBadgeReadout(comparison.clubType, comparison.today)");
     expect(source).not.toContain("Path outside normal range");
     expect(source).not.toContain("Current path is outside the normal draw window");
+    expect(source).toContain("!isEstimatedClubData(shot.clubDataEstType)");
+  });
+
+  it("rounds generated SVG coordinates so server and client chart paths hydrate identically", () => {
+    expect(chartsSource).toContain("svgCoordinate(xScale(offlineYd))");
+    expect(chartsSource).toContain("svgCoordinate(yScale(downrangeYd))");
+    expect(chartsSource).toContain("Math.round(value * 1000) / 1000");
   });
 });

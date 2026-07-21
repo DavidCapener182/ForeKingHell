@@ -43,6 +43,7 @@ export type TodayPracticeShot = {
   attackAngleDeg: number | null;
   clubPathDeg: number | null;
   faceAngleDeg: number | null;
+  clubDataEstType: string | null;
   qualityTag: string | null;
 };
 
@@ -214,6 +215,7 @@ const practiceShotSelect = {
   attackAngleDeg: shots.attackAngleDeg,
   clubPathDeg: shots.clubPathDeg,
   faceAngleDeg: shots.faceAngleDeg,
+  clubDataEstType: shots.clubDataEstType,
   qualityTag: shots.qualityTag,
 };
 
@@ -367,6 +369,7 @@ async function fetchPreviousPracticeRows(
       attackAngleDeg: rankedPreviousShots.attackAngleDeg,
       clubPathDeg: rankedPreviousShots.clubPathDeg,
       faceAngleDeg: rankedPreviousShots.faceAngleDeg,
+      clubDataEstType: rankedPreviousShots.clubDataEstType,
       qualityTag: rankedPreviousShots.qualityTag,
     })
     .from(rankedPreviousShots)

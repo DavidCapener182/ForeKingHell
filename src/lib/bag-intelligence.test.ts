@@ -143,6 +143,21 @@ describe("bag intelligence", () => {
     });
   });
 
+  it("keeps numeric Rapsodo estimate placeholders out of path trends", () => {
+    const measured = Array.from({ length: 3 }, (_, index) =>
+      pathShot(`2026-03-0${index + 1}`, 5, 4, 3),
+    );
+    const estimated = Array.from({ length: 2 }, (_, index) => ({
+      ...pathShot(`2026-03-0${index + 4}`, -1, 4, -1),
+      clubDataEstType: "1",
+    }));
+    const trend = buildPathTrendTracking([
+      club("driver", 220, { shots: [...measured, ...estimated] }),
+    ]);
+
+    expect(trend.points[0]).toMatchObject({ pathDeg: 5, sampleSize: 3 });
+  });
+
   it("builds confidence heat maps around the recommended course number", () => {
     const heatMaps = buildConfidenceHeatMaps([
       club("7i", 155, {

@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/dashboard/page.tsx"), "utf8");
 
 describe("dashboard desktop source", () => {
+  it("does not present a path moving away from neutral as an improvement", () => {
+    expect(source).toContain("if (changeTowardNeutral <= 0.05)");
+    expect(source).not.toContain('return "Holding steady";');
+  });
+
   it("keeps dashboard cards readable without a persistent AI rail", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";

@@ -1116,8 +1116,12 @@ function chartShapePath({
   return Array.from({ length: 41 }, (_, index) => {
     const downrangeYd = carryYd * (index / 40);
     const offlineYd = bendCoefficient * downrangeYd * downrangeYd + startSlope * downrangeYd;
-    return `${index === 0 ? "M" : "L"} ${xScale(offlineYd)} ${yScale(downrangeYd)}`;
+    return `${index === 0 ? "M" : "L"} ${svgCoordinate(xScale(offlineYd))} ${svgCoordinate(yScale(downrangeYd))}`;
   }).join(" ");
+}
+
+function svgCoordinate(value: number) {
+  return Math.round(value * 1000) / 1000;
 }
 
 function averageDispersionPoints(points: ChartPoint[]): AverageDispersion[] {

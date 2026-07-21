@@ -1032,10 +1032,10 @@ function PracticeSessionImportBar({
     <section className="min-w-0 overflow-hidden rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
       <div className="flex min-w-0 flex-wrap items-end gap-3">
         <div className="min-w-0 flex-[1_1_16rem]">
-          <p className="text-sm font-semibold">Score from uploaded session</p>
+          <p className="text-sm font-semibold">Score the planned drill</p>
           <p className="text-xs leading-5 text-muted-foreground">
-            After you upload the range session, choose it here and LM World Tour will score this
-            plan from the shot data.
+            Choose an uploaded range session and LM World Tour will score this plan from its shot
+            data. This does not grade the whole session.
           </p>
         </div>
 
@@ -1704,7 +1704,7 @@ function ScorecardPanel({
         </p>
       </div>
       <div className="rounded-lg border bg-white/70 p-3">
-        <p className="text-sm font-semibold">Practice Score</p>
+        <p className="text-sm font-semibold">Planned drill score</p>
         {score ? (
           <>
             <p className="mt-2 text-3xl font-semibold tracking-normal">
@@ -1712,11 +1712,14 @@ function ScorecardPanel({
               <span className="text-base text-muted-foreground"> / 100</span>
             </p>
             <Progress value={score.score} className="mt-2" />
-            <p className="mt-2 text-sm text-muted-foreground">{score.nextAction}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Measures how closely the uploaded shots proved this plan; it does not grade the whole
+              session. {score.nextAction}
+            </p>
           </>
         ) : (
           <p className="mt-2 text-sm leading-5 text-muted-foreground">
-            Practice score appears after upload.
+            Planned drill score appears after upload.
           </p>
         )}
       </div>

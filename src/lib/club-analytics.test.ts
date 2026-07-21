@@ -111,6 +111,34 @@ describe("calculateClubAnalytics", () => {
 
     expect(analytics.delivery.dataWarning).toContain("estimated");
   });
+
+  it("excludes numeric Rapsodo estimate rows from delivery averages", () => {
+    const analytics = calculateClubAnalytics({
+      clubType: "driver",
+      shots: [
+        ...Array.from({ length: 6 }, (_, index) =>
+          shot({
+            id: `measured-${index}`,
+            clubPathDeg: 5,
+            attackAngleDeg: 4,
+            clubDataEstType: "0",
+          }),
+        ),
+        ...Array.from({ length: 2 }, (_, index) =>
+          shot({
+            id: `estimated-${index}`,
+            clubPathDeg: -1,
+            attackAngleDeg: -1,
+            clubDataEstType: "1",
+          }),
+        ),
+      ],
+    });
+
+    expect(analytics.delivery.clubPathAverageDeg).toBe(5);
+    expect(analytics.delivery.attackAngleAverageDeg).toBe(4);
+    expect(analytics.delivery.clubDataEstimatedRate).toBe(25);
+  });
 });
 
 describe("likelyMishitTags", () => {

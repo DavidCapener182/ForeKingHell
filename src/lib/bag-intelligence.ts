@@ -1,4 +1,5 @@
 import { clubSortValue, formatClubType } from "@/lib/club-format";
+import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { isMissingYardageWindowGap, isScoringEndGap } from "@/lib/gapping-windows";
 import type { StockShotRoleSummary } from "@/lib/stock-yardage";
@@ -15,6 +16,7 @@ export type BagIntelligenceShot = {
   launchDirectionDeg?: number | null;
   clubPathDeg?: number | null;
   faceAngleDeg?: number | null;
+  clubDataEstType?: string | null;
   shotCategory?: string | null;
   qualityTag?: string | null;
   sessionType?: string | null;
@@ -1015,7 +1017,9 @@ function countPathShots(club: BagIntelligenceClub) {
 }
 
 function pathShotsForClub(club: BagIntelligenceClub) {
-  return usableShots(club.shots).filter((shot) => isNumber(shot.clubPathDeg));
+  return usableShots(club.shots).filter(
+    (shot) => isNumber(shot.clubPathDeg) && !isEstimatedClubData(shot.clubDataEstType),
+  );
 }
 
 function buildPathClubSummary(club: BagIntelligenceClub): PathTrendClubSummary | null {

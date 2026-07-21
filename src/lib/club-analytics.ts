@@ -276,9 +276,14 @@ export function calculateClubAnalytics({
   const ballSpeedValues = stockShots.map((shot) => shot.ballSpeedMph).filter(isNumber);
   const clubSpeedValues = stockShots.map((shot) => shot.clubSpeedMph).filter(isNumber);
   const smashValues = stockShots.map((shot) => shot.smashFactor).filter(isNumber);
-  const pathValues = stockShots.map((shot) => shot.clubPathDeg).filter(isNumber);
-  const faceAngleValues = stockShots.map((shot) => resolveClubFaceAngleDeg(shot)).filter(isNumber);
-  const attackValues = stockShots.map((shot) => shot.attackAngleDeg).filter(isNumber);
+  const measuredClubDataShots = stockShots.filter(
+    (shot) => !isEstimatedClubData(shot.clubDataEstType),
+  );
+  const pathValues = measuredClubDataShots.map((shot) => shot.clubPathDeg).filter(isNumber);
+  const faceAngleValues = measuredClubDataShots
+    .map((shot) => resolveClubFaceAngleDeg(shot))
+    .filter(isNumber);
+  const attackValues = measuredClubDataShots.map((shot) => shot.attackAngleDeg).filter(isNumber);
   const stock = calculateStockYardage(orderedShots, 50, { clubType });
   const family = clubFamily(clubType);
   const bigMissLimit = BIG_MISS_LIMIT_BY_FAMILY[family];
@@ -292,7 +297,9 @@ export function calculateClubAnalytics({
   const estimatedClubDataShots = clubDataShots.filter((shot) =>
     isEstimatedClubData(shot.clubDataEstType),
   );
-  const facePathValues = stockShots.map((shot) => calculateFaceToPathDeg(shot)).filter(isNumber);
+  const facePathValues = measuredClubDataShots
+    .map((shot) => calculateFaceToPathDeg(shot))
+    .filter(isNumber);
   const baseline = snapshot("First 30 clean shots", trendShots.slice(0, 30));
   const current = snapshot("Latest 30 clean shots", trendShots.slice(-30));
   const sessionComparison = compareLastTwoSessions(trendShots);
@@ -384,15 +391,15 @@ export function calculateClubAnalytics({
     clubPathAverageDeg: roundOne(meanOrNull(pathValues)),
     clubPathSpreadDeg: roundOne(standardDeviationOrNull(pathValues)),
     pathSpikeRate: rate(
-      stockShots,
+      measuredClubDataShots,
       (shot) => isNumber(shot.clubPathDeg) && Math.abs(shot.clubPathDeg) > 8,
     ),
     attackAngleAverageDeg: roundOne(meanOrNull(attackValues)),
     attackAngleSpreadDeg: roundOne(standardDeviationOrNull(attackValues)),
     faceAngleAverageDeg: roundOne(meanOrNull(faceAngleValues)),
     facePathAverageDeg: roundOne(meanOrNull(facePathValues)),
-    hookRiskScore: riskScore(stockShots, "hook"),
-    blockRiskScore: riskScore(stockShots, "block"),
+    hookRiskScore: riskScore(measuredClubDataShots, "hook"),
+    blockRiskScore: riskScore(measuredClubDataShots, "block"),
     clubDataAvailableRate: percent(clubDataShots.length, stockShots.length),
     clubDataEstimatedRate: percent(estimatedClubDataShots.length, clubDataShots.length),
     dataWarning: clubDataWarning(
@@ -1378,8 +1385,10 @@ function clubFamily(clubType: string): keyof typeof BIG_MISS_LIMIT_BY_FAMILY {
   return "iron";
 }
 
-function isEstimatedClubData(value: string | null | undefined) {
-  return value?.toLowerCase().includes("est") ?? false;
+export function isEstimatedClubData(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase();
+
+  return normalized === "1" || normalized === "true" || normalized?.includes("est") === true;
 }
 
 function rate(shots: ClubAnalyticsShot[], predicate: (shot: ClubAnalyticsShot) => boolean) {

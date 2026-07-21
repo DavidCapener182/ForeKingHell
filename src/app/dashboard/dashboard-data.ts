@@ -149,6 +149,7 @@ export async function getDashboardData() {
         launchDirectionDeg: shots.launchDirectionDeg,
         clubPathDeg: shots.clubPathDeg,
         faceAngleDeg: shots.faceAngleDeg,
+        clubDataEstType: shots.clubDataEstType,
         courseHoleNumber: shots.courseHoleNumber,
         sessionType: sessions.type,
         shotCategory: shots.shotCategory,

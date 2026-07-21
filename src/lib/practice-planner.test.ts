@@ -11,6 +11,7 @@ import {
   practicePlannerAchievementCandidateIds,
   scoreCompletedPractice,
   scorePracticePlanSessionMatch,
+  selectPracticePlannerInitialSavedPlan,
   shouldAutoLinkPracticePlanMatch,
   type ImportedPracticeSessionSummary,
   type PracticePlan,
@@ -19,6 +20,43 @@ import {
 } from "@/lib/practice-planner";
 
 describe("practice planner", () => {
+  it("opens the result linked to the latest import before an older unfinished plan", () => {
+    const latestResult = savedPlanRecord({
+      id: "latest-result",
+      status: "analysed",
+      sourceSessionId: "latest-session",
+      result: {
+        verdict: "Incomplete signal",
+        nextAction: "Repeat the main priority.",
+        practiceScore: 14,
+        comparison: null,
+      },
+    });
+    const staleOpenPlan = savedPlanRecord({
+      id: "stale-open",
+      status: "awaiting_import",
+      sourceSessionId: null,
+      result: null,
+    });
+
+    expect(
+      selectPracticePlannerInitialSavedPlan([latestResult, staleOpenPlan], "latest-session")?.id,
+    ).toBe("latest-result");
+  });
+
+  it("falls back to the newest unfinished plan when the latest import has no result", () => {
+    const staleOpenPlan = savedPlanRecord({
+      id: "stale-open",
+      status: "awaiting_import",
+      sourceSessionId: null,
+      result: null,
+    });
+
+    expect(selectPracticePlannerInitialSavedPlan([staleOpenPlan], "unmatched-session")?.id).toBe(
+      "stale-open",
+    );
+  });
+
   it("creates an exact 30-ball range plan", () => {
     const plan = generatePracticePlan(context(), {
       sessionType: "range",
@@ -895,5 +933,37 @@ function club(
     volatilityScore: offlineAverageYd * 1.8,
     practiceTitle: `${clubType} practice`,
     practiceDrill: "Start-line gate.",
+  };
+}
+
+function savedPlanRecord(
+  overrides: Pick<SavedPracticePlan, "id" | "status" | "sourceSessionId" | "result">,
+): SavedPracticePlan {
+  return {
+    id: overrides.id,
+    title: "Test plan",
+    sessionType: "range",
+    status: overrides.status,
+    totalBalls: 100,
+    timeMinutes: 45,
+    focusClubs: ["driver"],
+    plannedAt: "2026-07-08T12:00:00.000Z",
+    completedAt: null,
+    score: overrides.result?.practiceScore ?? null,
+    matchConfidence: null,
+    matchReason: null,
+    summary: "Test plan summary",
+    generation: {
+      source: "rules",
+      label: "Rules",
+      model: null,
+      cached: false,
+      creditsCharged: 0,
+      creditsRemaining: null,
+      note: null,
+    },
+    sourceSessionId: overrides.sourceSessionId,
+    blocks: [],
+    result: overrides.result,
   };
 }

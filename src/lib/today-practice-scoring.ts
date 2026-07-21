@@ -102,7 +102,8 @@ export function buildSessionQualityReadout(input: TodaySessionQualityInput): Ses
     return {
       score,
       label: "Good",
-      detail: "Good practice session. Strike and playability were strong enough to keep the swing.",
+      detail:
+        "Useful practice session. Strike and playability made the evidence worth keeping; scoring control is judged separately.",
       tone: "green",
     };
   }
@@ -218,7 +219,7 @@ export function buildPlanResultReadout(
   return {
     label: "Incomplete",
     scoreLabel,
-    detail: "The plan result is incomplete, but the session itself was not poor.",
+    detail: "The session was useful. The planned drill was not fully proven.",
     tone: "amber",
   };
 }

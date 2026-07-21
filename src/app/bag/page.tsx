@@ -258,6 +258,7 @@ const bagShotSelect = {
   attackAngleDeg: shots.attackAngleDeg,
   clubPathDeg: shots.clubPathDeg,
   faceAngleDeg: shots.faceAngleDeg,
+  clubDataEstType: shots.clubDataEstType,
   spinRate: shots.spinRate,
   smashFactor: shots.smashFactor,
   spinAxis: shots.spinAxis,

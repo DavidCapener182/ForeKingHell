@@ -2164,7 +2164,7 @@ function formatDriverImprovementLabel(points: DashboardData["pathTrend"]["points
   const changeTowardNeutral = Math.abs(first) - Math.abs(latest);
 
   if (changeTowardNeutral <= 0.05) {
-    return "Holding steady";
+    return null;
   }
 
   return `Improved ${formatUnsignedDegrees(changeTowardNeutral)}`;

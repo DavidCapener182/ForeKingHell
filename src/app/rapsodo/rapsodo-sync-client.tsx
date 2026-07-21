@@ -1953,7 +1953,10 @@ function SaveConfirmationToast({
       aria-atomic="true"
       className="fixed inset-x-3 top-[calc(5rem+env(safe-area-inset-top))] z-[70] mx-auto max-w-md sm:inset-x-auto sm:right-4 sm:top-24"
     >
-      <div className="overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl">
+      <div
+        data-clubhouse-preserve-dark
+        className="overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl"
+      >
         <div className="flex items-start gap-3 px-4 py-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-emerald-400/15 text-emerald-300">
             <CheckCircle2 className="size-5" />

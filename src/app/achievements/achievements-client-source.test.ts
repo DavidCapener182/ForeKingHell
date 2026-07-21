@@ -7,6 +7,15 @@ const clientSource = readFileSync(
   "utf8",
 );
 const pageSource = readFileSync(join(process.cwd(), "src/app/achievements/page.tsx"), "utf8");
+const globalsSource = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
+const notificationSource = readFileSync(
+  join(process.cwd(), "src/components/achievement-notifications.tsx"),
+  "utf8",
+);
+const rapsodoSyncSource = readFileSync(
+  join(process.cwd(), "src/app/rapsodo/rapsodo-sync-client.tsx"),
+  "utf8",
+);
 
 describe("achievements desktop unlock ledger", () => {
   it("keeps unlocked achievements in a bounded desktop workbench table", () => {
@@ -56,5 +65,12 @@ describe("achievements desktop unlock ledger", () => {
     expect(pageSource).toContain('scope="achievements"');
     expect(pageSource).not.toContain("DesktopInsightRail");
     expect(pageSource).not.toContain("rail={");
+  });
+
+  it("preserves translucent overlays inside intentional dark surfaces", () => {
+    expect(clientSource).toContain("data-clubhouse-preserve-dark");
+    expect(notificationSource).toContain("data-clubhouse-preserve-dark");
+    expect(rapsodoSyncSource).toContain("data-clubhouse-preserve-dark");
+    expect(globalsSource).toContain('[data-clubhouse-preserve-dark] [class*="bg-white/"]');
   });
 });

@@ -62,6 +62,7 @@ import {
 } from "@/app/today/today-shot-charts";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
+import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
@@ -540,21 +541,21 @@ function TodayMobileVerdictCard({
           </h2>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[13px] text-muted-foreground">Quality</p>
+          <p className="text-[13px] text-muted-foreground">Practice usefulness</p>
           <p className="mt-0.5 text-[28px] font-semibold leading-none tracking-tight tabular-nums">
             {score.score}
           </p>
           <p className="text-xs text-muted-foreground">out of 100</p>
         </div>
       </div>
-      <TodayVerdictRow label="Session quality" value={score.sessionQualityLabel} />
+      <TodayVerdictRow label="Usefulness" value={score.sessionQualityLabel} />
       <TodayVerdictRow
         label="Control"
         value={`${score.scoringControlLabel} · strike ${score.strikeScore}/10`}
       />
-      <TodayVerdictRow label="Best performer" value={best?.clubLabel ?? score.strong} />
+      <TodayVerdictRow label="Best scoring read" value={best?.clubLabel ?? score.strong} />
       <TodayVerdictRow label="Practise first" value={work?.clubLabel ?? score.weak} />
-      {planResult ? <TodayVerdictRow label="Previous plan" value={planResult.label} /> : null}
+      {planResult ? <TodayVerdictRow label="Planned drill" value={planResult.label} /> : null}
       <div className="bg-secondary/55 px-4 py-3">
         <p className="text-[13px] text-muted-foreground">Recommendation</p>
         <p className="mt-0.5 text-[15px] font-semibold leading-5">{score.recommendation}</p>
@@ -871,7 +872,7 @@ function todayInsightMetrics(
   const planResult = buildPlanResultReadout(linkedPracticePlan);
   const metrics: DesktopInsightMetric[] = [
     {
-      label: "Session quality",
+      label: "Practice usefulness",
       value: `${score.score}/100`,
       detail: score.sessionQualityDetail,
       tone: score.tone,
@@ -901,7 +902,7 @@ function todayInsightMetrics(
 
   if (planResult) {
     metrics.splice(2, 0, {
-      label: "Plan result",
+      label: "Planned drill result",
       value: planResult.scoreLabel,
       detail: `${planResult.label}: ${planResult.detail}`,
       tone: planResult.tone,
@@ -926,7 +927,7 @@ function todayInsightEvidence(
     `${formatRate(data.overall.today.playableRate)} playable, ${formatRate(
       data.overall.today.straightRate,
     )} straight and ${formatYards(data.overall.today.offlineAverageYd)} offline.`,
-    `Session quality ${score.score}/100; scoring control ${score.scoringControlLabel.toLowerCase()}.`,
+    `Practice usefulness ${score.score}/100; scoring control ${score.scoringControlLabel.toLowerCase()}.`,
   ];
 
   if (best) {
@@ -1279,7 +1280,7 @@ function PracticePlanFollowedCard({
       <div className="today-plan-grid grid h-full grid-rows-[auto_1fr_auto] gap-3">
         <div className="flex items-center justify-between gap-3">
           <p className={`text-sm font-semibold ${practicePlanResultHeadingClass(planTone)}`}>
-            Plan result
+            Planned drill result
           </p>
           <StatusPill tone={planTone}>{planResult?.label ?? "Linked"}</StatusPill>
         </div>
@@ -1755,7 +1756,7 @@ function TodayVerdictHero({
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <VerdictStoryCard
-          label="Best performer"
+          label="Best scoring read"
           value={best?.clubLabel ?? score.strong}
           detail={best ? bestPerformerDetail(best) : "Building signal"}
           tone="green"
@@ -1908,10 +1909,10 @@ function PracticeScoreHeroCard({
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
-            Session quality
+            Practice usefulness
           </p>
           <p className="mt-1 text-sm font-medium text-slate-700">
-            Quality, strike, scoring control and plan result separated.
+            How useful the session was; scoring control and planned-drill result stay separate.
           </p>
         </div>
         <span
@@ -1934,7 +1935,7 @@ function PracticeScoreHeroCard({
           label="Scoring control"
           value={`${score.scoringControlLabel} ${score.scoringScore}/10`}
         />
-        {planResult ? <ScoreMiniMetric label="Plan result" value={planResult.label} /> : null}
+        {planResult ? <ScoreMiniMetric label="Planned drill" value={planResult.label} /> : null}
       </div>
       <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
         {reliableReadout.label}: {reliable?.clubLabel ?? "building signal"}.{" "}
@@ -2939,7 +2940,7 @@ function ClubPerformanceSummaryCards({ data }: { data: TodayPracticeData }) {
   return (
     <div className="grid gap-2 md:grid-cols-3">
       <ClubSummaryCard
-        label="Best performer"
+        label="Best scoring read"
         comparison={best}
         icon={<Award className="size-4" />}
         tone="green"
@@ -4294,7 +4295,7 @@ function reviewNarrative(
 
   const planNote =
     planResult?.label === "Incomplete"
-      ? " The plan result is incomplete, but the session itself was not poor."
+      ? " The session was useful. The planned drill was not fully proven."
       : "";
   const changeSummary = sentenceJoin(parts);
 
@@ -4381,9 +4382,13 @@ function practiceScoreSummary(
   const scoringControl = buildScoringControlReadout(coaching.scoringScore);
   const score = sessionQuality.score;
   const tone = sessionQuality.tone as ReviewTone;
+  const sessionUsefulnessLabel =
+    score >= 70 && (scoringControl.label === "Mixed" || scoringControl.label === "Needs work")
+      ? "Productive"
+      : sessionQuality.label;
   return {
     score,
-    sessionQualityLabel: sessionQuality.label,
+    sessionQualityLabel: sessionUsefulnessLabel,
     sessionQualityDetail: sessionQuality.detail,
     playableRateLabel: formatRate(data.overall.today.playableRate),
     strikeScore: coaching.strikeScore,
@@ -4803,15 +4808,18 @@ function confidenceMeterReadout(
 
 function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
   const driverShots = data.shots.filter((shot) => isDriverClubType(shot.clubType));
-  const path = roundOneNumber(averageNumbers(driverShots.map((shot) => shot.clubPathDeg)));
+  const measuredDriverShots = driverShots.filter(
+    (shot) => !isEstimatedClubData(shot.clubDataEstType),
+  );
+  const path = roundOneNumber(averageNumbers(measuredDriverShots.map((shot) => shot.clubPathDeg)));
   const startLine = roundOneNumber(
     averageNumbers(driverShots.map((shot) => shot.launchDirectionDeg)),
   );
   const faceAngle = roundOneNumber(
-    averageNumbers(driverShots.map((shot) => resolveClubFaceAngleDeg(shot))),
+    averageNumbers(measuredDriverShots.map((shot) => resolveClubFaceAngleDeg(shot))),
   );
   const faceToPath = roundOneNumber(
-    averageNumbers(driverShots.map((shot) => calculateFaceToPathDeg(shot))),
+    averageNumbers(measuredDriverShots.map((shot) => calculateFaceToPathDeg(shot))),
   );
   const targetPath = 5;
 
@@ -5002,7 +5010,7 @@ function clubPerformanceNarrative(data: TodayPracticeData) {
     return "This review against the latest previous shots for the same club.";
   }
 
-  return `${best.clubLabel} was today's best performer, ${reliable.clubLabel} ${reliableReadout.narrative}, and ${work.clubLabel} is the biggest opportunity.`;
+  return `${best.clubLabel} was today's best scoring read, ${reliable.clubLabel} ${reliableReadout.narrative}, and ${work.clubLabel} is the biggest opportunity.`;
 }
 
 function clubPerformanceRead(data: TodayPracticeData) {
@@ -5015,7 +5023,7 @@ function clubPerformanceRead(data: TodayPracticeData) {
     return data.overall.summary;
   }
 
-  return `${best.clubLabel} won the session, ${reliable.clubLabel} ${reliableReadout.read}, and ${work.clubLabel} is the first practice job.`;
+  return `${best.clubLabel} was today's best scoring read, ${reliable.clubLabel} ${reliableReadout.read}, and ${work.clubLabel} is the first practice job.`;
 }
 
 function clubTrustReadout(comparison: ClubDayComparison | null): {
@@ -5027,11 +5035,11 @@ function clubTrustReadout(comparison: ClubDayComparison | null): {
 } {
   if (!comparison) {
     return {
-      label: "Most reliable",
+      label: "Most trusted long-term",
       detail: null,
       subdetail: null,
       narrative: "is the longer-term trust read",
-      read: "stayed most reliable",
+      read: "remains the long-term trust read",
     };
   }
 
@@ -5048,13 +5056,13 @@ function clubTrustReadout(comparison: ClubDayComparison | null): {
   }
 
   return {
-    label: "Most reliable",
+    label: "Most trusted long-term",
     detail: `${formatRate(comparison.today.straightRate)} straight · ${formatRate(
       comparison.today.playableRate,
     )} playable`,
     subdetail: `${formatYards(comparison.today.offlineAverageYd)} offline`,
     narrative: "is the longer-term trust read",
-    read: "stayed most reliable",
+    read: "remains the long-term trust read",
   };
 }
 

@@ -30,7 +30,7 @@ describe("latest practice scoring split", () => {
     expect(planResult?.label).toBe("Incomplete");
     expect(planResult?.tone).toBe("amber");
     expect(planResult?.detail).toBe(
-      "The plan result is incomplete, but the session itself was not poor.",
+      "The session was useful. The planned drill was not fully proven.",
     );
   });
 

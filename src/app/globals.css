@@ -705,7 +705,9 @@ html[data-theme="clubhouse"] .bg-slate-100 {
   background-color: var(--surface-strong) !important;
 }
 
-html[data-theme="clubhouse"] [class*="bg-white/"] {
+/* Preserve intentionally translucent overlays inside explicitly dark product surfaces. */
+html[data-theme="clubhouse"]
+  [class*="bg-white/"]:not([data-clubhouse-preserve-dark] [class*="bg-white/"]) {
   background-color: var(--surface-glass) !important;
 }
 

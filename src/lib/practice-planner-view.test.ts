@@ -146,18 +146,22 @@ describe("practice planner view helpers", () => {
     expect(source).not.toContain('type="multiple"');
     expect(source).not.toContain("Adapt next");
     expect(source).not.toMatch(/<Input[\\s\\S]{0,240}(score|Score)/);
-    expect(source).toContain("Practice score appears after upload.");
+    expect(source).toContain("Planned drill score appears after upload.");
     expect(source).toContain("PracticeSessionImportBar");
-    expect(source).toContain("Score from uploaded session");
+    expect(source).toContain("Score the planned drill");
+    expect(source).toContain("This does not grade the whole session.");
+    expect(source).toContain("it does not grade the whole");
     expect(source).toContain("linkPracticePlanSessionAction");
   });
 
-  it("keeps an open saved plan eligible for latest-session review", () => {
+  it("prioritises the latest import's matched plan over an older open plan", () => {
     const source = readFileSync(join(process.cwd(), "src/app/practice/page.tsx"), "utf8");
 
-    expect(source).toContain("const initialPlan = latestOpenPracticePlan ?? generatedPlan");
+    expect(source).toContain("selectPracticePlannerInitialSavedPlan(");
+    expect(source).toContain("data.importOptions[0]?.id ?? null");
+    expect(source).toContain("const initialPlan = initialSavedPracticePlan ?? generatedPlan");
     expect(source).toContain(
-      "await getLatestPracticeSessionReviewSafely(userId, latestOpenPracticePlan)",
+      "await getLatestPracticeSessionReviewSafely(userId, initialSavedPracticePlan)",
     );
     expect(source).not.toContain('status === "analysed" || plan.status === "completed"');
   });

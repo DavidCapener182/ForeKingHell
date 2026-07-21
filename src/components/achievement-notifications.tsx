@@ -136,7 +136,10 @@ function AchievementToastCard({
   const hiddenCount = toast.totalCount - toast.notifications.length;
 
   return (
-    <div className="pointer-events-auto overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl">
+    <div
+      data-clubhouse-preserve-dark
+      className="pointer-events-auto overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl"
+    >
       <div className="flex items-start gap-3 border-b border-white/10 px-4 py-3">
         <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-emerald-400/15 text-emerald-300">
           <Award className="size-5" />

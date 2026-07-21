@@ -20,6 +20,7 @@ import {
   getLatestPracticeSessionReview,
   getPracticePlannerPageData,
   savedPracticePlanToPracticePlan,
+  selectPracticePlannerInitialSavedPlan,
   type GeneratePracticePlanOptions,
   type PracticeLatestSessionReview,
   type PracticePlan,
@@ -60,20 +61,17 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
   const data = await getPracticePlannerPageData(userId);
   const requestedOptions = practiceOptionsFromSearchParams(params);
   const generatedPlan = generatePracticePlan(data.context, requestedOptions);
-  const latestOpenPlan =
-    data.savedPlans.find(
-      (plan) =>
-        plan.status === "planned" ||
-        plan.status === "awaiting_import" ||
-        plan.status === "match_found",
-    ) ?? null;
-  const latestOpenPracticePlan = latestOpenPlan
-    ? savedPracticePlanToPracticePlan(latestOpenPlan, data.context)
+  const initialSavedPlan = selectPracticePlannerInitialSavedPlan(
+    data.savedPlans,
+    data.importOptions[0]?.id ?? null,
+  );
+  const initialSavedPracticePlan = initialSavedPlan
+    ? savedPracticePlanToPracticePlan(initialSavedPlan, data.context)
     : null;
-  const initialPlan = latestOpenPracticePlan ?? generatedPlan;
+  const initialPlan = initialSavedPracticePlan ?? generatedPlan;
   const latestSessionReview =
-    latestOpenPlan && !latestOpenPlan.result && latestOpenPracticePlan
-      ? await getLatestPracticeSessionReviewSafely(userId, latestOpenPracticePlan)
+    initialSavedPlan && !initialSavedPlan.result && initialSavedPracticePlan
+      ? await getLatestPracticeSessionReviewSafely(userId, initialSavedPracticePlan)
       : null;
   const initialOptions = practicePlanOptionsFromPlan(initialPlan, requestedOptions);
   const cockpit = await getPracticeCockpitMetrics(userId, latestSessionReview);
@@ -89,8 +87,8 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
     planVolume,
     confidenceLabel: initialPlan.confidenceLabel,
     focusLabel: latestOpportunity,
-    hasSavedPlan: Boolean(latestOpenPlan),
-    hasSessionEvidence: Boolean(latestSessionReview || latestOpenPlan?.result),
+    hasSavedPlan: Boolean(initialSavedPlan),
+    hasSessionEvidence: Boolean(latestSessionReview || initialSavedPlan?.result),
   });
 
   return (

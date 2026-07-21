@@ -1759,6 +1759,28 @@ export async function getPracticePlannerPageData(userId: string) {
   return { context, savedPlans, templates, importOptions };
 }
 
+export function selectPracticePlannerInitialSavedPlan(
+  savedPlans: SavedPracticePlan[],
+  latestImportId: string | null,
+) {
+  const latestImportResult = latestImportId
+    ? savedPlans.find((plan) => plan.sourceSessionId === latestImportId && plan.result !== null)
+    : null;
+
+  if (latestImportResult) {
+    return latestImportResult;
+  }
+
+  return (
+    savedPlans.find(
+      (plan) =>
+        plan.status === "planned" ||
+        plan.status === "awaiting_import" ||
+        plan.status === "match_found",
+    ) ?? null
+  );
+}
+
 export async function getSavedPracticePlans(
   userId: string,
   limit = 8,
