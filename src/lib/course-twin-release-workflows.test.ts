@@ -18,7 +18,11 @@ describe("Course Twin production workflows", () => {
     expect(builder).toContain("${{ github.sha }}");
     expect(builder).toContain("github.ref == 'refs/heads/main'");
     expect(builder).toContain("${GITHUB_REPOSITORY_OWNER,,}");
-    expect(builder).toContain("${{ env.IMAGE_NAME }}:${{ github.sha }}");
+    expect(builder).toContain("type=raw,value=${{ github.sha }}");
+    expect(builder).toContain(
+      "type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}",
+    );
+    expect(builder).toContain("push: true");
   });
 
   it("fails signed bridge releases through a protected environment on every desktop OS", () => {

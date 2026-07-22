@@ -6,10 +6,11 @@ import { expect, test } from "@playwright/test";
 import { expectPageReady, skipWhenNoAuth } from "./helpers";
 
 test.describe("Course Twin", () => {
-  test("serves every verified first-wave manifest and immutable package asset", async ({
+  test("serves and browser-renders every verified first-wave package", async ({
+    browser,
     page,
   }) => {
-    test.setTimeout(180_000);
+    test.setTimeout(360_000);
     skipWhenNoAuth();
     const report = JSON.parse(
       readFileSync(
@@ -47,14 +48,57 @@ test.describe("Course Twin", () => {
       }
     }
 
-    for (const courseId of [
-      "4de11156-16fd-4a36-84e0-fadda53456b0",
-      "65359509-5de2-485e-8f85-392bba752710",
-      "19930c7b-c92b-48f9-86a9-2428ed909fc6",
-    ]) {
-      await page.goto(`/play/${courseId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-      await expect(page.getByText(/Grade B/)).toBeVisible();
-      await expect(page.locator("canvas")).toBeVisible();
+    const storageState = await page.context().storageState();
+    const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
+    for (const entry of report.packages) {
+      const context = await browser.newContext({ baseURL, storageState, serviceWorkers: "block" });
+      const renderPage = await context.newPage();
+      const courseRequestFailures: string[] = [];
+      const coursePaths = [
+        `/play/${entry.courseId}`,
+        `/api/course-twins/${entry.courseId}`,
+        `/course-twins/${entry.slug}/`,
+      ];
+      renderPage.on("response", (response) => {
+        const pathname = new URL(response.url()).pathname;
+        if (response.status() >= 400 && coursePaths.some((path) => pathname.startsWith(path))) {
+          courseRequestFailures.push(`${response.status()} ${pathname}`);
+        }
+      });
+      renderPage.on("requestfailed", (request) => {
+        const pathname = new URL(request.url()).pathname;
+        const errorText = request.failure()?.errorText;
+        if (
+          errorText !== "net::ERR_ABORTED" &&
+          coursePaths.some((path) => pathname.startsWith(path))
+        ) {
+          courseRequestFailures.push(`network ${pathname}: ${errorText}`);
+        }
+      });
+      try {
+        await renderPage.goto(`/play/${entry.courseId}`, {
+          waitUntil: "domcontentloaded",
+          timeout: 90_000,
+        });
+        await expect(renderPage.getByText(/Grade B/)).toBeVisible();
+        await expect(renderPage.locator("canvas")).toBeVisible();
+        await expect
+          .poll(
+            () =>
+              renderPage.evaluate(() => {
+                const gameWindow = window as typeof window & {
+                  render_game_to_text?: () => string;
+                };
+                const state = JSON.parse(gameWindow.render_game_to_text?.() ?? "{}");
+                return state.terrain?.status ?? null;
+              }),
+            { message: `${entry.slug} terrain readiness` },
+          )
+          .toBe("ready");
+        expect(courseRequestFailures, entry.slug).toEqual([]);
+      } finally {
+        await context.close();
+      }
     }
   });
 
