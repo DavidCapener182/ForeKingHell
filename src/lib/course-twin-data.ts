@@ -5,6 +5,8 @@ import { and, asc, desc, eq, or } from "drizzle-orm";
 import {
   clubs,
   courseFeatures,
+  courseTwins,
+  courseTwinVersions,
   courses,
   holes,
   sessions,
@@ -32,6 +34,116 @@ const PILOT_EXTERNAL_ID = "bootle-golf-course";
 
 export function isCourseTwinFeatureEnabled() {
   return process.env.NEXT_PUBLIC_ENABLE_COURSE_TWIN !== "false";
+}
+
+export type AvailableCourseTwin = {
+  courseId: string;
+  name: string;
+  country: string | null;
+  grade: "A" | "B" | "C" | "D";
+  mappedHoles: number | null;
+  terrainResolutionM: number | null;
+  warning: string | null;
+};
+
+export async function isCourseTwinAvailable({
+  courseId,
+  externalId,
+}: {
+  courseId: string;
+  externalId: string | null;
+}) {
+  if (!isCourseTwinFeatureEnabled()) return false;
+  if (localCourseTwinManifestsByCourseId[courseId] || externalId === PILOT_EXTERNAL_ID) return true;
+
+  const [published] = await getDb()
+    .select({ id: courseTwinVersions.id })
+    .from(courseTwins)
+    .innerJoin(
+      courseTwinVersions,
+      and(
+        eq(courseTwinVersions.id, courseTwins.activeVersionId),
+        eq(courseTwinVersions.courseTwinId, courseTwins.id),
+      ),
+    )
+    .where(
+      and(
+        eq(courseTwins.courseId, courseId),
+        eq(courseTwins.status, "published"),
+        eq(courseTwinVersions.status, "published"),
+      ),
+    )
+    .limit(1);
+  return Boolean(published);
+}
+
+export async function listAvailableCourseTwins(userId: string): Promise<AvailableCourseTwin[]> {
+  if (!isCourseTwinFeatureEnabled()) return [];
+  const db = getDb();
+  const [courseRows, publishedRows] = await Promise.all([
+    db
+      .select({
+        id: courses.id,
+        name: courses.name,
+        country: courses.country,
+        externalId: courses.externalId,
+      })
+      .from(courses)
+      .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
+      .orderBy(asc(courses.name)),
+    db
+      .select({ courseId: courseTwins.courseId, qualityJson: courseTwinVersions.qualityJson })
+      .from(courseTwins)
+      .innerJoin(
+        courseTwinVersions,
+        and(
+          eq(courseTwinVersions.id, courseTwins.activeVersionId),
+          eq(courseTwinVersions.courseTwinId, courseTwins.id),
+        ),
+      )
+      .where(and(eq(courseTwins.status, "published"), eq(courseTwinVersions.status, "published"))),
+  ]);
+  const publishedByCourseId = new Map(publishedRows.map((row) => [row.courseId, row.qualityJson]));
+
+  return courseRows.flatMap((course) => {
+    const local = localCourseTwinManifestsByCourseId[course.id] as CourseTwinManifest | undefined;
+    const published = publishedByCourseId.get(course.id);
+    const isBootlePilot = course.externalId === PILOT_EXTERNAL_ID;
+    if (!local && !published && !isBootlePilot) return [];
+
+    const publishedGrade = published?.grade;
+    const grade =
+      local?.quality.grade ??
+      (publishedGrade === "A" ||
+      publishedGrade === "B" ||
+      publishedGrade === "C" ||
+      publishedGrade === "D"
+        ? publishedGrade
+        : "B");
+    return [
+      {
+        courseId: course.id,
+        name: local?.course.name ?? course.name,
+        country: local?.course.country ?? course.country,
+        grade,
+        mappedHoles: local?.quality.mappedHoles ?? numericValue(published?.mappedHoles) ?? null,
+        terrainResolutionM:
+          local?.terrain.resolutionM ??
+          numericValue(published?.terrainResolutionM) ??
+          (isBootlePilot ? bootleTerrainPackage.packageResolutionM : null),
+        warning:
+          local?.quality.warnings[0] ??
+          (typeof published?.warning === "string" ? published.warning : null) ??
+          (isBootlePilot
+            ? "Environment Agency LiDAR terrain with approximate, unverified putting contours."
+            : null),
+      },
+    ];
+  });
+}
+
+function numericValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 export async function getCourseTwinManifest({

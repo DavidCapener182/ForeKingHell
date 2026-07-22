@@ -25,6 +25,9 @@ describe("application navigation hierarchy", () => {
     expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/coach")).toBe(
       true,
     );
+    expect(
+      mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/course-twins"),
+    ).toBe(true);
     expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/feed")).toBe(true);
   });
 
@@ -69,6 +72,7 @@ describe("application navigation hierarchy", () => {
       "/practice/quick-range",
       "/goals",
       "/rounds",
+      "/course-twins",
       "/courses/strategy",
       "/settings",
       "/settings/notifications",

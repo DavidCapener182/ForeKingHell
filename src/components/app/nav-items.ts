@@ -8,6 +8,7 @@ import {
   Cable,
   ClipboardCheck,
   CreditCard,
+  Cuboid,
   Database,
   Flag,
   Gauge,
@@ -237,6 +238,13 @@ const allNavigationGroups: AppNavGroup[] = [
         isActive: (pathname) => pathname.startsWith("/courses"),
       },
       {
+        href: "/course-twins",
+        label: "Course Twin",
+        icon: Cuboid,
+        isActive: (pathname) =>
+          pathname.startsWith("/course-twins") || pathname.startsWith("/play/"),
+      },
+      {
         href: "/rapsodo",
         label: "Rapsodo",
         icon: Upload,
@@ -323,6 +331,7 @@ export const navGroups: AppNavGroup[] = [
       navItem("/rounds"),
       navItem("/import"),
       navItem("/courses"),
+      navItem("/course-twins"),
       courseStrategyNavItem,
     ],
   },
@@ -380,6 +389,7 @@ export const mobileMoreGroups: AppNavGroup[] = [
     items: [
       navItem("/rounds"),
       navItem("/courses"),
+      navItem("/course-twins"),
       courseStrategyNavItem,
       navItem("/import"),
       navItem("/rapsodo"),
@@ -488,6 +498,8 @@ export const mobilePrimaryItems: AppNavItem[] = [
       pathname.startsWith("/sessions") ||
       pathname.startsWith("/rounds") ||
       pathname.startsWith("/courses") ||
+      pathname.startsWith("/course-twins") ||
+      pathname.startsWith("/play/") ||
       pathname.startsWith("/rapsodo"),
   },
   {

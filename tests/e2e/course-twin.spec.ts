@@ -110,13 +110,20 @@ test.describe("Course Twin", () => {
     test.setTimeout(180_000);
     skipWhenNoAuth();
 
-    await page.goto("/courses", { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await expectPageReady(page, /Courses/i);
-
-    const bootleCourseLink = page.getByRole("link", { name: /Bootle Golf Course/i }).first();
-    await expect(bootleCourseLink).toBeVisible();
-    const bootleCourseHref = await bootleCourseLink.getAttribute("href");
-    const listedCourseId = bootleCourseHref?.match(/^\/courses\/([0-9a-f-]+)\//)?.[1];
+    await page.goto("/course-twins", { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await expectPageReady(page, /Course Twin/i);
+    await expect(
+      page.getByRole("link", { name: "Course Twin", exact: true }).first(),
+    ).toBeVisible();
+    const bootleCard = page.locator("article").filter({ hasText: "Bootle Golf Course (Bootle)" });
+    await expect(bootleCard).toBeVisible();
+    const bootleTwinLink = bootleCard.getByRole("link", {
+      name: "Open Course Twin",
+      exact: true,
+    });
+    await expect(bootleTwinLink).toBeVisible();
+    const bootleTwinHref = await bootleTwinLink.getAttribute("href");
+    const listedCourseId = bootleTwinHref?.match(/^\/play\/([0-9a-f-]+)$/)?.[1];
     expect(listedCourseId).toBeTruthy();
     await page.goto(`/courses/${listedCourseId}/holes`, {
       waitUntil: "domcontentloaded",
@@ -124,7 +131,7 @@ test.describe("Course Twin", () => {
     });
     await expectPageReady(page, /Bootle Golf Course/i);
 
-    const pilotLink = page.getByRole("link", { name: "3D pilot", exact: true });
+    const pilotLink = page.getByRole("link", { name: "Open Course Twin", exact: true });
     await expect(pilotLink).toBeVisible();
     const pilotHref = await pilotLink.getAttribute("href");
     expect(pilotHref).toMatch(/^\/play\/[0-9a-f-]+$/);
@@ -288,10 +295,17 @@ test.describe("Course Twin", () => {
       quality: { grade: "B", mappedHoles: 9, verified: false },
     });
 
-    await page.goto(`/play/${aintreeCourseId}`, {
+    await page.goto("/course-twins", {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
+    await expectPageReady(page, /Course Twin/i);
+    await expect(page.getByRole("heading", { name: "Course Twin", exact: true })).toBeVisible();
+    const aintreeCard = page.locator("article").filter({ hasText: "Aintree Golf Centre" });
+    await expect(aintreeCard).toBeVisible();
+    await expect(aintreeCard.getByText("Grade B")).toBeVisible();
+    await aintreeCard.getByRole("link", { name: "Open Course Twin" }).click();
+    await expect(page).toHaveURL(`/play/${aintreeCourseId}`);
     await expectPageReady(page, /Aintree Golf Centre/i);
     await expect(page.getByText(/Grade B/)).toBeVisible();
     await expect(page.getByRole("button", { name: "9" })).toBeVisible();
