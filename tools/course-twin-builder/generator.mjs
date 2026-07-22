@@ -76,6 +76,18 @@ export function buildManifest(plan, terrain, imagery) {
       },
     ];
   });
+  const puttingSurfaces = (plan.sourceGeometry.puttingSurveys ?? []).map((survey) => ({
+    holeNumber: survey.holeNumber,
+    sourceName: survey.sourceName,
+    sourceUrl: survey.sourceUrl,
+    capturedAt: survey.capturedAt,
+    gridSpacingM: survey.gridSpacingM,
+    verticalAccuracyMm: survey.verticalAccuracyMm,
+    localBounds: geographicBoundsToLocal(survey.grid.bounds, plan.course.origin),
+    width: survey.grid.width,
+    height: survey.grid.height,
+    elevationsM: survey.grid.elevationsM.map((elevation) => elevation - terrain.originElevationM),
+  }));
   const warnings = [...plan.quality.warnings, ...(plan.runtimeWarnings ?? [])];
   if (terrain.resolutionM > plan.terrain.targetResolutionM * 1.5) {
     warnings.push(
@@ -86,6 +98,13 @@ export function buildManifest(plan, terrain, imagery) {
     terrain.resolutionM > 5 && ["A", "B"].includes(plan.quality.grade) ? "C" : plan.quality.grade;
   const actualSupportedModes =
     actualGrade === "C" ? ["flyover", "replay", "strategy"] : plan.quality.supportedModes;
+  const expectedHoles = Math.max(
+    holes.length,
+    plan.quality.evidence.holeCoverage > 0
+      ? Math.round(holes.length / plan.quality.evidence.holeCoverage)
+      : 18,
+  );
+  const verified = actualGrade === "A" && puttingSurfaces.length >= expectedHoles;
   return {
     schemaVersion: 1,
     packageVersion: 1,
@@ -127,19 +146,15 @@ export function buildManifest(plan, terrain, imagery) {
     quality: {
       grade: actualGrade,
       mappedHoles: holes.length,
-      expectedHoles: Math.max(
-        holes.length,
-        plan.quality.evidence.holeCoverage > 0
-          ? Math.round(holes.length / plan.quality.evidence.holeCoverage)
-          : 18,
-      ),
+      expectedHoles,
       mappedFeatures: features.length,
-      verified: false,
+      verified,
       warnings,
     },
     supportedModes: actualSupportedModes,
     holes,
     features,
+    puttingSurfaces,
     attribution: [
       terrain.attribution,
       {
@@ -152,8 +167,35 @@ export function buildManifest(plan, terrain, imagery) {
         url: "https://www.esri.com/en-us/legal/terms/full-master-agreement",
         licence: "Esri World Imagery terms",
       },
+      ...uniquePuttingAttributions(puttingSurfaces),
     ],
   };
+}
+
+function geographicBoundsToLocal(bounds, origin) {
+  const metresPerLongitude = 111_320 * Math.cos((origin.latitude * Math.PI) / 180);
+  return {
+    minX: (bounds.minLongitude - origin.longitude) * metresPerLongitude,
+    maxX: (bounds.maxLongitude - origin.longitude) * metresPerLongitude,
+    minZ: (origin.latitude - bounds.maxLatitude) * 111_320,
+    maxZ: (origin.latitude - bounds.minLatitude) * 111_320,
+  };
+}
+
+function uniquePuttingAttributions(surfaces) {
+  const seen = new Set();
+  return surfaces.flatMap((surface) => {
+    const key = `${surface.sourceName}:${surface.sourceUrl ?? ""}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [
+      {
+        label: `${surface.sourceName} putting-contour survey`,
+        url: surface.sourceUrl ?? "https://forekinghell.com/course-twin",
+        licence: "Licensed survey data",
+      },
+    ];
+  });
 }
 
 async function fetchImagery(bounds) {
@@ -241,5 +283,11 @@ function validatePlan(plan) {
   }
   if (plan.sourceGeometry.holes.length < 1 || plan.sourceGeometry.holes.length > 54) {
     throw new Error("Course Twin requires between 1 and 54 mapped holes.");
+  }
+  if (
+    plan.sourceGeometry.puttingSurveys !== undefined &&
+    !Array.isArray(plan.sourceGeometry.puttingSurveys)
+  ) {
+    throw new Error("Course Twin putting survey geometry is invalid.");
   }
 }

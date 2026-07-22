@@ -10,6 +10,7 @@ const sources = [
   "src/app/api/course-twins/rooms/[roomId]/state/route.ts",
   "src/app/api/course-twins/rooms/[roomId]/events/route.ts",
   "src/app/api/course-twins/rooms/[roomId]/shared-round/events/route.ts",
+  "src/app/api/course-twins/[courseId]/rooms/public/route.ts",
 ].map((path) => readFileSync(join(process.cwd(), path), "utf8"));
 
 describe("Course Twin room API boundaries", () => {
@@ -37,6 +38,7 @@ describe("Course Twin room API boundaries", () => {
     expect(sources[3]).toContain("parseCourseTwinRoomStateInput");
     expect(sources[3]).toContain("status: 409");
     expect(sources[5]).toContain("parseCourseTwinSharedRoundEventInput");
+    expect(sources[6]).toContain("listPublicCourseTwinRooms(courseId, user.id)");
   });
 
   it("keeps spectators read-only and shared mutations versioned", () => {

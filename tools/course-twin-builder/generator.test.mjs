@@ -52,6 +52,7 @@ const plan = {
         },
       },
     ],
+    puttingSurveys: [],
   },
 };
 
@@ -96,4 +97,46 @@ test("builder labels a Copernicus fallback honestly and caps it at strategy qual
   assert.equal(manifest.quality.grade, "C");
   assert.deepEqual(manifest.supportedModes, ["flyover", "replay", "strategy"]);
   assert.match(manifest.quality.warnings.at(-1), /30\.0 m/);
+});
+
+test("builder packages surveyed putting grids in local relative coordinates", () => {
+  const gradeAPlan = {
+    ...plan,
+    quality: {
+      ...plan.quality,
+      grade: "A",
+      evidence: { ...plan.quality.evidence, puttingVerified: true },
+    },
+    sourceGeometry: {
+      ...plan.sourceGeometry,
+      puttingSurveys: [
+        {
+          holeNumber: 1,
+          sourceName: "Survey partner",
+          sourceUrl: "https://example.test/green-1",
+          capturedAt: "2026-07-01T00:00:00.000Z",
+          gridSpacingM: 0.25,
+          verticalAccuracyMm: 8,
+          grid: {
+            bounds: {
+              minLatitude: 52.999,
+              maxLatitude: 53,
+              minLongitude: -3,
+              maxLongitude: -2.999,
+            },
+            width: 2,
+            height: 2,
+            elevationsM: [12, 12.01, 12.02, 12.03],
+          },
+        },
+      ],
+    },
+  };
+  const manifest = buildManifest(gradeAPlan, terrain, { attribution: "Imagery" });
+  assert.equal(manifest.quality.grade, "A");
+  assert.equal(manifest.quality.verified, true);
+  manifest.puttingSurfaces[0].elevationsM.forEach((value, index) => {
+    assert.ok(Math.abs(value - [0, 0.01, 0.02, 0.03][index]) < 1e-9);
+  });
+  assert.ok(manifest.puttingSurfaces[0].localBounds.maxX > 0);
 });

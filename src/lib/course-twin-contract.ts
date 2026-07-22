@@ -38,6 +38,19 @@ export type CourseTwinImageryAsset = {
   attribution: string;
 };
 
+export type CourseTwinPuttingSurface = {
+  holeNumber: number;
+  sourceName: string;
+  sourceUrl: string | null;
+  capturedAt: string;
+  gridSpacingM: number;
+  verticalAccuracyMm: number;
+  localBounds: CourseTwinManifest["bounds"];
+  width: number;
+  height: number;
+  elevationsM: number[];
+};
+
 export type CourseTwinHole = {
   holeNumber: number;
   par: number;
@@ -96,6 +109,7 @@ export type CourseTwinManifest = {
   supportedModes: CourseTwinMode[];
   holes: CourseTwinHole[];
   features: CourseTwinFeature[];
+  puttingSurfaces?: CourseTwinPuttingSurface[];
   attribution: CourseTwinAttribution[];
 };
 

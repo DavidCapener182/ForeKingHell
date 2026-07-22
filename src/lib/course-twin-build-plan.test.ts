@@ -83,7 +83,7 @@ describe("Course Twin build planning", () => {
       scorecardVerified: false,
       courseUpdatedAt: "2026-07-22T00:00:00.000Z",
       correctionRevision: null,
-      sourceGeometry: { holes: [], features: [] },
+      sourceGeometry: { holes: [], features: [], puttingSurveys: [] },
     };
     const first = buildCourseTwinPlan(input);
     const second = buildCourseTwinPlan({ ...input });
@@ -98,5 +98,44 @@ describe("Course Twin build planning", () => {
     });
     expect(first.course.geographicBounds.minLatitude).toBeLessThan(53.48);
     expect(first.course.geographicBounds.maxLongitude).toBeGreaterThan(-2.97);
+  });
+
+  it("unlocks Grade A only when every green has a verified survey-grade grid", () => {
+    const puttingSurveys = Array.from({ length: 18 }, (_, index) => ({
+      holeNumber: index + 1,
+      sourceName: "Licensed total-station survey",
+      sourceUrl: "https://example.test/survey",
+      capturedAt: "2026-07-01T00:00:00.000Z",
+      gridSpacingM: 0.25,
+      verticalAccuracyMm: 8,
+      grid: {
+        bounds: {
+          minLatitude: 53.48,
+          maxLatitude: 53.48001,
+          minLongitude: -2.97,
+          maxLongitude: -2.96999,
+        },
+        width: 2,
+        height: 2,
+        elevationsM: [10, 10.01, 10.02, 10.03],
+      },
+    }));
+    const result = buildCourseTwinPlan({
+      courseId: "course-a",
+      courseName: "Surveyed Course",
+      externalId: null,
+      country: "England",
+      latitude: 53.48,
+      longitude: -2.97,
+      expectedHoles: 18,
+      mappedHoles: 18,
+      mappedFeatureCounts: { fairway: 18, green: 18, bunker: 20 },
+      scorecardVerified: true,
+      courseUpdatedAt: "2026-07-22T00:00:00.000Z",
+      correctionRevision: null,
+      sourceGeometry: { holes: [], features: [], puttingSurveys },
+    });
+    expect(result.quality.grade).toBe("A");
+    expect(result.quality.evidence.puttingVerified).toBe(true);
   });
 });

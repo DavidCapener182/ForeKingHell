@@ -170,6 +170,41 @@ export async function createRoundShareLinkAction(formData: FormData) {
   redirect(`/rounds/${sessionId}?share=${encodeURIComponent(token)}`);
 }
 
+export async function createCourseTwinReplayShareLinkAction(formData: FormData) {
+  const db = getDb();
+  const userId = await requireCurrentUserId();
+  const sessionId = requiredString(formData, "sessionId");
+  const token = createShareToken();
+  const now = new Date();
+  const [round] = await db
+    .select({
+      id: sessions.id,
+      courseId: sessions.courseId,
+      courseName: sessions.courseName,
+      fileName: sessions.fileName,
+    })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+
+  if (!round?.courseId) {
+    throw new Error("This round is not linked to a playable Course Twin.");
+  }
+
+  await db.insert(shareLinks).values({
+    userId,
+    tokenHash: hashShareToken(token),
+    resourceType: "course_twin_replay",
+    resourceId: round.id,
+    title: `${round.courseName ?? round.fileName ?? "Round"} 3D replay`,
+    expiresAt: getShareExpiry(30, now),
+    updatedAt: now,
+  });
+
+  revalidateRound(sessionId);
+  redirect(`/share/course-twin/${encodeURIComponent(token)}`);
+}
+
 export async function revokeRoundShareLinkAction(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();

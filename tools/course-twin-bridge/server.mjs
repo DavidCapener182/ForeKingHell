@@ -37,6 +37,8 @@ export class CourseTwinBridge {
   #lastShotAt = null;
   #shotsAccepted = 0;
   #shotsRejected = 0;
+  #clubShotsAccepted = 0;
+  #playerUpdatesSent = 0;
 
   constructor({
     host = "127.0.0.1",
@@ -75,6 +77,8 @@ export class CourseTwinBridge {
       lastShotAt: this.#lastShotAt,
       shotsAccepted: this.#shotsAccepted,
       shotsRejected: this.#shotsRejected,
+      clubShotsAccepted: this.#clubShotsAccepted,
+      playerUpdatesSent: this.#playerUpdatesSent,
     };
   }
 
@@ -155,6 +159,7 @@ export class CourseTwinBridge {
             shot: message,
           };
           this.#shotsAccepted += 1;
+          if (message.club) this.#clubShotsAccepted += 1;
           this.#lastShotAt = event.receivedAt;
           socket.write(gsProResponse(200, "Shot received"));
           this.#broadcast(event);
@@ -302,6 +307,7 @@ export class CourseTwinBridge {
           Club: message.club,
         });
         for (const launchSocket of this.#launchSockets) launchSocket.write(response);
+        this.#playerUpdatesSent += 1;
         return;
       }
       socket.close(1008, "Unsupported message");

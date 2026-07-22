@@ -1,0 +1,96 @@
+name: Course Twin Bridge Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Signed release channel
+        required: true
+        type: choice
+        options: [beta, stable]
+        default: beta
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  signed-builds:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            artifact: macos-arm64
+          - os: windows-2025
+            artifact: windows-x64
+          - os: ubuntu-24.04
+            artifact: linux-x64
+    runs-on: ${{ matrix.os }}
+    environment: course-twin-release
+    env:
+      FKH_BRIDGE_RELEASE_CHANNEL: ${{ github.event_name == 'release' && 'stable' || inputs.channel }}
+      FKH_RELEASE_MANIFEST_PRIVATE_KEY: ${{ secrets.FKH_RELEASE_MANIFEST_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+          cache: npm
+      - run: npm ci
+      - run: npm run bridge:test
+
+      - name: Import Apple signing and notarisation credentials
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APP_CERTIFICATE_BASE64: ${{ secrets.FKH_MACOS_CERTIFICATE_BASE64 }}
+          APP_CERTIFICATE_PASSWORD: ${{ secrets.FKH_MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.FKH_APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.FKH_APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.FKH_APPLE_APP_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.FKH_MACOS_SIGN_IDENTITY }}
+        run: |
+          set -euo pipefail
+          test -n "$APP_CERTIFICATE_BASE64"
+          test -n "$MACOS_SIGN_IDENTITY"
+          KEYCHAIN="$RUNNER_TEMP/course-twin.keychain-db"
+          CERTIFICATE="$RUNNER_TEMP/course-twin.p12"
+          echo "$APP_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE"
+          security create-keychain -p "$APP_CERTIFICATE_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$APP_CERTIFICATE_PASSWORD" "$KEYCHAIN"
+          security import "$CERTIFICATE" -P "$APP_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APP_CERTIFICATE_PASSWORD" "$KEYCHAIN"
+          xcrun notarytool store-credentials forekinghell-release --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD"
+          echo "FKH_MACOS_SIGN_IDENTITY=$MACOS_SIGN_IDENTITY" >> "$GITHUB_ENV"
+          echo "FKH_APPLE_NOTARY_PROFILE=forekinghell-release" >> "$GITHUB_ENV"
+
+      - name: Import Windows Authenticode certificate
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.FKH_WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.FKH_WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if (-not $env:WINDOWS_CERTIFICATE_BASE64) { throw "Windows signing certificate is required" }
+          $certificatePath = Join-Path $env:RUNNER_TEMP "course-twin.pfx"
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
+          $securePassword = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $certificate = Import-PfxCertificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+          "FKH_WINDOWS_SIGN_CERT_SHA1=$($certificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - run: npm run bridge:build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: forekinghell-course-twin-bridge-${{ matrix.artifact }}
+          path: dist/course-twin-bridge/**
+          if-no-files-found: error
+      - name: Attach signed package to GitHub release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/course-twin-bridge/**/* --clobber

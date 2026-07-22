@@ -39,4 +39,23 @@ describe("Course Twin terrain package", () => {
     expect(sample(0, 0)).toBe(15);
     expect(sample(-100, -100)).toBe(0);
   });
+
+  it("uses a reviewed putting grid inside its bounds without affecting surrounding terrain", () => {
+    const sample = createCourseTwinTerrainSampler(asset, new Float32Array([0, 10, 20, 30]), [
+      {
+        holeNumber: 1,
+        sourceName: "Survey",
+        sourceUrl: null,
+        capturedAt: "2026-07-01T00:00:00.000Z",
+        gridSpacingM: 0.25,
+        verticalAccuracyMm: 8,
+        localBounds: { minX: -2, maxX: 2, minZ: -2, maxZ: 2 },
+        width: 2,
+        height: 2,
+        elevationsM: [5, 6, 7, 8],
+      },
+    ]);
+    expect(sample(0, 0)).toBe(6.5);
+    expect(sample(9, 19)).toBeCloseTo(29, 5);
+  });
 });

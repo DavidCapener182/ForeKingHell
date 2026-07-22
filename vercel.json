@@ -1,6 +1,14 @@
 {
   "crons": [
     {
+      "path": "/api/cron/course-twin-builds",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/course-twin-catalog",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/tour-leaderboards",
       "schedule": "0 0 * * *"
     }

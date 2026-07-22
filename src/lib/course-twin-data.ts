@@ -25,9 +25,11 @@ import { courseTwinBoundsForPoints, createCourseTwinProjector } from "@/lib/cour
 import { buildCourseTwinReplay, type CourseTwinReplaySourceShot } from "@/lib/course-twin-replay";
 import type { CourseTwinBagProfile } from "@/lib/course-twin-strategy";
 import { loadActiveCourseTwinManifest } from "@/lib/course-twin-package-store";
+import aintreeTerrainPackage from "@/generated/course-twins/aintree-v1.json";
 import bootleTerrainPackage from "@/generated/course-twins/bootle-v3.json";
 
 const PILOT_EXTERNAL_ID = "bootle-golf-course";
+const AINTREE_COURSE_ID = "4de11156-16fd-4a36-84e0-fadda53456b0";
 
 export function isCourseTwinFeatureEnabled() {
   return process.env.NEXT_PUBLIC_ENABLE_COURSE_TWIN !== "false";
@@ -63,6 +65,9 @@ export async function getCourseTwinManifest({
   if (!course) return null;
   const publishedManifest = await loadActiveCourseTwinManifest(course.id);
   if (publishedManifest) return publishedManifest;
+  if (course.id === AINTREE_COURSE_ID) {
+    return aintreeTerrainPackage as unknown as CourseTwinManifest;
+  }
   if (course.externalId !== PILOT_EXTERNAL_ID) return null;
 
   const [holeRows, featureRows] = await Promise.all([

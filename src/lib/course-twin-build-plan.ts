@@ -42,6 +42,25 @@ export type CourseTwinBuildInput = {
       geometry: unknown;
       source: string;
     }>;
+    puttingSurveys: Array<{
+      holeNumber: number;
+      sourceName: string;
+      sourceUrl: string | null;
+      capturedAt: string;
+      gridSpacingM: number;
+      verticalAccuracyMm: number;
+      grid: {
+        bounds: {
+          minLatitude: number;
+          maxLatitude: number;
+          minLongitude: number;
+          maxLongitude: number;
+        };
+        width: number;
+        height: number;
+        elevationsM: number[];
+      };
+    }>;
   };
 };
 
@@ -91,6 +110,11 @@ export function buildCourseTwinPlan(input: CourseTwinBuildInput): CourseTwinBuil
   validateBuildInput(input);
   const terrain = selectTerrainAdapters(input.country, input.latitude, input.longitude);
   const geographicBounds = courseBounds(input.latitude, input.longitude);
+  const verifiedPuttingHoles = new Set(
+    (input.sourceGeometry.puttingSurveys ?? [])
+      .filter((survey) => survey.gridSpacingM <= 0.25 && survey.verticalAccuracyMm <= 10)
+      .map((survey) => survey.holeNumber),
+  );
   const quality = assessCourseTwinQuality({
     terrainResolutionM: terrain.targetResolutionM,
     mappedHoles: input.mappedHoles,
@@ -99,7 +123,7 @@ export function buildCourseTwinPlan(input: CourseTwinBuildInput): CourseTwinBuil
     mappedFairways: input.mappedFeatureCounts.fairway ?? 0,
     mappedBunkers: input.mappedFeatureCounts.bunker ?? 0,
     scorecardVerified: input.scorecardVerified,
-    puttingVerified: false,
+    puttingVerified: verifiedPuttingHoles.size >= input.expectedHoles,
   });
   const canonicalInput = stableJson({ ...input, terrain, schemaVersion: 1 });
   return {

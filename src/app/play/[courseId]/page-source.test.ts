@@ -25,7 +25,10 @@ describe("Course Twin route boundaries", () => {
     expect(pageSource).toContain("requireCurrentUserId()");
     expect(pageSource).toContain("getCourseTwinManifest({ userId, courseId })");
     expect(pageSource).toContain("getCourseTwinReplay({");
-    expect(pageSource).toContain("<CourseTwinRuntime manifest={manifest} replay={replay} />");
+    expect(pageSource).toContain("<CourseTwinRuntime");
+    expect(pageSource).toContain("manifest={manifest}");
+    expect(pageSource).toContain("replay={replay}");
+    expect(pageSource).toContain("tournamentId={query.tournamentId}");
   });
 
   it("keeps Three.js in a client-only dynamically loaded route bundle", () => {
@@ -118,5 +121,12 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("Join as {role}");
     expect(sceneSource).toContain("/shared-round/events");
     expect(sceneSource).toContain("Verified competition room");
+  });
+
+  it("does not let a late persisted-round response override a golfer-selected mode", () => {
+    expect(sceneSource).toContain("const modeRef = useRef(mode)");
+    expect(sceneSource).toContain("const modeAtLoad = modeRef.current");
+    expect(sceneSource).toContain("if (modeRef.current === modeAtLoad)");
+    expect(sceneSource).toContain('selectMode("explore")');
   });
 });

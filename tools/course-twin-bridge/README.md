@@ -11,6 +11,14 @@ The bridge translates the documented GSPro Open Connect v1 TCP feed into a small
 
 Run the packaged executable with `--diagnostics` to print a redacted support report. When the bridge is detected, Course Twin also offers **Download connection report** in Live mode. The report includes operating system, ports, connection state and accepted/rejected counters, but never pairing codes, session tokens or raw shot payloads.
 
+## Physical MLM2PRO acceptance
+
+With the bridge and Course Twin Live mode connected, run:
+
+`npm run bridge:acceptance -- --device "Rapsodo MLM2PRO" --shots 5 --duration 300`
+
+Select handedness and a club in the browser, then hit at least five shots. The command emits a permission-restricted JSON report and passes only when the official loopback port is active, the expected monitor and browser are both connected, fresh club data and player feedback were observed, the minimum shot count was accepted, and no shots were rejected. It records counters and device label only—never launch data, pairing codes or tokens. This runner makes the hardware sign-off reproducible; it cannot replace a real MLM2PRO and Premium/GSPro-mode acceptance session.
+
 The official GSPro listener is `127.0.0.1:921`. Windows and privileged Unix launches bind it directly. An ordinary macOS/Linux process cannot bind a port below 1024, so the bridge safely defaults to `127.0.0.1:4921` there and prints the required setup status. The browser service defaults to `127.0.0.1:9791`. Every service rejects non-loopback binding. Browser origins are exact-matched; add a production origin with `FKH_BRIDGE_ALLOWED_ORIGINS`.
 
 ## Security boundary

@@ -8,6 +8,7 @@ import {
   courses,
   courseTwinBuilds,
   courseTwinCorrections,
+  courseTwinPuttingSurveys,
   courseTwins,
   holes,
 } from "@/db/schema";
@@ -165,7 +166,7 @@ export async function enqueueCourseTwinBuild({
   force?: boolean;
 }) {
   const db = getDb();
-  const [course, holeRows, featureRows] = await Promise.all([
+  const [course, holeRows, featureRows, puttingSurveyRows] = await Promise.all([
     db
       .select({
         id: courses.id,
@@ -174,6 +175,7 @@ export async function enqueueCourseTwinBuild({
         country: courses.country,
         latitude: courses.latitude,
         longitude: courses.longitude,
+        metadata: courses.googleMetadataJson,
         updatedAt: courses.updatedAt,
       })
       .from(courses)
@@ -205,6 +207,24 @@ export async function enqueueCourseTwinBuild({
       })
       .from(courseFeatures)
       .where(eq(courseFeatures.courseId, courseId)),
+    db
+      .select({
+        holeNumber: courseTwinPuttingSurveys.holeNumber,
+        sourceName: courseTwinPuttingSurveys.sourceName,
+        sourceUrl: courseTwinPuttingSurveys.sourceUrl,
+        capturedAt: courseTwinPuttingSurveys.capturedAt,
+        gridSpacingM: courseTwinPuttingSurveys.gridSpacingM,
+        verticalAccuracyMm: courseTwinPuttingSurveys.verticalAccuracyMm,
+        grid: courseTwinPuttingSurveys.gridJson,
+        updatedAt: courseTwinPuttingSurveys.updatedAt,
+      })
+      .from(courseTwinPuttingSurveys)
+      .where(
+        and(
+          eq(courseTwinPuttingSurveys.courseId, courseId),
+          eq(courseTwinPuttingSurveys.status, "verified"),
+        ),
+      ),
   ]);
 
   const courseRow = course[0];
@@ -216,7 +236,7 @@ export async function enqueueCourseTwinBuild({
     .where(and(eq(courseTwins.courseId, courseId), eq(courseTwinCorrections.status, "accepted")))
     .orderBy(desc(courseTwinCorrections.updatedAt));
   const uniqueHoleNumbers = new Set(holeRows.map((row) => row.holeNumber));
-  const expectedHoles = uniqueHoleNumbers.size > 18 ? uniqueHoleNumbers.size : 18;
+  const expectedHoles = uniqueHoleNumbers.size >= 9 ? uniqueHoleNumbers.size : 18;
   const featureCounts = featureRows.reduce<Record<string, number>>((counts, row) => {
     counts[row.featureType] = (counts[row.featureType] ?? 0) + 1;
     return counts;
@@ -225,6 +245,7 @@ export async function enqueueCourseTwinBuild({
     courseRow.updatedAt,
     ...holeRows.map((row) => row.updatedAt),
     ...featureRows.map((row) => row.updatedAt),
+    ...puttingSurveyRows.map((row) => row.updatedAt),
   ]);
   const correctionRevision = correctionRows[0]
     ? `${correctionRows[0].updatedAt.toISOString()}:${correctionRows.map((row) => row.id).join(",")}`
@@ -239,7 +260,9 @@ export async function enqueueCourseTwinBuild({
     expectedHoles,
     mappedHoles: uniqueHoleNumbers.size,
     mappedFeatureCounts: featureCounts,
-    scorecardVerified: false,
+    scorecardVerified:
+      typeof courseRow.metadata?.scorecardVerifiedAt === "string" &&
+      Number.isFinite(new Date(courseRow.metadata.scorecardVerifiedAt).getTime()),
     courseUpdatedAt: sourceRevision.toISOString(),
     correctionRevision,
     sourceGeometry: {
@@ -258,6 +281,15 @@ export async function enqueueCourseTwinBuild({
         featureType: feature.featureType,
         geometry: feature.geometry,
         source: feature.source,
+      })),
+      puttingSurveys: puttingSurveyRows.map((survey) => ({
+        holeNumber: survey.holeNumber,
+        sourceName: survey.sourceName,
+        sourceUrl: survey.sourceUrl,
+        capturedAt: survey.capturedAt.toISOString(),
+        gridSpacingM: survey.gridSpacingM,
+        verticalAccuracyMm: survey.verticalAccuracyMm,
+        grid: survey.grid,
       })),
     },
   });

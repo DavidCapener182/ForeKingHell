@@ -50,6 +50,7 @@ export async function createCourseTwinRoom({
             courseId,
             hostUserId: userId,
             inviteCode,
+            visibility: input.visibility,
             mode: input.mode,
             maxPlayers: input.maxPlayers,
             spectatorLimit: input.spectatorLimit,
@@ -187,12 +188,54 @@ export async function getCourseTwinRoom(roomId: string, userId: string) {
   const currentMember = members.find((member) => member.userId === userId);
   return {
     ...membership.room,
+    currentUserId: userId,
     isHost: membership.room.hostUserId === userId,
     currentRole: currentMember?.role ?? "player",
     sharedEventCount,
     latestSharedEvent: latestSharedEvent ?? null,
     members,
   };
+}
+
+export async function listPublicCourseTwinRooms(courseId: string, userId: string) {
+  const now = new Date();
+  const rooms = await getDb()
+    .select({
+      id: courseTwinRooms.id,
+      inviteCode: courseTwinRooms.inviteCode,
+      mode: courseTwinRooms.mode,
+      competition: courseTwinRooms.competition,
+      maxPlayers: courseTwinRooms.maxPlayers,
+      holeNumber: courseTwinRooms.holeNumber,
+      updatedAt: courseTwinRooms.updatedAt,
+      hostName: users.name,
+    })
+    .from(courseTwinRooms)
+    .innerJoin(users, eq(users.id, courseTwinRooms.hostUserId))
+    .where(
+      and(
+        eq(courseTwinRooms.courseId, courseId),
+        eq(courseTwinRooms.visibility, "public"),
+        eq(courseTwinRooms.status, "lobby"),
+        gt(courseTwinRooms.expiresAt, now),
+      ),
+    )
+    .orderBy(desc(courseTwinRooms.updatedAt))
+    .limit(20);
+  const result = [];
+  for (const room of rooms) {
+    const [{ memberCount }] = await getDb()
+      .select({ memberCount: count() })
+      .from(courseTwinRoomMembers)
+      .where(and(eq(courseTwinRoomMembers.roomId, room.id), isNull(courseTwinRoomMembers.leftAt)));
+    result.push({
+      ...room,
+      hostName: room.hostName || "Golfer",
+      memberCount,
+      canJoin: memberCount < room.maxPlayers,
+    });
+  }
+  return { viewerUserId: userId, rooms: result };
 }
 
 export async function updateCourseTwinPresence(

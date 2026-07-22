@@ -33,11 +33,13 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CourseTwinComms } from "@/app/play/[courseId]/course-twin-comms";
 import type {
   CourseTwinFeature,
   CourseTwinHole,
   CourseTwinManifest,
   CourseTwinPoint,
+  CourseTwinPuttingSurface,
   CourseTwinReplayDocument,
   CourseTwinReplayShot,
 } from "@/lib/course-twin-contract";
@@ -105,6 +107,8 @@ type BridgeLoadState = {
 type CourseTwinRoomClient = {
   id: string;
   inviteCode: string;
+  currentUserId: string;
+  visibility: "private" | "public";
   isHost: boolean;
   currentRole: "host" | "player" | "spectator";
   competition: boolean;
@@ -125,6 +129,17 @@ type CourseTwinRoomClient = {
     transport: ExploreTransport;
     holeNumber: number;
   }>;
+};
+type PublicCourseTwinRoom = {
+  id: string;
+  inviteCode: string;
+  hostName: string;
+  mode: string;
+  competition: boolean;
+  memberCount: number;
+  maxPlayers: number;
+  holeNumber: number;
+  canJoin: boolean;
 };
 type RoomLoadState = {
   status: "idle" | "loading" | "ready" | "error";
@@ -196,9 +211,15 @@ const pbrSurfaceAssets: Record<
 export function CourseTwinScene({
   manifest,
   replay,
+  readOnly = false,
+  tournamentId,
+  tournamentRoundNumber,
 }: {
   manifest: CourseTwinManifest;
   replay: CourseTwinReplayDocument | null;
+  readOnly?: boolean;
+  tournamentId?: string | null;
+  tournamentRoundNumber?: number | null;
 }) {
   const [holeNumber, setHoleNumber] = useState(manifest.holes[0]?.holeNumber ?? 1);
   const [mode, setMode] = useState<RuntimeMode>(replay?.shots.length ? "replay" : "flyover");
@@ -246,7 +267,7 @@ export function CourseTwinScene({
   const [roundStartingHole, setRoundStartingHole] = useState<1 | 10>(1);
   const [activeRound, setActiveRound] = useState<CourseTwinRoundClientDocument | null>(null);
   const [roundSync, setRoundSync] = useState<RoundSyncState>({
-    status: "saving",
+    status: readOnly ? "idle" : "saving",
     error: null,
   });
   const [roundRetryToken, setRoundRetryToken] = useState(0);
@@ -262,8 +283,12 @@ export function CourseTwinScene({
   const [roomInviteCode, setRoomInviteCode] = useState("");
   const [roomJoinRole, setRoomJoinRole] = useState<"player" | "spectator">("player");
   const [roomCompetition, setRoomCompetition] = useState(false);
+  const [roomVisibility, setRoomVisibility] = useState<"private" | "public">("private");
+  const [publicRooms, setPublicRooms] = useState<PublicCourseTwinRoom[]>([]);
+  const [publicRoomsLoading, setPublicRoomsLoading] = useState(false);
   const [roomCodeCopied, setRoomCodeCopied] = useState(false);
   const playbackRef = useRef(0);
+  const modeRef = useRef(mode);
   const explorePresenceRef = useRef({
     transport: exploreTransport,
     position: explorePosition,
@@ -283,6 +308,16 @@ export function CourseTwinScene({
     canAccept: false,
   });
   const terrainAsset = manifest.terrain.heightmap;
+
+  const selectMode = (nextMode: RuntimeMode) => {
+    modeRef.current = nextMode;
+    setMode(nextMode);
+  };
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
   const selectedHole =
     manifest.holes.find((hole) => hole.holeNumber === holeNumber) ?? manifest.holes[0];
   const holeShots =
@@ -394,9 +429,13 @@ export function CourseTwinScene({
   const sampleTerrain = useMemo(
     () =>
       terrainAsset && terrainSamples
-        ? createCourseTwinTerrainSampler(terrainAsset, terrainSamples)
+        ? createCourseTwinTerrainSampler(
+            terrainAsset,
+            terrainSamples,
+            manifest.puttingSurfaces ?? [],
+          )
         : null,
-    [terrainAsset, terrainSamples],
+    [manifest.puttingSurfaces, terrainAsset, terrainSamples],
   );
   const classifySurface = useMemo(
     () => createCourseTwinSurfaceClassifier(manifest, selectedHole.holeNumber),
@@ -456,60 +495,80 @@ export function CourseTwinScene({
     [strategyClubId, strategyState.document],
   );
 
-  const appendRoundEvent = useCallback(async (event: CourseTwinRoundEventInput) => {
-    const current = activeRoundRef.current;
-    if (!current) throw new Error("Start a Course Twin round before saving shots.");
-    setRoundSync({ status: "saving", error: null });
-    try {
-      const updated = await appendCourseTwinRoundEventClient(current, event);
-      activeRoundRef.current = updated;
-      setActiveRound(updated);
-      setRoundSync({ status: "ready", error: null });
-      const sharedRoom = roomStateRef.current.room;
-      if (sharedRoom && sharedRoom.currentRole !== "spectator" && !sharedRoom.finalEventHash) {
-        void fetch(`/api/course-twins/rooms/${sharedRoom.id}/shared-round/events`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expectedVersion: sharedRoom.sharedRoundVersion, event }),
-        })
-          .then(async (response) => {
-            if (response.ok) {
-              const body = (await response.json()) as { room?: CourseTwinRoomClient };
-              if (body.room) {
-                const next = { status: "ready", room: body.room, error: null } as const;
-                roomStateRef.current = next;
-                setRoomState(next);
-              }
-              return;
-            }
-            if (response.status === 409) {
-              const refreshed = await fetch(`/api/course-twins/rooms/${sharedRoom.id}`, {
-                cache: "no-store",
-              });
-              if (refreshed.ok) {
-                const next = {
-                  status: "ready",
-                  room: (await refreshed.json()) as CourseTwinRoomClient,
-                  error: null,
-                } as const;
-                roomStateRef.current = next;
-                setRoomState(next);
-              }
-            }
-          })
-          .catch(() => {
-            // The personal round is canonical locally; room polling retries shared visibility.
+  const appendRoundEvent = useCallback(
+    async (event: CourseTwinRoundEventInput) => {
+      const current = activeRoundRef.current;
+      if (!current) throw new Error("Start a Course Twin round before saving shots.");
+      setRoundSync({ status: "saving", error: null });
+      try {
+        const updated = await appendCourseTwinRoundEventClient(current, event);
+        activeRoundRef.current = updated;
+        setActiveRound(updated);
+        setRoundSync({ status: "ready", error: null });
+        if (event.type === "round.completed" && tournamentId && updated.sessionId) {
+          const submission = await fetch(`/api/course-twins/rounds/${updated.id}/tournament`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tournamentId,
+              roundNumber: tournamentRoundNumber ?? 1,
+            }),
           });
+          if (!submission.ok) {
+            const body = (await submission.json()) as { error?: string };
+            setRoundSync({
+              status: "error",
+              error: `Round saved, but tournament submission needs attention: ${body.error ?? "submission failed"}`,
+            });
+          }
+        }
+        const sharedRoom = roomStateRef.current.room;
+        if (sharedRoom && sharedRoom.currentRole !== "spectator" && !sharedRoom.finalEventHash) {
+          void fetch(`/api/course-twins/rooms/${sharedRoom.id}/shared-round/events`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expectedVersion: sharedRoom.sharedRoundVersion, event }),
+          })
+            .then(async (response) => {
+              if (response.ok) {
+                const body = (await response.json()) as { room?: CourseTwinRoomClient };
+                if (body.room) {
+                  const next = { status: "ready", room: body.room, error: null } as const;
+                  roomStateRef.current = next;
+                  setRoomState(next);
+                }
+                return;
+              }
+              if (response.status === 409) {
+                const refreshed = await fetch(`/api/course-twins/rooms/${sharedRoom.id}`, {
+                  cache: "no-store",
+                });
+                if (refreshed.ok) {
+                  const next = {
+                    status: "ready",
+                    room: (await refreshed.json()) as CourseTwinRoomClient,
+                    error: null,
+                  } as const;
+                  roomStateRef.current = next;
+                  setRoomState(next);
+                }
+              }
+            })
+            .catch(() => {
+              // The personal round is canonical locally; room polling retries shared visibility.
+            });
+        }
+        return updated;
+      } catch (error) {
+        setRoundSync({
+          status: "error",
+          error: error instanceof Error ? error.message : "Course Twin could not save the round.",
+        });
+        throw error;
       }
-      return updated;
-    } catch (error) {
-      setRoundSync({
-        status: "error",
-        error: error instanceof Error ? error.message : "Course Twin could not save the round.",
-      });
-      throw error;
-    }
-  }, []);
+    },
+    [tournamentId, tournamentRoundNumber],
+  );
 
   useEffect(() => {
     if (
@@ -1037,7 +1096,12 @@ export function CourseTwinScene({
   };
 
   useEffect(() => {
+    if (readOnly) {
+      activeRoundRef.current = null;
+      return;
+    }
     let mounted = true;
+    const modeAtLoad = modeRef.current;
     void loadActiveCourseTwinRoundClient(manifest.course.id)
       .then((round) => {
         if (!mounted) return;
@@ -1061,7 +1125,10 @@ export function CourseTwinScene({
         setRoundRules(round.rulesJson);
         setRoundHoleCount(round.holeCount === 9 ? 9 : 18);
         setRoundStartingHole(round.startingHole === 10 ? 10 : 1);
-        setMode(round.mode);
+        if (modeRef.current === modeAtLoad) {
+          modeRef.current = round.mode;
+          setMode(round.mode);
+        }
         setHoleNumber(round.currentHole);
         setPlayback(0);
         setPlaying(false);
@@ -1097,7 +1164,7 @@ export function CourseTwinScene({
     };
     // Resume is intentionally scoped to the published course identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [manifest.course.id]);
+  }, [manifest.course.id, readOnly]);
 
   const startPersistedRound = async (roundMode: "play" | "live") => {
     if (activeRound?.status === "in_progress") {
@@ -1225,6 +1292,7 @@ export function CourseTwinScene({
           spectatorLimit: 8,
           holeNumber,
           competition: roomCompetition,
+          visibility: roomVisibility,
         }),
       });
       const body = await response.json();
@@ -1267,6 +1335,46 @@ export function CourseTwinScene({
     }
   };
 
+  const joinPublicRoom = async (inviteCode: string) => {
+    setRoomState({ status: "loading", room: null, error: null });
+    try {
+      const response = await fetch("/api/course-twins/rooms/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteCode, role: roomJoinRole }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to join that public room.");
+      setRoomState({ status: "ready", room: body, error: null });
+    } catch (error) {
+      setRoomState({
+        status: "error",
+        room: null,
+        error: error instanceof Error ? error.message : "Unable to join that public room.",
+      });
+    }
+  };
+
+  const loadPublicRooms = async () => {
+    setPublicRoomsLoading(true);
+    try {
+      const response = await fetch(`/api/course-twins/${manifest.course.id}/rooms/public`, {
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { rooms?: PublicCourseTwinRoom[]; error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Public rooms could not be loaded.");
+      setPublicRooms(body.rooms ?? []);
+    } catch (error) {
+      setRoomState({
+        status: "error",
+        room: null,
+        error: error instanceof Error ? error.message : "Public rooms could not be loaded.",
+      });
+    } finally {
+      setPublicRoomsLoading(false);
+    }
+  };
+
   const leaveRoom = async () => {
     if (roomState.room) {
       await fetch(`/api/course-twins/rooms/${roomState.room.id}`, { method: "DELETE" });
@@ -1288,15 +1396,23 @@ export function CourseTwinScene({
           <h1 className="pt-2 text-2xl font-semibold tracking-tight">{manifest.course.name}</h1>
           <p className="text-sm leading-6 text-emerald-100/70">
             Real mapped holes over Environment Agency LiDAR terrain and georeferenced aerial
-            reference imagery. Green contours remain unverified for putting.
+            reference imagery.{" "}
+            {manifest.quality.verified
+              ? "Putting contours are backed by reviewed high-resolution green surveys."
+              : "Green contours remain unverified for putting."}
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1 sm:grid-cols-6">
+        <div
+          className={cn(
+            "mt-5 grid gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1",
+            readOnly ? "grid-cols-2" : "grid-cols-3 sm:grid-cols-6",
+          )}
+        >
           <ModeButton
             active={mode === "flyover"}
             onClick={() => {
-              setMode("flyover");
+              selectMode("flyover");
               setCameraCommand(null);
             }}
           >
@@ -1306,76 +1422,82 @@ export function CourseTwinScene({
             active={mode === "replay"}
             disabled={!replay?.shots.length}
             onClick={() => {
-              setMode("replay");
+              selectMode("replay");
               setCameraView("golfer");
               setCameraCommand(null);
             }}
           >
             Replay
           </ModeButton>
-          <ModeButton
-            active={mode === "strategy"}
-            onClick={() => {
-              setMode("strategy");
-              setCameraView("aerial");
-              setCameraCommand(null);
-              if (
-                strategyState.holeNumber !== selectedHole.holeNumber ||
-                strategyState.status === "idle" ||
-                strategyState.status === "error"
-              ) {
-                loadStrategy(selectedHole.holeNumber);
-              }
-            }}
-          >
-            Strategy
-          </ModeButton>
-          <ModeButton
-            active={mode === "play"}
-            onClick={() => {
-              setMode("play");
-              setCameraView("golfer");
-              setCameraCommand(null);
-              if (
-                strategyState.holeNumber !== selectedHole.holeNumber ||
-                strategyState.status === "idle" ||
-                strategyState.status === "error"
-              ) {
-                loadStrategy(selectedHole.holeNumber);
-              }
-            }}
-          >
-            Play
-          </ModeButton>
-          <ModeButton
-            active={mode === "live"}
-            onClick={() => {
-              setMode("live");
-              setCameraView("golfer");
-              setCameraCommand(null);
-              if (
-                strategyState.holeNumber !== selectedHole.holeNumber ||
-                strategyState.status === "idle" ||
-                strategyState.status === "error"
-              ) {
-                loadStrategy(selectedHole.holeNumber);
-              }
-              if (bridgeState.status === "idle" || bridgeState.status === "error") detectBridge();
-            }}
-          >
-            Live
-          </ModeButton>
-          <ModeButton
-            active={mode === "explore"}
-            onClick={() => {
-              setMode("explore");
-              setPlaying(false);
-              setCameraCommand(null);
-              setExplorePosition(selectedHole.tee);
-            }}
-          >
-            Explore
-          </ModeButton>
+          {!readOnly ? (
+            <>
+              <ModeButton
+                active={mode === "strategy"}
+                onClick={() => {
+                  selectMode("strategy");
+                  setCameraView("aerial");
+                  setCameraCommand(null);
+                  if (
+                    strategyState.holeNumber !== selectedHole.holeNumber ||
+                    strategyState.status === "idle" ||
+                    strategyState.status === "error"
+                  ) {
+                    loadStrategy(selectedHole.holeNumber);
+                  }
+                }}
+              >
+                Strategy
+              </ModeButton>
+              <ModeButton
+                active={mode === "play"}
+                onClick={() => {
+                  selectMode("play");
+                  setCameraView("golfer");
+                  setCameraCommand(null);
+                  if (
+                    strategyState.holeNumber !== selectedHole.holeNumber ||
+                    strategyState.status === "idle" ||
+                    strategyState.status === "error"
+                  ) {
+                    loadStrategy(selectedHole.holeNumber);
+                  }
+                }}
+              >
+                Play
+              </ModeButton>
+              <ModeButton
+                active={mode === "live"}
+                onClick={() => {
+                  selectMode("live");
+                  setCameraView("golfer");
+                  setCameraCommand(null);
+                  if (
+                    strategyState.holeNumber !== selectedHole.holeNumber ||
+                    strategyState.status === "idle" ||
+                    strategyState.status === "error"
+                  ) {
+                    loadStrategy(selectedHole.holeNumber);
+                  }
+                  if (bridgeState.status === "idle" || bridgeState.status === "error") {
+                    detectBridge();
+                  }
+                }}
+              >
+                Live
+              </ModeButton>
+              <ModeButton
+                active={mode === "explore"}
+                onClick={() => {
+                  selectMode("explore");
+                  setPlaying(false);
+                  setCameraCommand(null);
+                  setExplorePosition(selectedHole.tee);
+                }}
+              >
+                Explore
+              </ModeButton>
+            </>
+          ) : null}
         </div>
 
         {mode === "explore" ? (
@@ -1472,6 +1594,7 @@ export function CourseTwinScene({
                         : "Shared practice room"}
                     </p>
                     <p className="mt-1">
+                      {roomState.room.visibility === "public" ? "Public lobby" : "Private invite"} ·
                       You joined as {roomState.room.currentRole} · {roomState.room.sharedEventCount}{" "}
                       verified {roomState.room.sharedEventCount === 1 ? "event" : "events"}
                     </p>
@@ -1501,6 +1624,11 @@ export function CourseTwinScene({
                       </div>
                     ))}
                   </div>
+                  <CourseTwinComms
+                    roomId={roomState.room.id}
+                    currentUserId={roomState.room.currentUserId}
+                    members={roomState.room.members}
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -1526,6 +1654,23 @@ export function CourseTwinScene({
                         onClick={() => setRoomCompetition(competition)}
                       >
                         {competition ? "Competition" : "Practice"}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                    {(["private", "public"] as const).map((visibility) => (
+                      <button
+                        key={visibility}
+                        type="button"
+                        className={cn(
+                          "rounded-md px-2 py-1.5 text-xs font-semibold capitalize",
+                          roomVisibility === visibility
+                            ? "bg-white/15 text-white"
+                            : "text-emerald-100/55",
+                        )}
+                        onClick={() => setRoomVisibility(visibility)}
+                      >
+                        {visibility === "private" ? "Invite only" : "Public lobby"}
                       </button>
                     ))}
                   </div>
@@ -1571,6 +1716,38 @@ export function CourseTwinScene({
                       Join
                     </Button>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                    disabled={publicRoomsLoading}
+                    onClick={() => void loadPublicRooms()}
+                  >
+                    {publicRoomsLoading ? "Finding public rooms…" : "Browse public rooms"}
+                  </Button>
+                  {publicRooms.length ? (
+                    <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-white/10 bg-black/15 p-2">
+                      {publicRooms.map((room) => (
+                        <button
+                          key={room.id}
+                          type="button"
+                          disabled={!room.canJoin}
+                          onClick={() => void joinPublicRoom(room.inviteCode)}
+                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-emerald-100/75 hover:bg-white/10 disabled:opacity-40"
+                        >
+                          <span>
+                            <span className="block font-semibold text-emerald-100">
+                              {room.hostName}
+                            </span>
+                            Hole {room.holeNumber} · {room.competition ? "competition" : room.mode}
+                          </span>
+                          <span>
+                            {room.memberCount}/{room.maxPlayers}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {roomState.status === "error" ? (
                     <p className="text-xs text-amber-200">{roomState.error}</p>
                   ) : null}
@@ -2047,6 +2224,11 @@ function CourseWorld({
   return (
     <group>
       <Terrain manifest={manifest} samples={terrainSamples} />
+      {(manifest.puttingSurfaces ?? [])
+        .filter((surface) => surface.holeNumber === selectedHole.holeNumber)
+        .map((surface) => (
+          <PuttingSurfaceMesh key={surface.holeNumber} surface={surface} />
+        ))}
       <AtmosphericBackdrop
         terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
         sampleTerrain={sampleTerrain}
@@ -2103,6 +2285,53 @@ function CourseWorld({
         </>
       ) : null}
     </group>
+  );
+}
+
+function PuttingSurfaceMesh({ surface }: { surface: CourseTwinPuttingSurface }) {
+  const geometry = useMemo(() => {
+    const positions = new Float32Array(surface.width * surface.height * 3);
+    const indices: number[] = [];
+    const xSpan = surface.localBounds.maxX - surface.localBounds.minX;
+    const zSpan = surface.localBounds.maxZ - surface.localBounds.minZ;
+    for (let row = 0; row < surface.height; row += 1) {
+      for (let column = 0; column < surface.width; column += 1) {
+        const sampleIndex = row * surface.width + column;
+        const positionIndex = sampleIndex * 3;
+        positions[positionIndex] =
+          surface.localBounds.minX + (column / (surface.width - 1)) * xSpan;
+        positions[positionIndex + 1] = surface.elevationsM[sampleIndex] + 0.012;
+        positions[positionIndex + 2] =
+          surface.localBounds.minZ + (row / (surface.height - 1)) * zSpan;
+        if (row < surface.height - 1 && column < surface.width - 1) {
+          const nextRow = sampleIndex + surface.width;
+          indices.push(
+            sampleIndex,
+            nextRow,
+            sampleIndex + 1,
+            sampleIndex + 1,
+            nextRow,
+            nextRow + 1,
+          );
+        }
+      }
+    }
+    const mesh = new THREE.BufferGeometry();
+    mesh.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    mesh.setIndex(indices);
+    mesh.computeVertexNormals();
+    return mesh;
+  }, [surface]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh geometry={geometry} receiveShadow>
+      <meshStandardMaterial
+        color="#4d8b3f"
+        roughness={0.93}
+        polygonOffset
+        polygonOffsetFactor={-1}
+      />
+    </mesh>
   );
 }
 

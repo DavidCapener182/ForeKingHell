@@ -30,7 +30,11 @@ export type CourseAutoImportResult = {
   status: "ready" | "imported" | "no_coordinates" | "no_geometry_found" | "recently_attempted";
 };
 
-export async function ensureCourseAutoImport(course: CourseRow, currentHoleCount: number) {
+export async function ensureCourseAutoImport(
+  course: CourseRow,
+  currentHoleCount: number,
+  options: { forceGeometry?: boolean; skipGoogle?: boolean } = {},
+) {
   if (currentHoleCount > 0) {
     return { changed: false, status: "ready" } satisfies CourseAutoImportResult;
   }
@@ -38,11 +42,11 @@ export async function ensureCourseAutoImport(course: CourseRow, currentHoleCount
   const now = new Date();
   const metadata = metadataRecord(course.googleMetadataJson);
 
-  if (recentAutoImportAttempt(metadata, now)) {
+  if (!options.forceGeometry && recentAutoImportAttempt(metadata, now)) {
     return { changed: false, status: "recently_attempted" } satisfies CourseAutoImportResult;
   }
 
-  const details = await resolveGoogleDetails(course);
+  const details = options.skipGoogle ? null : await resolveGoogleDetails(course);
   const enrichedMetadata = details
     ? {
         ...metadata,

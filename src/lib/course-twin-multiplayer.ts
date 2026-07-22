@@ -18,6 +18,7 @@ export type CourseTwinCreateRoomInput = {
   spectatorLimit: number;
   holeNumber: number;
   competition: boolean;
+  visibility: "private" | "public";
 };
 
 export type CourseTwinJoinRoomInput = {
@@ -54,12 +55,14 @@ export function parseCourseTwinCreateRoomInput(value: unknown): CourseTwinCreate
   const spectatorLimit = value.spectatorLimit === undefined ? 8 : value.spectatorLimit;
   const holeNumber = value.holeNumber === undefined ? 1 : value.holeNumber;
   const competition = value.competition === undefined ? false : value.competition;
+  const visibility = value.visibility === undefined ? "private" : value.visibility;
   if (!roomModes.has(mode as CourseTwinRoomMode)) return null;
   if (
     !isIntegerInRange(maxPlayers, 2, 4) ||
     !isIntegerInRange(spectatorLimit, 0, 20) ||
     !isIntegerInRange(holeNumber, 1, 18) ||
     typeof competition !== "boolean" ||
+    (visibility !== "private" && visibility !== "public") ||
     (competition && mode !== "play" && mode !== "live")
   ) {
     return null;
@@ -70,6 +73,7 @@ export function parseCourseTwinCreateRoomInput(value: unknown): CourseTwinCreate
     spectatorLimit,
     holeNumber,
     competition,
+    visibility,
   };
 }
 
@@ -135,7 +139,26 @@ export function parseCourseTwinRoomEvent(value: unknown) {
   if (!/^[a-z][a-z0-9_.-]{1,39}$/.test(type)) return null;
   const payload = value.payload === undefined ? {} : value.payload;
   if (!isRecord(payload) || JSON.stringify(payload).length > 8_000) return null;
-  return { type, payload };
+  if (type === "chat.message") {
+    const text = typeof payload.text === "string" ? payload.text.trim() : "";
+    return text && text.length <= 500 ? { type, payload: { text } } : null;
+  }
+  if (type === "voice.offer" || type === "voice.answer") {
+    return isUuid(payload.targetUserId) &&
+      typeof payload.sdp === "string" &&
+      payload.sdp.length <= 6_000
+      ? { type, payload: { targetUserId: payload.targetUserId, sdp: payload.sdp } }
+      : null;
+  }
+  if (type === "voice.ice") {
+    return isUuid(payload.targetUserId) &&
+      isRecord(payload.candidate) &&
+      JSON.stringify(payload.candidate).length <= 2_000
+      ? { type, payload: { targetUserId: payload.targetUserId, candidate: payload.candidate } }
+      : null;
+  }
+  if (type === "voice.leave") return { type, payload: {} };
+  return null;
 }
 
 export function parseCourseTwinSharedRoundEventInput(
@@ -198,6 +221,13 @@ function parsePosition(value: unknown): CourseTwinRoomPosition | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isUuid(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }
 
 function isIntegerInRange(value: unknown, minimum: number, maximum: number): value is number {

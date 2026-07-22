@@ -159,8 +159,10 @@ const retainedDatasets = new Set([
   "courseFeatures",
   "courseTwins",
   "courseTwinBuilds",
+  "courseTwinCatalogJobs",
   "courseTwinVersions",
   "courseTwinCorrections",
+  "courseTwinPuttingSurveys",
   "strokesGainedBaselines",
   "golfTrainingDailyLoad",
   "courseProviderAliases",
@@ -232,8 +234,10 @@ const allSchemaDatasets = [
   "courseFeatures",
   "courseTwins",
   "courseTwinBuilds",
+  "courseTwinCatalogJobs",
   "courseTwinVersions",
   "courseTwinCorrections",
+  "courseTwinPuttingSurveys",
   "courseTwinRooms",
   "courseTwinRoomMembers",
   "courseTwinRoomEvents",
@@ -300,7 +304,9 @@ const redactions: Record<string, string[]> = {
   billingCustomers: ["stripeCustomerId"],
   contentExports: ["storagePath"],
   courseTwinBuilds: ["executionReference", "errorMessage", "idempotencyKey", "inputFingerprint"],
+  courseTwinCatalogJobs: ["candidateJson", "errorMessage", "idempotencyKey"],
   courseTwinCorrections: ["correctionJson"],
+  courseTwinPuttingSurveys: ["gridJson"],
   courseTwinRoomEvents: ["payloadJson"],
   courseTwinSharedRoundEvents: ["payloadJson", "previousHash", "eventHash"],
   courseTwinRooms: ["inviteCode", "stateJson"],
@@ -386,7 +392,7 @@ function withPhysicalTable(
 
 function categoryFor(dataset: string): DataGovernanceCategory {
   if (
-    /^(admin|moderation|socialReports|courseRecordFlags|courseTwinBuilds|courseTwinCorrections)/.test(
+    /^(admin|moderation|socialReports|courseRecordFlags|courseTwinBuilds|courseTwinCatalogJobs|courseTwinCorrections|courseTwinPuttingSurveys)/.test(
       dataset,
     )
   )

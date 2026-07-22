@@ -141,7 +141,7 @@ test.describe("Course Twin", () => {
     await expectPageReady(page, /Round review|Bootle Golf Course/i);
 
     const replayPilotLink = page.getByRole("link", {
-      name: "3D replay pilot",
+      name: "Open 3D replay",
       exact: true,
     });
     await expect(replayPilotLink).toBeVisible();
@@ -153,6 +153,30 @@ test.describe("Course Twin", () => {
     await expect(page).toHaveURL(/\/play\/[0-9a-f-]+\?sessionId=[0-9a-f-]+$/);
     await expect(page.getByText(/Grade B · 2\.4 m terrain/)).toBeVisible();
     await expect(page.getByText("Shot 1")).toBeVisible();
+  });
+
+  test("opens the existing Aintree course as a nine-hole Grade B twin", async ({ page }) => {
+    test.setTimeout(120_000);
+    skipWhenNoAuth();
+    const aintreeCourseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
+
+    const manifestResponse = await page.request.get(
+      `/api/course-twins/${aintreeCourseId}/manifest`,
+    );
+    expect(manifestResponse.status()).toBe(200);
+    await expect(manifestResponse.json()).resolves.toMatchObject({
+      course: { id: aintreeCourseId, name: "Aintree Golf Centre" },
+      quality: { grade: "B", mappedHoles: 9, verified: false },
+    });
+
+    await page.goto(`/play/${aintreeCourseId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await expectPageReady(page, /Aintree Golf Centre/i);
+    await expect(page.getByText(/Grade B/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "9" })).toBeVisible();
+    await expect(page.locator("canvas")).toBeVisible();
   });
 
   test("starts, resumes and safely abandons a persisted My Bag round", async ({ page }) => {

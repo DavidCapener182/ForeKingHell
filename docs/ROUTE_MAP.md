@@ -49,7 +49,7 @@ The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The
 | Groups              | `/groups`, `/groups/[groupSlug]`                                                                                                                                                                          | Compete/Profile secondary navigation.                                |
 | Social intelligence | `/social-intelligence`                                                                                                                                                                                    | Manage/Profile secondary navigation.                                 |
 | Public profile      | `/profile/[username]`                                                                                                                                                                                     | Privacy-aware public projection.                                     |
-| Shared access       | `/shared/[userId]`, `/share/[token]`, `/share/report/[token]`                                                                                                                                             | Explicit collaborator or bearer-token route, not primary navigation. |
+| Shared access       | `/shared/[userId]`, `/share/[token]`, `/share/report/[token]`, `/share/course-twin/[token]`                                                                                                               | Explicit collaborator or bearer-token route, not primary navigation. |
 
 ## Profile, settings and platform
 

@@ -31,6 +31,8 @@ export function createBridgeDiagnosticReport({
       lastShotAt: state.lastShotAt,
       shotsAccepted: state.shotsAccepted,
       shotsRejected: state.shotsRejected,
+      clubShotsAccepted: state.clubShotsAccepted ?? 0,
+      playerUpdatesSent: state.playerUpdatesSent ?? 0,
     },
     privacy: {
       containsPairingCode: false,
@@ -64,6 +66,8 @@ export async function readLocalBridgeDiagnosticReport({
         lastShotAt: null,
         shotsAccepted: 0,
         shotsRejected: 0,
+        clubShotsAccepted: 0,
+        playerUpdatesSent: 0,
       },
     });
   }

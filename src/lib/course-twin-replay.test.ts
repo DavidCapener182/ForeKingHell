@@ -135,6 +135,51 @@ describe("Course Twin replay reconstruction", () => {
     expect(visualPeak).toBeLessThanOrEqual(42);
   });
 
+  it("preserves the previous shot lane so a short follow-up does not turn sideways on landing", () => {
+    const replay = buildCourseTwinReplay({
+      manifest,
+      session: {
+        id: "session-short-follow-up",
+        title: "Short follow-up",
+        date: new Date("2026-07-22T12:00:00.000Z"),
+        source: "rapsodo",
+      },
+      shots: [
+        { ...measuredShot, distanceRemainingYd: null },
+        {
+          ...measuredShot,
+          id: "shot-2",
+          courseHoleShotNumber: 2,
+          shotNumber: 2,
+          clubType: "SW",
+          carryYd: 4.4,
+          totalYd: 9.8,
+          sideCarryYd: -0.1,
+          apexFt: 3.7,
+          ballSpeedMph: 19.9,
+          launchAngleDeg: 31.3,
+          distanceRemainingYd: null,
+        },
+      ],
+    });
+
+    const followUp = replay.shots[1];
+    const carryHeading = {
+      x: followUp.carryEnd[0] - followUp.start[0],
+      z: followUp.carryEnd[2] - followUp.start[2],
+    };
+    const rollHeading = {
+      x: followUp.totalEnd[0] - followUp.carryEnd[0],
+      z: followUp.totalEnd[2] - followUp.carryEnd[2],
+    };
+    const headingCosine =
+      (carryHeading.x * rollHeading.x + carryHeading.z * rollHeading.z) /
+      (Math.hypot(carryHeading.x, carryHeading.z) * Math.hypot(rollHeading.x, rollHeading.z));
+
+    expect(Math.hypot(carryHeading.x, carryHeading.z)).toBeCloseTo(4.4 * 0.9144, 1);
+    expect(headingCosine).toBeGreaterThan(Math.cos((35 * Math.PI) / 180));
+  });
+
   it("ignores shots that cannot be tied to mapped hole evidence", () => {
     const replay = buildCourseTwinReplay({
       manifest,

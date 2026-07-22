@@ -41,9 +41,11 @@ describe("round detail desktop workspace source", () => {
     }
   });
 
-  it("offers a course-linked round as an honestly labelled 3D replay pilot", () => {
+  it("offers a course-linked 3D replay and a separate expiring public share action", () => {
     expect(source).toContain("{round.session.courseId ? (");
     expect(source).toContain("href={`/play/${round.session.courseId}?sessionId=${sessionId}`}");
-    expect(source).toContain("3D replay pilot");
+    expect(source).toContain("Open 3D replay");
+    expect(source).toContain("createCourseTwinReplayShareLinkAction");
+    expect(source).toContain("Share 3D replay");
   });
 });

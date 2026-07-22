@@ -22,6 +22,7 @@ describe("Course Twin multiplayer contracts", () => {
       spectatorLimit: 8,
       holeNumber: 1,
       competition: false,
+      visibility: "private",
     });
     expect(parseCourseTwinCreateRoomInput({ mode: "live", maxPlayers: 2, holeNumber: 18 })).toEqual(
       {
@@ -30,11 +31,13 @@ describe("Course Twin multiplayer contracts", () => {
         spectatorLimit: 8,
         holeNumber: 18,
         competition: false,
+        visibility: "private",
       },
     );
     expect(parseCourseTwinCreateRoomInput({ mode: "admin" })).toBeNull();
     expect(parseCourseTwinCreateRoomInput({ maxPlayers: 40 })).toBeNull();
     expect(parseCourseTwinCreateRoomInput({ mode: "explore", competition: true })).toBeNull();
+    expect(parseCourseTwinCreateRoomInput({ visibility: "friends" })).toBeNull();
   });
 
   it("supports explicit read-only spectator joins", () => {
@@ -67,9 +70,21 @@ describe("Course Twin multiplayer contracts", () => {
   });
 
   it("bounds event names, payloads and invite codes", () => {
-    expect(parseCourseTwinRoomEvent({ type: "shot.played", payload: { shot: 2 } })).toEqual({
-      type: "shot.played",
-      payload: { shot: 2 },
+    expect(
+      parseCourseTwinRoomEvent({ type: "chat.message", payload: { text: "  Great shot  " } }),
+    ).toEqual({
+      type: "chat.message",
+      payload: { text: "Great shot" },
+    });
+    expect(parseCourseTwinRoomEvent({ type: "shot.played", payload: { shot: 2 } })).toBeNull();
+    expect(
+      parseCourseTwinRoomEvent({
+        type: "voice.offer",
+        payload: { targetUserId: "9beb5429-67e4-4f4e-a187-adbe0df74b62", sdp: "offer" },
+      }),
+    ).toEqual({
+      type: "voice.offer",
+      payload: { targetUserId: "9beb5429-67e4-4f4e-a187-adbe0df74b62", sdp: "offer" },
     });
     expect(parseCourseTwinRoomEvent({ type: "../../bad", payload: {} })).toBeNull();
     expect(normalizeCourseTwinInviteCode("ab-cd 23")).toBe("ABCD23");

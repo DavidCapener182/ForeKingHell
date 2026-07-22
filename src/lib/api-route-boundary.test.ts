@@ -13,7 +13,13 @@ describe("public API boundary", () => {
     );
 
     expect(publicApiPaths.sort()).toEqual(
-      ["/api/cron/tour-leaderboards", "/api/security/csp-report", "/api/stripe/webhook"].sort(),
+      [
+        "/api/cron/course-twin-builds",
+        "/api/cron/course-twin-catalog",
+        "/api/cron/tour-leaderboards",
+        "/api/security/csp-report",
+        "/api/stripe/webhook",
+      ].sort(),
     );
     const publicPrefixes = proxySource.match(/const PUBLIC_PATH_PREFIXES = \[([\s\S]*?)\];/)?.[1];
     expect(publicPrefixes).not.toContain("/api/");
