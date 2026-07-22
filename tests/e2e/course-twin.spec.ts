@@ -1,8 +1,63 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { expect, test } from "@playwright/test";
 
 import { expectPageReady, skipWhenNoAuth } from "./helpers";
 
 test.describe("Course Twin", () => {
+  test("serves every verified first-wave manifest and immutable package asset", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    skipWhenNoAuth();
+    const report = JSON.parse(
+      readFileSync(
+        resolve("tools/course-twin-builder/catalog/uk-first-wave-packages.json"),
+        "utf8",
+      ),
+    ) as {
+      completed: number;
+      packageGenerationComplete: boolean;
+      packages: Array<{
+        courseId: string;
+        slug: string;
+        qualityGrade: string;
+        mappedHoles: number;
+        assets: Array<{ fileName: string; byteLength: number }>;
+      }>;
+    };
+    expect(report.packageGenerationComplete).toBe(true);
+    expect(report.completed).toBeGreaterThanOrEqual(20);
+    expect(report.completed).toBeLessThanOrEqual(50);
+
+    for (const entry of report.packages) {
+      const response = await page.request.get(`/api/course-twins/${entry.courseId}/manifest`);
+      expect(response.status(), `${entry.slug} manifest`).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        course: { id: entry.courseId },
+        quality: { grade: entry.qualityGrade, mappedHoles: entry.mappedHoles },
+      });
+      for (const asset of entry.assets) {
+        const assetResponse = await page.request.get(
+          `/course-twins/${entry.slug}/${asset.fileName}`,
+        );
+        expect(assetResponse.status(), `${entry.slug}/${asset.fileName}`).toBe(200);
+        expect((await assetResponse.body()).byteLength).toBe(asset.byteLength);
+      }
+    }
+
+    for (const courseId of [
+      "4de11156-16fd-4a36-84e0-fadda53456b0",
+      "65359509-5de2-485e-8f85-392bba752710",
+      "19930c7b-c92b-48f9-86a9-2428ed909fc6",
+    ]) {
+      await page.goto(`/play/${courseId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+      await expect(page.getByText(/Grade B/)).toBeVisible();
+      await expect(page.locator("canvas")).toBeVisible();
+    }
+  });
+
   test("opens the playable twin from course and round entry points with authenticated API boundaries", async ({
     page,
   }, testInfo) => {
@@ -71,8 +126,10 @@ test.describe("Course Twin", () => {
     await expect(page.getByRole("button", { name: "Join as spectator" })).toBeVisible();
     if (testInfo.project.name === "chromium") {
       await page.getByRole("button", { name: "Competition" }).click();
+      await page.getByRole("button", { name: "Public lobby" }).click();
       await page.getByRole("button", { name: "Start group session" }).click();
       await expect(page.getByText("Verified competition room")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(/Public lobby.*You joined as host/)).toBeVisible();
       await expect(page.getByText(/1 golfer\(s\) · 0 spectator\(s\) connected/)).toBeVisible();
       await expect
         .poll(async () => {
@@ -91,8 +148,24 @@ test.describe("Course Twin", () => {
       expect(group).toMatchObject({
         role: "host",
         competition: true,
+        visibility: "public",
         sharedRoundVersion: 1,
         sharedEventCount: 0,
+      });
+      const publicRooms = await page.request.get(`/api/course-twins/${courseId}/rooms/public`);
+      expect(publicRooms.status()).toBe(200);
+      await expect(publicRooms.json()).resolves.toMatchObject({
+        rooms: expect.arrayContaining([expect.objectContaining({ id: group.roomId })]),
+      });
+      await page.getByLabel("Group chat message").fill("Course Twin browser chat verified");
+      await page.getByRole("button", { name: "Send message" }).click();
+      await expect(page.getByText("Course Twin browser chat verified")).toBeVisible({
+        timeout: 10_000,
+      });
+      await page.context().grantPermissions(["microphone"], { origin: new URL(page.url()).origin });
+      await page.getByRole("button", { name: "Enable voice" }).click();
+      await expect(page.getByRole("button", { name: "Voice on" })).toBeVisible({
+        timeout: 10_000,
       });
       const sharedResult = await page.request.post(
         `/api/course-twins/rooms/${group.roomId}/shared-round/events`,

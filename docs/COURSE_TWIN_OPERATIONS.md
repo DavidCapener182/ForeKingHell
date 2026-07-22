@@ -14,6 +14,14 @@ An administrator imports a reviewed candidate document through `POST /api/course
 
 The Aintree first-wave entry deliberately reuses the existing `Aintree Golf Centre` course and nine-hole scorecard so saved rounds remain connected to the generated twin.
 
+Generate the reviewed local first-wave packages and the immutable static manifest registry with:
+
+```sh
+npm run builder:catalogue:pilot
+```
+
+The resumable exporter validates every asset digest and writes `tools/course-twin-builder/catalog/uk-first-wave-packages.json`. A completed export proves package generation, not manual visual QA; the report keeps those states separate.
+
 ## Builder deployment and package delivery
 
 The `Course Twin Builder Image` GitHub workflow tests and publishes `ghcr.io/<owner>/forekinghell-course-twin-builder:<git-sha>`. Deploy the immutable SHA image behind authenticated HTTPS with:
@@ -30,6 +38,14 @@ Set `COURSE_TWIN_BUILDER_URL`, `COURSE_TWIN_CALLBACK_BASE_URL`, `COURSE_TWIN_WOR
 Grade A is unavailable until every expected hole has a reviewed grid at 0.25 m spacing and 10 mm vertical accuracy or better. Import survey JSON through the admin-only `POST /api/course-twins/:courseId/putting-surveys` route. Grid rows run north to south, columns west to east, use EPSG:4326 bounds, and contain absolute elevations in metres. Review with `PATCH` on the same route. A verified review queues a fresh immutable build; the worker converts elevations to local course coordinates and the browser uses the surveyed grid for putting collision and visible green geometry.
 
 Raw grids remain forced-RLS, service-role-only data. Published manifests include only the validated grid and source attribution. Bootle and all other unsurveyed courses remain honestly Grade B or lower.
+
+With the local authenticated test server running, exercise the real admin survey, rebuild queue, competition ledger and tournament submission APIs using disposable records:
+
+```sh
+npm run course-twin:acceptance:platform
+```
+
+The runner is localhost-only, requires the designated active admin test user, writes a permission-restricted evidence report, and verifies that all temporary course, survey, build, tournament, round, session and feed data is removed.
 
 ## Physical MLM2PRO acceptance
 

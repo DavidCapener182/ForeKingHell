@@ -1,0 +1,635 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-22T21:28:35.481Z",
+  "sourceCatalog": "tools/course-twin-builder/catalog/uk-first-wave-ingested.json",
+  "requested": 21,
+  "completed": 21,
+  "failed": 0,
+  "packageGenerationComplete": true,
+  "manualVisualQaComplete": false,
+  "packages": [
+    {
+      "courseId": "4de11156-16fd-4a36-84e0-fadda53456b0",
+      "name": "Aintree Golf Centre",
+      "slug": "aintree-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 9,
+      "mappedFeatures": 82,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.410890690051556,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "b121c8e94c7acdc3c53375777ff9c76c6cb2f85ef996fc51df5932cbc9f8a2dc",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 515203,
+          "sha256": "914cf01dfe9911c0b2df54dab521618fcc57ab5f0a846d06388f949197ea5b49",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "1b95d085-59c0-476c-b0ff-c2d369c2aadc",
+      "name": "Aldenham Golf Club",
+      "slug": "aldenham-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 346,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.489649439115946,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.5 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "ad1143d451b2aff64c106b81391b7b0d3d92b4891a89228fc23c399a502e4e22",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 418774,
+          "sha256": "2bf9f632cf805b66f74b36dbc5650667495db174320b3b507f484835e2f1a789",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "0036f96c-d14f-4cf1-a6d3-923cc664f3f6",
+      "name": "Alexander Park Resort",
+      "slug": "alexander-park-resort-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 127,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.358623031857441,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 504",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "b9c9807818d73aa8bc3f7465145f82fb698809ff910ecd036dd7bb6a50981f50",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 385484,
+          "sha256": "4223fe0613df35752639c3ff8b7029e6b48229fd7014689266b28776f26b8de3",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "19930c7b-c92b-48f9-86a9-2428ed909fc6",
+      "name": "Alsager Golf and Country Club",
+      "slug": "alsager-golf-and-country-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.331950451012122,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 504",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "5c58d6fd908d0529e6fc3e54f5d92c3f33a2052d136f5823a17d64e8b2b91ae9",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 351683,
+          "sha256": "f44aba00f88b800d0e729dd6cd7556a70b756dfe92211bf26c7c8335789eb7eb",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "0c4ef63e-2172-41e7-b1c8-57e883b4624c",
+      "name": "Altrincham Golf Course",
+      "slug": "altrincham-golf-course-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.337225430404612,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "e8a16b1da05a2d8abf411032daa9b8d67767961deb4475d96a16c2a84af07738",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 491286,
+          "sha256": "04a437e4cbe5057dfb01045b5cecf0e0d4afbf29447804c76768b84df958dae0",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "65359509-5de2-485e-8f85-392bba752710",
+      "name": "Arrowe Park Golf Course",
+      "slug": "arrowe-park-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 511,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.429243174288608,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "35f9e13d07085dfdfa3861f75db772f9613c1a8589cee932cfe2173f0b1678e7",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 409142,
+          "sha256": "3eb47cda17b89a44cfbe16d419ea17dfb8cf3f2b106161fc378735d299dd6a94",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "53ee459c-235c-4c65-81bf-8d29ba052145",
+      "name": "Arscott",
+      "slug": "arscott-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 231,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.397429738479087,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "4880a61267d2f28b02eac3b613629f41e789f3426e6768783a016cbb46404b5e",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 329942,
+          "sha256": "d5264f169ce68870b29ae8d1de520042e1de851d33268e9a1b11a6a3d4b0077e",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "742d90a2-797d-4032-a5a7-cb31d667ec20",
+      "name": "Ash Valley Golf Club",
+      "slug": "ash-valley-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 76,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.540962010679301,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.5 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "7d8e57b9018d64d87b7e6dc53af5bc977f26c227f8c7c141a1e6be096b15bb48",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 368154,
+          "sha256": "e7c6095ade91acc1a6381da137384349fbf3e9e14501e528e038e94a7a06e414",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "105ffa8e-c95f-4cae-bf1e-fa112938e68b",
+      "name": "Ashton & Lea Golf Club",
+      "slug": "ashton-lea-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 75,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.391274261539122,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "5897d5229bc8b45ed8fa75a85fd4c2db459368992ee7b99b08783b59697a8a59",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 444243,
+          "sha256": "3fbd3e45e547b0bc7e7005aeb7bb9197b9a71105773f05882e6cca11b1e3a1ce",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "02ff11c8-fd08-42cb-99e5-1a792008fd38",
+      "name": "Astbury Golf Course",
+      "slug": "astbury-golf-course-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 75,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.346020194451139,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "c100b3c6c47352fff37906d04e771b2589c120ea341f36dde09e94bcf6c5b962",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 308150,
+          "sha256": "dfaea26ee299f0b148a8f913b73d508653f38e0e337ead43ce9f44e585e6cbf0",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "816b540a-6ca1-437b-a563-2b4558874dbf",
+      "name": "Badgemore Park Golf Club",
+      "slug": "badgemore-park-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 261,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.422826224757953,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "99c789c727e5f4b28e1a4be22235126999b05a6acca72015bb0fdae4959de2d5",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 419231,
+          "sha256": "7a7932bdbca76f92382581df98397eceba9086720e37145f818f415e6a43741c",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757",
+      "name": "Barkway Park Golf Club",
+      "slug": "barkway-park-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.536355589079749,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.5 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "4874bb874448ddcec11312796f4f5514aba21e0a6a84251ed27109321223bb4f",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 329400,
+          "sha256": "fdee575a20c1a71ae89d924251da60cb7f7ddaf6c9f09de2649ec7dc9d148f88",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "2c214875-84f0-43a7-b0de-7d8ab9a1efee",
+      "name": "Barnard Castle Golf Course",
+      "slug": "barnard-castle-golf-course-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 169,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.304924524422384,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "3db97ff3872df73f9b6c5b36c081530f8311b01bb15551578407cdac00af90d1",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 363644,
+          "sha256": "29c1d94f85d5663787dcc93912553e46bd3444a6af0f14ace361090b5d0bf0b4",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "6f648057-430a-4290-82c9-e39e50242160",
+      "name": "Bearwood Lakes Golf Club",
+      "slug": "bearwood-lakes-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.427365195436385,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "d8d514a434c2803e07582856e7f1c2cd53e71b93b7cc5eb09ef70e5acf10d48e",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 415922,
+          "sha256": "9f11e1604fe8f49ab178a4021f01b96fa0be240df4bd1891df832a4623cb972b",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "e77dcc63-9748-418e-a026-f4dd0c878c48",
+      "name": "Belton Park Golf Club",
+      "slug": "belton-park-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.463443205966348,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.5 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "95341da82034b7b504f528e3c0417c1fa1d9709d13401d6a3e94e4179ba00775",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 419301,
+          "sha256": "ebdc5fefe26780c460c7361609ec8cbba046322cdd176244736615afc17a6344",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "1b52ef05-0c0a-4253-8245-013566b3d14b",
+      "name": "Bentham Golf Club",
+      "slug": "bentham-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 75,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.356818324466886,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "569910be735857dd188911e0ad0e76fcf1694122d47bec801ea2af475c3ed250",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 306680,
+          "sha256": "5210ba7f71d8313cfd625c3bb19b7e990a8dc716b5c20ecf8491cdc8cbb49412",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "7171685a-331c-459e-a745-40f2aff561a3",
+      "name": "Benton Hall Golf and Country Club",
+      "slug": "benton-hall-golf-and-country-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 75,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.608719780432379,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.6 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "00bd4393a34b97bf410e43c6a9f6613f16ed47cd10d3b2d87d661205b453c7a4",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 456412,
+          "sha256": "000a57108e59fbc1f70153ea16722baadaa12575dda7400d5e04688ba4da5a2f",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "034d2dad-1e95-4319-bbdb-627b706364b4",
+      "name": "Bird Hills Golf Centre",
+      "slug": "bird-hills-golf-centre-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 287,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.443261488088126,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.4 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "bc67def7804bdeb371fbbe265e952be43d3028a1d5a421dea4630fa0e96dee2b",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 363131,
+          "sha256": "e8ed1a851c716de4a26bfff04b811ebf963fb56f0614ef1c93ccaf498819dbd1",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81",
+      "name": "Bletchingley Golf Course",
+      "slug": "bletchingley-golf-course-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.520892970398847,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.5 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "dd5ef13b9a57885a63e2a93dadfc0cf1e67c629e99fea4fe44f851210638f721",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 372735,
+          "sha256": "c4e5ef9586e1297a58f87e5acdb6f89c5d54e72566662c3593eef8898de5ef73",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9",
+      "name": "Bransford Golf Club",
+      "slug": "bransford-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.332926428669364,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: Overpass returned 429",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "add1bfb6a5fcaa2b9ff29e27bf7b0fa3c96835aefe30c2d75782d26dc1c90f01",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 347601,
+          "sha256": "5901166bd69653b2e6aa93b7fb5a6f3eefd7f0800b67ff5513233d1aa131e08f",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "852fa52c-51d2-4729-952c-159238faeb5d",
+      "name": "Brett Vale Golf Course",
+      "slug": "brett-vale-golf-course-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 75,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.64790939403749,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.6 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "879fcbfe04b1b0e0458923759a474e6b914264ed9a2f811adee2d4e9192cd35b",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 416188,
+          "sha256": "05728f0808af147296721cbd19b2207d8bd5ba6ef9edfd870abfff73a9ac94ae",
+          "contentType": "image/jpeg"
+        }
+      ]
+    }
+  ],
+  "failures": []
+}

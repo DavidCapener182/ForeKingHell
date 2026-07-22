@@ -6,6 +6,7 @@ const source = readFileSync(
   resolve(process.cwd(), "src/app/play/[courseId]/course-twin-comms.tsx"),
   "utf8",
 );
+const nextConfigSource = readFileSync(resolve(process.cwd(), "next.config.ts"), "utf8");
 
 describe("Course Twin room communications", () => {
   it("uses explicit microphone consent, peer-to-peer audio and server-mediated signalling", () => {
@@ -16,5 +17,7 @@ describe("Course Twin room communications", () => {
     expect(source).toContain('postEvent("voice.ice"');
     expect(source).toContain('postEvent("chat.message"');
     expect(source).toContain("audio is not");
+    expect(nextConfigSource).toContain("microphone=(self)");
+    expect(nextConfigSource).toContain("camera=()");
   });
 });

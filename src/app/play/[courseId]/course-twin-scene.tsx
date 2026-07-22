@@ -821,6 +821,7 @@ export function CourseTwinScene({
                         isHost: roomState.room.isHost,
                         role: roomState.room.currentRole,
                         competition: roomState.room.competition,
+                        visibility: roomState.room.visibility,
                         sharedRoundVersion: roomState.room.sharedRoundVersion,
                         sharedEventCount: roomState.room.sharedEventCount,
                         finalEventHash: roomState.room.finalEventHash,
