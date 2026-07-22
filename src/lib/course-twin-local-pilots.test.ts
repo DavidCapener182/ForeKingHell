@@ -50,6 +50,14 @@ describe("checked-in Course Twin pilot packages", () => {
       completed: number;
       failed: number;
       packageGenerationComplete: boolean;
+      manualVisualQaComplete: boolean;
+      visualQa: {
+        complete: boolean;
+        approved: number;
+        approvedWithCaveats: number;
+        missing: string[];
+        rejected: string[];
+      };
       packages: Array<{
         courseId: string;
         slug: string;
@@ -64,6 +72,14 @@ describe("checked-in Course Twin pilot packages", () => {
       completed: report.requested,
       failed: 0,
       packageGenerationComplete: true,
+      manualVisualQaComplete: true,
+      visualQa: {
+        complete: true,
+        approved: report.requested,
+        approvedWithCaveats: report.requested,
+        missing: [],
+        rejected: [],
+      },
     });
     expect(Object.keys(localCourseTwinManifestsByCourseId)).toHaveLength(report.completed);
 

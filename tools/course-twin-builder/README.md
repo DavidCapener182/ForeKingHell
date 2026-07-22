@@ -48,3 +48,9 @@ uniquely numbered mapped hole ways. Nearby mapped greens, fairways, tees, bunker
 contribute to readiness without being presented as manual verification. The generated JSON retains the
 OSM object identifier, geographic origin, mapping counts, source region and ODbL licence so an admin can
 review the exact 20-50 candidates before queueing immutable builds.
+
+The checked-in first wave also has a separate `catalog/uk-first-wave-visual-qa.json` review ledger. A
+package-generation run marks `manualVisualQaComplete` only when every generated course id and slug has an
+accepted browser-frame verdict and evidence filename, with no missing, rejected, duplicated or unexpected
+entries. This is a visual/rendering gate; Grade B packages still do not claim current scorecard verification
+or survey-grade putting contours.

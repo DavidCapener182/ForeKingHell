@@ -11,6 +11,7 @@ import {
   readLocalCourseTwinPackage,
   writeLocalCourseTwinPackage,
 } from "./local-catalogue.mjs";
+import { summarizeVisualQa } from "./visual-qa.mjs";
 
 const rootDirectory = process.cwd();
 const catalogPath = resolve(
@@ -18,6 +19,9 @@ const catalogPath = resolve(
 );
 const reportPath = resolve(
   argumentValue("--report") ?? "tools/course-twin-builder/catalog/uk-first-wave-packages.json",
+);
+const visualQaPath = resolve(
+  argumentValue("--visual-qa") ?? "tools/course-twin-builder/catalog/uk-first-wave-visual-qa.json",
 );
 const registryPath = resolve("src/generated/course-twins/local-catalogue.ts");
 const concurrency = Number(argumentValue("--concurrency") ?? 2);
@@ -49,6 +53,8 @@ try {
 
 packages.sort((left, right) => left.name.localeCompare(right.name));
 failures.sort((left, right) => left.name.localeCompare(right.name));
+const visualQaDocument = JSON.parse(await readFile(visualQaPath, "utf8"));
+const visualQa = summarizeVisualQa({ packages, document: visualQaDocument });
 const report = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
@@ -57,7 +63,11 @@ const report = {
   completed: packages.length,
   failed: failures.length,
   packageGenerationComplete: failures.length === 0 && packages.length === catalog.courses.length,
-  manualVisualQaComplete: false,
+  manualVisualQaComplete: visualQa.complete,
+  visualQa: {
+    report: relative(rootDirectory, visualQaPath),
+    ...visualQa,
+  },
   packages,
   failures,
 };

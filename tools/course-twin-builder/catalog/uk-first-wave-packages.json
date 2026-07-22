@@ -1,12 +1,26 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-22T21:28:35.481Z",
+  "generatedAt": "2026-07-22T23:06:26.593Z",
   "sourceCatalog": "tools/course-twin-builder/catalog/uk-first-wave-ingested.json",
   "requested": 21,
   "completed": 21,
   "failed": 0,
   "packageGenerationComplete": true,
-  "manualVisualQaComplete": false,
+  "manualVisualQaComplete": true,
+  "visualQa": {
+    "report": "tools/course-twin-builder/catalog/uk-first-wave-visual-qa.json",
+    "complete": true,
+    "reviewer": "ForeKingHell Course Twin visual QA",
+    "reviewedAt": "2026-07-22T23:05:26Z",
+    "scope": "Authenticated Chromium inspection of each generated course in golfer view at 1280x720. The pass requires the correct course identity, a visible and coherent terrain/aerial scene, sky and horizon, a usable hole line and flag, and no blank canvas or catastrophic texture failure.",
+    "approved": 21,
+    "approvedWithCaveats": 21,
+    "missing": [],
+    "rejected": [],
+    "mismatched": [],
+    "duplicates": [],
+    "unexpected": []
+  },
   "packages": [
     {
       "courseId": "4de11156-16fd-4a36-84e0-fadda53456b0",

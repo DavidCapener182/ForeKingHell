@@ -20,6 +20,7 @@ test.describe("Course Twin", () => {
     ) as {
       completed: number;
       packageGenerationComplete: boolean;
+      manualVisualQaComplete: boolean;
       packages: Array<{
         courseId: string;
         slug: string;
@@ -29,6 +30,7 @@ test.describe("Course Twin", () => {
       }>;
     };
     expect(report.packageGenerationComplete).toBe(true);
+    expect(report.manualVisualQaComplete).toBe(true);
     expect(report.completed).toBeGreaterThanOrEqual(20);
     expect(report.completed).toBeLessThanOrEqual(50);
 
