@@ -55,7 +55,7 @@ test.describe("mobile launch monitor loop", () => {
   });
 
   test("keeps CSV as a source choice, not a sheet-hosted wizard", async ({ page }) => {
-    await gotoAuthenticatedOrSkip(page, "/import", /Rapsodo import/i);
+    await gotoAuthenticatedOrSkip(page, "/import", /Choose your source/i);
 
     const csvSource = page.getByRole("link", { name: "CSV" });
     await expect(csvSource).toBeVisible();
@@ -77,15 +77,21 @@ test.describe("mobile launch monitor loop", () => {
     await gotoAuthenticatedOrSkip(page, "/analyse", /Evidence hub|Analyse/i);
 
     const nav = page.getByRole("navigation", { name: "Mobile primary" });
-    await expect(nav.getByRole("link")).toHaveCount(5);
-    await expect(nav.getByRole("link", { name: "Today" })).toBeVisible();
+    await expect(nav.locator(".ios-tab-item")).toHaveCount(5);
+    await expect(nav.getByRole("link")).toHaveCount(4);
+    await expect(nav.getByRole("link", { name: "Home" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Sessions" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Analyse" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    await expect(nav.getByRole("link", { name: "Bag" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Profile" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Practice" })).toBeVisible();
+    await nav.getByRole("button", { name: "Open more navigation" }).click();
+    await expect(page.getByRole("link", { name: "Profile" }).first()).toHaveAttribute(
+      "href",
+      "/profile",
+    );
+    await page.keyboard.press("Escape");
 
     const bounds = await page.evaluate(() => {
       const navRect = document
@@ -129,7 +135,8 @@ test.describe("mobile launch monitor loop", () => {
 
     const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(mobileNav).toBeVisible();
-    await expect(mobileNav.getByRole("link")).toHaveCount(5);
+    await expect(mobileNav.locator(".ios-tab-item")).toHaveCount(5);
+    await expect(mobileNav.getByRole("link")).toHaveCount(4);
     await expect(page.locator(".ios-mobile-screen")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
 

@@ -39,4 +39,13 @@ describe("course holes desktop workspace", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("offers the 3D pilot only for the published Bootle prototype", () => {
+    expect(source).toContain(
+      'const hasCourseTwinPilot = data.course.externalId === "bootle-golf-course";',
+    );
+    expect(source).toContain("{hasCourseTwinPilot ? (");
+    expect(source).toContain("href={`/play/${courseId}`}");
+    expect(source).toContain("3D pilot");
+  });
 });

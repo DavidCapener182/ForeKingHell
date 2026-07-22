@@ -1308,7 +1308,7 @@ function CalendarUnlockItem({ achievement }: { achievement: AchievementView }) {
             {achievement.displayDescription}
           </p>
         </div>
-        <span className="shrink-0 text-sm font-semibold text-emerald-700">
+        <span className="shrink-0 text-sm font-semibold text-emerald-800">
           {achievement.xpAwarded.toLocaleString("en-GB")} XP
         </span>
       </div>

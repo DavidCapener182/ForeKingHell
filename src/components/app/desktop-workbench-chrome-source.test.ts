@@ -310,6 +310,13 @@ describe("desktop workbench chrome source", () => {
 
     expect(switcherBlock).toContain('aria-label="Switch workspace view"');
     expect(switcherBlock).toContain("<DropdownMenuLabel>Workspace view</DropdownMenuLabel>");
+    expect(switcherBlock).toContain(
+      "<DropdownMenu open={open} onOpenChange={setOpen} modal={!embedded}>",
+    );
+    expect(switcherBlock).toContain("onSelect={handleSelect}");
+    expect(switcherBlock).toContain("setOpen(false)");
+    expect(chromeSource).toContain("previousPathnameRef.current === pathname");
+    expect(chromeSource).toContain("setWorkspaceLinksOpen(false)");
     expect(viewsBlock).toContain('label: "Player workspace"');
     expect(viewsBlock).toContain('href: "/dashboard"');
     expect(viewsBlock).toContain('label: "Coach desk"');

@@ -1,8 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { spawn, execFile } from "node:child_process";
 import { promisify } from "node:util";
+import nextEnv from "@next/env";
 
 const execFileAsync = promisify(execFile);
+const { loadEnvConfig } = nextEnv;
+
+loadEnvConfig(process.cwd());
 
 const port = process.env.LIGHTHOUSE_PORT ?? "3110";
 const baseUrl = process.env.LIGHTHOUSE_BASE_URL ?? `http://127.0.0.1:${port}`;
@@ -97,7 +101,7 @@ function localAuditServerEnvironment() {
     ),
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: configuredValue(
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-      "lighthouse-publishable-key",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || "lighthouse-publishable-key",
     ),
     SUPABASE_SERVICE_ROLE_KEY: configuredValue(
       "SUPABASE_SERVICE_ROLE_KEY",

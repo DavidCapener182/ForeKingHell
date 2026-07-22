@@ -30,13 +30,13 @@ The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The
 
 ## Courses, records and equipment
 
-| Feature            | Routes                                                                                                                   | Where users find it                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| Courses            | `/courses`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`         | Play navigation and pre-round preparation. |
-| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]` | Courses and records group.                 |
-| Course competition | `/courses/[courseId]/tournaments`                                                                                        | Compete navigation.                        |
-| Equipment          | `/equipment`, `/equipment/experiments`                                                                                   | Bag and Manage navigation.                 |
-| Achievements       | `/achievements`                                                                                                          | Profile and Compete navigation.            |
+| Feature            | Routes                                                                                                                               | Where users find it                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Courses            | `/courses`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/play/[courseId]` | Play navigation, Course Twin pilot and pre-round preparation. |
+| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`             | Courses and records group.                                    |
+| Course competition | `/courses/[courseId]/tournaments`                                                                                                    | Compete navigation.                                           |
+| Equipment          | `/equipment`, `/equipment/experiments`                                                                                               | Bag and Manage navigation.                                    |
+| Achievements       | `/achievements`                                                                                                                      | Profile and Compete navigation.                               |
 
 ## Social and competition
 

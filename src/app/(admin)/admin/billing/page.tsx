@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
@@ -372,15 +371,14 @@ function SortableAdminBillingHeadLink({
   const label = adminBillingSortLabels[metric];
 
   return (
-    <Link
+    <a
       href={`/admin/billing?sort=${metric}&dir=${nextDir}`}
-      prefetch={false}
       className="focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold outline-none transition-colors hover:text-foreground"
       aria-label={`Sort admin billing by ${label}, ${adminBillingSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
       <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
-    </Link>
+    </a>
   );
 }
 

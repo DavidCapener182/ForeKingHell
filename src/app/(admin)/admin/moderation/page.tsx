@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
@@ -590,18 +589,17 @@ function SortableAdminReportHeadLink({
   const label = adminReportSortLabels[metric];
 
   return (
-    <Link
+    <a
       href={adminModerationSortHref({
         eventSortState,
         reportSortState: { metric, dir: nextDir },
       })}
-      prefetch={false}
       className="focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold outline-none transition-colors hover:text-foreground"
       aria-label={`Sort admin reports by ${label}, ${adminModerationSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
       <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
-    </Link>
+    </a>
   );
 }
 
@@ -654,18 +652,17 @@ function SortableAdminEventHeadLink({
   const label = adminEventSortLabels[metric];
 
   return (
-    <Link
+    <a
       href={adminModerationSortHref({
         eventSortState: { metric, dir: nextDir },
         reportSortState,
       })}
-      prefetch={false}
       className="focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold outline-none transition-colors hover:text-foreground"
       aria-label={`Sort admin moderation events by ${label}, ${adminModerationSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
       <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
-    </Link>
+    </a>
   );
 }
 

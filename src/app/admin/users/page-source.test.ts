@@ -26,6 +26,8 @@ describe("admin users desktop console source", () => {
     expect(source).toContain('data-workbench-export-table="admin-users"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("<a\n      href={adminUserSortHref");
+    expect(source).not.toContain('from "next/link"');
 
     for (const column of ["user", "plan", "activity", "admin", "created", "action"]) {
       expect(source).toContain(`data-column="${column}"`);

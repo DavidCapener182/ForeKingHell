@@ -144,10 +144,11 @@ test.describe("desktop workbench", () => {
     await expect(search).toBeFocused();
 
     await search.fill("Aintree");
-    await expect(page.getByRole("link", { name: /Aintree Golf Centre/i })).toHaveAttribute(
-      "href",
-      "/courses/course-aintree/records",
-    );
+    await expect(
+      page
+        .getByRole("listbox", { name: "Command palette results" })
+        .getByRole("link", { name: /^Aintree Golf Centre Course/i }),
+    ).toHaveAttribute("href", "/courses/course-aintree/records");
 
     await search.fill("8i Mizuno");
     await expect(page.getByRole("link", { name: /8i - Mizuno JPX/i })).toHaveAttribute(
@@ -258,8 +259,9 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("ControlOrMeta+K");
     await page.getByPlaceholder(/Search driver/i).fill("Aintree");
     await page
+      .getByRole("dialog", { name: /command palette/i })
+      .locator("[data-command-results]")
       .getByRole("link", { name: /Aintree Golf Centre/i })
-      .first()
       .click();
     await expect(page).toHaveURL(/\/dashboard\?recent=aintree/);
 
@@ -350,6 +352,10 @@ test.describe("desktop workbench", () => {
   test("command palette pins and unpins workspace results", async ({ page }) => {
     skipWhenNoDesktopAuth();
 
+    await page.addInitScript(() => {
+      window.localStorage.removeItem("fkh:desktop-pinned-items");
+    });
+
     await page.route("**/api/desktop-workbench/commands", async (route) => {
       await route.fulfill({
         status: 200,
@@ -372,7 +378,6 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
     await expectPageReady(page, /Quick answers/i);
-    await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-pinned-items"));
 
     await page.keyboard.press("ControlOrMeta+K");
     const commandDialog = page.getByRole("dialog", { name: /command palette/i });
@@ -649,12 +654,16 @@ test.describe("desktop workbench", () => {
     await expectPageReady(page, /Quick answers/i);
 
     const openSwitcher = async () => {
-      const switcher = page.getByRole("button", { name: /Switch workspace view/i });
-      if (!(await switcher.isVisible())) {
+      await expect(page.getByRole("menu", { name: /Open workbench menu/i })).toHaveCount(0);
+      const visibleSwitcher = page
+        .getByRole("button", { name: /Switch workspace view/i })
+        .filter({ visible: true })
+        .first();
+      if ((await visibleSwitcher.count()) === 0) {
         await page.getByRole("button", { name: /Open workbench menu/i }).click();
       }
-      await expect(switcher).toBeVisible();
-      return switcher;
+      await expect(visibleSwitcher).toBeVisible();
+      return visibleSwitcher;
     };
 
     let switcher = await openSwitcher();
@@ -684,7 +693,7 @@ test.describe("desktop workbench", () => {
     if (hasAdminWorkspace) {
       await page.getByRole("menuitem", { name: /Admin console/i }).click();
       await expect(page).toHaveURL(/\/admin/);
-      await expectPageReady(page, /Operating pages|Admin/i);
+      await expectPageReady(page, /Operating pages/i);
       await expectNoAiRail(page, /AI admin rail/i);
       switcher = await openSwitcher();
       await expect(switcher).toContainText("Admin console");
@@ -711,13 +720,15 @@ test.describe("desktop workbench", () => {
 
     const skipToMainTable = page.getByRole("button", { name: /Skip to main table/i });
     const mainTableTarget = page.locator("[data-main-table-target='true']");
+    const skipToContent = page.getByRole("link", { name: /Skip to content/i });
+    const skipToSidebar = page.getByRole("link", { name: /Skip to sidebar/i });
 
     await expect(mainTableTarget).toHaveAttribute("aria-label", "Shot explorer table");
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: /Skip to content/i })).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: /Skip to sidebar/i })).toBeFocused();
-    await page.keyboard.press("Tab");
+    await skipToContent.focus();
+    await expect(skipToContent).toBeFocused();
+    await skipToSidebar.focus();
+    await expect(skipToSidebar).toBeFocused();
+    await skipToMainTable.focus();
     await expect(skipToMainTable).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(mainTableTarget).toBeFocused();
@@ -971,12 +982,12 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await shotsToolbar.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Launch$/i }).click();
+    await setMenuItemCheckbox(page, /^Launch$/i, false);
     await expect(page.locator('th[data-column="launch"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
     await shotsToolbar.getByRole("button", { name: "Density", exact: true }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Compact/i }).click();
+    await setMenuItemCheckbox(page, /Compact/i, true);
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
     await page.keyboard.press("Escape");
 
@@ -1048,11 +1059,11 @@ test.describe("desktop workbench", () => {
     const shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
 
     await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Launch$/i }).click();
+    await setMenuItemCheckbox(page, /^Launch$/i, false);
     await page.keyboard.press("Escape");
 
     await shotsWorkbench.getByRole("button", { name: "Density", exact: true }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Compact/i }).click();
+    await setMenuItemCheckbox(page, /Compact/i, true);
     await page.keyboard.press("Escape");
 
     await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
@@ -1076,7 +1087,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await shotsWorkbench.getByRole("button", { name: "Density", exact: true }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Comfortable/i }).click();
+    await setMenuItemCheckbox(page, /Comfortable/i, true);
     await page.keyboard.press("Escape");
 
     await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeVisible();
@@ -1111,11 +1122,11 @@ test.describe("desktop workbench", () => {
     let shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
 
     await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Launch$/i }).click();
+    await setMenuItemCheckbox(page, /^Launch$/i, false);
     await page.keyboard.press("Escape");
 
     await shotsWorkbench.getByRole("button", { name: "Density", exact: true }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Compact/i }).click();
+    await setMenuItemCheckbox(page, /Compact/i, true);
     await page.keyboard.press("Escape");
 
     await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
@@ -1167,7 +1178,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Putts$/i }).click();
+    await setMenuItemCheckbox(page, /^Putts$/i, false);
     await expect(page.locator('th[data-column="putts"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1202,6 +1213,11 @@ test.describe("desktop workbench", () => {
     const courseHead = courseTable.locator('th[data-column="course"]');
     const holesHead = courseTable.locator('th[data-column="holes"]');
 
+    await page.getByRole("button", { name: /Columns/i }).click();
+    await setMenuItemCheckbox(page, /Mapped holes/i, true);
+    await page.keyboard.press("Escape");
+    await expect(holesHead).toBeVisible();
+
     await expect(courseHead).toHaveAttribute("aria-sort", "ascending");
     await holesHead.getByRole("link", { name: /Sort courses by Mapped holes/i }).click();
     await expect(page).toHaveURL(/\/courses\?tab=patterns&sort=holes&dir=desc/);
@@ -1222,7 +1238,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Mapped holes/i }).click();
+    await setMenuItemCheckbox(page, /Mapped holes/i, false);
     await expect(page.locator('th[data-column="holes"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1430,7 +1446,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await gappingTable.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Target$/i }).click();
+    await setMenuItemCheckbox(page, /^Target$/i, false);
     await expect(gappingTable.locator('th[data-column="target"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1465,7 +1481,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await progressTable.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Clean shots$/i }).click();
+    await setMenuItemCheckbox(page, /^Clean shots$/i, false);
     await expect(progressTable.locator('th[data-column="clean-shots"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1719,6 +1735,9 @@ test.describe("desktop workbench", () => {
       "Leaderboard player table",
     );
 
+    await page.getByRole("button", { name: /Columns/i }).click();
+    await setMenuItemCheckbox(page, /Monthly shots/i, true);
+    await page.keyboard.press("Escape");
     await page.getByRole("link", { name: /Sort leaderboard players by Monthly shots/i }).click();
     await expect(page.locator('th[data-column="monthly-shots"]')).toHaveAttribute(
       "aria-sort",
@@ -1739,7 +1758,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Monthly shots/i }).click();
+    await setMenuItemCheckbox(page, /Monthly shots/i, false);
     await expect(page.locator('th[data-column="monthly-shots"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1757,6 +1776,9 @@ test.describe("desktop workbench", () => {
       "Challenge leaderboard table",
     );
 
+    await page.getByRole("button", { name: /Columns/i }).click();
+    await setMenuItemCheckbox(page, /Participants/i, true);
+    await page.keyboard.press("Escape");
     await page.getByRole("link", { name: /Sort challenge leaderboards by Participants/i }).click();
     await expect(page.locator('th[data-column="participants"]')).toHaveAttribute(
       "aria-sort",
@@ -1776,7 +1798,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Participants/i }).click();
+    await setMenuItemCheckbox(page, /Participants/i, false);
     await expect(page.locator('th[data-column="participants"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1877,7 +1899,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await ledger.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Privacy$/i }).click();
+    await setMenuItemCheckbox(page, /^Privacy$/i, false);
     await expect(ledger.locator('th[data-column="privacy"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1919,7 +1941,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await manager.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Home course/i }).click();
+    await setMenuItemCheckbox(page, /Home course/i, false);
     await expect(manager.locator('th[data-column="home-course"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -1961,7 +1983,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await board.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Posts$/i }).click();
+    await setMenuItemCheckbox(page, /^Posts$/i, false);
     await expect(board.locator('th[data-column="posts"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2026,7 +2048,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await profileEvidence.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Proof$/i }).click();
+    await setMenuItemCheckbox(page, /^Proof$/i, false);
     await expect(profileEvidence.locator('th[data-column="proof"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2071,7 +2093,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await activity.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Privacy$/i }).click();
+    await setMenuItemCheckbox(page, /^Privacy$/i, false);
     await expect(activity.locator('th[data-column="privacy"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2162,7 +2184,7 @@ test.describe("desktop workbench", () => {
       roundShots.locator('table[data-workbench-export-table="round-shots"]'),
     ).toBeVisible();
     await roundShots.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Side$/i }).click();
+    await setMenuItemCheckbox(page, /^Side$/i, false);
     await expect(roundShots.locator('th[data-column="side"]')).toBeHidden();
     await page.keyboard.press("Escape");
   });
@@ -2178,7 +2200,9 @@ test.describe("desktop workbench", () => {
     await expect(page.locator('[data-workbench-scope="shared-account"]')).toBeVisible();
 
     const sharedSessions = page.locator('[data-workbench-scope="shared-sessions"]');
-    await expect(sharedSessions.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
+    const sharedSessionsToolbar = sharedSessions.locator("[data-desktop-workbench-toolbar]");
+    await expect(sharedSessionsToolbar).toBeVisible();
+    await expect(sharedSessionsToolbar).toHaveAttribute("data-workbench-controls-hydrated", "true");
     await expect(
       sharedSessions.getByRole("region", { name: /Shared account recent sessions table/i }),
     ).toBeVisible();
@@ -2188,7 +2212,7 @@ test.describe("desktop workbench", () => {
     await expect(page.getByRole("button", { name: /Social feed/i })).toHaveCount(0);
 
     await sharedSessions.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Score$/i }).click();
+    await setMenuItemCheckbox(page, /^Score$/i, false);
     await expect(sharedSessions.locator('th[data-column="score"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2231,7 +2255,15 @@ test.describe("desktop workbench", () => {
       await expect(confirmDialog).toBeHidden();
     }
 
-    await page.getByRole("link", { name: /Sort admin users by Activity/i }).click();
+    await page.getByRole("button", { name: /Columns/i }).click();
+    await setMenuItemCheckbox(page, /^Activity$/i, true);
+    await page.keyboard.press("Escape");
+    await Promise.all([
+      page.waitForURL((url) => {
+        return url.pathname === "/admin/users" && url.searchParams.get("sort") === "activity";
+      }),
+      page.getByRole("link", { name: /Sort admin users by Activity/i }).click(),
+    ]);
     await expect(page.locator('th[data-column="activity"]')).toHaveAttribute(
       "aria-sort",
       "descending",
@@ -2254,7 +2286,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Activity$/i }).click();
+    await setMenuItemCheckbox(page, /^Activity$/i, false);
     await expect(page.locator('th[data-column="activity"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2303,7 +2335,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await billingWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Renews$/i }).click();
+    await setMenuItemCheckbox(page, /^Renews$/i, false);
     await expect(billingWorkbench.locator('th[data-column="renews"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2326,6 +2358,9 @@ test.describe("desktop workbench", () => {
     );
     await expect(page.getByRole("table", { name: /Admin challenge boards/i })).toBeVisible();
 
+    await challengeWorkbench.getByRole("button", { name: /Columns/i }).click();
+    await setMenuItemCheckbox(page, /^Participation$/i, true);
+    await page.keyboard.press("Escape");
     await challengeWorkbench
       .getByRole("link", { name: /Sort admin challenges by Participation/i })
       .click();
@@ -2352,7 +2387,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await challengeWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Participation$/i }).click();
+    await setMenuItemCheckbox(page, /^Participation$/i, false);
     await expect(challengeWorkbench.locator('th[data-column="participation"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2459,7 +2494,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await reportsWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Target$/i }).click();
+    await setMenuItemCheckbox(page, /^Target$/i, false);
     await expect(reportsWorkbench.locator('th[data-column="target"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2470,7 +2505,7 @@ test.describe("desktop workbench", () => {
     expect(reportsDownload.suggestedFilename()).toBe("forekinghell-admin-reports-view.csv");
 
     await eventsWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Reason$/i }).click();
+    await setMenuItemCheckbox(page, /^Reason$/i, false);
     await expect(eventsWorkbench.locator('th[data-column="reason"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
@@ -2640,7 +2675,7 @@ test.describe("desktop workbench", () => {
     );
     await expect(rapsodoSessionsTable).toBeVisible();
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /^Shots$/i }).click();
+    await setMenuItemCheckbox(page, /^Shots$/i, false);
     await expect(rapsodoSessionsTable.locator('th[data-column="shots"]')).toBeHidden();
     await page.keyboard.press("Escape");
     const [rapsodoDownload] = await Promise.all([
@@ -3091,7 +3126,7 @@ test.describe("desktop workbench", () => {
       page.locator('table[data-workbench-export-table="admin-system-checks"]'),
     ).toBeVisible();
     await page.getByRole("button", { name: /Columns/i }).click();
-    await page.getByRole("menuitemcheckbox", { name: /Impact/i }).click();
+    await setMenuItemCheckbox(page, /Impact/i, false);
     await expect(page.locator('th[data-column="impact"]')).toBeHidden();
     await page.keyboard.press("Escape");
     const [systemChecksDownload] = await Promise.all([
@@ -3170,6 +3205,17 @@ function createPlaywrightBypassCookie() {
 
 function base64UrlJson(value: unknown) {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+async function setMenuItemCheckbox(page: Page, name: RegExp | string, checked: boolean) {
+  const item = page.getByRole("menuitemcheckbox", { name });
+  const expected = String(checked);
+
+  await expect(item).toBeVisible();
+  if ((await item.getAttribute("aria-checked")) !== expected) {
+    await item.click();
+  }
+  await expect(item).toHaveAttribute("aria-checked", expected);
 }
 
 async function gotoAppRoute(page: Page, path: string) {

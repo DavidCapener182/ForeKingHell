@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Brain, ShieldCheck, UserRound } from "lucide-react";
 
@@ -19,17 +20,25 @@ export function WorkspaceSwitcher({
   pathname,
   isAdmin,
   embedded = false,
+  onNavigate,
 }: {
   pathname: string;
   isAdmin: boolean;
   embedded?: boolean;
+  onNavigate?: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   const views = getWorkspaceViews(pathname, isAdmin);
   const activeView = views.find((view) => view.isActive) ?? views[0];
   const ActiveIcon = activeView.icon;
 
+  function handleSelect() {
+    setOpen(false);
+    onNavigate?.();
+  }
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={!embedded}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -54,7 +63,7 @@ export function WorkspaceSwitcher({
           const Icon = view.icon;
 
           return (
-            <DropdownMenuItem key={view.label} asChild>
+            <DropdownMenuItem key={view.label} asChild onSelect={handleSelect}>
               <Link
                 href={view.href}
                 prefetch={false}

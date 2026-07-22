@@ -1,8 +1,8 @@
 "use client";
 
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { ChevronLeft, ChevronRight, CirclePause, CirclePlay, RotateCcw } from "lucide-react";
 
@@ -42,24 +42,24 @@ export function CourseTwinScene({
   const [shotIndex, setShotIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [playback, setPlayback] = useState(0);
+  const playbackRef = useRef(0);
   const selectedHole =
     manifest.holes.find((hole) => hole.holeNumber === holeNumber) ?? manifest.holes[0];
-  const holeShots = replay?.shots.filter((shot) => shot.holeNumber === selectedHole.holeNumber) ?? [];
+  const holeShots =
+    replay?.shots.filter((shot) => shot.holeNumber === selectedHole.holeNumber) ?? [];
   const selectedShot = holeShots[Math.min(shotIndex, Math.max(0, holeShots.length - 1))] ?? null;
   const selectedHoleIndex = manifest.holes.findIndex(
     (hole) => hole.holeNumber === selectedHole.holeNumber,
   );
 
   useEffect(() => {
-    setShotIndex(0);
-    setPlayback(0);
-    setPlaying(false);
-  }, [holeNumber]);
+    playbackRef.current = playback;
+  }, [playback]);
 
   useEffect(() => {
     if (!playing || !selectedShot) return;
     let frame = 0;
-    const startedAt = performance.now() - playback * 3200;
+    const startedAt = performance.now() - playbackRef.current * 3200;
     const tick = (now: number) => {
       const next = Math.min(1, (now - startedAt) / 3200);
       setPlayback(next);
@@ -68,10 +68,20 @@ export function CourseTwinScene({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, selectedShot, playback]);
+  }, [playing, selectedShot]);
+
+  const selectHole = (nextHoleNumber: number) => {
+    setHoleNumber(nextHoleNumber);
+    setShotIndex(0);
+    setPlayback(0);
+    setPlaying(false);
+  };
 
   return (
-    <div className="grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:grid-cols-[330px_minmax(0,1fr)]">
+    <div
+      data-clubhouse-preserve-dark
+      className="grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:grid-cols-[330px_minmax(0,1fr)]"
+    >
       <aside className="order-2 border-t border-white/10 bg-[#0b1d13] p-4 xl:order-1 xl:border-r xl:border-t-0 xl:p-5">
         <div className="space-y-1">
           <Badge className="border border-amber-300/30 bg-amber-300/10 text-amber-100 hover:bg-amber-300/10">
@@ -113,9 +123,9 @@ export function CourseTwinScene({
                 type="button"
                 size="icon"
                 variant="outline"
-                className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
                 disabled={selectedHoleIndex <= 0}
-                onClick={() => setHoleNumber(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+                onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
                 aria-label="Previous hole"
               >
                 <ChevronLeft className="size-4" />
@@ -124,9 +134,9 @@ export function CourseTwinScene({
                 type="button"
                 size="icon"
                 variant="outline"
-                className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
                 disabled={selectedHoleIndex >= manifest.holes.length - 1}
-                onClick={() => setHoleNumber(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+                onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
                 aria-label="Next hole"
               >
                 <ChevronRight className="size-4" />
@@ -144,7 +154,7 @@ export function CourseTwinScene({
                     ? "border-emerald-300 bg-emerald-300 text-[#092013]"
                     : "border-white/10 bg-white/5 text-white hover:bg-white/10",
                 )}
-                onClick={() => setHoleNumber(hole.holeNumber)}
+                onClick={() => selectHole(hole.holeNumber)}
               >
                 {hole.holeNumber}
               </button>
@@ -183,7 +193,13 @@ export function CourseTwinScene({
 
         <div className="mt-5 text-xs leading-5 text-emerald-100/50">
           {manifest.attribution.map((item) => (
-            <a key={item.url} href={item.url} target="_blank" rel="noreferrer" className="underline">
+            <a
+              key={item.url}
+              href={item.url}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
               {item.label} · {item.licence}
             </a>
           ))}
@@ -227,13 +243,22 @@ export function CourseTwinScene({
       <table className="sr-only">
         <caption>{manifest.course.name} Course Twin holes</caption>
         <thead>
-          <tr><th>Hole</th><th>Par</th><th>Yards</th><th>Replay shots</th></tr>
+          <tr>
+            <th>Hole</th>
+            <th>Par</th>
+            <th>Yards</th>
+            <th>Replay shots</th>
+          </tr>
         </thead>
         <tbody>
           {manifest.holes.map((hole) => (
             <tr key={hole.holeNumber}>
-              <td>{hole.holeNumber}</td><td>{hole.par}</td><td>{hole.yards}</td>
-              <td>{replay?.shots.filter((shot) => shot.holeNumber === hole.holeNumber).length ?? 0}</td>
+              <td>{hole.holeNumber}</td>
+              <td>{hole.par}</td>
+              <td>{hole.yards}</td>
+              <td>
+                {replay?.shots.filter((shot) => shot.holeNumber === hole.holeNumber).length ?? 0}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -345,7 +370,13 @@ function HoleGeometry({ hole, selected }: { hole: CourseTwinHole; selected: bool
   const green = toTerrainPoint(hole.green);
   return (
     <group>
-      <Line points={points} color={selected ? "#efffb5" : "#d7f5d1"} lineWidth={selected ? 4 : 1.25} transparent opacity={selected ? 1 : 0.42} />
+      <Line
+        points={points}
+        color={selected ? "#efffb5" : "#d7f5d1"}
+        lineWidth={selected ? 4 : 1.25}
+        transparent
+        opacity={selected ? 1 : 0.42}
+      />
       <mesh position={tee} castShadow>
         <cylinderGeometry args={[3.5, 3.5, 0.7, 24]} />
         <meshStandardMaterial color={selected ? "#f6f3df" : "#9bc59c"} />
@@ -387,7 +418,6 @@ function CameraFocus({ hole }: { hole: CourseTwinHole }) {
     camera.position.set(tee[0] - dz * 0.32, Math.min(240, length * 0.65), tee[2] + dx * 0.32);
     camera.lookAt((tee[0] + green[0]) / 2, 0, (tee[2] + green[2]) / 2);
   }, [camera, hole]);
-  useFrame(() => camera.updateProjectionMatrix());
   return null;
 }
 
@@ -427,10 +457,24 @@ function ReplayControls({
               </p>
             </div>
             <div className="flex gap-2">
-              <Button type="button" size="icon" variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={onToggle} aria-label={playing ? "Pause replay" : "Play replay"}>
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
+                onClick={onToggle}
+                aria-label={playing ? "Pause replay" : "Play replay"}
+              >
                 {playing ? <CirclePause className="size-5" /> : <CirclePlay className="size-5" />}
               </Button>
-              <Button type="button" size="icon" variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={onReset} aria-label="Reset replay">
+              <Button
+                type="button"
+                size="icon"
+                variant="outline"
+                className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
+                onClick={onReset}
+                aria-label="Reset replay"
+              >
                 <RotateCcw className="size-4" />
               </Button>
             </div>
@@ -440,7 +484,17 @@ function ReplayControls({
           </div>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {shots.map((shot, index) => (
-              <button key={shot.id} type="button" className={cn("min-w-14 rounded-lg border px-3 py-2 text-sm font-semibold", index === shotIndex ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]" : "border-white/10 bg-white/5")} onClick={() => onSelectShot(index)}>
+              <button
+                key={shot.id}
+                type="button"
+                className={cn(
+                  "min-w-14 rounded-lg border px-3 py-2 text-sm font-semibold",
+                  index === shotIndex
+                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/10 bg-white/5",
+                )}
+                onClick={() => onSelectShot(index)}
+              >
                 #{shot.holeShotNumber ?? index + 1}
               </button>
             ))}
@@ -458,8 +512,30 @@ function ReplayControls({
   );
 }
 
-function ModeButton({ active, disabled, onClick, children }: { active: boolean; disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button type="button" disabled={disabled} className={cn("min-h-10 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40", active ? "bg-white text-[#102217]" : "text-emerald-100/65 hover:bg-white/5")} onClick={onClick}>{children}</button>;
+function ModeButton({
+  active,
+  disabled,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className={cn(
+        "min-h-10 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+        active ? "bg-white text-[#102217]" : "text-emerald-100/65 hover:bg-white/5",
+      )}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
 }
 
 function terrainHeight(x: number, z: number) {
@@ -474,13 +550,20 @@ function toTerrainPointWithAltitude(point: CourseTwinPoint): [number, number, nu
   return [point[0], terrainHeight(point[0], point[2]) + point[1] + 1.3, point[2]];
 }
 
-function pointOnPolyline(points: Array<[number, number, number]>, ratio: number): [number, number, number] {
+function pointOnPolyline(
+  points: Array<[number, number, number]>,
+  ratio: number,
+): [number, number, number] {
   if (points.length === 0) return [0, 0, 0];
   const scaled = Math.min(1, Math.max(0, ratio)) * (points.length - 1);
   const left = points[Math.floor(scaled)];
   const right = points[Math.min(points.length - 1, Math.ceil(scaled))];
   const amount = scaled - Math.floor(scaled);
-  return [left[0] + (right[0] - left[0]) * amount, left[1] + (right[1] - left[1]) * amount, left[2] + (right[2] - left[2]) * amount];
+  return [
+    left[0] + (right[0] - left[0]) * amount,
+    left[1] + (right[1] - left[1]) * amount,
+    left[2] + (right[2] - left[2]) * amount,
+  ];
 }
 
 function formatYards(value: number | null) {

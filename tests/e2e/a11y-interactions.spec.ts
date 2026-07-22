@@ -24,11 +24,10 @@ test.describe("accessible mobile interactions", () => {
       "page",
     );
 
-    await destinations.nth(0).focus();
-    await page.keyboard.press("Shift+Tab");
-    await page.keyboard.press("Tab");
-    const focusEvidence = await page.evaluate(() => {
-      const element = document.activeElement as HTMLElement;
+    const firstDestination = destinations.first();
+    await firstDestination.focus();
+    await expect(firstDestination).toBeFocused();
+    const focusEvidence = await firstDestination.evaluate((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       return {

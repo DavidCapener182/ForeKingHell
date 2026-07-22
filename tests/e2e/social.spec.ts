@@ -172,6 +172,10 @@ test.describe("social friends and feed visibility", () => {
   });
 
   test("supports feed kudos, comments and reporting", async ({ page }) => {
+    test.skip(
+      (page.viewportSize()?.width ?? 0) < 1024,
+      "Feed interaction forms require the desktop layout",
+    );
     expect(fixture).not.toBeNull();
     const data = fixture!;
     const comment = `Nice work ${data.token}`;
@@ -293,13 +297,16 @@ async function gotoSocialPage(page: Page, routePath: string, expectedText: RegEx
 }
 
 async function revealFeedCard(page: Page, feedItemId: string) {
-  const card = page.locator(`[data-feed-item-id="${feedItemId}"]`);
+  const card = page.locator(`[data-feed-item-id="${feedItemId}"]`).filter({ visible: true });
 
   if (await card.isVisible()) {
     return card;
   }
 
-  const summaries = page.locator("summary").filter({ hasText: "Individual cards" });
+  const summaries = page
+    .locator("summary")
+    .filter({ hasText: "Individual cards" })
+    .filter({ visible: true });
   const count = await summaries.count();
 
   for (let index = 0; index < count; index += 1) {

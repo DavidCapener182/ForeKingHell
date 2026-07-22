@@ -322,7 +322,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 </>
               }
               title="Leaderboard filters"
-              triggerClassName="bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+              triggerClassName="ios-secondary-action bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
             >
               <form className="grid gap-3" action="/leaderboard">
                 <input type="hidden" name="tab" value={activeTab} />

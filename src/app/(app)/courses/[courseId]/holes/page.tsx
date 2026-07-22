@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ComponentProps } from "react";
-import { ArrowLeft, Flag, MapPinned, Save, Trophy } from "lucide-react";
+import { ArrowLeft, Cuboid, Flag, MapPinned, Save, Trophy } from "lucide-react";
 import { and, asc, eq, or } from "drizzle-orm";
 
 import { updateTeeSetAction, upsertHoleAction } from "@/app/courses/actions";
@@ -112,6 +112,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const allowManualHoleEditing = data.isEditable && (hasMappedGeometry || !usesAutomaticCourseData);
   const showTeeSetTools = Boolean(primaryTeeSet && (hasMappedGeometry || !usesAutomaticCourseData));
   const shotPatternEnabled = isShotPatternFeatureEnabled();
+  const hasCourseTwinPilot = data.course.externalId === "bootle-golf-course";
   const holeSlots = createHoleSlots(primaryTeeSet?.par ?? 72, holesForPrimaryTeeSet.length);
   const holeByNumber = new Map(holesForPrimaryTeeSet.map((hole) => [hole.holeNumber, hole]));
   const mapStatus =
@@ -131,20 +132,30 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
               Courses
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link href="/rounds" prefetch={false}>
-              <Flag className="size-4" />
-              Rounds
-            </Link>
-          </Button>
-          {shotPatternEnabled ? (
-            <Button asChild>
-              <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
-                <MapPinned className="size-4" />
-                Shot pattern
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button asChild variant="outline">
+              <Link href="/rounds" prefetch={false}>
+                <Flag className="size-4" />
+                Rounds
               </Link>
             </Button>
-          ) : null}
+            {hasCourseTwinPilot ? (
+              <Button asChild variant="outline">
+                <Link href={`/play/${courseId}`} prefetch={false}>
+                  <Cuboid className="size-4" />
+                  3D pilot
+                </Link>
+              </Button>
+            ) : null}
+            {shotPatternEnabled ? (
+              <Button asChild>
+                <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
+                  <MapPinned className="size-4" />
+                  Shot pattern
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <PageHeader

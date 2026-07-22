@@ -5326,7 +5326,7 @@ function deltaClass(value: number | null, direction: "higher" | "lower") {
   const tone = deltaTone(value, direction);
   const color =
     tone === "green"
-      ? "text-emerald-700"
+      ? "text-emerald-800"
       : tone === "pink"
         ? "text-pink-700"
         : tone === "amber"

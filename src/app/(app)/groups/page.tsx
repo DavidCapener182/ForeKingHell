@@ -197,6 +197,39 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             </BottomSheet>
           }
         />
+        {params?.invite ? (
+          <section className="premium-card p-4">
+            {data.invitePreview ? (
+              <div className="grid gap-3">
+                <div>
+                  <p className="font-semibold">Invite to {data.invitePreview.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {data.invitePreview.description ??
+                      `${data.invitePreview.memberCount} members · ${label(data.invitePreview.visibility)}`}
+                  </p>
+                </div>
+                {data.invitePreview.viewerRole ? (
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href={`/groups/${data.invitePreview.slug}`} prefetch={false}>
+                      Open group
+                    </Link>
+                  </Button>
+                ) : (
+                  <form action={joinGroupByInviteCodeAction}>
+                    <input type="hidden" name="inviteCode" value={data.invitePreview.inviteCode} />
+                    <Button type="submit" className="w-full">
+                      Join from invite
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                That group invite is not valid or has expired.
+              </p>
+            )}
+          </section>
+        ) : null}
         {activeTab === "challenges" ? (
           <NativeListSection title="Challenges">
             {featuredChallenge ? (

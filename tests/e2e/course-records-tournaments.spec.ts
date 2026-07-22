@@ -89,10 +89,11 @@ test.describe("course records and major-style tournaments", () => {
         dateIso: "2026-05-15",
       }),
     );
-    await Promise.all([
-      page.waitForURL(new RegExp(`/course-records/${data.recordId}\\?attempt=`)),
-      recordForm.evaluate((form: HTMLFormElement) => form.requestSubmit()),
-    ]);
+    await submitServerActionForm(
+      page,
+      recordForm,
+      new RegExp(`/course-records/${data.recordId}\\?attempt=`),
+    );
 
     await expect
       .poll(async () => {
@@ -116,10 +117,14 @@ test.describe("course records and major-style tournaments", () => {
     await expectPageReady(page, new RegExp(data.tournamentTitle));
     await page.getByRole("button", { name: /^Enter$/i }).click();
     await page.getByLabel(/I accept/i).check();
-    await Promise.all([
-      page.waitForURL(new RegExp(`/tournaments/${data.tournamentId}\\?joined=1`)),
-      page.getByRole("button", { name: /Accept & enter tournament/i }).click(),
-    ]);
+    const entryForm = page
+      .getByRole("button", { name: /Accept & enter tournament/i })
+      .locator("xpath=ancestor::form");
+    await submitServerActionForm(
+      page,
+      entryForm,
+      new RegExp(`/tournaments/${data.tournamentId}\\?joined=1`),
+    );
     await expect
       .poll(async () => {
         const rows = await sql!`
@@ -206,10 +211,7 @@ async function submitImportedTournamentRound(
   }
 
   await expect(form).toBeVisible();
-  await Promise.all([
-    page.waitForURL(new RegExp(`/tournaments/.+\\?submission=`)),
-    form.evaluate((node: HTMLFormElement) => node.requestSubmit()),
-  ]);
+  await submitServerActionForm(page, form, /\/tournaments\/.+\?submission=/);
 }
 
 async function submitManualTournamentRound({
@@ -266,10 +268,28 @@ async function submitManualTournamentRound({
       dateIso: null,
     }),
   );
-  await Promise.all([
-    page.waitForURL(new RegExp(`/tournaments/.+\\?submission=`)),
-    form.evaluate((node: HTMLFormElement) => node.requestSubmit()),
-  ]);
+  await submitServerActionForm(page, form, /\/tournaments\/.+\?submission=/);
+}
+
+async function submitServerActionForm(
+  page: import("@playwright/test").Page,
+  form: import("@playwright/test").Locator,
+  expectedRedirect: RegExp,
+) {
+  const actionPath = new URL(page.url()).pathname;
+  const responsePromise = page.waitForResponse((response) => {
+    const request = response.request();
+    return request.method() === "POST" && new URL(response.url()).pathname === actionPath;
+  });
+
+  await form.evaluate((node: HTMLFormElement) => node.requestSubmit());
+  const response = await responsePromise;
+
+  // Next Server Actions return their client navigation target in this response header.
+  // Assert that contract directly: Playwright does not consistently emit a full load event
+  // for the ensuing client transition in a production build.
+  expect(response.status()).toBe(303);
+  expect(response.headers()["x-action-redirect"]).toMatch(expectedRedirect);
 }
 
 async function seedCompetitionFixture(sql: Sql, authUserId: string): Promise<CompetitionFixture> {

@@ -29,6 +29,7 @@ describe("admin challenges desktop console source", () => {
     expect(source).toContain('data-workbench-export-table="admin-challenges"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("<a\n      href={`/admin/challenges?sort=${metric}&dir=${nextDir}`}");
 
     for (const column of ["challenge", "owner", "status", "participation", "ends", "action"]) {
       expect(source).toContain(`data-column="${column}"`);

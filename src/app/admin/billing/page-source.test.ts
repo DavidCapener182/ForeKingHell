@@ -26,6 +26,8 @@ describe("admin billing desktop console source", () => {
     expect(source).toContain('data-workbench-export-table="admin-billing"');
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
+    expect(source).toContain("<a\n      href={`/admin/billing?sort=${metric}&dir=${nextDir}`}");
+    expect(source).not.toContain('from "next/link"');
 
     for (const column of ["user", "plan", "status", "renews", "created"]) {
       expect(source).toContain(`data-column="${column}"`);

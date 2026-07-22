@@ -418,15 +418,15 @@ function SocialFeedRailContent() {
       <Button
         type="button"
         variant="outline"
-        className="fixed bottom-5 right-5 z-40 hidden h-11 gap-2 rounded-full border-slate-200 bg-white px-4 text-slate-950 shadow-lg shadow-slate-950/10 hover:bg-slate-50 sm:inline-flex"
+        className="fixed bottom-5 right-5 z-40 hidden h-11 gap-2 rounded-full border-slate-200 bg-white px-4 text-slate-950 shadow-lg shadow-slate-950/10 hover:bg-slate-50 lg:inline-flex"
         onClick={openRail}
         aria-expanded={expanded}
         aria-controls="social-feed-preview"
         aria-label="Open social feed preview"
       >
         <Radio className="size-4 text-emerald-600" />
-        <span className="sm:hidden">Feed</span>
-        <span className="hidden sm:inline">Social feed</span>
+        <span className="lg:hidden">Feed</span>
+        <span className="hidden lg:inline">Social feed</span>
         {newCount > 0 ? (
           <span className="rounded-full bg-[#0B7A3B] px-2 py-0.5 text-xs font-semibold text-white">
             {newCount > 99 ? "99+" : numberFormatter.format(newCount)}

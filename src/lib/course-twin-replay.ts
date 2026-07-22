@@ -173,14 +173,20 @@ function reconstructedTrajectory(
 }
 
 function lineLength(points: CourseTwinPoint[]) {
-  return points.slice(1).reduce((total, point, index) => total + distance2d(points[index], point), 0);
+  return points
+    .slice(1)
+    .reduce((total, point, index) => total + distance2d(points[index], point), 0);
 }
 
 function distance2d(left: CourseTwinPoint, right: CourseTwinPoint) {
   return Math.hypot(right[0] - left[0], right[2] - left[2]);
 }
 
-function interpolate(left: CourseTwinPoint, right: CourseTwinPoint, ratio: number): CourseTwinPoint {
+function interpolate(
+  left: CourseTwinPoint,
+  right: CourseTwinPoint,
+  ratio: number,
+): CourseTwinPoint {
   return [
     left[0] + (right[0] - left[0]) * ratio,
     left[1] + (right[1] - left[1]) * ratio,

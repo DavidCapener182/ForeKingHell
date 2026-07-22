@@ -34,6 +34,8 @@ describe("admin moderation desktop console source", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain("<caption");
     expect(source).toContain("tabIndex={0}");
+    expect(source.match(/<a\n      href={adminModerationSortHref/g)).toHaveLength(2);
+    expect(source).not.toContain('from "next/link"');
   });
 
   it("keeps moderation bulk and row actions confirmable", () => {

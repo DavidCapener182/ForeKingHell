@@ -31,9 +31,10 @@ test.describe("authenticated app flows", () => {
   test("previews a changed CSV format through manual column mapping", async ({ page }) => {
     skipWhenNoAuth();
 
-    await gotoAppRoute(page, "/import");
+    await gotoAppRoute(page, "/import?source=csv#csv-import");
     await expectPageReady(page, /Import launch monitor shots/i);
-    await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
+    const importSurface = responsiveImportSurface(page);
+    await expect(importSurface.locator('[data-import-ready="true"]')).toBeVisible();
 
     const fixturePath = path.join(
       process.cwd(),
@@ -42,12 +43,26 @@ test.describe("authenticated app flows", () => {
       "fixtures",
       "manual-column-map.csv",
     );
-    await page.setInputFiles("#csv-file", fixturePath);
+    await importSurface.locator("#csv-file").setInputFiles(fixturePath);
 
-    await expect(page.getByText("Manual column mapping")).toBeVisible();
-    await page.getByRole("button", { name: /apply suggestions/i }).click();
-    await expect(page.getByText("Driver").first()).toBeVisible();
-    await expect(page.getByText("CSV file selected")).toBeVisible();
+    const mappingStep = importSurface.getByRole("button", {
+      name: "3. Confirm mapping",
+      exact: true,
+    });
+    if (await mappingStep.isVisible()) {
+      await mappingStep.click();
+    }
+    await expect(importSurface.getByText("Manual column mapping")).toBeVisible();
+    await importSurface.getByRole("button", { name: /apply suggestions/i }).click();
+    const previewStep = importSurface.getByRole("button", {
+      name: "2. Preview data",
+      exact: true,
+    });
+    if (await previewStep.isVisible()) {
+      await previewStep.click();
+    }
+    await expect(importSurface.getByText("Driver").filter({ visible: true }).first()).toBeVisible();
+    await expect(importSurface.getByText("CSV file selected", { exact: true })).toBeVisible();
   });
 
   test("queues a CSV import while offline and shows retry status", async ({ context, page }) => {
@@ -57,9 +72,10 @@ test.describe("authenticated app flows", () => {
       window.localStorage.setItem("forekinghell:offline-import-storage-enabled", "1");
     });
 
-    await gotoAppRoute(page, "/import");
+    await gotoAppRoute(page, "/import?source=csv#csv-import");
     await expectPageReady(page, /Import launch monitor shots/i);
-    await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
+    const importSurface = responsiveImportSurface(page);
+    await expect(importSurface.locator('[data-import-ready="true"]')).toBeVisible();
 
     const fixturePath = path.join(
       process.cwd(),
@@ -68,11 +84,25 @@ test.describe("authenticated app flows", () => {
       "fixtures",
       "standard-rapsodo.csv",
     );
-    await page.setInputFiles("#csv-file", fixturePath);
-    await expect(page.getByText("Driver").first()).toBeVisible();
+    await importSurface.locator("#csv-file").setInputFiles(fixturePath);
+    const previewStep = importSurface.getByRole("button", {
+      name: "2. Preview data",
+      exact: true,
+    });
+    if (await previewStep.isVisible()) {
+      await previewStep.click();
+    }
+    await expect(importSurface.getByText("Driver").filter({ visible: true }).first()).toBeVisible();
 
     await context.setOffline(true);
-    await page.getByRole("button", { name: /queue offline/i }).click();
+    const importStep = importSurface.getByRole("button", {
+      name: "4. Review & import",
+      exact: true,
+    });
+    if (await importStep.isVisible()) {
+      await importStep.click();
+    }
+    await importSurface.getByRole("button", { name: /queue offline/i }).click({ force: true });
     await expect(
       page.getByText(
         "Private analysis needs a connection. Queued imports and round edits stay on this device until sync succeeds.",
@@ -92,11 +122,15 @@ test.describe("authenticated app flows", () => {
   });
 
   test("coach chat UI is ready without generating a paid response", async ({ page }) => {
+    test.skip(
+      (page.viewportSize()?.width ?? 0) < 1024,
+      "AI coach tools require the desktop layout",
+    );
     skipWhenNoAuth();
 
     await gotoAppRoute(page, "/coach");
     await expectPageReady(page, /AI coach tools|Ask from your shot data/i);
-    await page.getByText("AI coach tools", { exact: true }).first().click();
+    await page.getByText("AI coach tools", { exact: true }).filter({ visible: true }).click();
     const chatCard = page.locator('[data-coach-chat-ready="true"]').filter({ visible: true });
     await expect(chatCard).toBeVisible();
     const coachQuestion = chatCard.getByLabel("Ask from your shot data");
@@ -120,4 +154,8 @@ async function gotoAppRoute(page: Page, path: string) {
   }
 
   await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
+}
+
+function responsiveImportSurface(page: Page) {
+  return page.locator((page.viewportSize()?.width ?? 0) < 1024 ? "#csv-import" : "#rapsodo-import");
 }

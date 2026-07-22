@@ -60,16 +60,23 @@ test.describe("cross-user isolation", () => {
     await page.goto("/rounds");
     await expectPageReady(page, /Saved rounds/i);
     await expect(page.locator("body")).not.toContainText(data.otherCourseName);
-    const ownRound = page.getByRole("row").filter({ hasText: data.ownCourseName }).first();
-    await expect(ownRound).toBeVisible();
+    await expect(
+      page.getByText(data.ownCourseName, { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    const ownRound = page.locator("tr").filter({ hasText: data.ownCourseName }).first();
     await expect(ownRound).toContainText("0 shots");
 
     await page.goto("/handicap");
     await expectPageReady(page, /Handicap/i);
     await expect(page.locator("body")).not.toContainText(data.otherCourseName);
-    const ownHandicapRound = page.getByRole("row").filter({ hasText: data.ownCourseName }).first();
-    await expect(ownHandicapRound).toBeVisible();
-    await expect(ownHandicapRound.locator("td").last()).toHaveText("0");
+    await expect(
+      page.getByText(data.ownCourseName, { exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    const ownHandicapShotCount = page
+      .locator("tr")
+      .filter({ hasText: data.ownCourseName })
+      .locator('td[data-column="shots"]');
+    await expect(ownHandicapShotCount).toHaveText("0");
   });
 });
 

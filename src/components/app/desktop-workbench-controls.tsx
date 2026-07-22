@@ -366,6 +366,7 @@ export function DesktopWorkbenchControls({
           className,
         )}
         data-desktop-workbench-toolbar
+        data-workbench-controls-hydrated={hydrated ? "true" : "false"}
         data-filter-toolbar
       >
         <div className="min-w-0 flex-[1_1_14rem]">

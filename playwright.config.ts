@@ -1,9 +1,30 @@
 import { defineConfig, devices } from "@playwright/test";
+import { loadEnvConfig } from "@next/env";
 
 import { createLocalBypassStorageState, localAuthBypassEnabled } from "./tests/e2e/local-auth";
 
+loadEnvConfig(process.cwd());
+
 const port = process.env.PLAYWRIGHT_PORT ?? "3100";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${port}`;
+const useProductionServer = process.env.PLAYWRIGHT_SERVER_MODE === "production";
+const productionServerEnvironment: Record<string, string> = useProductionServer
+  ? {
+      NEXT_PUBLIC_SITE_URL:
+        process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://playwright.example.test",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
+        "playwright-publishable-key",
+      SUPABASE_SERVICE_ROLE_KEY:
+        process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "playwright-service-role-key",
+      SCORECARD_PROOF_SECRET:
+        process.env.SCORECARD_PROOF_SECRET?.trim() ||
+        "playwright-scorecard-proof-secret-with-more-than-32-characters",
+      CRON_SECRET:
+        process.env.CRON_SECRET?.trim() || "playwright-cron-secret-with-more-than-32-characters",
+    }
+  : {};
 const localBypassStorageState = localAuthBypassEnabled(baseURL)
   ? createLocalBypassStorageState(baseURL)
   : undefined;
@@ -115,12 +136,15 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: `npm run dev -- --webpack --port ${port}`,
+        command: useProductionServer
+          ? `npm run start -- --port ${port}`
+          : `npm run dev -- --webpack --port ${port}`,
         url: `${baseURL}/login`,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: useProductionServer ? false : !process.env.CI,
         timeout: 120_000,
         env: {
           ...process.env,
+          ...productionServerEnvironment,
           DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX ?? "5",
           NODE_OPTIONS: process.env.NODE_OPTIONS ?? "--max-old-space-size=12288",
         },

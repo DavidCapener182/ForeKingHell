@@ -307,6 +307,7 @@ export function DesktopWorkbenchChrome({
   const commandInputRef = useRef<HTMLInputElement>(null);
   const gSequenceTimerRef = useRef<number | null>(null);
   const awaitingGoRef = useRef(false);
+  const previousPathnameRef = useRef(pathname);
 
   const activeItem = useMemo(() => findActiveItem(navGroups, pathname), [navGroups, pathname]);
   const breadcrumbItems = useMemo(
@@ -341,6 +342,16 @@ export function DesktopWorkbenchChrome({
     }
   }, [assistantContext, assistantOpen]);
 
+  useEffect(() => {
+    if (previousPathnameRef.current === pathname) {
+      return;
+    }
+
+    previousPathnameRef.current = pathname;
+    const timer = window.setTimeout(() => setWorkspaceLinksOpen(false), 0);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
+
   const assistantSheetOpen = assistantOpen && Boolean(assistantContext);
 
   const openCommandPalette = useCallback(() => {
@@ -353,14 +364,12 @@ export function DesktopWorkbenchChrome({
 
   const closeCommandAndNavigate = useCallback(
     (href: string) => {
+      router.push(href);
       setCommandOpen(false);
       setShortcutsOpen(false);
       setAssistantOpen(false);
       setWorkspaceLinksOpen(false);
       setQuery("");
-      window.requestAnimationFrame(() => {
-        router.push(href);
-      });
     },
     [router],
   );
@@ -781,7 +790,14 @@ export function DesktopWorkbenchChrome({
             onNavigate={closeCommandAndNavigate}
             onOpenShortcuts={() => setShortcutsOpen(true)}
             onExportCurrent={() => findCurrentExportControl()?.click()}
-            workspaceSwitcher={<WorkspaceSwitcher pathname={pathname} isAdmin={isAdmin} embedded />}
+            workspaceSwitcher={
+              <WorkspaceSwitcher
+                pathname={pathname}
+                isAdmin={isAdmin}
+                embedded
+                onNavigate={() => setWorkspaceLinksOpen(false)}
+              />
+            }
             notificationMenu={<NotificationCentre embedded />}
           />
 

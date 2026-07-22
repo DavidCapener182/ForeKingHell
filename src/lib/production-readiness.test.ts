@@ -22,10 +22,11 @@ describe("production readiness gate", () => {
       '"--max-failures=1"',
       '"test:lighthouse"',
       '"diff", "--check"',
-      "PLAYWRIGHT_E2E_AUTH_BYPASS",
+      'PLAYWRIGHT_SERVER_MODE: "production"',
       "playwright-scorecard-proof-secret-with-more-than-32-characters",
-      '"http://127.0.0.1:3000"',
-      "Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.",
+      "contains a local bypass token, not a Supabase session",
+      "cookieHeaderFromStorageState(authState)",
+      "Authenticated E2E not fully verified",
     ]) {
       expect(script).toContain(expected);
     }
@@ -40,7 +41,7 @@ describe("production readiness gate", () => {
     const productionDocs = readFileSync(join(root, "docs/PRODUCTION_READINESS.md"), "utf8");
     const limitationsDocs = readFileSync(join(root, "docs/KNOWN_LIMITATIONS.md"), "utf8");
 
-    expect(productionGateSource).toContain('PLAYWRIGHT_E2E_AUTH_BYPASS: "1"');
+    expect(productionGateSource).not.toContain('PLAYWRIGHT_E2E_AUTH_BYPASS: "1"');
     expect(currentUserSource).toContain("process.env.PLAYWRIGHT_E2E_AUTH_BYPASS");
     expect(currentUserSource).toContain('process.env.NODE_ENV === "production"');
     expect(currentUserSource).toContain("await cookies()");
@@ -206,6 +207,8 @@ describe("production readiness gate", () => {
   it("starts local Lighthouse with the validated production environment contract", () => {
     const lighthouse = readFileSync(join(root, "scripts/lighthouse-audit.mjs"), "utf8");
 
+    expect(lighthouse).toContain("loadEnvConfig(process.cwd())");
+    expect(lighthouse).toContain("NEXT_PUBLIC_SUPABASE_ANON_KEY");
     expect(lighthouse).toContain("localAuditServerEnvironment()");
     for (const name of [
       "DATABASE_URL",
@@ -223,12 +226,30 @@ describe("production readiness gate", () => {
 
   it("keeps the release browser matrix explicit", () => {
     const playwright = readFileSync(join(root, "playwright.config.ts"), "utf8");
+    const productionGate = readFileSync(
+      join(root, "scripts/production-readiness-check.mjs"),
+      "utf8",
+    );
 
     for (const project of ['name: "chromium"', 'name: "firefox"', 'name: "webkit"']) {
       expect(playwright).toContain(project);
     }
     expect(playwright).toContain('name: "mobile-webkit"');
     expect(playwright).toContain('devices["iPhone 13"]');
+    expect(playwright).toContain('process.env.PLAYWRIGHT_SERVER_MODE === "production"');
+    expect(playwright).toContain("npm run start -- --port");
+    expect(playwright).toContain("npm run dev -- --webpack --port");
+    expect(productionGate).toContain('PLAYWRIGHT_SERVER_MODE: "production"');
+    for (const name of [
+      "NEXT_PUBLIC_SITE_URL",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SCORECARD_PROOF_SECRET",
+      "CRON_SECRET",
+    ]) {
+      expect(playwright).toContain(name);
+    }
+    expect(playwright).not.toContain("FKH_SKIP_ENV_VALIDATION");
   });
 
   it("keeps the AAA mobile shell primitives explicit and route chrome out of the h1 outline", () => {

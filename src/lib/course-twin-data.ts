@@ -13,12 +13,13 @@ import {
   type CourseTwinReplayDocument,
 } from "@/lib/course-twin-contract";
 import {
-  buildCourseTwinReplay,
-  type CourseTwinReplaySourceShot,
-} from "@/lib/course-twin-replay";
+  averageCourseTwinCoordinate,
+  courseTwinBoundsForPoints,
+  createCourseTwinProjector,
+} from "@/lib/course-twin-geometry";
+import { buildCourseTwinReplay, type CourseTwinReplaySourceShot } from "@/lib/course-twin-replay";
 
 const PILOT_EXTERNAL_ID = "bootle-golf-course";
-const METRES_PER_DEGREE_LATITUDE = 111_320;
 
 export function isCourseTwinFeatureEnabled() {
   return process.env.NEXT_PUBLIC_ENABLE_COURSE_TWIN !== "false";
@@ -89,19 +90,27 @@ export async function getCourseTwinManifest({
   if (selectedHoles.length === 0) return null;
 
   const origin = {
-    latitude: course.latitude ?? average(selectedHoles.map((hole) => hole.teeLat)),
-    longitude: course.longitude ?? average(selectedHoles.map((hole) => hole.teeLng)),
+    latitude:
+      course.latitude ?? averageCourseTwinCoordinate(selectedHoles.map((hole) => hole.teeLat)),
+    longitude:
+      course.longitude ?? averageCourseTwinCoordinate(selectedHoles.map((hole) => hole.teeLng)),
   };
-  const toLocal = localProjector(origin.latitude, origin.longitude);
+  const toLocal = createCourseTwinProjector(origin.latitude, origin.longitude);
   const manifestHoles = selectedHoles.map((hole) => {
-    const centerline = hole.centerlineGeojson.coordinates.map(([lng, lat]) => toLocal(lat, lng));
+    const projectedCenterline = hole.centerlineGeojson.coordinates.map(([lng, lat]) =>
+      toLocal(lat, lng),
+    );
+    const centerline =
+      projectedCenterline.length >= 2
+        ? projectedCenterline
+        : [toLocal(hole.teeLat, hole.teeLng), toLocal(hole.greenLat, hole.greenLng)];
     return {
       holeNumber: hole.holeNumber,
       par: hole.par,
       yards: hole.yards,
       strokeIndex: hole.strokeIndex,
-      tee: centerline[0] ?? toLocal(hole.teeLat, hole.teeLng),
-      green: centerline.at(-1) ?? toLocal(hole.greenLat, hole.greenLng),
+      tee: centerline[0],
+      green: centerline.at(-1) ?? centerline[0],
       centerline,
     };
   });
@@ -112,7 +121,7 @@ export async function getCourseTwinManifest({
     ...manifestHoles.flatMap((hole) => hole.centerline),
     ...manifestFeatures.flatMap((feature) => feature.rings.flat()),
   ];
-  const bounds = boundsForPoints(points);
+  const bounds = courseTwinBoundsForPoints(points);
   const warnings = [
     "Prototype terrain is a deterministic visual surface, not the published Environment Agency LiDAR package.",
   ];
@@ -182,6 +191,7 @@ export async function getCourseTwinReplay({
       fileName: sessions.fileName,
     })
     .from(sessions)
+    .innerJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
     .where(and(...predicates))
     .orderBy(desc(sessions.date))
     .limit(1);
@@ -226,15 +236,6 @@ function teeSetWithMostHoles(rows: Array<{ teeSetId: string }>) {
   const counts = new Map<string, number>();
   for (const row of rows) counts.set(row.teeSetId, (counts.get(row.teeSetId) ?? 0) + 1);
   return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null;
-}
-
-function localProjector(originLat: number, originLng: number) {
-  const metresPerDegreeLongitude = METRES_PER_DEGREE_LATITUDE * Math.cos((originLat * Math.PI) / 180);
-  return (latitude: number, longitude: number): CourseTwinPoint => [
-    (longitude - originLng) * metresPerDegreeLongitude,
-    0,
-    -(latitude - originLat) * METRES_PER_DEGREE_LATITUDE,
-  ];
 }
 
 function featureToManifest(
@@ -286,20 +287,4 @@ function featureToManifest(
     rings,
     source: feature.source,
   };
-}
-
-function boundsForPoints(points: CourseTwinPoint[]) {
-  const xs = points.map((point) => point[0]);
-  const zs = points.map((point) => point[2]);
-  const padding = 80;
-  return {
-    minX: Math.min(...xs) - padding,
-    maxX: Math.max(...xs) + padding,
-    minZ: Math.min(...zs) - padding,
-    maxZ: Math.max(...zs) + padding,
-  };
-}
-
-function average(values: number[]) {
-  return values.reduce((total, value) => total + value, 0) / Math.max(1, values.length);
 }

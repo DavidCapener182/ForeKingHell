@@ -20,6 +20,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS fkh_course_twins_course_idx
   ON public.fkh_course_twins(course_id);
 CREATE INDEX IF NOT EXISTS fkh_course_twins_status_idx
   ON public.fkh_course_twins(status, updated_at);
+CREATE INDEX IF NOT EXISTS fkh_course_twins_active_version_idx
+  ON public.fkh_course_twins(active_version_id);
 
 CREATE TABLE IF NOT EXISTS public.fkh_course_twin_builds (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -77,14 +79,22 @@ CREATE TABLE IF NOT EXISTS public.fkh_course_twin_versions (
 
 CREATE UNIQUE INDEX IF NOT EXISTS fkh_course_twin_versions_number_idx
   ON public.fkh_course_twin_versions(course_twin_id, package_version);
+CREATE UNIQUE INDEX IF NOT EXISTS fkh_course_twin_versions_id_twin_idx
+  ON public.fkh_course_twin_versions(id, course_twin_id);
 CREATE INDEX IF NOT EXISTS fkh_course_twin_versions_status_idx
   ON public.fkh_course_twin_versions(course_twin_id, status);
 CREATE INDEX IF NOT EXISTS fkh_course_twin_versions_build_idx
   ON public.fkh_course_twin_versions(build_id);
 
-ALTER TABLE public.fkh_course_twins
-  ADD CONSTRAINT fkh_course_twins_active_version_fk
-  FOREIGN KEY (active_version_id) REFERENCES public.fkh_course_twin_versions(id) ON DELETE SET NULL;
+DO $$ BEGIN
+  ALTER TABLE public.fkh_course_twins
+    ADD CONSTRAINT fkh_course_twins_active_version_fk
+    FOREIGN KEY (active_version_id, id)
+    REFERENCES public.fkh_course_twin_versions(id, course_twin_id)
+    ON DELETE SET NULL (active_version_id);
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.fkh_course_twin_corrections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -117,27 +127,49 @@ ALTER TABLE public.fkh_course_twin_builds FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.fkh_course_twin_corrections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fkh_course_twin_corrections FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS fkh_course_twins_select_course_access
+  ON public.fkh_course_twins;
 CREATE POLICY fkh_course_twins_select_course_access
   ON public.fkh_course_twins FOR SELECT TO authenticated
   USING (
-    EXISTS (
-      SELECT 1 FROM public.fkh_courses course
-      WHERE course.id = course_id AND public.fkh_can_read_course(course)
+    (
+      status = 'published'
+      AND EXISTS (
+        SELECT 1 FROM public.fkh_courses course
+        WHERE course.id = course_id AND public.fkh_can_read_course(course)
+      )
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.fkh_admin_users admin_user
+      WHERE admin_user.user_id = (SELECT auth.uid()) AND admin_user.status = 'active'
     )
   );
 
+DROP POLICY IF EXISTS fkh_course_twin_versions_select_published
+  ON public.fkh_course_twin_versions;
 CREATE POLICY fkh_course_twin_versions_select_published
   ON public.fkh_course_twin_versions FOR SELECT TO authenticated
   USING (
-    status = 'published'
-    AND EXISTS (
-      SELECT 1
-      FROM public.fkh_course_twins twin
-      JOIN public.fkh_courses course ON course.id = twin.course_id
-      WHERE twin.id = course_twin_id AND public.fkh_can_read_course(course)
+    (
+      status = 'published'
+      AND EXISTS (
+        SELECT 1
+        FROM public.fkh_course_twins twin
+        JOIN public.fkh_courses course ON course.id = twin.course_id
+        WHERE twin.id = course_twin_id
+          AND twin.status = 'published'
+          AND twin.active_version_id = fkh_course_twin_versions.id
+          AND public.fkh_can_read_course(course)
+      )
+    )
+    OR EXISTS (
+      SELECT 1 FROM public.fkh_admin_users admin_user
+      WHERE admin_user.user_id = (SELECT auth.uid()) AND admin_user.status = 'active'
     )
   );
 
+DROP POLICY IF EXISTS fkh_course_twin_builds_select_admin
+  ON public.fkh_course_twin_builds;
 CREATE POLICY fkh_course_twin_builds_select_admin
   ON public.fkh_course_twin_builds FOR SELECT TO authenticated
   USING (
@@ -147,6 +179,8 @@ CREATE POLICY fkh_course_twin_builds_select_admin
     )
   );
 
+DROP POLICY IF EXISTS fkh_course_twin_corrections_select_admin
+  ON public.fkh_course_twin_corrections;
 CREATE POLICY fkh_course_twin_corrections_select_admin
   ON public.fkh_course_twin_corrections FOR SELECT TO authenticated
   USING (
@@ -156,11 +190,18 @@ CREATE POLICY fkh_course_twin_corrections_select_admin
     )
   );
 
-REVOKE ALL ON TABLE public.fkh_course_twins FROM PUBLIC, anon;
-REVOKE ALL ON TABLE public.fkh_course_twin_versions FROM PUBLIC, anon;
-REVOKE ALL ON TABLE public.fkh_course_twin_builds FROM PUBLIC, anon;
-REVOKE ALL ON TABLE public.fkh_course_twin_corrections FROM PUBLIC, anon;
+REVOKE ALL ON TABLE public.fkh_course_twins FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.fkh_course_twin_versions FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.fkh_course_twin_builds FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.fkh_course_twin_corrections FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.fkh_course_twins TO authenticated;
 GRANT SELECT ON TABLE public.fkh_course_twin_versions TO authenticated;
 GRANT SELECT ON TABLE public.fkh_course_twin_builds TO authenticated;
 GRANT SELECT ON TABLE public.fkh_course_twin_corrections TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.fkh_course_twins TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.fkh_course_twin_versions TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.fkh_course_twin_builds TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.fkh_course_twin_corrections TO service_role;
+
+-- Course-package builders and administrative mutation endpoints use the server-side
+-- service role. Authenticated browser sessions intentionally receive SELECT only.

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, ShieldCheck, UserPlus, Zap } from "lucide-react";
 
 import {
@@ -398,15 +397,14 @@ function SortableAdminUserHeadLink({
   const label = adminUserSortLabels[metric];
 
   return (
-    <Link
+    <a
       href={adminUserSortHref({ dir: nextDir, metric, query })}
-      prefetch={false}
       className="focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold outline-none transition-colors hover:text-foreground"
       aria-label={`Sort admin users by ${label}, ${adminUserSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
       <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
-    </Link>
+    </a>
   );
 }
 
