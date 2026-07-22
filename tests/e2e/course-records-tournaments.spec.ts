@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import postgres, { type Sql } from "postgres";
 
 import { authStorageState, expectPageReady } from "./helpers";
-import { createScorecardProofToken } from "../../src/lib/scorecard-proof-token";
+import { createScorecardProofToken } from "../../src/lib/scorecard-proof-token-core";
 
 type CompetitionFixture = {
   token: string;

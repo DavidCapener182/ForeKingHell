@@ -64,4 +64,42 @@ test.describe("authentication", () => {
     await expect(page).toHaveURL(/\/privacy/);
     await expect(page.getByRole("heading", { name: "LM World Tour data notice" })).toBeVisible();
   });
+
+  test("recovers from a corrupted Supabase refresh cookie", async ({ context, page }) => {
+    test.skip(
+      process.env.PLAYWRIGHT_LIVE_SUPABASE_AUTH !== "1",
+      "Requires the disposable live Supabase auth project.",
+    );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!supabaseUrl) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required for this test.");
+    const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+
+    await context.addCookies([
+      {
+        name: `sb-${projectRef}-auth-token`,
+        value: JSON.stringify({
+          access_token: "expired",
+          refresh_token: "deliberately-corrupted-refresh-token",
+          expires_at: 1,
+        }),
+        url: test.info().project.use.baseURL as string,
+      },
+      {
+        name: `sb-${projectRef}-auth-token-code-verifier`,
+        value: "stale-pkce-verifier",
+        url: test.info().project.use.baseURL as string,
+      },
+    ]);
+
+    await page.goto("/dashboard?from=expired-cookie");
+
+    await expect(page).toHaveURL(
+      /\/login\?reason=session_expired&next=%2Fdashboard%3Ffrom%3Dexpired-cookie/,
+    );
+    await expect(page.getByText("Your session expired", { exact: true })).toBeVisible();
+    const cookies = await context.cookies();
+    expect(cookies.some((cookie) => cookie.name.startsWith(`sb-${projectRef}-auth-token`))).toBe(
+      false,
+    );
+  });
 });

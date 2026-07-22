@@ -12,6 +12,7 @@ import {
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { launchMonitorProviders } from "@/lib/imports/providers";
+import { safeProviderFailureMessage } from "@/lib/provider-failure-message";
 
 export async function getProviderIntegrationsPageData() {
   const userId = await requireCurrentUserId();
@@ -82,12 +83,15 @@ export async function getProviderIntegrationsPageData() {
           ...providerFilesForKind.map((file) => file.updatedAt),
         ]),
         failureCount: failedJobs.length,
-        latestFailureMessage: failedJobs[0]?.errorMessage ?? null,
+        latestFailureMessage: safeProviderFailureMessage(failedJobs[0]?.errorMessage),
       };
     }),
     accounts,
     sessions,
-    jobs,
+    jobs: jobs.map((job) => ({
+      ...job,
+      errorMessage: safeProviderFailureMessage(job.errorMessage),
+    })),
     files,
     mappings,
   };

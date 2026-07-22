@@ -6,8 +6,8 @@ const execFileAsync = promisify(execFile);
 
 const port = process.env.LIGHTHOUSE_PORT ?? "3110";
 const baseUrl = process.env.LIGHTHOUSE_BASE_URL ?? `http://127.0.0.1:${port}`;
-const defaultRoutes = [
-  "/login",
+const defaultRoutes = ["/", "/login"];
+const authenticatedRoutes = [
   "/dashboard",
   "/today",
   "/import",
@@ -26,6 +26,9 @@ const defaultRoutes = [
   "/data-chat",
   "/feed",
 ];
+if (process.env.LIGHTHOUSE_COOKIE || process.env.LIGHTHOUSE_EXTRA_HEADERS_JSON) {
+  defaultRoutes.push(...authenticatedRoutes);
+}
 const routes = (process.env.LIGHTHOUSE_ROUTES ?? defaultRoutes.join(","))
   .split(",")
   .map((route) => route.trim())
@@ -41,7 +44,7 @@ async function main() {
   if (!process.env.LIGHTHOUSE_BASE_URL) {
     serverProcess = spawn("npm", ["run", "start", "--", "-p", port], {
       stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
+      env: localAuditServerEnvironment(),
     });
     serverProcess.stdout.on("data", (chunk) => process.stdout.write(chunk));
     serverProcess.stderr.on("data", (chunk) => process.stderr.write(chunk));
@@ -75,6 +78,41 @@ async function main() {
     await execFileAsync(npxBin, args, { maxBuffer: 1024 * 1024 * 16 });
     process.stdout.write(`Lighthouse audit written for ${url}\n`);
   }
+}
+
+function localAuditServerEnvironment() {
+  return {
+    ...process.env,
+    DATABASE_URL: configuredValue(
+      "DATABASE_URL",
+      "postgres://postgres:postgres@127.0.0.1:5432/forekinghell_lighthouse",
+    ),
+    NEXT_PUBLIC_SITE_URL: configuredValue(
+      "NEXT_PUBLIC_SITE_URL",
+      "https://lighthouse.example.test",
+    ),
+    NEXT_PUBLIC_SUPABASE_URL: configuredValue(
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "https://lighthouse-project.supabase.co",
+    ),
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: configuredValue(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "lighthouse-publishable-key",
+    ),
+    SUPABASE_SERVICE_ROLE_KEY: configuredValue(
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "lighthouse-service-role-key",
+    ),
+    SCORECARD_PROOF_SECRET: configuredValue(
+      "SCORECARD_PROOF_SECRET",
+      "lighthouse-scorecard-proof-secret-32-characters",
+    ),
+    CRON_SECRET: configuredValue("CRON_SECRET", "lighthouse-cron-secret-32-characters"),
+  };
+}
+
+function configuredValue(name, fallback) {
+  return process.env[name]?.trim() || fallback;
 }
 
 async function waitFor(url) {

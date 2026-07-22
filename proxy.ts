@@ -1,17 +1,37 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_FILE = /\.[\w-]+$/;
-const PUBLIC_PATH_PREFIXES = ["/_next/", "/icons/", "/assets/", "/auth/", "/share/", "/api/cron/"];
+const PUBLIC_PATH_PREFIXES = ["/_next/static/", "/_next/image/", "/icons/", "/assets/", "/share/"];
 const PUBLIC_PATHS = new Set([
+  "/",
+  "/.well-known/security.txt",
   "/favicon.ico",
   "/login",
   "/manifest.webmanifest",
   "/offline",
   "/privacy",
+  "/auth/callback",
+  "/api/cron/tour-leaderboards",
+  "/api/security/csp-report",
   "/api/stripe/webhook",
   "/sw.js",
 ]);
+
+const INVALID_SESSION_ERROR_CODES = new Set([
+  "invalid_refresh_token",
+  "refresh_token_already_used",
+  "refresh_token_not_found",
+  "session_expired",
+  "session_not_found",
+]);
+const INVALID_SESSION_MESSAGE_PARTS = [
+  "invalid refresh token",
+  "jwt expired",
+  "refresh token already used",
+  "refresh token has already been used",
+  "refresh token not found",
+  "session expired",
+];
 
 export async function proxy(request: NextRequest) {
   const password = process.env.FKH_BASIC_AUTH_PASSWORD;
@@ -74,11 +94,23 @@ async function refreshSessionAndProtect(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>;
 
-  if (!user) {
+  try {
+    authResult = await supabase.auth.getUser();
+  } catch (error) {
+    if (!isInvalidSessionError(error)) {
+      throw error;
+    }
+
+    return expiredSessionResponse(request, supabaseResponse);
+  }
+
+  if (isInvalidSessionError(authResult.error)) {
+    return expiredSessionResponse(request, supabaseResponse);
+  }
+
+  if (!authResult.data.user) {
     return copySupabaseResponseState(supabaseResponse, unauthenticatedResponse(request));
   }
 
@@ -89,13 +121,49 @@ function unauthenticatedResponse(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/")) {
-    return noStore(NextResponse.json({ message: "Authentication required." }, { status: 401 }));
+    return noStore(
+      NextResponse.json(
+        { code: "authentication_required", message: "Authentication required." },
+        { status: 401 },
+      ),
+    );
   }
 
   const loginUrl = request.nextUrl.clone();
   loginUrl.pathname = "/login";
-  loginUrl.searchParams.set("next", pathname);
+  loginUrl.search = "";
+  loginUrl.searchParams.set("next", localReturnTarget(request));
   return noStore(NextResponse.redirect(loginUrl));
+}
+
+function expiredSessionResponse(request: NextRequest, supabaseResponse: NextResponse) {
+  const target = request.nextUrl.pathname.startsWith("/api/")
+    ? NextResponse.json(
+        {
+          code: "session_expired",
+          message: "Your session has expired. Please sign in again.",
+        },
+        { status: 401 },
+      )
+    : sessionExpiredRedirect(request);
+  const response = copySupabaseResponseState(supabaseResponse, noStore(target));
+
+  clearSupabaseAuthCookiesFromResponse(request, supabaseResponse, response);
+  return response;
+}
+
+function sessionExpiredRedirect(request: NextRequest) {
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = "/login";
+  loginUrl.search = "";
+  loginUrl.searchParams.set("reason", "session_expired");
+  loginUrl.searchParams.set("next", localReturnTarget(request));
+  return NextResponse.redirect(loginUrl);
+}
+
+function localReturnTarget(request: NextRequest) {
+  const target = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  return target.startsWith("/") && !target.startsWith("//") ? target : "/today";
 }
 
 function noStore(response: NextResponse) {
@@ -126,10 +194,50 @@ function getSupabasePublicConfig() {
 
 function isPublicPath(pathname: string) {
   return (
-    PUBLIC_PATHS.has(pathname) ||
-    PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
-    PUBLIC_FILE.test(pathname)
+    PUBLIC_PATHS.has(pathname) || PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   );
+}
+
+function isInvalidSessionError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === "string" ? candidate.code.toLowerCase() : "";
+  const message = typeof candidate.message === "string" ? candidate.message.toLowerCase() : "";
+
+  return (
+    INVALID_SESSION_ERROR_CODES.has(code) ||
+    INVALID_SESSION_MESSAGE_PARTS.some((part) => message.includes(part))
+  );
+}
+
+function clearSupabaseAuthCookiesFromResponse(
+  request: NextRequest,
+  supabaseResponse: NextResponse,
+  response: NextResponse,
+) {
+  const cookieNames = new Set(
+    [...request.cookies.getAll(), ...supabaseResponse.cookies.getAll()]
+      .map((cookie) => cookie.name)
+      .filter(isSupabaseAuthCookieName),
+  );
+
+  for (const name of cookieNames) {
+    response.cookies.set(name, "", {
+      expires: new Date(0),
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+    });
+  }
+}
+
+function isSupabaseAuthCookieName(name: string) {
+  return /^sb-.+-auth-token(?:-code-verifier)?(?:\.\d+)?$/.test(name);
 }
 
 function hasPlaywrightBypassSession(request: NextRequest) {

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/dashboard/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/dashboard/page.tsx"), "utf8");
 
 describe("dashboard desktop source", () => {
   it("does not present a path moving away from neutral as an improvement", () => {

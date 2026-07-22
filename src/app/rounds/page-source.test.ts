@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/rounds/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/rounds/page.tsx"), "utf8");
 
 describe("rounds desktop workbench page", () => {
   it("keeps the round history table-first until the shared wide-monitor rail appears", () => {

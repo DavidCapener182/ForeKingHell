@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/admin/system-checks/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(admin)/admin/system-checks/page.tsx"),
+  "utf8",
+);
 
 describe("admin system checks desktop console source", () => {
   it("adds a protected provider health and system checks console", () => {

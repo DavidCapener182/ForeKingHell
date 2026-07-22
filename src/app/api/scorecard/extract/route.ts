@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  isSupportedImageDataUrl,
   rejectOversizedDataUrl,
   rateLimitRequest,
   readBoundedJsonBody,
@@ -9,6 +10,7 @@ import {
 import { aiErrorPayload, generateAiJson } from "@/lib/ai/client";
 import { scorecardExtractionSchema } from "@/lib/ai/schemas";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { sanitizeScorecardImageDataUrl } from "@/lib/image-sanitization";
 import { normalizeExtractedScorecard } from "@/lib/scorecard-extraction";
 import { createScorecardProofToken, type ScorecardProofScope } from "@/lib/scorecard-proof-token";
 
@@ -81,13 +83,37 @@ export async function POST(request: NextRequest) {
   const imageDataUrl = typeof body?.imageDataUrl === "string" ? body.imageDataUrl : "";
   const proofScope = normalizeProofScope(body);
 
-  if (!imageDataUrl.startsWith("data:image/") || !proofScope) {
+  if (!proofScope) {
     return NextResponse.json({ message: "Send a scorecard image data URL." }, { status: 400 });
   }
 
   const imageSizeRejection = rejectOversizedDataUrl(imageDataUrl, MAX_IMAGE_BYTES);
   if (imageSizeRejection) {
     return imageSizeRejection;
+  }
+
+  if (!isSupportedImageDataUrl(imageDataUrl)) {
+    return NextResponse.json(
+      { message: "Use a JPEG, PNG or WebP scorecard image." },
+      { status: 415 },
+    );
+  }
+
+  let sanitizedImage: Awaited<ReturnType<typeof sanitizeScorecardImageDataUrl>>;
+  try {
+    sanitizedImage = await sanitizeScorecardImageDataUrl(imageDataUrl);
+  } catch {
+    return NextResponse.json(
+      { message: "The scorecard image could not be safely decoded." },
+      { status: 415 },
+    );
+  }
+
+  if (sanitizedImage.byteLength > MAX_IMAGE_BYTES) {
+    return NextResponse.json(
+      { message: "The normalized scorecard image is too large. Limit is 5 MB." },
+      { status: 413 },
+    );
   }
 
   try {
@@ -101,12 +127,12 @@ export async function POST(request: NextRequest) {
           role: "user",
           content: [
             { type: "input_text", text: EXTRACTION_PROMPT },
-            { type: "input_image", image_url: imageDataUrl, detail: "high" },
+            { type: "input_image", image_url: sanitizedImage.dataUrl, detail: "high" },
           ],
         },
       ],
       metadataJson: {
-        estimatedImageBytes: estimateDataUrlBytes(imageDataUrl),
+        estimatedImageBytes: sanitizedImage.byteLength,
       },
     });
     const scorecard = normalizeExtractedScorecard(result.output);
@@ -169,9 +195,4 @@ function normalizeProofScope(
       : null;
 
   return scopeType && scopeId ? { scopeType, scopeId, roundNumber } : null;
-}
-
-function estimateDataUrlBytes(dataUrl: string) {
-  const base64 = dataUrl.split(",", 2)[1] ?? "";
-  return Math.ceil((base64.length * 3) / 4);
 }

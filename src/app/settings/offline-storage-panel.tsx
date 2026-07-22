@@ -1,22 +1,27 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ShieldCheck, Trash2, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  OFFLINE_IMPORT_TTL_MS,
   clearOfflineActions,
   currentOfflineAccountId,
   listOfflineActions,
   purgeExpiredOfflineActions,
   removeOfflineAction,
+  retryDeadLetterOfflineAction,
   type OfflineActionRecord,
 } from "@/lib/offline-queue";
 import {
+  getOfflineLastSyncAt,
   isOfflineImportStorageEnabled,
-  setOfflineImportStorageEnabled,
+  offlineImportRetentionDays,
+  offlineImportRetentionOptions,
+  setOfflineImportRetentionDays,
   subscribeOfflineImportStoragePreference,
+  type OfflineImportRetentionDays,
 } from "@/lib/offline-storage-preferences";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -27,11 +32,15 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 export function OfflineStoragePanel() {
   const [enabled, setEnabled] = useState(false);
+  const [retentionDays, setRetentionDays] = useState<OfflineImportRetentionDays>(0);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [actions, setActions] = useState<OfflineActionRecord[]>([]);
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setEnabled(isOfflineImportStorageEnabled());
+    setRetentionDays(offlineImportRetentionDays());
+    setLastSyncAt(getOfflineLastSyncAt());
     const ownerUserId = currentOfflineAccountId();
     if (!ownerUserId) {
       setActions([]);
@@ -71,21 +80,27 @@ export function OfflineStoragePanel() {
             shared devices.
           </p>
         </div>
-        <label className="flex min-h-11 items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm font-medium">
-          <input
-            type="checkbox"
-            checked={enabled}
-            className="size-4 accent-primary"
+        <label className="grid gap-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm font-medium">
+          Import retention on this device
+          <select
+            value={retentionDays}
+            className="min-h-9 rounded-md border bg-background px-2"
             onChange={(event) => {
-              setOfflineImportStorageEnabled(event.target.checked);
+              const next = Number(event.target.value) as OfflineImportRetentionDays;
+              if (!offlineImportRetentionOptions.includes(next)) return;
+              setOfflineImportRetentionDays(next);
               setMessage(
-                event.target.checked
-                  ? "Offline import storage is enabled on this device."
-                  : "Offline import storage is off for this device.",
+                next === 0
+                  ? "Offline import storage is off for this device."
+                  : `Queued CSV imports will expire after ${next} day${next === 1 ? "" : "s"}.`,
               );
             }}
-          />
-          Store import retries on this device
+          >
+            <option value={0}>Never store imports offline</option>
+            <option value={1}>24 hours</option>
+            <option value={3}>72 hours</option>
+            <option value={7}>7 days</option>
+          </select>
         </label>
       </div>
 
@@ -94,9 +109,13 @@ export function OfflineStoragePanel() {
         <OfflineStorageMetric label="Queued import files" value={fileCount} />
         <OfflineStorageMetric
           label="Import expiry"
-          value={`${OFFLINE_IMPORT_TTL_MS / 86400000} days`}
+          value={enabled ? `${retentionDays} day${retentionDays === 1 ? "" : "s"}` : "Off"}
         />
       </div>
+
+      <p className="mt-3 text-xs text-muted-foreground">
+        Last successful sync: {formatTimestamp(lastSyncAt)}
+      </p>
 
       {message ? (
         <p
@@ -155,20 +174,46 @@ export function OfflineStoragePanel() {
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {offlineFileCount(action)} file{offlineFileCount(action) === 1 ? "" : "s"} ·{" "}
-                  {action.retryCount} retries · expires {formatExpiry(action.createdAt)}
+                  {action.status === "dead_letter"
+                    ? `Needs review${action.lastErrorCode ? ` · ${action.lastErrorCode}` : ""}`
+                    : `${action.retryCount} retries · ${formatRetry(action.nextRetryAt)}`}{" "}
+                  · expires {formatExpiry(action)}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="justify-self-start sm:justify-self-end"
-                onClick={() => {
-                  removeOfflineAction(action.id).then(refresh);
-                }}
-              >
-                Remove
-              </Button>
+              <div className="flex flex-wrap gap-1 justify-self-start sm:justify-self-end">
+                {action.status === "dead_letter" ? (
+                  <>
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={offlineActionReviewHref(action)}>Review failed action</Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        retryDeadLetterOfflineAction(action)
+                          .then(() => {
+                            window.dispatchEvent(new Event("fkh-offline-retry-requested"));
+                            setMessage("The reviewed action was returned to the retry queue.");
+                          })
+                          .catch(() => setMessage("The failed action could not be retried."));
+                      }}
+                    >
+                      Retry action
+                    </Button>
+                  </>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    removeOfflineAction(action.id).then(refresh);
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
             </div>
           ))
         ) : (
@@ -210,12 +255,43 @@ function offlineFileCount(action: OfflineActionRecord) {
   return action.kind === "round-edit" ? 0 : 1;
 }
 
-function formatExpiry(createdAt: string) {
-  const timestamp = Date.parse(createdAt);
+function offlineActionReviewHref(action: OfflineActionRecord) {
+  if (
+    action.kind === "round-edit" &&
+    action.payload &&
+    typeof action.payload === "object" &&
+    "sessionId" in action.payload &&
+    typeof action.payload.sessionId === "string"
+  ) {
+    return `/rounds/${encodeURIComponent(action.payload.sessionId)}?offlineConflict=1`;
+  }
+
+  return "/import?source=csv&offlineRetry=1#csv-import";
+}
+
+function formatExpiry(action: OfflineActionRecord) {
+  if (action.kind !== "import-csv") return "when cleared";
+  const timestamp = action.expiresAt
+    ? Date.parse(action.expiresAt)
+    : Date.parse(action.createdAt) + 7 * 24 * 60 * 60 * 1000;
 
   if (!Number.isFinite(timestamp)) {
     return "soon";
   }
 
-  return dateFormatter.format(new Date(timestamp + OFFLINE_IMPORT_TTL_MS));
+  return dateFormatter.format(new Date(timestamp));
+}
+
+function formatRetry(value: string | null | undefined) {
+  if (!value) return "ready to retry";
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp > Date.now()
+    ? `next retry ${new Date(timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+    : "ready to retry";
+}
+
+function formatTimestamp(value: string | null) {
+  if (!value) return "No completed sync recorded on this device";
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toLocaleString("en-GB") : "Unknown";
 }

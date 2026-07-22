@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
+import {
+  createShareToken,
+  getShareExpiry,
+  hashShareToken,
+  parseShareResourceType,
+} from "@/lib/share-links";
 
 describe("share links", () => {
   it("creates unguessable tokens and stable hashes", () => {
@@ -14,5 +19,10 @@ describe("share links", () => {
     expect(getShareExpiry(7, new Date("2026-05-12T12:00:00Z"))?.toISOString()).toBe(
       "2026-05-19T12:00:00.000Z",
     );
+  });
+
+  it("recognises the coach-report resource without widening unknown values", () => {
+    expect(parseShareResourceType("coach_report")).toBe("coach_report");
+    expect(parseShareResourceType("unexpected")).toBe("round");
   });
 });

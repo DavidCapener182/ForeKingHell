@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/profile/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/profile/page.tsx"), "utf8");
 
 describe("profile desktop editor", () => {
   it("keeps the profile editor as a full-width desktop workspace with semantic rails", () => {

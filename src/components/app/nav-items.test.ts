@@ -7,21 +7,25 @@ import {
 } from "@/components/app/nav-items";
 
 describe("application navigation hierarchy", () => {
-  it("keeps five analysis-first mobile destinations", () => {
+  it("keeps five action-first mobile destinations", () => {
     expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
-      ["Today", "/today"],
+      ["Home", "/today"],
       ["Sessions", "/sessions"],
       ["Analyse", "/analyse"],
-      ["Bag", "/bag"],
-      ["Profile", "/profile"],
+      ["Practice", "/practice"],
+      ["More", "#more"],
     ]);
 
     expect(mobilePrimaryItems.find((item) => item.label === "Analyse")?.isActive("/progress")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Profile")?.isActive("/feed")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Analyse")?.isActive("/bag")).toBe(
       true,
     );
+    expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/coach")).toBe(
+      true,
+    );
+    expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/feed")).toBe(true);
   });
 
   it("gives mobile chrome a stable route title", () => {
@@ -32,21 +36,25 @@ describe("application navigation hierarchy", () => {
     expect(mobilePageTitle("/unknown-route")).toBe("Golf analytics");
   });
 
-  it("groups desktop routes by Review, Improve, Compete and Manage", () => {
+  it("groups desktop routes by the joined-up improvement journey", () => {
     const playerGroups = buildDesktopNavGroups(false);
     const adminGroups = buildDesktopNavGroups(true);
 
     expect(playerGroups.map((group) => group.label)).toEqual([
-      "Review",
+      "Home",
+      "Play",
+      "Analyse",
       "Improve",
       "Compete",
-      "Manage",
+      "Account",
     ]);
     expect(adminGroups.map((group) => group.label)).toEqual([
-      "Review",
+      "Home",
+      "Play",
+      "Analyse",
       "Improve",
       "Compete",
-      "Manage",
+      "Account",
       "Admin",
     ]);
 
@@ -58,9 +66,12 @@ describe("application navigation hierarchy", () => {
       "/shots",
       "/bag",
       "/practice",
+      "/practice/quick-range",
+      "/goals",
       "/rounds",
-      "/feed",
+      "/courses/strategy",
       "/settings",
+      "/settings/notifications",
       "/billing",
       "/providers",
     ]) {

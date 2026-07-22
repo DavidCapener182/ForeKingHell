@@ -5,6 +5,7 @@ import { parseOfflineImportPayload } from "@/lib/offline-import-payload";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { readBoundedJsonBody } from "@/lib/api-protection";
+import { runIdempotentOfflineOperation } from "@/lib/offline-operation-ledger";
 
 export const dynamic = "force-dynamic";
 const MAX_REQUEST_BYTES = 52 * 1024 * 1024;
@@ -33,11 +34,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = await saveRapsodoImportBatch(payload.inputs);
+  return runIdempotentOfflineOperation({
+    request,
+    userId,
+    kind: "import-csv",
+    payload,
+    execute: async () => {
+      const result = await saveRapsodoImportBatch(payload.inputs);
 
-  if (result.ok) {
-    await setAchievementUnlockFlash(result.achievementUnlockNotifications);
-  }
+      if (result.ok) {
+        await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+      }
 
-  return Response.json(result, { status: result.ok ? 200 : 400 });
+      return { status: result.ok ? 200 : 400, body: result };
+    },
+  });
 }

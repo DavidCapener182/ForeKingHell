@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/progress/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/progress/page.tsx"), "utf8");
 const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
 describe("progress desktop workbench source", () => {

@@ -2,6 +2,13 @@
 
 Completed locally on 10 July 2026 against the checkout that began at `7c8242141e3ad84c03f57ca3e40237d0848645ae`.
 
+> **Historical report:** this document preserves the evidence from the 10 July production pass.
+> The current 21 July v0.2 hardening status, including the completed rollback-only live RLS persona
+> matrix, is recorded in [PUBLIC_BETA_V0.2_RELEASE.md](./PUBLIC_BETA_V0.2_RELEASE.md),
+> [LIVE_DATABASE_BASELINE.md](./LIVE_DATABASE_BASELINE.md) and
+> [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md). Current release decisions must use those documents
+> rather than the older totals and remaining-work list below.
+
 This report distinguishes locally verified work from production checks that still require valid credentials, live Supabase access or a physical installed iPhone PWA.
 
 ## Outcome

@@ -6,6 +6,7 @@ import { clubs, courses, sessions, userProfiles } from "@/db/schema";
 import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { getCurrentUser } from "@/lib/current-user";
 import { roundSessionTypes } from "@/lib/round-sessions";
+import { reportServerFailure } from "@/lib/server-observability";
 import { getFriendIds } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
@@ -128,7 +129,7 @@ export async function GET() {
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.warn("Failed to load desktop workbench commands", error);
+    reportServerFailure("workbench_commands_failed", error);
     return NextResponse.json({ items: [] });
   }
 }

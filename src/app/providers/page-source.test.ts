@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/providers/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/providers/page.tsx"), "utf8");
 
 describe("providers desktop workbench", () => {
   it("keeps provider sessions as an exportable desktop table", () => {

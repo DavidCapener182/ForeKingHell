@@ -36,6 +36,7 @@ export type CompareBaselineMode =
   | "previous-session"
   | "previous-30"
   | "custom";
+export type CompareConditionMode = "same" | "indoor-outdoor" | "practice-round";
 
 export type CompareFilters = {
   focus: CompareFocusMode;
@@ -49,6 +50,7 @@ export type CompareFilters = {
   to: string;
   baselineFrom: string;
   baselineTo: string;
+  condition: CompareConditionMode;
 };
 
 export type CompareSessionOption = {
@@ -73,6 +75,7 @@ export type CompareShot = {
   sessionDate: Date;
   sessionCreatedAt: Date;
   sessionType: string;
+  playContext?: string;
   sessionLabel: string;
   clubId: string;
   clubType: string;
@@ -378,6 +381,7 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
         sessionDate: sessions.date,
         sessionCreatedAt: sessions.createdAt,
         sessionType: sessions.type,
+        playContext: sessions.playContext,
         sessionFileName: sessions.fileName,
         sessionCourseName: sessions.courseName,
         sessionLocation: sessions.location,
@@ -440,13 +444,13 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
     label: clubLabels.get(club.id) ?? formatClubType(club.type),
     shotCount: allShots.filter((shot) => shot.clubId === club.id).length,
   }));
-  const focusSelection = resolveFocusSelection(scopedShots, filters, sessionOptions);
-  const baselineSelection = resolveBaselineSelection(
-    scopedShots,
-    filters,
-    focusSelection,
-    sessionOptions,
-  );
+  const conditioned = conditionSelections(scopedShots, filters.condition);
+  const focusSelection = conditioned
+    ? selectionFromCondition(conditioned.focusLabel, conditioned.focusShots)
+    : resolveFocusSelection(scopedShots, filters, sessionOptions);
+  const baselineSelection = conditioned
+    ? selectionFromCondition(conditioned.baselineLabel, conditioned.baselineShots)
+    : resolveBaselineSelection(scopedShots, filters, focusSelection, sessionOptions);
   const focus = summarizeSelection(focusSelection);
   const baseline = summarizeSelection(baselineSelection);
   const delta = buildDelta(focus, baseline);
@@ -502,6 +506,7 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
         sessionDate: sessions.date,
         sessionCreatedAt: sessions.createdAt,
         sessionType: sessions.type,
+        playContext: sessions.playContext,
         sessionFileName: sessions.fileName,
         sessionCourseName: sessions.courseName,
         sessionLocation: sessions.location,
@@ -676,6 +681,7 @@ export async function getPlayerCompareData(
         sessionDate: sessions.date,
         sessionCreatedAt: sessions.createdAt,
         sessionType: sessions.type,
+        playContext: sessions.playContext,
         sessionFileName: sessions.fileName,
         sessionCourseName: sessions.courseName,
         sessionLocation: sessions.location,
@@ -863,6 +869,46 @@ export function defaultCompareFilters(): CompareFilters {
     to: "",
     baselineFrom: "",
     baselineTo: "",
+    condition: "same",
+  };
+}
+
+function conditionSelections(shots: CompareShot[], condition: CompareConditionMode) {
+  if (condition === "indoor-outdoor") {
+    return {
+      focusLabel: "Outdoor and on-course",
+      baselineLabel: "Indoor",
+      focusShots: shots.filter(
+        (shot) => shot.playContext === "outdoor" || shot.playContext === "on_course",
+      ),
+      baselineShots: shots.filter(
+        (shot) => shot.playContext === "indoor" || shot.playContext === "practice_bay",
+      ),
+    };
+  }
+  if (condition === "practice-round") {
+    return {
+      focusLabel: "Round performance",
+      baselineLabel: "Practice performance",
+      focusShots: shots.filter((shot) => shot.playContext === "on_course"),
+      baselineShots: shots.filter(
+        (shot) =>
+          shot.playContext === "indoor" ||
+          shot.playContext === "outdoor" ||
+          shot.playContext === "practice_bay",
+      ),
+    };
+  }
+  return null;
+}
+
+function selectionFromCondition(label: string, shots: CompareShot[]): Selection {
+  return {
+    label,
+    detail: `${shots.length} measured shots across ${new Set(shots.map((shot) => shot.sessionId)).size} sessions`,
+    shots,
+    start: minDate(shots.map((shot) => shot.shotAt)),
+    end: maxDate(shots.map((shot) => shot.shotAt)),
   };
 }
 

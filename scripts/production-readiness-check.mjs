@@ -4,17 +4,25 @@ import { spawn } from "node:child_process";
 const checks = [
   ["npm", ["run", "format:check"]],
   ["npm", ["run", "lint"]],
+  ["npx", ["next", "typegen"]],
   ["npx", ["tsc", "--noEmit"]],
   ["npm", ["run", "test"]],
+  ["npx", ["drizzle-kit", "check"]],
+  ["npm", ["audit", "--audit-level=high"]],
   ["npm", ["run", "build"]],
-  ["npm", ["run", "test:e2e"]],
+  ["npm", ["run", "check:route-budgets"]],
   ["npm", ["run", "test:lighthouse"]],
+  // Playwright may start `next dev`, which writes to .next. Run production Lighthouse first.
+  // A green run still exercises the complete configured matrix. Stop on the first browser
+  // failure so a known defect does not consume the rest of a multi-project release run.
+  ["npm", ["run", "test:e2e", "--", "--max-failures=1"]],
   ["git", ["diff", "--check"]],
 ];
 
 const authStatePath = process.env.PLAYWRIGHT_AUTH_STATE;
 const hasAuthState = Boolean(authStatePath && existsSync(authStatePath));
-const existingDevServerUrl = "http://localhost:3000";
+// Use an explicit IPv4 loopback so a separate IPv6 ::1 listener cannot be mistaken for this app.
+const existingDevServerUrl = "http://127.0.0.1:3000";
 const authenticatedE2eEnv = { PLAYWRIGHT_E2E_AUTH_BYPASS: "1" };
 const failedChecks = [];
 
@@ -48,7 +56,7 @@ if (failedChecks.length > 0) {
 }
 
 async function envForCheck(command, args) {
-  if (command === "npm" && args.join(" ") === "run test:e2e" && hasAuthState) {
+  if (isE2eCheck(command, args) && hasAuthState) {
     const reuseExistingDevServer =
       !process.env.PLAYWRIGHT_BASE_URL && (await urlIsReady(`${existingDevServerUrl}/login`));
 
@@ -64,8 +72,7 @@ async function envForCheck(command, args) {
   }
 
   if (
-    command === "npm" &&
-    args.join(" ") === "run test:e2e" &&
+    isE2eCheck(command, args) &&
     !process.env.PLAYWRIGHT_BASE_URL &&
     (await urlIsReady(`${existingDevServerUrl}/login`))
   ) {
@@ -74,6 +81,10 @@ async function envForCheck(command, args) {
   }
 
   return process.env;
+}
+
+function isE2eCheck(command, args) {
+  return command === "npm" && args[0] === "run" && args[1] === "test:e2e";
 }
 
 async function urlIsReady(url) {

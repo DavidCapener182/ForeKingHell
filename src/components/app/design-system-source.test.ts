@@ -28,11 +28,42 @@ describe("composable analysis design primitives", () => {
 
     expect(evidence).toContain("export function ConfidenceIndicator");
     expect(evidence).toContain("export function DataHealthStatus");
+    expect(evidence).toContain("export function MetricEvidenceDrawer");
+    expect(evidence).toContain("export function AnswerCard");
+    expect(evidence).toContain("export function RecommendedAction");
+    expect(evidence).toContain("export function DataWarning");
     expect(evidence).toContain('role="status"');
     expect(offline).toContain("export function OfflineState");
     expect(offline).toContain('aria-live="polite"');
     expect(rows).toContain("export function SessionSummary");
     expect(rows).toContain("export function ClubRow");
+  });
+
+  it("keeps chart metadata, comparisons, exports and data tables in one shared card", () => {
+    const chartCard = source("src/components/app/chart-card.tsx");
+
+    for (const primitive of [
+      "sampleSize",
+      "dateRange",
+      "sourceLabel",
+      "confidence",
+      "comparisonToggle",
+      "exportAction",
+      "dataTable",
+      "emptyState",
+    ]) {
+      expect(chartCard).toContain(primitive);
+    }
+  });
+
+  it("uses one answer-first analytics layout with evidence and a next action", () => {
+    const template = source("src/components/app/analysis-page-template.tsx");
+    const analyse = source("src/app/(app)/analyse/page.tsx");
+
+    expect(template).toContain("data-analysis-page-template");
+    expect(template).toContain('aria-label="Answer and evidence quality"');
+    expect(template).toContain("recommendation");
+    expect(analyse).toContain("<AnalysisPageTemplate");
   });
 
   it("keeps app shells full-width and centralises semantic surface tokens", () => {
@@ -50,5 +81,12 @@ describe("composable analysis design primitives", () => {
     ]) {
       expect(globals).toContain(token);
     }
+  });
+
+  it("keeps inactive tabs above the normal-text contrast threshold", () => {
+    const tabs = source("src/components/ui/tabs.tsx");
+
+    expect(tabs).toContain("text-foreground/70");
+    expect(tabs).not.toContain("text-foreground/60");
   });
 });

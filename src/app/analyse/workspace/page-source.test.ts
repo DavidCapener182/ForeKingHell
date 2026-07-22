@@ -8,7 +8,7 @@ function source(path: string) {
 
 describe("analysis workspace source contract", () => {
   it("keeps the four missing analysis foundations in one secondary workspace", () => {
-    const page = source("src/app/analyse/workspace/page.tsx");
+    const page = source("src/app/(app)/analyse/workspace/page.tsx");
 
     expect(page).toContain("Data-quality inbox");
     expect(page).toContain("Analysis notes");
@@ -54,7 +54,7 @@ describe("analysis workspace source contract", () => {
   });
 
   it("does not fetch a 2,000-row equipment sample when no equipment change exists", () => {
-    const page = source("src/app/analyse/workspace/page.tsx");
+    const page = source("src/app/(app)/analyse/workspace/page.tsx");
 
     expect(page).toContain("const equipmentShotRows = equipmentRows.length");
     expect(page).toContain(".limit(2_000)");

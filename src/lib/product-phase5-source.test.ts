@@ -8,7 +8,7 @@ function source(path: string) {
 
 describe("Phase 5 product-page contract", () => {
   it("keeps Today focused on the latest evidence, next action and reversible review controls", () => {
-    const today = source("src/app/today/page.tsx");
+    const today = source("src/app/(app)/today/page.tsx");
 
     expect(today.indexOf("<TodayMobileVerdictCard")).toBeLessThan(
       today.indexOf("<TodayPrescriptionCard"),
@@ -21,7 +21,7 @@ describe("Phase 5 product-page contract", () => {
   });
 
   it("keeps Shots compact, URL-filtered and progressively disclosed on mobile", () => {
-    const shots = source("src/app/shots/page.tsx");
+    const shots = source("src/app/(app)/shots/page.tsx");
 
     expect(shots).toContain("MobileFilterSheet");
     expect(shots).toContain("buildActiveFilterChips");
@@ -34,7 +34,7 @@ describe("Phase 5 product-page contract", () => {
   });
 
   it("keeps Bag centred on stock, dependable ranges, gapping and sample trust", () => {
-    const bag = source("src/app/bag/page.tsx");
+    const bag = source("src/app/(app)/bag/page.tsx");
 
     expect(bag).toContain("Bag confidence ladder");
     expect(bag).toContain("Full gapping ladder");
@@ -46,7 +46,7 @@ describe("Phase 5 product-page contract", () => {
   });
 
   it("requires Coach recommendations to expose evidence and success criteria", () => {
-    const coach = source("src/app/coach/page.tsx");
+    const coach = source("src/app/(app)/coach/page.tsx");
 
     for (const label of [
       "Observation",
@@ -63,7 +63,7 @@ describe("Phase 5 product-page contract", () => {
   });
 
   it("separates progress dimensions and does not equate volume with improvement", () => {
-    const progress = source("src/app/progress/page.tsx");
+    const progress = source("src/app/(app)/progress/page.tsx");
 
     for (const label of [
       "Performance",
@@ -80,7 +80,7 @@ describe("Phase 5 product-page contract", () => {
   });
 
   it("labels Handicap as unofficial and explains eligibility failures", () => {
-    const handicap = source("src/app/handicap/page.tsx");
+    const handicap = source("src/app/(app)/handicap/page.tsx");
     const calculations = source("src/lib/round-handicap.ts");
 
     expect(handicap).toContain("not an official Handicap Index");
@@ -91,8 +91,8 @@ describe("Phase 5 product-page contract", () => {
   });
 
   it("keeps social secondary, proof-labelled and privacy-aware", () => {
-    const feed = source("src/app/feed/page.tsx");
-    const today = source("src/app/today/page.tsx");
+    const feed = source("src/app/(app)/feed/page.tsx");
+    const today = source("src/app/(app)/today/page.tsx");
 
     expect(feed).toContain('{ id: "proof", label: "Proof" }');
     expect(feed).toContain('{ id: "privacy", label: "Privacy" }');

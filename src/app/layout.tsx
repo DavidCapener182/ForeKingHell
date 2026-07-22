@@ -1,22 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Libre_Baskerville, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
-import { and, eq, sql } from "drizzle-orm";
-import { AchievementNotificationProvider } from "@/components/achievement-notifications";
-import { AppShell } from "@/components/app/app-shell";
 import { InteractionFeedback } from "@/components/interaction-feedback";
-import { PwaRegister } from "@/components/pwa-register";
-import { SocialFeedRail } from "@/components/social/social-feed-rail";
+import { ThemeBootstrapScript } from "@/components/theme-bootstrap-script";
 import { ThemeController } from "@/components/theme-controller";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { adminUsers, userProfiles, users, xpLedger } from "@/db/schema";
-import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
-import { getDb } from "@/db/client";
-import { ensureUserProfile, getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
-import { cleanProfileLabel, profileLabelFromIdentity } from "@/lib/profile-label";
-import { themeColourByMode, themePreviewStorageKey } from "@/lib/theme";
-import { parseTheme, themeOptions } from "@/lib/user-settings";
+import { themeColourByMode } from "@/lib/theme";
 import "./globals.css";
 import "./mobile-apple.css";
 
@@ -70,33 +59,17 @@ export const viewport: Viewport = {
   ],
 };
 
-type AppShellData = {
-  userId: string | null;
-  totalXp: number;
-  achievementNotifications: Awaited<ReturnType<typeof getAchievementUnlockFlash>>;
-  preferences: CurrentUserPreferences;
-  isAdmin: boolean;
-  mobileNavProfile: {
-    displayName: string;
-    username: string;
-    avatarUrl: string | null;
-  } | null;
-};
-
-const defaultPreferences: CurrentUserPreferences = {
+const publicPreferences = {
   preferredUnits: "yards",
-  theme: "system",
-  tableDensity: "comfortable",
+  theme: "system" as const,
+  tableDensity: "comfortable" as const,
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { userId, totalXp, achievementNotifications, preferences, isAdmin, mobileNavProfile } =
-    await getAppShellData();
-
   return (
     <html
       lang="en"
@@ -106,168 +79,23 @@ export default async function RootLayout({
         barlowCondensed.variable,
         libreBaskerville.variable,
       ].join(" ")}
-      data-theme={
-        preferences.theme === "dark" || preferences.theme === "clubhouse"
-          ? preferences.theme
-          : "light"
-      }
-      data-theme-preference={preferences.theme}
-      data-table-density={preferences.tableDensity}
-      data-preferred-units={preferences.preferredUnits}
-      data-offline-account-id={userId ?? undefined}
+      data-theme="light"
+      data-theme-preference={publicPreferences.theme}
+      data-table-density={publicPreferences.tableDensity}
+      data-preferred-units={publicPreferences.preferredUnits}
       suppressHydrationWarning
     >
       <head>
-        <ThemeBootstrapScript preference={preferences.theme} />
+        <ThemeBootstrapScript preference={publicPreferences.theme} />
       </head>
       <body className="min-h-full flex flex-col antialiased">
         <ThemeController />
         <PlausibleScript />
         <InteractionFeedback />
-        <TooltipProvider delayDuration={200}>
-          <PwaRegister activeUserId={userId} />
-          <AppShell totalXp={totalXp} isAdmin={isAdmin} profile={mobileNavProfile}>
-            <AchievementNotificationProvider initialNotifications={achievementNotifications}>
-              {children}
-            </AchievementNotificationProvider>
-          </AppShell>
-          <SocialFeedRail />
-        </TooltipProvider>
+        {children}
       </body>
     </html>
   );
-}
-
-async function getAppShellData(): Promise<AppShellData> {
-  const [achievementNotifications, user] = await Promise.all([
-    getAchievementUnlockFlash().catch(() => []),
-    getCurrentUser().catch(() => null),
-  ]);
-
-  if (!user) {
-    return defaultAppShellData(achievementNotifications);
-  }
-
-  if (!process.env.DATABASE_URL?.trim()) {
-    return defaultAppShellData(
-      achievementNotifications,
-      {
-        displayName: profileLabelFromIdentity(user.name, user.email),
-        username: "",
-        avatarUrl: null,
-      },
-      user.id,
-    );
-  }
-
-  try {
-    await ensureUserProfile(user);
-
-    const db = getDb();
-    const [account, xpRow, admin] = await Promise.all([
-      db
-        .select({
-          preferredUnits: users.preferredUnits,
-          theme: users.theme,
-          tableDensity: users.tableDensity,
-          displayName: userProfiles.displayName,
-          username: userProfiles.username,
-          avatarUrl: userProfiles.avatarUrl,
-        })
-        .from(users)
-        .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
-        .where(eq(users.id, user.id))
-        .limit(1),
-      db
-        .select({
-          totalXp: sql<number>`coalesce(sum(${xpLedger.amount}), 0)::int`,
-        })
-        .from(xpLedger)
-        .where(eq(xpLedger.userId, user.id)),
-      db
-        .select({ id: adminUsers.id })
-        .from(adminUsers)
-        .where(and(eq(adminUsers.userId, user.id), eq(adminUsers.status, "active")))
-        .limit(1),
-    ]);
-
-    const accountRow = account[0];
-    const profileLabel =
-      cleanProfileLabel(accountRow?.displayName) ?? profileLabelFromIdentity(user.name, user.email);
-
-    return {
-      userId: user.id,
-      totalXp: Number(xpRow[0]?.totalXp ?? 0),
-      achievementNotifications,
-      preferences: {
-        preferredUnits: accountRow?.preferredUnits === "metres" ? "metres" : "yards",
-        theme: parseTheme(accountRow?.theme ?? null),
-        tableDensity: accountRow?.tableDensity === "compact" ? "compact" : "comfortable",
-      },
-      isAdmin: Boolean(admin[0]),
-      mobileNavProfile: {
-        displayName: profileLabel,
-        username: cleanProfileLabel(accountRow?.username) ?? "",
-        avatarUrl: accountRow?.avatarUrl ?? null,
-      },
-    };
-  } catch {
-    return defaultAppShellData(
-      achievementNotifications,
-      {
-        displayName: profileLabelFromIdentity(user.name, user.email),
-        username: "",
-        avatarUrl: null,
-      },
-      user.id,
-    );
-  }
-}
-
-function ThemeBootstrapScript({ preference }: { preference: CurrentUserPreferences["theme"] }) {
-  const script = `(() => {
-    const root = document.documentElement;
-    const savedPreference = ${JSON.stringify(preference)};
-    const themePreviewStorageKey = ${JSON.stringify(themePreviewStorageKey)};
-    const themeOptions = ${JSON.stringify(themeOptions)};
-    let preference = savedPreference;
-    try {
-      const previewPreference = sessionStorage.getItem(themePreviewStorageKey);
-      if (themeOptions.includes(previewPreference)) {
-        preference = previewPreference;
-      } else if (previewPreference !== null) {
-        sessionStorage.removeItem(themePreviewStorageKey);
-      }
-    } catch {}
-    const theme = preference === "system"
-      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-      : preference;
-    root.dataset.savedThemePreference = savedPreference;
-    root.dataset.themePreference = preference;
-    root.dataset.theme = theme;
-    root.classList.toggle("dark", theme === "dark");
-    root.style.colorScheme = theme === "dark" ? "dark" : "light";
-    const meta = document.querySelector('meta[name="theme-color"]');
-    const colours = ${JSON.stringify(themeColourByMode)};
-    if (meta) meta.setAttribute("content", colours[theme]);
-  })();`;
-
-  return <script id="fkh-theme-bootstrap" dangerouslySetInnerHTML={{ __html: script }} />;
-}
-
-function defaultAppShellData(
-  achievementNotifications: AppShellData["achievementNotifications"],
-  mobileNavProfile: AppShellData["mobileNavProfile"] = null,
-  userId: string | null = null,
-): AppShellData {
-  return {
-    userId,
-    totalXp: 0,
-    achievementNotifications,
-    preferences: defaultPreferences,
-    isAdmin: false,
-    mobileNavProfile,
-  };
 }
 
 function PlausibleScript() {

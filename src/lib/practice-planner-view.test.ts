@@ -155,7 +155,7 @@ describe("practice planner view helpers", () => {
   });
 
   it("prioritises the latest import's matched plan over an older open plan", () => {
-    const source = readFileSync(join(process.cwd(), "src/app/practice/page.tsx"), "utf8");
+    const source = readFileSync(join(process.cwd(), "src/app/(app)/practice/page.tsx"), "utf8");
 
     expect(source).toContain("selectPracticePlannerInitialSavedPlan(");
     expect(source).toContain("data.importOptions[0]?.id ?? null");

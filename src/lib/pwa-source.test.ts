@@ -14,7 +14,9 @@ describe("installed app claims", () => {
     expect(manifest).toContain('start_url: "/today"');
     expect(register).toContain("Private analysis needs a connection");
     expect(register).not.toContain("Previously loaded screens remain available");
-    expect(register).toContain("retained for retry. No queued data was discarded.");
+    expect(register).toContain("retained for a safe retry");
+    expect(register).toContain("needsReview > 0");
+    expect(register).toContain("review in Settings");
     expect(register).not.toContain("Offline import sync finished.");
   });
 

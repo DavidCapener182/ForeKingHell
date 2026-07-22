@@ -14,6 +14,10 @@ const themeLabels: Record<ThemePreference, string> = {
   light: "Light",
   dark: "Dark",
   clubhouse: "Clubhouse Manager",
+  outdoor: "Outdoor Mode",
+  "range-night": "Range Night",
+  "tour-broadcast": "Tour Broadcast",
+  "high-contrast": "High Contrast",
 };
 
 const themeDescriptions: Record<ThemePreference, string> = {
@@ -21,6 +25,10 @@ const themeDescriptions: Record<ThemePreference, string> = {
   light: "ForeKingHell light",
   dark: "ForeKingHell dark",
   clubhouse: "Parchment, racing green and scorecard detail",
+  outdoor: "Maximum sunlight legibility for the range",
+  "range-night": "Reduced-glare launch-monitor display",
+  "tour-broadcast": "Graphite, ivory and scoreboard presentation",
+  "high-contrast": "Solid surfaces, stronger focus and underlined links",
 };
 
 export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePreference }) {
@@ -33,7 +41,7 @@ export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePre
   return (
     <fieldset className="grid gap-2 text-sm font-medium md:col-span-3">
       <legend>Appearance</legend>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {themeOptions.map((value) => (
           <label
             key={value}

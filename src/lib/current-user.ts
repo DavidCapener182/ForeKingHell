@@ -21,6 +21,7 @@ export type CurrentUser = {
   email: string | null;
   name: string | null;
   authUserId?: string;
+  lastSignInAt?: string;
 };
 
 export type CurrentUserPreferences = {
@@ -254,6 +255,7 @@ async function resolveLinkedCurrentUser(authUser: CurrentUser): Promise<CurrentU
     email: linkedUser.email ?? authUser.email,
     name: cleanProfileLabel(linkedUser.name) ?? authUser.name,
     authUserId: authUser.id,
+    lastSignInAt: authUser.lastSignInAt,
   };
 }
 
@@ -269,6 +271,7 @@ function normalizeAuthUser(user: User): CurrentUser {
     id: user.id,
     email,
     name: profileLabelFromIdentity(metadataName, email, null),
+    lastSignInAt: user.last_sign_in_at,
   };
 }
 

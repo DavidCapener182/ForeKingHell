@@ -17,10 +17,15 @@ describe("analysis workspace", () => {
       missingRatingRounds: 2,
       lowSampleClubs: 4,
       unclassifiedSessions: 1,
+      staleStockYardages: 2,
+      failedProviderSyncs: 1,
+      failedOfflineActions: 1,
     });
 
     expect(issues[0]?.severity).toBe("high");
     expect(issues.map((issue) => issue.action)).toContain("Map clubs");
+    expect(issues.map((issue) => issue.action)).toContain("Review provider");
+    expect(issues.map((issue) => issue.action)).toContain("Review action");
     expect(issues.every((issue) => issue.href.startsWith("/"))).toBe(true);
   });
 

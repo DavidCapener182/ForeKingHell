@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
@@ -37,8 +38,6 @@ import {
   StatusPill,
 } from "@/components/premium";
 import { RecentTrainingSessions } from "@/components/training/RecentTrainingSessions";
-import { TrainingLoadBars } from "@/components/training/TrainingLoadBars";
-import { TrainingOverTimeChart } from "@/components/training/TrainingOverTimeChart";
 import { TrainingSessionForm } from "@/components/training/TrainingSessionForm";
 import { TrainingSourceSuggestions } from "@/components/training/TrainingSourceSuggestions";
 import { TrainingStatusCard } from "@/components/training/TrainingStatusCard";
@@ -63,6 +62,18 @@ import type {
   TrainingSessionListItem,
 } from "@/lib/training/trainingData";
 import { cn } from "@/lib/utils";
+
+const TrainingOverTimeChart = dynamic(
+  () =>
+    import("@/components/training/TrainingOverTimeChart").then(
+      (module) => module.TrainingOverTimeChart,
+    ),
+  { ssr: false, loading: () => <DeferredChartLoading label="Training status chart" /> },
+);
+const TrainingLoadBars = dynamic(
+  () => import("@/components/training/TrainingLoadBars").then((module) => module.TrainingLoadBars),
+  { ssr: false, loading: () => <DeferredChartLoading label="Daily training load chart" /> },
+);
 
 type TrainingLoadRangeViewProps = {
   data: TrainingOverTimeData;
@@ -122,6 +133,18 @@ const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
     detail: "Long-range fitness, fatigue and form evidence",
   },
 ];
+
+function DeferredChartLoading({ label }: { label: string }) {
+  return (
+    <div
+      className="chart-frame grid min-h-64 place-items-center bg-muted/25 text-sm font-medium text-muted-foreground"
+      role="status"
+      aria-label={`${label} loading`}
+    >
+      Loading {label.toLowerCase()}…
+    </div>
+  );
+}
 
 export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRangeViewProps) {
   const [activeRangeKey, setActiveRangeKey] = useState(initialRangeKey);

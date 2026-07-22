@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/partners/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/partners/page.tsx"), "utf8");
 
 describe("partners desktop operations board", () => {
   it("uses the partners artwork variant on the actual operations page", () => {

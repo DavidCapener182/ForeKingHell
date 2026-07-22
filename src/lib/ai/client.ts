@@ -12,6 +12,7 @@ import {
   type AiFeatureEntitlement,
   type AiUsageTokenStats,
 } from "@/lib/ai/usage";
+import { reportServerFailure } from "@/lib/server-observability";
 
 export type OpenAiTextPart = {
   type: "input_text";
@@ -199,8 +200,8 @@ async function callOpenAiJson<T extends object>(input: {
     });
 
     throw new AiAccessError({
-      message: readOpenAiError(responsePayload) ?? "OpenAI request failed.",
-      status: upstream.status,
+      message: "The AI provider could not complete this request.",
+      status: 502,
       code: "ai_upstream_error",
       details: { featureKey: input.featureKey },
     });
@@ -234,7 +235,11 @@ async function callOpenAiJson<T extends object>(input: {
       responseJson: output as Record<string, unknown>,
       metadataJson: input.metadataJson,
       ttlMs: input.cacheTtlMs,
-    }).catch((error) => console.error("[ai] Failed to persist generation cache", error));
+    }).catch((error) =>
+      reportServerFailure("ai_cache_persist_failed", error, {
+        "app.feature": input.featureKey,
+      }),
+    );
   }
 
   await finalizeAiCreditReservation({
@@ -271,7 +276,7 @@ export function aiErrorPayload(error: unknown) {
 
   return {
     body: {
-      message: error instanceof Error ? error.message : "AI request failed.",
+      message: "AI request failed.",
     },
     status: 500,
   };
@@ -318,14 +323,6 @@ function readResponseText(payload: unknown) {
   }
 
   return text;
-}
-
-function readOpenAiError(payload: unknown) {
-  if (!isRecord(payload) || !isRecord(payload.error)) {
-    return null;
-  }
-
-  return typeof payload.error.message === "string" ? payload.error.message : null;
 }
 
 function readResponseId(payload: unknown) {

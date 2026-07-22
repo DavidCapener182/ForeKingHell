@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/analyse/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/analyse/page.tsx"), "utf8");
 
 describe("Analyse hub", () => {
   it("routes the six product questions to detailed evidence instead of duplicating charts", () => {
@@ -17,7 +17,7 @@ describe("Analyse hub", () => {
       expect(source).toContain(`question="${question}"`);
     }
 
-    for (const href of ["/progress", "/compare", "/shots", "/bag", "/coach", "/practice"]) {
+    for (const href of ["/progress", "/analyse/compare", "/shots", "/bag", "/coach", "/practice"]) {
       expect(source).toContain(`href="${href}"`);
     }
 

@@ -21,6 +21,9 @@ export type DataQualityCounts = {
   missingRatingRounds: number;
   lowSampleClubs: number;
   unclassifiedSessions: number;
+  staleStockYardages: number;
+  failedProviderSyncs: number;
+  failedOfflineActions: number;
 };
 
 export type DataQualityIssue = {
@@ -98,6 +101,31 @@ export function buildDataQualityIssues(counts: DataQualityCounts) {
     severity: "low",
     href: "/sessions",
     action: "Review sessions",
+  });
+  addIssue(issues, counts.staleStockYardages, {
+    key: "staleStockYardages",
+    title: "Old stock yardages",
+    detail: "These club numbers have not been recalculated from recent evidence in 90 days.",
+    severity: "medium",
+    href: "/bag#bag-confidence",
+    action: "Refresh bag",
+  });
+  addIssue(issues, counts.failedProviderSyncs, {
+    key: "failedProviderSyncs",
+    title: "Failed provider syncs",
+    detail: "A provider import job stopped before it produced a trusted session.",
+    severity: "high",
+    href: "/providers",
+    action: "Review provider",
+  });
+  addIssue(issues, counts.failedOfflineActions, {
+    key: "failedOfflineActions",
+    title: "Offline actions need review",
+    detail:
+      "A queued device action reached a permanent server failure and was not silently replayed.",
+    severity: "high",
+    href: "/settings#offline-storage",
+    action: "Review action",
   });
 
   return issues.sort((left, right) => severityRank(left.severity) - severityRank(right.severity));

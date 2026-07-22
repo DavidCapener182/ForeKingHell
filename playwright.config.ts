@@ -39,6 +39,14 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "firefox",
+      use: { ...devices["Desktop Firefox"] },
+    },
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
+    },
     ...desktopViewportProjects.map((viewport) => ({
       name: viewport.name,
       use: {
@@ -68,6 +76,10 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+    },
+    {
+      name: "mobile-webkit",
+      use: { ...devices["iPhone 13"] },
     },
     {
       name: "mobile-pixel",

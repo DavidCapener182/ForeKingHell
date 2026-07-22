@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Bell,
   Bot,
-  Brain,
   CalendarDays,
   Check,
   Clock3,
@@ -26,6 +25,7 @@ import {
   FileText,
   Flag,
   Gauge,
+  GitCompareArrows,
   Keyboard,
   MapPin,
   MessageCircle,
@@ -72,7 +72,10 @@ import {
 } from "@/components/ui/sheet";
 import { savedInsightUpdatedEvent } from "@/components/app/desktop-save-insight-button";
 import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";
+import { NotificationCentre } from "@/components/app/workbench/notification-centre";
+import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher";
 import { cn } from "@/lib/utils";
+import { commandRoutes, productAreaLabel } from "@/navigation/route-registry";
 
 type DesktopWorkbenchChromeProps = {
   navGroups: AppNavGroup[];
@@ -104,17 +107,6 @@ type SavedViewCommandItem = WorkbenchLink & {
   keywords: string;
 };
 
-type DesktopNotificationTone = "green" | "amber" | "blue" | "slate";
-
-type DesktopNotificationItem = {
-  id: string;
-  title: string;
-  detail: string;
-  href: string;
-  tone: DesktopNotificationTone;
-  unread: boolean;
-};
-
 type AssistantContext = {
   label: string;
   route: string;
@@ -135,7 +127,6 @@ type BreadcrumbItem = {
 const recentStorageKey = "fkh:desktop-recent-items";
 const pinnedStorageKey = "fkh:desktop-pinned-items";
 const savedInsightStorageKey = "fkh:desktop-saved-insights";
-const notificationReadStorageKey = "fkh:desktop-notification-read-ids";
 const savedViewsStoragePrefix = "fkh:saved-views:";
 
 const assistantSupportedRoutePrefixes = [
@@ -326,8 +317,8 @@ export function DesktopWorkbenchChrome({
   const pageAction = getPrimaryAction(pathname);
   const PageActionIcon = pageAction.icon;
   const commands = useMemo(
-    () => buildCommandItems(navGroups, isAdmin, workspaceCommands, savedViewCommands),
-    [navGroups, isAdmin, workspaceCommands, savedViewCommands],
+    () => buildCommandItems(isAdmin, workspaceCommands, savedViewCommands),
+    [isAdmin, workspaceCommands, savedViewCommands],
   );
   const filteredCommands = useMemo(() => filterCommands(commands, query), [commands, query]);
   const safeActiveCommandIndex =
@@ -700,7 +691,7 @@ export function DesktopWorkbenchChrome({
   return (
     <>
       <header
-        className="sticky top-0 z-40 hidden min-h-14 border-b border-emerald-950/10 bg-[#FFFDF8]/92 px-4 py-2 shadow-[0_8px_24px_rgba(31,49,39,0.06)] backdrop-blur supports-[backdrop-filter]:bg-[#FFFDF8]/82 lg:block"
+        className="sticky top-0 z-40 hidden min-h-14 border-b border-border bg-background/92 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/82 lg:block"
         data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
         inert={!hydrated}
         aria-busy={hydrated ? undefined : true}
@@ -709,7 +700,7 @@ export function DesktopWorkbenchChrome({
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
             <Link
               href="/dashboard"
-              className="focus-aaa rounded-md px-2 py-1 font-semibold text-emerald-950 outline-none hover:bg-emerald-50"
+              className="focus-aaa rounded-md px-2 py-1 font-semibold text-foreground outline-none hover:bg-muted/55"
             >
               Home
             </Link>
@@ -727,7 +718,7 @@ export function DesktopWorkbenchChrome({
                   {item.href && !isLast ? (
                     <Link
                       href={item.href}
-                      className="focus-aaa min-w-0 rounded-md px-2 py-1 font-medium text-muted-foreground outline-none hover:bg-emerald-50 hover:text-foreground"
+                      className="focus-aaa min-w-0 rounded-md px-2 py-1 font-medium text-muted-foreground outline-none hover:bg-muted/55 hover:text-foreground"
                     >
                       <span className="truncate">{item.label}</span>
                     </Link>
@@ -747,7 +738,7 @@ export function DesktopWorkbenchChrome({
           <button
             type="button"
             onClick={openCommandPalette}
-            className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-emerald-950/10 bg-white/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-emerald-300 hover:bg-white lg:min-w-[12rem] 2xl:min-w-[18rem]"
+            className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-card lg:min-w-[12rem] 2xl:min-w-[18rem]"
             aria-label="Open command palette"
           >
             <Search className="size-4" aria-hidden />
@@ -760,18 +751,25 @@ export function DesktopWorkbenchChrome({
             </span>
           </button>
 
-          <WorkspaceSwitcher pathname={pathname} isAdmin={isAdmin} />
-
-          <Button
-            asChild
-            variant="outline"
-            className="hidden size-8 px-0 xl:inline-flex 2xl:w-auto 2xl:px-2.5"
-          >
+          <Button asChild variant="outline" className="h-9 w-auto shrink-0 gap-2 px-2.5">
             <Link href={pageAction.href} aria-label={pageAction.label}>
               <PageActionIcon className="size-4" aria-hidden />
-              <span className="hidden 2xl:inline">{pageAction.label}</span>
+              <span className="hidden xl:inline">{pageAction.label}</span>
             </Link>
           </Button>
+
+          {assistantContext ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-9 w-auto shrink-0 gap-2 px-2.5"
+              onClick={() => setAssistantOpen(true)}
+              aria-label={`Open AI assistant for ${assistantContext.label}`}
+            >
+              <PanelRightOpen className="size-4" />
+              <span className="hidden 2xl:inline">Assistant</span>
+            </Button>
+          ) : null}
 
           <WorkspaceLinksMenu
             open={workspaceLinksOpen}
@@ -781,33 +779,11 @@ export function DesktopWorkbenchChrome({
             savedViewLinks={savedViewCommands}
             onPinCurrent={pinCurrentPage}
             onNavigate={closeCommandAndNavigate}
+            onOpenShortcuts={() => setShortcutsOpen(true)}
+            onExportCurrent={() => findCurrentExportControl()?.click()}
+            workspaceSwitcher={<WorkspaceSwitcher pathname={pathname} isAdmin={isAdmin} embedded />}
+            notificationMenu={<NotificationCentre embedded />}
           />
-
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="focus-aaa"
-            onClick={pinCurrentPage}
-            aria-label="Pin current workspace"
-          >
-            <Pin className="size-4" />
-          </Button>
-
-          <NotificationMenu />
-
-          {assistantContext ? (
-            <Button
-              type="button"
-              variant="secondary"
-              className="hidden size-8 px-0 xl:inline-flex 2xl:w-auto 2xl:px-2.5"
-              onClick={() => setAssistantOpen(true)}
-              aria-label={`Open AI assistant for ${assistantContext.label}`}
-            >
-              <PanelRightOpen className="size-4" />
-              <span className="hidden 2xl:inline">AI assistant</span>
-            </Button>
-          ) : null}
 
           {accountMenu}
         </div>
@@ -824,8 +800,8 @@ export function DesktopWorkbenchChrome({
               Search ForeKingHell pages, clubs, rounds and actions.
             </DialogDescription>
           </DialogHeader>
-          <div className="border-b border-border bg-[#FFFDF8] p-4">
-            <label className="grid h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-emerald-950/10 bg-white px-3 shadow-sm">
+          <div className="border-b border-border bg-background p-4">
+            <label className="grid h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-card px-3 shadow-sm">
               <Search className="size-4 text-muted-foreground" aria-hidden />
               <span className="sr-only">Search command palette</span>
               <input
@@ -988,6 +964,10 @@ function WorkspaceLinksMenu({
   savedViewLinks,
   onPinCurrent,
   onNavigate,
+  onOpenShortcuts,
+  onExportCurrent,
+  workspaceSwitcher,
+  notificationMenu,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -996,6 +976,10 @@ function WorkspaceLinksMenu({
   savedViewLinks: WorkbenchLink[];
   onPinCurrent: () => void;
   onNavigate: (href: string) => void;
+  onOpenShortcuts: () => void;
+  onExportCurrent: () => void;
+  workspaceSwitcher: ReactNode;
+  notificationMenu: ReactNode;
 }) {
   const savedCount = savedViewLinks.length + pinnedLinks.length;
   const pinnedHrefs = new Set(pinnedLinks.map((link) => link.href));
@@ -1007,11 +991,11 @@ function WorkspaceLinksMenu({
         <Button
           type="button"
           variant="outline"
-          className="relative hidden size-8 px-0 lg:inline-flex xl:size-8 xl:justify-center 2xl:w-auto 2xl:min-w-[8.75rem] 2xl:justify-start 2xl:px-2.5"
-          aria-label="Open workspace links"
+          className="relative h-9 w-auto shrink-0 gap-2 px-2.5"
+          aria-label="Open workbench menu"
         >
-          <Pin className="size-4" aria-hidden />
-          <span className="hidden truncate 2xl:inline">Workspace</span>
+          <SlidersHorizontal className="size-4" aria-hidden />
+          <span className="hidden truncate 2xl:inline">More</span>
           {savedCount > 0 ? (
             <Badge
               variant="secondary"
@@ -1023,10 +1007,28 @@ function WorkspaceLinksMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-3">
-        <DropdownMenuLabel className="px-0">Workspace links</DropdownMenuLabel>
+        <DropdownMenuLabel className="px-0">Workbench menu</DropdownMenuLabel>
+        <div className="grid gap-1">
+          {workspaceSwitcher}
+          {notificationMenu}
+        </div>
         <DropdownMenuItem onSelect={onPinCurrent}>
           <Pin className="size-4" />
           Pin current workspace
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/achievements">
+            <Bell className="size-4" />
+            Notifications and achievements
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onOpenShortcuts}>
+          <Keyboard className="size-4" />
+          Keyboard shortcuts
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={onExportCurrent}>
+          <Download className="size-4" />
+          Export current view
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <div className="grid gap-4">
@@ -1208,309 +1210,6 @@ function shouldLetBrowserHandleLink(event: MouseEvent<HTMLAnchorElement>) {
   );
 }
 
-function NotificationMenu() {
-  const [notifications, setNotifications] = useState<DesktopNotificationItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const readNotificationIdsRef = useRef<Set<string>>(new Set());
-  const unreadCount = notifications.filter((notification) => notification.unread).length;
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const storedReadIds = readNotificationReadIds();
-    readNotificationIdsRef.current = storedReadIds;
-
-    async function loadNotifications() {
-      try {
-        const response = await fetch("/api/desktop-workbench/notifications", {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          if (!controller.signal.aborted) {
-            setNotifications([]);
-            setLoaded(true);
-          }
-          return;
-        }
-
-        const payload: unknown = await response.json();
-        if (!controller.signal.aborted) {
-          setNotifications(
-            applyNotificationReadIds(normalizeNotificationItems(payload), storedReadIds),
-          );
-          setLoaded(true);
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setNotifications([]);
-          setLoaded(true);
-        }
-      }
-    }
-
-    void loadNotifications();
-
-    return () => controller.abort();
-  }, []);
-
-  function markNotificationRead(id: string) {
-    setNotifications((items) =>
-      items.map((notification) =>
-        notification.id === id ? { ...notification, unread: false } : notification,
-      ),
-    );
-    const next = new Set(readNotificationIdsRef.current);
-    next.add(id);
-    readNotificationIdsRef.current = next;
-    writeNotificationReadIds(next);
-  }
-
-  function markAllNotificationsRead() {
-    if (notifications.length === 0) {
-      return;
-    }
-
-    setNotifications((items) => items.map((notification) => ({ ...notification, unread: false })));
-    const next = new Set(readNotificationIdsRef.current);
-
-    for (const notification of notifications) {
-      next.add(notification.id);
-    }
-
-    readNotificationIdsRef.current = next;
-    writeNotificationReadIds(next);
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="relative"
-          aria-label={
-            unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : "Open notifications"
-          }
-        >
-          <Bell className="size-4" />
-          {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-emerald-700 px-1 text-[10px] font-semibold leading-4 text-white">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          ) : null}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-2">
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-          <p className="text-sm font-semibold">Notifications</p>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-              {unreadCount > 0 ? `${unreadCount} unread` : "All clear"}
-            </Badge>
-            {unreadCount > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  markAllNotificationsRead();
-                }}
-              >
-                Mark all read
-              </Button>
-            ) : null}
-          </div>
-        </div>
-        <DropdownMenuSeparator />
-        <div className="grid gap-2 p-1">
-          {!loaded ? (
-            <NotificationStatusRow
-              title="Checking updates"
-              detail="Loading golf workspace signals."
-            />
-          ) : notifications.length > 0 ? (
-            notifications.map((notification) => (
-              <NotificationRow
-                key={notification.id}
-                notification={notification}
-                onMarkRead={markNotificationRead}
-              />
-            ))
-          ) : (
-            <NotificationStatusRow
-              title="No new alerts"
-              detail="Friend requests, challenge invites, imports and data warnings will appear here."
-            />
-          )}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function WorkspaceSwitcher({ pathname, isAdmin }: { pathname: string; isAdmin: boolean }) {
-  const views = getWorkspaceViews(pathname, isAdmin);
-  const activeView = views.find((view) => view.isActive) ?? views[0];
-  const ActiveIcon = activeView.icon;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="hidden size-8 px-0 lg:inline-flex xl:size-8 xl:justify-center 2xl:w-auto 2xl:min-w-[8.75rem] 2xl:justify-start 2xl:px-2.5"
-          aria-label="Switch workspace view"
-        >
-          <ActiveIcon className="size-4" aria-hidden />
-          <span className="hidden truncate 2xl:inline">{activeView.label}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 p-2">
-        <DropdownMenuLabel>Workspace view</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {views.map((view) => {
-          const Icon = view.icon;
-
-          return (
-            <DropdownMenuItem key={view.label} asChild>
-              <Link
-                href={view.href}
-                prefetch={false}
-                aria-current={view.isActive ? "page" : undefined}
-                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2"
-              >
-                <span className="grid size-8 place-items-center rounded-md bg-emerald-50 text-emerald-800">
-                  <Icon className="size-4" aria-hidden />
-                </span>
-                <span className="grid min-w-0 gap-0.5">
-                  <span className="truncate text-sm font-semibold">{view.label}</span>
-                  <span className="truncate text-xs text-muted-foreground">{view.detail}</span>
-                </span>
-                {view.isActive ? (
-                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                    Active
-                  </Badge>
-                ) : null}
-              </Link>
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function getWorkspaceViews(pathname: string, isAdmin: boolean) {
-  const isCoachView =
-    pathname.startsWith("/coach") ||
-    pathname.startsWith("/practice") ||
-    pathname.startsWith("/data-chat");
-  const isAdminView = pathname.startsWith("/admin") || pathname.startsWith("/partners");
-
-  return [
-    {
-      label: "Player workspace",
-      href: "/dashboard",
-      detail: "Command centre, play, analyse and social routes.",
-      icon: UserRound,
-      isActive: !isCoachView && !isAdminView,
-    },
-    {
-      label: "Coach desk",
-      href: "/coach",
-      detail: "Diagnosis, drill plans and practice evidence.",
-      icon: Brain,
-      isActive: isCoachView,
-    },
-    ...(isAdmin
-      ? [
-          {
-            label: "Admin console",
-            href: "/admin",
-            detail: "Moderation, provider health and operations.",
-            icon: ShieldCheckIcon,
-            isActive: isAdminView,
-          },
-        ]
-      : []),
-  ];
-}
-
-function NotificationRow({
-  notification,
-  onMarkRead,
-}: {
-  notification: DesktopNotificationItem;
-  onMarkRead: (id: string) => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-white/74",
-        notification.unread ? "border-emerald-200" : "border-border",
-      )}
-    >
-      <Link
-        href={notification.href}
-        prefetch={false}
-        onClick={() => onMarkRead(notification.id)}
-        className="focus-aaa grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 rounded-l-lg p-3 outline-none hover:bg-white"
-      >
-        <span
-          className={cn(
-            "mt-1 size-2 rounded-full",
-            notification.unread ? notificationToneClass(notification.tone) : "bg-slate-300",
-          )}
-          aria-hidden
-        />
-        <span className="min-w-0">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-semibold">{notification.title}</span>
-            {notification.unread ? (
-              <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-[10px]">
-                New
-              </Badge>
-            ) : null}
-          </span>
-          <span className="mt-1 block line-clamp-2 text-xs leading-5 text-muted-foreground">
-            {notification.detail}
-          </span>
-        </span>
-        <ArrowRight className="mt-0.5 size-4 text-muted-foreground" aria-hidden />
-      </Link>
-      <div className="grid min-w-[4.25rem] place-items-center border-l border-border px-2">
-        {notification.unread ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={() => onMarkRead(notification.id)}
-          >
-            Mark read
-          </Button>
-        ) : (
-          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-            Read
-          </Badge>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function NotificationStatusRow({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className="rounded-lg border border-dashed border-border bg-white/60 p-3">
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
-
 function AssistantPanel({
   context,
   pathname,
@@ -1605,36 +1304,23 @@ function ShortcutKey({ children }: { children: ReactNode }) {
 }
 
 function buildCommandItems(
-  navGroups: AppNavGroup[],
   isAdmin: boolean,
   workspaceCommands: WorkspaceCommandItem[],
   savedViewCommands: SavedViewCommandItem[],
 ): CommandItem[] {
-  const pageCommands = navGroups.flatMap((group) =>
-    group.items.map((item) => ({
-      title: item.label,
-      href: item.href,
-      detail: `${group.label} page`,
-      group: group.label,
-      keywords: `${group.label} ${item.label} ${item.href} ${item.badge ?? ""}`,
-      icon: item.icon,
-      type: "page" as const,
-    })),
-  );
+  const pageCommands = commandRoutes(isAdmin).map((route) => {
+    const areaLabel = productAreaLabel(route.area);
 
-  const adminCommands: CommandItem[] = isAdmin
-    ? [
-        {
-          title: "System checks",
-          href: "/admin/system-checks",
-          detail: "Provider health, moderation and role controls.",
-          group: "Admin",
-          keywords: "admin system checks provider moderation role audit",
-          icon: SlidersHorizontal,
-          type: "workspace",
-        },
-      ]
-    : [];
+    return {
+      title: route.label,
+      href: route.href,
+      detail: `${areaLabel} page`,
+      group: route.admin ? "Admin" : areaLabel,
+      keywords: route.searchKeywords.join(" "),
+      icon: route.icon,
+      type: "page" as const,
+    };
+  });
 
   const dynamicWorkspaceCommands: CommandItem[] = workspaceCommands.map((command) => ({
     ...command,
@@ -1655,7 +1341,6 @@ function buildCommandItems(
     ...savedViewCommandItems,
     ...clubCommands,
     ...actionCommands,
-    ...adminCommands,
   ];
 }
 
@@ -1717,103 +1402,6 @@ function cleanCommandHref(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-function normalizeNotificationItems(payload: unknown): DesktopNotificationItem[] {
-  if (!isRecord(payload) || !Array.isArray(payload.items)) {
-    return [];
-  }
-
-  return payload.items
-    .map((item) => normalizeNotificationItem(item))
-    .filter((item): item is DesktopNotificationItem => Boolean(item))
-    .slice(0, 8);
-}
-
-function applyNotificationReadIds(notifications: DesktopNotificationItem[], readIds: Set<string>) {
-  if (readIds.size === 0) {
-    return notifications;
-  }
-
-  return notifications.map((notification) =>
-    readIds.has(notification.id) ? { ...notification, unread: false } : notification,
-  );
-}
-
-function readNotificationReadIds() {
-  if (typeof window === "undefined") {
-    return new Set<string>();
-  }
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(notificationReadStorageKey) ?? "[]");
-
-    if (!Array.isArray(parsed)) {
-      return new Set<string>();
-    }
-
-    return new Set(
-      parsed.filter((item): item is string => typeof item === "string" && item.length > 0),
-    );
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function writeNotificationReadIds(readIds: Set<string>) {
-  try {
-    window.localStorage.setItem(
-      notificationReadStorageKey,
-      JSON.stringify(Array.from(readIds).slice(-80)),
-    );
-  } catch {
-    // Local storage is optional desktop polish; ignore private-mode failures.
-  }
-}
-
-function normalizeNotificationItem(value: unknown): DesktopNotificationItem | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-
-  const id = cleanCommandText(value.id, 80);
-  const title = cleanCommandText(value.title, 100);
-  const detail = cleanCommandText(value.detail, 180);
-  const href = cleanCommandHref(value.href);
-  const tone = isNotificationTone(value.tone) ? value.tone : "slate";
-
-  if (!id || !title || !detail || !href) {
-    return null;
-  }
-
-  return {
-    id,
-    title,
-    detail,
-    href,
-    tone,
-    unread: value.unread === true,
-  };
-}
-
-function isNotificationTone(value: unknown): value is DesktopNotificationTone {
-  return value === "green" || value === "amber" || value === "blue" || value === "slate";
-}
-
-function notificationToneClass(tone: DesktopNotificationTone) {
-  if (tone === "green") {
-    return "bg-emerald-500";
-  }
-
-  if (tone === "amber") {
-    return "bg-amber-500";
-  }
-
-  if (tone === "blue") {
-    return "bg-blue-500";
-  }
-
-  return "bg-slate-400";
 }
 
 function findWorkspaceRecentForCurrentPath(
@@ -1919,6 +1507,7 @@ function deepRouteLabel(pathname: string) {
   if (pathname === "/rounds/new") return "New round";
   if (/^\/rounds\/[^/]+$/.test(pathname)) return "Round review";
   if (pathname === "/courses/new") return "New course";
+  if (pathname === "/courses/strategy") return "Course Strategy";
   if (/^\/courses\/[^/]+\/holes$/.test(pathname)) return "Hole management";
   if (/^\/courses\/[^/]+\/records\/[^/]+$/.test(pathname)) return "Record detail";
   if (/^\/courses\/[^/]+\/records$/.test(pathname)) return "Course records";
@@ -1951,6 +1540,10 @@ function getPrimaryAction(pathname: string): { label: string; href: string; icon
 
   if (pathname.startsWith("/rounds")) {
     return { label: "Add round", href: "/rounds/new", icon: FileText };
+  }
+
+  if (pathname.startsWith("/courses/strategy")) {
+    return { label: "Prepare round", href: "/rounds/new", icon: Flag };
   }
 
   if (pathname.startsWith("/courses")) {
@@ -1989,6 +1582,10 @@ function getPrimaryAction(pathname: string): { label: string; href: string; icon
     return { label: "Feed", href: "/feed", icon: MessageCircle };
   }
 
+  if (pathname.startsWith("/settings/notifications")) {
+    return { label: "Settings", href: "/settings", icon: Settings };
+  }
+
   if (pathname.startsWith("/settings")) {
     return { label: "Billing", href: "/billing", icon: CreditCard };
   }
@@ -2019,6 +1616,14 @@ function getPrimaryAction(pathname: string): { label: string; href: string; icon
 
   if (pathname.startsWith("/coach") || pathname.startsWith("/practice")) {
     return { label: "Build plan", href: "/practice", icon: Sparkles };
+  }
+
+  if (pathname.startsWith("/goals")) {
+    return { label: "Quick Range", href: "/practice/quick-range", icon: Target };
+  }
+
+  if (pathname.startsWith("/analyse")) {
+    return { label: "Compare sessions", href: "/analyse/compare", icon: GitCompareArrows };
   }
 
   if (pathname.startsWith("/data-chat")) {

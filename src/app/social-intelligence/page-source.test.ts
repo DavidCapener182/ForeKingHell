@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/social-intelligence/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/social-intelligence/page.tsx"),
+  "utf8",
+);
 
 describe("social intelligence desktop safety console", () => {
   it("keeps the safety queue as an exportable desktop table", () => {

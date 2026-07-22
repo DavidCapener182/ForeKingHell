@@ -14,20 +14,20 @@ function expectAll(content: string, patterns: string[]) {
 
 describe("user isolation source guards", () => {
   it("keeps bag index and bag subroutes scoped to the current user", () => {
-    expectAll(source("src/app/bag/page.tsx"), [
+    expectAll(source("src/app/(app)/bag/page.tsx"), [
       "const userId = await requireCurrentUserId();",
       "eq(clubs.userId, userId)",
       "eq(shots.userId, userId)",
       "eq(sessions.userId, userId)",
     ]);
 
-    expectAll(source("src/app/bag/longest/page.tsx"), [
+    expectAll(source("src/app/(app)/bag/longest/page.tsx"), [
       "const userId = await requireCurrentUserId();",
       "eq(clubs.userId, userId)",
       "eq(shots.userId, userId)",
     ]);
 
-    expectAll(source("src/app/bag/[clubId]/page.tsx"), [
+    expectAll(source("src/app/(app)/bag/[clubId]/page.tsx"), [
       "const userId = await requireCurrentUserId();",
       "eq(clubs.userId, userId)",
       "eq(shots.userId, userId)",
@@ -36,7 +36,7 @@ describe("user isolation source guards", () => {
   });
 
   it("keeps rounds and handicap sessions and shot counts scoped to the current user", () => {
-    for (const path of ["src/app/rounds/page.tsx", "src/app/handicap/page.tsx"]) {
+    for (const path of ["src/app/(app)/rounds/page.tsx", "src/app/(app)/handicap/page.tsx"]) {
       expectAll(source(path), [
         "const userId = await requireCurrentUserId();",
         "eq(sessions.userId, userId)",
@@ -46,7 +46,7 @@ describe("user isolation source guards", () => {
   });
 
   it("does not count private course metadata outside the visible course set", () => {
-    const coursesPage = source("src/app/courses/page.tsx");
+    const coursesPage = source("src/app/(app)/courses/page.tsx");
 
     expectAll(coursesPage, [
       "const visibleCourseIds = courseRows.map((course) => course.id);",
@@ -56,7 +56,7 @@ describe("user isolation source guards", () => {
   });
 
   it("only queries leaderboard activity for visible leaderboard participants", () => {
-    const leaderboardPage = source("src/app/leaderboard/page.tsx");
+    const leaderboardPage = source("src/app/(app)/leaderboard/page.tsx");
 
     expectAll(leaderboardPage, [
       "const visibleIds = visibleProfiles.map((profile) => profile.id);",
@@ -72,8 +72,8 @@ describe("user isolation source guards", () => {
   it("keeps social feed, profile search, and challenge reads behind social visibility helpers", () => {
     const socialSource = source("src/lib/social.ts");
     const challengeSource = source("src/lib/challenges.ts");
-    const feedPage = source("src/app/feed/page.tsx");
-    const friendsPage = source("src/app/friends/page.tsx");
+    const feedPage = source("src/app/(app)/feed/page.tsx");
+    const friendsPage = source("src/app/(app)/friends/page.tsx");
 
     expectAll(socialSource, [
       "await requireCurrentUserId()",
@@ -133,13 +133,12 @@ describe("user isolation source guards", () => {
       "reportedUserId",
     ]);
     expectAll(exportRoute, [
-      "aiGenerationCache",
-      "aiSocialSummaries",
-      "aiUsageEvents",
-      "billingCustomers",
-      "groupMemberships",
-      "providerSessions",
-      "socialReports",
+      "dataGovernanceManifest.filter",
+      "exportRulesForGovernance(entry)",
+      "exportRules.map",
+      "rule.ownerField",
+      "eq(column, userId)",
+      "Export owner field",
     ]);
     expectAll(settingsActions, [
       "await tx.delete(aiGenerationCache).where(eq(aiGenerationCache.userId, userId));",

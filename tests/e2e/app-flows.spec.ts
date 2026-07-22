@@ -73,8 +73,12 @@ test.describe("authenticated app flows", () => {
 
     await context.setOffline(true);
     await page.getByRole("button", { name: /queue offline/i }).click();
-    await expect(page.getByText(/queued 1 csv file/i)).toBeVisible();
-    await expect(page.getByText(/pending offline action/i)).toBeVisible();
+    await expect(
+      page.getByText(
+        "Private analysis needs a connection. Queued imports and round edits stay on this device until sync succeeds.",
+        { exact: true },
+      ),
+    ).toBeVisible();
   });
 
   test("shot explorer keeps a mobile-friendly review surface", async ({ page }) => {

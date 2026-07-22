@@ -17,6 +17,10 @@ describe("user settings parsing", () => {
     expect(parseTheme("light")).toBe("light");
     expect(parseTheme("dark")).toBe("dark");
     expect(parseTheme("clubhouse")).toBe("clubhouse");
+    expect(parseTheme("outdoor")).toBe("outdoor");
+    expect(parseTheme("range-night")).toBe("range-night");
+    expect(parseTheme("tour-broadcast")).toBe("tour-broadcast");
+    expect(parseTheme("high-contrast")).toBe("high-contrast");
     expect(parseTheme("system")).toBe("system");
     expect(parseTheme("sunlight")).toBe("system");
   });

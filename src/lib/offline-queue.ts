@@ -1,4 +1,7 @@
+import { offlineImportRetentionDays } from "@/lib/offline-storage-preferences";
+
 export type OfflineActionKind = "import-csv" | "round-edit";
+export type OfflineActionStatus = "pending" | "dead_letter";
 
 export type OfflineActionRecord = {
   id: string;
@@ -7,12 +10,20 @@ export type OfflineActionRecord = {
   payload: unknown;
   createdAt: string;
   retryCount: number;
+  schemaVersion?: number;
+  status?: OfflineActionStatus;
+  expiresAt?: string | null;
+  lastAttemptAt?: string | null;
+  nextRetryAt?: string | null;
+  lastErrorCode?: string | null;
 };
 
 const DB_NAME = "forekinghell-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "pending-actions";
 export const OFFLINE_IMPORT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const OFFLINE_QUEUE_SCHEMA_VERSION = 2;
+export const MAX_OFFLINE_RETRY_COUNT = 5;
 
 export async function countOfflineActions(ownerUserId: string) {
   return (await listOfflineActions(ownerUserId)).length;
@@ -39,11 +50,25 @@ export async function queueOfflineAction(
 
   const db = await openOfflineDb();
   await purgeExpiredOfflineActionsFromDb(db);
+  const retentionDays = record.kind === "import-csv" ? offlineImportRetentionDays() : 0;
+  if (record.kind === "import-csv" && retentionDays === 0) {
+    throw new Error("Offline import storage is disabled on this device.");
+  }
+  const createdAt = new Date();
   const value: OfflineActionRecord = {
     ...record,
     ownerUserId,
-    createdAt: new Date().toISOString(),
+    createdAt: createdAt.toISOString(),
     retryCount: 0,
+    schemaVersion: OFFLINE_QUEUE_SCHEMA_VERSION,
+    status: "pending",
+    expiresAt:
+      record.kind === "import-csv"
+        ? new Date(createdAt.getTime() + retentionDays * 24 * 60 * 60 * 1000).toISOString()
+        : null,
+    lastAttemptAt: null,
+    nextRetryAt: null,
+    lastErrorCode: null,
   };
 
   await new Promise<void>((resolve, reject) => {
@@ -115,11 +140,16 @@ export async function removeOfflineAction(id: string) {
   notifyOfflineQueueChanged();
 }
 
-export async function incrementOfflineActionRetry(record: OfflineActionRecord) {
+export async function retryDeadLetterOfflineAction(record: OfflineActionRecord) {
+  if (record.status !== "dead_letter") return record;
+
   const db = await openOfflineDb();
   const value: OfflineActionRecord = {
     ...record,
-    retryCount: record.retryCount + 1,
+    retryCount: 0,
+    status: "pending",
+    lastAttemptAt: null,
+    nextRetryAt: null,
   };
 
   await new Promise<void>((resolve, reject) => {
@@ -128,6 +158,46 @@ export async function incrementOfflineActionRetry(record: OfflineActionRecord) {
     request.onerror = () => reject(request.error);
   });
   notifyOfflineQueueChanged();
+  return value;
+}
+
+export async function incrementOfflineActionRetry(record: OfflineActionRecord) {
+  return recordOfflineActionFailure(record);
+}
+
+export async function recordOfflineActionFailure(
+  record: OfflineActionRecord,
+  failure: { permanent?: boolean; errorCode?: string | null } = {},
+) {
+  const db = await openOfflineDb();
+  const retryCount = record.retryCount + 1;
+  const deadLetter = Boolean(failure.permanent) || retryCount >= MAX_OFFLINE_RETRY_COUNT;
+  const now = new Date();
+  const value: OfflineActionRecord = {
+    ...record,
+    retryCount,
+    schemaVersion: OFFLINE_QUEUE_SCHEMA_VERSION,
+    status: deadLetter ? "dead_letter" : "pending",
+    lastAttemptAt: now.toISOString(),
+    nextRetryAt: deadLetter
+      ? null
+      : new Date(now.getTime() + retryDelayMs(retryCount)).toISOString(),
+    lastErrorCode: failure.errorCode ?? null,
+  };
+
+  await new Promise<void>((resolve, reject) => {
+    const request = db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).put(value);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+  notifyOfflineQueueChanged();
+  return value;
+}
+
+export function isOfflineActionReadyForRetry(record: OfflineActionRecord, now = Date.now()) {
+  if (record.status === "dead_letter") return false;
+  const nextRetryAt = record.nextRetryAt ? Date.parse(record.nextRetryAt) : 0;
+  return !Number.isFinite(nextRetryAt) || nextRetryAt <= now;
 }
 
 function notifyOfflineQueueChanged() {
@@ -139,7 +209,7 @@ function notifyOfflineQueueChanged() {
 async function purgeExpiredOfflineActionsFromDb(db: IDBDatabase) {
   const records = await allOfflineActions(db);
   const expiredIds = records
-    .filter((record) => record.kind === "import-csv" && isExpired(record.createdAt))
+    .filter((record) => record.kind === "import-csv" && isExpired(record))
     .map((record) => record.id);
 
   if (expiredIds.length === 0) {
@@ -171,9 +241,18 @@ function deleteOfflineActions(db: IDBDatabase, ids: string[]) {
   });
 }
 
-function isExpired(createdAt: string) {
-  const timestamp = Date.parse(createdAt);
-  return Number.isFinite(timestamp) && Date.now() - timestamp > OFFLINE_IMPORT_TTL_MS;
+function isExpired(record: OfflineActionRecord) {
+  const expiresAt = record.expiresAt ? Date.parse(record.expiresAt) : Number.NaN;
+  if (Number.isFinite(expiresAt)) {
+    return Date.now() >= expiresAt;
+  }
+
+  const createdAt = Date.parse(record.createdAt);
+  return Number.isFinite(createdAt) && Date.now() - createdAt > OFFLINE_IMPORT_TTL_MS;
+}
+
+function retryDelayMs(retryCount: number) {
+  return Math.min(60_000, 2 ** Math.max(0, retryCount - 1) * 2_000);
 }
 
 function serviceWorkerReadyWithTimeout() {

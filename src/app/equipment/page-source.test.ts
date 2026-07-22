@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/equipment/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/equipment/page.tsx"), "utf8");
 
 describe("equipment desktop tables", () => {
   it("keeps equipment history and retired clubs in desktop workbench tables", () => {

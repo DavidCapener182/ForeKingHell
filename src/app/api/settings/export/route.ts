@@ -1,74 +1,17 @@
-import { and, asc, eq, gt, inArray, or } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, gt, inArray, or } from "drizzle-orm";
+import type { PgTableWithColumns, TableConfig } from "drizzle-orm/pg-core";
 
-import {
-  accountMemberships,
-  achievementProgress,
-  achievementSyncState,
-  aiGenerationCache,
-  aiSocialSummaries,
-  aiUsageEvents,
-  ballModels,
-  billingCustomers,
-  challengeAttempts,
-  challengeComments,
-  challengeEntries,
-  challengeInvites,
-  challengeRewards,
-  challengeResults,
-  challenges,
-  clubEquipmentHistory,
-  clubs,
-  contentExports,
-  courses,
-  entitlements,
-  equipmentSnapshots,
-  feedCommentReactions,
-  feedComments,
-  feedItems,
-  feedReactions,
-  friendRequests,
-  friendships,
-  groupChallengeLinks,
-  groupInvites,
-  groupMemberships,
-  groupPosts,
-  groups,
-  holes,
-  importFiles,
-  importJobs,
-  importMappings,
-  importRows,
-  importSourceFiles,
-  offerClicks,
-  partnerOffers,
-  providerAccounts,
-  providerSessions,
-  rapsodoSyncSessions,
-  sessions,
-  shareLinks,
-  shots,
-  socialReports,
-  sponsors,
-  stockYardages,
-  strokesGainedShotEvents,
-  subscriptions,
-  teeSets,
-  usageEvents,
-  userAchievements,
-  userBlocks,
-  userFollows,
-  userProfiles,
-  users,
-  weatherSnapshots,
-  xpLedger,
-} from "@/db/schema";
+import * as schema from "@/db/schema";
+import { shots, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
+import { dataGovernanceManifest, exportRulesForGovernance } from "@/lib/data-governance-manifest";
 import { createPersonalDataExport } from "@/lib/personal-data-export";
 
 export const dynamic = "force-dynamic";
 
 const SHOT_PAGE_LIMIT = 5_000;
+type ExportTable = PgTableWithColumns<TableConfig>;
 
 export async function GET(request?: Request) {
   const userId = await getOptionalCurrentUserId();
@@ -79,137 +22,53 @@ export async function GET(request?: Request) {
 
   const shotCursor = parseShotCursor(request);
   const exportedAt = new Date();
-
   const db = getDb();
-  const [
-    profileRows,
-    clubRows,
-    sessionRows,
-    importRowRows,
-    importFileRows,
-    stockYardageRows,
-    ballModelRows,
-    clubEquipmentRows,
-    strokesGainedRows,
-    achievementRows,
-    xpRows,
-    progressRows,
-    syncStateRows,
-    rapsodoRows,
-    shareLinkRows,
-    contentExportRows,
-    weatherSnapshotRows,
-    equipmentSnapshotRows,
-    membershipRows,
-    socialProfileRows,
-    friendRequestRows,
-    friendshipRows,
-    blockRows,
-    followRows,
-    feedItemRows,
-    feedReactionRows,
-    feedCommentReactionRows,
-    feedCommentRows,
-    challengeRows,
-    challengeEntryRows,
-    challengeAttemptRows,
-    challengeResultRows,
-    challengeCommentRows,
-    challengeInviteRows,
-    groupRows,
-    groupMembershipRows,
-    groupInviteRows,
-    groupPostRows,
-    groupChallengeLinkRows,
-    billingCustomerRows,
-    subscriptionRows,
-    entitlementRows,
-    usageEventRows,
-    sponsorRows,
-    offerClickRows,
-    providerAccountRows,
-    providerSessionRows,
-    importSourceFileRows,
-    importJobRows,
-    importMappingRows,
-    aiUsageEventRows,
-    aiGenerationCacheRows,
-    aiSocialSummaryRows,
-    socialReportRows,
-    createdCourseRows,
-  ] = await Promise.all([
-    db.select().from(users).where(eq(users.id, userId)),
-    db.select().from(clubs).where(eq(clubs.userId, userId)),
-    db.select().from(sessions).where(eq(sessions.userId, userId)),
-    db.select().from(importRows).where(eq(importRows.userId, userId)),
-    db.select().from(importFiles).where(eq(importFiles.userId, userId)),
-    db.select().from(stockYardages).where(eq(stockYardages.userId, userId)),
-    db.select().from(ballModels).where(eq(ballModels.userId, userId)),
-    db.select().from(clubEquipmentHistory).where(eq(clubEquipmentHistory.userId, userId)),
-    db.select().from(strokesGainedShotEvents).where(eq(strokesGainedShotEvents.userId, userId)),
-    db.select().from(userAchievements).where(eq(userAchievements.userId, userId)),
-    db.select().from(xpLedger).where(eq(xpLedger.userId, userId)),
-    db.select().from(achievementProgress).where(eq(achievementProgress.userId, userId)),
-    db.select().from(achievementSyncState).where(eq(achievementSyncState.userId, userId)),
-    db.select().from(rapsodoSyncSessions).where(eq(rapsodoSyncSessions.userId, userId)),
-    db.select().from(shareLinks).where(eq(shareLinks.userId, userId)),
-    db.select().from(contentExports).where(eq(contentExports.userId, userId)),
-    db.select().from(weatherSnapshots).where(eq(weatherSnapshots.userId, userId)),
-    db.select().from(equipmentSnapshots).where(eq(equipmentSnapshots.userId, userId)),
-    db.select().from(accountMemberships).where(eq(accountMemberships.memberUserId, userId)),
-    db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
-    db
-      .select()
-      .from(friendRequests)
-      .where(
-        or(eq(friendRequests.requesterUserId, userId), eq(friendRequests.recipientUserId, userId)),
-      ),
-    db
-      .select()
-      .from(friendships)
-      .where(or(eq(friendships.userAId, userId), eq(friendships.userBId, userId))),
-    db.select().from(userBlocks).where(eq(userBlocks.blockerUserId, userId)),
-    db.select().from(userFollows).where(eq(userFollows.followerUserId, userId)),
-    db.select().from(feedItems).where(eq(feedItems.userId, userId)),
-    db.select().from(feedReactions).where(eq(feedReactions.userId, userId)),
-    db.select().from(feedCommentReactions).where(eq(feedCommentReactions.userId, userId)),
-    db.select().from(feedComments).where(eq(feedComments.userId, userId)),
-    db.select().from(challenges).where(eq(challenges.creatorUserId, userId)),
-    db.select().from(challengeEntries).where(eq(challengeEntries.userId, userId)),
-    db.select().from(challengeAttempts).where(eq(challengeAttempts.userId, userId)),
-    db.select().from(challengeResults).where(eq(challengeResults.userId, userId)),
-    db.select().from(challengeComments).where(eq(challengeComments.userId, userId)),
-    db
-      .select()
-      .from(challengeInvites)
-      .where(
-        or(eq(challengeInvites.inviterUserId, userId), eq(challengeInvites.inviteeUserId, userId)),
-      ),
-    db.select().from(groups).where(eq(groups.ownerUserId, userId)),
-    db.select().from(groupMemberships).where(eq(groupMemberships.userId, userId)),
-    db
-      .select()
-      .from(groupInvites)
-      .where(or(eq(groupInvites.inviterUserId, userId), eq(groupInvites.inviteeUserId, userId))),
-    db.select().from(groupPosts).where(eq(groupPosts.userId, userId)),
-    db.select().from(groupChallengeLinks).where(eq(groupChallengeLinks.createdByUserId, userId)),
-    db.select().from(billingCustomers).where(eq(billingCustomers.userId, userId)),
-    db.select().from(subscriptions).where(eq(subscriptions.userId, userId)),
-    db.select().from(entitlements).where(eq(entitlements.userId, userId)),
-    db.select().from(usageEvents).where(eq(usageEvents.userId, userId)),
-    db.select().from(sponsors).where(eq(sponsors.ownerUserId, userId)),
-    db.select().from(offerClicks).where(eq(offerClicks.userId, userId)),
-    db.select().from(providerAccounts).where(eq(providerAccounts.userId, userId)),
-    db.select().from(providerSessions).where(eq(providerSessions.userId, userId)),
-    db.select().from(importSourceFiles).where(eq(importSourceFiles.userId, userId)),
-    db.select().from(importJobs).where(eq(importJobs.userId, userId)),
-    db.select().from(importMappings).where(eq(importMappings.userId, userId)),
-    db.select().from(aiUsageEvents).where(eq(aiUsageEvents.userId, userId)),
-    db.select().from(aiGenerationCache).where(eq(aiGenerationCache.userId, userId)),
-    db.select().from(aiSocialSummaries).where(eq(aiSocialSummaries.userId, userId)),
-    db.select().from(socialReports).where(eq(socialReports.reporterUserId, userId)),
-    db.select().from(courses).where(eq(courses.createdByUserId, userId)),
-  ]);
+  const [profile] = await db.select().from(users).where(eq(users.id, userId));
+
+  const exportableDatasets = dataGovernanceManifest.filter(
+    (entry) => entry.export && entry.dataset !== "users" && entry.dataset !== "shots",
+  );
+  const queriedDatasets = await Promise.all(
+    exportableDatasets.map(async (entry) => {
+      const table = schema[entry.dataset as keyof typeof schema] as unknown as
+        | ExportTable
+        | undefined;
+      if (!table) {
+        throw new Error(`Export table binding missing for ${entry.dataset}.`);
+      }
+
+      const columns = getTableColumns(table) as Record<string, Parameters<typeof eq>[0]>;
+      const exportRules = exportRulesForGovernance(entry);
+      const ownerConditions = exportRules.map((rule) => {
+        const column = columns[rule.ownerField];
+        if (!column) {
+          throw new Error(
+            `Export owner field ${entry.dataset}.${rule.ownerField} is not in the schema.`,
+          );
+        }
+        const ownerCondition = eq(column, userId);
+        if (!rule.requiredField || !rule.allowedValues?.length) return ownerCondition;
+
+        const requiredColumn = columns[rule.requiredField];
+        if (!requiredColumn) {
+          throw new Error(
+            `Export rule field ${entry.dataset}.${rule.requiredField} is not in the schema.`,
+          );
+        }
+
+        return and(ownerCondition, inArray(requiredColumn, rule.allowedValues));
+      });
+      if (ownerConditions.length === 0) {
+        throw new Error(`Exportable dataset ${entry.dataset} has no owner field.`);
+      }
+
+      const rows = await db
+        .select()
+        .from(table)
+        .where(ownerConditions.length === 1 ? ownerConditions[0] : or(...ownerConditions));
+      return [entry.dataset, rows] as const;
+    }),
+  );
 
   const shotPageRows = await db
     .select()
@@ -225,120 +84,39 @@ export async function GET(request?: Request) {
   const shotRows = shotPageRows.slice(0, SHOT_PAGE_LIMIT);
   const nextShotCursor = hasMoreShots ? (shotRows.at(-1)?.id ?? null) : null;
 
-  const courseIds = createdCourseRows.map((course) => course.id);
-  const challengeIds = challengeRows.map((challenge) => challenge.id);
-  const sponsorIds = sponsorRows.map((sponsor) => sponsor.id);
-  const [teeSetRows, holeRows, challengeRewardRows, sponsorChallengeRewardRows, partnerOfferRows] =
-    await Promise.all([
-      courseIds.length > 0
-        ? db.select().from(teeSets).where(inArray(teeSets.courseId, courseIds))
-        : Promise.resolve([]),
-      courseIds.length > 0
-        ? db.select().from(holes).where(inArray(holes.courseId, courseIds))
-        : Promise.resolve([]),
-      challengeIds.length > 0
-        ? db
-            .select()
-            .from(challengeRewards)
-            .where(inArray(challengeRewards.challengeId, challengeIds))
-        : Promise.resolve([]),
-      sponsorIds.length > 0
-        ? db.select().from(challengeRewards).where(inArray(challengeRewards.sponsorId, sponsorIds))
-        : Promise.resolve([]),
-      sponsorIds.length > 0
-        ? db.select().from(partnerOffers).where(inArray(partnerOffers.sponsorId, sponsorIds))
-        : Promise.resolve([]),
-    ]);
-
   const payload = createPersonalDataExport({
     userId,
     exportedAt,
-    profile: profileRows[0] ?? null,
+    profile: profile ?? null,
     data: {
-      clubs: clubRows,
-      sessions: sessionRows,
-      importRows: importRowRows,
-      importFiles: importFileRows,
+      ...Object.fromEntries(queriedDatasets),
       shots: shotRows,
-      stockYardages: stockYardageRows,
-      ballModels: ballModelRows,
-      clubEquipmentHistory: clubEquipmentRows,
-      strokesGainedShotEvents: strokesGainedRows,
-      userAchievements: achievementRows,
-      xpLedger: xpRows,
-      achievementProgress: progressRows,
-      achievementSyncState: syncStateRows,
-      rapsodoSyncSessions: rapsodoRows,
-      shareLinks: shareLinkRows,
-      contentExports: contentExportRows,
-      weatherSnapshots: weatherSnapshotRows,
-      equipmentSnapshots: equipmentSnapshotRows,
-      accountMemberships: membershipRows,
-      socialProfile: socialProfileRows[0] ?? null,
-      friendRequests: friendRequestRows,
-      friendships: friendshipRows,
-      userBlocks: blockRows,
-      userFollows: followRows,
-      feedItems: feedItemRows,
-      feedReactions: feedReactionRows,
-      feedCommentReactions: feedCommentReactionRows,
-      feedComments: feedCommentRows,
-      challenges: challengeRows,
-      challengeEntries: challengeEntryRows,
-      challengeAttempts: challengeAttemptRows,
-      challengeResults: challengeResultRows,
-      challengeComments: challengeCommentRows,
-      challengeInvites: challengeInviteRows,
-      challengeRewards: uniqueById([...challengeRewardRows, ...sponsorChallengeRewardRows]),
-      groups: groupRows,
-      groupMemberships: groupMembershipRows,
-      groupInvites: groupInviteRows,
-      groupPosts: groupPostRows,
-      groupChallengeLinks: groupChallengeLinkRows,
-      billingCustomers: billingCustomerRows,
-      subscriptions: subscriptionRows,
-      entitlements: entitlementRows,
-      usageEvents: usageEventRows,
-      sponsors: sponsorRows,
-      partnerOffers: partnerOfferRows,
-      offerClicks: offerClickRows,
-      providerAccounts: providerAccountRows,
-      providerSessions: providerSessionRows,
-      importSourceFiles: importSourceFileRows,
-      importJobs: importJobRows,
-      importMappings: importMappingRows,
-      aiUsageEvents: aiUsageEventRows,
-      aiGenerationCache: aiGenerationCacheRows,
-      aiSocialSummaries: aiSocialSummaryRows,
-      socialReports: socialReportRows,
-      courses: createdCourseRows,
-      teeSets: teeSetRows,
-      holes: holeRows,
     },
   });
 
-  const paginatedPayload = {
-    ...payload,
-    pagination: {
-      shots: {
-        limit: SHOT_PAGE_LIMIT,
-        cursor: shotCursor,
-        nextCursor: nextShotCursor,
-        hasMore: hasMoreShots,
-        nextPath: nextShotCursor
-          ? `/api/settings/export?shotCursor=${encodeURIComponent(nextShotCursor)}`
-          : null,
+  return Response.json(
+    {
+      ...payload,
+      pagination: {
+        shots: {
+          limit: SHOT_PAGE_LIMIT,
+          cursor: shotCursor,
+          nextCursor: nextShotCursor,
+          hasMore: hasMoreShots,
+          nextPath: nextShotCursor
+            ? `/api/settings/export?shotCursor=${encodeURIComponent(nextShotCursor)}`
+            : null,
+        },
       },
     },
-  };
-
-  return Response.json(paginatedPayload, {
-    headers: {
-      "Cache-Control": "private, no-store",
-      "Content-Disposition": `attachment; filename="forekinghell-personal-export-${exportedAt.toISOString().slice(0, 10)}.json"`,
-      "X-Content-Type-Options": "nosniff",
+    {
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Disposition": `attachment; filename="forekinghell-personal-export-${exportedAt.toISOString().slice(0, 10)}.json"`,
+        "X-Content-Type-Options": "nosniff",
+      },
     },
-  });
+  );
 }
 
 function parseShotCursor(request?: Request) {
@@ -348,8 +126,4 @@ function parseShotCursor(request?: Request) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
     ? value
     : null;
-}
-
-function uniqueById<T extends { id: string }>(rows: T[]) {
-  return Array.from(new Map(rows.map((row) => [row.id, row])).values());
 }

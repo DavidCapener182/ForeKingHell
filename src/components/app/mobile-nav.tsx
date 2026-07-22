@@ -5,7 +5,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Menu, Search, Settings, ShieldCheck, Upload, UserRound } from "lucide-react";
 
 import {
-  buildDesktopNavGroups,
+  adminNavGroup,
+  mobileMoreGroups,
   mobilePageTitle,
   mobilePrimaryItems,
   type AppNavGroup,
@@ -46,8 +47,12 @@ const compactTitleThreshold = 44;
 export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: MobileNavProps) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
   const pageTitle = mobilePageTitle(pathname);
-  const groups = buildDesktopNavGroups(isAdmin);
+  const groups = useMemo(
+    () => (isAdmin ? [...mobileMoreGroups, adminNavGroup] : mobileMoreGroups),
+    [isAdmin],
+  );
   const [query, setQuery] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
   const [compactTitleVisible, setCompactTitleVisible] = useState(false);
   const scrollFrameRef = useRef<number | null>(null);
   const activePrimaryHref =
@@ -136,7 +141,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
         className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full px-3 pt-[env(safe-area-inset-top)] lg:hidden"
       >
         <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
-          <Sheet>
+          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
             <SheetTrigger asChild>
               <Button
                 type="button"
@@ -271,6 +276,27 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
             const Icon = item.icon;
             const active = item.isActive(pathname);
 
+            if (item.label === "More") {
+              return (
+                <button
+                  key={`${item.label}-${item.href}`}
+                  type="button"
+                  onClick={() => setMoreOpen(true)}
+                  aria-current={active ? "page" : undefined}
+                  aria-label="Open more navigation"
+                  className={cn(
+                    "ios-tab-item focus-aaa flex min-h-14 touch-manipulation flex-col items-center justify-center gap-0.5 px-1 outline-none transition-[color,transform] duration-100 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
+                    active ? "font-semibold" : "",
+                  )}
+                >
+                  <span className="ios-tab-icon grid place-items-center">
+                    <Icon className="size-5" aria-hidden />
+                  </span>
+                  <span className="truncate">{item.label}</span>
+                </button>
+              );
+            }
+
             return (
               <Link
                 key={`${item.label}-${item.href}`}
@@ -303,11 +329,14 @@ async function clearPrivateDataBeforeSignOut(event: FormEvent<HTMLFormElement>) 
 
 function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: string }) {
   return (
-    <section className="grid gap-2">
-      <div className="px-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {group.label}
+    <section className="ios-drawer-group overflow-hidden border border-border/80 bg-card shadow-sm">
+      <div className="border-b border-border/70 px-4 py-3">
+        <p className="text-sm font-semibold text-foreground">{group.label}</p>
+        <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
+          {mobileGroupDescription(group.label)}
+        </p>
       </div>
-      <div className="ios-drawer-group grid">
+      <div className="grid sm:grid-cols-2">
         {group.items.map((item) => {
           const Icon = item.icon;
           const active = item.isActive(pathname);
@@ -318,7 +347,7 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "ios-drawer-link focus-aaa grid min-h-11 touch-manipulation grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 text-[15px] font-normal outline-none transition-colors duration-100 ease-out",
+                  "ios-drawer-link focus-aaa grid min-h-12 touch-manipulation grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 text-[15px] font-normal outline-none transition-colors duration-100 ease-out last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0",
                   active ? "font-medium" : "text-foreground",
                 )}
               >
@@ -336,4 +365,13 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
       </div>
     </section>
   );
+}
+
+function mobileGroupDescription(label: string) {
+  if (label === "Play") return "Rounds, courses and import";
+  if (label === "Compete") return "Challenges, tournaments and records";
+  if (label === "Social") return "Friends, groups and activity";
+  if (label === "Account") return "Profile, providers, billing and settings";
+  if (label === "Admin") return "System, users and operations";
+  return "More ForeKingHell tools";
 }

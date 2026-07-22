@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/import/result/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/import/result/page.tsx"), "utf8");
 
 describe("import result desktop workflow receipt", () => {
   it("uses the shared desktop workflow layout for post-import review", () => {

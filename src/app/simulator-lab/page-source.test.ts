@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/simulator-lab/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/simulator-lab/page.tsx"), "utf8");
 const gappingSource = readFileSync(
   join(process.cwd(), "src/app/simulator-lab/gapping-matrix-client.tsx"),
   "utf8",

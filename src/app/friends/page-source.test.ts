@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/friends/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/friends/page.tsx"), "utf8");
 
 describe("friends desktop manager", () => {
   it("keeps the friend graph table exportable, captioned and keyboard-focusable", () => {

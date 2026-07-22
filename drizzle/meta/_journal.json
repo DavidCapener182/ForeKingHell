@@ -295,6 +295,27 @@
       "when": 1783692000000,
       "tag": "0041_analysis_workspace",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1784664059355,
+      "tag": "0042_offline_operation_idempotency",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1784665800000,
+      "tag": "0043_restore_rls_policy_helper_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1784671577469,
+      "tag": "0044_coach_player_interactions",
+      "breakpoints": true
     }
   ]
 }

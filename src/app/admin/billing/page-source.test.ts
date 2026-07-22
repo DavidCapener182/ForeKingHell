@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/admin/billing/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(admin)/admin/billing/page.tsx"), "utf8");
 
 describe("admin billing desktop console source", () => {
   it("uses the shared billing workbench shell without adding a contextual AI rail", () => {

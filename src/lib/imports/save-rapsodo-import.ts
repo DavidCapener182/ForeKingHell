@@ -60,13 +60,16 @@ import {
 } from "@/lib/strokes-gained";
 import { buildImportedTrainingSessionRow } from "@/lib/training/sourceLoad";
 import {
+  findOversizedImportField,
   MAX_IMPORT_CSV_BYTES,
+  MAX_IMPORT_CSV_FIELD_LENGTH,
   MAX_IMPORT_CSV_ROWS,
   MAX_IMPORT_FILES_PER_BATCH,
   MAX_PARSED_SHOTS_PER_FILE,
   formatMegabytes,
   utf8ByteLength,
 } from "@/lib/imports/import-limits";
+import { reportServerFailure } from "@/lib/server-observability";
 
 export type RapsodoShotOverride = {
   rowNumber: number;
@@ -159,6 +162,21 @@ export type SaveRapsodoImportBatchResult =
 const BAD_DATA_QUALITY_TAG = "bad_data";
 const WEDGE_CLUB_TYPES = new Set(["pw", "gw", "aw", "sw", "lw", "wedge"]);
 const SHORT_WEDGE_CLUB_TYPES = new Set(["sw", "lw", "wedge"]);
+const IMPORT_TELEMETRY_FIELDS = new Set([
+  "fileSizeBytes",
+  "rawRowCount",
+  "parsedShotCount",
+  "warningCount",
+  "duplicate",
+  "parseVersion",
+  "source",
+  "offlineReplay",
+  "durationMs",
+]);
+
+class ImportValidationError extends Error {
+  override readonly name = "ImportValidationError";
+}
 
 export async function saveRapsodoImport(
   input: SaveRapsodoImportInput,
@@ -263,9 +281,18 @@ export async function saveLaunchMonitorImport(
       warnings: [...parsed.warnings, ...(coursePlan?.warnings ?? [])],
     };
   } catch (error) {
+    if (!(error instanceof ImportValidationError)) {
+      reportServerFailure("import_save_failed", error, {
+        "app.source": input.source,
+      });
+    }
+
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Import failed.",
+      message:
+        error instanceof ImportValidationError
+          ? error.message
+          : "The import could not be saved. Try again, or contact support if it continues.",
     };
   }
 }
@@ -293,7 +320,10 @@ export async function saveRapsodoImportBatch(
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Import validation failed.",
+      message:
+        error instanceof ImportValidationError
+          ? error.message
+          : "The import could not be validated.",
     };
   }
 
@@ -313,27 +343,31 @@ export async function saveRapsodoImportBatch(
     parsed: ParsedLaunchMonitorImportResult;
   }> = [];
   for (const input of validatedInputs) {
-    const parsed = await parseLaunchMonitorImportCsv({
-      rawCsvText: input.rawCsvText,
-      fileName: input.fileName,
-      source: input.source,
-      fallbackDistanceUnit: input.distanceUnit,
-      columnMapping: input.columnMapping,
-    });
-
     try {
+      const parsed = await parseLaunchMonitorImportCsv({
+        rawCsvText: input.rawCsvText,
+        fileName: input.fileName,
+        source: input.source,
+        fallbackDistanceUnit: input.distanceUnit,
+        columnMapping: input.columnMapping,
+      });
       validateParsedImport(input, parsed);
+      parsedInputs.push({ input, parsed });
     } catch (error) {
+      if (!(error instanceof ImportValidationError)) {
+        reportServerFailure("import_batch_parse_failed", error, {
+          "app.source": input.source,
+        });
+      }
+
       return {
         ok: false,
         message:
-          error instanceof Error
+          error instanceof ImportValidationError
             ? `${input.fileName}: ${error.message}`
-            : "Import validation failed.",
+            : `${input.fileName}: the import could not be validated.`,
       };
     }
-
-    parsedInputs.push({ input, parsed });
   }
 
   for (const { input, parsed } of parsedInputs) {
@@ -834,34 +868,51 @@ function roundOne(value: number) {
 }
 
 function logImportTelemetry(event: string, payload: Record<string, unknown>) {
-  console.info(event, payload);
+  const safeEvent = /^fkh\.import\.[a-z0-9_.-]{1,40}$/i.test(event) ? event : "fkh.import.event";
+  const safePayload = Object.fromEntries(
+    Object.entries(payload).filter(([key, value]) => {
+      if (!IMPORT_TELEMETRY_FIELDS.has(key)) return false;
+      return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+    }),
+  );
+
+  console.info(JSON.stringify({ event: safeEvent, ...safePayload }));
 }
 
 function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
   if (!["rapsodo", "square", "trackman"].includes(input.source)) {
-    throw new Error("Launch monitor source is invalid.");
+    throw new ImportValidationError("Launch monitor source is invalid.");
   }
 
   if (!["range", "round", "simulator", "simulated_course"].includes(input.sessionType)) {
-    throw new Error("Session type is invalid.");
+    throw new ImportValidationError("Session type is invalid.");
   }
 
   if (!["meters", "yards"].includes(input.distanceUnit)) {
-    throw new Error("Distance unit is invalid.");
+    throw new ImportValidationError("Distance unit is invalid.");
   }
 
   if (!input.rawCsvText.trim()) {
-    throw new Error("CSV file is empty.");
+    throw new ImportValidationError("CSV file is empty.");
   }
 
   const actualSizeBytes = utf8ByteLength(input.rawCsvText);
   const reportedSizeBytes = Number.isFinite(input.fileSizeBytes) ? input.fileSizeBytes : 0;
 
   if (Math.max(actualSizeBytes, reportedSizeBytes) > MAX_IMPORT_CSV_BYTES) {
-    throw new Error(
+    throw new ImportValidationError(
       `This file is too large. Split it into smaller session exports. Maximum CSV size is ${formatMegabytes(
         MAX_IMPORT_CSV_BYTES,
       )}.`,
+    );
+  }
+
+  const oversizedField = findOversizedImportField(input.rawCsvText);
+  if (oversizedField) {
+    throw new ImportValidationError(
+      `CSV row ${oversizedField.rowNumber}, column ${oversizedField.columnNumber} exceeds the ${MAX_IMPORT_CSV_FIELD_LENGTH.toLocaleString(
+        "en-GB",
+      )}-character field limit. Shorten that value and try again.`,
     );
   }
 
@@ -884,7 +935,7 @@ function validateParsedImport(
   parsed: ParsedLaunchMonitorImportResult,
 ) {
   if (parsed.rawRows.length > MAX_IMPORT_CSV_ROWS) {
-    throw new Error(
+    throw new ImportValidationError(
       `This file has too many rows. Split it into smaller session exports. Maximum row count is ${MAX_IMPORT_CSV_ROWS.toLocaleString(
         "en-GB",
       )}.`,
@@ -892,7 +943,7 @@ function validateParsedImport(
   }
 
   if (parsed.shots.length > MAX_PARSED_SHOTS_PER_FILE) {
-    throw new Error(
+    throw new ImportValidationError(
       `This file has too many parsed shots. Split it into smaller session exports. Maximum shots per file is ${MAX_PARSED_SHOTS_PER_FILE.toLocaleString(
         "en-GB",
       )}.`,
@@ -922,7 +973,7 @@ function buildCoursePlan(
   const scorecard = parseScorecardText(input.courseScorecardText);
 
   if (scorecard.holes.length === 0) {
-    throw new Error(
+    throw new ImportValidationError(
       "Add a scorecard with hole, par, and yardage rows before saving a simulated course.",
     );
   }

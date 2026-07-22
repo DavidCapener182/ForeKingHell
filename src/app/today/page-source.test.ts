@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/today/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/today/page.tsx"), "utf8");
 const chartsSource = readFileSync(
   join(process.cwd(), "src/app/today/today-shot-charts.tsx"),
   "utf8",
@@ -174,5 +174,11 @@ describe("latest practice desktop dashboard", () => {
     expect(chartsSource).toContain("svgCoordinate(xScale(offlineYd))");
     expect(chartsSource).toContain("svgCoordinate(yScale(downrangeYd))");
     expect(chartsSource).toContain("Math.round(value * 1000) / 1000");
+  });
+
+  it("keeps decorative dispersion ellipses out of the accessibility tree", () => {
+    expect(chartsSource).not.toContain('aria-label="Approximate 80 percent dispersion ellipse"');
+    expect(chartsSource).not.toContain('aria-label="Approximate 50 percent dispersion ellipse"');
+    expect(chartsSource.match(/<ellipse[\s\S]*?aria-hidden="true"/g)).toHaveLength(2);
   });
 });

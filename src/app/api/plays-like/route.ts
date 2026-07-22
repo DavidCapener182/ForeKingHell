@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { rateLimitRequest } from "@/lib/api-protection";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { getLivePlaysLikeSnapshotForCourse } from "@/lib/plays-like-weather";
+import { reportServerFailure } from "@/lib/server-observability";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +46,11 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    reportServerFailure("plays_like_provider_failed", error, {
+      "provider.name": "open_meteo",
+    });
     return NextResponse.json(
-      {
-        message: error instanceof Error ? error.message : "Plays-like weather could not be loaded.",
-      },
+      { message: "Plays-like weather could not be loaded." },
       { status: 502 },
     );
   }

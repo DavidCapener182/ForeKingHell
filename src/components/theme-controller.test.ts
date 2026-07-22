@@ -55,6 +55,16 @@ describe("applyThemePreference", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uses dark colour-scheme behavior for Range Night and High Contrast", () => {
+    for (const preference of ["range-night", "high-contrast"] as const) {
+      const { root, classes } = createRoot();
+      applyThemePreference(root, null, preference, false);
+      expect(root.dataset.theme).toBe(preference);
+      expect(classes.has("dark")).toBe(true);
+      expect(root.style.colorScheme).toBe("dark");
+    }
+  });
+
   it("keeps system, light and dark behaviour unchanged", () => {
     const dark = createRoot();
     applyThemePreference(dark.root, null, "system", true);

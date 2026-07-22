@@ -68,8 +68,10 @@ export function applyThemePreference(
 
   root.dataset.themePreference = preference;
   root.dataset.theme = theme;
-  root.classList.toggle("dark", theme === "dark");
-  root.style.colorScheme = theme === "dark" ? "dark" : "light";
+  const usesDarkColourScheme =
+    theme === "dark" || theme === "range-night" || theme === "high-contrast";
+  root.classList.toggle("dark", usesDarkColourScheme);
+  root.style.colorScheme = usesDarkColourScheme ? "dark" : "light";
   meta?.setAttribute("content", themeColourByMode[theme]);
 }
 
@@ -88,5 +90,14 @@ function readThemePreference(): ThemePreference {
 }
 
 function isThemePreference(value: string | null | undefined): value is ThemePreference {
-  return value === "system" || value === "light" || value === "dark" || value === "clubhouse";
+  return (
+    value === "system" ||
+    value === "light" ||
+    value === "dark" ||
+    value === "clubhouse" ||
+    value === "outdoor" ||
+    value === "range-night" ||
+    value === "tour-broadcast" ||
+    value === "high-contrast"
+  );
 }

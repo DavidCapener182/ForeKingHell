@@ -7,11 +7,13 @@ import { Download, RefreshCw, WifiOff, X } from "lucide-react";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import {
   countOfflineActions,
-  incrementOfflineActionRetry,
+  isOfflineActionReadyForRetry,
   listOfflineActions,
   purgeOfflineActionsForOtherAccounts,
+  recordOfflineActionFailure,
   removeOfflineAction,
 } from "@/lib/offline-queue";
+import { setOfflineLastSyncAt } from "@/lib/offline-storage-preferences";
 import { Button } from "@/components/ui/button";
 import { BRAND_NAME } from "@/lib/brand";
 
@@ -54,59 +56,74 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
       return;
     }
 
-    await purgeOfflineActionsForOtherAccounts(activeUserId).catch(() => 0);
-    const actions = await listOfflineActions(activeUserId).catch(() => []);
-    const syncableActions = actions.filter(
-      (action) => action.kind === "import-csv" || action.kind === "round-edit",
-    );
+    await withOfflineReplayLock(async () => {
+      await purgeOfflineActionsForOtherAccounts(activeUserId).catch(() => 0);
+      const actions = await listOfflineActions(activeUserId).catch(() => []);
+      const syncableActions = actions.filter(
+        (action) =>
+          (action.kind === "import-csv" || action.kind === "round-edit") &&
+          isOfflineActionReadyForRetry(action),
+      );
 
-    if (syncableActions.length === 0) {
-      refreshOfflineCount();
-      setSyncMessage(null);
-      return;
-    }
-
-    setSyncMessage(
-      `Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}…`,
-    );
-    let synced = 0;
-    let retained = 0;
-
-    for (const action of syncableActions) {
-      try {
-        const response = await fetch(
-          action.kind === "import-csv" ? "/api/offline/imports" : "/api/offline/round-edits",
-          {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              "x-fkh-offline-owner": action.ownerUserId,
-              "x-fkh-offline-operation": action.id,
-            },
-            body: JSON.stringify(action.payload),
-          },
-        );
-
-        if (response.ok) {
-          await removeOfflineAction(action.id);
-          synced += 1;
-        } else {
-          await incrementOfflineActionRetry(action);
-          retained += 1;
-        }
-      } catch {
-        await incrementOfflineActionRetry(action);
-        retained += 1;
+      if (syncableActions.length === 0) {
+        refreshOfflineCount();
+        setSyncMessage(null);
+        return;
       }
-    }
 
-    refreshOfflineCount();
-    setSyncMessage(
-      retained > 0
-        ? `${synced} synced; ${retained} retained for retry. No queued data was discarded.`
-        : `${synced} offline action${synced === 1 ? "" : "s"} synced successfully.`,
-    );
-    window.setTimeout(() => setSyncMessage(null), 5000);
+      setSyncMessage(
+        `Syncing ${syncableActions.length} queued action${syncableActions.length === 1 ? "" : "s"}…`,
+      );
+      let synced = 0;
+      let retained = 0;
+      let needsReview = 0;
+
+      for (const action of syncableActions) {
+        try {
+          const response = await fetch(
+            action.kind === "import-csv" ? "/api/offline/imports" : "/api/offline/round-edits",
+            {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "x-fkh-offline-owner": action.ownerUserId,
+                "x-fkh-offline-operation": action.id,
+              },
+              body: JSON.stringify(action.payload),
+            },
+          );
+
+          if (response.ok) {
+            await removeOfflineAction(action.id);
+            synced += 1;
+            continue;
+          }
+
+          const errorCode = await offlineResponseErrorCode(response);
+          const permanent = isPermanentOfflineFailure(response.status, errorCode);
+          const updated = await recordOfflineActionFailure(action, { permanent, errorCode });
+          retained += 1;
+          if (updated.status === "dead_letter") needsReview += 1;
+        } catch {
+          const updated = await recordOfflineActionFailure(action, {
+            errorCode: "network_error",
+          });
+          retained += 1;
+          if (updated.status === "dead_letter") needsReview += 1;
+        }
+      }
+
+      if (synced > 0) setOfflineLastSyncAt();
+      refreshOfflineCount();
+      setSyncMessage(
+        needsReview > 0
+          ? `${synced} synced; ${needsReview} action${needsReview === 1 ? " needs" : "s need"} review in Settings.`
+          : retained > 0
+            ? `${synced} synced; ${retained} retained for a safe retry.`
+            : `${synced} offline action${synced === 1 ? "" : "s"} synced successfully.`,
+      );
+      window.setTimeout(() => setSyncMessage(null), 5000);
+    });
   }, [activeUserId, refreshOfflineCount]);
 
   useEffect(() => {
@@ -339,4 +356,33 @@ function getOnlineStatusSnapshot() {
 
 function getServerOnlineStatusSnapshot() {
   return true;
+}
+
+async function withOfflineReplayLock(action: () => Promise<void>) {
+  if ("locks" in navigator) {
+    await navigator.locks.request(
+      "forekinghell-offline-replay",
+      { ifAvailable: true },
+      async (lock) => {
+        if (lock) await action();
+      },
+    );
+    return;
+  }
+
+  await action();
+}
+
+async function offlineResponseErrorCode(response: Response) {
+  const body = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as { code?: unknown } | null;
+  return typeof body?.code === "string" ? body.code : `http_${response.status}`;
+}
+
+function isPermanentOfflineFailure(status: number, errorCode: string) {
+  if (status >= 500 || status === 401 || status === 408 || status === 429) return false;
+  if (status === 409 && errorCode === "offline_operation_in_progress") return false;
+  return status >= 400;
 }

@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/rounds/[sessionId]/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/rounds/[sessionId]/page.tsx"),
+  "utf8",
+);
 
 describe("round detail desktop workspace source", () => {
   it("keeps round review inside the desktop workbench with shared wide-monitor rail", () => {

@@ -9,6 +9,7 @@ import type { OfflineRoundEditKind } from "@/lib/offline-round-edit-payload";
 type OfflineRoundEditFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   editKind: OfflineRoundEditKind;
+  recordVersion: string;
   children: ReactNode;
   className?: string;
   id?: string;
@@ -17,6 +18,7 @@ type OfflineRoundEditFormProps = {
 export function OfflineRoundEditForm({
   action,
   editKind,
+  recordVersion,
   children,
   className,
   id,
@@ -65,6 +67,7 @@ export function OfflineRoundEditForm({
         });
       }}
     >
+      <input type="hidden" name="expectedUpdatedAt" value={recordVersion} />
       {children}
       {saveStatus === "saving" ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-[#0B7A3B]" aria-live="polite">

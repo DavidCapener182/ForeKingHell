@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/import/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/import/page.tsx"), "utf8");
 
 describe("import desktop file library", () => {
   it("uses the desktop workflow template for the import centre", () => {
@@ -12,10 +12,9 @@ describe("import desktop file library", () => {
     expect(source).toContain('helpTitle="Import centre help"');
     expect(source).toContain('helpDescription="Keep launch-monitor data trustworthy"');
     expect(source).toContain("Choose source");
-    expect(source).toContain("Upload and map");
-    expect(source).toContain("Review rows");
-    expect(source).toContain("Save import");
-    expect(source).toContain("Use evidence");
+    expect(source).toContain("Preview data");
+    expect(source).toContain("Confirm club mapping");
+    expect(source).toContain("Review and import");
     expect(source).toContain("Rapsodo first");
     expect(source).toContain("Trust before action");
     expect(source).toContain("Proof stays secondary");

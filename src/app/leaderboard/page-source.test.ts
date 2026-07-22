@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/leaderboard/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/leaderboard/page.tsx"), "utf8");
 
 describe("leaderboard desktop workspace source", () => {
   it("keeps leaderboards in the desktop workbench without a persistent AI rail", () => {

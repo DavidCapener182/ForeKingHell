@@ -6,7 +6,7 @@ const clientSource = readFileSync(
   join(process.cwd(), "src/app/achievements/achievements-client.tsx"),
   "utf8",
 );
-const pageSource = readFileSync(join(process.cwd(), "src/app/achievements/page.tsx"), "utf8");
+const pageSource = readFileSync(join(process.cwd(), "src/app/(app)/achievements/page.tsx"), "utf8");
 const globalsSource = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 const notificationSource = readFileSync(
   join(process.cwd(), "src/components/achievement-notifications.tsx"),

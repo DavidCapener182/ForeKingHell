@@ -6,6 +6,10 @@ Sign up -> import or sync Rapsodo -> map clubs -> review stock yardages -> under
 
 ## Production Gate
 
+The repository workflow and its enforcement are separate controls. Keep the `main` ruleset aligned
+with [GITHUB_BRANCH_PROTECTION.md](./GITHUB_BRANCH_PROTECTION.md), including the merge-queue checks;
+otherwise a green workflow remains advisory rather than compulsory.
+
 Run the full gate:
 
 ```bash
@@ -16,11 +20,15 @@ The gate runs:
 
 - `npm run format:check`
 - `npm run lint`
+- `npx next typegen`
 - `npx tsc --noEmit`
 - `npm run test`
+- `npx drizzle-kit check`
+- `npm audit --audit-level=high`
 - `npm run build`
-- `npm run test:e2e`
+- `npm run check:route-budgets`
 - `npm run test:lighthouse`
+- `npm run test:e2e`
 - `git diff --check`
 
 Authenticated E2E coverage requires a real Supabase session storage state:
@@ -41,6 +49,8 @@ Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.
 The gate fails in that state so nobody can claim a fully verified public launch from skipped authenticated flows.
 
 When an auth state is present and the gate starts its local Playwright server, it enables a local Playwright auth guard that reads the captured Supabase auth cookie and avoids repeatedly calling Supabase Auth during the rapid route sweep. The guard is disabled in production and the normal runtime path still uses Supabase server auth validation.
+
+The production gate stops after the first Playwright failure so a known defect does not consume the rest of a multi-project release run. A passing run still completes every configured browser and viewport project.
 
 ## Launch Checklist
 

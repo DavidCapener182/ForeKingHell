@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/admin/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(admin)/admin/page.tsx"), "utf8");
 
 describe("admin overview desktop console", () => {
   it("uses the admin artwork variant in the protected console header", () => {

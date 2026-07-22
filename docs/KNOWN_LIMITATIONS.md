@@ -7,8 +7,14 @@ These are launch constraints, not hidden failures.
 - Rapsodo CSV import is live. Rapsodo cloud sync depends on `RAPSODO_TOKEN_SECRET` and `RAPSODO_API_BASE_URL` being configured and tested against real accounts.
 - Square and TrackMan are beta/coming-soon provider tiles unless their adapters are enabled for the tester cohort.
 - Google course enrichment depends on Maps/Places keys, quotas and provider response quality.
-- Lighthouse audits `/login` by default. Authenticated Lighthouse routes require cookies or extra headers.
+- Lighthouse audits `/` and `/login` by default. Authenticated Lighthouse routes require cookies or extra headers.
 - OpenAI coach and scorecard routes require `OPENAI_API_KEY`; rules-based fallbacks should remain understandable when the key is absent.
 - Stripe billing should not be shown to testers unless price IDs and webhook verification are configured in the target environment.
 - Course rating/slope and scorecard proof can still be incomplete for manual or imported rounds; Data Health should call this out.
-- Public launch still depends on verifying Supabase RLS in the live project, not only in local tests.
+- `npm audit --audit-level=high` passes. The current lockfile still reports 29 moderate transitive
+  advisories in Next/PostCSS, Lighthouse/Sentry/OpenTelemetry, Drizzle tooling and the shadcn CLI;
+  npm's proposed remediations are breaking downgrades or major-version changes, so they are tracked
+  for upstream-compatible releases rather than force-applied to the beta branch.
+- The live rollback-only RLS matrix verifies owner, coach, viewer, editor, friend, stranger, blocked,
+  group-moderator, administrator and anonymous boundaries. It does not replace deployed-preview
+  browser verification or explicit user scoping for privileged application-server queries.

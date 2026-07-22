@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const routeDir = join(process.cwd(), "src/app/tournaments/[tournamentId]");
+const routeDir = join(process.cwd(), "src/app/(app)/tournaments/[tournamentId]");
 
 describe("tournament desktop alias routes", () => {
   it("keeps legacy tournament subroutes pointed at the unified event workbench", () => {

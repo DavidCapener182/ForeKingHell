@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/admin/challenges/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(admin)/admin/challenges/page.tsx"),
+  "utf8",
+);
 
 describe("admin challenges desktop console source", () => {
   it("uses the shared challenge operations workbench without adding a contextual AI rail", () => {

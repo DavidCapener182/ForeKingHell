@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/course-records/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/course-records/page.tsx"), "utf8");
 
 describe("course records desktop board", () => {
   it("keeps a table-first desktop board with saved views, columns and export", () => {

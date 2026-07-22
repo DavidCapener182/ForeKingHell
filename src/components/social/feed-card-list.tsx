@@ -163,7 +163,7 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
               <p className="text-3xl font-semibold tracking-normal text-[#111827]">
                 +{numberFormatter.format(group.xpGained)} XP
               </p>
-              <p className="text-xs text-emerald-900/70">
+              <p className="text-xs text-emerald-900">
                 {group.reactionCount} kudos · {group.commentCount} comments
               </p>
             </div>

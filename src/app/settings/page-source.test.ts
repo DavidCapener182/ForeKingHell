@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/settings/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/settings/page.tsx"), "utf8");
 
 describe("settings desktop account access", () => {
   it("uses the settings artwork variant in the desktop platform header", () => {

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/billing/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/billing/page.tsx"), "utf8");
 
 describe("billing desktop plan limits ledger", () => {
   it("uses the billing artwork variant in the desktop platform hero", () => {

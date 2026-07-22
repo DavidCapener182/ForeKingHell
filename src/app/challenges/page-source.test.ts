@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/challenges/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/challenges/page.tsx"), "utf8");
 
 describe("challenges desktop board", () => {
   it("uses the challenges artwork variant in the desktop competition header", () => {

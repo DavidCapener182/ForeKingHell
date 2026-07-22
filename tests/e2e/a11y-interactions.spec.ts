@@ -17,14 +17,14 @@ test.describe("accessible mobile interactions", () => {
     await expectPageReady(page, /Evidence hub|Analyse/i);
 
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
-    const tabs = navigation.getByRole("link");
-    await expect(tabs).toHaveCount(5);
+    const destinations = navigation.locator(".ios-tab-item");
+    await expect(destinations).toHaveCount(5);
     await expect(navigation.getByRole("link", { name: "Analyse" })).toHaveAttribute(
       "aria-current",
       "page",
     );
 
-    await tabs.nth(0).focus();
+    await destinations.nth(0).focus();
     await page.keyboard.press("Shift+Tab");
     await page.keyboard.press("Tab");
     const focusEvidence = await page.evaluate(() => {

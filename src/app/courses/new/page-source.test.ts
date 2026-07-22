@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/courses/new/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/courses/new/page.tsx"), "utf8");
 
 describe("new course desktop workflow", () => {
   it("uses the desktop wizard template for course setup and source review", () => {

@@ -4,10 +4,15 @@ import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 
+function loadingPathFor(route: string) {
+  const routeGroup = route === "admin" || route.startsWith("admin/") ? "(admin)" : "(app)";
+  return join(root, "src/app", routeGroup, route, "loading.tsx");
+}
+
 describe("core desktop workbench loading states", () => {
   it("keeps Phase 3 desktop routes on route-level loading skeletons", () => {
     for (const route of ["dashboard", "shots", "bag", "rounds", "coach", "data-chat"]) {
-      const loadingPath = join(root, "src/app", route, "loading.tsx");
+      const loadingPath = loadingPathFor(route);
 
       expect(existsSync(loadingPath), `/${route} loading.tsx`).toBe(true);
       expect(readFileSync(loadingPath, "utf8")).toContain("GolfRouteLoading");
@@ -27,7 +32,7 @@ describe("core desktop workbench loading states", () => {
     ];
 
     for (const { route, variant } of routes) {
-      const loadingPath = join(root, "src/app", route, "loading.tsx");
+      const loadingPath = loadingPathFor(route);
       const source = existsSync(loadingPath) ? readFileSync(loadingPath, "utf8") : "";
 
       expect(existsSync(loadingPath), `/${route} loading.tsx`).toBe(true);
@@ -62,7 +67,7 @@ describe("core desktop workbench loading states", () => {
     ];
 
     for (const { route, variant } of routes) {
-      const loadingPath = join(root, "src/app", route, "loading.tsx");
+      const loadingPath = loadingPathFor(route);
       const source = existsSync(loadingPath) ? readFileSync(loadingPath, "utf8") : "";
 
       expect(existsSync(loadingPath), `/${route} loading.tsx`).toBe(true);

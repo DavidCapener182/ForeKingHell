@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-export const shareResourceTypes = ["round"] as const;
+export const shareResourceTypes = ["round", "coach_report"] as const;
 export type ShareResourceType = (typeof shareResourceTypes)[number];
 
 export function createShareToken() {
@@ -12,7 +12,7 @@ export function hashShareToken(token: string) {
 }
 
 export function parseShareResourceType(value: FormDataEntryValue | null): ShareResourceType {
-  return value === "round" ? "round" : "round";
+  return value === "coach_report" ? "coach_report" : "round";
 }
 
 export function getShareExpiry(days: number | null, now = new Date()) {

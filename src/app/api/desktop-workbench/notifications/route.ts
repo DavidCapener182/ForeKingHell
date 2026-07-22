@@ -9,10 +9,13 @@ import {
   importFiles,
   userAchievements,
   userProfiles,
+  weeklyRecaps,
 } from "@/db/schema";
 import { achievementUnlockHref } from "@/lib/alert-links";
 import { getAchievement } from "@/lib/achievements/registry";
 import { getCurrentUser } from "@/lib/current-user";
+import { getProductPreferences } from "@/lib/product-preferences";
+import { reportServerFailure } from "@/lib/server-observability";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +49,7 @@ export async function GET() {
 
   try {
     const db = getDb();
+    const preferences = (await getProductPreferences(user.id)).notifications;
 
     const [
       friendRows,
@@ -53,69 +57,98 @@ export async function GET() {
       latestImportRows,
       duplicateImportRows,
       latestAchievementRows,
+      latestWeeklyReviewRows,
     ] = await Promise.all([
-      db
-        .select({
-          id: friendRequests.id,
-          createdAt: friendRequests.createdAt,
-          displayName: userProfiles.displayName,
-        })
-        .from(friendRequests)
-        .innerJoin(userProfiles, eq(friendRequests.requesterUserId, userProfiles.userId))
-        .where(
-          and(eq(friendRequests.recipientUserId, user.id), eq(friendRequests.status, "pending")),
-        )
-        .orderBy(desc(friendRequests.createdAt))
-        .limit(3),
-      db
-        .select({
-          id: challengeInvites.id,
-          challengeId: challengeInvites.challengeId,
-          createdAt: challengeInvites.createdAt,
-          challengeTitle: challenges.title,
-          inviterName: userProfiles.displayName,
-        })
-        .from(challengeInvites)
-        .innerJoin(challenges, eq(challengeInvites.challengeId, challenges.id))
-        .innerJoin(userProfiles, eq(challengeInvites.inviterUserId, userProfiles.userId))
-        .where(
-          and(eq(challengeInvites.inviteeUserId, user.id), eq(challengeInvites.status, "pending")),
-        )
-        .orderBy(desc(challengeInvites.createdAt))
-        .limit(3),
-      db
-        .select({
-          id: importFiles.id,
-          fileName: importFiles.fileName,
-          status: importFiles.status,
-          playContext: importFiles.playContext,
-          createdAt: importFiles.createdAt,
-        })
-        .from(importFiles)
-        .where(eq(importFiles.userId, user.id))
-        .orderBy(desc(importFiles.createdAt))
-        .limit(1),
-      db
-        .select({
-          id: importFiles.id,
-          fileName: importFiles.fileName,
-          createdAt: importFiles.createdAt,
-        })
-        .from(importFiles)
-        .where(and(eq(importFiles.userId, user.id), isNotNull(importFiles.duplicateOfFileId)))
-        .orderBy(desc(importFiles.createdAt))
-        .limit(1),
-      db
-        .select({
-          id: userAchievements.id,
-          achievementId: userAchievements.achievementId,
-          xpAwarded: userAchievements.xpAwarded,
-          lastUnlockedAt: userAchievements.lastUnlockedAt,
-        })
-        .from(userAchievements)
-        .where(eq(userAchievements.userId, user.id))
-        .orderBy(desc(userAchievements.lastUnlockedAt))
-        .limit(1),
+      preferences.social
+        ? db
+            .select({
+              id: friendRequests.id,
+              createdAt: friendRequests.createdAt,
+              displayName: userProfiles.displayName,
+            })
+            .from(friendRequests)
+            .innerJoin(userProfiles, eq(friendRequests.requesterUserId, userProfiles.userId))
+            .where(
+              and(
+                eq(friendRequests.recipientUserId, user.id),
+                eq(friendRequests.status, "pending"),
+              ),
+            )
+            .orderBy(desc(friendRequests.createdAt))
+            .limit(3)
+        : Promise.resolve([]),
+      preferences.challenges
+        ? db
+            .select({
+              id: challengeInvites.id,
+              challengeId: challengeInvites.challengeId,
+              createdAt: challengeInvites.createdAt,
+              challengeTitle: challenges.title,
+              inviterName: userProfiles.displayName,
+            })
+            .from(challengeInvites)
+            .innerJoin(challenges, eq(challengeInvites.challengeId, challenges.id))
+            .innerJoin(userProfiles, eq(challengeInvites.inviterUserId, userProfiles.userId))
+            .where(
+              and(
+                eq(challengeInvites.inviteeUserId, user.id),
+                eq(challengeInvites.status, "pending"),
+              ),
+            )
+            .orderBy(desc(challengeInvites.createdAt))
+            .limit(3)
+        : Promise.resolve([]),
+      preferences.dataQuality
+        ? db
+            .select({
+              id: importFiles.id,
+              fileName: importFiles.fileName,
+              status: importFiles.status,
+              playContext: importFiles.playContext,
+              createdAt: importFiles.createdAt,
+            })
+            .from(importFiles)
+            .where(eq(importFiles.userId, user.id))
+            .orderBy(desc(importFiles.createdAt))
+            .limit(1)
+        : Promise.resolve([]),
+      preferences.dataQuality
+        ? db
+            .select({
+              id: importFiles.id,
+              fileName: importFiles.fileName,
+              createdAt: importFiles.createdAt,
+            })
+            .from(importFiles)
+            .where(and(eq(importFiles.userId, user.id), isNotNull(importFiles.duplicateOfFileId)))
+            .orderBy(desc(importFiles.createdAt))
+            .limit(1)
+        : Promise.resolve([]),
+      preferences.achievements
+        ? db
+            .select({
+              id: userAchievements.id,
+              achievementId: userAchievements.achievementId,
+              xpAwarded: userAchievements.xpAwarded,
+              lastUnlockedAt: userAchievements.lastUnlockedAt,
+            })
+            .from(userAchievements)
+            .where(eq(userAchievements.userId, user.id))
+            .orderBy(desc(userAchievements.lastUnlockedAt))
+            .limit(1)
+        : Promise.resolve([]),
+      preferences.weeklyReview
+        ? db
+            .select({
+              id: weeklyRecaps.id,
+              headline: weeklyRecaps.headline,
+              createdAt: weeklyRecaps.createdAt,
+            })
+            .from(weeklyRecaps)
+            .where(eq(weeklyRecaps.userId, user.id))
+            .orderBy(desc(weeklyRecaps.createdAt))
+            .limit(1)
+        : Promise.resolve([]),
     ]);
 
     const items: DesktopNotificationItem[] = [
@@ -168,13 +201,22 @@ export async function GET() {
           unread: false,
         };
       }),
+      ...latestWeeklyReviewRows.map((row) => ({
+        id: `weekly-review-${row.id}`,
+        title: "Weekly game review ready",
+        detail: row.headline,
+        href: "/progress",
+        tone: "blue" as const,
+        createdAt: row.createdAt.toISOString(),
+        unread: false,
+      })),
     ]
       .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
       .slice(0, 8);
 
     return NextResponse.json({ items });
   } catch (error) {
-    console.warn("Failed to load desktop workbench notifications", error);
+    reportServerFailure("workbench_notifications_failed", error);
     return NextResponse.json({ items: [] });
   }
 }

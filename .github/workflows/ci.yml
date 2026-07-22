@@ -2,14 +2,31 @@ name: CI
 
 on:
   pull_request:
+  merge_group:
   push:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
-    name: Lint, Typecheck, Test, Build
+    name: Format, lint, typecheck, test, build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell
+      NEXT_PUBLIC_SITE_URL: https://ci.example.test
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-project.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SCORECARD_PROOF_SECRET: ci-scorecard-proof-secret-32-characters
+      CRON_SECRET: ci-cron-secret-at-least-32-characters
 
     steps:
       - name: Checkout
@@ -18,11 +35,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Format
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint
@@ -33,5 +53,55 @@ jobs:
       - name: Test
         run: npm run test
 
+      - name: Migration journal and policy source checks
+        run: npm run test -- src/lib/migration-journal.test.ts src/lib/rls-policy.test.ts src/lib/security-boundary-source.test.ts src/lib/data-governance-manifest.test.ts
+
+      - name: Check migration consistency
+        run: npx drizzle-kit check
+
+      - name: High-severity dependency audit
+        run: npm audit --audit-level=high
+
       - name: Build
         run: npm run build
+
+      - name: Route JavaScript budgets
+        run: npm run check:route-budgets
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Public authentication smoke
+        run: npx playwright test tests/e2e/auth.spec.ts --project=chromium
+        env:
+          PLAYWRIGHT_E2E_AUTH_BYPASS: "1"
+
+  migrations-from-zero:
+    name: Migrations from zero
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: forekinghell
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d forekinghell"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply every migration to an empty database
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell

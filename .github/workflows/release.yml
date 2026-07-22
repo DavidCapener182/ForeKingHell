@@ -1,0 +1,20 @@
+name: Release SBOM
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: forekinghell-${{ github.event.release.tag_name }}.spdx.json
+          upload-release-assets: true

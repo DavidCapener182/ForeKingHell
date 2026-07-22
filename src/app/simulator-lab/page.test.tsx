@@ -34,7 +34,7 @@ describe("/simulator-lab page", () => {
 
   it("renders empty and building states without simulator data", async () => {
     mocks.getSimulatorLabData.mockResolvedValue(emptyData());
-    const Page = (await import("@/app/simulator-lab/page")).default;
+    const Page = (await import("@/app/(app)/simulator-lab/page")).default;
 
     const html = renderToStaticMarkup(await Page());
 
@@ -46,7 +46,7 @@ describe("/simulator-lab page", () => {
 
   it("renders populated WITB, delta, ledger and roast states", async () => {
     mocks.getSimulatorLabData.mockResolvedValue(populatedData());
-    const Page = (await import("@/app/simulator-lab/page")).default;
+    const Page = (await import("@/app/(app)/simulator-lab/page")).default;
 
     const html = renderToStaticMarkup(await Page());
 

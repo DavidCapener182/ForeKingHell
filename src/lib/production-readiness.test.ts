@@ -11,13 +11,19 @@ describe("production readiness gate", () => {
     for (const expected of [
       '"format:check"',
       '"lint"',
+      '"next", "typegen"',
       '"tsc", "--noEmit"',
       '"test"',
+      '"drizzle-kit", "check"',
+      '"audit", "--audit-level=high"',
       '"build"',
+      '"check:route-budgets"',
       '"test:e2e"',
+      '"--max-failures=1"',
       '"test:lighthouse"',
       '"diff", "--check"',
       "PLAYWRIGHT_E2E_AUTH_BYPASS",
+      '"http://127.0.0.1:3000"',
       "Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.",
     ]) {
       expect(script).toContain(expected);
@@ -57,9 +63,15 @@ describe("production readiness gate", () => {
       expect(source).toContain("readBoundedJsonBody");
     }
 
-    expect(readFileSync(join(root, "src/app/api/scorecard/extract/route.ts"), "utf8")).toContain(
-      "rejectOversizedDataUrl",
+    const scorecardRoute = readFileSync(
+      join(root, "src/app/api/scorecard/extract/route.ts"),
+      "utf8",
     );
+    expect(scorecardRoute).toContain("rejectOversizedDataUrl");
+    expect(scorecardRoute).toContain("isSupportedImageDataUrl");
+    expect(scorecardRoute).toContain("sanitizeScorecardImageDataUrl(imageDataUrl)");
+    expect(scorecardRoute).toContain("image_url: sanitizedImage.dataUrl");
+    expect(scorecardRoute).toContain('update(imageDataUrl).digest("hex")');
   });
 
   it("keeps Stripe webhook handling signature-gated", () => {
@@ -71,7 +83,7 @@ describe("production readiness gate", () => {
   });
 
   it("keeps tester-facing settings privacy controls visible", () => {
-    const source = readFileSync(join(root, "src/app/settings/page.tsx"), "utf8");
+    const source = readFileSync(join(root, "src/app/(app)/settings/page.tsx"), "utf8");
 
     expect(source).toContain("Visibility simulator");
     expect(source).toContain("Data export/delete status");
@@ -80,7 +92,7 @@ describe("production readiness gate", () => {
   });
 
   it("keeps the dashboard first-run Rapsodo path gated to no-data users", () => {
-    const source = readFileSync(join(root, "src/app/dashboard/page.tsx"), "utf8");
+    const source = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
 
     expect(source).toContain("DashboardFirstRunOnboarding");
     expect(source).toContain("data.stats.shotCount === 0");
@@ -93,7 +105,7 @@ describe("production readiness gate", () => {
       join(root, "src/components/visuals/page-artwork.tsx"),
       "utf8",
     );
-    const feedPageSource = readFileSync(join(root, "src/app/feed/page.tsx"), "utf8");
+    const feedPageSource = readFileSync(join(root, "src/app/(app)/feed/page.tsx"), "utf8");
     const feedCardSource = readFileSync(
       join(root, "src/components/social/feed-card-list.tsx"),
       "utf8",
@@ -113,7 +125,7 @@ describe("production readiness gate", () => {
       join(root, "src/components/visuals/page-artwork.tsx"),
       "utf8",
     );
-    const coursesPageSource = readFileSync(join(root, "src/app/courses/page.tsx"), "utf8");
+    const coursesPageSource = readFileSync(join(root, "src/app/(app)/courses/page.tsx"), "utf8");
 
     expect(existsSync(join(root, "public/assets/course-placeholder-map.webp"))).toBe(true);
     expect(artworkSource).toContain('courseMap: "/assets/course-placeholder-map.webp"');
@@ -128,8 +140,8 @@ describe("production readiness gate", () => {
       join(root, "src/components/visuals/page-artwork.tsx"),
       "utf8",
     );
-    const dashboardSource = readFileSync(join(root, "src/app/dashboard/page.tsx"), "utf8");
-    const shotsSource = readFileSync(join(root, "src/app/shots/page.tsx"), "utf8");
+    const dashboardSource = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
+    const shotsSource = readFileSync(join(root, "src/app/(app)/shots/page.tsx"), "utf8");
 
     expect(existsSync(join(root, "public/assets/page-shots-shot-trace.svg"))).toBe(true);
     expect(artworkSource).toContain('src="/assets/page-shots-shot-trace.svg"');
@@ -140,7 +152,7 @@ describe("production readiness gate", () => {
   });
 
   it("keeps provider tiles showing live status, last sync, and import failures", () => {
-    const providerPageSource = readFileSync(join(root, "src/app/providers/page.tsx"), "utf8");
+    const providerPageSource = readFileSync(join(root, "src/app/(app)/providers/page.tsx"), "utf8");
     const providerDataSource = readFileSync(join(root, "src/lib/provider-integrations.ts"), "utf8");
 
     for (const expected of [
@@ -188,6 +200,34 @@ describe("production readiness gate", () => {
     expect(productionDocs).toContain("PLAYWRIGHT_BASE_URL=https://your-preview-url");
     expect(onboardingDocs).toContain(".playwright/auth/forekinghell-state.json");
     expect(gitignore).toContain(".playwright/auth/");
+  });
+
+  it("starts local Lighthouse with the validated production environment contract", () => {
+    const lighthouse = readFileSync(join(root, "scripts/lighthouse-audit.mjs"), "utf8");
+
+    expect(lighthouse).toContain("localAuditServerEnvironment()");
+    for (const name of [
+      "DATABASE_URL",
+      "NEXT_PUBLIC_SITE_URL",
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "SCORECARD_PROOF_SECRET",
+      "CRON_SECRET",
+    ]) {
+      expect(lighthouse).toContain(`"${name}"`);
+    }
+    expect(lighthouse).not.toContain("FKH_SKIP_ENV_VALIDATION");
+  });
+
+  it("keeps the release browser matrix explicit", () => {
+    const playwright = readFileSync(join(root, "playwright.config.ts"), "utf8");
+
+    for (const project of ['name: "chromium"', 'name: "firefox"', 'name: "webkit"']) {
+      expect(playwright).toContain(project);
+    }
+    expect(playwright).toContain('name: "mobile-webkit"');
+    expect(playwright).toContain('devices["iPhone 13"]');
   });
 
   it("keeps the AAA mobile shell primitives explicit and route chrome out of the h1 outline", () => {
@@ -263,11 +303,11 @@ describe("production readiness gate", () => {
   });
 
   it("keeps the route-level AAA mobile launch monitor experiences wired", () => {
-    const bagSource = readFileSync(join(root, "src/app/bag/page.tsx"), "utf8");
-    const shotsSource = readFileSync(join(root, "src/app/shots/page.tsx"), "utf8");
-    const challengesSource = readFileSync(join(root, "src/app/challenges/page.tsx"), "utf8");
-    const practiceSource = readFileSync(join(root, "src/app/practice/page.tsx"), "utf8");
-    const importSource = readFileSync(join(root, "src/app/import/page.tsx"), "utf8");
+    const bagSource = readFileSync(join(root, "src/app/(app)/bag/page.tsx"), "utf8");
+    const shotsSource = readFileSync(join(root, "src/app/(app)/shots/page.tsx"), "utf8");
+    const challengesSource = readFileSync(join(root, "src/app/(app)/challenges/page.tsx"), "utf8");
+    const practiceSource = readFileSync(join(root, "src/app/(app)/practice/page.tsx"), "utf8");
+    const importSource = readFileSync(join(root, "src/app/(app)/import/page.tsx"), "utf8");
     const rapsodoSource = readFileSync(
       join(root, "src/app/rapsodo/rapsodo-sync-client.tsx"),
       "utf8",
@@ -285,17 +325,17 @@ describe("production readiness gate", () => {
     expect(practiceSource).toContain("Active session mode");
     expect(practiceSource).toContain("Practice scoring is driven by imported launch-monitor shots");
     expect(practiceSource).toContain("spinAverageRpm");
-    expect(importSource).toContain("Connect/upload");
-    expect(importSource).toContain("Review trust");
+    expect(importSource).toContain("Choose source");
+    expect(importSource).toContain("Review and import");
     expect(rapsodoSource).toContain("Map clubs");
     expect(rapsodoSource).toContain("Review trust");
     expect(rapsodoSource).toContain('setMobileStep("review")');
   });
 
   it("keeps the AI caddie brief wired as the mobile dashboard to practice loop", () => {
-    const dashboardSource = readFileSync(join(root, "src/app/dashboard/page.tsx"), "utf8");
+    const dashboardSource = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
     const caddieSource = readFileSync(join(root, "src/lib/ai-caddie-brief.ts"), "utf8");
-    const practicePageSource = readFileSync(join(root, "src/app/practice/page.tsx"), "utf8");
+    const practicePageSource = readFileSync(join(root, "src/app/(app)/practice/page.tsx"), "utf8");
     const practiceClientSource = readFileSync(
       join(root, "src/app/practice/practice-planner-client.tsx"),
       "utf8",

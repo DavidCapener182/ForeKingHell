@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/feed/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/feed/page.tsx"), "utf8");
+const cardSource = readFileSync(
+  join(process.cwd(), "src/components/social/feed-card-list.tsx"),
+  "utf8",
+);
 
 describe("feed desktop activity ledger", () => {
   it("keeps feed activity review table-first without replacing the card stream", () => {
@@ -41,5 +45,10 @@ describe("feed desktop activity ledger", () => {
     ]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("keeps compact feed engagement metadata above the contrast threshold", () => {
+    expect(cardSource).toContain('className="text-xs text-emerald-900"');
+    expect(cardSource).not.toContain("text-emerald-900/70");
   });
 });

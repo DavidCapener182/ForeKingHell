@@ -26,7 +26,7 @@ const privacySections = [
   {
     title: "AI coaching",
     icon: MessageCircle,
-    body: "OpenAI-backed coach and Data Chat responses use question-relevant, SQL-retrieved golf evidence from your account. Prompts may include measured shot, round, bag, speed, practice or record summaries when that subject is requested. Free-text notes, challenge descriptions and challenge rules are omitted from Data Chat prompts; AI responses cannot edit your data.",
+    body: "OpenAI-backed coach and Data Chat responses use question-relevant, SQL-retrieved golf evidence from your account. Prompts may include measured shot, round, bag, speed, practice or record summaries when that subject is requested. Free-text notes, challenge descriptions and challenge rules are omitted from Data Chat prompts; AI responses cannot edit your data. When you choose scorecard extraction, the image is magic-byte validated, limited to 5 MB and 40 million pixels, then decoded and re-encoded to strip EXIF, XMP and IPTC metadata before the normalized image is sent to the configured external model. The original raw image is not persisted; the app stores the derived scorecard data and its signed proof hash.",
   },
   {
     title: "Analytics",
@@ -36,7 +36,7 @@ const privacySections = [
   {
     title: "Export and deletion",
     icon: Share2,
-    body: `The settings page includes app-data export and account-data deletion controls. Deleting app data removes ${BRAND_NAME} records for the signed-in account, but it does not delete the Supabase Auth identity itself.`,
+    body: `The settings page separates Golf data reset from permanent account deletion. Golf data reset removes ${BRAND_NAME} golf records while keeping the sign-in identity. Permanent account deletion requires a recent reauthentication, removes the account data, and deletes the linked Supabase Auth identity. Export remains available before either action.`,
   },
 ];
 

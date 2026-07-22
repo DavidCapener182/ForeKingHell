@@ -1,0 +1,21 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const source = readFileSync(join(process.cwd(), "src/app/(app)/analyse/compare/page.tsx"), "utf8");
+
+describe("session comparison page", () => {
+  it("supports explicit focus/baseline sessions and keeps the existing compare path", () => {
+    expect(source).toContain('focus: period ? "last-30" : "session"');
+    expect(source).toContain('baseline: period ? "previous-30" : "previous-session"');
+    expect(source).toContain('href="/compare"');
+  });
+
+  it("shows answer, confidence, next action and metric provenance", () => {
+    expect(source).toContain("data.benefit.summary");
+    expect(source).toContain("confidenceLabel");
+    expect(source).toContain('href="/practice"');
+    expect(source).toContain("Source and method");
+    expect(source).toContain('href="/shots"');
+  });
+});

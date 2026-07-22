@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const pageSource = readFileSync(join(process.cwd(), "src/app/compare/page.tsx"), "utf8");
+const pageSource = readFileSync(join(process.cwd(), "src/app/(app)/compare/page.tsx"), "utf8");
 const clubClientSource = readFileSync(
   join(process.cwd(), "src/app/compare/club-compare-client.tsx"),
   "utf8",

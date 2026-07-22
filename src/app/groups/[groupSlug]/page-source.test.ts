@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/groups/[groupSlug]/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/groups/[groupSlug]/page.tsx"),
+  "utf8",
+);
 
 describe("group detail desktop route", () => {
   it("keeps group detail pages as desktop operations workspaces", () => {

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/bag/longest/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/longest/page.tsx"), "utf8");
 
 describe("longest shot desktop PB board", () => {
   it("uses the shared desktop workbench shell without a contextual AI rail", () => {

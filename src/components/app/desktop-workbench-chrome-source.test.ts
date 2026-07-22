@@ -291,14 +291,22 @@ describe("desktop workbench chrome source", () => {
   });
 
   it("keeps the desktop workspace switcher role-aware", () => {
-    const source = readFileSync(
+    const chromeSource = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
     );
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/workbench/workspace-switcher.tsx"),
+      "utf8",
+    );
+    const registrySource = readFileSync(
+      join(process.cwd(), "src/navigation/route-registry.ts"),
+      "utf8",
+    );
+    const navSource = readFileSync(join(process.cwd(), "src/components/app/nav-items.ts"), "utf8");
     const switcherBlock =
-      source.match(/function WorkspaceSwitcher[\s\S]*?function NotificationRow/)?.[0] ?? "";
-    const viewsBlock =
-      source.match(/function getWorkspaceViews[\s\S]*?function NotificationRow/)?.[0] ?? "";
+      source.match(/function WorkspaceSwitcher[\s\S]*?function getWorkspaceViews/)?.[0] ?? "";
+    const viewsBlock = source.match(/function getWorkspaceViews[\s\S]*/)?.[0] ?? "";
 
     expect(switcherBlock).toContain('aria-label="Switch workspace view"');
     expect(switcherBlock).toContain("<DropdownMenuLabel>Workspace view</DropdownMenuLabel>");
@@ -312,7 +320,9 @@ describe("desktop workbench chrome source", () => {
     expect(viewsBlock).toContain('label: "Admin console"');
     expect(viewsBlock).toContain('href: "/admin"');
     expect(viewsBlock).toContain('pathname.startsWith("/partners")');
-    expect(source).toContain('href: "/admin/system-checks"');
+    expect(chromeSource).toContain("commandRoutes(isAdmin)");
+    expect(registrySource).toContain("adminNavGroup");
+    expect(navSource).toContain('href: "/admin/system-checks"');
   });
 
   it("keeps desktop keyboard shortcuts discoverable and wired to implemented handlers", () => {
@@ -403,6 +413,21 @@ describe("desktop workbench chrome source", () => {
     expect(commandLinkBlock).toContain("id={commandOptionId(index)}");
     expect(commandLinkBlock).toContain('role="option"');
     expect(commandLinkBlock).toContain("aria-selected={active}");
+  });
+
+  it("gives labelled top-bar controls enough width without overlapping neighbours", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+    const topbarBlock = source.match(/<header[\s\S]*?<Dialog open={commandOpen}/)?.[0] ?? "";
+    const workspaceMenuBlock =
+      source.match(/function WorkspaceLinksMenu\([\s\S]*?<DropdownMenuContent/)?.[0] ?? "";
+
+    expect(topbarBlock.match(/h-9 w-auto shrink-0 gap-2 px-2\.5/g)).toHaveLength(2);
+    expect(workspaceMenuBlock).toContain("relative h-9 w-auto shrink-0 gap-2 px-2.5");
+    expect(topbarBlock).not.toContain('className="size-9 px-2.5"');
+    expect(workspaceMenuBlock).not.toContain("relative size-9 px-2.5");
   });
 
   it("guards every assistant sheet prompt against invented numbers", () => {

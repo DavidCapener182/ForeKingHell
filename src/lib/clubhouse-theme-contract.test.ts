@@ -6,9 +6,13 @@ const root = process.cwd();
 const globals = readFileSync(join(root, "src/app/globals.css"), "utf8");
 const mobile = readFileSync(join(root, "src/app/mobile-apple.css"), "utf8");
 const layout = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+const themeBootstrap = readFileSync(
+  join(root, "src/components/theme-bootstrap-script.tsx"),
+  "utf8",
+);
 const controller = readFileSync(join(root, "src/components/theme-controller.tsx"), "utf8");
 const chart = readFileSync(join(root, "src/components/ui/chart.tsx"), "utf8");
-const settings = readFileSync(join(root, "src/app/settings/page.tsx"), "utf8");
+const settings = readFileSync(join(root, "src/app/(app)/settings/page.tsx"), "utf8");
 const premium = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
 const metricCard = readFileSync(join(root, "src/components/app/metric-card.tsx"), "utf8");
 const desktopWorkbench = readFileSync(
@@ -39,13 +43,13 @@ describe("Clubhouse Manager theme contract", () => {
       "--card: #fbf7ec",
       "--primary: #123a29",
       "--foreground: #18251e",
-      "--clubhouse-muted: #6f756c",
+      "--clubhouse-muted: #4f574f",
       "--border: #b9aa8c",
       "--clubhouse-oxblood: #75342e",
       "--clubhouse-gold: #ad8a48",
       "--clubhouse-live: #d6f356",
       "--clubhouse-cobalt: #1555d6",
-      "--clubhouse-focus: #ff5a1f",
+      "--clubhouse-focus: #8f2b08",
       "--chart-plot-background: #f7f0df",
       "--chart-grid: #cbbd9f",
       "--delivery-face: #1555d6",
@@ -75,28 +79,32 @@ describe("Clubhouse Manager theme contract", () => {
     expect(mobile).toContain('html[data-theme="clubhouse"]');
     expect(mobile).toContain("--ios-radius: 0.375rem");
     expect(mobile).toContain('.ios-tab-bar .ios-tab-item[aria-current="page"]');
-    expect(controller).toContain('theme === "dark" ? "dark" : "light"');
+    expect(controller).toContain(
+      'root.style.colorScheme = usesDarkColourScheme ? "dark" : "light"',
+    );
     expect(controller).toContain("window.sessionStorage.getItem(themePreviewStorageKey)");
     expect(globals).toContain("transition-property: none");
   });
 
   it("bootstraps every explicit theme before interactivity", () => {
     expect(layout).toContain("<head>");
-    expect(layout).toContain("dangerouslySetInnerHTML={{ __html: script }}");
-    expect(layout).not.toContain('strategy="beforeInteractive"');
-    expect(layout).toContain('const theme = preference === "system"');
-    expect(layout).toContain("const colours = ${JSON.stringify(themeColourByMode)}");
-    expect(layout).toContain('root.style.colorScheme = theme === "dark" ? "dark" : "light"');
-    expect(layout).toContain('meta.setAttribute("content", colours[theme])');
-    expect(layout).toContain("sessionStorage.getItem(themePreviewStorageKey)");
-    expect(layout).toContain("sessionStorage.removeItem(themePreviewStorageKey)");
-    expect(layout).not.toContain("if (previewPreference === savedPreference)");
-    expect(layout).toContain("preference = previewPreference");
+    expect(themeBootstrap).toContain("dangerouslySetInnerHTML={{ __html: script }}");
+    expect(themeBootstrap).not.toContain('strategy="beforeInteractive"');
+    expect(themeBootstrap).toContain('const theme = preference === "system"');
+    expect(themeBootstrap).toContain("const colours = ${JSON.stringify(themeColourByMode)}");
+    expect(themeBootstrap).toContain(
+      'root.style.colorScheme = usesDarkColourScheme ? "dark" : "light"',
+    );
+    expect(themeBootstrap).toContain('meta.setAttribute("content", colours[theme])');
+    expect(themeBootstrap).toContain("sessionStorage.getItem(themePreviewStorageKey)");
+    expect(themeBootstrap).toContain("sessionStorage.removeItem(themePreviewStorageKey)");
+    expect(themeBootstrap).not.toContain("if (previewPreference === savedPreference)");
+    expect(themeBootstrap).toContain("preference = previewPreference");
   });
 
   it("provides Clubhouse chart colours without changing existing Light and Dark series", () => {
     expect(chart).toContain("clubhouse: 'html[data-theme=\"clubhouse\"]'");
-    expect(chart).toContain('theme === "clubhouse" ? itemConfig.theme?.light : undefined');
+    expect(chart).toContain("fallbackThemeColor(itemConfig.theme, theme as keyof typeof THEMES)");
     expect(chart).toContain('data-slot="chart-tooltip"');
     expect(chart).toContain('data-slot="chart-legend"');
     expect(globals).toContain('[data-slot="chart-tooltip"]');
@@ -113,7 +121,7 @@ describe("Clubhouse Manager theme contract", () => {
 
     expect(settings).toContain("bg-muted/40");
     expect(settings).toContain("bg-card");
-    expect(offlineStorage).toContain("accent-primary");
+    expect(offlineStorage).toContain("bg-muted/40");
   });
 
   it("keeps card headers on the same paper surface as their cards", () => {

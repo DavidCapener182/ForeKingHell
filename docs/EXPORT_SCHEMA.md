@@ -1,6 +1,6 @@
 # Personal data export contract
 
-The personal account export is JSON with schema version `2026-07-10`. It is a portability export for the authenticated requester, not an administrative group export.
+The personal account export is JSON with schema version `2026-07-21`. It is a portability export for the authenticated requester, not an administrative group export.
 
 ## Top-level fields
 
@@ -12,6 +12,8 @@ The personal account export is JSON with schema version `2026-07-10`. It is a po
 | `userId`        | UUID     | Authenticated requester.                                             |
 | `profile`       | object   | Requester's account row, when available.                             |
 | `data`          | object   | Named datasets listed below. Empty datasets are represented as `[]`. |
+| `manifest`      | array    | Dataset row counts and sensitivity classifications.                  |
+| `checksum`      | object   | SHA-256 checksum of the export document before the checksum field.   |
 | `pagination`    | object   | Cursor metadata for datasets that are returned in bounded pages.     |
 
 ## Dataset scope
@@ -56,3 +58,7 @@ The default export removes operational identifiers and storage details that are 
 ## Large-account pagination
 
 Shot rows are returned in stable UUID order with a maximum of 5,000 rows per response. When `pagination.shots.hasMore` is true, request the relative `nextPath` to retrieve the next authorised page. Each page repeats the smaller account datasets so it remains independently understandable. Other datasets remain assembled in memory; future schema versions may extend cursor pagination to them if operational account sizes require it.
+
+Coach Workspace interactions use conditional export ownership: a coach receives the interaction rows
+they authored, including their private notes; a player receives only interactions marked
+`player_visible`. A coach-only note is never included in the player's export.

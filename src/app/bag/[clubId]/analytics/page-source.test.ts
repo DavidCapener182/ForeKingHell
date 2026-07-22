@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/bag/[clubId]/analytics/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/bag/[clubId]/analytics/page.tsx"),
+  "utf8",
+);
 
 describe("club analytics desktop evidence ledger", () => {
   it("keeps club shots in an exportable desktop workbench table", () => {

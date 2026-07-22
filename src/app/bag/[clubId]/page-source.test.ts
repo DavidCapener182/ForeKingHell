@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/bag/[clubId]/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/[clubId]/page.tsx"), "utf8");
 
 describe("club profile page source", () => {
   it("wraps the club profile in the desktop workbench shell without adding a rail slab", () => {

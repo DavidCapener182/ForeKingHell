@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/practice/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/practice/page.tsx"), "utf8");
 
 describe("practice planner desktop workflow", () => {
   it("uses the workflow layout without adding a contextual AI rail", () => {

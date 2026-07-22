@@ -7,6 +7,7 @@ import { LockKeyhole, ShieldCheck, Trophy, Zap } from "lucide-react";
 import { LoginForm } from "@/app/login/login-form";
 import { BrandMark } from "@/components/brand-mark";
 import { PageShell, StatusPill } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { BRAND_NAME } from "@/lib/brand";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { safeNextPath } from "@/lib/safe-next-path";
@@ -17,7 +18,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   const userId = await getOptionalCurrentUserId();
   const params = await searchParams;
 
-  if (userId) {
+  if (userId && first(params.reason) !== "reauth_required") {
     redirect(safeNextPath(first(params.next)) ?? "/dashboard");
   }
 
@@ -97,6 +98,34 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
               </div>
             </div>
           </div>
+          {first(params.reason) === "session_expired" ? (
+            <Alert className="mb-4">
+              <LockKeyhole className="size-4" />
+              <AlertTitle>Your session expired</AlertTitle>
+              <AlertDescription>
+                Sign in again to continue. The page you were opening has been preserved.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {first(params.reason) === "reauth_required" ? (
+            <Alert className="mb-4">
+              <ShieldCheck className="size-4" />
+              <AlertTitle>Confirm it is you</AlertTitle>
+              <AlertDescription>
+                Sign in again before permanently deleting this account.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {first(params.accountDeleted) ? (
+            <Alert className="mb-4">
+              <ShieldCheck className="size-4" />
+              <AlertTitle>Account permanently deleted</AlertTitle>
+              <AlertDescription>
+                Your deletion receipt is {first(params.receipt) || "available in this confirmation"}
+                . Keep it if you need to contact support.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <LoginForm error={first(params.error) || null} next={safeNextPath(first(params.next))} />
         </section>
       </div>

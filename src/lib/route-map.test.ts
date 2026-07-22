@@ -11,7 +11,10 @@ describe("documented route map", () => {
       .map((file) => {
         const route = relative(appRoot, file)
           .replaceAll(sep, "/")
-          .replace(/(^|\/)page\.tsx$/, "");
+          .replace(/(^|\/)page\.tsx$/, "")
+          .split("/")
+          .filter((segment) => !/^\(.+\)$/.test(segment))
+          .join("/");
         return route ? `/${route}` : "/";
       });
 

@@ -1526,6 +1526,7 @@ export const sessions = pgTable(
     rawCsvHash: varchar("raw_csv_hash", { length: 64 }),
     rawCsvText: text("raw_csv_text").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("fkh_sessions_user_date_idx").on(table.userId, table.date),
@@ -2897,6 +2898,50 @@ export const practiceBlockResults = pgTable(
   ],
 );
 
+export const coachPlayerInteractions = pgTable(
+  "fkh_coach_player_interactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    playerUserId: uuid("player_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    coachUserId: uuid("coach_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    interactionType: varchar("interaction_type", { length: 40 }).notNull(),
+    visibility: varchar("visibility", { length: 24 }).notNull().default("player_visible"),
+    title: varchar("title", { length: 180 }).notNull(),
+    body: text("body").notNull(),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    practicePlanId: uuid("practice_plan_id").references(() => practicePlans.id, {
+      onDelete: "set null",
+    }),
+    goalReference: varchar("goal_reference", { length: 220 }),
+    evidenceType: varchar("evidence_type", { length: 60 }),
+    evidenceId: varchar("evidence_id", { length: 220 }),
+    status: varchar("status", { length: 24 }).notNull().default("open"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_coach_player_interactions_player_status_idx").on(
+      table.playerUserId,
+      table.status,
+      table.createdAt,
+    ),
+    index("fkh_coach_player_interactions_coach_status_idx").on(
+      table.coachUserId,
+      table.status,
+      table.createdAt,
+    ),
+    index("fkh_coach_player_interactions_session_idx").on(table.sessionId),
+    index("fkh_coach_player_interactions_plan_idx").on(table.practicePlanId),
+    index("fkh_coach_player_interactions_due_idx").on(table.dueAt),
+  ],
+);
+
 export const courseRecordGoals = pgTable(
   "fkh_course_record_goals",
   {
@@ -2986,9 +3031,35 @@ export const weeklyRecaps = pgTable(
   ],
 );
 
+export const offlineOperations = pgTable(
+  "fkh_offline_operations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    operationId: varchar("operation_id", { length: 128 }).notNull(),
+    operationKind: varchar("operation_kind", { length: 32 }).notNull(),
+    requestHash: varchar("request_hash", { length: 64 }).notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    attemptCount: integer("attempt_count").notNull().default(1),
+    responseStatus: integer("response_status"),
+    responseJson: jsonb("response_json").$type<Record<string, unknown>>(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_offline_operations_user_operation_idx").on(table.userId, table.operationId),
+    index("fkh_offline_operations_status_updated_idx").on(table.status, table.updatedAt),
+  ],
+);
+
 export type NewUser = typeof users.$inferInsert;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type NewAdminAuditLog = typeof adminAuditLog.$inferInsert;
+export type NewOfflineOperation = typeof offlineOperations.$inferInsert;
 export type NewUserProfile = typeof userProfiles.$inferInsert;
 export type NewUserIdentityLink = typeof userIdentityLinks.$inferInsert;
 export type NewFriendRequest = typeof friendRequests.$inferInsert;
@@ -3084,6 +3155,7 @@ export type NewPracticeBlock = typeof practiceBlocks.$inferInsert;
 export type NewPracticeResult = typeof practiceResults.$inferInsert;
 export type NewPracticePlanMatch = typeof practicePlanMatches.$inferInsert;
 export type NewPracticeBlockResult = typeof practiceBlockResults.$inferInsert;
+export type NewCoachPlayerInteraction = typeof coachPlayerInteractions.$inferInsert;
 export type NewCourseRecordGoal = typeof courseRecordGoals.$inferInsert;
 export type NewCourseFollow = typeof courseFollows.$inferInsert;
 export type NewUserFeaturePreference = typeof userFeaturePreferences.$inferInsert;

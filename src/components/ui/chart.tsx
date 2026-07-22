@@ -11,12 +11,20 @@ const THEMES = {
   light: "",
   dark: ".dark",
   clubhouse: 'html[data-theme="clubhouse"]',
+  outdoor: 'html[data-theme="outdoor"]',
+  rangeNight: 'html[data-theme="range-night"]',
+  tourBroadcast: 'html[data-theme="tour-broadcast"]',
+  highContrast: 'html[data-theme="high-contrast"]',
 } as const;
 
 type ChartTheme = {
   light: string;
   dark: string;
   clubhouse?: string;
+  outdoor?: string;
+  rangeNight?: string;
+  tourBroadcast?: string;
+  highContrast?: string;
 };
 
 const INITIAL_DIMENSION = { width: 320, height: 200 } as const;
@@ -103,7 +111,7 @@ ${colorConfig
     const themeColor = itemConfig.theme?.[theme as keyof typeof THEMES];
     const color =
       themeColor ??
-      (theme === "clubhouse" ? itemConfig.theme?.light : undefined) ??
+      fallbackThemeColor(itemConfig.theme, theme as keyof typeof THEMES) ??
       itemConfig.color;
     return color ? `  --color-${key}: ${color};` : null;
   })
@@ -116,6 +124,12 @@ ${colorConfig
     />
   );
 };
+
+function fallbackThemeColor(theme: ChartTheme | undefined, key: keyof typeof THEMES) {
+  if (!theme) return undefined;
+  if (key === "rangeNight" || key === "highContrast") return theme.dark;
+  return theme.light;
+}
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
 

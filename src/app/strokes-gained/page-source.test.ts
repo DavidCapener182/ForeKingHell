@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/strokes-gained/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/strokes-gained/page.tsx"), "utf8");
 
 describe("strokes gained desktop workbench", () => {
   it("keeps the AI strokes-gained rail as shared wide-monitor context", () => {

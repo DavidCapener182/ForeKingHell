@@ -1,0 +1,14 @@
+{
+  "/": 700000,
+  "/login": 800000,
+  "/today": 1050000,
+  "/dashboard": 1050000,
+  "/import": 1180000,
+  "/analyse": 1050000,
+  "/coach": 1050000,
+  "/practice": 1120000,
+  "/progress": 1050000,
+  "/bag": 1120000,
+  "/shots": 1150000,
+  "/stats/training-over-time": 1500000
+}

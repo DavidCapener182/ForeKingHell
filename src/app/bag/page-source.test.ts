@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/bag/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/page.tsx"), "utf8");
 
 describe("bag desktop workbench source", () => {
   it("keeps the AI bag rail as a large-monitor enhancement", () => {

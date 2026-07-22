@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { and, eq, gt, inArray, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -9,6 +11,8 @@ import {
   accountMemberships,
   achievementProgress,
   achievementSyncState,
+  analysisAnnotations,
+  analysisSnapshots,
   aiGenerationCache,
   aiSocialSummaries,
   aiUsageEvents,
@@ -23,6 +27,8 @@ import {
   challenges,
   clubEquipmentHistory,
   clubs,
+  coachPlayerInteractions,
+  contentExports,
   courses,
   entitlements,
   feedCommentReactions,
@@ -31,6 +37,7 @@ import {
   feedReactions,
   friendRequests,
   friendships,
+  golfTrainingSessions,
   groupChallengeLinks,
   groupInvites,
   groupMemberships,
@@ -42,27 +49,51 @@ import {
   importRows,
   importSourceFiles,
   offerClicks,
+  offlineOperations,
   partnerOffers,
   providerAccounts,
   providerSessions,
+  practiceBlockResults,
+  practiceBlocks,
+  practicePlanMatches,
+  practicePlans,
+  practiceResults,
+  practiceSessions,
   rapsodoSyncSessions,
   sessions,
   shareLinks,
+  shotSavedViews,
   shots,
+  speedTrainingGoals,
+  speedTrainingSessions,
+  speedTrainingSwings,
   sponsors,
   stockYardages,
   strokesGainedShotEvents,
   subscriptions,
+  tournamentComments,
+  tournamentEntries,
+  tournamentStandings,
+  tournamentSubmissions,
   usageEvents,
   userAchievements,
   userBlocks,
+  userFeaturePreferences,
   userFollows,
   userProfiles,
   users,
+  weatherSnapshots,
+  weeklyRecaps,
   xpLedger,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { isRecentSignIn } from "@/lib/account-deletion";
 import { getCurrentUser, requireCurrentUserId } from "@/lib/current-user";
+import {
+  clearSupabaseAuthCookies,
+  createSupabaseServerClient,
+  getSupabaseServiceRoleClient,
+} from "@/lib/supabase/server";
 import {
   createInvitationToken,
   getInvitationExpiry,
@@ -270,8 +301,19 @@ export async function deleteAccountDataAction(formData: FormData) {
     redirect("/settings?deleteError=confirmation");
   }
 
+  if (!isRecentSignIn(currentUser.lastSignInAt)) {
+    redirect("/login?reason=reauth_required&next=/settings%3Freauth%3D1%23danger-zone");
+  }
+
   const userId = currentUser.id;
+  const authUserId = currentUser.authUserId ?? currentUser.id;
   const db = getDb();
+
+  const supabase = await createSupabaseServerClient();
+  const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
+  if (signOutError) {
+    throw new Error("Active sessions could not be revoked before account deletion.");
+  }
 
   await db.transaction(async (tx) => {
     const ownedSponsorRows = await tx
@@ -358,8 +400,76 @@ export async function deleteAccountDataAction(formData: FormData) {
     await tx.delete(users).where(eq(users.id, userId));
   });
 
+  const { error: authDeleteError } =
+    await getSupabaseServiceRoleClient().auth.admin.deleteUser(authUserId);
+  if (authDeleteError) {
+    throw new Error("The authentication identity could not be deleted.");
+  }
+
+  await clearSupabaseAuthCookies();
+
   revalidatePath("/", "layout");
-  redirect("/settings?deleted=1");
+  redirect(`/login?accountDeleted=1&receipt=${encodeURIComponent(randomUUID())}`);
+}
+
+export async function resetGolfDataAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  if (nullableString(formData, "confirmation") !== "RESET") {
+    redirect("/settings?resetError=confirmation#danger-zone");
+  }
+
+  await getDb().transaction(async (tx) => {
+    await tx
+      .delete(coachPlayerInteractions)
+      .where(eq(coachPlayerInteractions.playerUserId, userId));
+    await tx.delete(offlineOperations).where(eq(offlineOperations.userId, userId));
+    await tx.delete(weeklyRecaps).where(eq(weeklyRecaps.userId, userId));
+    await tx.delete(practiceBlockResults).where(eq(practiceBlockResults.userId, userId));
+    await tx.delete(practicePlanMatches).where(eq(practicePlanMatches.userId, userId));
+    await tx.delete(practiceResults).where(eq(practiceResults.userId, userId));
+    await tx.delete(practiceBlocks).where(eq(practiceBlocks.userId, userId));
+    await tx.delete(practicePlans).where(eq(practicePlans.userId, userId));
+    await tx.delete(practiceSessions).where(eq(practiceSessions.userId, userId));
+    await tx.delete(golfTrainingSessions).where(eq(golfTrainingSessions.userId, userId));
+    await tx.delete(speedTrainingSwings).where(eq(speedTrainingSwings.userId, userId));
+    await tx.delete(speedTrainingGoals).where(eq(speedTrainingGoals.userId, userId));
+    await tx.delete(speedTrainingSessions).where(eq(speedTrainingSessions.userId, userId));
+    await tx.delete(tournamentComments).where(eq(tournamentComments.userId, userId));
+    await tx.delete(tournamentStandings).where(eq(tournamentStandings.userId, userId));
+    await tx.delete(tournamentSubmissions).where(eq(tournamentSubmissions.userId, userId));
+    await tx.delete(tournamentEntries).where(eq(tournamentEntries.userId, userId));
+    await tx.delete(analysisAnnotations).where(eq(analysisAnnotations.userId, userId));
+    await tx.delete(analysisSnapshots).where(eq(analysisSnapshots.userId, userId));
+    await tx.delete(shotSavedViews).where(eq(shotSavedViews.userId, userId));
+    await tx.delete(contentExports).where(eq(contentExports.userId, userId));
+    await tx.delete(weatherSnapshots).where(eq(weatherSnapshots.userId, userId));
+    await tx.delete(feedCommentReactions).where(eq(feedCommentReactions.userId, userId));
+    await tx.delete(feedReactions).where(eq(feedReactions.userId, userId));
+    await tx.delete(feedComments).where(eq(feedComments.userId, userId));
+    await tx.delete(feedItems).where(eq(feedItems.userId, userId));
+    await tx.delete(strokesGainedShotEvents).where(eq(strokesGainedShotEvents.userId, userId));
+    await tx.delete(userAchievements).where(eq(userAchievements.userId, userId));
+    await tx.delete(xpLedger).where(eq(xpLedger.userId, userId));
+    await tx.delete(achievementProgress).where(eq(achievementProgress.userId, userId));
+    await tx.delete(achievementSyncState).where(eq(achievementSyncState.userId, userId));
+    await tx.delete(rapsodoSyncSessions).where(eq(rapsodoSyncSessions.userId, userId));
+    await tx.delete(stockYardages).where(eq(stockYardages.userId, userId));
+    await tx.delete(clubEquipmentHistory).where(eq(clubEquipmentHistory.userId, userId));
+    await tx.delete(ballModels).where(eq(ballModels.userId, userId));
+    await tx.delete(importFiles).where(eq(importFiles.userId, userId));
+    await tx.delete(importRows).where(eq(importRows.userId, userId));
+    await tx.delete(shots).where(eq(shots.userId, userId));
+    await tx.delete(sessions).where(eq(sessions.userId, userId));
+    await tx.delete(clubs).where(eq(clubs.userId, userId));
+    await tx
+      .update(users)
+      .set({ onboardingCompletedAt: null, dashboardPins: [], updatedAt: new Date() })
+      .where(eq(users.id, userId));
+    await tx.delete(userFeaturePreferences).where(eq(userFeaturePreferences.userId, userId));
+  });
+
+  revalidatePath("/", "layout");
+  redirect("/settings?reset=1#danger-zone");
 }
 
 function nullableString(formData: FormData, key: string) {

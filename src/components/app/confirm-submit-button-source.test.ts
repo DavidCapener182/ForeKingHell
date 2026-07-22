@@ -6,9 +6,12 @@ const componentSource = readFileSync(
   join(process.cwd(), "src/components/app/confirm-submit-button.tsx"),
   "utf8",
 );
-const adminUsersSource = readFileSync(join(process.cwd(), "src/app/admin/users/page.tsx"), "utf8");
+const adminUsersSource = readFileSync(
+  join(process.cwd(), "src/app/(admin)/admin/users/page.tsx"),
+  "utf8",
+);
 const adminModerationSource = readFileSync(
-  join(process.cwd(), "src/app/admin/moderation/page.tsx"),
+  join(process.cwd(), "src/app/(admin)/admin/moderation/page.tsx"),
   "utf8",
 );
 

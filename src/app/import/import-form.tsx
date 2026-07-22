@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Database,
   ExternalLink,
+  FlaskConical,
   GitCompareArrows,
   Route,
   Trophy,
@@ -78,7 +79,7 @@ type SaveState =
     }
   | { status: "error"; message: string };
 
-type MobileImportStep = "type" | "upload" | "columns" | "course" | "preview" | "save";
+type MobileImportStep = "source" | "preview" | "mapping" | "import";
 
 const TPC_SAWGRASS_PLAYERS_2026_SCORECARD = [
   "1,4,360",
@@ -105,14 +106,26 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
+const SAMPLE_IMPORT_CSV = [
+  "Club Type,Carry Distance (yd),Total Distance (yd),Ball Speed,Launch Angle,Side Carry (yd)",
+  "7 Iron,151,158,116,18.1,-4",
+  "7 Iron,154,161,118,17.6,2",
+  "7 Iron,149,156,115,18.8,-7",
+  "Driver,232,251,147,13.4,12",
+  "Driver,238,258,150,12.9,-8",
+].join("\n");
+
 export function ImportForm({
   defaultDistanceUnit = "yards",
+  startWithSampleData = false,
 }: {
   defaultDistanceUnit?: DistanceUnit;
+  startWithSampleData?: boolean;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scorecardImageInputRef = useRef<HTMLInputElement>(null);
+  const sampleLoadedRef = useRef(false);
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>(defaultDistanceUnit);
   const [columnMapping, setColumnMapping] = useState<RapsodoColumnMapping>({});
   const {
@@ -131,7 +144,7 @@ export function ImportForm({
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
-  const [mobileStep, setMobileStep] = useState<MobileImportStep>("type");
+  const [mobileStep, setMobileStep] = useState<MobileImportStep>("source");
   const [scorecardExtractState, setScorecardExtractState] = useState<ScorecardExtractState>({
     status: "idle",
   });
@@ -142,14 +155,12 @@ export function ImportForm({
   const isCourseUpload = sessionType === "simulated_course";
   const mobileImportSteps = useMemo(
     () => [
-      { id: "type" as const, label: "Type" },
-      { id: "upload" as const, label: "Upload" },
-      { id: "columns" as const, label: "Columns" },
-      ...(isCourseUpload ? [{ id: "course" as const, label: "Course" }] : []),
-      { id: "preview" as const, label: "Preview" },
-      { id: "save" as const, label: "Save" },
+      { id: "source" as const, label: "1. Choose source" },
+      { id: "preview" as const, label: "2. Preview data" },
+      { id: "mapping" as const, label: "3. Confirm mapping" },
+      { id: "import" as const, label: "4. Review & import" },
     ],
-    [isCourseUpload],
+    [],
   );
   const visibleMobileStep = mobileImportSteps.some((step) => step.id === mobileStep)
     ? mobileStep
@@ -179,6 +190,18 @@ export function ImportForm({
     updatePreference();
     return subscribeOfflineImportStoragePreference(updatePreference);
   }, []);
+
+  useEffect(() => {
+    if (!startWithSampleData || sampleLoadedRef.current) return;
+
+    sampleLoadedRef.current = true;
+    const sampleFile = new File([SAMPLE_IMPORT_CSV], "forekinghell-sample-session.csv", {
+      type: "text/csv",
+      lastModified: Date.UTC(2026, 6, 18),
+    });
+    void readImportFiles([sampleFile]);
+    setMobileStep("preview");
+  }, [readImportFiles, startWithSampleData]);
 
   const scorecard = useMemo(() => parseScorecardText(scorecardText), [scorecardText]);
   const autoCourseInference = useMemo(() => {
@@ -349,6 +372,7 @@ export function ImportForm({
   const detectedSessionDateIso =
     parsedFiles.find((file) => file.parsed.exportedAtIso)?.parsed.exportedAtIso ?? null;
   const canSave =
+    !startWithSampleData &&
     uploadedFiles.length > 0 &&
     uploadedFiles.length <= MAX_IMPORT_FILES_PER_BATCH &&
     uploadedFiles.every(
@@ -773,6 +797,24 @@ export function ImportForm({
           onStepChange={setMobileStep}
         />
 
+        {startWithSampleData ? (
+          <Alert>
+            <FlaskConical className="size-4" />
+            <AlertTitle>Sample preview only</AlertTitle>
+            <AlertDescription>
+              <p>
+                These five demo shots are not saved to your account. Review each step, then use a
+                measured export to create a real session.
+              </p>
+              <Button asChild size="sm" variant="outline" className="mt-3">
+                <Link href="/import?source=csv#csv-import" prefetch={false}>
+                  Upload your own CSV
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         {saveState.status !== "idle" ? (
           <Alert variant={saveState.status === "error" ? "destructive" : "default"}>
             {saveState.status === "error" ? (
@@ -904,9 +946,7 @@ export function ImportForm({
           <Card
             className={cn(
               "premium-card",
-              ["type", "upload", "columns", "course"].includes(visibleMobileStep)
-                ? "flex"
-                : "hidden sm:flex",
+              ["source", "mapping"].includes(visibleMobileStep) ? "flex" : "hidden sm:flex",
             )}
           >
             <CardHeader>
@@ -916,7 +956,7 @@ export function ImportForm({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className={visibleMobileStep === "upload" ? "block" : "hidden sm:block"}>
+              <div className={visibleMobileStep === "source" ? "block" : "hidden sm:block"}>
                 <UploadDropzone
                   fileInputRef={fileInputRef}
                   isDragging={isDragging}
@@ -929,7 +969,7 @@ export function ImportForm({
                 />
               </div>
 
-              <div className={visibleMobileStep === "type" ? "block" : "hidden sm:block"}>
+              <div className={visibleMobileStep === "source" ? "block" : "hidden sm:block"}>
                 <SessionSettings
                   sessionDate={sessionDate}
                   sessionType={sessionType}
@@ -942,7 +982,7 @@ export function ImportForm({
                 />
               </div>
 
-              <div className={visibleMobileStep === "columns" ? "block" : "hidden sm:block"}>
+              <div className={visibleMobileStep === "mapping" ? "block" : "hidden sm:block"}>
                 <ColumnMappingPanel
                   files={uploadedFiles}
                   columnMapping={columnMapping}
@@ -951,7 +991,7 @@ export function ImportForm({
               </div>
 
               {isCourseUpload ? (
-                <div className={visibleMobileStep === "course" ? "block" : "hidden sm:block"}>
+                <div className={visibleMobileStep === "mapping" ? "block" : "hidden sm:block"}>
                   <ScorecardExtractionPanel
                     scorecardImageInputRef={scorecardImageInputRef}
                     scorecardExtractState={scorecardExtractState}
@@ -1005,7 +1045,7 @@ export function ImportForm({
           <Card
             className={cn(
               "premium-card",
-              visibleMobileStep === "course" ? "flex" : "hidden sm:flex",
+              visibleMobileStep === "mapping" ? "flex" : "hidden sm:flex",
             )}
           >
             <CardHeader>
@@ -1032,7 +1072,7 @@ export function ImportForm({
           </Card>
         ) : null}
 
-        <div className={visibleMobileStep === "save" ? "block" : "hidden sm:block"}>
+        <div className={visibleMobileStep === "import" ? "block" : "hidden sm:block"}>
           <SaveChecklistCard
             hasFiles={uploadedFiles.length > 0}
             hasShots={aggregate.shotCount > 0}
@@ -1064,7 +1104,7 @@ export function ImportForm({
             >
               Back
             </Button>
-            {visibleMobileStep === "save" ? (
+            {visibleMobileStep === "import" ? (
               <Button
                 type="button"
                 disabled={!canSave}
@@ -1156,9 +1196,9 @@ function MobileImportStatusStrip({
     !isCourseUpload || (courseHoleCount > 0 && courseAssignedShotCount === shotCount);
   const statusItems = [
     {
-      id: "upload" as const,
-      label: "File",
-      value: fileCount > 0 ? "✓" : "Add",
+      id: "source" as const,
+      label: "Source",
+      value: fileCount > 0 ? "Ready" : "Add file",
       state: fileCount > 0 ? ("ready" as const) : ("blocked" as const),
     },
     {
@@ -1168,8 +1208,8 @@ function MobileImportStatusStrip({
       state: shotCount > 0 ? ("ready" as const) : ("blocked" as const),
     },
     {
-      id: "columns" as const,
-      label: "Clubs",
+      id: "mapping" as const,
+      label: "Mapping",
       value: clubCount > 0 ? "✓" : shotCount > 0 ? "Review" : "--",
       state:
         clubCount > 0
@@ -1179,21 +1219,15 @@ function MobileImportStatusStrip({
             : ("blocked" as const),
     },
     {
-      id: isCourseUpload ? ("course" as const) : ("preview" as const),
-      label: "Audit",
-      value: warningCount > 0 ? `${warningCount} warn` : courseReady && shotCount > 0 ? "✓" : "Map",
+      id: "import" as const,
+      label: "Import",
+      value: warningCount > 0 ? `${warningCount} warn` : canSave && courseReady ? "Ready" : "Wait",
       state:
         warningCount > 0
           ? ("warning" as const)
-          : courseReady && shotCount > 0
+          : canSave
             ? ("ready" as const)
             : ("blocked" as const),
-    },
-    {
-      id: "save" as const,
-      label: "Save",
-      value: canSave ? "Ready" : "Wait",
-      state: canSave ? ("ready" as const) : ("blocked" as const),
     },
   ];
 
@@ -1258,7 +1292,7 @@ function MobileImportStatusStrip({
                 {item.value}
               </span>
             </button>
-            {item.label !== "Save" ? (
+            {item.label !== "Import" ? (
               <span className="text-muted-foreground/50" aria-hidden="true">
                 ·
               </span>
@@ -1297,57 +1331,44 @@ function ImportFlowGuide({
 }) {
   const flowSteps = [
     {
-      id: "type" as const,
+      id: "source" as const,
       title: "Choose source",
-      value: isCourseUpload ? "Sim course" : "Range session",
-      detail: isCourseUpload ? "CSV plus confirmed scorecard" : "Launch monitor CSV import",
-      ready: true,
-      icon: Route,
-    },
-    {
-      id: "upload" as const,
-      title: "Upload",
       value: fileCount > 0 ? `${fileCount} file${fileCount === 1 ? "" : "s"}` : "No files",
-      detail: fileCount > 0 ? `${rowCount} raw rows read` : "Add Rapsodo CSV exports",
+      detail:
+        fileCount > 0
+          ? `${rowCount} raw rows · ${isCourseUpload ? "Simulated course" : "Range session"}`
+          : "Connect Rapsodo or add CSV exports",
       ready: fileCount > 0,
       icon: Upload,
     },
     {
-      id: "columns" as const,
-      title: "Confirm clubs",
-      value: shotCount > 0 ? `${clubCount} club${clubCount === 1 ? "" : "s"}` : "Mapping needed",
-      detail: shotCount > 0 ? `${shotCount} shots ready to audit` : "Map unknown club columns",
-      ready: shotCount > 0,
-      icon: Database,
-    },
-    ...(isCourseUpload
-      ? [
-          {
-            id: "course" as const,
-            title: "Confirm course",
-            value: courseHoleCount > 0 ? `${courseHoleCount} holes` : "Scorecard needed",
-            detail:
-              courseHoleCount > 0
-                ? `${courseAssignedShotCount}/${shotCount} shots assigned`
-                : "Confirm course, tees, par and yardage",
-            ready: courseHoleCount > 0 && courseAssignedShotCount === shotCount && shotCount > 0,
-            icon: Route,
-          },
-        ]
-      : []),
-    {
       id: "preview" as const,
-      title: "Review audit",
-      value: warningCount > 0 ? `${warningCount} warning${warningCount === 1 ? "" : "s"}` : "Clean",
-      detail: warningCount > 0 ? "Check rows before saving" : "Preview accepted shots",
-      ready: shotCount > 0 && warningCount === 0,
+      title: "Preview data",
+      value: shotCount > 0 ? `${shotCount} shots` : "Waiting for data",
+      detail:
+        warningCount > 0
+          ? `${warningCount} parsing warnings to review`
+          : "Inspect accepted and excluded rows",
+      ready: shotCount > 0,
       icon: AlertCircle,
     },
     {
-      id: "save" as const,
-      title: "Save result",
+      id: "mapping" as const,
+      title: "Confirm club mapping",
+      value: shotCount > 0 ? `${clubCount} club${clubCount === 1 ? "" : "s"}` : "Mapping needed",
+      detail: isCourseUpload
+        ? `${courseAssignedShotCount}/${shotCount} shots assigned across ${courseHoleCount} holes`
+        : "Check names, units and session context",
+      ready:
+        shotCount > 0 &&
+        (!isCourseUpload || (courseHoleCount > 0 && courseAssignedShotCount === shotCount)),
+      icon: Database,
+    },
+    {
+      id: "import" as const,
+      title: "Review and import",
       value: canSave ? "Ready" : "Blocked",
-      detail: canSave ? "Creates a result summary page" : "Complete the required checks",
+      detail: canSave ? "Save trusted rows and open the result" : "Complete the required checks",
       ready: canSave,
       icon: CheckCircle2,
     },
@@ -1366,7 +1387,7 @@ function ImportFlowGuide({
           {canSave ? "Ready to save" : "Review required"}
         </Badge>
       </div>
-      <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
         {flowSteps.map((step, index) => {
           const Icon = step.icon;
           const active = step.id === currentStep;
@@ -1420,10 +1441,10 @@ function ImportFlowGuide({
 }
 
 function mobileImportCardTitle(step: MobileImportStep) {
-  if (step === "type") return "Step 1: Type";
-  if (step === "upload") return "Step 2: Upload CSV";
-  if (step === "columns") return "Step 3: Columns";
-  if (step === "course") return "Step 4: Course";
+  if (step === "source") return "Step 1: Choose source";
+  if (step === "preview") return "Step 2: Preview data";
+  if (step === "mapping") return "Step 3: Confirm club mapping";
+  if (step === "import") return "Step 4: Review and import";
   return "Import setup";
 }
 

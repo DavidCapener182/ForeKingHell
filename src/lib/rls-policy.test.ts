@@ -32,6 +32,14 @@ const securityAdvisorMigration = readFileSync(
   join(process.cwd(), "drizzle/0026_security_advisor_hardening.sql"),
   "utf8",
 );
+const policyHelperGrantRepair = readFileSync(
+  join(process.cwd(), "drizzle/0043_restore_rls_policy_helper_grants.sql"),
+  "utf8",
+);
+const coachPlayerInteractionsMigration = readFileSync(
+  join(process.cwd(), "drizzle/0044_coach_player_interactions.sql"),
+  "utf8",
+);
 const speedTrainingMigration = readFileSync(
   join(process.cwd(), "drizzle/0028_speed_training.sql"),
   "utf8",
@@ -480,6 +488,62 @@ describe("RLS migration", () => {
     );
     expect(integrityLockdownMigration).toContain(
       "block.practice_plan_id = result.practice_plan_id",
+    );
+  });
+
+  it("keeps policy helpers private from PUBLIC but executable by Supabase API roles", () => {
+    for (const helper of [
+      "fkh_can_access_user(uuid, text[])",
+      "fkh_can_read_course(public.fkh_courses)",
+      "fkh_can_view_feed_item(public.fkh_feed_items)",
+      "fkh_can_view_course_record(public.fkh_course_records)",
+      "fkh_can_view_tournament(public.fkh_tournaments)",
+    ]) {
+      expect(policyHelperGrantRepair).toContain(
+        `REVOKE EXECUTE ON FUNCTION public.${helper} FROM PUBLIC`,
+      );
+      expect(policyHelperGrantRepair).toContain(
+        `GRANT EXECUTE ON FUNCTION public.${helper} TO anon, authenticated`,
+      );
+    }
+  });
+
+  it("keeps Coach Workspace interactions relationship-scoped and visibility-aware", () => {
+    expect(coachPlayerInteractionsMigration).toContain(
+      "ALTER TABLE public.fkh_coach_player_interactions ENABLE ROW LEVEL SECURITY",
+    );
+    expect(coachPlayerInteractionsMigration).toContain(
+      "ALTER TABLE public.fkh_coach_player_interactions FORCE ROW LEVEL SECURITY",
+    );
+    expect(coachPlayerInteractionsMigration).toContain(
+      "player_user_id = (SELECT auth.uid())\n      AND visibility = 'player_visible'",
+    );
+    expect(coachPlayerInteractionsMigration).toContain("membership.owner_user_id = player_user_id");
+    expect(coachPlayerInteractionsMigration).toContain(
+      "membership.member_user_id = (SELECT auth.uid())",
+    );
+    expect(coachPlayerInteractionsMigration).toContain("membership.role = 'coach'");
+    expect(coachPlayerInteractionsMigration).toContain(
+      "fkh_coach_player_interactions_coach_insert",
+    );
+    expect(coachPlayerInteractionsMigration).toContain(
+      "fkh_coach_player_interactions_coach_update",
+    );
+    expect(coachPlayerInteractionsMigration).toContain(
+      "fkh_coach_player_interactions_coach_delete",
+    );
+    expect(coachPlayerInteractionsMigration).not.toContain(
+      "fkh_coach_player_interactions_player_update",
+    );
+    expect(coachPlayerInteractionsMigration).toContain(
+      "interaction_type = 'private_note' AND visibility = 'coach_only'",
+    );
+    expect(coachPlayerInteractionsMigration).toContain("session_row.user_id = NEW.player_user_id");
+    expect(coachPlayerInteractionsMigration).toContain(
+      "practice_plan.user_id = NEW.player_user_id",
+    );
+    expect(coachPlayerInteractionsMigration).toContain(
+      "REVOKE ALL ON TABLE public.fkh_coach_player_interactions FROM PUBLIC, anon",
     );
   });
 });

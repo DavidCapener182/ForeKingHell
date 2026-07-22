@@ -54,13 +54,28 @@ npm run db:migrate
 
 Authenticated Playwright coverage is opt-in because Supabase sessions are cookie backed. Start the app, run `npm run test:e2e:capture-auth`, sign in with a tester account in the opened browser, then run with `PLAYWRIGHT_AUTH_STATE=.playwright/auth/forekinghell-state.json npm run test:e2e` to exercise import, mobile density, user isolation, social graph/feed, challenge, billing and coach checks. Set `PLAYWRIGHT_BASE_URL=https://your-preview-url` when capturing against a deployed environment. Without that env var, the public auth and login accessibility checks still run.
 
-`npm run production:check` is the public-tester gate. It runs format check, lint, TypeScript, unit tests, build, E2E, Lighthouse and `git diff --check`. If `PLAYWRIGHT_AUTH_STATE` is missing it prints `Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.` and fails the gate because authenticated flows were not fully verified.
+`npm run production:check` is the public-tester gate. It runs formatting, lint, Next route type
+generation, TypeScript, unit tests, Drizzle consistency, the high/critical dependency-audit
+threshold, the production build, route budgets, E2E, Lighthouse and `git diff --check`. If
+`PLAYWRIGHT_AUTH_STATE` is missing it prints
+`Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.` and fails the gate
+because authenticated flows were not fully verified.
 
-`npm run test:lighthouse` audits `/login` plus the main desktop workbench routes by default against `next start`. Set `LIGHTHOUSE_PRESET=desktop` for a desktop-form-factor audit, or override with `LIGHTHOUSE_ROUTES=/login,/dashboard` and `LIGHTHOUSE_COOKIE` or `LIGHTHOUSE_EXTRA_HEADERS_JSON` when auditing a smaller authenticated route set.
+`npm run test:lighthouse` audits the public `/` and `/login` routes by default against `next start`.
+Authenticated workbench routes are added only when `LIGHTHOUSE_COOKIE` or
+`LIGHTHOUSE_EXTRA_HEADERS_JSON` is supplied, so a redirect to `/login` cannot be misreported as
+private-route performance evidence. Set `LIGHTHOUSE_PRESET=desktop` for a desktop-form-factor audit,
+or override with `LIGHTHOUSE_ROUTES=/login,/dashboard` when auditing a smaller route set.
 
 ## Launch Documentation
 
+- [Changelog](CHANGELOG.md)
 - [Production readiness gate](docs/PRODUCTION_READINESS.md)
+- [v0.2.0 public beta release](docs/PUBLIC_BETA_V0.2_RELEASE.md)
+- [Database security authority](docs/DATABASE_SECURITY_AUTHORITY.md)
+- [Live database baseline](docs/LIVE_DATABASE_BASELINE.md)
+- [Route security matrix](docs/ROUTE_SECURITY_MATRIX.md)
+- [Observability and route budgets](docs/OBSERVABILITY_AND_BUDGETS.md)
 - [Tester onboarding](docs/TESTER_ONBOARDING.md)
 - [Facebook/Rapsodo beta launch](docs/FACEBOOK_BETA_LAUNCH.md)
 - [Known limitations](docs/KNOWN_LIMITATIONS.md)

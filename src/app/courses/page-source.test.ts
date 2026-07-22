@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/courses/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/courses/page.tsx"), "utf8");
 
 describe("courses desktop workspace source", () => {
   it("keeps the course directory as a desktop workbench with shared wide-monitor rail", () => {

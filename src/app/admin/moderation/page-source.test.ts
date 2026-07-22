@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/admin/moderation/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(admin)/admin/moderation/page.tsx"),
+  "utf8",
+);
 const bulkSubmitSource = readFileSync(
   join(process.cwd(), "src/app/admin/admin-bulk-action-submit.tsx"),
   "utf8",

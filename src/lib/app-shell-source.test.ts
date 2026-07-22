@@ -6,7 +6,7 @@ const root = process.cwd();
 
 describe("app shell account data", () => {
   it("does not timeout authenticated sidebar identity to fake level 1 XP", () => {
-    const source = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+    const source = readFileSync(join(root, "src/app/(app)/layout.tsx"), "utf8");
 
     expect(source).toContain("await getAppShellData()");
     expect(source).not.toContain("getAppShellDataWithTimeout");
@@ -15,7 +15,7 @@ describe("app shell account data", () => {
   });
 
   it("repairs and sanitizes authenticated profile labels before rendering the shell", () => {
-    const source = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+    const source = readFileSync(join(root, "src/lib/app-shell-data.ts"), "utf8");
 
     expect(source).toContain("await ensureUserProfile(user);");
     expect(source).toContain("cleanProfileLabel(accountRow?.displayName)");
@@ -24,7 +24,7 @@ describe("app shell account data", () => {
   });
 
   it("keeps local auth bypass connected to canonical account data when the database is configured", () => {
-    const layoutSource = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+    const layoutSource = readFileSync(join(root, "src/lib/app-shell-data.ts"), "utf8");
     const currentUserSource = readFileSync(join(root, "src/lib/current-user.ts"), "utf8");
 
     expect(layoutSource).not.toContain("isPlaywrightE2eAuthBypassEnabled");
@@ -83,22 +83,31 @@ describe("app shell account data", () => {
 
   it("boots the stored theme before paint and delegates live changes to one controller", () => {
     const layoutSource = readFileSync(join(root, "src/app/layout.tsx"), "utf8");
+    const privateShellSource = readFileSync(
+      join(root, "src/components/app/private-app-shell.tsx"),
+      "utf8",
+    );
+    const bootstrapSource = readFileSync(
+      join(root, "src/components/theme-bootstrap-script.tsx"),
+      "utf8",
+    );
+    const dataSource = readFileSync(join(root, "src/lib/app-shell-data.ts"), "utf8");
     const controllerSource = readFileSync(
       join(root, "src/components/theme-controller.tsx"),
       "utf8",
     );
 
     expect(layoutSource).toContain("<head>");
-    expect(layoutSource).toContain(
-      '<script id="fkh-theme-bootstrap" dangerouslySetInnerHTML={{ __html: script }} />',
-    );
-    expect(layoutSource).not.toContain('strategy="beforeInteractive"');
-    expect(layoutSource).toContain("data-theme-preference={preferences.theme}");
-    expect(layoutSource).toContain("theme: users.theme");
+    expect(bootstrapSource).toContain("dangerouslySetInnerHTML={{ __html: script }}");
+    expect(bootstrapSource).not.toContain('strategy="beforeInteractive"');
+    expect(layoutSource).toContain("data-theme-preference={publicPreferences.theme}");
+    expect(privateShellSource).toContain("preference={data.preferences.theme}");
+    expect(dataSource).toContain("theme: users.theme");
     expect(controllerSource).toContain('window.matchMedia("(prefers-color-scheme: dark)")');
     expect(controllerSource).toContain(
       'colourScheme.addEventListener("change", handleSystemChange)',
     );
-    expect(controllerSource).toContain('root.classList.toggle("dark", theme === "dark")');
+    expect(controllerSource).toContain('theme === "range-night"');
+    expect(controllerSource).toContain('root.classList.toggle("dark", usesDarkColourScheme)');
   });
 });

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { dataGovernanceManifest } from "@/lib/data-governance-manifest";
+
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   getOptionalCurrentUserId: vi.fn(),
@@ -46,7 +48,7 @@ describe("personal data export route", () => {
       /^attachment; filename="forekinghell-personal-export-\d{4}-\d{2}-\d{2}\.json"$/,
     );
     expect(payload).toMatchObject({
-      schemaVersion: "2026-07-10",
+      schemaVersion: "2026-07-21",
       scope: "personal",
       userId: "user-1",
       profile: null,
@@ -62,6 +64,12 @@ describe("personal data export route", () => {
     });
     expect(payload.data.moderationEvents).toBeUndefined();
     expect(payload.data.leaderboardSnapshots).toBeUndefined();
+    expect(Object.keys(payload.data).sort()).toEqual(
+      dataGovernanceManifest
+        .filter((entry) => entry.export && entry.dataset !== "users")
+        .map((entry) => entry.dataset)
+        .sort(),
+    );
   });
 });
 

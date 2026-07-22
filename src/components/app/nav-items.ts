@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Award,
+  BellRing,
   Brain,
   Calculator,
   CalendarDays,
@@ -13,6 +14,7 @@ import {
   Gift,
   GitCompareArrows,
   LineChart,
+  Menu,
   MapPinned,
   MessageCircle,
   Radio,
@@ -41,7 +43,7 @@ export type AppNavGroup = {
   items: AppNavItem[];
 };
 
-export const navGroups: AppNavGroup[] = [
+const allNavigationGroups: AppNavGroup[] = [
   {
     label: "Review",
     items: [
@@ -269,6 +271,148 @@ export const navGroups: AppNavGroup[] = [
   },
 ];
 
+function navItem(href: string) {
+  const item = allNavigationGroups
+    .flatMap((group) => group.items)
+    .find((candidate) => candidate.href === href);
+
+  if (!item) {
+    throw new Error(`Navigation item not found for ${href}.`);
+  }
+
+  return item;
+}
+
+const goalsNavItem: AppNavItem = {
+  href: "/goals",
+  label: "Goals",
+  icon: Target,
+  isActive: (pathname) => pathname.startsWith("/goals"),
+};
+
+const quickRangeNavItem: AppNavItem = {
+  href: "/practice/quick-range",
+  label: "Quick Range",
+  icon: Gauge,
+  isActive: (pathname) => pathname.startsWith("/practice/quick-range"),
+};
+
+const notificationPreferencesNavItem: AppNavItem = {
+  href: "/settings/notifications",
+  label: "Notifications",
+  icon: BellRing,
+  isActive: (pathname) => pathname.startsWith("/settings/notifications"),
+};
+
+const courseStrategyNavItem: AppNavItem = {
+  href: "/courses/strategy",
+  label: "Course Strategy",
+  icon: MapPinned,
+  isActive: (pathname) => pathname.startsWith("/courses/strategy"),
+};
+
+export const navGroups: AppNavGroup[] = [
+  {
+    label: "Home",
+    items: [navItem("/today"), navItem("/dashboard")],
+  },
+  {
+    label: "Play",
+    items: [
+      navItem("/sessions"),
+      navItem("/rounds"),
+      navItem("/import"),
+      navItem("/courses"),
+      courseStrategyNavItem,
+    ],
+  },
+  {
+    label: "Analyse",
+    items: [
+      navItem("/analyse"),
+      navItem("/shots"),
+      navItem("/bag"),
+      navItem("/compare"),
+      navItem("/progress"),
+      navItem("/strokes-gained"),
+      navItem("/simulator-lab"),
+      navItem("/handicap"),
+    ],
+  },
+  {
+    label: "Improve",
+    items: [
+      navItem("/coach"),
+      navItem("/practice"),
+      quickRangeNavItem,
+      navItem("/speed"),
+      navItem("/stats/training-over-time"),
+      goalsNavItem,
+    ],
+  },
+  {
+    label: "Compete",
+    items: [
+      navItem("/challenges"),
+      navItem("/tournaments"),
+      navItem("/leaderboard"),
+      navItem("/course-records"),
+      navItem("/groups"),
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      navItem("/profile"),
+      navItem("/friends"),
+      navItem("/equipment"),
+      navItem("/providers"),
+      navItem("/billing"),
+      navItem("/settings"),
+      notificationPreferencesNavItem,
+    ],
+  },
+];
+
+export const mobileMoreGroups: AppNavGroup[] = [
+  {
+    label: "Play",
+    items: [
+      navItem("/rounds"),
+      navItem("/courses"),
+      courseStrategyNavItem,
+      navItem("/import"),
+      navItem("/rapsodo"),
+    ],
+  },
+  {
+    label: "Compete",
+    items: [
+      navItem("/challenges"),
+      navItem("/tournaments"),
+      navItem("/leaderboard"),
+      navItem("/course-records"),
+      navItem("/groups"),
+      navItem("/achievements"),
+    ],
+  },
+  {
+    label: "Social",
+    items: [navItem("/friends"), navItem("/feed"), navItem("/social-intelligence")],
+  },
+  {
+    label: "Account",
+    items: [
+      navItem("/profile"),
+      navItem("/equipment"),
+      navItem("/providers"),
+      navItem("/billing"),
+      navItem("/settings"),
+      notificationPreferencesNavItem,
+    ],
+  },
+];
+
 export const partnerNavItem: AppNavItem = {
   href: "/partners",
   label: "Partners",
@@ -331,7 +475,7 @@ export const adminNavGroup: AppNavGroup = {
 export const mobilePrimaryItems: AppNavItem[] = [
   {
     href: "/today",
-    label: "Today",
+    label: "Home",
     icon: CalendarDays,
     isActive: (pathname) =>
       pathname === "/" || pathname.startsWith("/dashboard") || pathname.startsWith("/today"),
@@ -356,26 +500,27 @@ export const mobilePrimaryItems: AppNavItem[] = [
       pathname.startsWith("/progress") ||
       pathname.startsWith("/stats/training-over-time") ||
       pathname.startsWith("/shots") ||
+      pathname.startsWith("/bag") ||
       pathname.startsWith("/compare") ||
-      pathname.startsWith("/coach") ||
-      pathname.startsWith("/practice") ||
       pathname.startsWith("/data-chat") ||
       pathname.startsWith("/handicap") ||
+      pathname.startsWith("/equipment") ||
       pathname.startsWith("/strokes-gained"),
   },
   {
-    href: "/bag",
-    label: "Bag",
-    icon: Target,
+    href: "/practice",
+    label: "Practice",
+    icon: ClipboardCheck,
     isActive: (pathname) =>
-      pathname.startsWith("/bag") ||
-      pathname.startsWith("/equipment") ||
-      pathname.startsWith("/speed"),
+      pathname.startsWith("/practice") ||
+      pathname.startsWith("/coach") ||
+      pathname.startsWith("/speed") ||
+      pathname.startsWith("/goals"),
   },
   {
-    href: "/profile",
-    label: "Profile",
-    icon: UserRound,
+    href: "#more",
+    label: "More",
+    icon: Menu,
     isActive: (pathname) =>
       pathname.startsWith("/profile") ||
       pathname.startsWith("/settings") ||
@@ -394,11 +539,13 @@ export const mobilePrimaryItems: AppNavItem[] = [
 ];
 
 const desktopNavOrder = new Map([
-  ["Review", 0],
-  ["Improve", 1],
-  ["Compete", 2],
-  ["Manage", 3],
-  ["Admin", 4],
+  ["Home", 0],
+  ["Play", 1],
+  ["Analyse", 2],
+  ["Improve", 3],
+  ["Compete", 4],
+  ["Account", 5],
+  ["Admin", 6],
 ]);
 
 export function buildDesktopNavGroups(isAdmin: boolean) {

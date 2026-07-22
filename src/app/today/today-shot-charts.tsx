@@ -9,8 +9,8 @@ import {
   type ChartFallbackColumn,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
+import { ChartSurface } from "@/components/app/chart-surface";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartFrame } from "@/components/premium";
 import {
   buildDispersionCorridorBuckets,
   type DispersionCorridorBucket,
@@ -152,16 +152,19 @@ export function TodayShotCharts({
   );
   const [selectedClub, setSelectedClub] = useState("all");
   const [trajectoryView, setTrajectoryView] = useState<TrajectoryView>("shots");
-  const visibleShots = useMemo(
-    () =>
-      shots
-        .filter((shot) => selectedClub === "all" || shot.clubType === selectedClub)
-        .map((shot) => ({
-          ...shot,
-          color: colorForClub(shot.clubType),
-        })),
-    [selectedClub, shots],
-  );
+  const [showOutliers, setShowOutliers] = useState(true);
+  const visibleShots = useMemo(() => {
+    const selected = shots.filter(
+      (shot) => selectedClub === "all" || shot.clubType === selectedClub,
+    );
+    const outlierIds = dispersionOutlierIds(selected);
+    return selected
+      .filter((shot) => showOutliers || !outlierIds.has(shot.id))
+      .map((shot) => ({
+        ...shot,
+        color: colorForClub(shot.clubType),
+      }));
+  }, [selectedClub, shots, showOutliers]);
   const visibleClubCount =
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
   const dispersionSummary = buildDispersionChartSummary(visibleShots);
@@ -200,8 +203,8 @@ export function TodayShotCharts({
             className={cn(
               "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors",
               selectedClub === "all"
-                ? "border-emerald-700 bg-emerald-800 text-white shadow-sm"
-                : "bg-white text-muted-foreground hover:bg-slate-50",
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "bg-card text-muted-foreground hover:bg-muted/55",
             )}
           >
             {selectedClub === "all" ? <Check className="size-3.5" /> : null}
@@ -209,7 +212,7 @@ export function TodayShotCharts({
             <span
               className={cn(
                 "text-xs",
-                selectedClub === "all" ? "text-white/75" : "text-muted-foreground",
+                selectedClub === "all" ? "text-primary-foreground/75" : "text-muted-foreground",
               )}
             >
               {shots.length}
@@ -228,8 +231,8 @@ export function TodayShotCharts({
                 className={cn(
                   "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors",
                   selected
-                    ? "border-emerald-700 bg-emerald-800 text-white shadow-sm"
-                    : "bg-white text-muted-foreground hover:bg-slate-50",
+                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                    : "bg-card text-muted-foreground hover:bg-muted/55",
                 )}
               >
                 {selected ? <Check className="size-3.5" /> : null}
@@ -240,7 +243,10 @@ export function TodayShotCharts({
                 />
                 <span>{club.clubLabel}</span>
                 <span
-                  className={cn("text-xs", selected ? "text-white/75" : "text-muted-foreground")}
+                  className={cn(
+                    "text-xs",
+                    selected ? "text-primary-foreground/75" : "text-muted-foreground",
+                  )}
                 >
                   {club.shotCount}
                 </span>
@@ -248,7 +254,9 @@ export function TodayShotCharts({
                   <span
                     className={cn(
                       "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      selected ? "bg-white/15 text-white" : statusPillClass(status.verdict),
+                      selected
+                        ? "bg-primary-foreground/15 text-primary-foreground"
+                        : statusPillClass(status.verdict),
                     )}
                   >
                     {verdictLabel(status.verdict)}
@@ -268,8 +276,8 @@ export function TodayShotCharts({
             className={cn(
               "inline-flex h-8 items-center rounded-lg border px-2.5 font-medium transition-colors",
               trajectoryView === "averages"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "bg-white text-muted-foreground hover:bg-slate-50",
+                ? "border-primary/35 bg-primary/10 text-primary"
+                : "bg-card text-muted-foreground hover:bg-muted/55",
             )}
           >
             Club averages
@@ -281,8 +289,8 @@ export function TodayShotCharts({
             className={cn(
               "inline-flex h-8 items-center gap-2 rounded-lg border px-2.5 font-medium transition-colors",
               trajectoryView === "shots"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "bg-white text-muted-foreground hover:bg-slate-50",
+                ? "border-primary/35 bg-primary/10 text-primary"
+                : "bg-card text-muted-foreground hover:bg-muted/55",
             )}
           >
             <Eye className="size-3.5" />
@@ -292,17 +300,26 @@ export function TodayShotCharts({
             <button
               type="button"
               onClick={() => setSelectedClub("all")}
-              className="inline-flex h-8 items-center gap-2 rounded-lg border bg-white px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-[#f3f4f6]"
+              className="inline-flex h-8 items-center gap-2 rounded-lg border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/55"
             >
               Show all clubs
             </button>
           ) : null}
+          <button
+            type="button"
+            aria-pressed={showOutliers}
+            onClick={() => setShowOutliers((value) => !value)}
+            className="inline-flex h-8 items-center gap-2 rounded-lg border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/55"
+          >
+            {showOutliers ? "Hide outliers" : "Show outliers"}
+          </button>
         </div>
 
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <ChartPanel
             title="Dispersion"
             detail="Carry landing by left-right miss, with launch-direction traces when available."
+            sampleSize={visibleShots.length}
             empty={!visibleShots.some(hasDispersionData)}
             footer={<DispersionPanelFooter shots={visibleShots} />}
             fallback={
@@ -324,6 +341,7 @@ export function TodayShotCharts({
                 ? "Club average ball flights with dynamic apex scale."
                 : "Individual shot flights with dynamic apex scale."
             }
+            sampleSize={visibleShots.length}
             empty={!visibleShots.some(hasTrajectoryData)}
             footer={<TrajectoryInsightCards shots={visibleShots} />}
             fallback={
@@ -348,6 +366,7 @@ export function TodayShotCharts({
 function ChartPanel({
   title,
   detail,
+  sampleSize,
   empty,
   footer,
   fallback,
@@ -357,6 +376,7 @@ function ChartPanel({
 }: {
   title: string;
   detail: string;
+  sampleSize: number;
   empty: boolean;
   footer?: ReactNode;
   fallback?: ReactNode;
@@ -364,26 +384,35 @@ function ChartPanel({
   chartClassName?: string;
   children: ReactNode;
 }) {
+  const confidence =
+    sampleSize >= 30
+      ? "High confidence"
+      : sampleSize >= 12
+        ? "Moderate confidence"
+        : sampleSize > 0
+          ? "Low confidence"
+          : "Insufficient evidence";
+
   return (
-    <div className={cn("apple-panel flex h-full min-w-0 flex-col p-3", className)}>
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold">{title}</h2>
-          <p className="text-xs text-muted-foreground">{detail}</p>
-        </div>
-      </div>
-      {empty ? (
-        <div className="apple-panel-strong grid min-h-32 flex-1 place-items-center px-3 text-sm text-muted-foreground">
-          No chartable shots for the visible clubs.
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col gap-3">
-          <ChartFrame className={chartClassName}>{children}</ChartFrame>
-          {footer}
-          {fallback}
-        </div>
-      )}
-    </div>
+    <ChartSurface
+      title={title}
+      description={detail}
+      metadata={`${sampleSize} measured shot${sampleSize === 1 ? "" : "s"} · current review filter`}
+      confidence={confidence}
+      className={className}
+      chartClassName={chartClassName}
+      emptyState={
+        empty ? (
+          <div className="grid min-h-32 flex-1 place-items-center rounded-xl border border-dashed bg-muted/35 px-3 text-sm text-muted-foreground">
+            No chartable shots for the visible clubs.
+          </div>
+        ) : undefined
+      }
+      footer={empty ? undefined : footer}
+      dataTable={empty ? undefined : fallback}
+    >
+      {children}
+    </ChartSurface>
   );
 }
 
@@ -542,6 +571,17 @@ function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucke
 function DispersionMarkerLegend({ bestMarkerLabel }: { bestMarkerLabel: string }) {
   return (
     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1">
+        <span className="h-2 w-5 rounded-full border-2 border-primary bg-primary/10" aria-hidden />
+        50% ellipse
+      </span>
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1">
+        <span
+          className="h-2 w-5 rounded-full border border-dashed border-chart-2 bg-chart-2/10"
+          aria-hidden
+        />
+        80% ellipse
+      </span>
       <MarkerLegendItem marker="1" label="Average landing" tone="slate" />
       <MarkerLegendItem marker="2" label="Worst miss" tone="pink" />
       <MarkerLegendItem marker="3" label={bestMarkerLabel} tone="green" />
@@ -559,11 +599,11 @@ function MarkerLegendItem({
   tone: "green" | "pink" | "slate";
 }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2 py-1">
       <span
         className={cn(
           "grid size-4 place-items-center rounded-full text-[10px] font-bold text-white",
-          tone === "green" ? "bg-emerald-600" : tone === "pink" ? "bg-pink-600" : "bg-slate-800",
+          tone === "green" ? "bg-primary" : tone === "pink" ? "bg-destructive" : "bg-foreground",
         )}
       >
         {marker}
@@ -662,6 +702,8 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const shapeModel = buildTopDownShapeModel(points);
   const bestMarker = bestTargetCorridorShot(points, centerZone);
   const worstShot = worstDispersionShot(points);
+  const ellipse50 = dispersionEllipse(points, 1.18);
+  const ellipse80 = dispersionEllipse(points, 1.79);
 
   return (
     <svg
@@ -703,6 +745,33 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
       >
         Target corridor
       </text>
+      {ellipse80 ? (
+        <ellipse
+          cx={xScale(ellipse80.side)}
+          cy={yScale(ellipse80.carry)}
+          rx={Math.max(3, (ellipse80.sideSpread / (maxSide * 2)) * plotWidth)}
+          ry={Math.max(3, (ellipse80.carrySpread / maxCarry) * plotHeight)}
+          fill="var(--chart-comparison, #1555D6)"
+          fillOpacity={0.06}
+          stroke="var(--chart-comparison, #1555D6)"
+          strokeDasharray="7 5"
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      ) : null}
+      {ellipse50 ? (
+        <ellipse
+          cx={xScale(ellipse50.side)}
+          cy={yScale(ellipse50.carry)}
+          rx={Math.max(3, (ellipse50.sideSpread / (maxSide * 2)) * plotWidth)}
+          ry={Math.max(3, (ellipse50.carrySpread / maxCarry) * plotHeight)}
+          fill="var(--chart-positive, #075F36)"
+          fillOpacity={0.08}
+          stroke="var(--chart-positive, #075F36)"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        />
+      ) : null}
       {yTicks.map((tick) => (
         <g key={`y-${tick}`}>
           <line
@@ -786,6 +855,10 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
             fillOpacity={0.84}
             stroke="white"
             strokeWidth={1.5}
+            tabIndex={0}
+            role="img"
+            aria-label={shotTitle(shot)}
+            className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[3px]"
           >
             <title>{shotTitle(shot)}</title>
           </circle>
@@ -803,6 +876,10 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
             fill={average.color}
             stroke="white"
             strokeWidth={1.5}
+            tabIndex={0}
+            role="img"
+            aria-label={`${average.clubLabel} average landing`}
+            className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[3px]"
           >
             <title>{`${average.clubLabel} average: ${formatNullable(average.carryYd)} carry, ${formatSigned(average.sideYd)} side`}</title>
           </path>
@@ -1004,6 +1081,10 @@ function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: Trajector
             strokeWidth={view === "averages" ? 1.25 : 1.8}
             strokeOpacity={view === "averages" ? 0.16 : 0.34}
             strokeLinecap="round"
+            tabIndex={0}
+            role="img"
+            aria-label={shotTitle(shot)}
+            className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[3px]"
           >
             <title>{shotTitle(shot)}</title>
           </path>
@@ -1028,6 +1109,10 @@ function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: Trajector
                   strokeWidth={4}
                   strokeOpacity={0.88}
                   strokeLinecap="round"
+                  tabIndex={0}
+                  role="img"
+                  aria-label={`${trajectory.clubLabel} average trajectory from ${trajectory.shotCount} shots`}
+                  className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[6px]"
                 >
                   <title>{`${trajectory.clubLabel} average (${trajectory.shotCount} shots): ${formatNullable(trajectory.carryYd)} carry, ${formatFeet(trajectory.apexFt)} apex`}</title>
                 </path>
@@ -1272,6 +1357,46 @@ function buildClubGroups(shots: TodayChartShot[]): ClubChartGroup[] {
   );
 }
 
+function dispersionOutlierIds(shots: TodayChartShot[]) {
+  const ids = new Set<string>();
+  const groups = new Map<string, TodayChartShot[]>();
+  for (const shot of shots.filter(hasDispersionData)) {
+    groups.set(shot.clubType, [...(groups.get(shot.clubType) ?? []), shot]);
+  }
+  for (const rows of groups.values()) {
+    if (rows.length < 7) continue;
+    const sides = rows.map((shot) => shot.sideCarryYd ?? 0);
+    const carries = rows.map((shot) => shot.carryYd ?? shot.totalYd ?? 0);
+    const sideMean = rawMean(sides);
+    const carryMean = rawMean(carries);
+    const sideDeviation = standardDeviation(sides, sideMean);
+    const carryDeviation = standardDeviation(carries, carryMean);
+    for (const shot of rows) {
+      const sideZ =
+        sideDeviation > 0 ? Math.abs((shot.sideCarryYd! - sideMean) / sideDeviation) : 0;
+      const carry = shot.carryYd ?? shot.totalYd ?? 0;
+      const carryZ = carryDeviation > 0 ? Math.abs((carry - carryMean) / carryDeviation) : 0;
+      if (sideZ > 2.2 || carryZ > 2.2) ids.add(shot.id);
+    }
+  }
+  return ids;
+}
+
+function dispersionEllipse(points: ChartPoint[], scale: number) {
+  const valid = points.filter(hasDispersionData);
+  if (valid.length < 4) return null;
+  const sides = valid.map((shot) => shot.sideCarryYd ?? 0);
+  const carries = valid.map((shot) => shot.carryYd ?? shot.totalYd ?? 0);
+  const side = rawMean(sides);
+  const carry = rawMean(carries);
+  return {
+    side,
+    carry,
+    sideSpread: standardDeviation(sides, side) * scale,
+    carrySpread: standardDeviation(carries, carry) * scale,
+  };
+}
+
 function colorForClub(clubType: string) {
   return (
     clubColors[clubType] ?? fallbackColors[Math.abs(hashText(clubType)) % fallbackColors.length]
@@ -1348,6 +1473,17 @@ function meanArray(values: number[]) {
   if (values.length === 0) return 0;
   const total = values.reduce((sum, value) => sum + value, 0);
   return Math.round((total / values.length) * 10) / 10;
+}
+
+function rawMean(values: number[]) {
+  return values.length > 0 ? values.reduce((total, value) => total + value, 0) / values.length : 0;
+}
+
+function standardDeviation(values: number[], mean = rawMean(values)) {
+  if (values.length < 2) return 0;
+  return Math.sqrt(
+    values.reduce((total, value) => total + (value - mean) ** 2, 0) / (values.length - 1),
+  );
 }
 
 function niceMax(value: number, step: number) {

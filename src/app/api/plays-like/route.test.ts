@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getOptionalCurrentUserId: vi.fn(),
   getLivePlaysLikeSnapshotForCourse: vi.fn(),
+  reportServerFailure: vi.fn(),
 }));
 
 vi.mock("@/lib/current-user", () => ({
@@ -17,11 +18,16 @@ vi.mock("@/lib/plays-like-weather", () => ({
   getLivePlaysLikeSnapshotForCourse: mocks.getLivePlaysLikeSnapshotForCourse,
 }));
 
+vi.mock("@/lib/server-observability", () => ({
+  reportServerFailure: mocks.reportServerFailure,
+}));
+
 describe("plays-like route", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.getOptionalCurrentUserId.mockReset();
     mocks.getLivePlaysLikeSnapshotForCourse.mockReset();
+    mocks.reportServerFailure.mockReset();
   });
 
   it("requires authentication", async () => {
@@ -72,13 +78,21 @@ describe("plays-like route", () => {
 
   it("reports provider failures without leaking internals", async () => {
     mocks.getOptionalCurrentUserId.mockResolvedValue("user-1");
-    mocks.getLivePlaysLikeSnapshotForCourse.mockRejectedValue(new Error("Weather unavailable"));
+    const providerError = new Error("Weather API key=private-secret");
+    mocks.getLivePlaysLikeSnapshotForCourse.mockRejectedValue(providerError);
     const { GET } = await import("@/app/api/plays-like/route");
 
     const response = await GET(request("course-1"));
 
     expect(response.status).toBe(502);
-    await expect(response.json()).resolves.toMatchObject({ message: "Weather unavailable" });
+    await expect(response.json()).resolves.toMatchObject({
+      message: "Plays-like weather could not be loaded.",
+    });
+    expect(mocks.reportServerFailure).toHaveBeenCalledWith(
+      "plays_like_provider_failed",
+      providerError,
+      { "provider.name": "open_meteo" },
+    );
   });
 });
 

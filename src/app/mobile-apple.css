@@ -96,6 +96,83 @@
     --ring: #ff5a1f;
   }
 
+  html[data-theme="outdoor"] {
+    --ios-background: #fffdf4;
+    --ios-grouped-surface: #ffffff;
+    --ios-secondary-surface: #fffdf4;
+    --ios-tertiary-surface: #f2f3ec;
+    --ios-label: #07110b;
+    --ios-secondary-label: #304037;
+    --ios-tertiary-label: #52675a;
+    --ios-separator: #829387;
+    --ios-fill: #edf4ec;
+    --ios-material: #ffffff;
+    --ios-material-strong: #ffffff;
+    --ios-tint: #075f36;
+    --ios-tint-pressed: #064b2c;
+    --ios-positive: #075f36;
+    --ios-warning: #b34012;
+    --ios-radius: 0.5rem;
+  }
+
+  html[data-theme="range-night"] {
+    --ios-background: #050c08;
+    --ios-grouped-surface: #0d1b12;
+    --ios-secondary-surface: #112319;
+    --ios-tertiary-surface: #163221;
+    --ios-label: #f4f8f2;
+    --ios-secondary-label: #b8c9bd;
+    --ios-tertiary-label: #91a497;
+    --ios-separator: #31533e;
+    --ios-fill: rgba(126, 224, 163, 0.14);
+    --ios-material: rgba(13, 27, 18, 0.96);
+    --ios-material-strong: rgba(5, 12, 8, 0.98);
+    --ios-tint: #7ee0a3;
+    --ios-tint-pressed: #a3edbd;
+    --ios-positive: #7ee0a3;
+    --ios-warning: #e1b957;
+    --primary-foreground: #04110a;
+  }
+
+  html[data-theme="tour-broadcast"] {
+    --ios-background: #f6f3ea;
+    --ios-grouped-surface: #fffdf7;
+    --ios-secondary-surface: #e9e7df;
+    --ios-tertiary-surface: #dfe4df;
+    --ios-label: #101612;
+    --ios-secondary-label: #4c554f;
+    --ios-tertiary-label: #69736c;
+    --ios-separator: #9da49e;
+    --ios-fill: #dceaf2;
+    --ios-material: rgba(255, 253, 247, 0.96);
+    --ios-material-strong: #101612;
+    --ios-tint: #101612;
+    --ios-tint-pressed: #263129;
+    --ios-positive: #427c58;
+    --ios-warning: #b93d37;
+    --ios-radius: 0.375rem;
+  }
+
+  html[data-theme="high-contrast"] {
+    --ios-background: #000000;
+    --ios-grouped-surface: #000000;
+    --ios-secondary-surface: #000000;
+    --ios-tertiary-surface: #161616;
+    --ios-label: #ffffff;
+    --ios-secondary-label: #ffffff;
+    --ios-tertiary-label: #ffffff;
+    --ios-separator: #ffffff;
+    --ios-fill: #ffffff;
+    --ios-material: #000000;
+    --ios-material-strong: #000000;
+    --ios-tint: #ffff00;
+    --ios-tint-pressed: #00ffff;
+    --ios-positive: #00ff66;
+    --ios-warning: #ff8c00;
+    --ios-radius: 0;
+    --primary-foreground: #000000;
+  }
+
   body {
     background: var(--ios-background) !important;
     color: var(--ios-label);

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/speed/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/speed/page.tsx"), "utf8");
 
 describe("speed centre desktop evidence ledger", () => {
   it("uses the speed artwork variant in the desktop header", () => {

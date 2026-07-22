@@ -29,13 +29,33 @@ describe("createPersonalDataExport", () => {
           { id: "my-group-row", userId: "user-1", groupId: "group-1" },
           { id: "other-group-row", userId: "user-2", groupId: "group-1" },
         ],
+        coachPlayerInteractions: [
+          {
+            id: "player-visible",
+            playerUserId: "user-1",
+            coachUserId: "user-2",
+            visibility: "player_visible",
+          },
+          {
+            id: "coach-private",
+            playerUserId: "user-1",
+            coachUserId: "user-2",
+            visibility: "coach_only",
+          },
+          {
+            id: "authored-by-me",
+            playerUserId: "user-2",
+            coachUserId: "user-1",
+            visibility: "coach_only",
+          },
+        ],
         moderationEvents: [{ id: "internal-event", targetId: "user-1" }],
         leaderboardSnapshots: [{ id: "group-standings", groupId: "group-1" }],
       },
     });
 
     expect(payload).toMatchObject({
-      schemaVersion: "2026-07-10",
+      schemaVersion: "2026-07-21",
       scope: "personal",
       exportedAt: "2026-07-10T08:00:00.000Z",
       userId: "user-1",
@@ -43,6 +63,7 @@ describe("createPersonalDataExport", () => {
     expect(payload.data.clubs).toEqual([{ id: "club-1", userId: "user-1" }]);
     expect(payload.data.accountMemberships).toEqual([
       { id: "membership-for-me", ownerUserId: "user-2", memberUserId: "user-1" },
+      { id: "membership-for-other", ownerUserId: "user-1", memberUserId: "user-2" },
     ]);
     expect(payload.data.userBlocks).toEqual([
       { id: "i-blocked", blockerUserId: "user-1", blockedUserId: "user-2" },
@@ -53,8 +74,29 @@ describe("createPersonalDataExport", () => {
     expect(payload.data.groupMemberships).toEqual([
       { id: "my-group-row", userId: "user-1", groupId: "group-1" },
     ]);
+    expect(payload.data.coachPlayerInteractions).toEqual([
+      {
+        id: "player-visible",
+        playerUserId: "user-1",
+        coachUserId: "user-2",
+        visibility: "player_visible",
+      },
+      {
+        id: "authored-by-me",
+        playerUserId: "user-2",
+        coachUserId: "user-1",
+        visibility: "coach_only",
+      },
+    ]);
     expect(payload.data.moderationEvents).toEqual([]);
     expect(payload.data.leaderboardSnapshots).toEqual([]);
+    expect(payload.manifest).toContainEqual({
+      dataset: "clubs",
+      rowCount: 1,
+      containsSensitiveData: true,
+    });
+    expect(payload.checksum).toMatchObject({ algorithm: "sha256" });
+    expect(payload.checksum.value).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("redacts tokens, provider payloads and internal storage metadata", () => {

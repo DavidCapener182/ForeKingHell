@@ -1,0 +1,14 @@
+# Default repository owner.
+* @DavidCapener182
+
+# Security-sensitive application and operational boundaries.
+/proxy.ts @DavidCapener182
+/src/proxy.test.ts @DavidCapener182
+/src/app/api/ @DavidCapener182
+/src/lib/current-user.ts @DavidCapener182
+/src/db/ @DavidCapener182
+/drizzle/ @DavidCapener182
+/scripts/ @DavidCapener182
+/.github/workflows/ @DavidCapener182
+/SECURITY.md @DavidCapener182
+/public/.well-known/security.txt @DavidCapener182

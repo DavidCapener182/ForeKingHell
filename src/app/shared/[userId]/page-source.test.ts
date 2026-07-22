@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/shared/[userId]/page.tsx"), "utf8");
+const source = readFileSync(join(process.cwd(), "src/app/(app)/shared/[userId]/page.tsx"), "utf8");
 
 describe("shared account desktop workspace source", () => {
   it("keeps shared account review inside the desktop workbench shell", () => {

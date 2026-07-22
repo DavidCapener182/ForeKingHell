@@ -212,12 +212,12 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
   return (
     <DashboardWorkspaceModeContext.Provider value={settings.mode}>
       <details
-        className="premium-card group rounded-lg border border-emerald-900/10 bg-white/82 shadow-sm"
+        className="premium-card group rounded-lg border border-border bg-card/82 shadow-sm"
         data-dashboard-layout-controls
       >
         <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
               <LayoutDashboard className="size-4" aria-hidden />
             </span>
             <span className="min-w-0">
@@ -240,7 +240,7 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
           </span>
         </summary>
 
-        <div className="grid gap-3 border-t border-emerald-900/10 p-3">
+        <div className="grid gap-3 border-t border-border p-3">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
             <div className="min-w-0">
               <p className="text-sm font-semibold">Workspace mode</p>
@@ -308,8 +308,8 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
                 <div
                   key={panelId}
                   className={cn(
-                    "grid min-h-20 gap-2 rounded-lg border bg-white/72 p-2 text-sm shadow-sm",
-                    hidden || folded ? "border-dashed text-muted-foreground" : "border-emerald-100",
+                    "grid min-h-20 gap-2 rounded-lg border bg-card/72 p-2 text-sm shadow-sm",
+                    hidden || folded ? "border-dashed text-muted-foreground" : "border-border",
                   )}
                   data-dashboard-panel-control={panelId}
                 >
