@@ -1470,6 +1470,7 @@ export const courseTwins = pgTable(
   (table) => [
     uniqueIndex("fkh_course_twins_course_idx").on(table.courseId),
     index("fkh_course_twins_status_idx").on(table.status, table.updatedAt),
+    index("fkh_course_twins_active_version_idx").on(table.activeVersionId, table.id),
   ],
 );
 
@@ -1534,10 +1535,8 @@ export const courseTwinVersions = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("fkh_course_twin_versions_number_idx").on(
-      table.courseTwinId,
-      table.packageVersion,
-    ),
+    uniqueIndex("fkh_course_twin_versions_id_twin_idx").on(table.id, table.courseTwinId),
+    uniqueIndex("fkh_course_twin_versions_number_idx").on(table.courseTwinId, table.packageVersion),
     index("fkh_course_twin_versions_status_idx").on(table.courseTwinId, table.status),
     index("fkh_course_twin_versions_build_idx").on(table.buildId),
   ],

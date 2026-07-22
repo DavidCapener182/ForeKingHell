@@ -15,6 +15,6 @@ describe("Drizzle migration journal", () => {
       expect(existsSync(resolve(root, `drizzle/${entry.tag}.sql`))).toBe(true);
     }
 
-    expect(journal.entries.at(-1)?.tag).toBe("0044_coach_player_interactions");
+    expect(journal.entries.at(-1)?.tag).toBe("0046_course_twin_active_version_fk_index");
   });
 });

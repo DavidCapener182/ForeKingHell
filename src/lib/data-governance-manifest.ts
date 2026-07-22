@@ -287,12 +287,7 @@ const allSchemaDatasets = [
 const redactions: Record<string, string[]> = {
   billingCustomers: ["stripeCustomerId"],
   contentExports: ["storagePath"],
-  courseTwinBuilds: [
-    "executionReference",
-    "errorMessage",
-    "idempotencyKey",
-    "inputFingerprint",
-  ],
+  courseTwinBuilds: ["executionReference", "errorMessage", "idempotencyKey", "inputFingerprint"],
   courseTwinCorrections: ["correctionJson"],
   courseTwinVersions: ["manifestPath", "inputFingerprint"],
   importSourceFiles: ["storagePath", "metadataJson"],

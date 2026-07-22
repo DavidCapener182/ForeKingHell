@@ -72,12 +72,7 @@ describe("data governance manifest", () => {
       category: "administrative",
       export: false,
       containsSensitiveData: true,
-      redactedFields: [
-        "executionReference",
-        "errorMessage",
-        "idempotencyKey",
-        "inputFingerprint",
-      ],
+      redactedFields: ["executionReference", "errorMessage", "idempotencyKey", "inputFingerprint"],
     });
     expect(entries.courseTwinCorrections).toMatchObject({
       category: "administrative",

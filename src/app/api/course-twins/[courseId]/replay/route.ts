@@ -3,10 +3,7 @@ import { getCourseTwinManifest, getCourseTwinReplay } from "@/lib/course-twin-da
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ courseId: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Authentication required" }, { status: 401 });
   const { courseId } = await params;

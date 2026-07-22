@@ -12,6 +12,32 @@ export type CourseTwinAttribution = {
   licence: string;
 };
 
+export type CourseTwinGeographicBounds = {
+  minLatitude: number;
+  maxLatitude: number;
+  minLongitude: number;
+  maxLongitude: number;
+};
+
+export type CourseTwinTerrainAsset = {
+  url: string;
+  encoding: "float32_le_relative_metres";
+  width: number;
+  height: number;
+  localBounds: CourseTwinManifest["bounds"];
+  geographicBounds: CourseTwinGeographicBounds;
+  minElevationM: number;
+  maxElevationM: number;
+  sha256: string;
+};
+
+export type CourseTwinImageryAsset = {
+  url: string;
+  kind: "aerial_reference";
+  geographicBounds: CourseTwinGeographicBounds;
+  attribution: string;
+};
+
 export type CourseTwinHole = {
   holeNumber: number;
   par: number;
@@ -25,7 +51,7 @@ export type CourseTwinHole = {
 export type CourseTwinFeature = {
   id: string;
   holeNumber: number | null;
-  type: "fairway" | "green" | "bunker" | "water" | "rough" | "trees" | "course_boundary";
+  type: "tee" | "fairway" | "green" | "bunker" | "water" | "rough" | "trees" | "course_boundary";
   rings: CourseTwinPoint[][];
   source: string;
 };
@@ -56,6 +82,8 @@ export type CourseTwinManifest = {
     resolutionM: number | null;
     verticalDatum: string | null;
     warning: string | null;
+    heightmap: CourseTwinTerrainAsset | null;
+    imagery: CourseTwinImageryAsset | null;
   };
   quality: {
     grade: "A" | "B" | "C" | "D";

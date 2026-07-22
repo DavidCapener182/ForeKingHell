@@ -25,6 +25,14 @@ const privateGroup = randomUUID();
 const visibleCoachInteraction = randomUUID();
 const privateCoachInteraction = randomUUID();
 const insertedCoachInteraction = randomUUID();
+const publishedCourseTwinCourse = randomUUID();
+const draftCourseTwinCourse = randomUUID();
+const publishedCourseTwin = randomUUID();
+const draftCourseTwin = randomUUID();
+const publishedCourseTwinVersion = randomUUID();
+const stagedCourseTwinVersion = randomUUID();
+const courseTwinBuild = randomUUID();
+const courseTwinCorrection = randomUUID();
 let evidence;
 
 try {
@@ -108,6 +116,94 @@ try {
       insert into fkh_admin_users (user_id, role, status)
       values (${personas.administrator}, 'operator', 'active')
     `;
+    await tx`
+      insert into fkh_courses (id, name, visibility, created_by_user_id)
+      values
+        (${publishedCourseTwinCourse}, 'Published Course Twin rollback probe', 'private', ${personas.owner}),
+        (${draftCourseTwinCourse}, 'Draft Course Twin rollback probe', 'private', ${personas.owner})
+    `;
+    await tx`
+      insert into fkh_course_twins (id, course_id, status, quality_grade)
+      values
+        (${publishedCourseTwin}, ${publishedCourseTwinCourse}, 'published', 'D'),
+        (${draftCourseTwin}, ${draftCourseTwinCourse}, 'draft', 'D')
+    `;
+    await tx`
+      insert into fkh_course_twin_builds (
+        id,
+        course_twin_id,
+        requested_by_user_id,
+        status,
+        idempotency_key,
+        input_fingerprint
+      )
+      values (
+        ${courseTwinBuild},
+        ${draftCourseTwin},
+        ${personas.owner},
+        'ready',
+        ${`rls-course-twin-${courseTwinBuild}`},
+        repeat('a', 64)
+      )
+    `;
+    await tx`
+      insert into fkh_course_twin_versions (
+        id,
+        course_twin_id,
+        build_id,
+        package_version,
+        status,
+        manifest_path,
+        manifest_sha256,
+        input_fingerprint
+      )
+      values
+        (
+          ${publishedCourseTwinVersion},
+          ${publishedCourseTwin},
+          null,
+          1,
+          'published',
+          'course-twins/rls-published/1/manifest.json',
+          repeat('b', 64),
+          repeat('c', 64)
+        ),
+        (
+          ${stagedCourseTwinVersion},
+          ${draftCourseTwin},
+          ${courseTwinBuild},
+          1,
+          'staged',
+          'course-twins/rls-draft/1/manifest.json',
+          repeat('d', 64),
+          repeat('e', 64)
+        )
+    `;
+    await tx`
+      update fkh_course_twins
+      set active_version_id = ${publishedCourseTwinVersion}
+      where id = ${publishedCourseTwin}
+    `;
+    await tx`
+      insert into fkh_course_twin_corrections (
+        id,
+        course_twin_id,
+        created_by_user_id,
+        correction_type,
+        target_reference,
+        reason,
+        correction_json
+      )
+      values (
+        ${courseTwinCorrection},
+        ${draftCourseTwin},
+        ${personas.administrator},
+        'surface',
+        'hole-1-fairway',
+        'Rollback-only Course Twin correction probe',
+        '{"operation":"replace"}'::jsonb
+      )
+    `;
 
     async function asAuthenticated(userId, operation) {
       await tx.unsafe("reset role");
@@ -123,6 +219,30 @@ try {
         select id, user_id
         from fkh_clubs
         where id in (${ownerClub}, ${strangerClub})
+        order by id
+      `,
+      );
+    }
+
+    async function visibleCourseTwins(userId) {
+      return asAuthenticated(
+        userId,
+        () => tx`
+        select id
+        from fkh_course_twins
+        where id in (${publishedCourseTwin}, ${draftCourseTwin})
+        order by id
+      `,
+      );
+    }
+
+    async function visibleCourseTwinVersions(userId) {
+      return asAuthenticated(
+        userId,
+        () => tx`
+        select id
+        from fkh_course_twin_versions
+        where id in (${publishedCourseTwinVersion}, ${stagedCourseTwinVersion})
         order by id
       `,
       );
@@ -274,6 +394,45 @@ try {
       `,
     );
     const administratorVisibleClubs = await visibleProbeClubs(personas.administrator);
+    const ownerCourseTwins = await visibleCourseTwins(personas.owner);
+    const ownerCourseTwinVersions = await visibleCourseTwinVersions(personas.owner);
+    const ownerCourseTwinBuilds = await asAuthenticated(
+      personas.owner,
+      () => tx`select id from fkh_course_twin_builds where id = ${courseTwinBuild}`,
+    );
+    const ownerCourseTwinCorrections = await asAuthenticated(
+      personas.owner,
+      () => tx`select id from fkh_course_twin_corrections where id = ${courseTwinCorrection}`,
+    );
+    const coachCourseTwins = await visibleCourseTwins(personas.coach);
+    const strangerCourseTwins = await visibleCourseTwins(personas.stranger);
+    const administratorCourseTwins = await visibleCourseTwins(personas.administrator);
+    const administratorCourseTwinVersions = await visibleCourseTwinVersions(personas.administrator);
+    const administratorCourseTwinBuilds = await asAuthenticated(
+      personas.administrator,
+      () => tx`select id from fkh_course_twin_builds where id = ${courseTwinBuild}`,
+    );
+    const administratorCourseTwinCorrections = await asAuthenticated(
+      personas.administrator,
+      () => tx`select id from fkh_course_twin_corrections where id = ${courseTwinCorrection}`,
+    );
+
+    await tx.unsafe("reset role");
+    const courseTwinPrivileges = await tx`
+      select
+        table_name,
+        has_table_privilege('authenticated', 'public.' || table_name, 'INSERT') as authenticated_insert,
+        has_table_privilege('authenticated', 'public.' || table_name, 'UPDATE') as authenticated_update,
+        has_table_privilege('authenticated', 'public.' || table_name, 'DELETE') as authenticated_delete,
+        has_table_privilege('anon', 'public.' || table_name, 'SELECT') as anonymous_select
+      from (
+        values
+          ('fkh_course_twins'),
+          ('fkh_course_twin_versions'),
+          ('fkh_course_twin_builds'),
+          ('fkh_course_twin_corrections')
+      ) as course_twin_tables(table_name)
+    `;
 
     await tx.unsafe("reset role");
     await tx`
@@ -330,6 +489,23 @@ try {
         visibleOwnAdminRows: administratorRows.length,
         visiblePrivateGolfRows: administratorVisibleClubs.length,
       },
+      courseTwin: {
+        ownerVisibleTwins: ownerCourseTwins.length,
+        ownerVisibleVersions: ownerCourseTwinVersions.length,
+        ownerVisibleBuilds: ownerCourseTwinBuilds.length,
+        ownerVisibleCorrections: ownerCourseTwinCorrections.length,
+        coachVisibleTwins: coachCourseTwins.length,
+        strangerVisibleTwins: strangerCourseTwins.length,
+        administratorVisibleTwins: administratorCourseTwins.length,
+        administratorVisibleVersions: administratorCourseTwinVersions.length,
+        administratorVisibleBuilds: administratorCourseTwinBuilds.length,
+        administratorVisibleCorrections: administratorCourseTwinCorrections.length,
+        authenticatedMutationsDenied: courseTwinPrivileges.every(
+          (row) =>
+            !row.authenticated_insert && !row.authenticated_update && !row.authenticated_delete,
+        ),
+        anonymousSelectDenied: courseTwinPrivileges.every((row) => !row.anonymous_select),
+      },
       anonymous: { visiblePrivateGolfRows: anonymousRows.length },
       transaction: "rolled-back",
     };
@@ -368,6 +544,18 @@ const passed =
   evidence.groupModerator.updates === 1 &&
   evidence.administrator.visibleOwnAdminRows === 1 &&
   evidence.administrator.visiblePrivateGolfRows === 0 &&
+  evidence.courseTwin.ownerVisibleTwins === 1 &&
+  evidence.courseTwin.ownerVisibleVersions === 1 &&
+  evidence.courseTwin.ownerVisibleBuilds === 0 &&
+  evidence.courseTwin.ownerVisibleCorrections === 0 &&
+  evidence.courseTwin.coachVisibleTwins === 1 &&
+  evidence.courseTwin.strangerVisibleTwins === 0 &&
+  evidence.courseTwin.administratorVisibleTwins === 2 &&
+  evidence.courseTwin.administratorVisibleVersions === 2 &&
+  evidence.courseTwin.administratorVisibleBuilds === 1 &&
+  evidence.courseTwin.administratorVisibleCorrections === 1 &&
+  evidence.courseTwin.authenticatedMutationsDenied &&
+  evidence.courseTwin.anonymousSelectDenied &&
   evidence.anonymous.visiblePrivateGolfRows === 0 &&
   evidence.transaction === "rolled-back";
 

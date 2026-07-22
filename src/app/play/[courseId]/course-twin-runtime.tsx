@@ -2,10 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import type {
-  CourseTwinManifest,
-  CourseTwinReplayDocument,
-} from "@/lib/course-twin-contract";
+import type { CourseTwinManifest, CourseTwinReplayDocument } from "@/lib/course-twin-contract";
 
 const CourseTwinScene = dynamic(
   () => import("./course-twin-scene").then((module) => module.CourseTwinScene),

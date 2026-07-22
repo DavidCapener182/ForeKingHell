@@ -40,4 +40,10 @@ describe("round detail desktop workspace source", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("offers a course-linked round as an honestly labelled 3D replay pilot", () => {
+    expect(source).toContain("{round.session.courseId ? (");
+    expect(source).toContain("href={`/play/${round.session.courseId}?sessionId=${sessionId}`}");
+    expect(source).toContain("3D replay pilot");
+  });
 });

@@ -43,4 +43,17 @@ describe("live RLS persona probe", () => {
     expect(source).toContain("coachWorkspace.viewerVisibleRows === 0");
     expect(source).toContain("coachWorkspace.revokedCoachVisibleRows === 0");
   });
+
+  it("proves Course Twin publication, admin, anonymous and write boundaries", () => {
+    expect(source).toContain("insert into fkh_course_twins");
+    expect(source).toContain("insert into fkh_course_twin_versions");
+    expect(source).toContain("courseTwin.ownerVisibleTwins === 1");
+    expect(source).toContain("courseTwin.ownerVisibleVersions === 1");
+    expect(source).toContain("courseTwin.ownerVisibleBuilds === 0");
+    expect(source).toContain("courseTwin.strangerVisibleTwins === 0");
+    expect(source).toContain("courseTwin.administratorVisibleTwins === 2");
+    expect(source).toContain("courseTwin.administratorVisibleVersions === 2");
+    expect(source).toContain("courseTwin.authenticatedMutationsDenied");
+    expect(source).toContain("courseTwin.anonymousSelectDenied");
+  });
 });

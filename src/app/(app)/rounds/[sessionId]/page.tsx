@@ -6,6 +6,7 @@ import {
   Brain,
   ChevronDown,
   ClipboardCheck,
+  Cuboid,
   Database,
   FileText,
   MapPinned,
@@ -223,7 +224,18 @@ export default async function RoundDetailPage({ params }: PageProps) {
             Rounds
           </Link>
         </Button>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
+          {round.session.courseId ? (
+            <Button asChild variant="outline">
+              <Link
+                href={`/play/${round.session.courseId}?sessionId=${sessionId}`}
+                prefetch={false}
+              >
+                <Cuboid className="size-4" />
+                3D replay pilot
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild variant="outline">
             <Link href="/shots">
               <Database className="size-4" />
