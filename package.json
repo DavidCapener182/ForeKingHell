@@ -17,6 +17,7 @@
     "bridge:start": "node tools/course-twin-bridge/cli.mjs",
     "bridge:acceptance": "node tools/course-twin-bridge/acceptance-cli.mjs",
     "course-twin:acceptance:platform": "node --env-file=.env tools/course-twin-acceptance/platform-cli.mjs",
+    "course-twin:acceptance:production": "node --env-file=.env tools/course-twin-acceptance/production-cli.mjs",
     "bridge:test": "node --test tools/course-twin-bridge/*.test.mjs",
     "bridge:build": "node tools/course-twin-bridge/build-sea.mjs",
     "build:analyze": "next experimental-analyze --output",

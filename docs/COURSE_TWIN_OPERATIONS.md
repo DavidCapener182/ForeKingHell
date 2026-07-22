@@ -20,7 +20,7 @@ Generate the reviewed local first-wave packages and the immutable static manifes
 npm run builder:catalogue:pilot
 ```
 
-The resumable exporter validates every asset digest and writes `tools/course-twin-builder/catalog/uk-first-wave-packages.json`. A completed export proves package generation, not manual visual QA; the report keeps those states separate.
+The resumable exporter validates every asset digest and writes `tools/course-twin-builder/catalog/uk-first-wave-packages.json`. Manual visual QA remains separate in `uk-first-wave-visual-qa.json`; regeneration marks the package report complete only when every generated id/slug has an accepted evidence entry and no missing, rejected, mismatched, duplicated or unexpected course.
 
 ## Builder deployment and package delivery
 
@@ -67,6 +67,25 @@ The protected `Course Twin Bridge Release` workflow builds macOS, Windows and Li
 - `FKH_WINDOWS_CERTIFICATE_BASE64`, `FKH_WINDOWS_CERTIFICATE_PASSWORD`
 
 Public channels fail closed without the required platform credentials. Stable macOS builds are submitted to Apple notary service; Windows executables receive Authenticode plus a trusted timestamp. A GitHub release attaches the signed artifacts only after all per-platform build steps succeed.
+
+## Final production acceptance
+
+Run the single fail-closed evidence gate after the hosted worker, private bucket, bridge release and real course survey are available:
+
+```sh
+npm run course-twin:acceptance:production
+```
+
+Set `COURSE_TWIN_GRADE_A_COURSE_ID`, `COURSE_TWIN_PHYSICAL_ACCEPTANCE_REPORT`, the comma-separated macOS/Windows/Linux `COURSE_TWIN_RELEASE_MANIFESTS`, and `FKH_RELEASE_MANIFEST_PUBLIC_KEY` alongside the builder, callback, cron, Supabase and storage configuration. The command verifies:
+
+- 20-50 generated and visually approved packages;
+- hosted builder `/health` over HTTPS;
+- the private Supabase package bucket and at least one published immutable CDN version;
+- a passing redacted physical Rapsodo MLM2PRO report;
+- Ed25519 signatures for every stable bridge manifest, Developer ID plus Apple notarisation on macOS, and Authenticode on Windows;
+- verified survey grids for every hole of the named Grade A course.
+
+The permission-restricted JSON report contains configuration presence and evidence summaries, never secret values. Any absent or partial item fails the command.
 
 ## Operational truth
 
