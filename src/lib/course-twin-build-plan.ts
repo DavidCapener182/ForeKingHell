@@ -195,9 +195,9 @@ export function assessCourseTwinQuality(input: {
           : "D";
   const supportedModes: CourseTwinMode[] =
     grade === "A"
-      ? ["flyover", "replay", "strategy", "play"]
+      ? ["flyover", "replay", "strategy", "play", "live", "explore"]
       : grade === "B"
-        ? ["flyover", "replay", "strategy", "play"]
+        ? ["flyover", "replay", "strategy", "play", "live", "explore"]
         : grade === "C"
           ? ["flyover", "replay", "strategy"]
           : [];

@@ -67,14 +67,17 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("virtualDropPoint(virtualSimulation)");
     expect(sceneSource).toContain("Virtual round · My Bag");
     expect(sceneSource).toContain("Each shot is sampled from your measured carry and dispersion");
-    expect(sceneSource).toContain("Finish with 2-putt");
+    expect(sceneSource).toContain("<RoundPuttActions");
+    expect(sceneSource).toContain("Apply competition rule");
+    expect(sceneSource).toContain("manual_putts");
   });
 
   it("keeps live GSPro shots behind a paired loopback bridge and runs them through course physics", () => {
     expect(sceneSource).toContain('active={mode === "live"}');
     expect(sceneSource).toContain("new CourseTwinBridgeClient");
     expect(sceneSource).toContain("bridgeShotToReplayShot({");
-    expect(sceneSource).toContain("simulateCourseTwinReplayShot(liveShot");
+    expect(sceneSource).toContain("const liveSimulation = useMemo");
+    expect(sceneSource).toContain("liveShot,");
     expect(sceneSource).toContain("GSPro feed detected on this computer");
     expect(sceneSource).toContain("Only the next shot will");
   });
@@ -112,5 +115,8 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("Start group session");
     expect(sceneSource).toContain("/api/course-twins/rooms/join");
     expect(sceneSource).toContain("groupSession:");
+    expect(sceneSource).toContain("Join as {role}");
+    expect(sceneSource).toContain("/shared-round/events");
+    expect(sceneSource).toContain("Verified competition room");
   });
 });

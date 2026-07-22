@@ -7,8 +7,21 @@ import {
   OFFICIAL_GSPRO_PORT,
   UNPRIVILEGED_GSPRO_TARGET_PORT,
 } from "./port-strategy.mjs";
+import { readLocalBridgeDiagnosticReport } from "./diagnostics.mjs";
+import { COURSE_TWIN_BRIDGE_VERSION } from "./version.mjs";
 
 async function main() {
+  if (process.argv.includes("--version")) {
+    process.stdout.write(`${COURSE_TWIN_BRIDGE_VERSION}\n`);
+    return;
+  }
+  if (process.argv.includes("--diagnostics")) {
+    const report = await readLocalBridgeDiagnosticReport({
+      browserPort: numberFromEnv("FKH_BRIDGE_PORT", 9791),
+    });
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return;
+  }
   const selfTest = process.argv.includes("--self-test");
   if (process.argv.includes("--port-forwarder")) {
     return runPortForwarder();

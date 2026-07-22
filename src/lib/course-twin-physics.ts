@@ -225,6 +225,7 @@ export function simulateCourseTwinShot(
 export function simulateCourseTwinReplayShot(
   shot: CourseTwinReplayShot,
   environment: CourseTwinPhysicsEnvironment,
+  options: { windMps?: CourseTwinVector3 } = {},
 ): CourseTwinReplaySimulation {
   const start = terrainPosition(shot.start, environment);
   const carryTarget = terrainPosition(shot.carryEnd, environment);
@@ -250,6 +251,7 @@ export function simulateCourseTwinReplayShot(
     launchAngleDeg,
     backSpinRpm: clamp(Math.abs(spinRate * Math.cos(spinAxisRadians)), 150, 12_000),
     sideSpinRpm: clamp(spinRate * Math.sin(spinAxisRadians), -5_000, 5_000),
+    windMps: options.windMps,
   };
   const raw = simulateCourseTwinShot(input, environment);
   let frames = raw.frames.map((simulationFrame) =>

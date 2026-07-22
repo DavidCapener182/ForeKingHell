@@ -9,6 +9,7 @@ const sources = [
   "src/app/api/course-twins/rooms/[roomId]/route.ts",
   "src/app/api/course-twins/rooms/[roomId]/state/route.ts",
   "src/app/api/course-twins/rooms/[roomId]/events/route.ts",
+  "src/app/api/course-twins/rooms/[roomId]/shared-round/events/route.ts",
 ].map((path) => readFileSync(join(process.cwd(), path), "utf8"));
 
 describe("Course Twin room API boundaries", () => {
@@ -26,6 +27,8 @@ describe("Course Twin room API boundaries", () => {
     expect(sources[2]).toContain("getCourseTwinRoom(roomId, user.id)");
     expect(sources[4]).toContain("listCourseTwinRoomEvents(roomId, user.id, since)");
     expect(sources[4]).toContain("rateLimitRequest(request");
+    expect(sources[5]).toContain("listCourseTwinSharedRoundEvents(roomId, user.id)");
+    expect(sources[5]).toContain("readBoundedJsonBody(request, 16_384)");
   });
 
   it("requires course access, private cache headers and optimistic host updates", () => {
@@ -33,5 +36,13 @@ describe("Course Twin room API boundaries", () => {
     expect(sources[0]).toContain('"Cache-Control": "private, no-store"');
     expect(sources[3]).toContain("parseCourseTwinRoomStateInput");
     expect(sources[3]).toContain("status: 409");
+    expect(sources[5]).toContain("parseCourseTwinSharedRoundEventInput");
+  });
+
+  it("keeps spectators read-only and shared mutations versioned", () => {
+    expect(sources[1]).toContain("parseCourseTwinJoinRoomInput");
+    expect(sources[5]).toContain('result.status === "forbidden"');
+    expect(sources[5]).toContain('result.status === "conflict"');
+    expect(sources[5]).toContain("currentVersion: result.currentVersion");
   });
 });

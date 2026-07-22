@@ -16,6 +16,37 @@ export type CourseTwinBridgeStatus = {
   shotsRejected: number;
 };
 
+export type CourseTwinBridgeDiagnosticReport = {
+  reportVersion: 1;
+  product: "ForeKingHell Course Twin Bridge";
+  bridgeVersion: string;
+  protocolVersion: 1;
+  capturedAt: string;
+  runtime: { platform: string; architecture: string; nodeVersion: string };
+  network: {
+    loopbackOnly: true;
+    host: "127.0.0.1" | "::1";
+    gsProPort: number | null;
+    browserPort: number;
+    officialGsProPort: boolean;
+  };
+  state: {
+    status: "running" | "stopped" | "not-running";
+    startedAt: string | null;
+    gsProConnected: boolean;
+    browserClients: number;
+    lastDeviceId: string | null;
+    lastShotAt: string | null;
+    shotsAccepted: number;
+    shotsRejected: number;
+  };
+  privacy: {
+    containsPairingCode: false;
+    containsSessionToken: false;
+    containsRawShotPayload: false;
+  };
+};
+
 export type CourseTwinBridgeShotEvent = {
   type: "shot";
   eventId: string;
@@ -91,6 +122,12 @@ export class CourseTwinBridgeClient {
     const session = parsePairingSession(await response.json());
     await this.#connect(session.wsUrl, session.token);
     return session.expiresAt;
+  }
+
+  async diagnostics() {
+    const response = await fetch(`${this.#baseUrl}/diagnostics`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Course Twin Bridge diagnostics are unavailable.");
+    return parseBridgeDiagnostics(await response.json());
   }
 
   sendPlayer(handed: "RH" | "LH", club: string) {
@@ -232,6 +269,24 @@ function parsePairingSession(value: unknown) {
     throw new Error("The local bridge returned an invalid pairing session.");
   }
   return { token: value.token, expiresAt: value.expiresAt, wsUrl: value.wsUrl };
+}
+
+function parseBridgeDiagnostics(value: unknown): CourseTwinBridgeDiagnosticReport {
+  if (
+    !isRecord(value) ||
+    value.reportVersion !== 1 ||
+    value.product !== "ForeKingHell Course Twin Bridge" ||
+    value.protocolVersion !== 1 ||
+    !isRecord(value.network) ||
+    value.network.loopbackOnly !== true ||
+    !isRecord(value.privacy) ||
+    value.privacy.containsPairingCode !== false ||
+    value.privacy.containsSessionToken !== false ||
+    value.privacy.containsRawShotPayload !== false
+  ) {
+    throw new Error("The local bridge returned an unsafe or unsupported diagnostic report.");
+  }
+  return value as CourseTwinBridgeDiagnosticReport;
 }
 
 function parseBridgeEvent(value: unknown): CourseTwinBridgeEvent | null {

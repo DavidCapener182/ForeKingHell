@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { enrichCourseTwinMapGeometry } from "./maps.mjs";
 import { fetchTerrain } from "./terrain.mjs";
 
 const SUPPORTED_FEATURES = new Set([
@@ -15,9 +16,14 @@ const SUPPORTED_FEATURES = new Set([
 
 export async function generateCourseTwinCompletion(plan, env = process.env) {
   validatePlan(plan);
-  const terrain = await fetchTerrain(plan, env);
+  const mapResult = await enrichCourseTwinMapGeometry(plan, env);
+  const enrichedPlan = {
+    ...mapResult.plan,
+    runtimeWarnings: [...(plan.runtimeWarnings ?? []), ...mapResult.warnings],
+  };
+  const terrain = await fetchTerrain(enrichedPlan, env);
   const imagery = await fetchImagery(terrain.geographicBounds);
-  const manifest = buildManifest(plan, terrain, imagery);
+  const manifest = buildManifest(enrichedPlan, terrain, imagery);
   return {
     status: "completed",
     manifest,
@@ -32,6 +38,7 @@ export async function generateCourseTwinCompletion(plan, env = process.env) {
       imageryBytes: imagery.bytes.length,
       mappedHoles: manifest.quality.mappedHoles,
       mappedFeatures: manifest.quality.mappedFeatures,
+      refreshedMapFeatures: mapResult.addedFeatures,
     },
   };
 }
@@ -69,7 +76,7 @@ export function buildManifest(plan, terrain, imagery) {
       },
     ];
   });
-  const warnings = [...plan.quality.warnings];
+  const warnings = [...plan.quality.warnings, ...(plan.runtimeWarnings ?? [])];
   if (terrain.resolutionM > plan.terrain.targetResolutionM * 1.5) {
     warnings.push(
       `Generated terrain resolution is ${terrain.resolutionM.toFixed(1)} m, below the ${plan.terrain.targetResolutionM.toFixed(1)} m target.`,

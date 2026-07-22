@@ -337,6 +337,20 @@
       "when": 1784731000000,
       "tag": "0047_course_twin_multiplayer",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1784742500000,
+      "tag": "0048_course_twin_round_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1784745200000,
+      "tag": "0049_course_twin_shared_rounds",
+      "breakpoints": true
     }
   ]
 }

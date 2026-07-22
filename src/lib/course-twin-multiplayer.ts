@@ -1,15 +1,28 @@
+import {
+  parseCourseTwinRoundEventInput,
+  type CourseTwinRoundEventInput,
+} from "@/lib/course-twin-round";
+
 export const COURSE_TWIN_ROOM_TTL_MS = 4 * 60 * 60 * 1000;
 export const COURSE_TWIN_ROOM_EVENT_LIMIT = 100;
 
 export type CourseTwinRoomMode = "explore" | "play" | "live" | "replay";
 export type CourseTwinRoomStatus = "lobby" | "playing" | "finished" | "closed";
 export type CourseTwinRoomTransport = "walk" | "cart";
+export type CourseTwinRoomRole = "host" | "player" | "spectator";
 export type CourseTwinRoomPosition = [number, number, number];
 
 export type CourseTwinCreateRoomInput = {
   mode: CourseTwinRoomMode;
   maxPlayers: number;
+  spectatorLimit: number;
   holeNumber: number;
+  competition: boolean;
+};
+
+export type CourseTwinJoinRoomInput = {
+  inviteCode: string;
+  role: Exclude<CourseTwinRoomRole, "host">;
 };
 
 export type CourseTwinPresenceInput = {
@@ -26,6 +39,11 @@ export type CourseTwinRoomStateInput = {
   state?: Record<string, unknown>;
 };
 
+export type CourseTwinSharedRoundEventInput = {
+  expectedVersion: number;
+  event: CourseTwinRoundEventInput;
+};
+
 const roomModes = new Set<CourseTwinRoomMode>(["explore", "play", "live", "replay"]);
 const roomStatuses = new Set<CourseTwinRoomStatus>(["lobby", "playing", "finished", "closed"]);
 
@@ -33,10 +51,34 @@ export function parseCourseTwinCreateRoomInput(value: unknown): CourseTwinCreate
   if (!isRecord(value)) return null;
   const mode = typeof value.mode === "string" ? value.mode : "explore";
   const maxPlayers = value.maxPlayers === undefined ? 4 : value.maxPlayers;
+  const spectatorLimit = value.spectatorLimit === undefined ? 8 : value.spectatorLimit;
   const holeNumber = value.holeNumber === undefined ? 1 : value.holeNumber;
+  const competition = value.competition === undefined ? false : value.competition;
   if (!roomModes.has(mode as CourseTwinRoomMode)) return null;
-  if (!isIntegerInRange(maxPlayers, 2, 4) || !isIntegerInRange(holeNumber, 1, 18)) return null;
-  return { mode: mode as CourseTwinRoomMode, maxPlayers, holeNumber };
+  if (
+    !isIntegerInRange(maxPlayers, 2, 4) ||
+    !isIntegerInRange(spectatorLimit, 0, 20) ||
+    !isIntegerInRange(holeNumber, 1, 18) ||
+    typeof competition !== "boolean" ||
+    (competition && mode !== "play" && mode !== "live")
+  ) {
+    return null;
+  }
+  return {
+    mode: mode as CourseTwinRoomMode,
+    maxPlayers,
+    spectatorLimit,
+    holeNumber,
+    competition,
+  };
+}
+
+export function parseCourseTwinJoinRoomInput(value: unknown): CourseTwinJoinRoomInput | null {
+  if (!isRecord(value)) return null;
+  const inviteCode = normalizeCourseTwinInviteCode(value.inviteCode);
+  const role = value.role === undefined ? "player" : value.role;
+  if (!inviteCode || (role !== "player" && role !== "spectator")) return null;
+  return { inviteCode, role };
 }
 
 export function parseCourseTwinPresenceInput(value: unknown): CourseTwinPresenceInput | null {
@@ -96,6 +138,16 @@ export function parseCourseTwinRoomEvent(value: unknown) {
   return { type, payload };
 }
 
+export function parseCourseTwinSharedRoundEventInput(
+  value: unknown,
+): CourseTwinSharedRoundEventInput | null {
+  if (!isRecord(value) || !isIntegerInRange(value.expectedVersion, 1, Number.MAX_SAFE_INTEGER)) {
+    return null;
+  }
+  const event = parseCourseTwinRoundEventInput(value.event);
+  return event ? { expectedVersion: value.expectedVersion, event } : null;
+}
+
 export function normalizeCourseTwinInviteCode(value: unknown) {
   if (typeof value !== "string") return null;
   const code = value.toUpperCase().replace(/[^A-Z2-9]/g, "");
@@ -124,6 +176,13 @@ export function isCourseTwinRoomActive(
   now = new Date(),
 ) {
   return room.status !== "closed" && room.status !== "finished" && room.expiresAt > now;
+}
+
+export function isCourseTwinRoomReadable(
+  room: { status: string; expiresAt: Date },
+  now = new Date(),
+) {
+  return room.status !== "closed" && room.expiresAt > now;
 }
 
 function parsePosition(value: unknown): CourseTwinRoomPosition | null {

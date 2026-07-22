@@ -36,7 +36,7 @@ test.describe("Course Twin", () => {
       schemaVersion: 1,
       course: { id: courseId },
       quality: { grade: "B", verified: false },
-      supportedModes: ["flyover", "replay", "strategy", "play"],
+      supportedModes: ["flyover", "replay", "strategy", "play", "live", "explore"],
     });
 
     const replayResponse = await page.request.get(`/api/course-twins/${courseId}/replay`);
@@ -68,9 +68,12 @@ test.describe("Course Twin", () => {
     await expect(page.getByRole("button", { name: "Walk" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Cart" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start group session" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Join as spectator" })).toBeVisible();
     if (testInfo.project.name === "chromium") {
+      await page.getByRole("button", { name: "Competition" }).click();
       await page.getByRole("button", { name: "Start group session" }).click();
-      await expect(page.getByText(/1 of 4 golfers connected/)).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText("Verified competition room")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText(/1 golfer\(s\) · 0 spectator\(s\) connected/)).toBeVisible();
       await expect
         .poll(async () => {
           return page.evaluate(() => {
@@ -83,6 +86,37 @@ test.describe("Course Twin", () => {
           });
         })
         .toMatch(/^[A-Z2-9]{8}$/);
+
+      const group = await readGroupSession(page);
+      expect(group).toMatchObject({
+        role: "host",
+        competition: true,
+        sharedRoundVersion: 1,
+        sharedEventCount: 0,
+      });
+      const sharedResult = await page.request.post(
+        `/api/course-twins/rooms/${group.roomId}/shared-round/events`,
+        {
+          data: {
+            expectedVersion: group.sharedRoundVersion,
+            event: {
+              type: "round.abandoned",
+              clientEventId: crypto.randomUUID(),
+              payload: { reason: "Course Twin shared-round E2E" },
+            },
+          },
+        },
+      );
+      expect(sharedResult.status()).toBe(201);
+      const shared = await sharedResult.json();
+      expect(shared.room.finalEventHash).toMatch(/^[0-9a-f]{64}$/);
+      const ledger = await page.request.get(
+        `/api/course-twins/rooms/${group.roomId}/shared-round/events`,
+      );
+      expect(ledger.status()).toBe(200);
+      await expect(ledger.json()).resolves.toMatchObject({
+        events: [{ sequence: 1, previousHash: null, eventType: "round.abandoned" }],
+      });
     }
 
     await page.getByRole("button", { name: "Cart" }).click();
@@ -120,6 +154,96 @@ test.describe("Course Twin", () => {
     await expect(page.getByText(/Grade B · 2\.4 m terrain/)).toBeVisible();
     await expect(page.getByText("Shot 1")).toBeVisible();
   });
+
+  test("starts, resumes and safely abandons a persisted My Bag round", async ({ page }) => {
+    test.setTimeout(120_000);
+    skipWhenNoAuth();
+    const courseId = "9beb5429-67e4-4f4e-a187-adbe0df74b62";
+
+    const existingResponse = await page.request.get(`/api/course-twins/${courseId}/rounds`);
+    expect(existingResponse.status()).toBe(200);
+    const existing = await existingResponse.json();
+    if (existing?.id) {
+      const abandonResponse = await page.request.post(
+        `/api/course-twins/rounds/${existing.id}/events`,
+        {
+          data: {
+            expectedVersion: existing.version,
+            event: {
+              type: "round.abandoned",
+              clientEventId: crypto.randomUUID(),
+              payload: { reason: "Course Twin E2E cleanup" },
+            },
+          },
+        },
+      );
+      expect([200, 201]).toContain(abandonResponse.status());
+    }
+
+    await page.goto(`/play/${courseId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await expectPageReady(page, /Bootle Golf Course/i);
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await expect(page.getByText("Start My Bag round")).toBeVisible();
+    await page.getByRole("button", { name: "Front 9" }).click();
+    await page.getByRole("button", { name: "8 mph" }).click();
+    await page.getByRole("button", { name: "From W" }).click();
+    await page.getByRole("button", { name: "Start 9-hole My Bag round" }).click();
+    await expect(page.getByText("Verified round ledger")).toBeVisible({ timeout: 30_000 });
+
+    await expect
+      .poll(() => readRoundLedger(page))
+      .toMatchObject({
+        mode: "play",
+        status: "in_progress",
+        holeCount: 9,
+        currentHole: 1,
+        rules: { windSpeedMph: 8, windDirectionDeg: 270 },
+      });
+    const round = await readRoundLedger(page);
+    expect(round).toBeTruthy();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Verified round ledger")).toBeVisible({ timeout: 30_000 });
+    const resumed = await readRoundLedger(page);
+    expect(resumed.id).toBe(round.id);
+    expect(resumed.version).toBe(round.version);
+
+    const invalidResult = await page.request.post(`/api/course-twins/rounds/${resumed.id}/events`, {
+      data: {
+        expectedVersion: resumed.version,
+        event: {
+          type: "hole.completed",
+          clientEventId: crypto.randomUUID(),
+          payload: {
+            holeNumber: 1,
+            par: 3,
+            yards: 390,
+            strokes: 2,
+            putts: 2,
+            penalties: 1,
+            fairwayHit: null,
+            gir: null,
+          },
+        },
+      },
+    });
+    expect(invalidResult.status()).toBe(422);
+
+    const abandonResult = await page.request.post(`/api/course-twins/rounds/${resumed.id}/events`, {
+      data: {
+        expectedVersion: resumed.version,
+        event: {
+          type: "round.abandoned",
+          clientEventId: crypto.randomUUID(),
+          payload: { reason: "Course Twin E2E completed" },
+        },
+      },
+    });
+    expect([200, 201]).toContain(abandonResult.status());
+    await expect(
+      page.request.get(`/api/course-twins/${courseId}/rounds`).then((response) => response.json()),
+    ).resolves.toBeNull();
+  });
 });
 
 async function readExplorationPosition(page: import("@playwright/test").Page) {
@@ -129,5 +253,25 @@ async function readExplorationPosition(page: import("@playwright/test").Page) {
         "{}",
     );
     return state.exploration?.position ?? null;
+  });
+}
+
+async function readRoundLedger(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const state = JSON.parse(
+      (window as typeof window & { render_game_to_text?: () => string }).render_game_to_text?.() ??
+        "{}",
+    );
+    return state.roundLedger ?? null;
+  });
+}
+
+async function readGroupSession(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const state = JSON.parse(
+      (window as typeof window & { render_game_to_text?: () => string }).render_game_to_text?.() ??
+        "{}",
+    );
+    return state.exploration?.groupSession ?? null;
   });
 }

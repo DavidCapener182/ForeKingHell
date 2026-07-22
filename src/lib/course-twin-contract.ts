@@ -2,7 +2,7 @@ export const COURSE_TWIN_SCHEMA_VERSION = 1;
 export const COURSE_TWIN_RUNTIME_VERSION = "1.0.0";
 export const COURSE_TWIN_REPLAY_MODEL_VERSION = "reconstruction-v1";
 
-export type CourseTwinMode = "flyover" | "replay" | "strategy" | "play";
+export type CourseTwinMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
 export type CourseTwinProvenance = "measured" | "derived" | "reconstructed" | "unavailable";
 export type CourseTwinPoint = [x: number, elevation: number, z: number];
 

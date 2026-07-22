@@ -9,11 +9,27 @@ const EA_WCS_URL =
 const OPEN_TOPOGRAPHY_URL = "https://portal.opentopography.org/API/globaldem";
 const WELSH_GOVERNMENT_DTM_URL =
   "https://dmwproductionblob.blob.core.windows.net/cogs/lidar/wales_dtm_32bit_cog.tif";
+const USGS_3DEP_URL =
+  "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage";
+const NRCAN_STAC_SEARCH_URL = "https://datacube.services.geo.ca/stac/api/search";
+const LINZ_STAC_CATALOG_URL = "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/catalog.json";
 const OUTPUT_SIZE = 513;
 
 proj4.defs(
   "EPSG:27700",
   "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.1502,0.247,0.8421,-20.4894 +units=m +no_defs",
+);
+proj4.defs(
+  "EPSG:2193",
+  "+proj=tmerc +lat_0=0 +lon_0=173 +k=0.9996 +x_0=1600000 +y_0=10000000 +datum=NZGD2000 +units=m +no_defs",
+);
+proj4.defs(
+  "EPSG:3979",
+  "+proj=lcc +lat_1=49 +lat_2=77 +lat_0=49 +lon_0=-95 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",
+);
+proj4.defs(
+  "EPSG:3413",
+  "+proj=stere +lat_0=90 +lat_ts=70 +lon_0=-45 +datum=WGS84 +units=m +no_defs",
 );
 
 export function createTerrainRequest(plan, env = process.env) {
@@ -59,6 +75,61 @@ export function createTerrainRequest(plan, env = process.env) {
       },
     };
   }
+  if (plan.terrain.primary === "usgs_3dep") {
+    const url = new URL(USGS_3DEP_URL);
+    for (const [key, value] of Object.entries({
+      bbox: `${bounds.minLongitude},${bounds.minLatitude},${bounds.maxLongitude},${bounds.maxLatitude}`,
+      bboxSR: "4326",
+      imageSR: "4326",
+      size: `${OUTPUT_SIZE},${OUTPUT_SIZE}`,
+      format: "tiff",
+      pixelType: "F32",
+      interpolation: "RSP_BilinearInterpolation",
+      returnSquarePixels: "true",
+      f: "image",
+    })) {
+      url.searchParams.set(key, value);
+    }
+    return {
+      url,
+      adapter: "usgs_3dep",
+      sourceResolutionM: 1,
+      verticalDatum: "NAVD88 where available",
+      attribution: {
+        label: "USGS National Map 3D Elevation Program (3DEP)",
+        url: "https://www.usgs.gov/3d-elevation-program",
+        licence: "US public domain",
+      },
+    };
+  }
+  if (plan.terrain.primary === "linz_elevation") {
+    return {
+      url: new URL(LINZ_STAC_CATALOG_URL),
+      adapter: "linz_elevation",
+      sourceResolutionM: 1,
+      verticalDatum: "Survey-specific New Zealand vertical datum",
+      reader: "linz_stac_cog",
+      attribution: {
+        label: "New Zealand Elevation dataset — Toitū Te Whenua LINZ",
+        url: "https://registry.opendata.aws/nz-elevation/",
+        licence: "CC BY 4.0 — survey licensors recorded in STAC metadata",
+      },
+    };
+  }
+  if (plan.terrain.primary === "nrcan_hrdem") {
+    return {
+      url: new URL(NRCAN_STAC_SEARCH_URL),
+      adapter: "nrcan_hrdem",
+      sourceResolutionM: 2,
+      verticalDatum: "CGVD2013",
+      reader: "nrcan_stac_cog",
+      attribution: {
+        label: "Natural Resources Canada High Resolution Digital Elevation Model",
+        url: "https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995",
+        licence: "Open Government Licence — Canada",
+      },
+    };
+  }
   if (plan.terrain.primary !== "copernicus_glo30") {
     throw new Error(`Terrain adapter ${plan.terrain.primary} is not available in this worker.`);
   }
@@ -101,6 +172,12 @@ export async function fetchTerrain(plan, env = process.env) {
       if (request.reader === "projected_cog") {
         return readProjectedCog(plan, request);
       }
+      if (request.reader === "nrcan_stac_cog") {
+        return readNrcanStacCog(plan, request);
+      }
+      if (request.reader === "linz_stac_cog") {
+        return readLinzStacCog(plan, request);
+      }
       const response = await fetch(request.url, {
         headers: { "user-agent": "ForeKingHell Course Twin Builder/0.2" },
         signal: AbortSignal.timeout(90_000),
@@ -116,12 +193,17 @@ export async function fetchTerrain(plan, env = process.env) {
 
 async function readProjectedCog(plan, request) {
   const bounds = plan.course.geographicBounds;
+  const tiff = await fromUrl(request.url.toString());
+  const image = await tiff.getImage();
+  const epsg = Number(request.epsg ?? image.getGeoKeys().ProjectedCSTypeGeoKey);
+  ensureProjection(epsg);
+  const projection = `EPSG:${epsg}`;
   const projectedCorners = [
     [bounds.minLongitude, bounds.minLatitude],
     [bounds.minLongitude, bounds.maxLatitude],
     [bounds.maxLongitude, bounds.minLatitude],
     [bounds.maxLongitude, bounds.maxLatitude],
-  ].map((point) => proj4("EPSG:4326", "EPSG:27700", point));
+  ].map((point) => proj4("EPSG:4326", projection, point));
   const eastings = projectedCorners.map((point) => point[0]);
   const northings = projectedCorners.map((point) => point[1]);
   const projectedBounds = [
@@ -130,10 +212,9 @@ async function readProjectedCog(plan, request) {
     Math.max(...eastings),
     Math.max(...northings),
   ];
-  const tiff = await fromUrl(request.url.toString());
-  const image = await tiff.getImage();
-  if (image.getGeoKeys().ProjectedCSTypeGeoKey !== 27700) {
-    throw new Error("Welsh LiDAR COG is not in the expected British National Grid projection.");
+  const imageBounds = image.getBoundingBox();
+  if (!containsBounds(imageBounds, projectedBounds)) {
+    throw new Error(`${request.adapter} COG does not cover the complete course bounds.`);
   }
   const rasters = await tiff.readRasters({
     bbox: projectedBounds,
@@ -144,7 +225,7 @@ async function readProjectedCog(plan, request) {
   });
   const values = Float32Array.from(rasters, Number);
   fillNoData(values, OUTPUT_SIZE, OUTPUT_SIZE, image.getGDALNoData());
-  const [originEasting, originNorthing] = proj4("EPSG:4326", "EPSG:27700", [
+  const [originEasting, originNorthing] = proj4("EPSG:4326", projection, [
     plan.course.origin.longitude,
     plan.course.origin.latitude,
   ]);
@@ -163,7 +244,7 @@ async function readProjectedCog(plan, request) {
     request,
     geographicBounds: bounds,
     sample(latitude, longitude) {
-      const [easting, northing] = proj4("EPSG:4326", "EPSG:27700", [longitude, latitude]);
+      const [easting, northing] = proj4("EPSG:4326", projection, [longitude, latitude]);
       const column = clampIndex(
         ((easting - projectedBounds[0]) / (projectedBounds[2] - projectedBounds[0])) *
           (OUTPUT_SIZE - 1),
@@ -175,6 +256,118 @@ async function readProjectedCog(plan, request) {
       return values[row * OUTPUT_SIZE + column];
     },
   });
+}
+
+export async function readNrcanStacCog(plan, request, fetchImpl = fetch) {
+  const bounds = plan.course.geographicBounds;
+  const response = await fetchImpl(request.url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "user-agent": "ForeKingHell Course Twin Builder/0.2",
+    },
+    body: JSON.stringify({
+      collections: ["hrdem-lidar"],
+      bbox: [bounds.minLongitude, bounds.minLatitude, bounds.maxLongitude, bounds.maxLatitude],
+      limit: 10,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const result = await boundedJson(response, "NRCan HRDEM STAC search");
+  const item = result.features?.find(
+    (feature) => feature?.assets?.dtm?.href && bboxContains(feature.bbox, bounds),
+  );
+  if (!item) throw new Error("NRCan HRDEM has no DTM covering the complete course bounds.");
+  return readProjectedCog(plan, {
+    ...request,
+    url: new URL(item.assets.dtm.href),
+    epsg: item.properties?.["proj:epsg"],
+  });
+}
+
+const linzCollectionIndexPromises = new Map();
+
+export async function readLinzStacCog(plan, request, fetchImpl = fetch) {
+  const bounds = plan.course.geographicBounds;
+  const collections = await loadLinzCollectionIndex(request.url, plan.course.origin, fetchImpl);
+  const candidates = collections
+    .filter((collection) => bboxContains(collection.extent?.spatial?.bbox?.[0], bounds))
+    .sort((left, right) => collectionUpdated(right) - collectionUpdated(left));
+  for (const collection of candidates) {
+    const itemLinks = collection.links?.filter((link) => link.rel === "item") ?? [];
+    const items = await mapLimit(itemLinks, 12, async (link) => {
+      const url = new URL(link.href, collection.url);
+      try {
+        return { ...(await fetchBoundedJson(url, "LINZ elevation item", fetchImpl)), url };
+      } catch {
+        return null;
+      }
+    });
+    const item = items.find(
+      (candidate) => candidate?.assets?.visual?.href && bboxContains(candidate.bbox, bounds),
+    );
+    if (!item) continue;
+    return readProjectedCog(plan, {
+      ...request,
+      url: new URL(item.assets.visual.href, item.url),
+      epsg: 2193,
+    });
+  }
+  throw new Error("LINZ has no 1 m DEM tile covering the complete course bounds.");
+}
+
+async function loadLinzCollectionIndex(catalogUrl, origin, fetchImpl) {
+  const regions = linzCandidateRegions(origin);
+  const cacheKey = [...regions].sort().join(",");
+  if (!linzCollectionIndexPromises.has(cacheKey)) {
+    const promise = (async () => {
+      const catalog = await fetchBoundedJson(catalogUrl, "LINZ elevation catalog", fetchImpl);
+      const links =
+        catalog.links?.filter(
+          (link) =>
+            link.rel === "child" &&
+            /\/dem_1m\//.test(String(link.href)) &&
+            regions.has(String(link.href).replace(/^\.\//, "").split("/")[0]),
+        ) ?? [];
+      const collections = await mapLimit(links, 16, async (link) => {
+        const url = new URL(link.href, catalogUrl);
+        try {
+          return { ...(await fetchBoundedJson(url, "LINZ elevation collection", fetchImpl)), url };
+        } catch {
+          return null;
+        }
+      });
+      return collections.filter(Boolean);
+    })().catch((error) => {
+      linzCollectionIndexPromises.delete(cacheKey);
+      throw error;
+    });
+    linzCollectionIndexPromises.set(cacheKey, promise);
+  }
+  return linzCollectionIndexPromises.get(cacheKey);
+}
+
+function linzCandidateRegions(origin) {
+  const latitude = origin.latitude;
+  if (latitude > -36.2) return new Set(["northland", "auckland"]);
+  if (latitude > -37.5) return new Set(["northland", "auckland", "waikato", "bay-of-plenty"]);
+  if (latitude > -38.9)
+    return new Set(["waikato", "bay-of-plenty", "taranaki", "gisborne", "hawkes-bay"]);
+  if (latitude > -40.5)
+    return new Set(["taranaki", "manawatu-whanganui", "gisborne", "hawkes-bay"]);
+  if (latitude > -42)
+    return new Set([
+      "wellington",
+      "manawatu-whanganui",
+      "hawkes-bay",
+      "nelson",
+      "tasman",
+      "marlborough",
+    ]);
+  if (latitude > -44.2)
+    return new Set(["nelson", "tasman", "marlborough", "canterbury", "west-coast"]);
+  if (latitude > -46) return new Set(["canterbury", "west-coast", "otago", "southland"]);
+  return new Set(["otago", "southland"]);
 }
 
 export async function decodeTerrain(arrayBuffer, plan, request) {
@@ -298,4 +491,77 @@ function fillNoData(values, width, height, noData) {
 
 function clampIndex(value) {
   return Math.max(0, Math.min(OUTPUT_SIZE - 1, Math.round(value)));
+}
+
+function ensureProjection(epsg) {
+  if (!Number.isInteger(epsg)) throw new Error("Terrain COG is missing a projected EPSG code.");
+  if (epsg >= 26901 && epsg <= 26923 && !proj4.defs(`EPSG:${epsg}`)) {
+    proj4.defs(`EPSG:${epsg}`, `+proj=utm +zone=${epsg - 26900} +datum=NAD83 +units=m +no_defs`);
+  }
+  if (!proj4.defs(`EPSG:${epsg}`)) {
+    throw new Error(`Terrain COG projection EPSG:${epsg} is not supported.`);
+  }
+}
+
+function containsBounds(container, target) {
+  return (
+    Array.isArray(container) &&
+    container.length >= 4 &&
+    target[0] >= container[0] &&
+    target[1] >= container[1] &&
+    target[2] <= container[2] &&
+    target[3] <= container[3]
+  );
+}
+
+function bboxContains(bbox, bounds) {
+  return containsBounds(bbox, [
+    bounds.minLongitude,
+    bounds.minLatitude,
+    bounds.maxLongitude,
+    bounds.maxLatitude,
+  ]);
+}
+
+function collectionUpdated(collection) {
+  const interval = collection.extent?.temporal?.interval?.[0];
+  return Date.parse(interval?.[1] ?? interval?.[0] ?? "1970-01-01T00:00:00Z") || 0;
+}
+
+async function fetchBoundedJson(url, label, fetchImpl) {
+  const response = await fetchImpl(url, {
+    headers: { "user-agent": "ForeKingHell Course Twin Builder/0.2" },
+    signal: AbortSignal.timeout(30_000),
+  });
+  return boundedJson(response, label);
+}
+
+async function boundedJson(response, label) {
+  if (!response.ok) throw new Error(`${label} returned ${response.status}.`);
+  const declaredSize = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredSize) && declaredSize > 8 * 1024 * 1024) {
+    throw new Error(`${label} exceeds the metadata limit.`);
+  }
+  const text = await response.text();
+  if (text.length > 8 * 1024 * 1024) throw new Error(`${label} exceeds the metadata limit.`);
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${label} returned invalid JSON.`);
+  }
+}
+
+async function mapLimit(values, limit, mapper) {
+  const results = new Array(values.length);
+  let nextIndex = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(limit, values.length) }, async () => {
+      while (nextIndex < values.length) {
+        const index = nextIndex;
+        nextIndex += 1;
+        results[index] = await mapper(values[index], index);
+      }
+    }),
+  );
+  return results;
 }

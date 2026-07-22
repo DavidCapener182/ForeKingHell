@@ -4,11 +4,14 @@ import {
   createCourseTwinInviteCode,
   isCourseTwinRoomId,
   isCourseTwinRoomActive,
+  isCourseTwinRoomReadable,
   normalizeCourseTwinInviteCode,
   parseCourseTwinCreateRoomInput,
+  parseCourseTwinJoinRoomInput,
   parseCourseTwinPresenceInput,
   parseCourseTwinRoomEvent,
   parseCourseTwinRoomStateInput,
+  parseCourseTwinSharedRoundEventInput,
 } from "@/lib/course-twin-multiplayer";
 
 describe("Course Twin multiplayer contracts", () => {
@@ -16,17 +19,34 @@ describe("Course Twin multiplayer contracts", () => {
     expect(parseCourseTwinCreateRoomInput({})).toEqual({
       mode: "explore",
       maxPlayers: 4,
+      spectatorLimit: 8,
       holeNumber: 1,
+      competition: false,
     });
     expect(parseCourseTwinCreateRoomInput({ mode: "live", maxPlayers: 2, holeNumber: 18 })).toEqual(
       {
         mode: "live",
         maxPlayers: 2,
+        spectatorLimit: 8,
         holeNumber: 18,
+        competition: false,
       },
     );
     expect(parseCourseTwinCreateRoomInput({ mode: "admin" })).toBeNull();
     expect(parseCourseTwinCreateRoomInput({ maxPlayers: 40 })).toBeNull();
+    expect(parseCourseTwinCreateRoomInput({ mode: "explore", competition: true })).toBeNull();
+  });
+
+  it("supports explicit read-only spectator joins", () => {
+    expect(parseCourseTwinJoinRoomInput({ inviteCode: "ab-cd 23", role: "spectator" })).toEqual({
+      inviteCode: "ABCD23",
+      role: "spectator",
+    });
+    expect(parseCourseTwinJoinRoomInput({ inviteCode: "ABCD23" })).toEqual({
+      inviteCode: "ABCD23",
+      role: "player",
+    });
+    expect(parseCourseTwinJoinRoomInput({ inviteCode: "ABCD23", role: "host" })).toBeNull();
   });
 
   it("accepts safe terrain presence and rejects unbounded coordinates", () => {
@@ -58,6 +78,28 @@ describe("Course Twin multiplayer contracts", () => {
     expect(isCourseTwinRoomId("not-a-room")).toBe(false);
   });
 
+  it("reuses the strict round-event contract for shared room events", () => {
+    const shared = parseCourseTwinSharedRoundEventInput({
+      expectedVersion: 2,
+      event: {
+        type: "round.completed",
+        clientEventId: "9beb5429-67e4-4f4e-a187-adbe0df74b62",
+        payload: {},
+      },
+    });
+    expect(shared).toEqual({
+      expectedVersion: 2,
+      event: {
+        type: "round.completed",
+        clientEventId: "9beb5429-67e4-4f4e-a187-adbe0df74b62",
+        payload: {},
+      },
+    });
+    expect(
+      parseCourseTwinSharedRoundEventInput({ expectedVersion: 2, event: { type: "cheat" } }),
+    ).toBeNull();
+  });
+
   it("treats expired and terminal rooms as inactive", () => {
     const now = new Date("2026-07-22T12:00:00Z");
     expect(
@@ -69,5 +111,11 @@ describe("Course Twin multiplayer contracts", () => {
         now,
       ),
     ).toBe(false);
+    expect(
+      isCourseTwinRoomReadable(
+        { status: "finished", expiresAt: new Date("2026-07-22T13:00:00Z") },
+        now,
+      ),
+    ).toBe(true);
   });
 });

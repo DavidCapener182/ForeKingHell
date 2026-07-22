@@ -23,6 +23,17 @@ test("pairs an allowed browser and relays only a normalised accepted shot", asyn
   assert.equal(health.status, 200);
   assert.equal((await health.json()).gsProConnected, false);
 
+  const diagnostics = await fetch(`http://127.0.0.1:${bridge.addresses.browserPort}/diagnostics`, {
+    headers: { Origin: origin },
+  });
+  assert.equal(diagnostics.status, 200);
+  assert.match(diagnostics.headers.get("content-disposition"), /course-twin-bridge\.json/);
+  assert.deepEqual((await diagnostics.json()).privacy, {
+    containsPairingCode: false,
+    containsSessionToken: false,
+    containsRawShotPayload: false,
+  });
+
   const deniedPair = await fetch(`http://127.0.0.1:${bridge.addresses.browserPort}/pair`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Origin: "https://evil.invalid" },

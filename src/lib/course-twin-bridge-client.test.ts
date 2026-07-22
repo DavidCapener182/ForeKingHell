@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   bridgeShotToReplayShot,
+  CourseTwinBridgeClient,
   type CourseTwinBridgeShotEvent,
 } from "@/lib/course-twin-bridge-client";
 import type { CourseTwinHole } from "@/lib/course-twin-contract";
@@ -44,6 +45,11 @@ const event: CourseTwinBridgeShotEvent = {
 };
 
 describe("Course Twin bridge shot mapping", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("maps measured GSPro metrics into a replay shot aimed from the current lie", () => {
     const result = bridgeShotToReplayShot({
       event,
@@ -73,5 +79,60 @@ describe("Course Twin bridge shot mapping", () => {
     });
     expect(result.metrics.carryYd.provenance).toBe("derived");
     expect(result.metrics.carryYd.value).toBeGreaterThan(100);
+  });
+
+  it("accepts only explicitly redacted loopback diagnostic reports", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          reportVersion: 1,
+          product: "ForeKingHell Course Twin Bridge",
+          bridgeVersion: "0.2.0",
+          protocolVersion: 1,
+          capturedAt: "2026-07-22T18:00:00.000Z",
+          runtime: { platform: "darwin", architecture: "arm64", nodeVersion: "24.15.0" },
+          network: {
+            loopbackOnly: true,
+            host: "127.0.0.1",
+            gsProPort: 921,
+            browserPort: 9791,
+            officialGsProPort: true,
+          },
+          state: { status: "running" },
+          privacy: {
+            containsPairingCode: false,
+            containsSessionToken: false,
+            containsRawShotPayload: false,
+          },
+        }),
+      ),
+    );
+    const client = new CourseTwinBridgeClient({ onEvent: vi.fn(), onDisconnect: vi.fn() });
+    await expect(client.diagnostics()).resolves.toMatchObject({
+      bridgeVersion: "0.2.0",
+      network: { loopbackOnly: true, gsProPort: 921 },
+    });
+  });
+
+  it("rejects a diagnostic report that claims it contains a session token", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          reportVersion: 1,
+          product: "ForeKingHell Course Twin Bridge",
+          protocolVersion: 1,
+          network: { loopbackOnly: true },
+          privacy: {
+            containsPairingCode: false,
+            containsSessionToken: true,
+            containsRawShotPayload: false,
+          },
+        }),
+      ),
+    );
+    const client = new CourseTwinBridgeClient({ onEvent: vi.fn(), onDisconnect: vi.fn() });
+    await expect(client.diagnostics()).rejects.toThrow(/unsafe or unsupported/);
   });
 });

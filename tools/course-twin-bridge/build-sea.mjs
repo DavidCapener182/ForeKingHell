@@ -4,6 +4,7 @@ import {
   copyFileSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   renameSync,
   rmSync,
   writeFileSync,
@@ -13,7 +14,18 @@ import { basename, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { build } from "esbuild";
 
+import {
+  assertReleaseTrust,
+  createReleaseManifest,
+  describeArtifact,
+  serializeReleaseManifest,
+  signReleaseManifest,
+} from "./release-manifest.mjs";
+
 const root = resolve(import.meta.dirname, "../..");
+const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const releaseChannel = process.env.FKH_BRIDGE_RELEASE_CHANNEL ?? "local";
+assertReleaseTrust({ channel: releaseChannel, platform: process.platform, env: process.env });
 const platformName = `${process.platform}-${process.arch}`;
 const outputDirectory = resolve(root, "dist/course-twin-bridge", platformName);
 const bundlePath = resolve(outputDirectory, "bridge.cjs");
@@ -34,7 +46,7 @@ await build({
   bundle: true,
   format: "cjs",
   platform: "node",
-  target: "node22",
+  target: "node24",
   minify: true,
   sourcemap: false,
   legalComments: "none",
@@ -59,16 +71,23 @@ copyFileSync(process.execPath, executablePath);
 if (process.platform !== "win32") await chmod(executablePath, 0o755);
 
 if (process.platform === "darwin") {
-  const thinPath = `${executablePath}.thin`;
-  run("lipo", [
-    executablePath,
-    "-thin",
-    process.arch === "x64" ? "x86_64" : process.arch,
-    "-output",
-    thinPath,
-  ]);
-  renameSync(thinPath, executablePath);
-  await chmod(executablePath, 0o755);
+  const lipoInfo = spawnSync("lipo", ["-info", executablePath], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+  if (/Architectures in the fat file/i.test(lipoInfo.stdout)) {
+    const thinPath = `${executablePath}.thin`;
+    run("lipo", [
+      executablePath,
+      "-thin",
+      process.arch === "x64" ? "x86_64" : process.arch,
+      "-output",
+      thinPath,
+    ]);
+    renameSync(thinPath, executablePath);
+    await chmod(executablePath, 0o755);
+  }
   run("codesign", ["--remove-signature", executablePath], { allowFailure: true });
 }
 
@@ -87,12 +106,14 @@ const postjectArguments = [
 if (process.platform === "darwin") postjectArguments.push("--macho-segment-name", "NODE_SEA");
 run(postject, postjectArguments, { shell: process.platform === "win32" });
 
+let codeSignature = "unsigned";
 if (process.platform === "darwin") {
   const identity = process.env.FKH_MACOS_SIGN_IDENTITY || "-";
   const signingArguments = ["--force", "--sign", identity];
   if (identity !== "-") signingArguments.push("--options", "runtime", "--timestamp");
   signingArguments.push(executablePath);
   run("codesign", signingArguments);
+  codeSignature = identity === "-" ? "adhoc" : "developer-id";
 } else if (process.platform === "win32" && process.env.FKH_WINDOWS_SIGN_CERT_SHA1) {
   run("signtool", [
     "sign",
@@ -106,13 +127,61 @@ if (process.platform === "darwin") {
     "SHA256",
     executablePath,
   ]);
+  codeSignature = "authenticode";
 }
 
 run(executablePath, ["--self-test"]);
 const checksum = createHash("sha256").update(readFileSync(executablePath)).digest("hex");
 writeFileSync(`${executablePath}.sha256`, `${checksum}  ${basename(executablePath)}\n`);
 writePortSetupArtifacts();
+const notarized = notarizeMacReleaseArchive();
+await writeReleaseManifest({ codeSignature, notarized });
 process.stdout.write(`Built ${executablePath}\nSHA-256 ${checksum}\n`);
+
+async function writeReleaseManifest({ codeSignature: signatureType, notarized }) {
+  const internalFiles = new Set(["bridge.blob", "bridge.cjs", "sea-config.json"]);
+  const artifacts = await Promise.all(
+    readdirSync(outputDirectory)
+      .filter((name) => !internalFiles.has(name) && !name.startsWith("release-manifest."))
+      .map((name) => describeArtifact(resolve(outputDirectory, name))),
+  );
+  const manifest = createReleaseManifest({
+    version: packageJson.version,
+    channel: releaseChannel,
+    platform: process.platform,
+    architecture: process.arch,
+    nodeVersion: process.versions.node,
+    artifacts,
+    codeSignature: signatureType,
+    notarized,
+  });
+  const serialized = serializeReleaseManifest(manifest);
+  writeFileSync(resolve(outputDirectory, "release-manifest.json"), serialized);
+
+  const privateKey = process.env.FKH_RELEASE_MANIFEST_PRIVATE_KEY;
+  if (privateKey) {
+    const key = privateKey.includes("BEGIN")
+      ? privateKey
+      : readFileSync(resolve(privateKey), "utf8");
+    const manifestSignature = signReleaseManifest(serialized, key);
+    writeFileSync(resolve(outputDirectory, "release-manifest.sig"), `${manifestSignature}\n`);
+  }
+}
+
+function notarizeMacReleaseArchive() {
+  if (process.platform !== "darwin" || !process.env.FKH_APPLE_NOTARY_PROFILE) return false;
+  const archivePath = resolve(outputDirectory, `${basename(executablePath)}.zip`);
+  run("ditto", ["-c", "-k", "--keepParent", executablePath, archivePath]);
+  run("xcrun", [
+    "notarytool",
+    "submit",
+    archivePath,
+    "--keychain-profile",
+    process.env.FKH_APPLE_NOTARY_PROFILE,
+    "--wait",
+  ]);
+  return true;
+}
 
 function writePortSetupArtifacts() {
   if (process.platform === "darwin") {

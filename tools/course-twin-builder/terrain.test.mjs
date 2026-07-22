@@ -41,3 +41,25 @@ test("Welsh Government adapter reads the official projected COG", () => {
   assert.match(request.url.hostname, /dmwproductionblob\.blob\.core\.windows\.net/);
   assert.equal(request.attribution.licence, "Open Government Licence v3.0");
 });
+
+test("USGS 3DEP adapter requests a bounded bare-earth float GeoTIFF", () => {
+  const us = { ...plan, terrain: { primary: "usgs_3dep" } };
+  const request = createTerrainRequest(us, {});
+  assert.equal(request.adapter, "usgs_3dep");
+  assert.match(request.url.hostname, /nationalmap\.gov/);
+  assert.equal(request.url.searchParams.get("bbox"), "-2.99,53.47,-2.96,53.49");
+  assert.equal(request.url.searchParams.get("pixelType"), "F32");
+  assert.equal(request.url.searchParams.get("format"), "tiff");
+});
+
+test("LINZ and NRCan adapters resolve official STAC COG catalogues", () => {
+  const linz = createTerrainRequest({ ...plan, terrain: { primary: "linz_elevation" } }, {});
+  assert.equal(linz.reader, "linz_stac_cog");
+  assert.match(linz.url.hostname, /nz-elevation\.s3/);
+  assert.equal(linz.attribution.licence.includes("CC BY 4.0"), true);
+
+  const nrcan = createTerrainRequest({ ...plan, terrain: { primary: "nrcan_hrdem" } }, {});
+  assert.equal(nrcan.reader, "nrcan_stac_cog");
+  assert.equal(nrcan.url.pathname, "/stac/api/search");
+  assert.match(nrcan.attribution.licence, /Canada/);
+});

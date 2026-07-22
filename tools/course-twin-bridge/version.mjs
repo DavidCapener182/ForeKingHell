@@ -1,0 +1,1 @@
+export const COURSE_TWIN_BRIDGE_VERSION = "0.2.0";

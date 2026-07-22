@@ -54,6 +54,17 @@ import {
   type CourseTwinSimulationFrame,
 } from "@/lib/course-twin-physics";
 import {
+  appendCourseTwinRoundEventClient,
+  createCourseTwinRoundClient,
+  loadActiveCourseTwinRoundClient,
+  type CourseTwinRoundClientDocument,
+} from "@/lib/course-twin-round-client";
+import type {
+  CourseTwinRoundEventInput,
+  CourseTwinRoundRules,
+  CourseTwinShotEventPayload,
+} from "@/lib/course-twin-round";
+import {
   createCourseTwinSurfaceClassifier,
   courseTwinFeatureContains,
   courseTwinRingArea,
@@ -95,10 +106,22 @@ type CourseTwinRoomClient = {
   id: string;
   inviteCode: string;
   isHost: boolean;
+  currentRole: "host" | "player" | "spectator";
+  competition: boolean;
+  spectatorLimit: number;
+  sharedRoundVersion: number;
+  sharedEventCount: number;
+  finalEventHash: string | null;
+  latestSharedEvent: {
+    sequence: number;
+    eventType: string;
+    eventHash: string;
+    createdAt: string;
+  } | null;
   members: Array<{
     userId: string;
     displayName: string;
-    role: string;
+    role: "host" | "player" | "spectator";
     transport: ExploreTransport;
     holeNumber: number;
   }>;
@@ -107,6 +130,18 @@ type RoomLoadState = {
   status: "idle" | "loading" | "ready" | "error";
   room: CourseTwinRoomClient | null;
   error: string | null;
+};
+type RoundSyncState = {
+  status: "idle" | "saving" | "ready" | "error";
+  error: string | null;
+};
+
+const defaultRoundRules: CourseTwinRoundRules = {
+  windSpeedMph: 0,
+  windDirectionDeg: 0,
+  greenRule: "manual_putts",
+  mulligansAllowed: true,
+  competition: false,
 };
 
 const proceduralTextureCache = new Map<string, THREE.CanvasTexture>();
@@ -190,6 +225,7 @@ export function CourseTwinScene({
   const [virtualAimOffsetYd, setVirtualAimOffsetYd] = useState(0);
   const [virtualShot, setVirtualShot] = useState<CourseTwinVirtualShot | null>(null);
   const [virtualComplete, setVirtualComplete] = useState(false);
+  const [virtualRoundEventId, setVirtualRoundEventId] = useState<string | null>(null);
   const [bridgeState, setBridgeState] = useState<BridgeLoadState>({
     status: "idle",
     health: null,
@@ -204,6 +240,16 @@ export function CourseTwinScene({
   const [liveShot, setLiveShot] = useState<CourseTwinReplayShot | null>(null);
   const [liveComplete, setLiveComplete] = useState(false);
   const [liveHanded, setLiveHanded] = useState<"RH" | "LH">("RH");
+  const [liveRoundEventId, setLiveRoundEventId] = useState<string | null>(null);
+  const [roundRules, setRoundRules] = useState<CourseTwinRoundRules>(defaultRoundRules);
+  const [roundHoleCount, setRoundHoleCount] = useState<9 | 18>(18);
+  const [roundStartingHole, setRoundStartingHole] = useState<1 | 10>(1);
+  const [activeRound, setActiveRound] = useState<CourseTwinRoundClientDocument | null>(null);
+  const [roundSync, setRoundSync] = useState<RoundSyncState>({
+    status: "saving",
+    error: null,
+  });
+  const [roundRetryToken, setRoundRetryToken] = useState(0);
   const [exploreTransport, setExploreTransport] = useState<ExploreTransport>("walk");
   const [explorePosition, setExplorePosition] = useState<CourseTwinPoint>(
     manifest.holes[0]?.tee ?? [0, 0, 0],
@@ -214,6 +260,8 @@ export function CourseTwinScene({
     error: null,
   });
   const [roomInviteCode, setRoomInviteCode] = useState("");
+  const [roomJoinRole, setRoomJoinRole] = useState<"player" | "spectator">("player");
+  const [roomCompetition, setRoomCompetition] = useState(false);
   const [roomCodeCopied, setRoomCodeCopied] = useState(false);
   const playbackRef = useRef(0);
   const explorePresenceRef = useRef({
@@ -224,12 +272,15 @@ export function CourseTwinScene({
   const cameraCommandIdRef = useRef(0);
   const strategyAbortRef = useRef<AbortController | null>(null);
   const bridgeClientRef = useRef<CourseTwinBridgeClient | null>(null);
+  const activeRoundRef = useRef<CourseTwinRoundClientDocument | null>(null);
+  const roomStateRef = useRef(roomState);
+  const submittedRoundEventsRef = useRef(new Set<string>());
   const liveContextRef = useRef({
     hole: manifest.holes[0],
     start: manifest.holes[0]?.tee ?? ([0, 0, 0] as CourseTwinPoint),
     clubType: "driver",
     shotNumber: 1,
-    canAccept: true,
+    canAccept: false,
   });
   const terrainAsset = manifest.terrain.heightmap;
   const selectedHole =
@@ -240,10 +291,19 @@ export function CourseTwinScene({
   const selectedHoleIndex = manifest.holes.findIndex(
     (hole) => hole.holeNumber === selectedHole.holeNumber,
   );
+  const roundLocksHole = activeRound?.status === "in_progress" && activeRound.mode === mode;
 
   useEffect(() => {
     playbackRef.current = playback;
   }, [playback]);
+
+  useEffect(() => {
+    activeRoundRef.current = activeRound;
+  }, [activeRound]);
+
+  useEffect(() => {
+    roomStateRef.current = roomState;
+  }, [roomState]);
 
   useEffect(() => {
     explorePresenceRef.current = {
@@ -342,6 +402,10 @@ export function CourseTwinScene({
     () => createCourseTwinSurfaceClassifier(manifest, selectedHole.holeNumber),
     [manifest, selectedHole.holeNumber],
   );
+  const configuredWind = useMemo(
+    () => courseTwinWindVector(activeRound?.rulesJson ?? roundRules),
+    [activeRound?.rulesJson, roundRules],
+  );
   const selectedSimulation = useMemo(
     () =>
       sampleTerrain && selectedShot
@@ -355,22 +419,30 @@ export function CourseTwinScene({
   const virtualSimulation = useMemo(
     () =>
       sampleTerrain && virtualShot
-        ? simulateCourseTwinReplayShot(virtualShot.shot, {
-            groundHeight: sampleTerrain,
-            surfaceAt: classifySurface,
-          })
+        ? simulateCourseTwinReplayShot(
+            virtualShot.shot,
+            {
+              groundHeight: sampleTerrain,
+              surfaceAt: classifySurface,
+            },
+            { windMps: configuredWind },
+          )
         : null,
-    [classifySurface, sampleTerrain, virtualShot],
+    [classifySurface, configuredWind, sampleTerrain, virtualShot],
   );
   const liveSimulation = useMemo(
     () =>
       sampleTerrain && liveShot
-        ? simulateCourseTwinReplayShot(liveShot, {
-            groundHeight: sampleTerrain,
-            surfaceAt: classifySurface,
-          })
+        ? simulateCourseTwinReplayShot(
+            liveShot,
+            {
+              groundHeight: sampleTerrain,
+              surfaceAt: classifySurface,
+            },
+            { windMps: configuredWind },
+          )
         : null,
-    [classifySurface, liveShot, sampleTerrain],
+    [classifySurface, configuredWind, liveShot, sampleTerrain],
   );
   const playbackFrame = useMemo(
     () => (selectedSimulation ? sampleCourseTwinSimulation(selectedSimulation, playback) : null),
@@ -384,15 +456,147 @@ export function CourseTwinScene({
     [strategyClubId, strategyState.document],
   );
 
+  const appendRoundEvent = useCallback(async (event: CourseTwinRoundEventInput) => {
+    const current = activeRoundRef.current;
+    if (!current) throw new Error("Start a Course Twin round before saving shots.");
+    setRoundSync({ status: "saving", error: null });
+    try {
+      const updated = await appendCourseTwinRoundEventClient(current, event);
+      activeRoundRef.current = updated;
+      setActiveRound(updated);
+      setRoundSync({ status: "ready", error: null });
+      const sharedRoom = roomStateRef.current.room;
+      if (sharedRoom && sharedRoom.currentRole !== "spectator" && !sharedRoom.finalEventHash) {
+        void fetch(`/api/course-twins/rooms/${sharedRoom.id}/shared-round/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expectedVersion: sharedRoom.sharedRoundVersion, event }),
+        })
+          .then(async (response) => {
+            if (response.ok) {
+              const body = (await response.json()) as { room?: CourseTwinRoomClient };
+              if (body.room) {
+                const next = { status: "ready", room: body.room, error: null } as const;
+                roomStateRef.current = next;
+                setRoomState(next);
+              }
+              return;
+            }
+            if (response.status === 409) {
+              const refreshed = await fetch(`/api/course-twins/rooms/${sharedRoom.id}`, {
+                cache: "no-store",
+              });
+              if (refreshed.ok) {
+                const next = {
+                  status: "ready",
+                  room: (await refreshed.json()) as CourseTwinRoomClient,
+                  error: null,
+                } as const;
+                roomStateRef.current = next;
+                setRoomState(next);
+              }
+            }
+          })
+          .catch(() => {
+            // The personal round is canonical locally; room polling retries shared visibility.
+          });
+      }
+      return updated;
+    } catch (error) {
+      setRoundSync({
+        status: "error",
+        error: error instanceof Error ? error.message : "Course Twin could not save the round.",
+      });
+      throw error;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      activeRound?.mode !== "play" ||
+      !virtualRoundEventId ||
+      !virtualShot ||
+      !virtualSimulation ||
+      !strategyClub ||
+      submittedRoundEventsRef.current.has(virtualRoundEventId)
+    ) {
+      return;
+    }
+    submittedRoundEventsRef.current.add(virtualRoundEventId);
+    void appendRoundEvent({
+      type: "shot.accepted",
+      clientEventId: virtualRoundEventId,
+      payload: buildRoundShotPayload({
+        shot: virtualShot.shot,
+        simulation: virtualSimulation,
+        clubId: strategyClub.clubId,
+        source: "modelled",
+      }),
+    }).catch(() => submittedRoundEventsRef.current.delete(virtualRoundEventId));
+  }, [
+    activeRound?.mode,
+    appendRoundEvent,
+    roundRetryToken,
+    strategyClub,
+    virtualRoundEventId,
+    virtualShot,
+    virtualSimulation,
+  ]);
+
+  useEffect(() => {
+    if (
+      activeRound?.mode !== "live" ||
+      !liveRoundEventId ||
+      !liveShot ||
+      !liveSimulation ||
+      !strategyClub ||
+      submittedRoundEventsRef.current.has(liveRoundEventId)
+    ) {
+      return;
+    }
+    submittedRoundEventsRef.current.add(liveRoundEventId);
+    void appendRoundEvent({
+      type: "shot.accepted",
+      clientEventId: liveRoundEventId,
+      payload: buildRoundShotPayload({
+        shot: liveShot,
+        simulation: liveSimulation,
+        clubId: strategyClub.clubId,
+        source: "measured",
+      }),
+    }).catch(() => submittedRoundEventsRef.current.delete(liveRoundEventId));
+  }, [
+    activeRound?.mode,
+    appendRoundEvent,
+    liveRoundEventId,
+    liveShot,
+    liveSimulation,
+    roundRetryToken,
+    strategyClub,
+  ]);
+
   useEffect(() => {
     liveContextRef.current = {
       hole: selectedHole,
       start: liveStart,
       clubType: strategyClub?.clubType ?? "driver",
       shotNumber: liveShotNumber,
-      canAccept: !liveShot && !liveComplete,
+      canAccept:
+        activeRound?.mode === "live" &&
+        activeRound.status === "in_progress" &&
+        !liveShot &&
+        !liveComplete,
     };
-  }, [liveComplete, liveShot, liveShotNumber, liveStart, selectedHole, strategyClub]);
+  }, [
+    activeRound?.mode,
+    activeRound?.status,
+    liveComplete,
+    liveShot,
+    liveShotNumber,
+    liveStart,
+    selectedHole,
+    strategyClub,
+  ]);
 
   useEffect(
     () => () => {
@@ -423,6 +627,25 @@ export function CourseTwinScene({
           status: terrainError ? "error" : sampleTerrain ? "ready" : "loading",
           resolutionM: manifest.terrain.resolutionM,
         },
+        roundLedger: activeRound
+          ? {
+              id: activeRound.id,
+              mode: activeRound.mode,
+              status: activeRound.status,
+              version: activeRound.version,
+              currentHole: activeRound.currentHole,
+              holeCount: activeRound.holeCount,
+              sessionId: activeRound.sessionId,
+              finalEventHash: activeRound.finalEventHash,
+              scorecard: activeRound.summary.scorecard,
+              sync: roundSync.status,
+              rules: activeRound.rulesJson,
+            }
+          : {
+              status: "not_started",
+              sync: roundSync.status,
+              rules: roundRules,
+            },
         mode,
         cameraView,
         cameraCommand: cameraCommand?.action ?? null,
@@ -537,6 +760,11 @@ export function CourseTwinScene({
                         inviteCode: roomState.room.inviteCode,
                         memberCount: roomState.room.members.length,
                         isHost: roomState.room.isHost,
+                        role: roomState.room.currentRole,
+                        competition: roomState.room.competition,
+                        sharedRoundVersion: roomState.room.sharedRoundVersion,
+                        sharedEventCount: roomState.room.sharedEventCount,
+                        finalEventHash: roomState.room.finalEventHash,
                       }
                     : { status: roomState.status, error: roomState.error },
               }
@@ -556,6 +784,7 @@ export function CourseTwinScene({
       delete gameWindow.advanceTime;
     };
   }, [
+    activeRound,
     cameraCommand,
     cameraView,
     explorePosition,
@@ -574,6 +803,8 @@ export function CourseTwinScene({
     playback,
     playbackFrame,
     roomState,
+    roundRules,
+    roundSync.status,
     sampleTerrain,
     selectedHole,
     selectedShot,
@@ -618,10 +849,13 @@ export function CourseTwinScene({
         if (!context.hole || !context.canAccept) {
           setBridgeState((current) => ({
             ...current,
-            error: "Finish the current shot before hitting another ball.",
+            error: activeRoundRef.current
+              ? "Finish the current shot before hitting another ball."
+              : "Start a Live Course Twin round before hitting a ball.",
           }));
           return;
         }
+        setLiveRoundEventId(crypto.randomUUID());
         setLiveShot(
           bridgeShotToReplayShot({
             event,
@@ -705,6 +939,27 @@ export function CourseTwinScene({
       });
   };
 
+  const downloadBridgeDiagnostics = () => {
+    void ensureBridgeClient()
+      .diagnostics()
+      .then((report) => {
+        const url = URL.createObjectURL(
+          new Blob([`${JSON.stringify(report, null, 2)}\n`], { type: "application/json" }),
+        );
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `course-twin-bridge-${report.capturedAt.slice(0, 10)}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((error: unknown) => {
+        setBridgeState((current) => ({
+          ...current,
+          error: error instanceof Error ? error.message : "Bridge diagnostics are unavailable.",
+        }));
+      });
+  };
+
   const loadStrategy = (nextHoleNumber: number) => {
     strategyAbortRef.current?.abort();
     const controller = new AbortController();
@@ -766,17 +1021,191 @@ export function CourseTwinScene({
       setVirtualAimOffsetYd(0);
       setVirtualShot(null);
       setVirtualComplete(false);
+      setVirtualRoundEventId(null);
       setLiveStart(nextHole.tee);
       setLiveShotNumber(1);
       setLiveStrokes(0);
       setLivePenaltyStrokes(0);
       setLiveShot(null);
       setLiveComplete(false);
+      setLiveRoundEventId(null);
       setExplorePosition(nextHole.tee);
     }
     if (mode === "strategy") loadStrategy(nextHoleNumber);
     if (mode === "play") loadStrategy(nextHoleNumber);
     if (mode === "live") loadStrategy(nextHoleNumber);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    void loadActiveCourseTwinRoundClient(manifest.course.id)
+      .then((round) => {
+        if (!mounted) return;
+        if (!round) {
+          setRoundSync({ status: "idle", error: null });
+          return;
+        }
+        const hole = manifest.holes.find((candidate) => candidate.holeNumber === round.currentHole);
+        const currentShots = round.summary.acceptedShots
+          .filter((shot) => shot.holeNumber === round.currentHole)
+          .sort((left, right) => left.shotNumber - right.shotNumber);
+        const lastShot = currentShots.at(-1);
+        const penalties = currentShots.filter((shot) => shot.result.penalty).length;
+        const restoredStart = lastShot
+          ? lastShot.result.penalty
+            ? lastShot.carryEnd
+            : lastShot.totalEnd
+          : hole?.tee;
+        activeRoundRef.current = round;
+        setActiveRound(round);
+        setRoundRules(round.rulesJson);
+        setRoundHoleCount(round.holeCount === 9 ? 9 : 18);
+        setRoundStartingHole(round.startingHole === 10 ? 10 : 1);
+        setMode(round.mode);
+        setHoleNumber(round.currentHole);
+        setPlayback(0);
+        setPlaying(false);
+        if (hole && restoredStart) {
+          if (round.mode === "play") {
+            setVirtualStart(restoredStart);
+            setVirtualShotNumber(currentShots.length + 1);
+            setVirtualStrokes(currentShots.length + penalties);
+            setVirtualPenaltyStrokes(penalties);
+            setVirtualShot(null);
+            setVirtualRoundEventId(null);
+          } else {
+            setLiveStart(restoredStart);
+            setLiveShotNumber(currentShots.length + 1);
+            setLiveStrokes(currentShots.length + penalties);
+            setLivePenaltyStrokes(penalties);
+            setLiveShot(null);
+            setLiveRoundEventId(null);
+          }
+          loadStrategy(round.currentHole);
+        }
+        setRoundSync({ status: "ready", error: null });
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setRoundSync({
+          status: "error",
+          error: error instanceof Error ? error.message : "Course Twin could not resume the round.",
+        });
+      });
+    return () => {
+      mounted = false;
+    };
+    // Resume is intentionally scoped to the published course identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manifest.course.id]);
+
+  const startPersistedRound = async (roundMode: "play" | "live") => {
+    if (activeRound?.status === "in_progress") {
+      setRoundSync({ status: "error", error: "Finish or abandon the active round first." });
+      return;
+    }
+    setRoundSync({ status: "saving", error: null });
+    try {
+      const startingHole = roundHoleCount === 18 ? 1 : roundStartingHole;
+      const round = await createCourseTwinRoundClient(manifest.course.id, {
+        mode: roundMode,
+        holeCount: roundHoleCount,
+        startingHole,
+        rules: roundRules,
+      });
+      activeRoundRef.current = round;
+      setActiveRound(round);
+      submittedRoundEventsRef.current.clear();
+      setRoundSync({ status: "ready", error: null });
+      setMode(roundMode);
+      selectHole(startingHole);
+    } catch (error) {
+      setRoundSync({
+        status: "error",
+        error: error instanceof Error ? error.message : "Course Twin could not start the round.",
+      });
+    }
+  };
+
+  const finishPersistedHole = async ({
+    roundMode,
+    putts,
+    strokesBeforePutts,
+    penalties,
+    reachedGreenIn,
+  }: {
+    roundMode: "play" | "live";
+    putts: number;
+    strokesBeforePutts: number;
+    penalties: number;
+    reachedGreenIn: number;
+  }) => {
+    const current = activeRoundRef.current;
+    if (!current || current.mode !== roundMode || roundSync.status === "saving") return;
+    try {
+      const afterHole = await appendRoundEvent({
+        type: "hole.completed",
+        clientEventId: crypto.randomUUID(),
+        payload: {
+          holeNumber: selectedHole.holeNumber,
+          par: selectedHole.par,
+          yards: selectedHole.yards,
+          strokes: strokesBeforePutts + putts,
+          putts,
+          penalties,
+          fairwayHit: null,
+          gir: reachedGreenIn <= Math.max(1, selectedHole.par - 2),
+        },
+      });
+      const roundFinished = afterHole.summary.scorecard.length === afterHole.holeCount;
+      if (roundFinished) {
+        const completed = await appendRoundEvent({
+          type: "round.completed",
+          clientEventId: crypto.randomUUID(),
+          payload: {},
+        });
+        if (roundMode === "play") {
+          setVirtualStrokes(strokesBeforePutts + putts);
+          setVirtualComplete(true);
+        } else {
+          setLiveStrokes(strokesBeforePutts + putts);
+          setLiveComplete(true);
+        }
+        activeRoundRef.current = completed;
+        setActiveRound(completed);
+      } else {
+        selectHole(afterHole.currentHole);
+      }
+      setPlaying(false);
+    } catch {
+      // appendRoundEvent owns the golfer-facing error state.
+    }
+  };
+
+  const takePersistedMulligan = async (roundMode: "play" | "live", shotClientEventId: string) => {
+    const current = activeRoundRef.current;
+    if (!current || current.mode !== roundMode || roundSync.status === "saving") return;
+    try {
+      await appendRoundEvent({
+        type: "shot.mulligan",
+        clientEventId: crypto.randomUUID(),
+        payload: { shotClientEventId, reason: "Golfer selected mulligan" },
+      });
+      if (roundMode === "play") {
+        setVirtualStrokes((value) => Math.max(0, value - 1));
+        setVirtualShot(null);
+        setVirtualRoundEventId(null);
+      } else {
+        setLiveStrokes((value) => Math.max(0, value - 1));
+        setLiveShot(null);
+        setLiveRoundEventId(null);
+      }
+      setPlayback(0);
+      setPlaying(false);
+      setCameraCommand(null);
+    } catch {
+      // appendRoundEvent owns the golfer-facing error state.
+    }
   };
 
   const issueCameraCommand = (action: CameraControlAction) => {
@@ -790,11 +1219,25 @@ export function CourseTwinScene({
       const response = await fetch(`/api/course-twins/${manifest.course.id}/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "explore", maxPlayers: 4, holeNumber }),
+        body: JSON.stringify({
+          mode: roomCompetition ? "play" : "explore",
+          maxPlayers: 4,
+          spectatorLimit: 8,
+          holeNumber,
+          competition: roomCompetition,
+        }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to start a group session.");
       setRoomState({ status: "ready", room: body, error: null });
+      if (roomCompetition) {
+        setRoundRules((current) => ({
+          ...current,
+          competition: true,
+          mulligansAllowed: false,
+          greenRule: "competition_gimmes",
+        }));
+      }
     } catch (error) {
       setRoomState({
         status: "error",
@@ -810,7 +1253,7 @@ export function CourseTwinScene({
       const response = await fetch("/api/course-twins/rooms/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inviteCode: roomInviteCode }),
+        body: JSON.stringify({ inviteCode: roomInviteCode, role: roomJoinRole }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Unable to join that group session.");
@@ -1020,15 +1463,38 @@ export function CourseTwinScene({
                   <p className="text-xs text-emerald-100/65">
                     {roomCodeCopied
                       ? "Invite code copied."
-                      : `${roomState.room.members.length} of 4 golfers connected.`}
+                      : `${roomState.room.members.filter((member) => member.role !== "spectator").length} golfer(s) · ${roomState.room.members.filter((member) => member.role === "spectator").length} spectator(s) connected.`}
                   </p>
+                  <div className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/65">
+                    <p className="font-semibold text-emerald-100">
+                      {roomState.room.competition
+                        ? "Verified competition room"
+                        : "Shared practice room"}
+                    </p>
+                    <p className="mt-1">
+                      You joined as {roomState.room.currentRole} · {roomState.room.sharedEventCount}{" "}
+                      verified {roomState.room.sharedEventCount === 1 ? "event" : "events"}
+                    </p>
+                    {roomState.room.finalEventHash ? (
+                      <p className="mt-1 font-mono text-[10px] text-emerald-200/70">
+                        Locked {roomState.room.finalEventHash.slice(0, 12)}…
+                      </p>
+                    ) : roomState.room.latestSharedEvent ? (
+                      <p className="mt-1 text-[11px] text-emerald-200/70">
+                        Latest: {roomState.room.latestSharedEvent.eventType.replaceAll(".", " ")}
+                      </p>
+                    ) : null}
+                  </div>
                   <div className="space-y-1.5">
                     {roomState.room.members.map((member) => (
                       <div
                         key={member.userId}
                         className="flex items-center justify-between text-xs text-emerald-100/75"
                       >
-                        <span>{member.displayName}</span>
+                        <span>
+                          {member.displayName}
+                          <span className="ml-1 text-emerald-100/40">· {member.role}</span>
+                        </span>
                         <span>
                           Hole {member.holeNumber} · {member.transport}
                         </span>
@@ -1046,6 +1512,23 @@ export function CourseTwinScene({
                 </div>
               ) : (
                 <div className="mt-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                    {([false, true] as const).map((competition) => (
+                      <button
+                        key={String(competition)}
+                        type="button"
+                        className={cn(
+                          "rounded-md px-2 py-1.5 text-xs font-semibold",
+                          roomCompetition === competition
+                            ? "bg-[#e7ff6a] text-[#102217]"
+                            : "text-emerald-100/60",
+                        )}
+                        onClick={() => setRoomCompetition(competition)}
+                      >
+                        {competition ? "Competition" : "Practice"}
+                      </button>
+                    ))}
+                  </div>
                   <Button
                     type="button"
                     className="w-full bg-emerald-300 text-[#092013] hover:bg-emerald-200"
@@ -1054,6 +1537,21 @@ export function CourseTwinScene({
                   >
                     Start group session
                   </Button>
+                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                    {(["player", "spectator"] as const).map((role) => (
+                      <button
+                        key={role}
+                        type="button"
+                        className={cn(
+                          "rounded-md px-2 py-1.5 text-xs font-semibold",
+                          roomJoinRole === role ? "bg-white/15 text-white" : "text-emerald-100/55",
+                        )}
+                        onClick={() => setRoomJoinRole(role)}
+                      >
+                        Join as {role}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
                     <input
                       value={roomInviteCode}
@@ -1140,7 +1638,7 @@ export function CourseTwinScene({
                 size="icon"
                 variant="outline"
                 className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
-                disabled={selectedHoleIndex <= 0}
+                disabled={roundLocksHole || selectedHoleIndex <= 0}
                 onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
                 aria-label="Previous hole"
               >
@@ -1151,7 +1649,7 @@ export function CourseTwinScene({
                 size="icon"
                 variant="outline"
                 className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
-                disabled={selectedHoleIndex >= manifest.holes.length - 1}
+                disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
                 onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
                 aria-label="Next hole"
               >
@@ -1170,6 +1668,7 @@ export function CourseTwinScene({
                     ? "border-emerald-300 bg-emerald-300 text-[#092013]"
                     : "border-white/10 bg-white/5 text-white hover:bg-white/10",
                 )}
+                disabled={roundLocksHole && hole.holeNumber !== activeRound.currentHole}
                 onClick={() => selectHole(hole.holeNumber)}
               >
                 {hole.holeNumber}
@@ -1211,122 +1710,167 @@ export function CourseTwinScene({
             onRetry={() => loadStrategy(selectedHole.holeNumber)}
           />
         ) : mode === "play" ? (
-          <VirtualRoundControls
-            state={strategyState}
-            hole={selectedHole}
-            selectedClub={strategyClub}
-            onSelectClub={setStrategyClubId}
-            start={virtualStart}
-            aimOffsetYd={virtualAimOffsetYd}
-            onAimOffsetChange={setVirtualAimOffsetYd}
-            shotNumber={virtualShotNumber}
-            strokes={virtualStrokes}
-            penaltyStrokes={virtualPenaltyStrokes}
-            shot={virtualShot}
-            simulation={virtualSimulation}
-            playback={playback}
-            complete={virtualComplete}
-            onPlay={() => {
-              if (!strategyClub || virtualComplete) return;
-              setVirtualShot(
-                buildCourseTwinVirtualShot({
-                  courseId: manifest.course.id,
-                  hole: selectedHole,
-                  start: virtualStart,
-                  club: strategyClub,
-                  aimOffsetYd: virtualAimOffsetYd,
-                  shotNumber: virtualShotNumber,
-                }),
-              );
-              setVirtualStrokes((current) => current + 1);
-              setPlayback(0);
-              setPlaying(true);
-              setCameraCommand(null);
-            }}
-            onContinue={() => {
-              if (!virtualSimulation) return;
-              const next = virtualDropPoint(virtualSimulation);
-              setVirtualStart([next.x, 0, next.z]);
-              setVirtualShotNumber((current) => current + 1);
-              if (virtualSimulation.penalty) {
-                setVirtualStrokes((current) => current + 1);
-                setVirtualPenaltyStrokes((current) => current + 1);
-              }
-              setVirtualShot(null);
-              setPlayback(0);
-              setPlaying(false);
-              setCameraCommand(null);
-            }}
-            onFinishGreen={() => {
-              setVirtualStrokes((current) => current + 2);
-              setVirtualComplete(true);
-              setPlaying(false);
-            }}
-            onRestart={() => {
-              setVirtualStart(selectedHole.tee);
-              setVirtualShotNumber(1);
-              setVirtualStrokes(0);
-              setVirtualPenaltyStrokes(0);
-              setVirtualAimOffsetYd(0);
-              setVirtualShot(null);
-              setVirtualComplete(false);
-              setPlayback(0);
-              setPlaying(false);
-              setCameraCommand(null);
-            }}
-            onRetry={() => loadStrategy(selectedHole.holeNumber)}
-          />
+          <>
+            <RoundSetupControls
+              mode="play"
+              activeRound={activeRound}
+              rules={roundRules}
+              holeCount={roundHoleCount}
+              startingHole={roundStartingHole}
+              sync={roundSync}
+              onRulesChange={setRoundRules}
+              onHoleCountChange={setRoundHoleCount}
+              onStartingHoleChange={setRoundStartingHole}
+              onStart={() => void startPersistedRound("play")}
+              onRetry={() => setRoundRetryToken((value) => value + 1)}
+            />
+            {activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
+              <VirtualRoundControls
+                state={strategyState}
+                hole={selectedHole}
+                selectedClub={strategyClub}
+                onSelectClub={setStrategyClubId}
+                start={virtualStart}
+                aimOffsetYd={virtualAimOffsetYd}
+                onAimOffsetChange={setVirtualAimOffsetYd}
+                shotNumber={virtualShotNumber}
+                strokes={virtualStrokes}
+                penaltyStrokes={virtualPenaltyStrokes}
+                shot={virtualShot}
+                simulation={virtualSimulation}
+                playback={playback}
+                sync={roundSync.status}
+                rules={activeRound.rulesJson}
+                onPlay={() => {
+                  if (!strategyClub || roundSync.status === "saving") return;
+                  setVirtualRoundEventId(crypto.randomUUID());
+                  setVirtualShot(
+                    buildCourseTwinVirtualShot({
+                      courseId: manifest.course.id,
+                      hole: selectedHole,
+                      start: virtualStart,
+                      club: strategyClub,
+                      aimOffsetYd: virtualAimOffsetYd,
+                      shotNumber: virtualShotNumber,
+                    }),
+                  );
+                  setVirtualStrokes((current) => current + 1);
+                  setPlayback(0);
+                  setPlaying(true);
+                  setCameraCommand(null);
+                }}
+                onContinue={() => {
+                  if (!virtualSimulation || roundSync.status !== "ready") return;
+                  const next = virtualDropPoint(virtualSimulation);
+                  setVirtualStart([next.x, 0, next.z]);
+                  setVirtualShotNumber((current) => current + 1);
+                  if (virtualSimulation.penalty) {
+                    setVirtualStrokes((current) => current + 1);
+                    setVirtualPenaltyStrokes((current) => current + 1);
+                  }
+                  setVirtualShot(null);
+                  setVirtualRoundEventId(null);
+                  setPlayback(0);
+                  setPlaying(false);
+                  setCameraCommand(null);
+                }}
+                onFinishGreen={(putts) =>
+                  void finishPersistedHole({
+                    roundMode: "play",
+                    putts,
+                    strokesBeforePutts: virtualStrokes,
+                    penalties: virtualPenaltyStrokes,
+                    reachedGreenIn: virtualShotNumber,
+                  })
+                }
+                onMulligan={() => {
+                  if (virtualRoundEventId) {
+                    void takePersistedMulligan("play", virtualRoundEventId);
+                  }
+                }}
+                onRetry={() => {
+                  if (virtualRoundEventId) {
+                    submittedRoundEventsRef.current.delete(virtualRoundEventId);
+                  }
+                  setRoundRetryToken((value) => value + 1);
+                }}
+                onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
+              />
+            ) : null}
+          </>
         ) : mode === "live" ? (
-          <LiveRoundControls
-            bridge={bridgeState}
-            pairingCode={pairingCode}
-            onPairingCodeChange={setPairingCode}
-            onDetect={detectBridge}
-            onPair={pairBridge}
-            hole={selectedHole}
-            strategy={strategyState}
-            selectedClub={strategyClub}
-            onSelectClub={setStrategyClubId}
-            handed={liveHanded}
-            onHandedChange={setLiveHanded}
-            shotNumber={liveShotNumber}
-            strokes={liveStrokes}
-            penaltyStrokes={livePenaltyStrokes}
-            shot={liveShot}
-            simulation={liveSimulation}
-            playback={playback}
-            complete={liveComplete}
-            onContinue={() => {
-              if (!liveSimulation) return;
-              const next = virtualDropPoint(liveSimulation);
-              setLiveStart([next.x, 0, next.z]);
-              setLiveShotNumber((current) => current + 1);
-              if (liveSimulation.penalty) {
-                setLiveStrokes((current) => current + 1);
-                setLivePenaltyStrokes((current) => current + 1);
-              }
-              setLiveShot(null);
-              setPlayback(0);
-              setPlaying(false);
-              setCameraCommand(null);
-            }}
-            onFinishGreen={() => {
-              setLiveStrokes((current) => current + 2);
-              setLiveComplete(true);
-              setPlaying(false);
-            }}
-            onRestart={() => {
-              setLiveStart(selectedHole.tee);
-              setLiveShotNumber(1);
-              setLiveStrokes(0);
-              setLivePenaltyStrokes(0);
-              setLiveShot(null);
-              setLiveComplete(false);
-              setPlayback(0);
-              setPlaying(false);
-              setCameraCommand(null);
-            }}
-          />
+          <>
+            <RoundSetupControls
+              mode="live"
+              activeRound={activeRound}
+              rules={roundRules}
+              holeCount={roundHoleCount}
+              startingHole={roundStartingHole}
+              sync={roundSync}
+              onRulesChange={setRoundRules}
+              onHoleCountChange={setRoundHoleCount}
+              onStartingHoleChange={setRoundStartingHole}
+              onStart={() => void startPersistedRound("live")}
+              onRetry={() => setRoundRetryToken((value) => value + 1)}
+            />
+            {activeRound?.mode === "live" && activeRound.status === "in_progress" ? (
+              <LiveRoundControls
+                bridge={bridgeState}
+                pairingCode={pairingCode}
+                onPairingCodeChange={setPairingCode}
+                onDetect={detectBridge}
+                onPair={pairBridge}
+                onDownloadDiagnostics={downloadBridgeDiagnostics}
+                hole={selectedHole}
+                strategy={strategyState}
+                selectedClub={strategyClub}
+                onSelectClub={setStrategyClubId}
+                handed={liveHanded}
+                onHandedChange={setLiveHanded}
+                shotNumber={liveShotNumber}
+                strokes={liveStrokes}
+                penaltyStrokes={livePenaltyStrokes}
+                shot={liveShot}
+                simulation={liveSimulation}
+                playback={playback}
+                sync={roundSync.status}
+                rules={activeRound.rulesJson}
+                onContinue={() => {
+                  if (!liveSimulation || roundSync.status !== "ready") return;
+                  const next = virtualDropPoint(liveSimulation);
+                  setLiveStart([next.x, 0, next.z]);
+                  setLiveShotNumber((current) => current + 1);
+                  if (liveSimulation.penalty) {
+                    setLiveStrokes((current) => current + 1);
+                    setLivePenaltyStrokes((current) => current + 1);
+                  }
+                  setLiveShot(null);
+                  setLiveRoundEventId(null);
+                  setPlayback(0);
+                  setPlaying(false);
+                  setCameraCommand(null);
+                }}
+                onFinishGreen={(putts) =>
+                  void finishPersistedHole({
+                    roundMode: "live",
+                    putts,
+                    strokesBeforePutts: liveStrokes,
+                    penalties: livePenaltyStrokes,
+                    reachedGreenIn: liveShotNumber,
+                  })
+                }
+                onMulligan={() => {
+                  if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
+                }}
+                onRetry={() => {
+                  if (liveRoundEventId) {
+                    submittedRoundEventsRef.current.delete(liveRoundEventId);
+                  }
+                  setRoundRetryToken((value) => value + 1);
+                }}
+              />
+            ) : null}
+          </>
         ) : (
           <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/70">
             Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways, greens,
@@ -3042,6 +3586,247 @@ function StrategyControls({
   );
 }
 
+function RoundSetupControls({
+  mode,
+  activeRound,
+  rules,
+  holeCount,
+  startingHole,
+  sync,
+  onRulesChange,
+  onHoleCountChange,
+  onStartingHoleChange,
+  onStart,
+  onRetry,
+}: {
+  mode: "play" | "live";
+  activeRound: CourseTwinRoundClientDocument | null;
+  rules: CourseTwinRoundRules;
+  holeCount: 9 | 18;
+  startingHole: 1 | 10;
+  sync: RoundSyncState;
+  onRulesChange: (rules: CourseTwinRoundRules) => void;
+  onHoleCountChange: (count: 9 | 18) => void;
+  onStartingHoleChange: (hole: 1 | 10) => void;
+  onStart: () => void;
+  onRetry: () => void;
+}) {
+  if (activeRound?.status === "in_progress") {
+    const score = activeRound.summary.scorecard.reduce((sum, hole) => sum + hole.strokes, 0);
+    const par = activeRound.summary.scorecard.reduce((sum, hole) => sum + hole.par, 0);
+    return (
+      <div className="mt-5 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/70">
+              Verified round ledger
+            </p>
+            <p className="mt-2 font-semibold">
+              {activeRound.mode === "play" ? "My Bag round" : "Live launch-monitor round"}
+            </p>
+            <p className="text-sm text-emerald-100/60">
+              Hole {activeRound.currentHole} of {activeRound.holeCount} · {score || "Level"}
+              {score ? ` strokes (${score - par >= 0 ? "+" : ""}${score - par})` : " par"}
+            </p>
+          </div>
+          <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
+            {sync.status === "saving" ? "Saving…" : `v${activeRound.version}`}
+          </Badge>
+        </div>
+        <p className="mt-3 text-xs leading-5 text-emerald-100/60">
+          {activeRound.rulesJson.windSpeedMph} mph wind ·{" "}
+          {activeRound.rulesJson.competition
+            ? "competition rules"
+            : activeRound.rulesJson.mulligansAllowed
+              ? "casual mulligans"
+              : "no mulligans"}
+        </p>
+        {activeRound.mode !== mode ? (
+          <p className="mt-3 rounded-lg border border-amber-200/20 bg-amber-100/5 px-3 py-2 text-xs text-amber-100/80">
+            Finish the active {activeRound.mode === "play" ? "My Bag" : "Live"} round before
+            starting this mode.
+          </p>
+        ) : null}
+        {sync.status === "error" ? (
+          <div className="mt-3 rounded-lg border border-rose-200/20 bg-rose-100/5 p-3 text-xs text-rose-100/85">
+            <p>{sync.error}</p>
+            <Button type="button" size="sm" variant="outline" className="mt-2" onClick={onRetry}>
+              Retry save
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const completed = activeRound?.status === "complete";
+  return (
+    <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+        {completed ? "Round saved" : mode === "play" ? "Start My Bag round" : "Start Live round"}
+      </p>
+      {completed ? (
+        <div className="mt-3 rounded-lg border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100/80">
+          <p>Every shot is saved with a tamper-evident event chain.</p>
+          {activeRound.sessionId ? (
+            <a
+              className="mt-2 inline-block font-semibold text-[#e7ff6a] underline"
+              href={`/rounds/${activeRound.sessionId}`}
+            >
+              View saved round
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+        Holes
+      </p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {([18, 9] as const).map((count) => (
+          <button
+            key={count}
+            type="button"
+            className={cn(
+              "rounded-lg border px-2 py-2 text-xs font-semibold",
+              count === holeCount
+                ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                : "border-white/10 bg-white/5",
+            )}
+            onClick={() => {
+              onHoleCountChange(count);
+              if (count === 18) onStartingHoleChange(1);
+            }}
+          >
+            {count === 18 ? "18 holes" : "Front 9"}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={cn(
+            "rounded-lg border px-2 py-2 text-xs font-semibold",
+            holeCount === 9 && startingHole === 10
+              ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+              : "border-white/10 bg-white/5",
+          )}
+          onClick={() => {
+            onHoleCountChange(9);
+            onStartingHoleChange(10);
+          }}
+        >
+          Back 9
+        </button>
+      </div>
+      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+        Wind
+      </p>
+      <div className="mt-2 grid grid-cols-3 gap-2">
+        {[0, 8, 15].map((speed) => (
+          <button
+            key={speed}
+            type="button"
+            className={cn(
+              "rounded-lg border px-2 py-2 text-xs font-semibold",
+              rules.windSpeedMph === speed
+                ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                : "border-white/10 bg-white/5",
+            )}
+            onClick={() => onRulesChange({ ...rules, windSpeedMph: speed })}
+          >
+            {speed === 0 ? "Calm" : `${speed} mph`}
+          </button>
+        ))}
+      </div>
+      {rules.windSpeedMph > 0 ? (
+        <div className="mt-2 grid grid-cols-4 gap-2">
+          {[
+            ["N", 0],
+            ["E", 90],
+            ["S", 180],
+            ["W", 270],
+          ].map(([label, direction]) => (
+            <button
+              key={label}
+              type="button"
+              className={cn(
+                "rounded-lg border px-2 py-2 text-xs font-semibold",
+                rules.windDirectionDeg === direction
+                  ? "border-emerald-300 bg-emerald-300/15"
+                  : "border-white/10 bg-white/5",
+              )}
+              onClick={() => onRulesChange({ ...rules, windDirectionDeg: Number(direction) })}
+            >
+              From {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+        Round rules
+      </p>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className={cn(
+            "rounded-lg border px-2 py-2 text-xs font-semibold",
+            !rules.competition
+              ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+              : "border-white/10 bg-white/5",
+          )}
+          onClick={() => onRulesChange({ ...rules, competition: false })}
+        >
+          Casual
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "rounded-lg border px-2 py-2 text-xs font-semibold",
+            rules.competition
+              ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+              : "border-white/10 bg-white/5",
+          )}
+          onClick={() =>
+            onRulesChange({
+              ...rules,
+              competition: true,
+              mulligansAllowed: false,
+              greenRule: "competition_gimmes",
+            })
+          }
+        >
+          Competition
+        </button>
+      </div>
+      {!rules.competition ? (
+        <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-sm">
+          <span>Allow mulligans</span>
+          <input
+            type="checkbox"
+            checked={rules.mulligansAllowed}
+            onChange={(event) =>
+              onRulesChange({ ...rules, mulligansAllowed: event.target.checked })
+            }
+          />
+        </label>
+      ) : null}
+      <Button
+        type="button"
+        className="mt-4 w-full"
+        disabled={sync.status === "saving"}
+        onClick={onStart}
+      >
+        {sync.status === "saving"
+          ? "Starting…"
+          : completed
+            ? `Start another ${mode === "play" ? "My Bag" : "Live"} round`
+            : `Start ${holeCount}-hole ${mode === "play" ? "My Bag" : "Live"} round`}
+      </Button>
+      {sync.status === "error" ? (
+        <p className="mt-3 text-xs leading-5 text-rose-100/85">{sync.error}</p>
+      ) : null}
+    </div>
+  );
+}
+
 function VirtualRoundControls({
   state,
   hole,
@@ -3056,12 +3841,14 @@ function VirtualRoundControls({
   shot,
   simulation,
   playback,
-  complete,
+  sync,
+  rules,
   onPlay,
   onContinue,
   onFinishGreen,
-  onRestart,
+  onMulligan,
   onRetry,
+  onStrategyRetry,
 }: {
   state: StrategyLoadState;
   hole: CourseTwinHole;
@@ -3076,12 +3863,14 @@ function VirtualRoundControls({
   shot: CourseTwinVirtualShot | null;
   simulation: CourseTwinReplaySimulation | null;
   playback: number;
-  complete: boolean;
+  sync: RoundSyncState["status"];
+  rules: CourseTwinRoundRules;
   onPlay: () => void;
   onContinue: () => void;
-  onFinishGreen: () => void;
-  onRestart: () => void;
+  onFinishGreen: (putts: number) => void;
+  onMulligan: () => void;
   onRetry: () => void;
+  onStrategyRetry: () => void;
 }) {
   if (state.status === "loading") {
     return (
@@ -3107,7 +3896,7 @@ function VirtualRoundControls({
           size="sm"
           variant="outline"
           className="mt-3 !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-          onClick={onRetry}
+          onClick={onStrategyRetry}
         >
           Try again
         </Button>
@@ -3138,9 +3927,7 @@ function VirtualRoundControls({
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
             Virtual round · My Bag
           </p>
-          <p className="mt-2 text-lg font-semibold">
-            {complete ? `Hole complete · ${strokes}` : `Shot ${shotNumber}`}
-          </p>
+          <p className="mt-2 text-lg font-semibold">Shot {shotNumber}</p>
           <p className="text-sm text-emerald-100/60">
             {strokes} {strokes === 1 ? "stroke" : "strokes"}
             {penaltyStrokes > 0 ? ` · ${penaltyStrokes} penalty` : ""}
@@ -3151,11 +3938,7 @@ function VirtualRoundControls({
         </Badge>
       </div>
 
-      {complete ? (
-        <Button type="button" className="mt-4 w-full" onClick={onRestart}>
-          Replay hole
-        </Button>
-      ) : shot && simulation ? (
+      {shot && simulation ? (
         <>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div className="h-full bg-[#e7ff6a]" style={{ width: `${playback * 100}%` }} />
@@ -3175,17 +3958,51 @@ function VirtualRoundControls({
             <ReplayFact label="Remaining" value={`${remainingYd.toFixed(0)} yd`} />
           </div>
           {playback >= 1 ? (
-            <Button
-              type="button"
-              className="mt-3 w-full"
-              onClick={onGreen && !simulation.penalty ? onFinishGreen : onContinue}
-            >
-              {onGreen && !simulation.penalty
-                ? "Finish with 2-putt"
-                : simulation.penalty
-                  ? "Take penalty drop"
-                  : "Play next shot"}
-            </Button>
+            <>
+              {onGreen && !simulation.penalty ? (
+                <RoundPuttActions
+                  rules={rules}
+                  remainingYd={remainingYd}
+                  disabled={sync !== "ready"}
+                  onFinish={onFinishGreen}
+                />
+              ) : (
+                <Button
+                  type="button"
+                  className="mt-3 w-full"
+                  disabled={sync !== "ready"}
+                  onClick={onContinue}
+                >
+                  {sync === "saving"
+                    ? "Saving shot…"
+                    : simulation.penalty
+                      ? "Take penalty drop"
+                      : "Play next shot"}
+                </Button>
+              )}
+              {rules.mulligansAllowed ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                  disabled={sync !== "ready"}
+                  onClick={onMulligan}
+                >
+                  Mulligan
+                </Button>
+              ) : null}
+              {sync === "error" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 w-full"
+                  onClick={onRetry}
+                >
+                  Retry saving this shot
+                </Button>
+              ) : null}
+            </>
           ) : (
             <p className="mt-3 text-xs text-emerald-100/50">Shot in progress…</p>
           )}
@@ -3231,7 +4048,12 @@ function VirtualRoundControls({
               </button>
             ))}
           </div>
-          <Button type="button" className="mt-3 w-full" onClick={onPlay}>
+          <Button
+            type="button"
+            className="mt-3 w-full"
+            disabled={sync === "saving"}
+            onClick={onPlay}
+          >
             Play {selectedClub.clubType}
           </Button>
           <p className="mt-3 text-xs leading-5 text-amber-100/70">
@@ -3250,6 +4072,7 @@ function LiveRoundControls({
   onPairingCodeChange,
   onDetect,
   onPair,
+  onDownloadDiagnostics,
   hole,
   strategy,
   selectedClub,
@@ -3262,16 +4085,19 @@ function LiveRoundControls({
   shot,
   simulation,
   playback,
-  complete,
+  sync,
+  rules,
   onContinue,
   onFinishGreen,
-  onRestart,
+  onMulligan,
+  onRetry,
 }: {
   bridge: BridgeLoadState;
   pairingCode: string;
   onPairingCodeChange: (code: string) => void;
   onDetect: () => void;
   onPair: () => void;
+  onDownloadDiagnostics: () => void;
   hole: CourseTwinHole;
   strategy: StrategyLoadState;
   selectedClub: CourseTwinStrategyClub | null;
@@ -3284,10 +4110,12 @@ function LiveRoundControls({
   shot: CourseTwinReplayShot | null;
   simulation: CourseTwinReplaySimulation | null;
   playback: number;
-  complete: boolean;
+  sync: RoundSyncState["status"];
+  rules: CourseTwinRoundRules;
   onContinue: () => void;
-  onFinishGreen: () => void;
-  onRestart: () => void;
+  onFinishGreen: (putts: number) => void;
+  onMulligan: () => void;
+  onRetry: () => void;
 }) {
   const connected = bridge.status === "connected";
   const resultPosition = simulation?.finalPosition;
@@ -3372,6 +4200,18 @@ function LiveRoundControls({
         </div>
       ) : null}
 
+      {bridge.health || connected ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-3 w-full"
+          onClick={onDownloadDiagnostics}
+        >
+          Download connection report
+        </Button>
+      ) : null}
+
       {connected ? (
         <div className="mt-4 border-t border-white/10 pt-4">
           <div className="flex items-center justify-between gap-3">
@@ -3401,11 +4241,7 @@ function LiveRoundControls({
             </div>
           </div>
 
-          {complete ? (
-            <Button type="button" className="mt-3 w-full" onClick={onRestart}>
-              Replay hole
-            </Button>
-          ) : shot && simulation ? (
+          {shot && simulation ? (
             <>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full bg-[#e7ff6a]" style={{ width: `${playback * 100}%` }} />
@@ -3428,17 +4264,51 @@ function LiveRoundControls({
                 <ReplayFact label="Remaining" value={`${remainingYd?.toFixed(0)} yd`} />
               </div>
               {playback >= 1 ? (
-                <Button
-                  type="button"
-                  className="mt-3 w-full"
-                  onClick={onGreen && !simulation.penalty ? onFinishGreen : onContinue}
-                >
-                  {onGreen && !simulation.penalty
-                    ? "Finish with 2-putt"
-                    : simulation.penalty
-                      ? "Take penalty drop"
-                      : "Ready for next shot"}
-                </Button>
+                <>
+                  {onGreen && !simulation.penalty ? (
+                    <RoundPuttActions
+                      rules={rules}
+                      remainingYd={remainingYd ?? 0}
+                      disabled={sync !== "ready"}
+                      onFinish={onFinishGreen}
+                    />
+                  ) : (
+                    <Button
+                      type="button"
+                      className="mt-3 w-full"
+                      disabled={sync !== "ready"}
+                      onClick={onContinue}
+                    >
+                      {sync === "saving"
+                        ? "Saving shot…"
+                        : simulation.penalty
+                          ? "Take penalty drop"
+                          : "Ready for next shot"}
+                    </Button>
+                  )}
+                  {rules.mulligansAllowed ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-2 w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                      disabled={sync !== "ready"}
+                      onClick={onMulligan}
+                    >
+                      Mulligan
+                    </Button>
+                  ) : null}
+                  {sync === "error" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-2 w-full"
+                      onClick={onRetry}
+                    >
+                      Retry saving this shot
+                    </Button>
+                  ) : null}
+                </>
               ) : (
                 <p className="mt-3 text-xs text-emerald-100/50">Simulating measured shot…</p>
               )}
@@ -3479,6 +4349,51 @@ function LiveRoundControls({
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function RoundPuttActions({
+  rules,
+  remainingYd,
+  disabled,
+  onFinish,
+}: {
+  rules: CourseTwinRoundRules;
+  remainingYd: number;
+  disabled: boolean;
+  onFinish: (putts: number) => void;
+}) {
+  if (rules.greenRule === "competition_gimmes") {
+    const putts = competitionPuttCount(remainingYd);
+    return (
+      <Button
+        type="button"
+        className="mt-3 w-full"
+        disabled={disabled}
+        onClick={() => onFinish(putts)}
+      >
+        Apply competition rule · {putts} {putts === 1 ? "putt" : "putts"}
+      </Button>
+    );
+  }
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      {[1, 2, 3].map((putts) => (
+        <Button
+          key={putts}
+          type="button"
+          variant={putts === 2 ? "default" : "outline"}
+          className={cn(
+            "px-2",
+            putts !== 2 && "!border-white/15 !bg-transparent !text-white hover:!bg-white/10",
+          )}
+          disabled={disabled}
+          onClick={() => onFinish(putts)}
+        >
+          {putts} {putts === 1 ? "putt" : "putts"}
+        </Button>
+      ))}
     </div>
   );
 }
@@ -3581,4 +4496,59 @@ function virtualDropPoint(simulation: CourseTwinReplaySimulation) {
       .find((frame) => frame.surface !== "water" && frame.surface !== "out_of_bounds")?.position ??
     simulation.carryPosition
   );
+}
+
+function courseTwinWindVector(rules: CourseTwinRoundRules) {
+  const speedMps = rules.windSpeedMph * 0.44704;
+  const flowBearingRadians = THREE.MathUtils.degToRad((rules.windDirectionDeg + 180) % 360);
+  return {
+    x: Math.sin(flowBearingRadians) * speedMps,
+    y: 0,
+    z: -Math.cos(flowBearingRadians) * speedMps,
+  };
+}
+
+function buildRoundShotPayload({
+  shot,
+  simulation,
+  clubId,
+  source,
+}: {
+  shot: CourseTwinReplayShot;
+  simulation: CourseTwinReplaySimulation;
+  clubId: string;
+  source: CourseTwinShotEventPayload["source"];
+}): CourseTwinShotEventPayload {
+  return {
+    holeNumber: shot.holeNumber,
+    shotNumber: shot.holeShotNumber ?? 1,
+    clubId,
+    clubType: shot.clubType,
+    source,
+    start: shot.start,
+    carryEnd: [simulation.carryPosition.x, simulation.carryPosition.y, simulation.carryPosition.z],
+    totalEnd: [simulation.finalPosition.x, simulation.finalPosition.y, simulation.finalPosition.z],
+    metrics: {
+      carryYd: simulation.carryDistanceM / 0.9144,
+      totalYd: simulation.totalDistanceM / 0.9144,
+      ballSpeedMph: shot.metrics.ballSpeedMph.value,
+      clubSpeedMph: null,
+      launchAngleDeg: shot.metrics.launchAngleDeg.value,
+      launchDirectionDeg: null,
+      spinRate: shot.metrics.spinRate.value,
+      spinAxis: shot.metrics.spinAxis.value,
+    },
+    result: {
+      finalSurface: simulation.finalSurface,
+      penalty: simulation.penalty,
+      bounceCount: simulation.bounceCount,
+    },
+  };
+}
+
+function competitionPuttCount(remainingYd: number) {
+  const feet = remainingYd * 3;
+  if (feet <= 10) return 1;
+  if (feet <= 35) return 2;
+  return 3;
 }

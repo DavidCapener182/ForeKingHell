@@ -182,7 +182,7 @@ export async function getCourseTwinManifest({
       verified: false,
       warnings,
     },
-    supportedModes: ["flyover", "replay", "strategy", "play"],
+    supportedModes: ["flyover", "replay", "strategy", "play", "live", "explore"],
     holes: manifestHoles,
     features: manifestFeatures,
     attribution: [

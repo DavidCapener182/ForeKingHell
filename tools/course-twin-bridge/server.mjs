@@ -14,6 +14,7 @@ import {
   assertLoopbackHost,
   parseAllowedOrigins,
 } from "./security.mjs";
+import { createBridgeDiagnosticReport } from "./diagnostics.mjs";
 
 const MAX_HTTP_BODY_BYTES = 4 * 1024;
 const MAX_WS_CLIENTS = 4;
@@ -190,7 +191,22 @@ export class CourseTwinBridge {
       });
     }
 
-    if (request.method === "OPTIONS" && (request.url === "/pair" || request.url === "/health")) {
+    if (request.method === "GET" && request.url === "/diagnostics") {
+      if (origin && !this.#allowedOrigins.has(origin))
+        return sendJson(response, 403, { error: "origin_not_allowed" });
+      setCors(response, origin);
+      response.setHeader("Content-Disposition", 'attachment; filename="course-twin-bridge.json"');
+      return sendJson(
+        response,
+        200,
+        createBridgeDiagnosticReport({ addresses: this.addresses, state: this.diagnostics }),
+      );
+    }
+
+    if (
+      request.method === "OPTIONS" &&
+      (request.url === "/pair" || request.url === "/health" || request.url === "/diagnostics")
+    ) {
       if (!origin || !this.#allowedOrigins.has(origin))
         return sendJson(response, 403, { error: "origin_not_allowed" });
       setCors(response, origin);
