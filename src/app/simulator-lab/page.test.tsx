@@ -36,7 +36,9 @@ describe("/simulator-lab page", () => {
     mocks.getSimulatorLabData.mockResolvedValue(emptyData());
     const Page = (await import("@/app/(app)/simulator-lab/page")).default;
 
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(
+      await Page({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }),
+    );
 
     expect(html).toContain("Performance Lab");
     expect(html).toContain("Gapping rows: 0");
@@ -48,7 +50,9 @@ describe("/simulator-lab page", () => {
     mocks.getSimulatorLabData.mockResolvedValue(populatedData());
     const Page = (await import("@/app/(app)/simulator-lab/page")).default;
 
-    const html = renderToStaticMarkup(await Page());
+    const html = renderToStaticMarkup(
+      await Page({ params: Promise.resolve({}), searchParams: Promise.resolve({}) }),
+    );
 
     expect(html).toContain("trackman / 30 May 2026");
     expect(html).toContain("Gapping rows: 1");

@@ -51,6 +51,9 @@ The gate fails in that state so nobody can claim a fully verified public launch 
 When an auth state is present and the gate starts its local Playwright server, it enables a local Playwright auth guard that reads the captured Supabase auth cookie and avoids repeatedly calling Supabase Auth during the rapid route sweep. The guard is disabled in production and the normal runtime path still uses Supabase server auth validation.
 
 The production gate stops after the first Playwright failure so a known defect does not consume the rest of a multi-project release run. A passing run still completes every configured browser and viewport project.
+For local authenticated competition flows, the runner supplies a deterministic test-only
+`SCORECARD_PROOF_SECRET` when the real variable is absent. Production startup still requires the
+real secret and never receives this fallback.
 
 ## Launch Checklist
 

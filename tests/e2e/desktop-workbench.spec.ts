@@ -17,7 +17,7 @@ const desktopMatrixViewports = [
 ] as const;
 const desktopMatrixRoutes = [
   { path: "/dashboard", ready: /Quick answers|Dashboard/i },
-  { path: "/today", ready: /Best performer|Practice score/i },
+  { path: "/today", ready: /Best scoring read|Practice usefulness/i },
   { path: "/shots", ready: /Shot explorer/i },
   { path: "/bag", ready: /AI bag rail|Bag/i },
   { path: "/speed", ready: /Speed Centre/i },
@@ -316,7 +316,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/dashboard");
     await expectPageReady(page, /Quick answers/i);
 
-    await page.getByRole("button", { name: /Open workspace links/i }).click();
+    await page.getByRole("button", { name: /Open workbench menu/i }).click();
     const workspaceMenu = page.getByRole("menu");
 
     await expect(workspaceMenu.getByText("Pinned workspace")).toBeVisible();
@@ -340,7 +340,7 @@ test.describe("desktop workbench", () => {
     ).toBeVisible();
 
     await workspaceMenu.getByRole("menuitem", { name: /Pin current workspace/i }).click();
-    await page.getByRole("button", { name: /Open workspace links/i }).click();
+    await page.getByRole("button", { name: /Open workbench menu/i }).click();
     await expect(page.getByRole("menu").getByRole("link", { name: /^Dashboard/i })).toHaveAttribute(
       "href",
       "/dashboard",
@@ -456,6 +456,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/dashboard");
     await expectPageReady(page, /Quick answers/i);
 
+    await page.getByRole("button", { name: /Open workbench menu/i }).click();
     await page.getByRole("button", { name: /Open notifications/i }).click();
     await expect(page.getByText("3 unread")).toBeVisible();
     await expect(
@@ -480,6 +481,7 @@ test.describe("desktop workbench", () => {
 
     await page.reload();
     await expectPageReady(page, /Quick answers/i);
+    await page.getByRole("button", { name: /Open workbench menu/i }).click();
     await page.getByRole("button", { name: /Open notifications/i }).click();
     await expect(page.getByText("2 unread")).toBeVisible();
     await expect(
@@ -646,7 +648,16 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/dashboard");
     await expectPageReady(page, /Quick answers/i);
 
-    const switcher = page.getByRole("button", { name: /Switch workspace view/i });
+    const openSwitcher = async () => {
+      const switcher = page.getByRole("button", { name: /Switch workspace view/i });
+      if (!(await switcher.isVisible())) {
+        await page.getByRole("button", { name: /Open workbench menu/i }).click();
+      }
+      await expect(switcher).toBeVisible();
+      return switcher;
+    };
+
+    let switcher = await openSwitcher();
     await expect(switcher).toBeVisible();
     await expect(switcher).toContainText("Player workspace");
 
@@ -658,6 +669,7 @@ test.describe("desktop workbench", () => {
 
     await expect(page).toHaveURL(/\/coach/);
     await expectPageReady(page, /AI coach rail/i);
+    switcher = await openSwitcher();
     await expect(switcher).toContainText("Coach desk");
 
     await switcher.click();
@@ -665,6 +677,7 @@ test.describe("desktop workbench", () => {
 
     await expect(page).toHaveURL(/\/dashboard/);
     await expectPageReady(page, /Quick answers/i);
+    switcher = await openSwitcher();
     await expect(switcher).toContainText("Player workspace");
 
     await switcher.click();
@@ -673,7 +686,9 @@ test.describe("desktop workbench", () => {
       await expect(page).toHaveURL(/\/admin/);
       await expectPageReady(page, /Operating pages|Admin/i);
       await expectNoAiRail(page, /AI admin rail/i);
+      switcher = await openSwitcher();
       await expect(switcher).toContainText("Admin console");
+      await page.keyboard.press("Escape");
 
       await page.setViewportSize({ width: 2200, height: 1100 });
       await expectPageReady(page, /AI admin rail/i);
@@ -2520,7 +2535,7 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await gotoAppRoute(page, "/today");
-    await expectPageReady(page, /Best performer|Practice score/i);
+    await expectPageReady(page, /Best scoring read|Practice usefulness/i);
     await expectNoAiRail(page, /AI latest-practice rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Latest Practice/i }),
@@ -2807,7 +2822,7 @@ test.describe("desktop workbench", () => {
       {
         path: "/today",
         scope: "today",
-        ready: /Best performer|Practice score/i,
+        ready: /Best scoring read|Practice usefulness/i,
         rail: /AI latest-practice rail/i,
       },
     ];
@@ -2834,14 +2849,14 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1536, height: 900 });
     await gotoAppRoute(page, "/today");
-    await expectAppText(page, /Best performer|Practice score/i, 45_000);
+    await expectAppText(page, /Best scoring read|Practice usefulness/i, 45_000);
     await expectNoAiRail(page, /AI latest-practice rail/i);
     await expectNoHorizontalOverflow(page, "1536 /today");
     await expectNoCrampedWorkbenchText(page, "today", "1536 /today");
 
     await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/today");
-    await expectAppText(page, /Best performer|Practice score/i, 45_000);
+    await expectAppText(page, /Best scoring read|Practice usefulness/i, 45_000);
     await expect(
       page.getByRole("complementary", { name: /AI latest-practice rail/i }),
     ).toBeVisible();
@@ -2857,7 +2872,7 @@ test.describe("desktop workbench", () => {
 
     const routes = [
       { path: "/dashboard", ready: /Quick answers/i },
-      { path: "/today", ready: /Best performer|Practice score/i },
+      { path: "/today", ready: /Best scoring read|Practice usefulness/i },
       { path: "/progress", ready: /Bag progress|Overall progress/i },
       { path: "/practice", ready: /Practice Planner/i },
       { path: "/speed", ready: /Speed Centre|Speed/i },
@@ -2951,37 +2966,37 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI training rail/i);
 
     const trendRegion = page.getByRole("region", {
-      name: /Training over time chart accessibility/i,
+      name: /Training Status chart accessibility/i,
     });
     await expect(trendRegion).toBeVisible();
-    await expect(trendRegion.locator('[data-chart-summary="Training over time"]')).toContainText(
-      /Latest golf form|No training-over-time points/i,
+    await expect(trendRegion.locator('[data-chart-summary="Training Status"]')).toContainText(
+      /Latest .*Golf Form|No Training Status chart data/i,
     );
     await expect(
-      trendRegion.getByRole("link", { name: /Explain Training over time chart/i }),
+      trendRegion.getByRole("link", { name: /Explain Training Status chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await trendRegion
-      .locator("summary", { hasText: /View Training over time chart data table/i })
+      .locator("summary", { hasText: /View Training Status chart data table/i })
       .click();
     await expect(
-      trendRegion.getByRole("table", { name: /Training over time chart data table/i }),
+      trendRegion.getByRole("table", { name: /Training Status chart data table/i }),
     ).toBeVisible();
 
     const loadRegion = page.getByRole("region", {
-      name: /Training load bars chart accessibility/i,
+      name: /Daily swing load chart accessibility/i,
     });
     await expect(loadRegion).toBeVisible();
-    await expect(loadRegion.locator('[data-chart-summary="Training load bars"]')).toContainText(
-      /Latest visible load|No training-load bars/i,
+    await expect(loadRegion.locator('[data-chart-summary="Daily swing load"]')).toContainText(
+      /active days|no logged swing load|No Daily swing load chart data/i,
     );
     await expect(
-      loadRegion.getByRole("link", { name: /Explain Training load bars chart/i }),
+      loadRegion.getByRole("link", { name: /Explain Daily swing load chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await loadRegion
-      .locator("summary", { hasText: /View Training load bars chart data table/i })
+      .locator("summary", { hasText: /View Daily swing load chart data table/i })
       .click();
     await expect(
-      loadRegion.getByRole("table", { name: /Training load bars chart data table/i }),
+      loadRegion.getByRole("table", { name: /Daily swing load chart data table/i }),
     ).toBeVisible();
 
     await expectNoHorizontalOverflow(page, "training load chart accessibility");

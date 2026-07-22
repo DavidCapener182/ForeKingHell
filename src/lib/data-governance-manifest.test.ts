@@ -47,4 +47,43 @@ describe("data governance manifest", () => {
       },
     ]);
   });
+
+  it("retains course-twin reference and admin operations without user export", () => {
+    const entries = Object.fromEntries(
+      dataGovernanceManifest
+        .filter((entry) => entry.dataset.startsWith("courseTwin"))
+        .map((entry) => [entry.dataset, entry]),
+    );
+
+    expect(entries.courseTwins).toMatchObject({
+      category: "reference",
+      export: false,
+      deletion: "retain",
+      retention: "operational",
+      containsSensitiveData: false,
+    });
+    expect(entries.courseTwinVersions).toMatchObject({
+      category: "reference",
+      export: false,
+      containsSensitiveData: false,
+      redactedFields: ["manifestPath", "inputFingerprint"],
+    });
+    expect(entries.courseTwinBuilds).toMatchObject({
+      category: "administrative",
+      export: false,
+      containsSensitiveData: true,
+      redactedFields: [
+        "executionReference",
+        "errorMessage",
+        "idempotencyKey",
+        "inputFingerprint",
+      ],
+    });
+    expect(entries.courseTwinCorrections).toMatchObject({
+      category: "administrative",
+      export: false,
+      containsSensitiveData: true,
+      redactedFields: ["correctionJson"],
+    });
+  });
 });

@@ -134,7 +134,7 @@ test.describe("course records and major-style tournaments", () => {
       .toBe(1);
 
     await page.goto(`/tournaments/${data.tournamentId}`);
-    await submitTournamentRound(page, "1", "74", "74", `major-r1-${data.token}`);
+    await submitImportedTournamentRound(page, data.sessionId);
     await expect
       .poll(async () => {
         const rows = await sql!`
@@ -149,7 +149,15 @@ test.describe("course records and major-style tournaments", () => {
       .toBe(1);
 
     await page.goto(`/tournaments/${data.tournamentId}`);
-    await submitTournamentRound(page, "2", "74", "73", `major-r2-${data.token}`);
+    await submitManualTournamentRound({
+      page,
+      tournamentId: data.tournamentId,
+      userId: authUserId!,
+      round: "2",
+      gross: "74",
+      extracted: "73",
+      proofId: `major-r2-${data.token}`,
+    });
     await expect
       .poll(async () => {
         const rows = await sql!`
@@ -177,13 +185,50 @@ test.describe("course records and major-style tournaments", () => {
   });
 });
 
-async function submitTournamentRound(
+async function submitImportedTournamentRound(
   page: import("@playwright/test").Page,
-  round: string,
-  gross: string,
-  extracted: string,
-  hash: string,
+  sessionId: string,
 ) {
+  let form = page
+    .locator("form[data-tournament-submit-form]")
+    .filter({ has: page.locator(`input[name="sessionId"][value="${sessionId}"]`), visible: true })
+    .first();
+
+  if ((await form.count()) === 0) {
+    await page.getByRole("button", { name: "Submit", exact: true }).click();
+    form = page
+      .locator("form[data-tournament-submit-form]")
+      .filter({
+        has: page.locator(`input[name="sessionId"][value="${sessionId}"]`),
+        visible: true,
+      })
+      .first();
+  }
+
+  await expect(form).toBeVisible();
+  await Promise.all([
+    page.waitForURL(new RegExp(`/tournaments/.+\\?submission=`)),
+    form.evaluate((node: HTMLFormElement) => node.requestSubmit()),
+  ]);
+}
+
+async function submitManualTournamentRound({
+  page,
+  tournamentId,
+  userId,
+  round,
+  gross,
+  extracted,
+  proofId,
+}: {
+  page: import("@playwright/test").Page;
+  tournamentId: string;
+  userId: string;
+  round: string;
+  gross: string;
+  extracted: string;
+  proofId: string;
+}) {
   let form = page
     .locator("[data-tournament-submit-form]")
     .filter({ has: page.locator('input[name="grossScore"]:not([type="hidden"])'), visible: true })
@@ -199,14 +244,28 @@ async function submitTournamentRound(
   await form.locator('input[name="roundNumber"]:not([type="hidden"])').fill(round);
   await form.locator('input[name="grossScore"]:not([type="hidden"])').fill(gross);
   await form.locator('input[name="netScore"]:not([type="hidden"])').fill(gross);
-  await form.locator('input[name="csvHash"]').fill(hash);
   await form
     .locator('input[name="scorecardScreenshotPath"]')
     .evaluate((input: HTMLInputElement, value) => {
       input.value = value;
-    }, `/uploads/scorecards/${hash}.png`);
+    }, `/uploads/scorecards/${proofId}.png`);
   await form.locator('input[name="extractedScorecardTotal"]').fill(extracted);
-  await form.locator('input[name="hasRapsodoDirect"]').check();
+  await form.locator('input[name="scorecardProofToken"]').evaluate(
+    (input: HTMLInputElement, token) => {
+      input.value = token;
+    },
+    createScorecardProofToken({
+      userId,
+      scopeType: "tournament",
+      scopeId: tournamentId,
+      roundNumber: Number(round),
+      imageHash: "b".repeat(64),
+      totalScore: Number(extracted),
+      courseName: null,
+      teeName: null,
+      dateIso: null,
+    }),
+  );
   await Promise.all([
     page.waitForURL(new RegExp(`/tournaments/.+\\?submission=`)),
     form.evaluate((node: HTMLFormElement) => node.requestSubmit()),

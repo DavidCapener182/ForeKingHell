@@ -1449,6 +1449,128 @@ export const courseFeatures = pgTable(
   ],
 );
 
+export const courseTwins = pgTable(
+  "fkh_course_twins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    activeVersionId: uuid("active_version_id"),
+    qualityGrade: varchar("quality_grade", { length: 4 }).notNull().default("D"),
+    supportedModesJson: jsonb("supported_modes_json")
+      .$type<Array<"flyover" | "replay" | "strategy" | "play">>()
+      .notNull()
+      .default([]),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twins_course_idx").on(table.courseId),
+    index("fkh_course_twins_status_idx").on(table.status, table.updatedAt),
+  ],
+);
+
+export const courseTwinBuilds = pgTable(
+  "fkh_course_twin_builds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseTwinId: uuid("course_twin_id")
+      .notNull()
+      .references(() => courseTwins.id, { onDelete: "cascade" }),
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    status: varchar("status", { length: 24 }).notNull().default("queued"),
+    idempotencyKey: varchar("idempotency_key", { length: 160 }).notNull(),
+    inputFingerprint: varchar("input_fingerprint", { length: 64 }).notNull(),
+    executionReference: varchar("execution_reference", { length: 260 }),
+    retryCount: integer("retry_count").notNull().default(0),
+    progressJson: jsonb("progress_json").$type<Record<string, unknown>>().notNull().default({}),
+    errorCode: varchar("error_code", { length: 80 }),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_builds_idempotency_idx").on(table.idempotencyKey),
+    index("fkh_course_twin_builds_twin_status_idx").on(
+      table.courseTwinId,
+      table.status,
+      table.createdAt,
+    ),
+    index("fkh_course_twin_builds_requester_idx").on(table.requestedByUserId, table.createdAt),
+  ],
+);
+
+export const courseTwinVersions = pgTable(
+  "fkh_course_twin_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseTwinId: uuid("course_twin_id")
+      .notNull()
+      .references(() => courseTwins.id, { onDelete: "cascade" }),
+    buildId: uuid("build_id").references(() => courseTwinBuilds.id, { onDelete: "set null" }),
+    packageVersion: integer("package_version").notNull(),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    minimumRuntimeVersion: varchar("minimum_runtime_version", { length: 32 })
+      .notNull()
+      .default("1.0.0"),
+    status: varchar("status", { length: 24 }).notNull().default("staged"),
+    manifestPath: text("manifest_path").notNull(),
+    manifestSha256: varchar("manifest_sha256", { length: 64 }).notNull(),
+    inputFingerprint: varchar("input_fingerprint", { length: 64 }).notNull(),
+    qualityJson: jsonb("quality_json").$type<Record<string, unknown>>().notNull().default({}),
+    attributionJson: jsonb("attribution_json")
+      .$type<Array<{ label: string; url?: string; licence?: string }>>()
+      .notNull()
+      .default([]),
+    metricsJson: jsonb("metrics_json").$type<Record<string, unknown>>().notNull().default({}),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_versions_number_idx").on(
+      table.courseTwinId,
+      table.packageVersion,
+    ),
+    index("fkh_course_twin_versions_status_idx").on(table.courseTwinId, table.status),
+    index("fkh_course_twin_versions_build_idx").on(table.buildId),
+  ],
+);
+
+export const courseTwinCorrections = pgTable(
+  "fkh_course_twin_corrections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseTwinId: uuid("course_twin_id")
+      .notNull()
+      .references(() => courseTwins.id, { onDelete: "cascade" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    correctionType: varchar("correction_type", { length: 40 }).notNull(),
+    targetReference: varchar("target_reference", { length: 160 }).notNull(),
+    reason: text("reason").notNull(),
+    correctionJson: jsonb("correction_json").$type<Record<string, unknown>>().notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_twin_corrections_twin_status_idx").on(
+      table.courseTwinId,
+      table.status,
+      table.createdAt,
+    ),
+    index("fkh_course_twin_corrections_creator_idx").on(table.createdByUserId, table.createdAt),
+  ],
+);
+
 export const weatherSnapshots = pgTable(
   "fkh_weather_snapshots",
   {
@@ -3116,6 +3238,10 @@ export type NewImportFile = typeof importFiles.$inferInsert;
 export type NewCourse = typeof courses.$inferInsert;
 export type NewTeeSet = typeof teeSets.$inferInsert;
 export type NewHole = typeof holes.$inferInsert;
+export type NewCourseTwin = typeof courseTwins.$inferInsert;
+export type NewCourseTwinBuild = typeof courseTwinBuilds.$inferInsert;
+export type NewCourseTwinVersion = typeof courseTwinVersions.$inferInsert;
+export type NewCourseTwinCorrection = typeof courseTwinCorrections.$inferInsert;
 export type NewWeatherSnapshot = typeof weatherSnapshots.$inferInsert;
 export type NewBallModel = typeof ballModels.$inferInsert;
 export type NewClubEquipmentHistory = typeof clubEquipmentHistory.$inferInsert;

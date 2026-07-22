@@ -23,6 +23,7 @@ describe("production readiness gate", () => {
       '"test:lighthouse"',
       '"diff", "--check"',
       "PLAYWRIGHT_E2E_AUTH_BYPASS",
+      "playwright-scorecard-proof-secret-with-more-than-32-characters",
       '"http://127.0.0.1:3000"',
       "Authenticated E2E not fully verified because PLAYWRIGHT_AUTH_STATE is missing.",
     ]) {

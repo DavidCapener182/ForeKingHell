@@ -151,6 +151,10 @@ const retainedDatasets = new Set([
   "teeSets",
   "holes",
   "courseFeatures",
+  "courseTwins",
+  "courseTwinBuilds",
+  "courseTwinVersions",
+  "courseTwinCorrections",
   "strokesGainedBaselines",
   "golfTrainingDailyLoad",
   "courseProviderAliases",
@@ -220,6 +224,10 @@ const allSchemaDatasets = [
   "teeSets",
   "holes",
   "courseFeatures",
+  "courseTwins",
+  "courseTwinBuilds",
+  "courseTwinVersions",
+  "courseTwinCorrections",
   "weatherSnapshots",
   "sessions",
   "importRows",
@@ -279,6 +287,14 @@ const allSchemaDatasets = [
 const redactions: Record<string, string[]> = {
   billingCustomers: ["stripeCustomerId"],
   contentExports: ["storagePath"],
+  courseTwinBuilds: [
+    "executionReference",
+    "errorMessage",
+    "idempotencyKey",
+    "inputFingerprint",
+  ],
+  courseTwinCorrections: ["correctionJson"],
+  courseTwinVersions: ["manifestPath", "inputFingerprint"],
   importSourceFiles: ["storagePath", "metadataJson"],
   offlineOperations: ["requestHash", "responseJson"],
   providerAccounts: ["providerAccountId", "metadataJson"],
@@ -358,7 +374,12 @@ function withPhysicalTable(
 }
 
 function categoryFor(dataset: string): DataGovernanceCategory {
-  if (/^(admin|moderation|socialReports|courseRecordFlags)/.test(dataset)) return "administrative";
+  if (
+    /^(admin|moderation|socialReports|courseRecordFlags|courseTwinBuilds|courseTwinCorrections)/.test(
+      dataset,
+    )
+  )
+    return "administrative";
   if (/^(ai)/.test(dataset)) return "ai";
   if (/^(analysis|shotSavedViews)/.test(dataset)) return "analysis";
   if (
@@ -374,7 +395,7 @@ function categoryFor(dataset: string): DataGovernanceCategory {
   if (/^(users|userProfiles|userIdentity|account|userFeature|offline)/.test(dataset))
     return "account";
   if (
-    /^(strokesGainedBaselines|challengeTemplates|courseProviderAliases|courseRecordCategories|teeSets|holes|courseFeatures)/.test(
+    /^(strokesGainedBaselines|challengeTemplates|courseProviderAliases|courseRecordCategories|teeSets|holes|courseFeatures|courseTwins|courseTwinVersions)/.test(
       dataset,
     )
   )

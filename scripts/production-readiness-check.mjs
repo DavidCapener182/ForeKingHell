@@ -23,7 +23,12 @@ const authStatePath = process.env.PLAYWRIGHT_AUTH_STATE;
 const hasAuthState = Boolean(authStatePath && existsSync(authStatePath));
 // Use an explicit IPv4 loopback so a separate IPv6 ::1 listener cannot be mistaken for this app.
 const existingDevServerUrl = "http://127.0.0.1:3000";
-const authenticatedE2eEnv = { PLAYWRIGHT_E2E_AUTH_BYPASS: "1" };
+const authenticatedE2eEnv = {
+  PLAYWRIGHT_E2E_AUTH_BYPASS: "1",
+  SCORECARD_PROOF_SECRET:
+    process.env.SCORECARD_PROOF_SECRET?.trim() ||
+    "playwright-scorecard-proof-secret-with-more-than-32-characters",
+};
 const failedChecks = [];
 
 if (!hasAuthState) {

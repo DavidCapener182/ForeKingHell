@@ -119,11 +119,7 @@ const equipmentImpactSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
-type SimulatorLabPageProps = {
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
-export default async function SimulatorLabPage({ searchParams }: SimulatorLabPageProps = {}) {
+export default async function SimulatorLabPage({ searchParams }: PageProps<"/simulator-lab">) {
   if (!process.env.DATABASE_URL?.trim()) {
     return (
       <PageShell>
@@ -136,7 +132,7 @@ export default async function SimulatorLabPage({ searchParams }: SimulatorLabPag
     );
   }
 
-  const query = searchParams ? await searchParams : {};
+  const query = await searchParams;
   const rangeClub = firstQueryValue(query.rangeClub);
   const rangeMiss = firstQueryValue(query.rangeMiss);
   const data = await getSimulatorLabData();
