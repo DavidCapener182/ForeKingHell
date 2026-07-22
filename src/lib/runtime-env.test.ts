@@ -39,4 +39,20 @@ describe("production environment validation", () => {
       ]),
     );
   });
+
+  it("requires a complete secure Course Twin worker configuration when enabled", () => {
+    expect(
+      productionEnvironmentIssues({
+        ...valid,
+        COURSE_TWIN_BUILDER_URL: "http://builder.internal",
+        COURSE_TWIN_WORKER_SECRET: "short",
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "COURSE_TWIN_CALLBACK_BASE_URL is required when Course Twin builder dispatch is configured",
+        "COURSE_TWIN_BUILDER_URL must be an HTTPS URL",
+        "COURSE_TWIN_WORKER_SECRET must contain at least 32 characters",
+      ]),
+    );
+  });
 });

@@ -30,6 +30,25 @@ export function productionEnvironmentIssues(env: NodeJS.ProcessEnv) {
     if (value && value.length < 32) issues.push(`${name} must contain at least 32 characters`);
   }
 
+  const courseTwinWorkerVariables = [
+    "COURSE_TWIN_BUILDER_URL",
+    "COURSE_TWIN_CALLBACK_BASE_URL",
+    "COURSE_TWIN_WORKER_SECRET",
+  ] as const;
+  if (courseTwinWorkerVariables.some((name) => env[name]?.trim())) {
+    for (const name of courseTwinWorkerVariables) {
+      if (!env[name]?.trim())
+        issues.push(`${name} is required when Course Twin builder dispatch is configured`);
+    }
+    for (const name of ["COURSE_TWIN_BUILDER_URL", "COURSE_TWIN_CALLBACK_BASE_URL"] as const) {
+      const value = env[name]?.trim();
+      if (value && !isHttpsUrl(value)) issues.push(`${name} must be an HTTPS URL`);
+    }
+    const secret = env.COURSE_TWIN_WORKER_SECRET?.trim();
+    if (secret && secret.length < 32)
+      issues.push("COURSE_TWIN_WORKER_SECRET must contain at least 32 characters");
+  }
+
   return issues;
 }
 

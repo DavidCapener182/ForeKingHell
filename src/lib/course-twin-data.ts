@@ -24,6 +24,7 @@ import {
 import { courseTwinBoundsForPoints, createCourseTwinProjector } from "@/lib/course-twin-geometry";
 import { buildCourseTwinReplay, type CourseTwinReplaySourceShot } from "@/lib/course-twin-replay";
 import type { CourseTwinBagProfile } from "@/lib/course-twin-strategy";
+import { loadActiveCourseTwinManifest } from "@/lib/course-twin-package-store";
 import bootleTerrainPackage from "@/generated/course-twins/bootle-v3.json";
 
 const PILOT_EXTERNAL_ID = "bootle-golf-course";
@@ -59,7 +60,10 @@ export async function getCourseTwinManifest({
     )
     .limit(1);
 
-  if (!course || course.externalId !== PILOT_EXTERNAL_ID) return null;
+  if (!course) return null;
+  const publishedManifest = await loadActiveCourseTwinManifest(course.id);
+  if (publishedManifest) return publishedManifest;
+  if (course.externalId !== PILOT_EXTERNAL_ID) return null;
 
   const [holeRows, featureRows] = await Promise.all([
     db

@@ -1460,7 +1460,7 @@ export const courseTwins = pgTable(
     activeVersionId: uuid("active_version_id"),
     qualityGrade: varchar("quality_grade", { length: 4 }).notNull().default("D"),
     supportedModesJson: jsonb("supported_modes_json")
-      .$type<Array<"flyover" | "replay" | "strategy" | "play">>()
+      .$type<Array<"flyover" | "replay" | "strategy" | "play" | "live" | "explore">>()
       .notNull()
       .default([]),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -1567,6 +1567,88 @@ export const courseTwinCorrections = pgTable(
       table.createdAt,
     ),
     index("fkh_course_twin_corrections_creator_idx").on(table.createdByUserId, table.createdAt),
+  ],
+);
+
+export const courseTwinRooms = pgTable(
+  "fkh_course_twin_rooms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    hostUserId: uuid("host_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteCode: varchar("invite_code", { length: 12 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("lobby"),
+    mode: varchar("mode", { length: 20 }).notNull().default("explore"),
+    maxPlayers: integer("max_players").notNull().default(4),
+    holeNumber: integer("hole_number").notNull().default(1),
+    stateVersion: integer("state_version").notNull().default(1),
+    stateJson: jsonb("state_json").$type<Record<string, unknown>>().notNull().default({}),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_rooms_invite_idx").on(table.inviteCode),
+    index("fkh_course_twin_rooms_course_status_idx").on(
+      table.courseId,
+      table.status,
+      table.updatedAt,
+    ),
+    index("fkh_course_twin_rooms_host_idx").on(table.hostUserId, table.updatedAt),
+    index("fkh_course_twin_rooms_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const courseTwinRoomMembers = pgTable(
+  "fkh_course_twin_room_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => courseTwinRooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: varchar("display_name", { length: 160 }).notNull(),
+    role: varchar("role", { length: 20 }).notNull().default("player"),
+    transport: varchar("transport", { length: 12 }).notNull().default("walk"),
+    positionJson: jsonb("position_json").$type<[number, number, number] | null>(),
+    holeNumber: integer("hole_number").notNull().default(1),
+    isReady: boolean("is_ready").notNull().default(false),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_room_members_room_user_idx").on(table.roomId, table.userId),
+    index("fkh_course_twin_room_members_room_presence_idx").on(
+      table.roomId,
+      table.leftAt,
+      table.lastSeenAt,
+    ),
+    index("fkh_course_twin_room_members_user_idx").on(table.userId, table.lastSeenAt),
+  ],
+);
+
+export const courseTwinRoomEvents = pgTable(
+  "fkh_course_twin_room_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => courseTwinRooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    eventType: varchar("event_type", { length: 40 }).notNull(),
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_twin_room_events_room_created_idx").on(table.roomId, table.createdAt),
+    index("fkh_course_twin_room_events_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
 
@@ -3241,6 +3323,9 @@ export type NewCourseTwin = typeof courseTwins.$inferInsert;
 export type NewCourseTwinBuild = typeof courseTwinBuilds.$inferInsert;
 export type NewCourseTwinVersion = typeof courseTwinVersions.$inferInsert;
 export type NewCourseTwinCorrection = typeof courseTwinCorrections.$inferInsert;
+export type NewCourseTwinRoom = typeof courseTwinRooms.$inferInsert;
+export type NewCourseTwinRoomMember = typeof courseTwinRoomMembers.$inferInsert;
+export type NewCourseTwinRoomEvent = typeof courseTwinRoomEvents.$inferInsert;
 export type NewWeatherSnapshot = typeof weatherSnapshots.$inferInsert;
 export type NewBallModel = typeof ballModels.$inferInsert;
 export type NewClubEquipmentHistory = typeof clubEquipmentHistory.$inferInsert;

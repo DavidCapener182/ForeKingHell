@@ -330,6 +330,13 @@
       "when": 1784684100000,
       "tag": "0046_course_twin_active_version_fk_index",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1784731000000,
+      "tag": "0047_course_twin_multiplayer",
+      "breakpoints": true
     }
   ]
 }

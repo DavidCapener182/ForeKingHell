@@ -1,4 +1,5 @@
 import type { CourseTwinSurface } from "@/lib/course-twin-surface";
+import type { CourseTwinReplayShot } from "@/lib/course-twin-contract";
 
 export type CourseTwinVector3 = { x: number; y: number; z: number };
 export type CourseTwinShotPhase = "flight" | "bounce" | "roll" | "stopped";
@@ -40,6 +41,11 @@ export type CourseTwinSimulationResult = {
   landingSurface: CourseTwinSurface;
   finalSurface: CourseTwinSurface;
   penalty: "water" | "out_of_bounds" | null;
+};
+
+export type CourseTwinReplaySimulation = CourseTwinSimulationResult & {
+  input: CourseTwinShotInput;
+  provenance: "physics-reconstructed";
 };
 
 const GRAVITY = 9.80665;
@@ -213,6 +219,270 @@ export function simulateCourseTwinShot(
     landingSurface,
     finalSurface,
     penalty,
+  };
+}
+
+export function simulateCourseTwinReplayShot(
+  shot: CourseTwinReplayShot,
+  environment: CourseTwinPhysicsEnvironment,
+): CourseTwinReplaySimulation {
+  const start = terrainPosition(shot.start, environment);
+  const carryTarget = terrainPosition(shot.carryEnd, environment);
+  const totalTarget = terrainPosition(shot.totalEnd, environment);
+  const carryVector = { x: carryTarget.x - start.x, z: carryTarget.z - start.z };
+  const totalVector = { x: totalTarget.x - start.x, z: totalTarget.z - start.z };
+  const targetVector = Math.hypot(carryVector.x, carryVector.z) > 0.05 ? carryVector : totalVector;
+  const targetDirection =
+    Math.hypot(targetVector.x, targetVector.z) > 0.05
+      ? normalize2d(targetVector.x, targetVector.z)
+      : { x: 1, z: 0 };
+  const carryDistanceM = horizontalDistance(start, carryTarget);
+  const launchAngleDeg = replayLaunchAngle(shot, carryDistanceM);
+  const spinRate = shot.metrics.spinRate.value ?? fallbackSpinRate(shot.clubType);
+  const spinAxisRadians = degreesToRadians(shot.metrics.spinAxis.value ?? 0);
+  const input: CourseTwinShotInput = {
+    position: start,
+    direction: targetDirection,
+    ballSpeedMps:
+      shot.metrics.ballSpeedMph.value !== null
+        ? clamp(shot.metrics.ballSpeedMph.value * 0.44704, 4, 110)
+        : fallbackBallSpeed(carryDistanceM, launchAngleDeg),
+    launchAngleDeg,
+    backSpinRpm: clamp(Math.abs(spinRate * Math.cos(spinAxisRadians)), 150, 12_000),
+    sideSpinRpm: clamp(spinRate * Math.sin(spinAxisRadians), -5_000, 5_000),
+  };
+  const raw = simulateCourseTwinShot(input, environment);
+  let frames = raw.frames.map((simulationFrame) =>
+    mapReplayFrame(simulationFrame, raw, start, carryTarget, totalTarget, environment),
+  );
+
+  frames.push({
+    timeS: raw.flightTimeS,
+    position: { ...carryTarget },
+    velocity: nearestFrameVelocity(raw.frames, raw.flightTimeS),
+    phase: raw.bounceCount > 0 ? "bounce" : "roll",
+    surface: environment.surfaceAt(carryTarget.x, carryTarget.z),
+  });
+  frames.push({
+    timeS: raw.totalTimeS,
+    position: { ...totalTarget },
+    velocity: { x: 0, y: 0, z: 0 },
+    phase: "stopped",
+    surface: environment.surfaceAt(totalTarget.x, totalTarget.z),
+  });
+  frames = frames.sort((left, right) => left.timeS - right.timeS);
+
+  const hazardIndex = frames.findIndex(
+    (simulationFrame) =>
+      simulationFrame.timeS + Number.EPSILON >= raw.flightTimeS &&
+      isPenaltySurface(simulationFrame.surface),
+  );
+  const penalty =
+    hazardIndex >= 0 ? (frames[hazardIndex].surface === "water" ? "water" : "out_of_bounds") : null;
+  if (hazardIndex >= 0) {
+    const stopped = frames[hazardIndex];
+    frames = frames.slice(0, hazardIndex + 1);
+    frames[frames.length - 1] = {
+      ...stopped,
+      velocity: { x: 0, y: 0, z: 0 },
+      phase: "stopped",
+    };
+  }
+
+  const finalFrame = frames.at(-1) ?? {
+    timeS: 0,
+    position: start,
+    velocity: { x: 0, y: 0, z: 0 },
+    phase: "stopped" as const,
+    surface: environment.surfaceAt(start.x, start.z),
+  };
+  const apexM = frames.reduce(
+    (highest, simulationFrame) =>
+      Math.max(
+        highest,
+        simulationFrame.position.y -
+          environment.groundHeight(simulationFrame.position.x, simulationFrame.position.z),
+      ),
+    0,
+  );
+
+  return {
+    ...raw,
+    frames,
+    carryPosition: carryTarget,
+    finalPosition: finalFrame.position,
+    carryDistanceM,
+    totalDistanceM: horizontalDistance(start, finalFrame.position),
+    apexM,
+    totalTimeS: finalFrame.timeS,
+    landingSurface: environment.surfaceAt(carryTarget.x, carryTarget.z),
+    finalSurface: finalFrame.surface,
+    penalty,
+    input,
+    provenance: "physics-reconstructed",
+  };
+}
+
+export function sampleCourseTwinSimulation(
+  simulation: Pick<CourseTwinSimulationResult, "frames" | "totalTimeS">,
+  progress: number,
+) {
+  const frames = simulation.frames;
+  if (frames.length === 0) return null;
+  const timeS = clamp(progress, 0, 1) * simulation.totalTimeS;
+  const rightIndex = frames.findIndex((simulationFrame) => simulationFrame.timeS >= timeS);
+  if (rightIndex <= 0) return frames[0];
+  if (rightIndex < 0) return frames[frames.length - 1];
+  const left = frames[rightIndex - 1];
+  const right = frames[rightIndex];
+  const duration = Math.max(Number.EPSILON, right.timeS - left.timeS);
+  const ratio = clamp((timeS - left.timeS) / duration, 0, 1);
+  return {
+    timeS,
+    position: lerpVector(left.position, right.position, ratio),
+    velocity: lerpVector(left.velocity, right.velocity, ratio),
+    phase: ratio < 0.5 ? left.phase : right.phase,
+    surface: ratio < 0.5 ? left.surface : right.surface,
+  } satisfies CourseTwinSimulationFrame;
+}
+
+function mapReplayFrame(
+  simulationFrame: CourseTwinSimulationFrame,
+  raw: CourseTwinSimulationResult,
+  targetStart: CourseTwinVector3,
+  targetCarry: CourseTwinVector3,
+  targetTotal: CourseTwinVector3,
+  environment: CourseTwinPhysicsEnvironment,
+): CourseTwinSimulationFrame {
+  const inFlight = simulationFrame.timeS <= raw.flightTimeS + Number.EPSILON;
+  const sourceStart = inFlight ? (raw.frames[0]?.position ?? targetStart) : raw.carryPosition;
+  const sourceEnd = inFlight ? raw.carryPosition : raw.finalPosition;
+  const mappedStart = inFlight ? targetStart : targetCarry;
+  const mappedEnd = inFlight ? targetCarry : targetTotal;
+  const mapped = mapHorizontalSegment(
+    simulationFrame.position,
+    sourceStart,
+    sourceEnd,
+    mappedStart,
+    mappedEnd,
+    inFlight
+      ? 0
+      : clamp(
+          (simulationFrame.timeS - raw.flightTimeS) /
+            Math.max(0.01, raw.totalTimeS - raw.flightTimeS),
+          0,
+          1,
+        ),
+  );
+  const sourceGround = environment.groundHeight(
+    simulationFrame.position.x,
+    simulationFrame.position.z,
+  );
+  const heightAboveGround = Math.max(BALL_RADIUS_M, simulationFrame.position.y - sourceGround);
+  const position = {
+    x: mapped.x,
+    y: environment.groundHeight(mapped.x, mapped.z) + heightAboveGround,
+    z: mapped.z,
+  };
+  return {
+    ...simulationFrame,
+    position,
+    surface: environment.surfaceAt(position.x, position.z),
+  };
+}
+
+function mapHorizontalSegment(
+  point: CourseTwinVector3,
+  sourceStart: CourseTwinVector3,
+  sourceEnd: CourseTwinVector3,
+  targetStart: CourseTwinVector3,
+  targetEnd: CourseTwinVector3,
+  fallbackProgress: number,
+) {
+  const sourceLength = horizontalDistance(sourceStart, sourceEnd);
+  const targetLength = horizontalDistance(targetStart, targetEnd);
+  if (sourceLength < 0.05 || targetLength < 0.05) {
+    return {
+      x: targetStart.x + (targetEnd.x - targetStart.x) * fallbackProgress,
+      z: targetStart.z + (targetEnd.z - targetStart.z) * fallbackProgress,
+    };
+  }
+  const sourceDirection = {
+    x: (sourceEnd.x - sourceStart.x) / sourceLength,
+    z: (sourceEnd.z - sourceStart.z) / sourceLength,
+  };
+  const targetDirection = {
+    x: (targetEnd.x - targetStart.x) / targetLength,
+    z: (targetEnd.z - targetStart.z) / targetLength,
+  };
+  const relativeX = point.x - sourceStart.x;
+  const relativeZ = point.z - sourceStart.z;
+  const along = relativeX * sourceDirection.x + relativeZ * sourceDirection.z;
+  const across = relativeX * -sourceDirection.z + relativeZ * sourceDirection.x;
+  const scale = targetLength / sourceLength;
+  return {
+    x: targetStart.x + targetDirection.x * along * scale + -targetDirection.z * across * scale,
+    z: targetStart.z + targetDirection.z * along * scale + targetDirection.x * across * scale,
+  };
+}
+
+function terrainPosition(
+  point: readonly [number, number, number],
+  environment: CourseTwinPhysicsEnvironment,
+): CourseTwinVector3 {
+  return {
+    x: point[0],
+    y: environment.groundHeight(point[0], point[2]) + BALL_RADIUS_M,
+    z: point[2],
+  };
+}
+
+function replayLaunchAngle(shot: CourseTwinReplayShot, carryDistanceM: number) {
+  if (shot.metrics.launchAngleDeg.value !== null) {
+    return clamp(shot.metrics.launchAngleDeg.value, -5, 60);
+  }
+  const apexM = Math.max(1, (shot.metrics.apexFt.value ?? 45) * 0.3048);
+  return clamp((Math.atan((4 * apexM) / Math.max(1, carryDistanceM)) * 180) / Math.PI, 4, 45);
+}
+
+function fallbackBallSpeed(carryDistanceM: number, launchAngleDeg: number) {
+  const launchAngle = degreesToRadians(launchAngleDeg);
+  const ballisticSpeed = Math.sqrt(
+    (Math.max(1, carryDistanceM) * GRAVITY) / Math.max(0.12, Math.sin(2 * launchAngle)),
+  );
+  return clamp(ballisticSpeed * 1.12, 7, 92);
+}
+
+function fallbackSpinRate(clubType: string) {
+  const club = clubType.toLowerCase();
+  if (club.includes("driver")) return 2_400;
+  if (club.includes("wood") || club.includes("hybrid")) return 3_400;
+  if (club.includes("wedge")) return 8_200;
+  if (club.includes("iron")) return 5_400;
+  if (club.includes("putter")) return 150;
+  return 4_200;
+}
+
+function nearestFrameVelocity(frames: CourseTwinSimulationFrame[], timeS: number) {
+  if (frames.length === 0) return { x: 0, y: 0, z: 0 };
+  return frames.reduce((nearest, candidate) =>
+    Math.abs(candidate.timeS - timeS) < Math.abs(nearest.timeS - timeS) ? candidate : nearest,
+  ).velocity;
+}
+
+function isPenaltySurface(surface: CourseTwinSurface) {
+  return surface === "water" || surface === "out_of_bounds";
+}
+
+function lerpVector(
+  left: CourseTwinVector3,
+  right: CourseTwinVector3,
+  ratio: number,
+): CourseTwinVector3 {
+  return {
+    x: left.x + (right.x - left.x) * ratio,
+    y: left.y + (right.y - left.y) * ratio,
+    z: left.z + (right.z - left.z) * ratio,
   };
 }
 

@@ -21,21 +21,50 @@ Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real
 ## Active work
 
 - [x] Add deterministic runtime state hooks for automated gameplay inspection.
-- [ ] Replace prototype trajectory-only playback with a tested golf-flight, bounce and roll engine.
-- [ ] Classify semantic landing surfaces and apply lie, penalty and collision rules.
-- [ ] Add player-specific dispersion strategy and My Bag virtual-round play.
+- [x] Replace prototype trajectory-only playback with a tested golf-flight, bounce and roll engine.
+- [x] Classify semantic landing surfaces and apply lie and water/out-of-bounds penalty rules.
+- [x] Add player-specific dispersion strategy and My Bag virtual-round play.
 - [x] Produce a versioned real-terrain Bootle package through a repeatable course-builder pipeline.
-- [ ] Add secure GSPro localhost bridge protocol and a signed-app build path.
-- [ ] Add on-demand course jobs, package storage/versioning, QA corrections and wider-course adapters.
-- [ ] Complete performance, accessibility, security, browser gameplay and regression verification.
+- [x] Add secure GSPro localhost bridge protocol and a signed-app build path.
+- [x] Add on-demand course jobs, package storage/versioning, QA corrections and wider-course adapters.
+- [x] Complete Course Twin performance, accessibility, security, browser gameplay and regression verification.
+
+## Remaining full-platform phases
+
+- [x] Start the isolated Course Twin development server on port 3200 and open the Bootle twin for user inspection.
+- [x] Make queued build plans executable by including the course identity, geographic bounds, hole centre-lines and mapped source geometry in the signed worker payload.
+- [x] Add worker-produced terrain and texture assets to immutable package storage and issue short-lived browser delivery URLs.
+- [x] Run the standalone Environment Agency/Copernicus terrain-builder worker from the signed queue contract.
+- [x] Complete production bridge installation and privileged GSPro port handling on macOS/Linux.
+- [x] Add multiplayer session state plus walk/cart runtime controls.
+- [x] Verify the wider UK course-generation batch and finish the final publish gate.
 
 ## Known constraints
 
 - The current Bootle runtime uses a Grade B 2.4 m mesh generated from Environment Agency 1 m LiDAR; putting contours remain explicitly unverified.
 - Imported shot metrics are measured, but current course placement and flight animation are reconstructed.
-- No live launch-monitor bridge or multiplayer runtime exists yet.
+- Private multiplayer foundations now include invite-only rooms, capped membership, terrain-following walk/cart presence, append-only events, host-owned optimistic state and an in-scene group panel. Real-time shot synchronisation, hosted lobbies and voice/chat remain later product phases. Live launch-monitor play uses the documented GSPro Open Connect v1 route through a loopback-only bridge; signed/notarised public installers still require the product's external release certificates.
 - The terrain-splat PBR pass and Golfer view are typechecked and have a clean hole 5 automated browser state; final full-page visual acceptance is recorded separately.
 - The billboard vegetation and atmosphere pass typechecks cleanly. A live authenticated browser smoke selected Bootle hole 5, retained the saved-round replay tracers and visually confirmed the new foliage, clouds and distant background.
 - Final visual evidence is saved at `/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/bootle-hole-5-real-vegetation-sky.png`.
 - Camera/replay interaction evidence: the web-game state reports `visibleShotCount: 1`; selecting shot 2 changes `selectedShotIndex` from 0 to 1 and changes the camera anchor from shot 1's end to shot 2's start. Browser smoke confirmed the control panel, shot replacement, short-chip framing, orbit and anchored optical zoom.
-- Production build and the formal route budget pass; `/play/[courseId]` is 954 KiB against a 1,025 KiB uncompressed limit. The new source-contract assertions pass directly. Vitest itself is currently blocked before test discovery by its CommonJS config requiring the ESM-only `std-env` package (`ERR_REQUIRE_ESM`).
+- Production build and the formal route budget pass; `/play/[courseId]` is 954 KiB against a 1,025 KiB uncompressed limit. The new source-contract assertions pass directly.
+- Selected-shot replay now runs the deterministic aerodynamic, bounce and terrain-roll model against the loaded LiDAR sampler and semantic surface classifier. The rendered path is reconciled to the saved round's derived carry/total positions, while the runtime reports current phase, landing lie, final lie, bounce count and water/out-of-bounds penalties.
+- Renaming the Vitest config to an explicit ESM `.mts` boundary fixes the Vitest 4 `std-env` startup failure. The focused Course Twin physics, replay, surface, terrain and strategy suites now run normally: 5 files and 15 tests pass.
+- Strategy mode now loads the authenticated dispersion Monte Carlo document only when requested, renders the selected club's landing cloud and aim line over the real hole, and shows measured-sample confidence, serious-hazard probability, bunker probability and expected leave. Hole 5 browser verification returned a recommended club cloud with no console errors.
+- Play mode now samples a deterministic virtual shot from the selected club's measured carry, launch, spin and side-dispersion distributions, applies the real terrain/surface physics, advances multi-shot state, handles penalty drops, and offers an explicitly modelled 2-putt finish once the ball reaches a mapped green. Browser verification completed hole 5 in three modelled strokes and advanced hole 6 from a driver result into shot 2 with no console errors.
+- The local launch-monitor bridge now binds GSPro TCP and browser control sockets only to loopback, parses fragmented/concatenated JSON safely, validates official v1 fields and realistic ranges, rate-limits input, pairs browsers with one-time codes and short-lived hashed tokens, and relays only normalised shot measurements. Sixteen Node protocol/security/integration tests pass, including a real TCP-to-authenticated-WebSocket shot and the GSPro 201 player/club response.
+- Live mode maps the next paired GSPro shot into the selected hole from the current lie, renders only that measured shot through the same LiDAR/surface physics, advances strokes and penalties, and sends handedness plus selected-club information back to the monitor. The connector token remains in memory and never enters a URL or browser storage.
+- `npm run bridge:build` provides a pinned Node single-executable build, target-platform self-test and SHA-256 output, with macOS/Windows production-signing hooks that require protected external certificate credentials.
+- Course generation is now a real queued platform boundary rather than a Vercel request: admin-only idempotent jobs fingerprint course/map/correction inputs, select Environment Agency, USGS, LINZ, NRCan or Copernicus terrain adapters, and dispatch signed jobs to a separately deployed builder. Worker callbacks are size-capped and protected by timestamped SHA-256 HMAC signatures.
+- Generated manifests are uploaded to a private Supabase Storage bucket under immutable version paths, SHA-verified before use, staged for review, and published atomically while the prior version becomes superseded. Published packages load through this version registry before the Bootle pilot fallback.
+- Manual QA supports validated feature upsert/delete and tee/green anchor corrections. Accepted corrections force a new fingerprinted build, are applied without mutating the source manifest, and must pass a separate admin publication step.
+- Quality grading is evidence-derived: Grade A is impossible without verified putting contours; Grade B allows full shots with approximate greens; Grade C is limited to flyover/replay/strategy; Grade D remains 2D-only. The deployed GDAL worker and signing/notarisation certificates remain external infrastructure, configured through explicit environment contracts.
+- Final focused verification passes: 290 Vitest files/1,067 tests, 7 terrain-builder tests, 18 bridge protocol/security/integration tests, TypeScript, ESLint, Prettier, Drizzle schema validation, production build, the formal route budget and authenticated Course Twin browser journeys in desktop Chromium and the iPhone viewport. The final browser journey opens the exact saved Bootle round with 58 Rapsodo shots, enters Explore, moves the cart over the LiDAR terrain, creates an invite-only room on desktop and reopens the selected-shot replay.
+- The resumed full-platform phase fixed a material worker-contract gap: build jobs now include the bounded course origin, geographic extent, hole tee/green/centre-line geometry and mapped course features. Focused build-plan tests and TypeScript pass after the change.
+- Worker completions now carry bounded base64 assets with content-type and SHA-256 metadata. The app re-verifies every digest, uploads assets under immutable version paths, stores non-public `storage://` references in the manifest and resolves them to one-hour signed URLs only when an authenticated published manifest is loaded.
+- The standalone builder verifies exact-body HMAC jobs, restricts callback origins and paths, serialises jobs, retrieves Environment Agency WCS or keyed Copernicus GLO-30 terrain, converts geographic holes/features to local ENU coordinates, packages float32 terrain plus aerial imagery and posts a signed callback. Five builder protocol/generator/server tests pass. A live non-Bootle Royal Liverpool smoke produced 263,169 LiDAR samples, a 1,052,676-byte terrain asset and a 449,813-byte aerial asset with verified SHA-256 digests.
+- The bridge now selects official port 921 on Windows/root and an unprivileged port 4921 for ordinary macOS/Linux users. The packaged macOS helper is a minimal loopback-only launch daemon that forwards 921 to 4921 while the browser bridge stays unprivileged; Linux emits a `setcap cap_net_bind_service` setup script. A real TCP forwarding test raises the bridge suite to 18 passing tests. The rebuilt macOS arm64 executable self-tests, verifies with `codesign --strict`, emits syntax-checked install/uninstall helpers and has SHA-256 `3a15c7852c20a5e159f274fc2299af3d316a1380d714d69044527d3821c26145`.
+- Explore mode now provides terrain-following walk and cart controls, deterministic camera inspection, and selected-mode state that correctly hides replay shots. Private group rooms are applied to Supabase with forced RLS and no browser-role grants; a live browser-created room returned an eight-character invite and published the host's hole/transport presence.
+- Wales now has an executable Welsh Government one-metre DTM COG adapter with bounded HTTP range reads and WGS84-to-British-National-Grid reprojection. A live Celtic Manor-area smoke produced 263,169 samples at 4.30 m runtime spacing and verified SHA-256 `650cc591770f9eaf17f3bbb10ea3d80deecc8878074806446c7f5743e1a70761`. Copernicus fallbacks are labelled `global_dem` and capped at Grade C rather than being presented as LiDAR.
+- The admin-only UK batch preview ranks mapped, geocoded courses and the queue caps requests at 50 while reusing the idempotent per-course build path. The live catalogue currently has only one UK course with both mapped holes and coordinates after Bootle's verified package origin was repaired; the preview reports Bootle at readiness 95. Aintree, Mountain Park and the synthetic Tour Links entry remain excluded until trustworthy coordinates are supplied.

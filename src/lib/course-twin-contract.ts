@@ -78,7 +78,7 @@ export type CourseTwinManifest = {
     maxZ: number;
   };
   terrain: {
-    kind: "prototype_semantic" | "lidar_dtm";
+    kind: "prototype_semantic" | "lidar_dtm" | "global_dem";
     resolutionM: number | null;
     verticalDatum: string | null;
     warning: string | null;

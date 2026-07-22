@@ -37,10 +37,46 @@ describe("Course Twin route boundaries", () => {
   });
 
   it("keeps quality and replay provenance visible to golfers", () => {
-    expect(sceneSource).toContain("Grade {manifest.quality.grade} prototype");
+    expect(sceneSource).toContain("Grade {manifest.quality.grade} ·");
     expect(sceneSource).toContain("Measured metrics · derived course placement");
     expect(sceneSource).toContain("manifest.attribution.map");
-    expect(dataSource).toContain("Map data from OpenStreetMap contributors");
+    expect(dataSource).toContain("bootleTerrainPackage.mapSource.label");
+  });
+
+  it("runs selected-shot playback through terrain and surface-aware physics", () => {
+    expect(sceneSource).toContain("simulateCourseTwinReplayShot(selectedShot");
+    expect(sceneSource).toContain("createCourseTwinSurfaceClassifier");
+    expect(sceneSource).toContain("landingSurface: selectedSimulation.landingSurface");
+    expect(sceneSource).toContain("finalSurface: selectedSimulation.finalSurface");
+    expect(sceneSource).toContain("penalty: selectedSimulation.penalty");
+    expect(sceneSource).toContain('label="Landed"');
+  });
+
+  it("loads player-specific strategy on demand and renders one selected landing cloud", () => {
+    expect(sceneSource).toContain('active={mode === "strategy"}');
+    expect(sceneSource).toContain("/strategy?holeNumber=${nextHoleNumber}");
+    expect(sceneSource).toContain("<StrategyLandingCloud");
+    expect(sceneSource).toContain('strategyClub={mode === "strategy" ? strategyClub : null}');
+    expect(sceneSource).toContain("My Bag strategy");
+    expect(sceneSource).toContain("selectedClub.probabilities.water");
+  });
+
+  it("supports deterministic My Bag virtual shots without claiming perfect outcomes", () => {
+    expect(sceneSource).toContain('active={mode === "play"}');
+    expect(sceneSource).toContain("buildCourseTwinVirtualShot({");
+    expect(sceneSource).toContain("virtualDropPoint(virtualSimulation)");
+    expect(sceneSource).toContain("Virtual round · My Bag");
+    expect(sceneSource).toContain("Each shot is sampled from your measured carry and dispersion");
+    expect(sceneSource).toContain("Finish with 2-putt");
+  });
+
+  it("keeps live GSPro shots behind a paired loopback bridge and runs them through course physics", () => {
+    expect(sceneSource).toContain('active={mode === "live"}');
+    expect(sceneSource).toContain("new CourseTwinBridgeClient");
+    expect(sceneSource).toContain("bridgeShotToReplayShot({");
+    expect(sceneSource).toContain("simulateCourseTwinReplayShot(liveShot");
+    expect(sceneSource).toContain("GSPro feed detected on this computer");
+    expect(sceneSource).toContain("Only the next shot will");
   });
 
   it("uses instanced foliage billboards instead of procedural canopy blobs", () => {
@@ -55,7 +91,7 @@ describe("Course Twin route boundaries", () => {
   });
 
   it("keeps replay focus on one shot and provides explicit camera controls", () => {
-    expect(sceneSource).toContain("visibleShotCount: selectedShot ? 1 : 0");
+    expect(sceneSource).toContain('visibleShotCount: mode === "replay" && selectedShot ? 1 : 0');
     expect(sceneSource).toContain("{selectedShot ? (");
     expect(sceneSource).not.toContain("replayShots.map");
     expect(sceneSource).toContain("shot?.start ?? hole.tee");
@@ -63,5 +99,18 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain('label="Orbit camera left"');
     expect(sceneSource).toContain('label="Zoom camera in"');
     expect(sceneSource).toContain('label="Orbit camera right"');
+  });
+
+  it("supports terrain-following walk and cart exploration without OrbitControls fighting movement", () => {
+    expect(sceneSource).toContain('active={mode === "explore"}');
+    expect(sceneSource).toContain("<RoamController");
+    expect(sceneSource).toContain('transport === "cart"');
+    expect(sceneSource).toContain('pressed.has("KeyW")');
+    expect(sceneSource).toContain("point.y = sampleTerrain(point.x, point.z)");
+    expect(sceneSource).toContain('mode === "explore" ? exploreTransport : null');
+    expect(sceneSource).toContain("exploration:");
+    expect(sceneSource).toContain("Start group session");
+    expect(sceneSource).toContain("/api/course-twins/rooms/join");
+    expect(sceneSource).toContain("groupSession:");
   });
 });

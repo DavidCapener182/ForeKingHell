@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  sampleCourseTwinSimulation,
+  simulateCourseTwinReplayShot,
   simulateCourseTwinShot,
   type CourseTwinPhysicsEnvironment,
   type CourseTwinShotInput,
 } from "@/lib/course-twin-physics";
+import type { CourseTwinReplayShot } from "@/lib/course-twin-contract";
 
 const driver: CourseTwinShotInput = {
   position: { x: 0, y: 0.02135, z: 0 },
@@ -21,6 +24,30 @@ const environment = (
   groundHeight: () => 0,
   surfaceAt: surface,
 });
+
+const replayShot: CourseTwinReplayShot = {
+  id: "saved-shot-1",
+  holeNumber: 5,
+  holeShotNumber: 1,
+  clubType: "driver",
+  start: [0, 0, 0],
+  carryEnd: [190, 0, 8],
+  totalEnd: [207, 0, 9],
+  trajectory: [],
+  metrics: {
+    carryYd: { value: 208, provenance: "measured" },
+    totalYd: { value: 226, provenance: "measured" },
+    sideCarryYd: { value: 8.7, provenance: "measured" },
+    apexFt: { value: 82, provenance: "measured" },
+    ballSpeedMph: { value: 147, provenance: "measured" },
+    launchAngleDeg: { value: 12.4, provenance: "measured" },
+    spinRate: { value: 2_480, provenance: "measured" },
+    spinAxis: { value: 2.5, provenance: "measured" },
+  },
+  placementProvenance: "derived",
+  trajectoryProvenance: "reconstructed",
+  rollProvenance: "reconstructed",
+};
 
 describe("Course Twin deterministic golf physics", () => {
   it("produces deterministic, plausible driver flight with bounce and roll", () => {
@@ -74,5 +101,46 @@ describe("Course Twin deterministic golf physics", () => {
         environment(() => "fairway"),
       ),
     ).toThrow(/Ball speed/);
+  });
+
+  it("reconstructs a saved shot with deterministic phases and exact mapped endpoints", () => {
+    const first = simulateCourseTwinReplayShot(
+      replayShot,
+      environment(() => "fairway"),
+    );
+    const second = simulateCourseTwinReplayShot(
+      replayShot,
+      environment(() => "fairway"),
+    );
+
+    expect(first).toEqual(second);
+    expect(first.carryPosition.x).toBeCloseTo(replayShot.carryEnd[0]);
+    expect(first.carryPosition.z).toBeCloseTo(replayShot.carryEnd[2]);
+    expect(first.finalPosition.x).toBeCloseTo(replayShot.totalEnd[0]);
+    expect(first.finalPosition.z).toBeCloseTo(replayShot.totalEnd[2]);
+    expect(first.frames.some((frame) => frame.phase === "flight")).toBe(true);
+    expect(first.frames.some((frame) => frame.phase === "bounce" || frame.phase === "roll")).toBe(
+      true,
+    );
+    expect(first.landingSurface).toBe("fairway");
+    expect(first.finalSurface).toBe("fairway");
+    expect(first.provenance).toBe("physics-reconstructed");
+
+    const finish = sampleCourseTwinSimulation(first, 1);
+    expect(finish?.phase).toBe("stopped");
+    expect(finish?.position).toEqual(first.finalPosition);
+  });
+
+  it("stops the reconstructed replay when its mapped ground path reaches water", () => {
+    const result = simulateCourseTwinReplayShot(
+      replayShot,
+      environment((x) => (x >= 195 ? "water" : "fairway")),
+    );
+
+    expect(result.penalty).toBe("water");
+    expect(result.finalSurface).toBe("water");
+    expect(result.finalPosition.x).toBeGreaterThanOrEqual(195);
+    expect(result.finalPosition.x).toBeLessThan(replayShot.totalEnd[0]);
+    expect(result.frames.at(-1)?.phase).toBe("stopped");
   });
 });

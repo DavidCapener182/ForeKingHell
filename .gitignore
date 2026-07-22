@@ -22,10 +22,12 @@
 # next.js
 /.next/
 /.next-e2e/
+/.next-course-twin-build/
 /out/
 
 # production
 /build
+/dist/
 
 # misc
 /tmp/

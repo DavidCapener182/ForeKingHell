@@ -2,15 +2,31 @@
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Line, OrbitControls, useTexture } from "@react-three/drei";
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 import {
   ChevronLeft,
   ChevronRight,
+  CarFront,
   CirclePause,
   CirclePlay,
   LocateFixed,
+  Footprints,
+  Copy,
+  LogOut,
+  Users,
+  Radio,
   RotateCcw,
+  Wifi,
+  WifiOff,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -26,17 +42,72 @@ import type {
   CourseTwinReplayShot,
 } from "@/lib/course-twin-contract";
 import {
+  bridgeShotToReplayShot,
+  CourseTwinBridgeClient,
+  type CourseTwinBridgeEvent,
+  type CourseTwinBridgeStatus,
+} from "@/lib/course-twin-bridge-client";
+import {
+  sampleCourseTwinSimulation,
+  simulateCourseTwinReplayShot,
+  type CourseTwinReplaySimulation,
+  type CourseTwinSimulationFrame,
+} from "@/lib/course-twin-physics";
+import {
+  createCourseTwinSurfaceClassifier,
+  courseTwinFeatureContains,
+  courseTwinRingArea,
+  type CourseTwinSurface,
+} from "@/lib/course-twin-surface";
+import {
   createCourseTwinTerrainSampler,
   decodeCourseTwinHeightmap,
   type CourseTwinTerrainSampler,
 } from "@/lib/course-twin-terrain";
-import { courseTwinFeatureContains, courseTwinRingArea } from "@/lib/course-twin-surface";
+import type {
+  CourseTwinStrategyClub,
+  CourseTwinStrategyDocument,
+} from "@/lib/course-twin-strategy";
+import {
+  buildCourseTwinVirtualShot,
+  type CourseTwinVirtualShot,
+} from "@/lib/course-twin-virtual-round";
 import { cn } from "@/lib/utils";
 
-type RuntimeMode = "flyover" | "replay";
+type RuntimeMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
+type ExploreTransport = "walk" | "cart";
 type CameraView = "golfer" | "aerial";
 type CameraControlAction = "orbit-left" | "orbit-right" | "zoom-in" | "zoom-out" | "reset";
 type CameraCommand = { id: number; action: CameraControlAction } | null;
+type StrategyLoadState = {
+  holeNumber: number | null;
+  status: "idle" | "loading" | "ready" | "error";
+  document: CourseTwinStrategyDocument | null;
+  error: string | null;
+};
+type BridgeLoadState = {
+  status: "idle" | "detecting" | "available" | "pairing" | "connected" | "error";
+  health: CourseTwinBridgeStatus | null;
+  launchMonitorConnected: boolean;
+  error: string | null;
+};
+type CourseTwinRoomClient = {
+  id: string;
+  inviteCode: string;
+  isHost: boolean;
+  members: Array<{
+    userId: string;
+    displayName: string;
+    role: string;
+    transport: ExploreTransport;
+    holeNumber: number;
+  }>;
+};
+type RoomLoadState = {
+  status: "idle" | "loading" | "ready" | "error";
+  room: CourseTwinRoomClient | null;
+  error: string | null;
+};
 
 const proceduralTextureCache = new Map<string, THREE.CanvasTexture>();
 const treeBillboards = [
@@ -45,10 +116,12 @@ const treeBillboards = [
   {
     url: "/course-twins/common/vegetation/billboards/tree-sycamore.png?v=2",
     aspect: 414 / 443,
+    cropTop: 0.04,
   },
   {
     url: "/course-twins/common/vegetation/billboards/tree-windswept.png?v=2",
     aspect: 372 / 443,
+    cropTop: 0.04,
   },
 ] as const;
 const bushBillboards = [
@@ -101,8 +174,63 @@ export function CourseTwinScene({
   const [cameraCommand, setCameraCommand] = useState<CameraCommand>(null);
   const [terrainSamples, setTerrainSamples] = useState<Float32Array | null>(null);
   const [terrainError, setTerrainError] = useState<string | null>(null);
+  const [strategyState, setStrategyState] = useState<StrategyLoadState>({
+    holeNumber: null,
+    status: "idle",
+    document: null,
+    error: null,
+  });
+  const [strategyClubId, setStrategyClubId] = useState<string | null>(null);
+  const [virtualStart, setVirtualStart] = useState<CourseTwinPoint>(
+    manifest.holes[0]?.tee ?? [0, 0, 0],
+  );
+  const [virtualShotNumber, setVirtualShotNumber] = useState(1);
+  const [virtualStrokes, setVirtualStrokes] = useState(0);
+  const [virtualPenaltyStrokes, setVirtualPenaltyStrokes] = useState(0);
+  const [virtualAimOffsetYd, setVirtualAimOffsetYd] = useState(0);
+  const [virtualShot, setVirtualShot] = useState<CourseTwinVirtualShot | null>(null);
+  const [virtualComplete, setVirtualComplete] = useState(false);
+  const [bridgeState, setBridgeState] = useState<BridgeLoadState>({
+    status: "idle",
+    health: null,
+    launchMonitorConnected: false,
+    error: null,
+  });
+  const [pairingCode, setPairingCode] = useState("");
+  const [liveStart, setLiveStart] = useState<CourseTwinPoint>(manifest.holes[0]?.tee ?? [0, 0, 0]);
+  const [liveShotNumber, setLiveShotNumber] = useState(1);
+  const [liveStrokes, setLiveStrokes] = useState(0);
+  const [livePenaltyStrokes, setLivePenaltyStrokes] = useState(0);
+  const [liveShot, setLiveShot] = useState<CourseTwinReplayShot | null>(null);
+  const [liveComplete, setLiveComplete] = useState(false);
+  const [liveHanded, setLiveHanded] = useState<"RH" | "LH">("RH");
+  const [exploreTransport, setExploreTransport] = useState<ExploreTransport>("walk");
+  const [explorePosition, setExplorePosition] = useState<CourseTwinPoint>(
+    manifest.holes[0]?.tee ?? [0, 0, 0],
+  );
+  const [roomState, setRoomState] = useState<RoomLoadState>({
+    status: "idle",
+    room: null,
+    error: null,
+  });
+  const [roomInviteCode, setRoomInviteCode] = useState("");
+  const [roomCodeCopied, setRoomCodeCopied] = useState(false);
   const playbackRef = useRef(0);
+  const explorePresenceRef = useRef({
+    transport: exploreTransport,
+    position: explorePosition,
+    holeNumber,
+  });
   const cameraCommandIdRef = useRef(0);
+  const strategyAbortRef = useRef<AbortController | null>(null);
+  const bridgeClientRef = useRef<CourseTwinBridgeClient | null>(null);
+  const liveContextRef = useRef({
+    hole: manifest.holes[0],
+    start: manifest.holes[0]?.tee ?? ([0, 0, 0] as CourseTwinPoint),
+    clubType: "driver",
+    shotNumber: 1,
+    canAccept: true,
+  });
   const terrainAsset = manifest.terrain.heightmap;
   const selectedHole =
     manifest.holes.find((hole) => hole.holeNumber === holeNumber) ?? manifest.holes[0];
@@ -118,7 +246,60 @@ export function CourseTwinScene({
   }, [playback]);
 
   useEffect(() => {
-    if (!playing || !selectedShot) return;
+    explorePresenceRef.current = {
+      transport: exploreTransport,
+      position: explorePosition,
+      holeNumber,
+    };
+  }, [explorePosition, exploreTransport, holeNumber]);
+
+  useEffect(() => {
+    const roomId = roomState.room?.id;
+    if (!roomId) return;
+    let active = true;
+    const refresh = async () => {
+      const response = await fetch(`/api/course-twins/rooms/${roomId}`, { cache: "no-store" });
+      if (!active) return;
+      if (!response.ok) {
+        setRoomState({ status: "error", room: null, error: "The group session has ended." });
+        return;
+      }
+      setRoomState({ status: "ready", room: await response.json(), error: null });
+    };
+    const interval = window.setInterval(refresh, 4_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [roomState.room?.id]);
+
+  useEffect(() => {
+    const roomId = roomState.room?.id;
+    if (!roomId || mode !== "explore") return;
+    const publishPresence = () => {
+      const presence = explorePresenceRef.current;
+      void fetch(`/api/course-twins/rooms/${roomId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(presence),
+      });
+    };
+    publishPresence();
+    const interval = window.setInterval(publishPresence, 2_000);
+    return () => window.clearInterval(interval);
+  }, [mode, roomState.room?.id]);
+
+  const animatedShot =
+    mode === "replay"
+      ? selectedShot
+      : mode === "play"
+        ? (virtualShot?.shot ?? null)
+        : mode === "live"
+          ? liveShot
+          : null;
+
+  useEffect(() => {
+    if (!playing || !animatedShot) return;
     let frame = 0;
     const startedAt = performance.now() - playbackRef.current * 3200;
     const tick = (now: number) => {
@@ -129,7 +310,7 @@ export function CourseTwinScene({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, selectedShot]);
+  }, [animatedShot, playing]);
 
   useEffect(() => {
     if (!terrainAsset) return;
@@ -157,6 +338,76 @@ export function CourseTwinScene({
         : null,
     [terrainAsset, terrainSamples],
   );
+  const classifySurface = useMemo(
+    () => createCourseTwinSurfaceClassifier(manifest, selectedHole.holeNumber),
+    [manifest, selectedHole.holeNumber],
+  );
+  const selectedSimulation = useMemo(
+    () =>
+      sampleTerrain && selectedShot
+        ? simulateCourseTwinReplayShot(selectedShot, {
+            groundHeight: sampleTerrain,
+            surfaceAt: classifySurface,
+          })
+        : null,
+    [classifySurface, sampleTerrain, selectedShot],
+  );
+  const virtualSimulation = useMemo(
+    () =>
+      sampleTerrain && virtualShot
+        ? simulateCourseTwinReplayShot(virtualShot.shot, {
+            groundHeight: sampleTerrain,
+            surfaceAt: classifySurface,
+          })
+        : null,
+    [classifySurface, sampleTerrain, virtualShot],
+  );
+  const liveSimulation = useMemo(
+    () =>
+      sampleTerrain && liveShot
+        ? simulateCourseTwinReplayShot(liveShot, {
+            groundHeight: sampleTerrain,
+            surfaceAt: classifySurface,
+          })
+        : null,
+    [classifySurface, liveShot, sampleTerrain],
+  );
+  const playbackFrame = useMemo(
+    () => (selectedSimulation ? sampleCourseTwinSimulation(selectedSimulation, playback) : null),
+    [playback, selectedSimulation],
+  );
+  const strategyClub = useMemo(
+    () =>
+      strategyState.document?.clubs.find((club) => club.clubId === strategyClubId) ??
+      strategyState.document?.recommended ??
+      null,
+    [strategyClubId, strategyState.document],
+  );
+
+  useEffect(() => {
+    liveContextRef.current = {
+      hole: selectedHole,
+      start: liveStart,
+      clubType: strategyClub?.clubType ?? "driver",
+      shotNumber: liveShotNumber,
+      canAccept: !liveShot && !liveComplete,
+    };
+  }, [liveComplete, liveShot, liveShotNumber, liveStart, selectedHole, strategyClub]);
+
+  useEffect(
+    () => () => {
+      bridgeClientRef.current?.disconnect();
+      bridgeClientRef.current = null;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (bridgeState.status !== "connected" || !strategyClub) return;
+    bridgeClientRef.current?.sendPlayer(liveHanded, strategyClub.clubType);
+  }, [bridgeState.status, liveHanded, strategyClub]);
+
+  useEffect(() => () => strategyAbortRef.current?.abort(), []);
 
   useEffect(() => {
     const gameWindow = window as typeof window & {
@@ -176,21 +427,129 @@ export function CourseTwinScene({
         cameraView,
         cameraCommand: cameraCommand?.action ?? null,
         hole: selectedHole.holeNumber,
-        visibleShotCount: selectedShot ? 1 : 0,
-        selectedShotIndex: selectedShot ? shotIndex : null,
-        shot: selectedShot
-          ? {
-              id: selectedShot.id,
-              club: selectedShot.clubType,
-              playback: Number(playback.toFixed(3)),
-              start: selectedShot.start,
-              totalEnd: selectedShot.totalEnd,
-            }
-          : null,
+        visibleShotCount: mode === "replay" && selectedShot ? 1 : 0,
+        selectedShotIndex: mode === "replay" && selectedShot ? shotIndex : null,
+        shot:
+          mode === "replay" && selectedShot
+            ? {
+                id: selectedShot.id,
+                club: selectedShot.clubType,
+                playback: Number(playback.toFixed(3)),
+                start: selectedShot.start,
+                totalEnd: selectedShot.totalEnd,
+                physics: selectedSimulation
+                  ? {
+                      phase: playbackFrame?.phase ?? "stopped",
+                      position: playbackFrame?.position ?? selectedSimulation.finalPosition,
+                      landingSurface: selectedSimulation.landingSurface,
+                      finalSurface: selectedSimulation.finalSurface,
+                      penalty: selectedSimulation.penalty,
+                      bounceCount: selectedSimulation.bounceCount,
+                      flightTimeS: Number(selectedSimulation.flightTimeS.toFixed(2)),
+                      totalTimeS: Number(selectedSimulation.totalTimeS.toFixed(2)),
+                    }
+                  : null,
+              }
+            : null,
+        strategy:
+          mode === "strategy"
+            ? {
+                status: strategyState.status,
+                holeNumber: strategyState.holeNumber,
+                selectedClub: strategyClub
+                  ? {
+                      id: strategyClub.clubId,
+                      club: strategyClub.clubType,
+                      carryMedianYd: strategyClub.carryMedianYd,
+                      aimOffsetYd: strategyClub.aimOffsetYd,
+                      averageRemainingYd: strategyClub.averageRemainingYd,
+                      expectedRiskStrokes: strategyClub.expectedRiskStrokes,
+                      probabilities: strategyClub.probabilities,
+                      landingPoints: strategyClub.landingCloud.length,
+                    }
+                  : null,
+              }
+            : null,
+        virtualRound:
+          mode === "play"
+            ? {
+                holeNumber: selectedHole.holeNumber,
+                shotNumber: virtualShotNumber,
+                strokes: virtualStrokes,
+                penaltyStrokes: virtualPenaltyStrokes,
+                complete: virtualComplete,
+                aimOffsetYd: virtualAimOffsetYd,
+                start: virtualStart,
+                club: strategyClub?.clubType ?? null,
+                sampledShot: virtualShot?.sampled ?? null,
+                physics: virtualSimulation
+                  ? {
+                      finalPosition: virtualSimulation.finalPosition,
+                      finalSurface: virtualSimulation.finalSurface,
+                      penalty: virtualSimulation.penalty,
+                    }
+                  : null,
+              }
+            : null,
+        liveRound:
+          mode === "live"
+            ? {
+                bridgeStatus: bridgeState.status,
+                launchMonitorConnected: bridgeState.launchMonitorConnected,
+                holeNumber: selectedHole.holeNumber,
+                shotNumber: liveShotNumber,
+                strokes: liveStrokes,
+                penaltyStrokes: livePenaltyStrokes,
+                complete: liveComplete,
+                start: liveStart,
+                club: strategyClub?.clubType ?? null,
+                shot: liveShot
+                  ? {
+                      id: liveShot.id,
+                      ballSpeedMph: liveShot.metrics.ballSpeedMph.value,
+                      launchAngleDeg: liveShot.metrics.launchAngleDeg.value,
+                      spinRate: liveShot.metrics.spinRate.value,
+                      carryYd: liveShot.metrics.carryYd.value,
+                    }
+                  : null,
+                physics: liveSimulation
+                  ? {
+                      finalPosition: liveSimulation.finalPosition,
+                      finalSurface: liveSimulation.finalSurface,
+                      penalty: liveSimulation.penalty,
+                    }
+                  : null,
+              }
+            : null,
+        exploration:
+          mode === "explore"
+            ? {
+                transport: exploreTransport,
+                position: explorePosition,
+                controls:
+                  exploreTransport === "walk"
+                    ? "W/S move, A/D strafe, arrow keys turn"
+                    : "W/S drive, A/D or arrow keys steer",
+                groupSession:
+                  roomState.status === "ready" && roomState.room
+                    ? {
+                        roomId: roomState.room.id,
+                        inviteCode: roomState.room.inviteCode,
+                        memberCount: roomState.room.members.length,
+                        isHost: roomState.room.isHost,
+                      }
+                    : { status: roomState.status, error: roomState.error },
+              }
+            : null,
       });
     gameWindow.advanceTime = (milliseconds) => {
       setPlaying(false);
       setPlayback((current) => Math.min(1, current + Math.max(0, milliseconds) / 3200));
+      window.dispatchEvent(
+        new CustomEvent("course-twin-advance-time", {
+          detail: Math.max(0, milliseconds),
+        }),
+      );
     };
     return () => {
       delete gameWindow.render_game_to_text;
@@ -199,15 +558,198 @@ export function CourseTwinScene({
   }, [
     cameraCommand,
     cameraView,
+    explorePosition,
+    exploreTransport,
+    bridgeState.launchMonitorConnected,
+    bridgeState.status,
+    liveComplete,
+    livePenaltyStrokes,
+    liveShot,
+    liveShotNumber,
+    liveSimulation,
+    liveStart,
+    liveStrokes,
     manifest,
     mode,
     playback,
+    playbackFrame,
+    roomState,
     sampleTerrain,
     selectedHole,
     selectedShot,
+    selectedSimulation,
     shotIndex,
+    strategyClub,
+    strategyState.holeNumber,
+    strategyState.status,
     terrainError,
+    virtualAimOffsetYd,
+    virtualComplete,
+    virtualPenaltyStrokes,
+    virtualShot,
+    virtualShotNumber,
+    virtualSimulation,
+    virtualStart,
+    virtualStrokes,
   ]);
+
+  const ensureBridgeClient = () => {
+    if (bridgeClientRef.current) return bridgeClientRef.current;
+    const client = new CourseTwinBridgeClient({
+      onEvent: (event: CourseTwinBridgeEvent) => {
+        if (event.type === "bridge-status") {
+          setBridgeState((current) => ({
+            ...current,
+            status: "connected",
+            launchMonitorConnected: event.launchMonitorConnected,
+            error: null,
+          }));
+          return;
+        }
+        if (event.type === "launch-monitor-status") {
+          setBridgeState((current) => ({
+            ...current,
+            launchMonitorConnected: event.connected,
+          }));
+          return;
+        }
+
+        const context = liveContextRef.current;
+        if (!context.hole || !context.canAccept) {
+          setBridgeState((current) => ({
+            ...current,
+            error: "Finish the current shot before hitting another ball.",
+          }));
+          return;
+        }
+        setLiveShot(
+          bridgeShotToReplayShot({
+            event,
+            hole: context.hole,
+            start: context.start,
+            clubType: context.clubType,
+            holeShotNumber: context.shotNumber,
+          }),
+        );
+        setLiveStrokes((current) => current + 1);
+        setBridgeState((current) => ({
+          ...current,
+          launchMonitorConnected: true,
+          error: null,
+        }));
+        setMode("live");
+        setCameraView("golfer");
+        setPlayback(0);
+        setPlaying(true);
+        setCameraCommand(null);
+      },
+      onDisconnect: (reason) => {
+        setBridgeState((current) => ({
+          ...current,
+          status: "error",
+          launchMonitorConnected: false,
+          error: reason,
+        }));
+      },
+    });
+    bridgeClientRef.current = client;
+    return client;
+  };
+
+  const detectBridge = () => {
+    const client = ensureBridgeClient();
+    setBridgeState((current) => ({ ...current, status: "detecting", error: null }));
+    void client
+      .detect()
+      .then((health) => {
+        setBridgeState({
+          status: "available",
+          health,
+          launchMonitorConnected: health.gsProConnected,
+          error: null,
+        });
+      })
+      .catch(() => {
+        setBridgeState({
+          status: "error",
+          health: null,
+          launchMonitorConnected: false,
+          error: "Start the Course Twin Bridge on this computer, then try again.",
+        });
+      });
+  };
+
+  const pairBridge = () => {
+    if (!/^\d{6}$/.test(pairingCode)) {
+      setBridgeState((current) => ({
+        ...current,
+        error: "Enter the six-digit code shown in the bridge window.",
+      }));
+      return;
+    }
+    const client = ensureBridgeClient();
+    setBridgeState((current) => ({ ...current, status: "pairing", error: null }));
+    void client
+      .pair(pairingCode)
+      .then(() => {
+        setPairingCode("");
+        setBridgeState((current) => ({ ...current, status: "connected", error: null }));
+        if (strategyClub) client.sendPlayer(liveHanded, strategyClub.clubType);
+      })
+      .catch((error: unknown) => {
+        setBridgeState((current) => ({
+          ...current,
+          status: "available",
+          error: error instanceof Error ? error.message : "Course Twin could not pair.",
+        }));
+      });
+  };
+
+  const loadStrategy = (nextHoleNumber: number) => {
+    strategyAbortRef.current?.abort();
+    const controller = new AbortController();
+    strategyAbortRef.current = controller;
+    setStrategyState({
+      holeNumber: nextHoleNumber,
+      status: "loading",
+      document: null,
+      error: null,
+    });
+    void fetch(
+      `/api/course-twins/${encodeURIComponent(manifest.course.id)}/strategy?holeNumber=${nextHoleNumber}`,
+      { cache: "no-store", signal: controller.signal },
+    )
+      .then(async (response) => {
+        const body = (await response.json()) as CourseTwinStrategyDocument | { error?: unknown };
+        if (!response.ok || !("modelVersion" in body)) {
+          throw new Error(
+            "error" in body && typeof body.error === "string"
+              ? body.error
+              : "Course strategy is unavailable.",
+          );
+        }
+        return body;
+      })
+      .then((document) => {
+        if (controller.signal.aborted) return;
+        setStrategyState({
+          holeNumber: nextHoleNumber,
+          status: "ready",
+          document,
+          error: null,
+        });
+        setStrategyClubId(document.recommended?.clubId ?? document.clubs[0]?.clubId ?? null);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setStrategyState({
+          holeNumber: nextHoleNumber,
+          status: "error",
+          document: null,
+          error: error instanceof Error ? error.message : "Course strategy is unavailable.",
+        });
+      });
+  };
 
   const selectHole = (nextHoleNumber: number) => {
     setHoleNumber(nextHoleNumber);
@@ -215,11 +757,79 @@ export function CourseTwinScene({
     setPlayback(0);
     setPlaying(false);
     setCameraCommand(null);
+    const nextHole = manifest.holes.find((hole) => hole.holeNumber === nextHoleNumber);
+    if (nextHole) {
+      setVirtualStart(nextHole.tee);
+      setVirtualShotNumber(1);
+      setVirtualStrokes(0);
+      setVirtualPenaltyStrokes(0);
+      setVirtualAimOffsetYd(0);
+      setVirtualShot(null);
+      setVirtualComplete(false);
+      setLiveStart(nextHole.tee);
+      setLiveShotNumber(1);
+      setLiveStrokes(0);
+      setLivePenaltyStrokes(0);
+      setLiveShot(null);
+      setLiveComplete(false);
+      setExplorePosition(nextHole.tee);
+    }
+    if (mode === "strategy") loadStrategy(nextHoleNumber);
+    if (mode === "play") loadStrategy(nextHoleNumber);
+    if (mode === "live") loadStrategy(nextHoleNumber);
   };
 
   const issueCameraCommand = (action: CameraControlAction) => {
     cameraCommandIdRef.current += 1;
     setCameraCommand({ id: cameraCommandIdRef.current, action });
+  };
+
+  const createRoom = async () => {
+    setRoomState({ status: "loading", room: null, error: null });
+    try {
+      const response = await fetch(`/api/course-twins/${manifest.course.id}/rooms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "explore", maxPlayers: 4, holeNumber }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to start a group session.");
+      setRoomState({ status: "ready", room: body, error: null });
+    } catch (error) {
+      setRoomState({
+        status: "error",
+        room: null,
+        error: error instanceof Error ? error.message : "Unable to start a group session.",
+      });
+    }
+  };
+
+  const joinRoom = async () => {
+    setRoomState({ status: "loading", room: null, error: null });
+    try {
+      const response = await fetch("/api/course-twins/rooms/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteCode: roomInviteCode }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "Unable to join that group session.");
+      setRoomState({ status: "ready", room: body, error: null });
+    } catch (error) {
+      setRoomState({
+        status: "error",
+        room: null,
+        error: error instanceof Error ? error.message : "Unable to join that group session.",
+      });
+    }
+  };
+
+  const leaveRoom = async () => {
+    if (roomState.room) {
+      await fetch(`/api/course-twins/rooms/${roomState.room.id}`, { method: "DELETE" });
+    }
+    setRoomState({ status: "idle", room: null, error: null });
+    setRoomInviteCode("");
   };
 
   return (
@@ -239,7 +849,7 @@ export function CourseTwinScene({
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+        <div className="mt-5 grid grid-cols-3 gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1 sm:grid-cols-6">
           <ModeButton
             active={mode === "flyover"}
             onClick={() => {
@@ -260,69 +870,258 @@ export function CourseTwinScene({
           >
             Replay
           </ModeButton>
-        </div>
-
-        <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
           <ModeButton
-            active={cameraView === "golfer"}
+            active={mode === "strategy"}
             onClick={() => {
-              setCameraView("golfer");
-              setCameraCommand(null);
-            }}
-          >
-            {mode === "replay" ? "Shot view" : "Golfer view"}
-          </ModeButton>
-          <ModeButton
-            active={cameraView === "aerial"}
-            onClick={() => {
+              setMode("strategy");
               setCameraView("aerial");
               setCameraCommand(null);
+              if (
+                strategyState.holeNumber !== selectedHole.holeNumber ||
+                strategyState.status === "idle" ||
+                strategyState.status === "error"
+              ) {
+                loadStrategy(selectedHole.holeNumber);
+              }
             }}
           >
-            Aerial view
+            Strategy
+          </ModeButton>
+          <ModeButton
+            active={mode === "play"}
+            onClick={() => {
+              setMode("play");
+              setCameraView("golfer");
+              setCameraCommand(null);
+              if (
+                strategyState.holeNumber !== selectedHole.holeNumber ||
+                strategyState.status === "idle" ||
+                strategyState.status === "error"
+              ) {
+                loadStrategy(selectedHole.holeNumber);
+              }
+            }}
+          >
+            Play
+          </ModeButton>
+          <ModeButton
+            active={mode === "live"}
+            onClick={() => {
+              setMode("live");
+              setCameraView("golfer");
+              setCameraCommand(null);
+              if (
+                strategyState.holeNumber !== selectedHole.holeNumber ||
+                strategyState.status === "idle" ||
+                strategyState.status === "error"
+              ) {
+                loadStrategy(selectedHole.holeNumber);
+              }
+              if (bridgeState.status === "idle" || bridgeState.status === "error") detectBridge();
+            }}
+          >
+            Live
+          </ModeButton>
+          <ModeButton
+            active={mode === "explore"}
+            onClick={() => {
+              setMode("explore");
+              setPlaying(false);
+              setCameraCommand(null);
+              setExplorePosition(selectedHole.tee);
+            }}
+          >
+            Explore
           </ModeButton>
         </div>
 
-        <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
-              Camera controls
-            </p>
-            <p className="text-[11px] text-emerald-100/45">Drag to orbit · scroll to zoom</p>
+        {mode === "explore" ? (
+          <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+            <ModeButton
+              active={exploreTransport === "walk"}
+              onClick={() => setExploreTransport("walk")}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <Footprints className="size-4" /> Walk
+              </span>
+            </ModeButton>
+            <ModeButton
+              active={exploreTransport === "cart"}
+              onClick={() => setExploreTransport("cart")}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5">
+                <CarFront className="size-4" /> Cart
+              </span>
+            </ModeButton>
           </div>
-          <div className="grid grid-cols-5 gap-1.5">
-            <CameraControlButton
-              label="Orbit camera left"
-              onClick={() => issueCameraCommand("orbit-left")}
+        ) : (
+          <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+            <ModeButton
+              active={cameraView === "golfer"}
+              onClick={() => {
+                setCameraView("golfer");
+                setCameraCommand(null);
+              }}
             >
-              <ChevronLeft className="size-4" />
-            </CameraControlButton>
-            <CameraControlButton
-              label="Zoom camera in"
-              onClick={() => issueCameraCommand("zoom-in")}
+              {mode === "replay" || mode === "play" || mode === "live"
+                ? "Shot view"
+                : "Golfer view"}
+            </ModeButton>
+            <ModeButton
+              active={cameraView === "aerial"}
+              onClick={() => {
+                setCameraView("aerial");
+                setCameraCommand(null);
+              }}
             >
-              <ZoomIn className="size-4" />
-            </CameraControlButton>
-            <CameraControlButton
-              label={mode === "replay" ? "Reset camera to selected shot" : "Reset camera to tee"}
-              onClick={() => issueCameraCommand("reset")}
-            >
-              <LocateFixed className="size-4" />
-            </CameraControlButton>
-            <CameraControlButton
-              label="Zoom camera out"
-              onClick={() => issueCameraCommand("zoom-out")}
-            >
-              <ZoomOut className="size-4" />
-            </CameraControlButton>
-            <CameraControlButton
-              label="Orbit camera right"
-              onClick={() => issueCameraCommand("orbit-right")}
-            >
-              <ChevronRight className="size-4" />
-            </CameraControlButton>
+              Aerial view
+            </ModeButton>
           </div>
-        </div>
+        )}
+
+        {mode === "explore" ? (
+          <>
+            <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-5 text-emerald-100/65">
+              {exploreTransport === "walk"
+                ? "Walk the mapped terrain with W/S, strafe with A/D and turn with the arrow keys."
+                : "Drive the course with W/S and steer with A/D or the arrow keys. Hold Shift for a faster cart pace."}
+            </div>
+            <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
+              <div className="flex items-center gap-2">
+                <Users className="size-4 text-emerald-200" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/70">
+                  Group session
+                </p>
+              </div>
+              {roomState.status === "ready" && roomState.room ? (
+                <div className="mt-3 space-y-3">
+                  <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
+                    <div>
+                      <p className="text-[11px] text-emerald-100/50">Invite code</p>
+                      <p className="font-mono text-base font-semibold tracking-[0.18em]">
+                        {roomState.room.inviteCode}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                      aria-label="Copy group invite code"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(roomState.room?.inviteCode ?? "");
+                        setRoomCodeCopied(true);
+                        window.setTimeout(() => setRoomCodeCopied(false), 1_500);
+                      }}
+                    >
+                      <Copy className="size-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-emerald-100/65">
+                    {roomCodeCopied
+                      ? "Invite code copied."
+                      : `${roomState.room.members.length} of 4 golfers connected.`}
+                  </p>
+                  <div className="space-y-1.5">
+                    {roomState.room.members.map((member) => (
+                      <div
+                        key={member.userId}
+                        className="flex items-center justify-between text-xs text-emerald-100/75"
+                      >
+                        <span>{member.displayName}</span>
+                        <span>
+                          Hole {member.holeNumber} · {member.transport}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                    onClick={leaveRoom}
+                  >
+                    <LogOut className="mr-2 size-4" /> Leave group
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  <Button
+                    type="button"
+                    className="w-full bg-emerald-300 text-[#092013] hover:bg-emerald-200"
+                    disabled={roomState.status === "loading"}
+                    onClick={createRoom}
+                  >
+                    Start group session
+                  </Button>
+                  <div className="flex gap-2">
+                    <input
+                      value={roomInviteCode}
+                      onChange={(event) => setRoomInviteCode(event.target.value.toUpperCase())}
+                      maxLength={12}
+                      placeholder="Invite code"
+                      aria-label="Group invite code"
+                      className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-3 text-sm uppercase tracking-[0.12em] text-white outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 focus:border-emerald-300"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                      disabled={roomState.status === "loading" || roomInviteCode.length < 6}
+                      onClick={joinRoom}
+                    >
+                      Join
+                    </Button>
+                  </div>
+                  {roomState.status === "error" ? (
+                    <p className="text-xs text-amber-200">{roomState.error}</p>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2">
+            <div className="mb-2 flex items-center justify-between px-1">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                Camera controls
+              </p>
+              <p className="text-[11px] text-emerald-100/45">Drag to orbit · scroll to zoom</p>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              <CameraControlButton
+                label="Orbit camera left"
+                onClick={() => issueCameraCommand("orbit-left")}
+              >
+                <ChevronLeft className="size-4" />
+              </CameraControlButton>
+              <CameraControlButton
+                label="Zoom camera in"
+                onClick={() => issueCameraCommand("zoom-in")}
+              >
+                <ZoomIn className="size-4" />
+              </CameraControlButton>
+              <CameraControlButton
+                label={mode === "replay" ? "Reset camera to selected shot" : "Reset camera to tee"}
+                onClick={() => issueCameraCommand("reset")}
+              >
+                <LocateFixed className="size-4" />
+              </CameraControlButton>
+              <CameraControlButton
+                label="Zoom camera out"
+                onClick={() => issueCameraCommand("zoom-out")}
+              >
+                <ZoomOut className="size-4" />
+              </CameraControlButton>
+              <CameraControlButton
+                label="Orbit camera right"
+                onClick={() => issueCameraCommand("orbit-right")}
+              >
+                <ChevronRight className="size-4" />
+              </CameraControlButton>
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -387,6 +1186,7 @@ export function CourseTwinScene({
             shotIndex={shotIndex}
             playing={playing}
             playback={playback}
+            simulation={selectedSimulation}
             onSelectShot={(index) => {
               setShotIndex(index);
               setPlayback(0);
@@ -401,6 +1201,130 @@ export function CourseTwinScene({
             onReset={() => {
               setPlaying(false);
               setPlayback(0);
+            }}
+          />
+        ) : mode === "strategy" ? (
+          <StrategyControls
+            state={strategyState}
+            selectedClub={strategyClub}
+            onSelectClub={setStrategyClubId}
+            onRetry={() => loadStrategy(selectedHole.holeNumber)}
+          />
+        ) : mode === "play" ? (
+          <VirtualRoundControls
+            state={strategyState}
+            hole={selectedHole}
+            selectedClub={strategyClub}
+            onSelectClub={setStrategyClubId}
+            start={virtualStart}
+            aimOffsetYd={virtualAimOffsetYd}
+            onAimOffsetChange={setVirtualAimOffsetYd}
+            shotNumber={virtualShotNumber}
+            strokes={virtualStrokes}
+            penaltyStrokes={virtualPenaltyStrokes}
+            shot={virtualShot}
+            simulation={virtualSimulation}
+            playback={playback}
+            complete={virtualComplete}
+            onPlay={() => {
+              if (!strategyClub || virtualComplete) return;
+              setVirtualShot(
+                buildCourseTwinVirtualShot({
+                  courseId: manifest.course.id,
+                  hole: selectedHole,
+                  start: virtualStart,
+                  club: strategyClub,
+                  aimOffsetYd: virtualAimOffsetYd,
+                  shotNumber: virtualShotNumber,
+                }),
+              );
+              setVirtualStrokes((current) => current + 1);
+              setPlayback(0);
+              setPlaying(true);
+              setCameraCommand(null);
+            }}
+            onContinue={() => {
+              if (!virtualSimulation) return;
+              const next = virtualDropPoint(virtualSimulation);
+              setVirtualStart([next.x, 0, next.z]);
+              setVirtualShotNumber((current) => current + 1);
+              if (virtualSimulation.penalty) {
+                setVirtualStrokes((current) => current + 1);
+                setVirtualPenaltyStrokes((current) => current + 1);
+              }
+              setVirtualShot(null);
+              setPlayback(0);
+              setPlaying(false);
+              setCameraCommand(null);
+            }}
+            onFinishGreen={() => {
+              setVirtualStrokes((current) => current + 2);
+              setVirtualComplete(true);
+              setPlaying(false);
+            }}
+            onRestart={() => {
+              setVirtualStart(selectedHole.tee);
+              setVirtualShotNumber(1);
+              setVirtualStrokes(0);
+              setVirtualPenaltyStrokes(0);
+              setVirtualAimOffsetYd(0);
+              setVirtualShot(null);
+              setVirtualComplete(false);
+              setPlayback(0);
+              setPlaying(false);
+              setCameraCommand(null);
+            }}
+            onRetry={() => loadStrategy(selectedHole.holeNumber)}
+          />
+        ) : mode === "live" ? (
+          <LiveRoundControls
+            bridge={bridgeState}
+            pairingCode={pairingCode}
+            onPairingCodeChange={setPairingCode}
+            onDetect={detectBridge}
+            onPair={pairBridge}
+            hole={selectedHole}
+            strategy={strategyState}
+            selectedClub={strategyClub}
+            onSelectClub={setStrategyClubId}
+            handed={liveHanded}
+            onHandedChange={setLiveHanded}
+            shotNumber={liveShotNumber}
+            strokes={liveStrokes}
+            penaltyStrokes={livePenaltyStrokes}
+            shot={liveShot}
+            simulation={liveSimulation}
+            playback={playback}
+            complete={liveComplete}
+            onContinue={() => {
+              if (!liveSimulation) return;
+              const next = virtualDropPoint(liveSimulation);
+              setLiveStart([next.x, 0, next.z]);
+              setLiveShotNumber((current) => current + 1);
+              if (liveSimulation.penalty) {
+                setLiveStrokes((current) => current + 1);
+                setLivePenaltyStrokes((current) => current + 1);
+              }
+              setLiveShot(null);
+              setPlayback(0);
+              setPlaying(false);
+              setCameraCommand(null);
+            }}
+            onFinishGreen={() => {
+              setLiveStrokes((current) => current + 2);
+              setLiveComplete(true);
+              setPlaying(false);
+            }}
+            onRestart={() => {
+              setLiveStart(selectedHole.tee);
+              setLiveShotNumber(1);
+              setLiveStrokes(0);
+              setLivePenaltyStrokes(0);
+              setLiveShot(null);
+              setLiveComplete(false);
+              setPlayback(0);
+              setPlaying(false);
+              setCameraCommand(null);
             }}
           />
         ) : (
@@ -449,18 +1373,49 @@ export function CourseTwinScene({
             shadow-mapSize-height={2048}
           />
           {terrainAsset && terrainSamples && sampleTerrain ? (
-            <Suspense fallback={null}>
-              <CourseWorld
-                manifest={manifest}
-                terrainSamples={terrainSamples}
-                sampleTerrain={sampleTerrain}
-                selectedHole={selectedHole}
-                selectedShot={mode === "replay" ? selectedShot : null}
-                playback={playback}
-                cameraView={cameraView}
-                cameraCommand={cameraCommand}
-              />
-            </Suspense>
+            <>
+              {mode === "explore" ? (
+                <RoamController
+                  key={`${selectedHole.holeNumber}-${exploreTransport}`}
+                  hole={selectedHole}
+                  transport={exploreTransport}
+                  bounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
+                  sampleTerrain={sampleTerrain}
+                  onPosition={setExplorePosition}
+                />
+              ) : null}
+              <Suspense fallback={null}>
+                <CourseWorld
+                  manifest={manifest}
+                  terrainSamples={terrainSamples}
+                  sampleTerrain={sampleTerrain}
+                  selectedHole={selectedHole}
+                  selectedShot={
+                    mode === "replay"
+                      ? selectedShot
+                      : mode === "play"
+                        ? (virtualShot?.shot ?? null)
+                        : mode === "live"
+                          ? liveShot
+                          : null
+                  }
+                  selectedSimulation={
+                    mode === "replay"
+                      ? selectedSimulation
+                      : mode === "play"
+                        ? virtualSimulation
+                        : mode === "live"
+                          ? liveSimulation
+                          : null
+                  }
+                  strategyClub={mode === "strategy" ? strategyClub : null}
+                  playback={playback}
+                  cameraView={cameraView}
+                  cameraCommand={cameraCommand}
+                  exploreTransport={mode === "explore" ? exploreTransport : null}
+                />
+              </Suspense>
+            </>
           ) : null}
         </Canvas>
         <div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur">
@@ -505,18 +1460,24 @@ function CourseWorld({
   sampleTerrain,
   selectedHole,
   selectedShot,
+  selectedSimulation,
+  strategyClub,
   playback,
   cameraView,
   cameraCommand,
+  exploreTransport,
 }: {
   manifest: CourseTwinManifest;
   terrainSamples: Float32Array;
   sampleTerrain: CourseTwinTerrainSampler;
   selectedHole: CourseTwinHole;
   selectedShot: CourseTwinReplayShot | null;
+  selectedSimulation: CourseTwinReplaySimulation | null;
+  strategyClub: CourseTwinStrategyClub | null;
   playback: number;
   cameraView: CameraView;
   cameraCommand: CameraCommand;
+  exploreTransport: ExploreTransport | null;
 }) {
   const cameraStart = selectedShot?.start ?? selectedHole.tee;
   const cameraEnd = selectedShot?.totalEnd ?? selectedHole.green;
@@ -563,30 +1524,40 @@ function CourseWorld({
           sampleTerrain={sampleTerrain}
         />
       ))}
-      {selectedShot ? (
+      {selectedShot && selectedSimulation ? (
         <ReplayTracer
           key={selectedShot.id}
-          shot={selectedShot}
+          simulation={selectedSimulation}
           playback={playback}
           active
-          sampleTerrain={sampleTerrain}
         />
       ) : null}
-      <CameraFocus
-        hole={selectedHole}
-        shot={selectedShot}
-        sampleTerrain={sampleTerrain}
-        view={cameraView}
-        command={cameraCommand}
-      />
-      <OrbitControls
-        makeDefault
-        target={center}
-        minDistance={12}
-        maxDistance={950}
-        maxPolarAngle={Math.PI / 2.08}
-        enableDamping
-      />
+      {strategyClub ? (
+        <StrategyLandingCloud
+          club={strategyClub}
+          sampleTerrain={sampleTerrain}
+          hole={selectedHole}
+        />
+      ) : null}
+      {!exploreTransport ? (
+        <>
+          <CameraFocus
+            hole={selectedHole}
+            shot={selectedShot}
+            sampleTerrain={sampleTerrain}
+            view={cameraView}
+            command={cameraCommand}
+          />
+          <OrbitControls
+            makeDefault
+            target={center}
+            minDistance={12}
+            maxDistance={950}
+            maxPolarAngle={Math.PI / 2.08}
+            enableDamping
+          />
+        </>
+      ) : null}
     </group>
   );
 }
@@ -1182,9 +2153,13 @@ function InstancedVegetation({
   ]);
 
   useEffect(() => {
-    textures.forEach((texture) => {
+    textures.forEach((texture, index) => {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 4;
+      const treeAsset = index < treeBillboards.length ? treeBillboards[index] : null;
+      const cropTop = treeAsset && "cropTop" in treeAsset ? treeAsset.cropTop : 0;
+      texture.offset.set(0, 0);
+      texture.repeat.set(1, 1 - cropTop);
       texture.needsUpdate = true;
     });
   }, [textures]);
@@ -1448,36 +2423,38 @@ function HoleFlag({ position }: { position: [number, number, number] }) {
 }
 
 function ReplayTracer({
-  shot,
+  simulation,
   playback,
   active,
-  sampleTerrain,
 }: {
-  shot: CourseTwinReplayShot;
+  simulation: CourseTwinReplaySimulation;
   playback: number;
   active: boolean;
-  sampleTerrain: CourseTwinTerrainSampler;
 }) {
-  const trajectory = shot.trajectory.map((point) =>
-    toTerrainPointWithAltitude(point, sampleTerrain),
-  );
-  const roll = [
-    toTerrainPoint(shot.carryEnd, sampleTerrain),
-    toTerrainPoint(shot.totalEnd, sampleTerrain),
-  ];
-  const marker = pointOnPolyline(trajectory, playback);
+  const flight = simulation.frames
+    .filter((frame) => frame.timeS <= simulation.flightTimeS + Number.EPSILON)
+    .map(replayFramePoint);
+  const ground = simulation.frames
+    .filter((frame) => frame.timeS + Number.EPSILON >= simulation.flightTimeS)
+    .map(replayFramePoint);
+  const currentFrame = sampleCourseTwinSimulation(simulation, playback);
+  const marker = currentFrame
+    ? replayFramePoint(currentFrame)
+    : replayFramePoint(simulation.frames[0]);
+  const carry = replayVectorPoint(simulation.carryPosition, 0.08);
+  const finish = replayVectorPoint(simulation.finalPosition, 0.08);
   return (
     <group>
       <Line
-        points={trajectory}
+        points={flight.length >= 2 ? flight : [carry, carry]}
         color={active ? "#f8ff84" : "#ffbd70"}
         lineWidth={active ? 2.1 : 1.05}
         transparent
         opacity={active ? 0.94 : 0.48}
       />
-      {shot.rollProvenance === "reconstructed" ? (
+      {ground.length >= 2 ? (
         <Line
-          points={roll}
+          points={ground}
           color={active ? "#ffffff" : "#ffd3a0"}
           lineWidth={active ? 2 : 1.1}
           dashed
@@ -1487,19 +2464,247 @@ function ReplayTracer({
           opacity={active ? 0.9 : 0.45}
         />
       ) : null}
+      <mesh position={carry} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.34, 0.5, 28]} />
+        <meshBasicMaterial color="#f8ff84" transparent opacity={0.82} depthWrite={false} />
+      </mesh>
+      <mesh position={finish} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.48, 0.66, 28]} />
+        <meshBasicMaterial
+          color={simulation.penalty ? "#fb7185" : "#ffffff"}
+          transparent
+          opacity={0.88}
+          depthWrite={false}
+        />
+      </mesh>
       {active ? (
         <mesh position={marker} castShadow>
           <sphereGeometry args={[0.18, 20, 20]} />
           <meshStandardMaterial color="#ffffff" emissive="#e7ff6a" emissiveIntensity={1.4} />
         </mesh>
       ) : (
-        <mesh position={trajectory.at(-1)}>
+        <mesh position={finish}>
           <sphereGeometry args={[0.24, 12, 12]} />
           <meshStandardMaterial color="#ffbd70" emissive="#ff8a3d" emissiveIntensity={0.4} />
         </mesh>
       )}
     </group>
   );
+}
+
+function replayFramePoint(frame: CourseTwinSimulationFrame): [number, number, number] {
+  return replayVectorPoint(frame.position, 0.14);
+}
+
+function replayVectorPoint(
+  point: { x: number; y: number; z: number },
+  verticalOffset: number,
+): [number, number, number] {
+  return [point.x, point.y + verticalOffset, point.z];
+}
+
+function StrategyLandingCloud({
+  club,
+  sampleTerrain,
+  hole,
+}: {
+  club: CourseTwinStrategyClub;
+  sampleTerrain: CourseTwinTerrainSampler;
+  hole: CourseTwinHole;
+}) {
+  const positions = useMemo(() => {
+    const values = new Float32Array(club.landingCloud.length * 3);
+    for (let index = 0; index < club.landingCloud.length; index += 1) {
+      const point = club.landingCloud[index];
+      values[index * 3] = point[0];
+      values[index * 3 + 1] = sampleTerrain(point[0], point[2]) + 0.42;
+      values[index * 3 + 2] = point[2];
+    }
+    return values;
+  }, [club.landingCloud, sampleTerrain]);
+  const pointTexture = useMemo(() => strategyPointTexture(), []);
+  const cloudCenter = useMemo(() => {
+    if (club.landingCloud.length === 0) return toTerrainPoint(hole.green, sampleTerrain);
+    const total = club.landingCloud.reduce(
+      (sum, point) => ({ x: sum.x + point[0], z: sum.z + point[2] }),
+      { x: 0, z: 0 },
+    );
+    const x = total.x / club.landingCloud.length;
+    const z = total.z / club.landingCloud.length;
+    return [x, sampleTerrain(x, z) + 0.48, z] as [number, number, number];
+  }, [club.landingCloud, hole.green, sampleTerrain]);
+  const tee = toTerrainPoint(hole.tee, sampleTerrain);
+
+  return (
+    <group>
+      <Line
+        points={[tee, cloudCenter]}
+        color="#e7ff6a"
+        lineWidth={1.2}
+        dashed
+        dashSize={5}
+        gapSize={3}
+        transparent
+        opacity={0.72}
+      />
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial
+          color="#e7ff6a"
+          map={pointTexture}
+          alphaTest={0.08}
+          size={1.7}
+          sizeAttenuation
+          transparent
+          opacity={0.72}
+          depthWrite={false}
+        />
+      </points>
+      <mesh position={cloudCenter} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.2, 2.75, 44]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.9} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function strategyPointTexture() {
+  const cached = proceduralTextureCache.get("strategy-point");
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Strategy point textures are unavailable.");
+  const gradient = context.createRadialGradient(32, 32, 3, 32, 32, 30);
+  gradient.addColorStop(0, "rgba(255,255,255,1)");
+  gradient.addColorStop(0.55, "rgba(255,255,255,0.9)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 64, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  proceduralTextureCache.set("strategy-point", texture);
+  return texture;
+}
+
+function RoamController({
+  hole,
+  transport,
+  bounds,
+  sampleTerrain,
+  onPosition,
+}: {
+  hole: CourseTwinHole;
+  transport: ExploreTransport;
+  bounds: CourseTwinManifest["bounds"];
+  sampleTerrain: CourseTwinTerrainSampler;
+  onPosition: (position: CourseTwinPoint) => void;
+}) {
+  const { camera } = useThree();
+  const keys = useRef(new Set<string>());
+  const position = useRef(new THREE.Vector3(hole.tee[0], hole.tee[1], hole.tee[2]));
+  const yaw = useRef(Math.atan2(hole.green[0] - hole.tee[0], hole.green[2] - hole.tee[2]));
+  const reportElapsed = useRef(0);
+
+  useEffect(() => {
+    const pressedKeys = keys.current;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      pressedKeys.add(event.code);
+    };
+    const onKeyUp = (event: KeyboardEvent) => pressedKeys.delete(event.code);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      pressedKeys.clear();
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const height = transport === "cart" ? 2.35 : 1.72;
+    const point = position.current;
+    point.y = sampleTerrain(point.x, point.z);
+    camera.position.set(point.x, point.y + height, point.z);
+    camera.lookAt(
+      point.x + Math.sin(yaw.current) * 12,
+      point.y + height * 0.82,
+      point.z + Math.cos(yaw.current) * 12,
+    );
+    camera.updateProjectionMatrix();
+    onPosition([point.x, point.y, point.z]);
+  }, [camera, onPosition, sampleTerrain, transport]);
+
+  const advanceMovement = useCallback(
+    (rawDelta: number) => {
+      const delta = Math.min(0.05, rawDelta);
+      const pressed = keys.current;
+      const forwardInput =
+        (pressed.has("KeyW") || pressed.has("ArrowUp") ? 1 : 0) -
+        (pressed.has("KeyS") || pressed.has("ArrowDown") ? 1 : 0);
+      const lateralInput =
+        (pressed.has("KeyD") || pressed.has("ArrowRight") ? 1 : 0) -
+        (pressed.has("KeyA") || pressed.has("ArrowLeft") ? 1 : 0);
+      const isCart = transport === "cart";
+      if (isCart && lateralInput !== 0) {
+        const direction = forwardInput === 0 ? 1 : Math.sign(forwardInput);
+        yaw.current -= lateralInput * direction * delta * 1.35;
+      } else {
+        const turnInput = (pressed.has("ArrowLeft") ? 1 : 0) - (pressed.has("ArrowRight") ? 1 : 0);
+        yaw.current += turnInput * delta * 1.65;
+      }
+      const fast = pressed.has("ShiftLeft") || pressed.has("ShiftRight");
+      const speed = isCart ? (fast ? 24 : 14) : fast ? 7 : 4.5;
+      const point = position.current;
+      const forwardX = Math.sin(yaw.current);
+      const forwardZ = Math.cos(yaw.current);
+      point.x += forwardX * forwardInput * speed * delta;
+      point.z += forwardZ * forwardInput * speed * delta;
+      if (!isCart) {
+        point.x += Math.cos(yaw.current) * lateralInput * speed * delta;
+        point.z -= Math.sin(yaw.current) * lateralInput * speed * delta;
+      }
+      point.x = THREE.MathUtils.clamp(point.x, bounds.minX + 2, bounds.maxX - 2);
+      point.z = THREE.MathUtils.clamp(point.z, bounds.minZ + 2, bounds.maxZ - 2);
+      point.y = sampleTerrain(point.x, point.z);
+      const height = isCart ? 2.35 : 1.72;
+      camera.position.set(point.x, point.y + height, point.z);
+      camera.lookAt(point.x + forwardX * 12, point.y + height * 0.82, point.z + forwardZ * 12);
+      reportElapsed.current += delta;
+      if (reportElapsed.current >= 0.2) {
+        reportElapsed.current = 0;
+        onPosition([point.x, point.y, point.z]);
+      }
+    },
+    [
+      bounds.maxX,
+      bounds.maxZ,
+      bounds.minX,
+      bounds.minZ,
+      camera,
+      onPosition,
+      sampleTerrain,
+      transport,
+    ],
+  );
+
+  useEffect(() => {
+    const onAdvanceTime = (event: Event) => {
+      const milliseconds = (event as CustomEvent<number>).detail;
+      if (Number.isFinite(milliseconds)) advanceMovement(milliseconds / 1000);
+    };
+    window.addEventListener("course-twin-advance-time", onAdvanceTime);
+    return () => window.removeEventListener("course-twin-advance-time", onAdvanceTime);
+  }, [advanceMovement]);
+
+  useFrame((_, rawDelta) => advanceMovement(rawDelta));
+  return null;
 }
 
 function CameraFocus({
@@ -1590,6 +2795,7 @@ function ReplayControls({
   shotIndex,
   playing,
   playback,
+  simulation,
   onSelectShot,
   onToggle,
   onReset,
@@ -1600,6 +2806,7 @@ function ReplayControls({
   shotIndex: number;
   playing: boolean;
   playback: number;
+  simulation: CourseTwinReplaySimulation | null;
   onSelectShot: (index: number) => void;
   onToggle: () => void;
   onReset: () => void;
@@ -1644,6 +2851,25 @@ function ReplayControls({
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div className="h-full bg-[#e7ff6a]" style={{ width: `${playback * 100}%` }} />
           </div>
+          {simulation ? (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <ReplayFact label="Landed" value={formatSurface(simulation.landingSurface)} />
+              <ReplayFact
+                label={simulation.penalty ? "Penalty" : "Finished"}
+                value={
+                  simulation.penalty
+                    ? formatPenalty(simulation.penalty)
+                    : formatSurface(simulation.finalSurface)
+                }
+                alert={Boolean(simulation.penalty)}
+              />
+              <ReplayFact label="Flight" value={`${simulation.flightTimeS.toFixed(1)} sec`} />
+              <ReplayFact
+                label="Ground"
+                value={`${simulation.bounceCount} ${simulation.bounceCount === 1 ? "bounce" : "bounces"} + roll`}
+              />
+            </div>
+          ) : null}
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {shots.map((shot, index) => (
               <button
@@ -1671,6 +2897,588 @@ function ReplayControls({
           No imported launch-monitor shots are assigned to this hole.
         </p>
       )}
+    </div>
+  );
+}
+
+function ReplayFact({
+  label,
+  value,
+  alert = false,
+}: {
+  label: string;
+  value: string;
+  alert?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/15 px-3 py-2">
+      <p className="text-emerald-100/45">{label}</p>
+      <p className={cn("mt-0.5 font-semibold", alert ? "text-rose-200" : "text-emerald-50")}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StrategyControls({
+  state,
+  selectedClub,
+  onSelectClub,
+  onRetry,
+}: {
+  state: StrategyLoadState;
+  selectedClub: CourseTwinStrategyClub | null;
+  onSelectClub: (clubId: string) => void;
+  onRetry: () => void;
+}) {
+  if (state.status === "loading") {
+    return (
+      <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+          My Bag strategy
+        </p>
+        <p className="mt-3 text-sm leading-6 text-emerald-100/60">
+          Running measured dispersion against mapped hazards…
+        </p>
+      </div>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <div className="mt-5 rounded-xl border border-amber-200/20 bg-amber-100/5 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100/70">
+          Strategy unavailable
+        </p>
+        <p className="mt-3 text-sm leading-6 text-amber-50/70">{state.error}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-3 !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+          onClick={onRetry}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
+  if (!state.document || !selectedClub) {
+    return (
+      <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/60">
+        Choose Strategy to compare this hole with your measured bag.
+      </div>
+    );
+  }
+
+  const recommended = state.document.recommended?.clubId === selectedClub.clubId;
+  const severeHazardProbability =
+    selectedClub.probabilities.water +
+    selectedClub.probabilities.out_of_bounds +
+    selectedClub.probabilities.trees;
+  return (
+    <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+            My Bag strategy
+          </p>
+          <p className="mt-2 text-lg font-semibold">{selectedClub.clubType}</p>
+          <p className="text-sm text-emerald-100/60">
+            {Math.round(selectedClub.carryMedianYd)} yd stock carry · {selectedClub.sampleSize}{" "}
+            shots
+          </p>
+        </div>
+        {recommended ? (
+          <Badge className="border border-[#e7ff6a]/30 bg-[#e7ff6a]/10 text-[#efffa5] hover:bg-[#e7ff6a]/10">
+            Recommended
+          </Badge>
+        ) : null}
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <ReplayFact
+          label="Aim"
+          value={
+            Math.abs(selectedClub.aimOffsetYd) < 0.5
+              ? "Centre"
+              : `${Math.abs(selectedClub.aimOffsetYd).toFixed(1)} yd ${selectedClub.aimOffsetYd < 0 ? "left" : "right"}`
+          }
+        />
+        <ReplayFact label="Leave" value={`${selectedClub.averageRemainingYd.toFixed(0)} yd avg`} />
+        <ReplayFact
+          label="Serious hazard"
+          value={formatProbability(severeHazardProbability)}
+          alert={severeHazardProbability >= 0.15}
+        />
+        <ReplayFact
+          label="Bunker"
+          value={formatProbability(selectedClub.probabilities.bunker)}
+          alert={selectedClub.probabilities.bunker >= 0.2}
+        />
+      </div>
+
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {state.document.clubs.map((club) => (
+          <button
+            key={club.clubId}
+            type="button"
+            className={cn(
+              "min-w-fit rounded-lg border px-3 py-2 text-sm font-semibold",
+              club.clubId === selectedClub.clubId
+                ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                : "border-white/10 bg-white/5",
+            )}
+            aria-label={`Model ${club.clubType}`}
+            onClick={() => onSelectClub(club.clubId)}
+          >
+            {club.clubType}
+          </button>
+        ))}
+      </div>
+      <p className="mt-3 text-xs leading-5 text-amber-100/70">
+        {strategyConfidenceCopy(selectedClub)} {state.document.disclosure}
+      </p>
+    </div>
+  );
+}
+
+function VirtualRoundControls({
+  state,
+  hole,
+  selectedClub,
+  onSelectClub,
+  start,
+  aimOffsetYd,
+  onAimOffsetChange,
+  shotNumber,
+  strokes,
+  penaltyStrokes,
+  shot,
+  simulation,
+  playback,
+  complete,
+  onPlay,
+  onContinue,
+  onFinishGreen,
+  onRestart,
+  onRetry,
+}: {
+  state: StrategyLoadState;
+  hole: CourseTwinHole;
+  selectedClub: CourseTwinStrategyClub | null;
+  onSelectClub: (clubId: string) => void;
+  start: CourseTwinPoint;
+  aimOffsetYd: number;
+  onAimOffsetChange: (offsetYd: number) => void;
+  shotNumber: number;
+  strokes: number;
+  penaltyStrokes: number;
+  shot: CourseTwinVirtualShot | null;
+  simulation: CourseTwinReplaySimulation | null;
+  playback: number;
+  complete: boolean;
+  onPlay: () => void;
+  onContinue: () => void;
+  onFinishGreen: () => void;
+  onRestart: () => void;
+  onRetry: () => void;
+}) {
+  if (state.status === "loading") {
+    return (
+      <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+          Virtual round · My Bag
+        </p>
+        <p className="mt-3 text-sm leading-6 text-emerald-100/60">
+          Loading your measured club distributions…
+        </p>
+      </div>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <div className="mt-5 rounded-xl border border-amber-200/20 bg-amber-100/5 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100/70">
+          My Bag play unavailable
+        </p>
+        <p className="mt-3 text-sm leading-6 text-amber-50/70">{state.error}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-3 !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+          onClick={onRetry}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
+  if (!state.document || !selectedClub) {
+    return (
+      <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/60">
+        Play needs a measured bag profile from imported launch-monitor shots.
+      </div>
+    );
+  }
+
+  const resultPosition = simulation?.finalPosition ?? {
+    x: start[0],
+    y: start[1],
+    z: start[2],
+  };
+  const remainingYd =
+    Math.hypot(hole.green[0] - resultPosition.x, hole.green[2] - resultPosition.z) / 0.9144;
+  const onGreen = simulation?.finalSurface === "green";
+
+  return (
+    <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+            Virtual round · My Bag
+          </p>
+          <p className="mt-2 text-lg font-semibold">
+            {complete ? `Hole complete · ${strokes}` : `Shot ${shotNumber}`}
+          </p>
+          <p className="text-sm text-emerald-100/60">
+            {strokes} {strokes === 1 ? "stroke" : "strokes"}
+            {penaltyStrokes > 0 ? ` · ${penaltyStrokes} penalty` : ""}
+          </p>
+        </div>
+        <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
+          Par {hole.par}
+        </Badge>
+      </div>
+
+      {complete ? (
+        <Button type="button" className="mt-4 w-full" onClick={onRestart}>
+          Replay hole
+        </Button>
+      ) : shot && simulation ? (
+        <>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full bg-[#e7ff6a]" style={{ width: `${playback * 100}%` }} />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <ReplayFact label="Club" value={shot.shot.clubType} />
+            <ReplayFact label="Sampled" value={`${shot.sampled.carryYd.toFixed(0)} yd carry`} />
+            <ReplayFact
+              label={simulation.penalty ? "Penalty" : "Lie"}
+              value={
+                simulation.penalty
+                  ? formatPenalty(simulation.penalty)
+                  : formatSurface(simulation.finalSurface)
+              }
+              alert={Boolean(simulation.penalty)}
+            />
+            <ReplayFact label="Remaining" value={`${remainingYd.toFixed(0)} yd`} />
+          </div>
+          {playback >= 1 ? (
+            <Button
+              type="button"
+              className="mt-3 w-full"
+              onClick={onGreen && !simulation.penalty ? onFinishGreen : onContinue}
+            >
+              {onGreen && !simulation.penalty
+                ? "Finish with 2-putt"
+                : simulation.penalty
+                  ? "Take penalty drop"
+                  : "Play next shot"}
+            </Button>
+          ) : (
+            <p className="mt-3 text-xs text-emerald-100/50">Shot in progress…</p>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {state.document.clubs.map((club) => (
+              <button
+                key={club.clubId}
+                type="button"
+                className={cn(
+                  "min-w-fit rounded-lg border px-3 py-2 text-sm font-semibold",
+                  club.clubId === selectedClub.clubId
+                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/10 bg-white/5",
+                )}
+                aria-label={`Select ${club.clubType} for virtual shot`}
+                onClick={() => onSelectClub(club.clubId)}
+              >
+                {club.clubType}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+            Aim offset
+          </p>
+          <div className="mt-2 grid grid-cols-5 gap-1.5">
+            {[-15, -7.5, 0, 7.5, 15].map((offset) => (
+              <button
+                key={offset}
+                type="button"
+                className={cn(
+                  "rounded-lg border px-1 py-2 text-xs font-semibold",
+                  offset === aimOffsetYd
+                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/10 bg-white/5",
+                )}
+                aria-label={`Aim ${offset === 0 ? "centre" : `${Math.abs(offset)} yards ${offset < 0 ? "left" : "right"}`}`}
+                onClick={() => onAimOffsetChange(offset)}
+              >
+                {offset === 0 ? "0" : `${offset > 0 ? "+" : ""}${offset}`}
+              </button>
+            ))}
+          </div>
+          <Button type="button" className="mt-3 w-full" onClick={onPlay}>
+            Play {selectedClub.clubType}
+          </Button>
+          <p className="mt-3 text-xs leading-5 text-amber-100/70">
+            Each shot is sampled from your measured carry and dispersion. This is a model, not a
+            claim about the shot you would definitely hit.
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function LiveRoundControls({
+  bridge,
+  pairingCode,
+  onPairingCodeChange,
+  onDetect,
+  onPair,
+  hole,
+  strategy,
+  selectedClub,
+  onSelectClub,
+  handed,
+  onHandedChange,
+  shotNumber,
+  strokes,
+  penaltyStrokes,
+  shot,
+  simulation,
+  playback,
+  complete,
+  onContinue,
+  onFinishGreen,
+  onRestart,
+}: {
+  bridge: BridgeLoadState;
+  pairingCode: string;
+  onPairingCodeChange: (code: string) => void;
+  onDetect: () => void;
+  onPair: () => void;
+  hole: CourseTwinHole;
+  strategy: StrategyLoadState;
+  selectedClub: CourseTwinStrategyClub | null;
+  onSelectClub: (clubId: string) => void;
+  handed: "RH" | "LH";
+  onHandedChange: (handed: "RH" | "LH") => void;
+  shotNumber: number;
+  strokes: number;
+  penaltyStrokes: number;
+  shot: CourseTwinReplayShot | null;
+  simulation: CourseTwinReplaySimulation | null;
+  playback: number;
+  complete: boolean;
+  onContinue: () => void;
+  onFinishGreen: () => void;
+  onRestart: () => void;
+}) {
+  const connected = bridge.status === "connected";
+  const resultPosition = simulation?.finalPosition;
+  const remainingYd = resultPosition
+    ? Math.hypot(hole.green[0] - resultPosition.x, hole.green[2] - resultPosition.z) / 0.9144
+    : null;
+  const onGreen = simulation?.finalSurface === "green";
+
+  return (
+    <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+            Live launch monitor
+          </p>
+          <p className="mt-2 text-lg font-semibold">
+            {connected
+              ? bridge.launchMonitorConnected
+                ? "Ready for shot"
+                : "Bridge paired"
+              : "Local bridge"}
+          </p>
+          <p className="text-sm text-emerald-100/60">
+            {connected
+              ? bridge.launchMonitorConnected
+                ? "GSPro feed detected on this computer"
+                : "Waiting for the launch monitor in GSPro mode"
+              : "Loopback only · no monitor data leaves this computer"}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "grid size-9 place-items-center rounded-full border",
+            connected
+              ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-200"
+              : "border-white/10 bg-white/5 text-white/45",
+          )}
+          aria-label={connected ? "Bridge connected" : "Bridge disconnected"}
+        >
+          {connected ? <Wifi className="size-4" /> : <WifiOff className="size-4" />}
+        </div>
+      </div>
+
+      {bridge.status === "detecting" ? (
+        <p className="mt-4 text-sm text-emerald-100/60">Looking for Course Twin Bridge…</p>
+      ) : bridge.status === "available" || bridge.status === "pairing" ? (
+        <div className="mt-4">
+          <label
+            htmlFor="course-twin-pairing-code"
+            className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60"
+          >
+            Six-digit pairing code
+          </label>
+          <div className="mt-2 flex gap-2">
+            <input
+              id="course-twin-pairing-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={pairingCode}
+              onChange={(event) =>
+                onPairingCodeChange(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-3 py-2 font-mono text-lg tracking-[0.22em] text-white outline-none focus:border-emerald-300"
+              placeholder="000000"
+            />
+            <Button type="button" disabled={bridge.status === "pairing"} onClick={onPair}>
+              {bridge.status === "pairing" ? "Pairing…" : "Pair"}
+            </Button>
+          </div>
+        </div>
+      ) : !connected ? (
+        <Button type="button" className="mt-4 w-full" onClick={onDetect}>
+          Find local bridge
+        </Button>
+      ) : null}
+
+      {bridge.error ? (
+        <div className="mt-3 rounded-lg border border-amber-200/20 bg-amber-100/5 px-3 py-2 text-xs leading-5 text-amber-100/80">
+          {bridge.error}
+        </div>
+      ) : null}
+
+      {connected ? (
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                Hole {hole.holeNumber} · shot {shotNumber}
+              </p>
+              <p className="mt-1 text-sm text-emerald-100/60">
+                {strokes} {strokes === 1 ? "stroke" : "strokes"}
+                {penaltyStrokes > 0 ? ` · ${penaltyStrokes} penalty` : ""}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+              {(["RH", "LH"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={cn(
+                    "rounded px-2 py-1 text-xs font-semibold",
+                    handed === value ? "bg-[#e7ff6a] text-[#102217]" : "text-white/60",
+                  )}
+                  onClick={() => onHandedChange(value)}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {complete ? (
+            <Button type="button" className="mt-3 w-full" onClick={onRestart}>
+              Replay hole
+            </Button>
+          ) : shot && simulation ? (
+            <>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full bg-[#e7ff6a]" style={{ width: `${playback * 100}%` }} />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <ReplayFact label="Club" value={shot.clubType} />
+                <ReplayFact
+                  label="Ball speed"
+                  value={`${shot.metrics.ballSpeedMph.value?.toFixed(1)} mph`}
+                />
+                <ReplayFact
+                  label={simulation.penalty ? "Penalty" : "Lie"}
+                  value={
+                    simulation.penalty
+                      ? formatPenalty(simulation.penalty)
+                      : formatSurface(simulation.finalSurface)
+                  }
+                  alert={Boolean(simulation.penalty)}
+                />
+                <ReplayFact label="Remaining" value={`${remainingYd?.toFixed(0)} yd`} />
+              </div>
+              {playback >= 1 ? (
+                <Button
+                  type="button"
+                  className="mt-3 w-full"
+                  onClick={onGreen && !simulation.penalty ? onFinishGreen : onContinue}
+                >
+                  {onGreen && !simulation.penalty
+                    ? "Finish with 2-putt"
+                    : simulation.penalty
+                      ? "Take penalty drop"
+                      : "Ready for next shot"}
+                </Button>
+              ) : (
+                <p className="mt-3 text-xs text-emerald-100/50">Simulating measured shot…</p>
+              )}
+            </>
+          ) : strategy.status === "loading" ? (
+            <p className="mt-3 text-sm text-emerald-100/60">Loading your measured bag…</p>
+          ) : selectedClub && strategy.document ? (
+            <>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {strategy.document.clubs.map((club) => (
+                  <button
+                    key={club.clubId}
+                    type="button"
+                    className={cn(
+                      "min-w-fit rounded-lg border px-3 py-2 text-sm font-semibold",
+                      club.clubId === selectedClub.clubId
+                        ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                        : "border-white/10 bg-white/5",
+                    )}
+                    aria-label={`Tell launch monitor ${club.clubType} is selected`}
+                    onClick={() => onSelectClub(club.clubId)}
+                  >
+                    {club.clubType}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-xs text-emerald-100/75">
+                <Radio className="size-4 shrink-0 text-emerald-300" />
+                Hit {selectedClub.clubType} when the monitor reports ready. Only the next shot will
+                be shown.
+              </div>
+            </>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-amber-100/70">
+              Live play needs a measured bag profile so Course Twin can send the selected club to
+              GSPro.
+            </p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1730,35 +3538,47 @@ function toTerrainPoint(
   return [point[0], sampleTerrain(point[0], point[2]) + 1.1, point[2]];
 }
 
-function toTerrainPointWithAltitude(
-  point: CourseTwinPoint,
-  sampleTerrain: CourseTwinTerrainSampler,
-): [number, number, number] {
-  return [point[0], sampleTerrain(point[0], point[2]) + point[1] + 1.3, point[2]];
-}
-
 function setPerspectiveFov(camera: THREE.PerspectiveCamera, fov: number) {
   const focalLength =
     (0.5 * camera.getFilmHeight()) / Math.tan(THREE.MathUtils.degToRad(fov * 0.5));
   camera.setFocalLength(focalLength);
 }
 
-function pointOnPolyline(
-  points: Array<[number, number, number]>,
-  ratio: number,
-): [number, number, number] {
-  if (points.length === 0) return [0, 0, 0];
-  const scaled = Math.min(1, Math.max(0, ratio)) * (points.length - 1);
-  const left = points[Math.floor(scaled)];
-  const right = points[Math.min(points.length - 1, Math.ceil(scaled))];
-  const amount = scaled - Math.floor(scaled);
-  return [
-    left[0] + (right[0] - left[0]) * amount,
-    left[1] + (right[1] - left[1]) * amount,
-    left[2] + (right[2] - left[2]) * amount,
-  ];
-}
-
 function formatYards(value: number | null) {
   return value === null ? "—" : `${Math.round(value)} yd`;
+}
+
+function formatSurface(surface: CourseTwinSurface) {
+  return surface
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function formatPenalty(penalty: NonNullable<CourseTwinReplaySimulation["penalty"]>) {
+  return penalty === "water" ? "Water" : "Out of bounds";
+}
+
+function formatProbability(probability: number) {
+  return `${Math.round(probability * 100)}%`;
+}
+
+function strategyConfidenceCopy(club: CourseTwinStrategyClub) {
+  if (club.confidence === "measured") {
+    return `Measured confidence (${Math.round(club.confidenceScore)}%).`;
+  }
+  if (club.confidence === "developing") {
+    return `Developing confidence from ${club.sampleSize} measured shots.`;
+  }
+  return `Low sample: only ${club.sampleSize} measured shots.`;
+}
+
+function virtualDropPoint(simulation: CourseTwinReplaySimulation) {
+  if (!simulation.penalty) return simulation.finalPosition;
+  return (
+    [...simulation.frames]
+      .reverse()
+      .find((frame) => frame.surface !== "water" && frame.surface !== "out_of_bounds")?.position ??
+    simulation.carryPosition
+  );
 }
