@@ -4654,6 +4654,15 @@ function VirtualRoundControls({
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <ReplayFact label="Club" value={shot.shot.clubType} />
             <ReplayFact label="Sampled" value={`${shot.sampled.carryYd.toFixed(0)} yd carry`} />
+            <ReplayFact label="Shape" value={formatVirtualShape(shot.sampled.spinAxisDeg)} />
+            <ReplayFact
+              label="Shape source"
+              value={
+                shot.sampled.shapeSource === "measured-spin-axis"
+                  ? "Measured axis"
+                  : "Dispersion inferred"
+              }
+            />
             <ReplayFact
               label={simulation.penalty ? "Penalty" : "Lie"}
               value={
@@ -4771,8 +4780,11 @@ function VirtualRoundControls({
             Play {selectedClub.clubType}
           </Button>
           <p className="mt-3 text-xs leading-5 text-amber-100/70">
-            Each shot is sampled from your measured carry and dispersion. This is a model, not a
-            claim about the shot you would definitely hit.
+            {selectedClub.shotModel.spinAxisMeanDeg !== null
+              ? "Each shot samples your measured carry, dispersion and spin-axis shape."
+              : "Your imported shots do not contain spin axis, so curve is inferred from measured left/right dispersion."}{" "}
+            Softer central curves are weighted most heavily; this remains a model, not a guaranteed
+            result.
           </p>
         </>
       )}
@@ -5157,6 +5169,13 @@ function formatSurface(surface: CourseTwinSurface) {
 
 function formatPenalty(penalty: NonNullable<CourseTwinReplaySimulation["penalty"]>) {
   return penalty === "water" ? "Water" : "Out of bounds";
+}
+
+function formatVirtualShape(spinAxisDeg: number) {
+  const magnitude = Math.abs(spinAxisDeg);
+  if (magnitude < 0.1) return "Straight";
+  const strength = magnitude < 4 ? "Soft" : magnitude < 9 ? "Shaped" : "Strong";
+  return `${strength} ${spinAxisDeg > 0 ? "left" : "right"} · ${magnitude.toFixed(1)}°`;
 }
 
 function formatProbability(probability: number) {

@@ -69,7 +69,11 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("buildCourseTwinVirtualShot({");
     expect(sceneSource).toContain("virtualDropPoint(virtualSimulation)");
     expect(sceneSource).toContain("Virtual round · My Bag");
-    expect(sceneSource).toContain("Each shot is sampled from your measured carry and dispersion");
+    expect(sceneSource).toContain(
+      "Your imported shots do not contain spin axis, so curve is inferred from measured left/right dispersion.",
+    );
+    expect(sceneSource).toContain("formatVirtualShape(shot.sampled.spinAxisDeg)");
+    expect(sceneSource).toContain('"Dispersion inferred"');
     expect(sceneSource).toContain("buildCourseTwinAutomaticGreenCompletion");
     expect(sceneSource).toContain("<RoundAutoPuttStatus");
     expect(sceneSource).toContain("Green reached · automatic putt-out");

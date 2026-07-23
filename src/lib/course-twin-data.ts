@@ -418,6 +418,7 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         spinRate: shots.spinRate,
+        spinAxis: shots.spinAxis,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
       })
@@ -446,6 +447,7 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
       const speeds = numericValues(measured.map((shot) => shot.ballSpeedMph));
       const launches = numericValues(measured.map((shot) => shot.launchAngleDeg));
       const spins = numericValues(measured.map((shot) => shot.spinRate));
+      const spinAxes = numericValues(measured.map((shot) => shot.spinAxis));
       const interquartileStdDev =
         stock.carryP25Yd !== null && stock.carryP75Yd !== null
           ? Math.abs(stock.carryP75Yd - stock.carryP25Yd) / 1.349
@@ -467,6 +469,8 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
         launchStdDevDeg: standardDeviation(launches),
         spinMeanRpm: mean(spins),
         spinStdDevRpm: standardDeviation(spins),
+        spinAxisMeanDeg: mean(spinAxes),
+        spinAxisStdDevDeg: standardDeviation(spinAxes),
       } satisfies CourseTwinBagProfile;
     })
     .filter((profile): profile is CourseTwinBagProfile => profile !== null);

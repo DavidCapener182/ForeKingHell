@@ -24,6 +24,8 @@ export type CourseTwinBagProfile = {
   launchStdDevDeg: number | null;
   spinMeanRpm: number | null;
   spinStdDevRpm: number | null;
+  spinAxisMeanDeg: number | null;
+  spinAxisStdDevDeg: number | null;
 };
 
 export type CourseTwinStrategyClub = {
@@ -195,6 +197,8 @@ function simulateClubAim(
       launchStdDevDeg: profile.launchStdDevDeg,
       spinMeanRpm: profile.spinMeanRpm,
       spinStdDevRpm: profile.spinStdDevRpm,
+      spinAxisMeanDeg: profile.spinAxisMeanDeg,
+      spinAxisStdDevDeg: profile.spinAxisStdDevDeg,
     },
   };
 }

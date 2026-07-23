@@ -89,6 +89,8 @@ function profile(
     launchStdDevDeg: null,
     spinMeanRpm: null,
     spinStdDevRpm: null,
+    spinAxisMeanDeg: null,
+    spinAxisStdDevDeg: null,
   };
 }
 
