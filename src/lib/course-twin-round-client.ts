@@ -1,6 +1,7 @@
 import type {
   CourseTwinCreateRoundInput,
   CourseTwinHoleCompletedPayload,
+  CourseTwinPuttEventPayload,
   CourseTwinRoundEventInput,
   CourseTwinRoundRules,
   CourseTwinRoundStatus,
@@ -24,6 +25,7 @@ export type CourseTwinRoundClientDocument = {
     currentHole: number;
     scorecard: CourseTwinHoleCompletedPayload[];
     acceptedShots: Array<CourseTwinShotEventPayload & { clientEventId: string }>;
+    acceptedPutts: Array<CourseTwinPuttEventPayload & { clientEventId: string }>;
     mulliganCount: number;
   };
 };

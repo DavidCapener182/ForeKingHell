@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildCourseTwinAutomaticGreenCompletion,
+  buildCourseTwinManualGreenCompletion,
   parseCourseTwinCreateRoundInput,
   parseCourseTwinRoundEventInput,
   reduceCourseTwinRoundEvents,
@@ -12,6 +13,7 @@ import {
 
 const eventId = "0de8b595-5b93-48c1-93dc-b2c872339766";
 const shotEventId = "5b328b80-70cb-43fe-b588-cb8be627ab32";
+const puttEventId = "31c9f166-d82a-43a8-8bd8-636e3477a37a";
 
 describe("Course Twin round contract", () => {
   it("accepts honest casual and competition rule sets", () => {
@@ -103,6 +105,30 @@ describe("Course Twin round contract", () => {
     ).toMatchObject({ type: "shot.accepted", payload: { source: "measured" } });
   });
 
+  it("bounds and normalises modelled putt events", () => {
+    expect(
+      parseCourseTwinRoundEventInput({
+        type: "putt.accepted",
+        clientEventId: puttEventId,
+        payload: {
+          holeNumber: 5,
+          puttNumber: 2,
+          source: "modelled",
+          start: [2, 0.1, 4],
+          end: [2.1, 0.09, 7.2],
+          distanceM: 3.21,
+          remainingDistanceM: 0,
+          aimOffsetDeg: -1.5,
+          pacePercent: 102,
+          holed: true,
+        },
+      }),
+    ).toMatchObject({
+      type: "putt.accepted",
+      payload: { puttNumber: 2, source: "modelled", holed: true },
+    });
+  });
+
   it("reduces mulligans and scorecard events deterministically", () => {
     const events = [
       ledger("shot.accepted", shotEventId, 1, {
@@ -142,8 +168,61 @@ describe("Course Twin round contract", () => {
       status: "in_progress",
       currentHole: 2,
       acceptedShots: [],
+      acceptedPutts: [],
       mulliganCount: 1,
       scorecard: [{ holeNumber: 1, strokes: 5 }],
+    });
+  });
+
+  it("reduces manual putts and completes a holed putting ledger honestly", () => {
+    const summary = reduceCourseTwinRoundEvents({
+      startingHole: 1,
+      events: [
+        ledger("shot.accepted", shotEventId, 1, {
+          holeNumber: 1,
+          shotNumber: 1,
+          clubId: "64f25e50-89fa-4772-8b6a-5cb4b20859fd",
+          clubType: "5w",
+          source: "modelled",
+          start: [0, 0, 0],
+          carryEnd: [0, 0, 170],
+          totalEnd: [0, 0, 187],
+          metrics: {
+            carryYd: 186,
+            totalYd: 204,
+            ballSpeedMph: 130,
+            clubSpeedMph: null,
+            launchAngleDeg: 15,
+            launchDirectionDeg: 0,
+            spinRate: 3_200,
+            spinAxis: 0,
+          },
+          result: { finalSurface: "green", penalty: null, bounceCount: 2 },
+        }),
+        ledger("putt.accepted", puttEventId, 2, {
+          holeNumber: 1,
+          puttNumber: 1,
+          source: "modelled",
+          start: [0, 0, 187],
+          end: [0, 0, 190],
+          distanceM: 3,
+          remainingDistanceM: 0,
+          aimOffsetDeg: 0,
+          pacePercent: 100,
+          holed: true,
+        }),
+      ] as CourseTwinRoundLedgerEvent[],
+    });
+
+    expect(summary.acceptedPutts).toHaveLength(1);
+    expect(
+      buildCourseTwinManualGreenCompletion({
+        summary,
+        hole: { holeNumber: 1, par: 3, yards: 190 },
+      }),
+    ).toMatchObject({
+      triggerPuttClientEventId: puttEventId,
+      payload: { strokes: 2, putts: 1, gir: true },
     });
   });
 
@@ -159,6 +238,7 @@ describe("Course Twin round contract", () => {
       currentHole: 1,
       scorecard: [],
       mulliganCount: 0,
+      acceptedPutts: [],
       acceptedShots: [
         {
           holeNumber: 1,
@@ -216,6 +296,7 @@ describe("Course Twin round contract", () => {
       currentHole: 1,
       scorecard: [],
       mulliganCount: 0,
+      acceptedPutts: [],
       acceptedShots: [
         {
           holeNumber: 1,

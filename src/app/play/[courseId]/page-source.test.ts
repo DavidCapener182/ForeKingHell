@@ -75,7 +75,12 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("Green reached · automatic putt-out");
     expect(sceneSource).toContain("yd to mapped pin");
     expect(sceneSource).toContain('greenRule: "automatic_putts"');
-    expect(sceneSource).not.toContain("<RoundPuttActions");
+    expect(sceneSource).toContain('greenRule: "manual_putts"');
+    expect(sceneSource).toContain("simulateCourseTwinPutt(");
+    expect(sceneSource).toContain("<ManualPuttingControls");
+    expect(sceneSource).toContain("Play putts");
+    expect(sceneSource).toContain("Approximate green");
+    expect(sceneSource).toContain("Read next putt");
   });
 
   it("keeps live GSPro shots behind a paired loopback bridge and runs them through course physics", () => {

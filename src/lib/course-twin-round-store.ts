@@ -344,6 +344,7 @@ function validateNextEvent(
   const rules = round.rulesJson as {
     mulligansAllowed?: unknown;
     competition?: unknown;
+    greenRule?: unknown;
   };
   const windowEnd = round.startingHole + round.holeCount - 1;
   if (input.type === "shot.accepted") {
@@ -355,12 +356,29 @@ function validateNextEvent(
       summary.acceptedShots.filter((shot) => shot.holeNumber === round.currentHole).length + 1;
     if (input.payload.shotNumber !== expectedShot) return "Shot number is out of sequence.";
   }
+  if (input.type === "putt.accepted") {
+    if (input.payload.holeNumber !== round.currentHole) return "Putt is not on the current hole.";
+    if (rules.greenRule !== "manual_putts") {
+      return "Manual putting is not enabled for this round.";
+    }
+    const holeShots = summary.acceptedShots.filter((shot) => shot.holeNumber === round.currentHole);
+    const lastShot = holeShots.at(-1);
+    const holePutts = summary.acceptedPutts.filter((putt) => putt.holeNumber === round.currentHole);
+    if (!lastShot || lastShot.result.penalty || lastShot.result.finalSurface !== "green") {
+      return "The ball must be on the green before putting.";
+    }
+    if (holePutts.at(-1)?.holed) return "The hole is already complete.";
+    if (input.payload.puttNumber !== holePutts.length + 1) return "Putt number is out of sequence.";
+  }
   if (input.type === "shot.mulligan") {
     if (rules.competition === true || rules.mulligansAllowed !== true) {
       return "Mulligans are disabled for this round.";
     }
     if (
-      !summary.acceptedShots.some((shot) => shot.clientEventId === input.payload.shotClientEventId)
+      !summary.acceptedShots.some(
+        (shot) => shot.clientEventId === input.payload.shotClientEventId,
+      ) &&
+      !summary.acceptedPutts.some((putt) => putt.clientEventId === input.payload.shotClientEventId)
     ) {
       return "Mulligan target is not an active shot.";
     }
@@ -371,6 +389,12 @@ function validateNextEvent(
     const shotCount = summary.acceptedShots.filter(
       (shot) => shot.holeNumber === input.payload.holeNumber,
     ).length;
+    const puttCount = summary.acceptedPutts.filter(
+      (putt) => putt.holeNumber === input.payload.holeNumber,
+    ).length;
+    if (rules.greenRule === "manual_putts" && input.payload.putts !== puttCount) {
+      return "Manual putt count does not reconcile with the putting ledger.";
+    }
     if (input.payload.strokes !== shotCount + input.payload.putts + input.payload.penalties) {
       return "Hole score does not reconcile with shots, putts and penalties.";
     }

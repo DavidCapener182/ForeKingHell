@@ -63,12 +63,19 @@ import {
 } from "@/lib/course-twin-round-client";
 import {
   buildCourseTwinAutomaticGreenCompletion,
+  buildCourseTwinManualGreenCompletion,
   courseTwinAutomaticPuttCount,
-  type CourseTwinAutomaticGreenCompletion,
+  type CourseTwinHoleCompletedPayload,
   type CourseTwinRoundEventInput,
   type CourseTwinRoundRules,
   type CourseTwinShotEventPayload,
 } from "@/lib/course-twin-round";
+import {
+  buildCourseTwinPuttEventPayload,
+  buildCourseTwinPuttReplay,
+  simulateCourseTwinPutt,
+  type CourseTwinPuttResult,
+} from "@/lib/course-twin-putting";
 import {
   createCourseTwinSurfaceClassifier,
   courseTwinFeatureContains,
@@ -250,6 +257,11 @@ export function CourseTwinScene({
   const [virtualShot, setVirtualShot] = useState<CourseTwinVirtualShot | null>(null);
   const [virtualComplete, setVirtualComplete] = useState(false);
   const [virtualRoundEventId, setVirtualRoundEventId] = useState<string | null>(null);
+  const [virtualPuttAimDeg, setVirtualPuttAimDeg] = useState(0);
+  const [virtualPuttPacePercent, setVirtualPuttPacePercent] = useState(100);
+  const [virtualPuttNumber, setVirtualPuttNumber] = useState(1);
+  const [virtualPuttResult, setVirtualPuttResult] = useState<CourseTwinPuttResult | null>(null);
+  const [virtualPuttEventId, setVirtualPuttEventId] = useState<string | null>(null);
   const [bridgeState, setBridgeState] = useState<BridgeLoadState>({
     status: "idle",
     health: null,
@@ -304,6 +316,7 @@ export function CourseTwinScene({
   const roomStateRef = useRef(roomState);
   const submittedRoundEventsRef = useRef(new Set<string>());
   const automaticGreenCompletionsRef = useRef(new Set<string>());
+  const manualGreenCompletionsRef = useRef(new Set<string>());
   const liveContextRef = useRef({
     hole: manifest.holes[0],
     start: manifest.holes[0]?.tee ?? ([0, 0, 0] as CourseTwinPoint),
@@ -331,6 +344,18 @@ export function CourseTwinScene({
     (hole) => hole.holeNumber === selectedHole.holeNumber,
   );
   const roundLocksHole = activeRound?.status === "in_progress" && activeRound.mode === mode;
+  const virtualPuttReplay = useMemo(
+    () =>
+      virtualPuttResult && virtualPuttEventId
+        ? buildCourseTwinPuttReplay({
+            id: virtualPuttEventId,
+            holeNumber: selectedHole.holeNumber,
+            puttNumber: virtualPuttNumber,
+            result: virtualPuttResult,
+          })
+        : null,
+    [selectedHole.holeNumber, virtualPuttEventId, virtualPuttNumber, virtualPuttResult],
+  );
 
   useEffect(() => {
     playbackRef.current = playback;
@@ -392,7 +417,7 @@ export function CourseTwinScene({
     mode === "replay"
       ? selectedShot
       : mode === "play"
-        ? (virtualShot?.shot ?? null)
+        ? (virtualPuttReplay?.shot ?? virtualShot?.shot ?? null)
         : mode === "live"
           ? liveShot
           : null;
@@ -498,10 +523,45 @@ export function CourseTwinScene({
       null,
     [strategyClubId, strategyState.document],
   );
+  const activeHoleShots =
+    activeRound?.summary.acceptedShots
+      .filter((shot) => shot.holeNumber === selectedHole.holeNumber)
+      .sort((left, right) => left.shotNumber - right.shotNumber) ?? [];
+  const activeHolePutts =
+    activeRound?.summary.acceptedPutts
+      .filter((putt) => putt.holeNumber === selectedHole.holeNumber)
+      .sort((left, right) => left.puttNumber - right.puttNumber) ?? [];
+  const latestActiveShot = activeHoleShots.at(-1) ?? null;
+  const latestActivePutt = activeHolePutts.at(-1) ?? null;
+  const manualPuttingActive =
+    activeRound?.mode === "play" &&
+    activeRound.status === "in_progress" &&
+    activeRound.rulesJson.greenRule === "manual_putts" &&
+    latestActiveShot?.result.finalSurface === "green" &&
+    !latestActiveShot.result.penalty &&
+    !latestActivePutt?.holed;
+  const manualPuttingVisible =
+    activeRound?.mode === "play" &&
+    activeRound.status === "in_progress" &&
+    activeRound.rulesJson.greenRule === "manual_putts" &&
+    latestActiveShot?.result.finalSurface === "green" &&
+    !latestActiveShot.result.penalty &&
+    (manualPuttingActive || Boolean(virtualPuttResult));
+  const virtualPuttStart = latestActivePutt?.end ?? latestActiveShot?.totalEnd ?? null;
   const automaticGreenCompletion = useMemo(
     () =>
-      activeRound
+      activeRound && activeRound.rulesJson.greenRule !== "manual_putts"
         ? buildCourseTwinAutomaticGreenCompletion({
+            summary: activeRound.summary,
+            hole: selectedHole,
+          })
+        : null,
+    [activeRound, selectedHole],
+  );
+  const manualGreenCompletion = useMemo(
+    () =>
+      activeRound?.rulesJson.greenRule === "manual_putts"
+        ? buildCourseTwinManualGreenCompletion({
             summary: activeRound.summary,
             hole: selectedHole,
           })
@@ -649,6 +709,37 @@ export function CourseTwinScene({
   ]);
 
   useEffect(() => {
+    if (
+      activeRound?.mode !== "play" ||
+      activeRound.rulesJson.greenRule !== "manual_putts" ||
+      !virtualPuttEventId ||
+      !virtualPuttResult ||
+      submittedRoundEventsRef.current.has(virtualPuttEventId)
+    ) {
+      return;
+    }
+    submittedRoundEventsRef.current.add(virtualPuttEventId);
+    void appendRoundEvent({
+      type: "putt.accepted",
+      clientEventId: virtualPuttEventId,
+      payload: buildCourseTwinPuttEventPayload({
+        holeNumber: selectedHole.holeNumber,
+        puttNumber: virtualPuttNumber,
+        result: virtualPuttResult,
+      }),
+    }).catch(() => submittedRoundEventsRef.current.delete(virtualPuttEventId));
+  }, [
+    activeRound?.mode,
+    activeRound?.rulesJson.greenRule,
+    appendRoundEvent,
+    roundRetryToken,
+    selectedHole.holeNumber,
+    virtualPuttEventId,
+    virtualPuttNumber,
+    virtualPuttResult,
+  ]);
+
+  useEffect(() => {
     liveContextRef.current = {
       hole: selectedHole,
       start: liveStart,
@@ -731,6 +822,31 @@ export function CourseTwinScene({
               triggerShotClientEventId: automaticGreenCompletion.triggerShotClientEventId,
             }
           : null,
+        manualPutting:
+          mode === "play" && manualPuttingVisible && virtualPuttStart
+            ? {
+                status: virtualPuttResult
+                  ? playback < 1
+                    ? "rolling"
+                    : virtualPuttResult.holed
+                      ? "holed"
+                      : "awaiting-next-putt"
+                  : "ready",
+                puttNumber: virtualPuttNumber,
+                start: virtualPuttStart,
+                pin: selectedHole.green,
+                aimOffsetDeg: virtualPuttAimDeg,
+                pacePercent: virtualPuttPacePercent,
+                result: virtualPuttResult
+                  ? {
+                      holed: virtualPuttResult.holed,
+                      remainingDistanceM: Number(virtualPuttResult.remainingDistanceM.toFixed(2)),
+                      finalPosition: virtualPuttResult.finalPosition,
+                      provenance: virtualPuttResult.provenance,
+                    }
+                  : null,
+              }
+            : null,
         visibleShotCount: mode === "replay" && selectedShot ? 1 : 0,
         selectedShotIndex: mode === "replay" && selectedShot ? shotIndex : null,
         shot:
@@ -881,6 +997,7 @@ export function CourseTwinScene({
     liveSimulation,
     liveStart,
     liveStrokes,
+    manualPuttingVisible,
     manifest,
     mode,
     playback,
@@ -900,6 +1017,11 @@ export function CourseTwinScene({
     virtualAimOffsetYd,
     virtualComplete,
     virtualPenaltyStrokes,
+    virtualPuttAimDeg,
+    virtualPuttNumber,
+    virtualPuttPacePercent,
+    virtualPuttResult,
+    virtualPuttStart,
     virtualShot,
     virtualShotNumber,
     virtualSimulation,
@@ -1105,6 +1227,11 @@ export function CourseTwinScene({
       setVirtualShot(null);
       setVirtualComplete(false);
       setVirtualRoundEventId(null);
+      setVirtualPuttAimDeg(0);
+      setVirtualPuttPacePercent(100);
+      setVirtualPuttNumber(1);
+      setVirtualPuttResult(null);
+      setVirtualPuttEventId(null);
       setLiveStart(nextHole.tee);
       setLiveShotNumber(1);
       setLiveStrokes(0);
@@ -1138,12 +1265,18 @@ export function CourseTwinScene({
           .filter((shot) => shot.holeNumber === round.currentHole)
           .sort((left, right) => left.shotNumber - right.shotNumber);
         const lastShot = currentShots.at(-1);
+        const currentPutts = round.summary.acceptedPutts
+          .filter((putt) => putt.holeNumber === round.currentHole)
+          .sort((left, right) => left.puttNumber - right.puttNumber);
+        const lastPutt = currentPutts.at(-1);
         const penalties = currentShots.filter((shot) => shot.result.penalty).length;
-        const restoredStart = lastShot
-          ? lastShot.result.penalty
-            ? lastShot.carryEnd
-            : lastShot.totalEnd
-          : hole?.tee;
+        const restoredStart =
+          lastPutt?.end ??
+          (lastShot
+            ? lastShot.result.penalty
+              ? lastShot.carryEnd
+              : lastShot.totalEnd
+            : hole?.tee);
         activeRoundRef.current = round;
         setActiveRound(round);
         setRoundRules(round.rulesJson);
@@ -1160,10 +1293,13 @@ export function CourseTwinScene({
           if (round.mode === "play") {
             setVirtualStart(restoredStart);
             setVirtualShotNumber(currentShots.length + 1);
-            setVirtualStrokes(currentShots.length + penalties);
+            setVirtualStrokes(currentShots.length + currentPutts.length + penalties);
             setVirtualPenaltyStrokes(penalties);
             setVirtualShot(null);
             setVirtualRoundEventId(null);
+            setVirtualPuttNumber(currentPutts.length + 1);
+            setVirtualPuttResult(null);
+            setVirtualPuttEventId(null);
           } else {
             setLiveStart(restoredStart);
             setLiveShotNumber(currentShots.length + 1);
@@ -1198,11 +1334,15 @@ export function CourseTwinScene({
     setRoundSync({ status: "saving", error: null });
     try {
       const startingHole = roundHoleCount === 18 ? 1 : roundStartingHole;
+      const rules =
+        roundMode === "live" && roundRules.greenRule === "manual_putts"
+          ? { ...roundRules, greenRule: "automatic_putts" as const }
+          : roundRules;
       const round = await createCourseTwinRoundClient(manifest.course.id, {
         mode: roundMode,
         holeCount: roundHoleCount,
         startingHole,
-        rules: roundRules,
+        rules,
       });
       activeRoundRef.current = round;
       setActiveRound(round);
@@ -1223,7 +1363,7 @@ export function CourseTwinScene({
     completion,
   }: {
     roundMode: "play" | "live";
-    completion: CourseTwinAutomaticGreenCompletion;
+    completion: { payload: CourseTwinHoleCompletedPayload };
   }) => {
     const current = activeRoundRef.current;
     if (!current || current.mode !== roundMode || roundSync.status === "saving") return false;
@@ -1289,6 +1429,34 @@ export function CourseTwinScene({
     roundSync.status,
     virtualRoundEventId,
     virtualShot,
+  ]);
+
+  useEffect(() => {
+    const completion = manualGreenCompletion;
+    const round = activeRoundRef.current;
+    if (!completion || !round || round.mode !== "play" || roundSync.status === "saving") return;
+    if (manualGreenCompletionsRef.current.has(completion.triggerPuttClientEventId)) return;
+    const transientPuttIsVisible =
+      virtualPuttEventId === completion.triggerPuttClientEventId && Boolean(virtualPuttResult);
+    if (transientPuttIsVisible && playback < 1) return;
+
+    manualGreenCompletionsRef.current.add(completion.triggerPuttClientEventId);
+    queueMicrotask(() => {
+      void finishPersistedHole({ roundMode: "play", completion }).then((saved) => {
+        if (!saved) {
+          manualGreenCompletionsRef.current.delete(completion.triggerPuttClientEventId);
+        }
+      });
+    });
+    // finishPersistedHole intentionally reads the latest active-round ref and ledger sync state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    manualGreenCompletion,
+    playback,
+    roundRetryToken,
+    roundSync.status,
+    virtualPuttEventId,
+    virtualPuttResult,
   ]);
 
   const takePersistedMulligan = async (roundMode: "play" | "live", shotClientEventId: string) => {
@@ -1932,6 +2100,7 @@ export function CourseTwinScene({
           <>
             <RoundSetupControls
               mode="play"
+              puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
               activeRound={activeRound}
               rules={roundRules}
               holeCount={roundHoleCount}
@@ -1944,74 +2113,135 @@ export function CourseTwinScene({
               onRetry={() => setRoundRetryToken((value) => value + 1)}
             />
             {activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
-              <VirtualRoundControls
-                state={strategyState}
-                hole={selectedHole}
-                selectedClub={strategyClub}
-                onSelectClub={setStrategyClubId}
-                start={virtualStart}
-                aimOffsetYd={virtualAimOffsetYd}
-                onAimOffsetChange={setVirtualAimOffsetYd}
-                shotNumber={virtualShotNumber}
-                strokes={virtualStrokes}
-                penaltyStrokes={virtualPenaltyStrokes}
-                shot={virtualShot}
-                simulation={virtualSimulation}
-                playback={playback}
-                sync={roundSync.status}
-                rules={activeRound.rulesJson}
-                onPlay={() => {
-                  if (!strategyClub || roundSync.status === "saving") return;
-                  setVirtualRoundEventId(crypto.randomUUID());
-                  setVirtualShot(
-                    buildCourseTwinVirtualShot({
-                      courseId: manifest.course.id,
-                      hole: selectedHole,
-                      start: virtualStart,
-                      club: strategyClub,
-                      aimOffsetYd: virtualAimOffsetYd,
-                      shotNumber: virtualShotNumber,
-                    }),
-                  );
-                  setVirtualStrokes((current) => current + 1);
-                  setPlayback(0);
-                  setPlaying(true);
-                  setCameraCommand(null);
-                }}
-                onContinue={() => {
-                  if (!virtualSimulation || roundSync.status !== "ready") return;
-                  const next = virtualDropPoint(virtualSimulation);
-                  setVirtualStart([next.x, 0, next.z]);
-                  setVirtualShotNumber((current) => current + 1);
-                  if (virtualSimulation.penalty) {
+              manualPuttingVisible && !virtualShot && virtualPuttStart ? (
+                <ManualPuttingControls
+                  hole={selectedHole}
+                  start={virtualPuttStart}
+                  puttNumber={virtualPuttNumber}
+                  strokes={virtualStrokes}
+                  aimOffsetDeg={virtualPuttAimDeg}
+                  pacePercent={virtualPuttPacePercent}
+                  result={virtualPuttResult}
+                  playback={playback}
+                  sync={roundSync}
+                  verified={manifest.quality.grade === "A" && manifest.quality.verified}
+                  onAimChange={setVirtualPuttAimDeg}
+                  onPaceChange={setVirtualPuttPacePercent}
+                  onPlay={() => {
+                    if (!sampleTerrain || roundSync.status === "saving") return;
+                    const eventId = crypto.randomUUID();
+                    const result = simulateCourseTwinPutt(
+                      {
+                        start: {
+                          x: virtualPuttStart[0],
+                          y: sampleTerrain(virtualPuttStart[0], virtualPuttStart[2]),
+                          z: virtualPuttStart[2],
+                        },
+                        hole: {
+                          x: selectedHole.green[0],
+                          y: sampleTerrain(selectedHole.green[0], selectedHole.green[2]),
+                          z: selectedHole.green[2],
+                        },
+                        aimOffsetDeg: virtualPuttAimDeg,
+                        pacePercent: virtualPuttPacePercent,
+                      },
+                      { groundHeight: sampleTerrain, surfaceAt: classifySurface },
+                    );
+                    setVirtualPuttEventId(eventId);
+                    setVirtualPuttResult(result);
                     setVirtualStrokes((current) => current + 1);
-                    setVirtualPenaltyStrokes((current) => current + 1);
-                  }
-                  setVirtualShot(null);
-                  setVirtualRoundEventId(null);
-                  setPlayback(0);
-                  setPlaying(false);
-                  setCameraCommand(null);
-                }}
-                onMulligan={() => {
-                  if (virtualRoundEventId) {
-                    void takePersistedMulligan("play", virtualRoundEventId);
-                  }
-                }}
-                onRetry={() => {
-                  if (virtualRoundEventId) {
-                    submittedRoundEventsRef.current.delete(virtualRoundEventId);
-                  }
-                  setRoundRetryToken((value) => value + 1);
-                }}
-                onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
-              />
+                    setPlayback(0);
+                    setPlaying(true);
+                    setCameraView("golfer");
+                    setCameraCommand(null);
+                  }}
+                  onContinue={() => {
+                    if (!virtualPuttResult || roundSync.status !== "ready") return;
+                    setVirtualPuttNumber((current) => current + 1);
+                    setVirtualPuttResult(null);
+                    setVirtualPuttEventId(null);
+                    setPlayback(0);
+                    setPlaying(false);
+                    setCameraCommand(null);
+                  }}
+                  onRetry={() => {
+                    if (virtualPuttEventId) {
+                      submittedRoundEventsRef.current.delete(virtualPuttEventId);
+                    }
+                    setRoundRetryToken((value) => value + 1);
+                  }}
+                />
+              ) : (
+                <VirtualRoundControls
+                  state={strategyState}
+                  hole={selectedHole}
+                  selectedClub={strategyClub}
+                  onSelectClub={setStrategyClubId}
+                  start={virtualStart}
+                  aimOffsetYd={virtualAimOffsetYd}
+                  onAimOffsetChange={setVirtualAimOffsetYd}
+                  shotNumber={virtualShotNumber}
+                  strokes={virtualStrokes}
+                  penaltyStrokes={virtualPenaltyStrokes}
+                  shot={virtualShot}
+                  simulation={virtualSimulation}
+                  playback={playback}
+                  sync={roundSync.status}
+                  rules={activeRound.rulesJson}
+                  onPlay={() => {
+                    if (!strategyClub || roundSync.status === "saving") return;
+                    setVirtualRoundEventId(crypto.randomUUID());
+                    setVirtualShot(
+                      buildCourseTwinVirtualShot({
+                        courseId: manifest.course.id,
+                        hole: selectedHole,
+                        start: virtualStart,
+                        club: strategyClub,
+                        aimOffsetYd: virtualAimOffsetYd,
+                        shotNumber: virtualShotNumber,
+                      }),
+                    );
+                    setVirtualStrokes((current) => current + 1);
+                    setPlayback(0);
+                    setPlaying(true);
+                    setCameraCommand(null);
+                  }}
+                  onContinue={() => {
+                    if (!virtualSimulation || roundSync.status !== "ready") return;
+                    const next = virtualDropPoint(virtualSimulation);
+                    setVirtualStart([next.x, 0, next.z]);
+                    setVirtualShotNumber((current) => current + 1);
+                    if (virtualSimulation.penalty) {
+                      setVirtualStrokes((current) => current + 1);
+                      setVirtualPenaltyStrokes((current) => current + 1);
+                    }
+                    setVirtualShot(null);
+                    setVirtualRoundEventId(null);
+                    setPlayback(0);
+                    setPlaying(false);
+                    setCameraCommand(null);
+                  }}
+                  onMulligan={() => {
+                    if (virtualRoundEventId) {
+                      void takePersistedMulligan("play", virtualRoundEventId);
+                    }
+                  }}
+                  onRetry={() => {
+                    if (virtualRoundEventId) {
+                      submittedRoundEventsRef.current.delete(virtualRoundEventId);
+                    }
+                    setRoundRetryToken((value) => value + 1);
+                  }}
+                  onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
+                />
+              )
             ) : null}
           </>
         ) : mode === "live" ? (
           <>
             <RoundSetupControls
               mode="live"
+              puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
               activeRound={activeRound}
               rules={roundRules}
               holeCount={roundHoleCount}
@@ -2139,7 +2369,7 @@ export function CourseTwinScene({
                     mode === "replay"
                       ? selectedShot
                       : mode === "play"
-                        ? (virtualShot?.shot ?? null)
+                        ? (virtualPuttReplay?.shot ?? virtualShot?.shot ?? null)
                         : mode === "live"
                           ? liveShot
                           : null
@@ -2148,7 +2378,7 @@ export function CourseTwinScene({
                     mode === "replay"
                       ? selectedSimulation
                       : mode === "play"
-                        ? virtualSimulation
+                        ? (virtualPuttReplay?.simulation ?? virtualSimulation)
                         : mode === "live"
                           ? liveSimulation
                           : null
@@ -3841,6 +4071,7 @@ function StrategyControls({
 
 function RoundSetupControls({
   mode,
+  puttingVerified,
   activeRound,
   rules,
   holeCount,
@@ -3853,6 +4084,7 @@ function RoundSetupControls({
   onRetry,
 }: {
   mode: "play" | "live";
+  puttingVerified: boolean;
   activeRound: CourseTwinRoundClientDocument | null;
   rules: CourseTwinRoundRules;
   holeCount: 9 | 18;
@@ -3893,7 +4125,12 @@ function RoundSetupControls({
             : activeRound.rulesJson.mulligansAllowed
               ? "casual mulligans"
               : "no mulligans"}{" "}
-          · automatic putt-out on mapped greens
+          ·{" "}
+          {activeRound.rulesJson.greenRule === "manual_putts"
+            ? puttingVerified
+              ? "playable surveyed putting"
+              : "playable approximate putting"
+            : "automatic putt-out on mapped greens"}
         </p>
         {activeRound.mode !== mode ? (
           <p className="mt-3 rounded-lg border border-amber-200/20 bg-amber-100/5 px-3 py-2 text-xs text-amber-100/80">
@@ -4057,16 +4294,56 @@ function RoundSetupControls({
         </button>
       </div>
       {!rules.competition ? (
-        <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-sm">
-          <span>Allow mulligans</span>
-          <input
-            type="checkbox"
-            checked={rules.mulligansAllowed}
-            onChange={(event) =>
-              onRulesChange({ ...rules, mulligansAllowed: event.target.checked })
-            }
-          />
-        </label>
+        <>
+          {mode === "play" ? (
+            <>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                On the green
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-lg border px-2 py-2 text-xs font-semibold",
+                    rules.greenRule === "automatic_putts"
+                      ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                      : "border-white/10 bg-white/5",
+                  )}
+                  onClick={() => onRulesChange({ ...rules, greenRule: "automatic_putts" })}
+                >
+                  Auto putt-out
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-lg border px-2 py-2 text-xs font-semibold",
+                    rules.greenRule === "manual_putts"
+                      ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                      : "border-white/10 bg-white/5",
+                  )}
+                  onClick={() => onRulesChange({ ...rules, greenRule: "manual_putts" })}
+                >
+                  Play putts
+                </button>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-amber-100/70">
+                {puttingVerified
+                  ? "Uses the reviewed high-resolution green survey."
+                  : "Uses the mapped Grade B green contour and is approximate, not survey-grade."}
+              </p>
+            </>
+          ) : null}
+          <label className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-sm">
+            <span>Allow mulligans</span>
+            <input
+              type="checkbox"
+              checked={rules.mulligansAllowed}
+              onChange={(event) =>
+                onRulesChange({ ...rules, mulligansAllowed: event.target.checked })
+              }
+            />
+          </label>
+        </>
       ) : null}
       <Button
         type="button"
@@ -4083,6 +4360,176 @@ function RoundSetupControls({
       {sync.status === "error" ? (
         <p className="mt-3 text-xs leading-5 text-rose-100/85">{sync.error}</p>
       ) : null}
+    </div>
+  );
+}
+
+function ManualPuttingControls({
+  hole,
+  start,
+  puttNumber,
+  strokes,
+  aimOffsetDeg,
+  pacePercent,
+  result,
+  playback,
+  sync,
+  verified,
+  onAimChange,
+  onPaceChange,
+  onPlay,
+  onContinue,
+  onRetry,
+}: {
+  hole: CourseTwinHole;
+  start: CourseTwinPoint;
+  puttNumber: number;
+  strokes: number;
+  aimOffsetDeg: number;
+  pacePercent: number;
+  result: CourseTwinPuttResult | null;
+  playback: number;
+  sync: RoundSyncState;
+  verified: boolean;
+  onAimChange: (value: number) => void;
+  onPaceChange: (value: number) => void;
+  onPlay: () => void;
+  onContinue: () => void;
+  onRetry: () => void;
+}) {
+  const distanceM = Math.hypot(hole.green[0] - start[0], hole.green[2] - start[2]);
+  const distanceFt = distanceM * 3.280_84;
+  return (
+    <div className="mt-5 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/70">
+            {verified ? "Surveyed green" : "Approximate green"} · putt {puttNumber}
+          </p>
+          <p className="mt-2 text-lg font-semibold">
+            {distanceFt < 10 ? distanceFt.toFixed(1) : distanceFt.toFixed(0)} ft to the cup
+          </p>
+          <p className="text-sm text-emerald-100/60">{strokes} strokes played</p>
+        </div>
+        <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
+          Putter
+        </Badge>
+      </div>
+
+      {result ? (
+        <>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full bg-[#e7ff6a]" style={{ width: `${playback * 100}%` }} />
+          </div>
+          {playback < 1 ? (
+            <p className="mt-3 text-xs text-emerald-100/60">Putt rolling over the contour…</p>
+          ) : result.holed ? (
+            <div
+              className="mt-3 rounded-lg border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100"
+              role="status"
+              aria-live="polite"
+            >
+              <p className="font-semibold">Holed</p>
+              <p className="mt-1 text-xs text-emerald-100/65">
+                Saving the putting event and advancing to the next hole…
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <ReplayFact
+                  label="Putt length"
+                  value={`${(result.totalDistanceM * 3.280_84).toFixed(1)} ft`}
+                />
+                <ReplayFact
+                  label="Leave"
+                  value={`${(result.remainingDistanceM * 3.280_84).toFixed(1)} ft`}
+                />
+              </div>
+              <Button
+                type="button"
+                className="mt-3 w-full"
+                disabled={sync.status !== "ready"}
+                onClick={onContinue}
+              >
+                {sync.status === "saving" ? "Saving putt…" : "Read next putt"}
+              </Button>
+            </>
+          )}
+          {sync.status === "error" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-2 w-full"
+              onClick={onRetry}
+            >
+              Retry saving this putt
+            </Button>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+            Aim
+          </p>
+          <div className="mt-2 grid grid-cols-5 gap-1.5">
+            {[-6, -3, 0, 3, 6].map((offset) => (
+              <button
+                key={offset}
+                type="button"
+                className={cn(
+                  "rounded-lg border px-1 py-2 text-xs font-semibold",
+                  aimOffsetDeg === offset
+                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/10 bg-white/5",
+                )}
+                aria-label={`Aim putt ${offset === 0 ? "at the cup" : `${Math.abs(offset)} degrees ${offset < 0 ? "left" : "right"}`}`}
+                onClick={() => onAimChange(offset)}
+              >
+                {offset === 0 ? "Cup" : `${offset > 0 ? "+" : ""}${offset}°`}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+            Pace
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {[
+              [88, "Die"],
+              [100, "Cup"],
+              [112, "Firm"],
+            ].map(([pace, label]) => (
+              <button
+                key={pace}
+                type="button"
+                className={cn(
+                  "rounded-lg border px-2 py-2 text-xs font-semibold",
+                  pacePercent === pace
+                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/10 bg-white/5",
+                )}
+                onClick={() => onPaceChange(Number(pace))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            className="mt-3 w-full"
+            disabled={sync.status === "saving"}
+            onClick={onPlay}
+          >
+            Play putt
+          </Button>
+          <p className="mt-3 text-xs leading-5 text-amber-100/70">
+            {verified
+              ? "Break and pace use the reviewed high-resolution putting grid."
+              : "Break and pace use the mapped terrain. Treat this Grade B result as approximate."}
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -4221,7 +4668,18 @@ function VirtualRoundControls({
           {playback >= 1 ? (
             <>
               {onGreen && !simulation.penalty ? (
-                <RoundAutoPuttStatus remainingYd={remainingYd} saving={sync === "saving"} />
+                rules.greenRule === "manual_putts" ? (
+                  <Button
+                    type="button"
+                    className="mt-3 w-full"
+                    disabled={sync !== "ready"}
+                    onClick={onContinue}
+                  >
+                    {sync === "saving" ? "Saving green position…" : "Read putt"}
+                  </Button>
+                ) : (
+                  <RoundAutoPuttStatus remainingYd={remainingYd} saving={sync === "saving"} />
+                )
               ) : (
                 <Button
                   type="button"

@@ -401,6 +401,149 @@ test.describe("Course Twin", () => {
       page.request.get(`/api/course-twins/${courseId}/rounds`).then((response) => response.json()),
     ).resolves.toBeNull();
   });
+
+  test("plays and persists an opt-in manual putt from the mapped Grade B green", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    skipWhenNoAuth();
+    const courseId = "9beb5429-67e4-4f4e-a187-adbe0df74b62";
+
+    const existingResponse = await page.request.get(`/api/course-twins/${courseId}/rounds`);
+    expect(existingResponse.status()).toBe(200);
+    const existing = await existingResponse.json();
+    if (existing?.id) {
+      const cleanup = await page.request.post(`/api/course-twins/rounds/${existing.id}/events`, {
+        data: {
+          expectedVersion: existing.version,
+          event: {
+            type: "round.abandoned",
+            clientEventId: crypto.randomUUID(),
+            payload: { reason: "Course Twin manual-putt E2E setup" },
+          },
+        },
+      });
+      expect([200, 201]).toContain(cleanup.status());
+    }
+
+    const manifestResponse = await page.request.get(`/api/course-twins/${courseId}/manifest`);
+    expect(manifestResponse.status()).toBe(200);
+    const manifest = (await manifestResponse.json()) as {
+      holes: Array<{
+        holeNumber: number;
+        tee: [number, number, number];
+        green: [number, number, number];
+      }>;
+    };
+    const hole = manifest.holes.find((candidate) => candidate.holeNumber === 1);
+    expect(hole).toBeTruthy();
+
+    const strategyResponse = await page.request.get(
+      `/api/course-twins/${courseId}/strategy?holeNumber=1`,
+    );
+    expect(strategyResponse.status()).toBe(200);
+    const strategy = (await strategyResponse.json()) as {
+      recommended: { clubId: string; clubType: string };
+    };
+    expect(strategy.recommended?.clubId).toBeTruthy();
+
+    const createResponse = await page.request.post(`/api/course-twins/${courseId}/rounds`, {
+      data: {
+        mode: "play",
+        holeCount: 9,
+        startingHole: 1,
+        rules: {
+          windSpeedMph: 0,
+          windDirectionDeg: 0,
+          greenRule: "manual_putts",
+          mulligansAllowed: true,
+          competition: false,
+        },
+      },
+    });
+    expect(createResponse.status()).toBe(201);
+    const round = await createResponse.json();
+    const green = hole!.green;
+    const greenStart: [number, number, number] = [green[0] + 0.45, green[1], green[2]];
+    const shotResponse = await page.request.post(`/api/course-twins/rounds/${round.id}/events`, {
+      data: {
+        expectedVersion: round.version,
+        event: {
+          type: "shot.accepted",
+          clientEventId: crypto.randomUUID(),
+          payload: {
+            holeNumber: 1,
+            shotNumber: 1,
+            clubId: strategy.recommended.clubId,
+            clubType: strategy.recommended.clubType,
+            source: "modelled",
+            start: hole!.tee,
+            carryEnd: greenStart,
+            totalEnd: greenStart,
+            metrics: {
+              carryYd: 189,
+              totalYd: 189,
+              ballSpeedMph: 128,
+              clubSpeedMph: null,
+              launchAngleDeg: 16,
+              launchDirectionDeg: 0,
+              spinRate: 5100,
+              spinAxis: 0,
+            },
+            result: {
+              finalSurface: "green",
+              penalty: null,
+              bounceCount: 2,
+            },
+          },
+        },
+      },
+    });
+    expect(shotResponse.status()).toBe(201);
+
+    await page.goto(`/play/${courseId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await expectPageReady(page, /Bootle Golf Course/i);
+    await expect(page.getByText(/Approximate green · putt 1/i)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(/ft to the cup/i)).toBeVisible();
+    await expect.poll(async () => (await readManualPutting(page))?.status).toBe("ready");
+
+    await page.getByRole("button", { name: "Play putt" }).click();
+    await expect.poll(async () => (await readRoundLedger(page))?.currentHole).toBe(2);
+
+    const persistedResponse = await page.request.get(`/api/course-twins/rounds/${round.id}`);
+    expect(persistedResponse.status()).toBe(200);
+    await expect(persistedResponse.json()).resolves.toMatchObject({
+      currentHole: 2,
+      summary: {
+        acceptedPutts: [{ holeNumber: 1, puttNumber: 1, holed: true }],
+        scorecard: [{ holeNumber: 1, strokes: 2, putts: 1 }],
+      },
+    });
+
+    const activeResponse = await page.request.get(`/api/course-twins/${courseId}/rounds`);
+    const active = await activeResponse.json();
+    if (active?.id) {
+      const abandonResponse = await page.request.post(
+        `/api/course-twins/rounds/${active.id}/events`,
+        {
+          data: {
+            expectedVersion: active.version,
+            event: {
+              type: "round.abandoned",
+              clientEventId: crypto.randomUUID(),
+              payload: { reason: "Course Twin manual-putt E2E completed" },
+            },
+          },
+        },
+      );
+      expect([200, 201]).toContain(abandonResponse.status());
+    }
+  });
 });
 
 async function readExplorationPosition(page: import("@playwright/test").Page) {
@@ -420,6 +563,16 @@ async function readRoundLedger(page: import("@playwright/test").Page) {
         "{}",
     );
     return state.roundLedger ?? null;
+  });
+}
+
+async function readManualPutting(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const state = JSON.parse(
+      (window as typeof window & { render_game_to_text?: () => string }).render_game_to_text?.() ??
+        "{}",
+    );
+    return state.manualPutting ?? null;
   });
 }
 

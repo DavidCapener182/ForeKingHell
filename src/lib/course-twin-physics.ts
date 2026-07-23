@@ -45,7 +45,7 @@ export type CourseTwinSimulationResult = {
 
 export type CourseTwinReplaySimulation = CourseTwinSimulationResult & {
   input: CourseTwinShotInput;
-  provenance: "physics-reconstructed";
+  provenance: "physics-reconstructed" | "putting-contour-model";
 };
 
 const GRAVITY = 9.80665;

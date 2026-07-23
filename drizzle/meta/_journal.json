@@ -372,6 +372,13 @@
       "when": 1784753400000,
       "tag": "0052_course_twin_putting_surveys",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1784808000000,
+      "tag": "0053_course_twin_manual_putt_events",
+      "breakpoints": true
     }
   ]
 }

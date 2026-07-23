@@ -1,5 +1,6 @@
 export const COURSE_TWIN_ROUND_EVENT_TYPES = [
   "shot.accepted",
+  "putt.accepted",
   "shot.mulligan",
   "hole.completed",
   "round.completed",
@@ -53,6 +54,19 @@ export type CourseTwinShotEventPayload = {
   };
 };
 
+export type CourseTwinPuttEventPayload = {
+  holeNumber: number;
+  puttNumber: number;
+  source: "modelled" | "measured";
+  start: CourseTwinRoundPosition;
+  end: CourseTwinRoundPosition;
+  distanceM: number;
+  remainingDistanceM: number;
+  aimOffsetDeg: number;
+  pacePercent: number;
+  holed: boolean;
+};
+
 export type CourseTwinHoleCompletedPayload = {
   holeNumber: number;
   par: number;
@@ -66,6 +80,7 @@ export type CourseTwinHoleCompletedPayload = {
 
 export type CourseTwinRoundEventInput =
   | { type: "shot.accepted"; clientEventId: string; payload: CourseTwinShotEventPayload }
+  | { type: "putt.accepted"; clientEventId: string; payload: CourseTwinPuttEventPayload }
   | {
       type: "shot.mulligan";
       clientEventId: string;
@@ -94,6 +109,9 @@ export type CourseTwinRoundSummary = {
   acceptedShots: Array<
     CourseTwinShotEventPayload & { clientEventId: string; eventId: string; sequence: number }
   >;
+  acceptedPutts: Array<
+    CourseTwinPuttEventPayload & { clientEventId: string; eventId: string; sequence: number }
+  >;
   mulliganCount: number;
 };
 
@@ -103,11 +121,17 @@ export type CourseTwinAutomaticGreenCompletion = {
   payload: CourseTwinHoleCompletedPayload;
 };
 
+export type CourseTwinManualGreenCompletion = {
+  triggerPuttClientEventId: string;
+  payload: CourseTwinHoleCompletedPayload;
+};
+
 type CourseTwinGreenCompletionSummary = Pick<
   CourseTwinRoundSummary,
   "status" | "currentHole" | "scorecard"
 > & {
   acceptedShots: Array<CourseTwinShotEventPayload & { clientEventId: string }>;
+  acceptedPutts: Array<CourseTwinPuttEventPayload & { clientEventId: string }>;
 };
 
 const eventTypes = new Set<string>(COURSE_TWIN_ROUND_EVENT_TYPES);
@@ -130,6 +154,10 @@ export function parseCourseTwinRoundEventInput(value: unknown): CourseTwinRoundE
 
   if (value.type === "shot.accepted") {
     const payload = parseShotPayload(value.payload);
+    return payload ? { type: value.type, clientEventId: value.clientEventId, payload } : null;
+  }
+  if (value.type === "putt.accepted") {
+    const payload = parsePuttPayload(value.payload);
     return payload ? { type: value.type, clientEventId: value.clientEventId, payload } : null;
   }
   if (value.type === "shot.mulligan") {
@@ -170,6 +198,10 @@ export function reduceCourseTwinRoundEvents({
     string,
     CourseTwinShotEventPayload & { clientEventId: string; eventId: string; sequence: number }
   >();
+  const acceptedPutts = new Map<
+    string,
+    CourseTwinPuttEventPayload & { clientEventId: string; eventId: string; sequence: number }
+  >();
   const scorecard = new Map<number, CourseTwinHoleCompletedPayload>();
   let status: CourseTwinRoundStatus = "in_progress";
   let currentHole = startingHole;
@@ -183,8 +215,20 @@ export function reduceCourseTwinRoundEvents({
         eventId: event.id,
         sequence: event.sequence,
       });
+    } else if (event.type === "putt.accepted") {
+      acceptedPutts.set(event.clientEventId, {
+        ...event.payload,
+        clientEventId: event.clientEventId,
+        eventId: event.id,
+        sequence: event.sequence,
+      });
     } else if (event.type === "shot.mulligan") {
-      if (accepted.delete(event.payload.shotClientEventId)) mulliganCount += 1;
+      if (
+        accepted.delete(event.payload.shotClientEventId) ||
+        acceptedPutts.delete(event.payload.shotClientEventId)
+      ) {
+        mulliganCount += 1;
+      }
     } else if (event.type === "hole.completed") {
       scorecard.set(event.payload.holeNumber, event.payload);
       currentHole = Math.min(18, event.payload.holeNumber + 1);
@@ -200,6 +244,9 @@ export function reduceCourseTwinRoundEvents({
     currentHole,
     scorecard: [...scorecard.values()].sort((left, right) => left.holeNumber - right.holeNumber),
     acceptedShots: [...accepted.values()].sort((left, right) => left.sequence - right.sequence),
+    acceptedPutts: [...acceptedPutts.values()].sort(
+      (left, right) => left.sequence - right.sequence,
+    ),
     mulliganCount,
   };
 }
@@ -253,6 +300,41 @@ export function courseTwinAutomaticPuttCount(remainingYd: number) {
   if (feet <= 10) return 1;
   if (feet <= 35) return 2;
   return 3;
+}
+
+export function buildCourseTwinManualGreenCompletion({
+  summary,
+  hole,
+}: {
+  summary: CourseTwinGreenCompletionSummary;
+  hole: { holeNumber: number; par: number; yards: number };
+}): CourseTwinManualGreenCompletion | null {
+  if (
+    summary.status !== "in_progress" ||
+    summary.currentHole !== hole.holeNumber ||
+    summary.scorecard.some((score) => score.holeNumber === hole.holeNumber)
+  ) {
+    return null;
+  }
+  const holePutts = summary.acceptedPutts.filter((putt) => putt.holeNumber === hole.holeNumber);
+  const lastPutt = holePutts.at(-1);
+  if (!lastPutt?.holed) return null;
+  const holeShots = summary.acceptedShots.filter((shot) => shot.holeNumber === hole.holeNumber);
+  const penalties = holeShots.filter((shot) => Boolean(shot.result.penalty)).length;
+  const lastShotNumber = holeShots.at(-1)?.shotNumber ?? null;
+  return {
+    triggerPuttClientEventId: lastPutt.clientEventId,
+    payload: {
+      holeNumber: hole.holeNumber,
+      par: hole.par,
+      yards: hole.yards,
+      strokes: holeShots.length + holePutts.length + penalties,
+      putts: holePutts.length,
+      penalties,
+      fairwayHit: null,
+      gir: lastShotNumber === null ? null : lastShotNumber <= Math.max(1, hole.par - 2),
+    },
+  };
 }
 
 export function stableCourseTwinRoundJson(value: unknown): string {
@@ -361,6 +443,46 @@ function parseShotPayload(value: Record<string, unknown>): CourseTwinShotEventPa
       penalty: value.result.penalty,
       bounceCount: value.result.bounceCount,
     },
+  };
+}
+
+function parsePuttPayload(value: Record<string, unknown>): CourseTwinPuttEventPayload | null {
+  if (
+    !integerInRange(value.holeNumber, 1, 18) ||
+    !integerInRange(value.puttNumber, 1, 10) ||
+    (value.source !== "modelled" && value.source !== "measured") ||
+    typeof value.holed !== "boolean"
+  ) {
+    return null;
+  }
+  const start = parsePosition(value.start);
+  const end = parsePosition(value.end);
+  const distanceM = finiteInRange(value.distanceM, 0, 100);
+  const remainingDistanceM = finiteInRange(value.remainingDistanceM, 0, 100);
+  const aimOffsetDeg = finiteInRange(value.aimOffsetDeg, -45, 45);
+  const pacePercent = finiteInRange(value.pacePercent, 25, 200);
+  if (
+    !start ||
+    !end ||
+    distanceM === null ||
+    remainingDistanceM === null ||
+    aimOffsetDeg === null ||
+    pacePercent === null ||
+    (value.holed && remainingDistanceM !== 0)
+  ) {
+    return null;
+  }
+  return {
+    holeNumber: value.holeNumber,
+    puttNumber: value.puttNumber,
+    source: value.source,
+    start,
+    end,
+    distanceM,
+    remainingDistanceM,
+    aimOffsetDeg,
+    pacePercent,
+    holed: value.holed,
   };
 }
 
