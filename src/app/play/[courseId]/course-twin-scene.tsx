@@ -5076,6 +5076,9 @@ function RoundAutoPuttStatus({ remainingYd, saving }: { remainingYd: number; sav
         {putts} modelled {putts === 1 ? "putt" : "putts"} added
         {saving ? " · saving and advancing…" : " · advancing to the next hole…"}
       </p>
+      <p className="mt-1 text-xs text-emerald-100/50">
+        10 ft or less counts as one putt; farther away counts as two.
+      </p>
     </div>
   );
 }

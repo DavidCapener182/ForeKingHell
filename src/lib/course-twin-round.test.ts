@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCourseTwinAutomaticGreenCompletion,
   buildCourseTwinManualGreenCompletion,
+  courseTwinAutomaticPuttCount,
   parseCourseTwinCreateRoundInput,
   parseCourseTwinRoundEventInput,
   reduceCourseTwinRoundEvents,
@@ -16,6 +17,13 @@ const shotEventId = "5b328b80-70cb-43fe-b588-cb8be627ab32";
 const puttEventId = "31c9f166-d82a-43a8-8bd8-636e3477a37a";
 
 describe("Course Twin round contract", () => {
+  it("auto-putts once at ten feet or less and twice from farther away", () => {
+    expect(courseTwinAutomaticPuttCount(0)).toBe(1);
+    expect(courseTwinAutomaticPuttCount(10 / 3)).toBe(1);
+    expect(courseTwinAutomaticPuttCount(10.01 / 3)).toBe(2);
+    expect(courseTwinAutomaticPuttCount(60 / 3)).toBe(2);
+  });
+
   it("accepts honest casual and competition rule sets", () => {
     expect(
       parseCourseTwinCreateRoundInput({

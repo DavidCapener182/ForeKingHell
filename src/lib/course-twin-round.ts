@@ -297,9 +297,7 @@ export function buildCourseTwinAutomaticGreenCompletion({
 
 export function courseTwinAutomaticPuttCount(remainingYd: number) {
   const feet = Math.max(0, remainingYd) * 3;
-  if (feet <= 10) return 1;
-  if (feet <= 35) return 2;
-  return 3;
+  return feet <= 10 ? 1 : 2;
 }
 
 export function buildCourseTwinManualGreenCompletion({
