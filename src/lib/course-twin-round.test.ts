@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildCourseTwinAutomaticGreenCompletion,
   parseCourseTwinCreateRoundInput,
   parseCourseTwinRoundEventInput,
   reduceCourseTwinRoundEvents,
   stableCourseTwinRoundJson,
   type CourseTwinRoundLedgerEvent,
+  type CourseTwinRoundSummary,
 } from "@/lib/course-twin-round";
 
 const eventId = "0de8b595-5b93-48c1-93dc-b2c872339766";
@@ -21,7 +23,7 @@ describe("Course Twin round contract", () => {
         rules: {
           windSpeedMph: 12,
           windDirectionDeg: 225,
-          greenRule: "manual_putts",
+          greenRule: "automatic_putts",
           mulligansAllowed: true,
           competition: false,
         },
@@ -51,7 +53,7 @@ describe("Course Twin round contract", () => {
       rules: {
         windSpeedMph: 0,
         windDirectionDeg: 0,
-        greenRule: "manual_putts",
+        greenRule: "automatic_putts",
         mulligansAllowed: false,
         competition: false,
       },
@@ -149,6 +151,127 @@ describe("Course Twin round contract", () => {
     expect(stableCourseTwinRoundJson({ z: 1, a: { d: 2, b: 3 } })).toBe(
       '{"a":{"b":3,"d":2},"z":1}',
     );
+  });
+
+  it("automatically completes a saved green lie without requiring another full shot", () => {
+    const summary = {
+      status: "in_progress",
+      currentHole: 1,
+      scorecard: [],
+      mulliganCount: 0,
+      acceptedShots: [
+        {
+          holeNumber: 1,
+          shotNumber: 1,
+          clubId: "64f25e50-89fa-4772-8b6a-5cb4b20859fd",
+          clubType: "5w",
+          source: "modelled",
+          start: [0, 0, 0],
+          carryEnd: [0, 0, 170],
+          totalEnd: [0, 0, 187],
+          metrics: {
+            carryYd: 186,
+            totalYd: 204,
+            ballSpeedMph: 130,
+            clubSpeedMph: null,
+            launchAngleDeg: 15,
+            launchDirectionDeg: 0,
+            spinRate: 3_200,
+            spinAxis: 0,
+          },
+          result: { finalSurface: "green", penalty: null, bounceCount: 2 },
+          clientEventId: shotEventId,
+          eventId,
+          sequence: 1,
+        },
+      ],
+    } satisfies CourseTwinRoundSummary;
+
+    expect(
+      buildCourseTwinAutomaticGreenCompletion({
+        summary,
+        hole: {
+          holeNumber: 1,
+          par: 3,
+          yards: 190,
+          green: [0, 0, 190],
+        },
+      }),
+    ).toMatchObject({
+      triggerShotClientEventId: shotEventId,
+      remainingYd: expect.closeTo(3.28, 1),
+      payload: {
+        holeNumber: 1,
+        strokes: 2,
+        putts: 1,
+        penalties: 0,
+        gir: true,
+      },
+    });
+  });
+
+  it("does not auto-complete an off-green lie or an already-scored hole", () => {
+    const summary = {
+      status: "in_progress",
+      currentHole: 1,
+      scorecard: [],
+      mulliganCount: 0,
+      acceptedShots: [
+        {
+          holeNumber: 1,
+          shotNumber: 1,
+          clubId: "64f25e50-89fa-4772-8b6a-5cb4b20859fd",
+          clubType: "5w",
+          source: "modelled",
+          start: [0, 0, 0],
+          carryEnd: [0, 0, 170],
+          totalEnd: [0, 0, 187],
+          metrics: {
+            carryYd: 186,
+            totalYd: 204,
+            ballSpeedMph: 130,
+            clubSpeedMph: null,
+            launchAngleDeg: 15,
+            launchDirectionDeg: 0,
+            spinRate: 3_200,
+            spinAxis: 0,
+          },
+          result: { finalSurface: "fairway", penalty: null, bounceCount: 2 },
+          clientEventId: shotEventId,
+          eventId,
+          sequence: 1,
+        },
+      ],
+    } satisfies CourseTwinRoundSummary;
+    const hole = { holeNumber: 1, par: 3, yards: 190, green: [0, 0, 190] } as const;
+
+    expect(buildCourseTwinAutomaticGreenCompletion({ summary, hole })).toBeNull();
+    expect(
+      buildCourseTwinAutomaticGreenCompletion({
+        summary: {
+          ...summary,
+          scorecard: [
+            {
+              holeNumber: 1,
+              par: 3,
+              yards: 190,
+              strokes: 3,
+              putts: 2,
+              penalties: 0,
+              fairwayHit: null,
+              gir: true,
+            },
+          ],
+          acceptedShots: [
+            {
+              ...summary.acceptedShots[0],
+              result: { finalSurface: "green", penalty: null, bounceCount: 2 },
+            },
+          ],
+        },
+        hole,
+      }),
+    ).toBeNull();
   });
 });
 

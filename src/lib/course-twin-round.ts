@@ -9,7 +9,7 @@ export const COURSE_TWIN_ROUND_EVENT_TYPES = [
 export type CourseTwinRoundMode = "play" | "live";
 export type CourseTwinRoundStatus = "in_progress" | "complete" | "abandoned";
 export type CourseTwinRoundEventType = (typeof COURSE_TWIN_ROUND_EVENT_TYPES)[number];
-export type CourseTwinGreenRule = "manual_putts" | "competition_gimmes";
+export type CourseTwinGreenRule = "automatic_putts" | "manual_putts" | "competition_gimmes";
 export type CourseTwinRoundPosition = [number, number, number];
 
 export type CourseTwinRoundRules = {
@@ -95,6 +95,19 @@ export type CourseTwinRoundSummary = {
     CourseTwinShotEventPayload & { clientEventId: string; eventId: string; sequence: number }
   >;
   mulliganCount: number;
+};
+
+export type CourseTwinAutomaticGreenCompletion = {
+  triggerShotClientEventId: string;
+  remainingYd: number;
+  payload: CourseTwinHoleCompletedPayload;
+};
+
+type CourseTwinGreenCompletionSummary = Pick<
+  CourseTwinRoundSummary,
+  "status" | "currentHole" | "scorecard"
+> & {
+  acceptedShots: Array<CourseTwinShotEventPayload & { clientEventId: string }>;
 };
 
 const eventTypes = new Set<string>(COURSE_TWIN_ROUND_EVENT_TYPES);
@@ -191,6 +204,57 @@ export function reduceCourseTwinRoundEvents({
   };
 }
 
+export function buildCourseTwinAutomaticGreenCompletion({
+  summary,
+  hole,
+}: {
+  summary: CourseTwinGreenCompletionSummary;
+  hole: {
+    holeNumber: number;
+    par: number;
+    yards: number;
+    green: readonly [number, number, number];
+  };
+}): CourseTwinAutomaticGreenCompletion | null {
+  if (
+    summary.status !== "in_progress" ||
+    summary.currentHole !== hole.holeNumber ||
+    summary.scorecard.some((score) => score.holeNumber === hole.holeNumber)
+  ) {
+    return null;
+  }
+  const holeShots = summary.acceptedShots.filter((shot) => shot.holeNumber === hole.holeNumber);
+  const lastShot = holeShots.at(-1);
+  if (!lastShot || lastShot.result.penalty || lastShot.result.finalSurface !== "green") return null;
+
+  const remainingYd =
+    Math.hypot(hole.green[0] - lastShot.totalEnd[0], hole.green[2] - lastShot.totalEnd[2]) / 0.9144;
+  const putts = courseTwinAutomaticPuttCount(remainingYd);
+  const penalties = holeShots.filter((shot) => Boolean(shot.result.penalty)).length;
+
+  return {
+    triggerShotClientEventId: lastShot.clientEventId,
+    remainingYd,
+    payload: {
+      holeNumber: hole.holeNumber,
+      par: hole.par,
+      yards: hole.yards,
+      strokes: holeShots.length + penalties + putts,
+      putts,
+      penalties,
+      fairwayHit: null,
+      gir: lastShot.shotNumber <= Math.max(1, hole.par - 2),
+    },
+  };
+}
+
+export function courseTwinAutomaticPuttCount(remainingYd: number) {
+  const feet = Math.max(0, remainingYd) * 3;
+  if (feet <= 10) return 1;
+  if (feet <= 35) return 2;
+  return 3;
+}
+
 export function stableCourseTwinRoundJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableCourseTwinRoundJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -213,7 +277,9 @@ function parseRules(value: unknown): CourseTwinRoundRules | null {
   if (
     windSpeedMph === null ||
     windDirectionDeg === null ||
-    (value.greenRule !== "manual_putts" && value.greenRule !== "competition_gimmes") ||
+    (value.greenRule !== "automatic_putts" &&
+      value.greenRule !== "manual_putts" &&
+      value.greenRule !== "competition_gimmes") ||
     typeof value.mulligansAllowed !== "boolean" ||
     typeof value.competition !== "boolean"
   ) {

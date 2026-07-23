@@ -70,9 +70,12 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("virtualDropPoint(virtualSimulation)");
     expect(sceneSource).toContain("Virtual round · My Bag");
     expect(sceneSource).toContain("Each shot is sampled from your measured carry and dispersion");
-    expect(sceneSource).toContain("<RoundPuttActions");
-    expect(sceneSource).toContain("Apply competition rule");
-    expect(sceneSource).toContain("manual_putts");
+    expect(sceneSource).toContain("buildCourseTwinAutomaticGreenCompletion");
+    expect(sceneSource).toContain("<RoundAutoPuttStatus");
+    expect(sceneSource).toContain("Green reached · automatic putt-out");
+    expect(sceneSource).toContain("yd to mapped pin");
+    expect(sceneSource).toContain('greenRule: "automatic_putts"');
+    expect(sceneSource).not.toContain("<RoundPuttActions");
   });
 
   it("keeps live GSPro shots behind a paired loopback bridge and runs them through course physics", () => {

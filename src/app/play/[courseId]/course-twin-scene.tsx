@@ -61,10 +61,13 @@ import {
   loadActiveCourseTwinRoundClient,
   type CourseTwinRoundClientDocument,
 } from "@/lib/course-twin-round-client";
-import type {
-  CourseTwinRoundEventInput,
-  CourseTwinRoundRules,
-  CourseTwinShotEventPayload,
+import {
+  buildCourseTwinAutomaticGreenCompletion,
+  courseTwinAutomaticPuttCount,
+  type CourseTwinAutomaticGreenCompletion,
+  type CourseTwinRoundEventInput,
+  type CourseTwinRoundRules,
+  type CourseTwinShotEventPayload,
 } from "@/lib/course-twin-round";
 import {
   createCourseTwinSurfaceClassifier,
@@ -154,7 +157,7 @@ type RoundSyncState = {
 const defaultRoundRules: CourseTwinRoundRules = {
   windSpeedMph: 0,
   windDirectionDeg: 0,
-  greenRule: "manual_putts",
+  greenRule: "automatic_putts",
   mulligansAllowed: true,
   competition: false,
 };
@@ -300,6 +303,7 @@ export function CourseTwinScene({
   const activeRoundRef = useRef<CourseTwinRoundClientDocument | null>(null);
   const roomStateRef = useRef(roomState);
   const submittedRoundEventsRef = useRef(new Set<string>());
+  const automaticGreenCompletionsRef = useRef(new Set<string>());
   const liveContextRef = useRef({
     hole: manifest.holes[0],
     start: manifest.holes[0]?.tee ?? ([0, 0, 0] as CourseTwinPoint),
@@ -493,6 +497,16 @@ export function CourseTwinScene({
       strategyState.document?.recommended ??
       null,
     [strategyClubId, strategyState.document],
+  );
+  const automaticGreenCompletion = useMemo(
+    () =>
+      activeRound
+        ? buildCourseTwinAutomaticGreenCompletion({
+            summary: activeRound.summary,
+            hole: selectedHole,
+          })
+        : null,
+    [activeRound, selectedHole],
   );
 
   const appendRoundEvent = useCallback(
@@ -709,6 +723,14 @@ export function CourseTwinScene({
         cameraView,
         cameraCommand: cameraCommand?.action ?? null,
         hole: selectedHole.holeNumber,
+        automaticPutting: automaticGreenCompletion
+          ? {
+              status: roundSync.status === "saving" ? "saving" : "pending",
+              putts: automaticGreenCompletion.payload.putts,
+              remainingYd: Number(automaticGreenCompletion.remainingYd.toFixed(1)),
+              triggerShotClientEventId: automaticGreenCompletion.triggerShotClientEventId,
+            }
+          : null,
         visibleShotCount: mode === "replay" && selectedShot ? 1 : 0,
         selectedShotIndex: mode === "replay" && selectedShot ? shotIndex : null,
         shot:
@@ -845,6 +867,7 @@ export function CourseTwinScene({
     };
   }, [
     activeRound,
+    automaticGreenCompletion,
     cameraCommand,
     cameraView,
     explorePosition,
@@ -1197,33 +1220,18 @@ export function CourseTwinScene({
 
   const finishPersistedHole = async ({
     roundMode,
-    putts,
-    strokesBeforePutts,
-    penalties,
-    reachedGreenIn,
+    completion,
   }: {
     roundMode: "play" | "live";
-    putts: number;
-    strokesBeforePutts: number;
-    penalties: number;
-    reachedGreenIn: number;
+    completion: CourseTwinAutomaticGreenCompletion;
   }) => {
     const current = activeRoundRef.current;
-    if (!current || current.mode !== roundMode || roundSync.status === "saving") return;
+    if (!current || current.mode !== roundMode || roundSync.status === "saving") return false;
     try {
       const afterHole = await appendRoundEvent({
         type: "hole.completed",
         clientEventId: crypto.randomUUID(),
-        payload: {
-          holeNumber: selectedHole.holeNumber,
-          par: selectedHole.par,
-          yards: selectedHole.yards,
-          strokes: strokesBeforePutts + putts,
-          putts,
-          penalties,
-          fairwayHit: null,
-          gir: reachedGreenIn <= Math.max(1, selectedHole.par - 2),
-        },
+        payload: completion.payload,
       });
       const roundFinished = afterHole.summary.scorecard.length === afterHole.holeCount;
       if (roundFinished) {
@@ -1233,10 +1241,10 @@ export function CourseTwinScene({
           payload: {},
         });
         if (roundMode === "play") {
-          setVirtualStrokes(strokesBeforePutts + putts);
+          setVirtualStrokes(completion.payload.strokes);
           setVirtualComplete(true);
         } else {
-          setLiveStrokes(strokesBeforePutts + putts);
+          setLiveStrokes(completion.payload.strokes);
           setLiveComplete(true);
         }
         activeRoundRef.current = completed;
@@ -1245,10 +1253,43 @@ export function CourseTwinScene({
         selectHole(afterHole.currentHole);
       }
       setPlaying(false);
+      return true;
     } catch {
       // appendRoundEvent owns the golfer-facing error state.
+      return false;
     }
   };
+
+  useEffect(() => {
+    const completion = automaticGreenCompletion;
+    const round = activeRoundRef.current;
+    if (!completion || !round || roundSync.status === "saving") return;
+    if (automaticGreenCompletionsRef.current.has(completion.triggerShotClientEventId)) return;
+
+    const transientShotIsVisible =
+      round.mode === "play"
+        ? virtualRoundEventId === completion.triggerShotClientEventId && Boolean(virtualShot)
+        : liveRoundEventId === completion.triggerShotClientEventId && Boolean(liveShot);
+    if (transientShotIsVisible && playback < 1) return;
+
+    automaticGreenCompletionsRef.current.add(completion.triggerShotClientEventId);
+    void finishPersistedHole({ roundMode: round.mode, completion }).then((saved) => {
+      if (!saved) {
+        automaticGreenCompletionsRef.current.delete(completion.triggerShotClientEventId);
+      }
+    });
+    // finishPersistedHole intentionally reads the latest active-round ref and ledger sync state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    automaticGreenCompletion,
+    liveRoundEventId,
+    liveShot,
+    playback,
+    roundRetryToken,
+    roundSync.status,
+    virtualRoundEventId,
+    virtualShot,
+  ]);
 
   const takePersistedMulligan = async (roundMode: "play" | "live", shotClientEventId: string) => {
     const current = activeRoundRef.current;
@@ -1952,15 +1993,6 @@ export function CourseTwinScene({
                   setPlaying(false);
                   setCameraCommand(null);
                 }}
-                onFinishGreen={(putts) =>
-                  void finishPersistedHole({
-                    roundMode: "play",
-                    putts,
-                    strokesBeforePutts: virtualStrokes,
-                    penalties: virtualPenaltyStrokes,
-                    reachedGreenIn: virtualShotNumber,
-                  })
-                }
                 onMulligan={() => {
                   if (virtualRoundEventId) {
                     void takePersistedMulligan("play", virtualRoundEventId);
@@ -2028,15 +2060,6 @@ export function CourseTwinScene({
                   setPlaying(false);
                   setCameraCommand(null);
                 }}
-                onFinishGreen={(putts) =>
-                  void finishPersistedHole({
-                    roundMode: "live",
-                    putts,
-                    strokesBeforePutts: liveStrokes,
-                    penalties: livePenaltyStrokes,
-                    reachedGreenIn: liveShotNumber,
-                  })
-                }
                 onMulligan={() => {
                   if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
                 }}
@@ -3869,7 +3892,8 @@ function RoundSetupControls({
             ? "competition rules"
             : activeRound.rulesJson.mulligansAllowed
               ? "casual mulligans"
-              : "no mulligans"}
+              : "no mulligans"}{" "}
+          · automatic putt-out on mapped greens
         </p>
         {activeRound.mode !== mode ? (
           <p className="mt-3 rounded-lg border border-amber-200/20 bg-amber-100/5 px-3 py-2 text-xs text-amber-100/80">
@@ -4002,7 +4026,13 @@ function RoundSetupControls({
               ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
               : "border-white/10 bg-white/5",
           )}
-          onClick={() => onRulesChange({ ...rules, competition: false })}
+          onClick={() =>
+            onRulesChange({
+              ...rules,
+              competition: false,
+              greenRule: "automatic_putts",
+            })
+          }
         >
           Casual
         </button>
@@ -4075,7 +4105,6 @@ function VirtualRoundControls({
   rules,
   onPlay,
   onContinue,
-  onFinishGreen,
   onMulligan,
   onRetry,
   onStrategyRetry,
@@ -4097,7 +4126,6 @@ function VirtualRoundControls({
   rules: CourseTwinRoundRules;
   onPlay: () => void;
   onContinue: () => void;
-  onFinishGreen: (putts: number) => void;
   onMulligan: () => void;
   onRetry: () => void;
   onStrategyRetry: () => void;
@@ -4162,6 +4190,9 @@ function VirtualRoundControls({
             {strokes} {strokes === 1 ? "stroke" : "strokes"}
             {penaltyStrokes > 0 ? ` · ${penaltyStrokes} penalty` : ""}
           </p>
+          <p className="mt-1 text-xs text-emerald-100/50">
+            {remainingYd.toFixed(0)} yd to mapped pin
+          </p>
         </div>
         <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
           Par {hole.par}
@@ -4190,12 +4221,7 @@ function VirtualRoundControls({
           {playback >= 1 ? (
             <>
               {onGreen && !simulation.penalty ? (
-                <RoundPuttActions
-                  rules={rules}
-                  remainingYd={remainingYd}
-                  disabled={sync !== "ready"}
-                  onFinish={onFinishGreen}
-                />
+                <RoundAutoPuttStatus remainingYd={remainingYd} saving={sync === "saving"} />
               ) : (
                 <Button
                   type="button"
@@ -4318,7 +4344,6 @@ function LiveRoundControls({
   sync,
   rules,
   onContinue,
-  onFinishGreen,
   onMulligan,
   onRetry,
 }: {
@@ -4343,7 +4368,6 @@ function LiveRoundControls({
   sync: RoundSyncState["status"];
   rules: CourseTwinRoundRules;
   onContinue: () => void;
-  onFinishGreen: (putts: number) => void;
   onMulligan: () => void;
   onRetry: () => void;
 }) {
@@ -4496,11 +4520,9 @@ function LiveRoundControls({
               {playback >= 1 ? (
                 <>
                   {onGreen && !simulation.penalty ? (
-                    <RoundPuttActions
-                      rules={rules}
+                    <RoundAutoPuttStatus
                       remainingYd={remainingYd ?? 0}
-                      disabled={sync !== "ready"}
-                      onFinish={onFinishGreen}
+                      saving={sync === "saving"}
                     />
                   ) : (
                     <Button
@@ -4583,47 +4605,19 @@ function LiveRoundControls({
   );
 }
 
-function RoundPuttActions({
-  rules,
-  remainingYd,
-  disabled,
-  onFinish,
-}: {
-  rules: CourseTwinRoundRules;
-  remainingYd: number;
-  disabled: boolean;
-  onFinish: (putts: number) => void;
-}) {
-  if (rules.greenRule === "competition_gimmes") {
-    const putts = competitionPuttCount(remainingYd);
-    return (
-      <Button
-        type="button"
-        className="mt-3 w-full"
-        disabled={disabled}
-        onClick={() => onFinish(putts)}
-      >
-        Apply competition rule · {putts} {putts === 1 ? "putt" : "putts"}
-      </Button>
-    );
-  }
+function RoundAutoPuttStatus({ remainingYd, saving }: { remainingYd: number; saving: boolean }) {
+  const putts = courseTwinAutomaticPuttCount(remainingYd);
   return (
-    <div className="mt-3 grid grid-cols-3 gap-2">
-      {[1, 2, 3].map((putts) => (
-        <Button
-          key={putts}
-          type="button"
-          variant={putts === 2 ? "default" : "outline"}
-          className={cn(
-            "px-2",
-            putts !== 2 && "!border-white/15 !bg-transparent !text-white hover:!bg-white/10",
-          )}
-          disabled={disabled}
-          onClick={() => onFinish(putts)}
-        >
-          {putts} {putts === 1 ? "putt" : "putts"}
-        </Button>
-      ))}
+    <div
+      className="mt-3 rounded-lg border border-emerald-300/20 bg-emerald-300/5 px-3 py-2 text-sm text-emerald-100/80"
+      role="status"
+      aria-live="polite"
+    >
+      <p className="font-semibold">Green reached · automatic putt-out</p>
+      <p className="mt-1 text-xs text-emerald-100/60">
+        {putts} modelled {putts === 1 ? "putt" : "putts"} added
+        {saving ? " · saving and advancing…" : " · advancing to the next hole…"}
+      </p>
     </div>
   );
 }
@@ -4774,11 +4768,4 @@ function buildRoundShotPayload({
       bounceCount: simulation.bounceCount,
     },
   };
-}
-
-function competitionPuttCount(remainingYd: number) {
-  const feet = remainingYd * 3;
-  if (feet <= 10) return 1;
-  if (feet <= 35) return 2;
-  return 3;
 }
