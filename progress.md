@@ -193,3 +193,11 @@ Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real
 - Controlled shot choices now consider the selected club as well as remaining distance. PW, GW, AW, SW and LW retain `Half shot` alongside `Full swing` through 130 yd instead of being forced to full swing at 100.1 yd.
 - `Chip` remains limited to genuine 30 yd-or-shorter leaves, while pitch, bunker-splash and non-wedge full-shot boundaries keep their existing distance and lie rules.
 - Focused deterministic coverage reproduces the reported 102 yd gap-wedge leave, confirms `Half shot` is selected and scaled, and confirms a driver at the same distance remains full swing only.
+
+## Completed milestone — 2026-07-24 simulator viewport HUD
+
+- The desktop Course Twin now occupies exactly the app viewport below the 56 px workbench header, so the document cannot grow taller than the browser and the golfer no longer has to scroll the page to reach controls.
+- The existing simulator controls are preserved in compact, translucent left and right HUD cards over the full-width Three.js course. A central hole readout keeps hole, par, yardage and active-round distance visible without covering the aiming view.
+- Mobile keeps the safe stacked flow, while unusually short desktop windows can scroll inside an individual HUD card without moving the course or browser page.
+- The global social-feed launcher and PWA install/update toast are suppressed on `/play` so they cannot compete with the simulator controls or cover the course.
+- Signed-in Chrome verification measured a 999 px viewport, document, route and Three.js stage with zero page overflow; Play mode's 572 px right HUD fit without internal scrolling. The 1280 x 720 game-runtime capture also confirmed the compact two-row mode grid and unobstructed centre hole readout.

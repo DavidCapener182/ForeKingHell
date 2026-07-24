@@ -1830,758 +1830,785 @@ export function CourseTwinScene({
   return (
     <div
       data-clubhouse-preserve-dark
-      className="grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:grid-cols-[330px_minmax(0,1fr)]"
+      data-course-twin-stage
+      className="relative grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:h-full xl:min-h-0 xl:overflow-hidden"
     >
-      <aside className="order-2 border-t border-white/10 bg-[#0b1d13] p-4 xl:order-1 xl:border-r xl:border-t-0 xl:p-5">
-        <div className="space-y-1">
-          <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
-            Grade {manifest.quality.grade} · {manifest.terrain.resolutionM?.toFixed(1)} m terrain
-          </Badge>
-          <h1 className="pt-2 text-2xl font-semibold tracking-tight">{manifest.course.name}</h1>
-          <p className="text-sm leading-6 text-emerald-100/70">
-            Real mapped holes over Environment Agency LiDAR terrain and georeferenced aerial
-            reference imagery.{" "}
-            {manifest.quality.verified
-              ? "Putting contours are backed by reviewed high-resolution green surveys."
-              : "Green contours remain unverified for putting."}
-          </p>
-        </div>
-
+      <aside
+        data-course-twin-hud
+        className="order-2 border-t border-white/10 bg-[#0b1d13] p-4 xl:pointer-events-none xl:absolute xl:inset-0 xl:z-20 xl:flex xl:items-start xl:justify-between xl:gap-4 xl:border-0 xl:bg-transparent xl:p-3"
+      >
         <div
-          className={cn(
-            "mt-5 grid gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1",
-            readOnly ? "grid-cols-2" : "grid-cols-3 sm:grid-cols-6",
-          )}
+          data-course-twin-primary-controls
+          className="xl:pointer-events-auto xl:max-h-full xl:w-[300px] xl:overflow-y-auto xl:rounded-2xl xl:border xl:border-white/15 xl:bg-[#07150e]/90 xl:p-3 xl:shadow-2xl xl:backdrop-blur-xl"
         >
-          <ModeButton
-            active={mode === "flyover"}
-            onClick={() => {
-              selectMode("flyover");
-              setCameraCommand(null);
-            }}
-          >
-            Flyover
-          </ModeButton>
-          <ModeButton
-            active={mode === "replay"}
-            disabled={!replay?.shots.length}
-            onClick={() => {
-              selectMode("replay");
-              setCameraView("golfer");
-              setCameraCommand(null);
-            }}
-          >
-            Replay
-          </ModeButton>
-          {!readOnly ? (
-            <>
-              <ModeButton
-                active={mode === "strategy"}
-                onClick={() => {
-                  selectMode("strategy");
-                  setCameraView("aerial");
-                  setCameraCommand(null);
-                  if (
-                    strategyState.holeNumber !== selectedHole.holeNumber ||
-                    strategyState.status === "idle" ||
-                    strategyState.status === "error"
-                  ) {
-                    loadStrategy(selectedHole.holeNumber);
-                  }
-                }}
-              >
-                Strategy
-              </ModeButton>
-              <ModeButton
-                active={mode === "play"}
-                onClick={() => {
-                  selectMode("play");
-                  setCameraView("golfer");
-                  setCameraCommand(null);
-                  if (
-                    strategyState.holeNumber !== selectedHole.holeNumber ||
-                    strategyState.status === "idle" ||
-                    strategyState.status === "error"
-                  ) {
-                    loadStrategy(selectedHole.holeNumber);
-                  }
-                }}
-              >
-                Play
-              </ModeButton>
-              <ModeButton
-                active={mode === "live"}
-                onClick={() => {
-                  selectMode("live");
-                  setCameraView("golfer");
-                  setCameraCommand(null);
-                  if (
-                    strategyState.holeNumber !== selectedHole.holeNumber ||
-                    strategyState.status === "idle" ||
-                    strategyState.status === "error"
-                  ) {
-                    loadStrategy(selectedHole.holeNumber);
-                  }
-                  if (bridgeState.status === "idle" || bridgeState.status === "error") {
-                    detectBridge();
-                  }
-                }}
-              >
-                Live
-              </ModeButton>
-              <ModeButton
-                active={mode === "explore"}
-                onClick={() => {
-                  selectMode("explore");
-                  setPlaying(false);
-                  setCameraCommand(null);
-                  setExplorePosition(selectedHole.tee);
-                }}
-              >
-                Explore
-              </ModeButton>
-            </>
-          ) : null}
-        </div>
-
-        {mode === "explore" ? (
-          <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
-            <ModeButton
-              active={exploreTransport === "walk"}
-              onClick={() => setExploreTransport("walk")}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                <Footprints className="size-4" /> Walk
-              </span>
-            </ModeButton>
-            <ModeButton
-              active={exploreTransport === "cart"}
-              onClick={() => setExploreTransport("cart")}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                <CarFront className="size-4" /> Cart
-              </span>
-            </ModeButton>
+          <div className="space-y-1">
+            <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
+              Grade {manifest.quality.grade} · {manifest.terrain.resolutionM?.toFixed(1)} m terrain
+            </Badge>
+            <h1 className="pt-2 text-2xl font-semibold tracking-tight xl:text-lg">
+              {manifest.course.name}
+            </h1>
+            <p className="text-sm leading-6 text-emerald-100/70 xl:text-xs xl:leading-4">
+              Real mapped holes over Environment Agency LiDAR terrain and georeferenced aerial
+              reference imagery.{" "}
+              {manifest.quality.verified
+                ? "Putting contours are backed by reviewed high-resolution green surveys."
+                : "Green contours remain unverified for putting."}
+            </p>
           </div>
-        ) : (
-          <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+
+          <div
+            className={cn(
+              "mt-5 grid gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1 xl:mt-3",
+              readOnly ? "grid-cols-2" : "grid-cols-3",
+            )}
+          >
             <ModeButton
-              active={cameraView === "golfer"}
+              active={mode === "flyover"}
               onClick={() => {
+                selectMode("flyover");
+                setCameraCommand(null);
+              }}
+            >
+              Flyover
+            </ModeButton>
+            <ModeButton
+              active={mode === "replay"}
+              disabled={!replay?.shots.length}
+              onClick={() => {
+                selectMode("replay");
                 setCameraView("golfer");
                 setCameraCommand(null);
               }}
             >
-              {mode === "replay" || mode === "play" || mode === "live"
-                ? "Shot view"
-                : "Golfer view"}
+              Replay
             </ModeButton>
-            <ModeButton
-              active={cameraView === "aerial"}
-              onClick={() => {
-                setCameraView("aerial");
-                setCameraCommand(null);
-              }}
-            >
-              Aerial view
-            </ModeButton>
+            {!readOnly ? (
+              <>
+                <ModeButton
+                  active={mode === "strategy"}
+                  onClick={() => {
+                    selectMode("strategy");
+                    setCameraView("aerial");
+                    setCameraCommand(null);
+                    if (
+                      strategyState.holeNumber !== selectedHole.holeNumber ||
+                      strategyState.status === "idle" ||
+                      strategyState.status === "error"
+                    ) {
+                      loadStrategy(selectedHole.holeNumber);
+                    }
+                  }}
+                >
+                  Strategy
+                </ModeButton>
+                <ModeButton
+                  active={mode === "play"}
+                  onClick={() => {
+                    selectMode("play");
+                    setCameraView("golfer");
+                    setCameraCommand(null);
+                    if (
+                      strategyState.holeNumber !== selectedHole.holeNumber ||
+                      strategyState.status === "idle" ||
+                      strategyState.status === "error"
+                    ) {
+                      loadStrategy(selectedHole.holeNumber);
+                    }
+                  }}
+                >
+                  Play
+                </ModeButton>
+                <ModeButton
+                  active={mode === "live"}
+                  onClick={() => {
+                    selectMode("live");
+                    setCameraView("golfer");
+                    setCameraCommand(null);
+                    if (
+                      strategyState.holeNumber !== selectedHole.holeNumber ||
+                      strategyState.status === "idle" ||
+                      strategyState.status === "error"
+                    ) {
+                      loadStrategy(selectedHole.holeNumber);
+                    }
+                    if (bridgeState.status === "idle" || bridgeState.status === "error") {
+                      detectBridge();
+                    }
+                  }}
+                >
+                  Live
+                </ModeButton>
+                <ModeButton
+                  active={mode === "explore"}
+                  onClick={() => {
+                    selectMode("explore");
+                    setPlaying(false);
+                    setCameraCommand(null);
+                    setExplorePosition(selectedHole.tee);
+                  }}
+                >
+                  Explore
+                </ModeButton>
+              </>
+            ) : null}
           </div>
-        )}
 
-        {mode === "explore" ? (
-          <>
-            <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-5 text-emerald-100/65">
-              {exploreTransport === "walk"
-                ? "Walk the mapped terrain with W/S, strafe with A/D and turn with the arrow keys."
-                : "Drive the course with W/S and steer with A/D or the arrow keys. Hold Shift for a faster cart pace."}
+          {mode === "explore" ? (
+            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+              <ModeButton
+                active={exploreTransport === "walk"}
+                onClick={() => setExploreTransport("walk")}
+              >
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <Footprints className="size-4" /> Walk
+                </span>
+              </ModeButton>
+              <ModeButton
+                active={exploreTransport === "cart"}
+                onClick={() => setExploreTransport("cart")}
+              >
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <CarFront className="size-4" /> Cart
+                </span>
+              </ModeButton>
             </div>
-            <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="flex items-center gap-2">
-                <Users className="size-4 text-emerald-200" />
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/70">
-                  Group session
-                </p>
+          ) : (
+            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+              <ModeButton
+                active={cameraView === "golfer"}
+                onClick={() => {
+                  setCameraView("golfer");
+                  setCameraCommand(null);
+                }}
+              >
+                {mode === "replay" || mode === "play" || mode === "live"
+                  ? "Shot view"
+                  : "Golfer view"}
+              </ModeButton>
+              <ModeButton
+                active={cameraView === "aerial"}
+                onClick={() => {
+                  setCameraView("aerial");
+                  setCameraCommand(null);
+                }}
+              >
+                Aerial view
+              </ModeButton>
+            </div>
+          )}
+
+          {mode === "explore" ? (
+            <>
+              <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-5 text-emerald-100/65">
+                {exploreTransport === "walk"
+                  ? "Walk the mapped terrain with W/S, strafe with A/D and turn with the arrow keys."
+                  : "Drive the course with W/S and steer with A/D or the arrow keys. Hold Shift for a faster cart pace."}
               </div>
-              {roomState.status === "ready" && roomState.room ? (
-                <div className="mt-3 space-y-3">
-                  <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
-                    <div>
-                      <p className="text-[11px] text-emerald-100/50">Invite code</p>
-                      <p className="font-mono text-base font-semibold tracking-[0.18em]">
-                        {roomState.room.inviteCode}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                      aria-label="Copy group invite code"
-                      onClick={() => {
-                        void navigator.clipboard.writeText(roomState.room?.inviteCode ?? "");
-                        setRoomCodeCopied(true);
-                        window.setTimeout(() => setRoomCodeCopied(false), 1_500);
-                      }}
-                    >
-                      <Copy className="size-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-emerald-100/65">
-                    {roomCodeCopied
-                      ? "Invite code copied."
-                      : `${roomState.room.members.filter((member) => member.role !== "spectator").length} golfer(s) · ${roomState.room.members.filter((member) => member.role === "spectator").length} spectator(s) connected.`}
+              <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="flex items-center gap-2">
+                  <Users className="size-4 text-emerald-200" />
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/70">
+                    Group session
                   </p>
-                  <div className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/65">
-                    <p className="font-semibold text-emerald-100">
-                      {roomState.room.competition
-                        ? "Verified competition room"
-                        : "Shared practice room"}
-                    </p>
-                    <p className="mt-1">
-                      {roomState.room.visibility === "public" ? "Public lobby" : "Private invite"} ·
-                      You joined as {roomState.room.currentRole} · {roomState.room.sharedEventCount}{" "}
-                      verified {roomState.room.sharedEventCount === 1 ? "event" : "events"}
-                    </p>
-                    {roomState.room.finalEventHash ? (
-                      <p className="mt-1 font-mono text-[10px] text-emerald-200/70">
-                        Locked {roomState.room.finalEventHash.slice(0, 12)}…
-                      </p>
-                    ) : roomState.room.latestSharedEvent ? (
-                      <p className="mt-1 text-[11px] text-emerald-200/70">
-                        Latest: {roomState.room.latestSharedEvent.eventType.replaceAll(".", " ")}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="space-y-1.5">
-                    {roomState.room.members.map((member) => (
-                      <div
-                        key={member.userId}
-                        className="flex items-center justify-between text-xs text-emerald-100/75"
-                      >
-                        <span>
-                          {member.displayName}
-                          <span className="ml-1 text-emerald-100/40">· {member.role}</span>
-                        </span>
-                        <span>
-                          Hole {member.holeNumber} · {member.transport}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <CourseTwinComms
-                    roomId={roomState.room.id}
-                    currentUserId={roomState.room.currentUserId}
-                    members={roomState.room.members}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                    onClick={leaveRoom}
-                  >
-                    <LogOut className="mr-2 size-4" /> Leave group
-                  </Button>
                 </div>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
-                    {([false, true] as const).map((competition) => (
-                      <button
-                        key={String(competition)}
+                {roomState.status === "ready" && roomState.room ? (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
+                      <div>
+                        <p className="text-[11px] text-emerald-100/50">Invite code</p>
+                        <p className="font-mono text-base font-semibold tracking-[0.18em]">
+                          {roomState.room.inviteCode}
+                        </p>
+                      </div>
+                      <Button
                         type="button"
-                        className={cn(
-                          "rounded-md px-2 py-1.5 text-xs font-semibold",
-                          roomCompetition === competition
-                            ? "bg-[#e7ff6a] text-[#102217]"
-                            : "text-emerald-100/60",
-                        )}
-                        onClick={() => setRoomCompetition(competition)}
+                        size="icon"
+                        variant="outline"
+                        className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                        aria-label="Copy group invite code"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(roomState.room?.inviteCode ?? "");
+                          setRoomCodeCopied(true);
+                          window.setTimeout(() => setRoomCodeCopied(false), 1_500);
+                        }}
                       >
-                        {competition ? "Competition" : "Practice"}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
-                    {(["private", "public"] as const).map((visibility) => (
-                      <button
-                        key={visibility}
-                        type="button"
-                        className={cn(
-                          "rounded-md px-2 py-1.5 text-xs font-semibold capitalize",
-                          roomVisibility === visibility
-                            ? "bg-white/15 text-white"
-                            : "text-emerald-100/55",
-                        )}
-                        onClick={() => setRoomVisibility(visibility)}
-                      >
-                        {visibility === "private" ? "Invite only" : "Public lobby"}
-                      </button>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    className="w-full bg-emerald-300 text-[#092013] hover:bg-emerald-200"
-                    disabled={roomState.status === "loading"}
-                    onClick={createRoom}
-                  >
-                    Start group session
-                  </Button>
-                  <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
-                    {(["player", "spectator"] as const).map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        className={cn(
-                          "rounded-md px-2 py-1.5 text-xs font-semibold",
-                          roomJoinRole === role ? "bg-white/15 text-white" : "text-emerald-100/55",
-                        )}
-                        onClick={() => setRoomJoinRole(role)}
-                      >
-                        Join as {role}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      value={roomInviteCode}
-                      onChange={(event) => setRoomInviteCode(event.target.value.toUpperCase())}
-                      maxLength={12}
-                      placeholder="Invite code"
-                      aria-label="Group invite code"
-                      className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-3 text-sm uppercase tracking-[0.12em] text-white outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 focus:border-emerald-300"
+                        <Copy className="size-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-emerald-100/65">
+                      {roomCodeCopied
+                        ? "Invite code copied."
+                        : `${roomState.room.members.filter((member) => member.role !== "spectator").length} golfer(s) · ${roomState.room.members.filter((member) => member.role === "spectator").length} spectator(s) connected.`}
+                    </p>
+                    <div className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/65">
+                      <p className="font-semibold text-emerald-100">
+                        {roomState.room.competition
+                          ? "Verified competition room"
+                          : "Shared practice room"}
+                      </p>
+                      <p className="mt-1">
+                        {roomState.room.visibility === "public" ? "Public lobby" : "Private invite"}{" "}
+                        · You joined as {roomState.room.currentRole} ·{" "}
+                        {roomState.room.sharedEventCount} verified{" "}
+                        {roomState.room.sharedEventCount === 1 ? "event" : "events"}
+                      </p>
+                      {roomState.room.finalEventHash ? (
+                        <p className="mt-1 font-mono text-[10px] text-emerald-200/70">
+                          Locked {roomState.room.finalEventHash.slice(0, 12)}…
+                        </p>
+                      ) : roomState.room.latestSharedEvent ? (
+                        <p className="mt-1 text-[11px] text-emerald-200/70">
+                          Latest: {roomState.room.latestSharedEvent.eventType.replaceAll(".", " ")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-1.5">
+                      {roomState.room.members.map((member) => (
+                        <div
+                          key={member.userId}
+                          className="flex items-center justify-between text-xs text-emerald-100/75"
+                        >
+                          <span>
+                            {member.displayName}
+                            <span className="ml-1 text-emerald-100/40">· {member.role}</span>
+                          </span>
+                          <span>
+                            Hole {member.holeNumber} · {member.transport}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <CourseTwinComms
+                      roomId={roomState.room.id}
+                      currentUserId={roomState.room.currentUserId}
+                      members={roomState.room.members}
                     />
                     <Button
                       type="button"
                       variant="outline"
-                      className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                      disabled={roomState.status === "loading" || roomInviteCode.length < 6}
-                      onClick={joinRoom}
+                      className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                      onClick={leaveRoom}
                     >
-                      Join
+                      <LogOut className="mr-2 size-4" /> Leave group
                     </Button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                    disabled={publicRoomsLoading}
-                    onClick={() => void loadPublicRooms()}
-                  >
-                    {publicRoomsLoading ? "Finding public rooms…" : "Browse public rooms"}
-                  </Button>
-                  {publicRooms.length ? (
-                    <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-white/10 bg-black/15 p-2">
-                      {publicRooms.map((room) => (
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                      {([false, true] as const).map((competition) => (
                         <button
-                          key={room.id}
+                          key={String(competition)}
                           type="button"
-                          disabled={!room.canJoin}
-                          onClick={() => void joinPublicRoom(room.inviteCode)}
-                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-emerald-100/75 hover:bg-white/10 disabled:opacity-40"
+                          className={cn(
+                            "rounded-md px-2 py-1.5 text-xs font-semibold",
+                            roomCompetition === competition
+                              ? "bg-[#e7ff6a] text-[#102217]"
+                              : "text-emerald-100/60",
+                          )}
+                          onClick={() => setRoomCompetition(competition)}
                         >
-                          <span>
-                            <span className="block font-semibold text-emerald-100">
-                              {room.hostName}
-                            </span>
-                            Hole {room.holeNumber} · {room.competition ? "competition" : room.mode}
-                          </span>
-                          <span>
-                            {room.memberCount}/{room.maxPlayers}
-                          </span>
+                          {competition ? "Competition" : "Practice"}
                         </button>
                       ))}
                     </div>
-                  ) : null}
-                  {roomState.status === "error" ? (
-                    <p className="text-xs text-amber-200">{roomState.error}</p>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2">
-            <div className="mb-2 flex items-center justify-between px-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
-                Camera controls
-              </p>
-              <p className="text-[11px] text-emerald-100/45">Drag to orbit · scroll to zoom</p>
-            </div>
-            <div className="grid grid-cols-5 gap-1.5">
-              <CameraControlButton
-                label="Orbit camera left"
-                onClick={() => issueCameraCommand("orbit-left")}
-              >
-                <ChevronLeft className="size-4" />
-              </CameraControlButton>
-              <CameraControlButton
-                label="Zoom camera in"
-                onClick={() => issueCameraCommand("zoom-in")}
-              >
-                <ZoomIn className="size-4" />
-              </CameraControlButton>
-              <CameraControlButton
-                label={mode === "replay" ? "Reset camera to selected shot" : "Reset camera to tee"}
-                onClick={() => issueCameraCommand("reset")}
-              >
-                <LocateFixed className="size-4" />
-              </CameraControlButton>
-              <CameraControlButton
-                label="Zoom camera out"
-                onClick={() => issueCameraCommand("zoom-out")}
-              >
-                <ZoomOut className="size-4" />
-              </CameraControlButton>
-              <CameraControlButton
-                label="Orbit camera right"
-                onClick={() => issueCameraCommand("orbit-right")}
-              >
-                <ChevronRight className="size-4" />
-              </CameraControlButton>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
-                Viewing
-              </p>
-              <p className="mt-1 text-xl font-semibold">Hole {selectedHole.holeNumber}</p>
-              <p className="text-sm text-emerald-100/60">
-                {roundLocksHole && activeRound.currentHole !== activeRoundPhysicalHoleNumber
-                  ? `Round hole ${activeRound.currentHole} · mapped hole ${selectedHole.holeNumber} · Par ${selectedHole.par} · ${selectedHole.yards} yd`
-                  : `Par ${selectedHole.par} · ${selectedHole.yards} yd`}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
-                disabled={roundLocksHole || selectedHoleIndex <= 0}
-                onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
-                aria-label="Previous hole"
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
-                disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
-                onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
-                aria-label="Next hole"
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-6 gap-1.5">
-            {manifest.holes.map((hole) => (
-              <button
-                key={hole.holeNumber}
-                type="button"
-                className={cn(
-                  "min-h-10 rounded-lg border text-sm font-semibold transition-colors",
-                  hole.holeNumber === selectedHole.holeNumber
-                    ? "border-emerald-300 bg-emerald-300 text-[#092013]"
-                    : "border-white/10 bg-white/5 text-white hover:bg-white/10",
+                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                      {(["private", "public"] as const).map((visibility) => (
+                        <button
+                          key={visibility}
+                          type="button"
+                          className={cn(
+                            "rounded-md px-2 py-1.5 text-xs font-semibold capitalize",
+                            roomVisibility === visibility
+                              ? "bg-white/15 text-white"
+                              : "text-emerald-100/55",
+                          )}
+                          onClick={() => setRoomVisibility(visibility)}
+                        >
+                          {visibility === "private" ? "Invite only" : "Public lobby"}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full bg-emerald-300 text-[#092013] hover:bg-emerald-200"
+                      disabled={roomState.status === "loading"}
+                      onClick={createRoom}
+                    >
+                      Start group session
+                    </Button>
+                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                      {(["player", "spectator"] as const).map((role) => (
+                        <button
+                          key={role}
+                          type="button"
+                          className={cn(
+                            "rounded-md px-2 py-1.5 text-xs font-semibold",
+                            roomJoinRole === role
+                              ? "bg-white/15 text-white"
+                              : "text-emerald-100/55",
+                          )}
+                          onClick={() => setRoomJoinRole(role)}
+                        >
+                          Join as {role}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={roomInviteCode}
+                        onChange={(event) => setRoomInviteCode(event.target.value.toUpperCase())}
+                        maxLength={12}
+                        placeholder="Invite code"
+                        aria-label="Group invite code"
+                        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-3 text-sm uppercase tracking-[0.12em] text-white outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 focus:border-emerald-300"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                        disabled={roomState.status === "loading" || roomInviteCode.length < 6}
+                        onClick={joinRoom}
+                      >
+                        Join
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                      disabled={publicRoomsLoading}
+                      onClick={() => void loadPublicRooms()}
+                    >
+                      {publicRoomsLoading ? "Finding public rooms…" : "Browse public rooms"}
+                    </Button>
+                    {publicRooms.length ? (
+                      <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-white/10 bg-black/15 p-2">
+                        {publicRooms.map((room) => (
+                          <button
+                            key={room.id}
+                            type="button"
+                            disabled={!room.canJoin}
+                            onClick={() => void joinPublicRoom(room.inviteCode)}
+                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-emerald-100/75 hover:bg-white/10 disabled:opacity-40"
+                          >
+                            <span>
+                              <span className="block font-semibold text-emerald-100">
+                                {room.hostName}
+                              </span>
+                              Hole {room.holeNumber} ·{" "}
+                              {room.competition ? "competition" : room.mode}
+                            </span>
+                            <span>
+                              {room.memberCount}/{room.maxPlayers}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {roomState.status === "error" ? (
+                      <p className="text-xs text-amber-200">{roomState.error}</p>
+                    ) : null}
+                  </div>
                 )}
-                disabled={roundLocksHole && hole.holeNumber !== activeRoundPhysicalHoleNumber}
-                onClick={() => selectHole(hole.holeNumber)}
-              >
-                {hole.holeNumber}
-              </button>
-            ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                  Camera controls
+                </p>
+                <p className="text-[11px] text-emerald-100/45">Drag to orbit · scroll to zoom</p>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                <CameraControlButton
+                  label="Orbit camera left"
+                  onClick={() => issueCameraCommand("orbit-left")}
+                >
+                  <ChevronLeft className="size-4" />
+                </CameraControlButton>
+                <CameraControlButton
+                  label="Zoom camera in"
+                  onClick={() => issueCameraCommand("zoom-in")}
+                >
+                  <ZoomIn className="size-4" />
+                </CameraControlButton>
+                <CameraControlButton
+                  label={
+                    mode === "replay" ? "Reset camera to selected shot" : "Reset camera to tee"
+                  }
+                  onClick={() => issueCameraCommand("reset")}
+                >
+                  <LocateFixed className="size-4" />
+                </CameraControlButton>
+                <CameraControlButton
+                  label="Zoom camera out"
+                  onClick={() => issueCameraCommand("zoom-out")}
+                >
+                  <ZoomOut className="size-4" />
+                </CameraControlButton>
+                <CameraControlButton
+                  label="Orbit camera right"
+                  onClick={() => issueCameraCommand("orbit-right")}
+                >
+                  <ChevronRight className="size-4" />
+                </CameraControlButton>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 xl:mt-2 xl:p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+                  Viewing
+                </p>
+                <p className="mt-1 text-xl font-semibold">Hole {selectedHole.holeNumber}</p>
+                <p className="text-sm text-emerald-100/60">
+                  {roundLocksHole && activeRound.currentHole !== activeRoundPhysicalHoleNumber
+                    ? `Round hole ${activeRound.currentHole} · mapped hole ${selectedHole.holeNumber} · Par ${selectedHole.par} · ${selectedHole.yards} yd`
+                    : `Par ${selectedHole.par} · ${selectedHole.yards} yd`}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
+                  disabled={roundLocksHole || selectedHoleIndex <= 0}
+                  onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+                  aria-label="Previous hole"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
+                  disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
+                  onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+                  aria-label="Next hole"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-6 gap-1.5 xl:mt-3 xl:gap-1">
+              {manifest.holes.map((hole) => (
+                <button
+                  key={hole.holeNumber}
+                  type="button"
+                  className={cn(
+                    "min-h-10 rounded-lg border text-sm font-semibold transition-colors xl:min-h-8 xl:text-xs",
+                    hole.holeNumber === selectedHole.holeNumber
+                      ? "border-emerald-300 bg-emerald-300 text-[#092013]"
+                      : "border-white/10 bg-white/5 text-white hover:bg-white/10",
+                  )}
+                  disabled={roundLocksHole && hole.holeNumber !== activeRoundPhysicalHoleNumber}
+                  onClick={() => selectHole(hole.holeNumber)}
+                >
+                  {hole.holeNumber}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {mode === "replay" ? (
-          <ReplayControls
-            replay={replay}
-            shots={holeShots}
-            selectedShot={selectedShot}
-            shotIndex={shotIndex}
-            playing={playing}
-            playback={playback}
-            simulation={selectedSimulation}
-            onSelectShot={(index) => {
-              setShotIndex(index);
-              setPlayback(0);
-              setPlaying(false);
-              setCameraView("golfer");
-              setCameraCommand(null);
-            }}
-            onToggle={() => {
-              if (playback >= 1) setPlayback(0);
-              setPlaying((current) => !current);
-            }}
-            onReset={() => {
-              setPlaying(false);
-              setPlayback(0);
-            }}
-          />
-        ) : mode === "strategy" ? (
-          <StrategyControls
-            state={strategyState}
-            selectedClub={strategyClub}
-            onSelectClub={setStrategyClubId}
-            onRetry={() => loadStrategy(selectedHole.holeNumber)}
-          />
-        ) : mode === "play" ? (
-          <>
-            <RoundSetupControls
-              mode="play"
-              puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
-              activeRound={activeRound}
-              holes={manifest.holes}
-              currentHoleStrokes={virtualStrokes}
-              rules={roundRules}
-              holeCount={roundHoleCount}
-              startingHole={roundStartingHole}
-              sync={roundSync}
-              onRulesChange={setRoundRules}
-              onHoleCountChange={setRoundHoleCount}
-              onStartingHoleChange={setRoundStartingHole}
-              onStart={() => void startPersistedRound("play")}
-              onRetry={() => setRoundRetryToken((value) => value + 1)}
+        <div
+          data-course-twin-shot-controls
+          className="xl:pointer-events-auto xl:max-h-full xl:w-[340px] xl:overflow-y-auto xl:rounded-2xl xl:border xl:border-white/15 xl:bg-[#07150e]/90 xl:p-3 xl:shadow-2xl xl:backdrop-blur-xl"
+        >
+          {mode === "replay" ? (
+            <ReplayControls
+              replay={replay}
+              shots={holeShots}
+              selectedShot={selectedShot}
+              shotIndex={shotIndex}
+              playing={playing}
+              playback={playback}
+              simulation={selectedSimulation}
+              onSelectShot={(index) => {
+                setShotIndex(index);
+                setPlayback(0);
+                setPlaying(false);
+                setCameraView("golfer");
+                setCameraCommand(null);
+              }}
+              onToggle={() => {
+                if (playback >= 1) setPlayback(0);
+                setPlaying((current) => !current);
+              }}
+              onReset={() => {
+                setPlaying(false);
+                setPlayback(0);
+              }}
             />
-            {activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
-              manualPuttingVisible && !virtualShot && virtualPuttStart ? (
-                <ManualPuttingControls
-                  hole={selectedHole}
-                  start={virtualPuttStart}
-                  puttNumber={virtualPuttNumber}
-                  strokes={virtualStrokes}
-                  aimOffsetDeg={virtualPuttAimDeg}
-                  pacePercent={virtualPuttPacePercent}
-                  result={virtualPuttResult}
-                  playback={playback}
-                  sync={roundSync}
-                  verified={manifest.quality.grade === "A" && manifest.quality.verified}
-                  onAimChange={setVirtualPuttAimDeg}
-                  onPaceChange={setVirtualPuttPacePercent}
-                  onPlay={() => {
-                    if (!sampleTerrain || roundSync.status === "saving") return;
-                    const eventId = crypto.randomUUID();
-                    const result = simulateCourseTwinPutt(
-                      {
-                        start: {
-                          x: virtualPuttStart[0],
-                          y: sampleTerrain(virtualPuttStart[0], virtualPuttStart[2]),
-                          z: virtualPuttStart[2],
+          ) : mode === "strategy" ? (
+            <StrategyControls
+              state={strategyState}
+              selectedClub={strategyClub}
+              onSelectClub={setStrategyClubId}
+              onRetry={() => loadStrategy(selectedHole.holeNumber)}
+            />
+          ) : mode === "play" ? (
+            <>
+              <RoundSetupControls
+                mode="play"
+                puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
+                activeRound={activeRound}
+                holes={manifest.holes}
+                currentHoleStrokes={virtualStrokes}
+                rules={roundRules}
+                holeCount={roundHoleCount}
+                startingHole={roundStartingHole}
+                sync={roundSync}
+                onRulesChange={setRoundRules}
+                onHoleCountChange={setRoundHoleCount}
+                onStartingHoleChange={setRoundStartingHole}
+                onStart={() => void startPersistedRound("play")}
+                onRetry={() => setRoundRetryToken((value) => value + 1)}
+              />
+              {activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
+                manualPuttingVisible && !virtualShot && virtualPuttStart ? (
+                  <ManualPuttingControls
+                    hole={selectedHole}
+                    start={virtualPuttStart}
+                    puttNumber={virtualPuttNumber}
+                    strokes={virtualStrokes}
+                    aimOffsetDeg={virtualPuttAimDeg}
+                    pacePercent={virtualPuttPacePercent}
+                    result={virtualPuttResult}
+                    playback={playback}
+                    sync={roundSync}
+                    verified={manifest.quality.grade === "A" && manifest.quality.verified}
+                    onAimChange={setVirtualPuttAimDeg}
+                    onPaceChange={setVirtualPuttPacePercent}
+                    onPlay={() => {
+                      if (!sampleTerrain || roundSync.status === "saving") return;
+                      const eventId = crypto.randomUUID();
+                      const result = simulateCourseTwinPutt(
+                        {
+                          start: {
+                            x: virtualPuttStart[0],
+                            y: sampleTerrain(virtualPuttStart[0], virtualPuttStart[2]),
+                            z: virtualPuttStart[2],
+                          },
+                          hole: {
+                            x: selectedHole.green[0],
+                            y: sampleTerrain(selectedHole.green[0], selectedHole.green[2]),
+                            z: selectedHole.green[2],
+                          },
+                          aimOffsetDeg: virtualPuttAimDeg,
+                          pacePercent: virtualPuttPacePercent,
                         },
-                        hole: {
-                          x: selectedHole.green[0],
-                          y: sampleTerrain(selectedHole.green[0], selectedHole.green[2]),
-                          z: selectedHole.green[2],
-                        },
-                        aimOffsetDeg: virtualPuttAimDeg,
-                        pacePercent: virtualPuttPacePercent,
-                      },
-                      { groundHeight: sampleTerrain, surfaceAt: classifySurface },
-                    );
-                    setVirtualPuttEventId(eventId);
-                    setVirtualPuttResult(result);
-                    setVirtualStrokes((current) => current + 1);
-                    setPlayback(0);
-                    setPlaying(true);
-                    setCameraView("golfer");
-                    setCameraCommand(null);
-                  }}
-                  onContinue={() => {
-                    if (!virtualPuttResult || roundSync.status !== "ready") return;
-                    setVirtualPuttNumber((current) => current + 1);
-                    setVirtualPuttResult(null);
-                    setVirtualPuttEventId(null);
-                    setPlayback(0);
-                    setPlaying(false);
-                    setCameraCommand(null);
-                  }}
-                  onRetry={() => {
-                    if (virtualPuttEventId) {
-                      submittedRoundEventsRef.current.delete(virtualPuttEventId);
-                    }
-                    setRoundRetryToken((value) => value + 1);
-                  }}
-                />
-              ) : (
-                <VirtualRoundControls
-                  state={strategyState}
+                        { groundHeight: sampleTerrain, surfaceAt: classifySurface },
+                      );
+                      setVirtualPuttEventId(eventId);
+                      setVirtualPuttResult(result);
+                      setVirtualStrokes((current) => current + 1);
+                      setPlayback(0);
+                      setPlaying(true);
+                      setCameraView("golfer");
+                      setCameraCommand(null);
+                    }}
+                    onContinue={() => {
+                      if (!virtualPuttResult || roundSync.status !== "ready") return;
+                      setVirtualPuttNumber((current) => current + 1);
+                      setVirtualPuttResult(null);
+                      setVirtualPuttEventId(null);
+                      setPlayback(0);
+                      setPlaying(false);
+                      setCameraCommand(null);
+                    }}
+                    onRetry={() => {
+                      if (virtualPuttEventId) {
+                        submittedRoundEventsRef.current.delete(virtualPuttEventId);
+                      }
+                      setRoundRetryToken((value) => value + 1);
+                    }}
+                  />
+                ) : (
+                  <VirtualRoundControls
+                    state={strategyState}
+                    hole={selectedHole}
+                    selectedClub={virtualStrategyClub}
+                    availableClubs={virtualClubOptions}
+                    lieSurface={virtualLieSurface}
+                    shotKind={virtualShotKind}
+                    shotKindOptions={virtualShotKindOptions}
+                    onShotKindChange={(kind) => {
+                      setVirtualShotKindChoice(kind);
+                      setVirtualAimDirectionDeg(0);
+                    }}
+                    onSelectClub={setStrategyClubId}
+                    start={virtualStart}
+                    aimDirectionDeg={virtualAimDirectionDeg}
+                    onAimDirectionChange={setVirtualAimDirectionDeg}
+                    shotNumber={virtualShotNumber}
+                    strokes={virtualStrokes}
+                    penaltyStrokes={virtualPenaltyStrokes}
+                    shot={virtualShot}
+                    simulation={virtualSimulation}
+                    playback={playback}
+                    sync={roundSync.status}
+                    rules={activeRound.rulesJson}
+                    onPlay={() => {
+                      if (!virtualStrategyClub || roundSync.status === "saving") return;
+                      if (selectedHole.holeNumber !== activeRoundPhysicalHoleNumber) {
+                        restorePersistedRoundHole(activeRound);
+                        return;
+                      }
+                      setVirtualRoundEventId(crypto.randomUUID());
+                      setVirtualShot(
+                        buildCourseTwinVirtualShot({
+                          courseId: manifest.course.id,
+                          hole: selectedHole,
+                          start: virtualStart,
+                          club: virtualStrategyClub,
+                          aimOffsetYd: 0,
+                          aimDirectionDeg: virtualAimDirectionDeg,
+                          shotNumber: virtualShotNumber,
+                          lieSurface: virtualLieSurface,
+                          surfaceAt: classifySurface,
+                          requestedShotKind: virtualShotKind,
+                        }),
+                      );
+                      setVirtualStrokes((current) => current + 1);
+                      setPlayback(0);
+                      setPlaying(true);
+                      setCameraCommand(null);
+                    }}
+                    onContinue={() => {
+                      if (!virtualSimulation || roundSync.status !== "ready") return;
+                      const next = virtualDropPoint(virtualSimulation);
+                      setVirtualStart([next.x, 0, next.z]);
+                      setVirtualShotNumber((current) => current + 1);
+                      setVirtualShotKindChoice(null);
+                      if (virtualSimulation.penalty) {
+                        setVirtualStrokes((current) => current + 1);
+                        setVirtualPenaltyStrokes((current) => current + 1);
+                      }
+                      setVirtualShot(null);
+                      setVirtualRoundEventId(null);
+                      setPlayback(0);
+                      setPlaying(false);
+                      setCameraCommand(null);
+                    }}
+                    onMulligan={() => {
+                      if (virtualRoundEventId) {
+                        void takePersistedMulligan("play", virtualRoundEventId);
+                      }
+                    }}
+                    onRetry={() => {
+                      if (virtualRoundEventId) {
+                        submittedRoundEventsRef.current.delete(virtualRoundEventId);
+                      }
+                      setRoundRetryToken((value) => value + 1);
+                    }}
+                    onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
+                  />
+                )
+              ) : null}
+            </>
+          ) : mode === "live" ? (
+            <>
+              <RoundSetupControls
+                mode="live"
+                puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
+                activeRound={activeRound}
+                holes={manifest.holes}
+                currentHoleStrokes={liveStrokes}
+                rules={roundRules}
+                holeCount={roundHoleCount}
+                startingHole={roundStartingHole}
+                sync={roundSync}
+                onRulesChange={setRoundRules}
+                onHoleCountChange={setRoundHoleCount}
+                onStartingHoleChange={setRoundStartingHole}
+                onStart={() => void startPersistedRound("live")}
+                onRetry={() => setRoundRetryToken((value) => value + 1)}
+              />
+              {activeRound?.mode === "live" && activeRound.status === "in_progress" ? (
+                <LiveRoundControls
+                  bridge={bridgeState}
+                  pairingCode={pairingCode}
+                  onPairingCodeChange={setPairingCode}
+                  onDetect={detectBridge}
+                  onPair={pairBridge}
+                  onDownloadDiagnostics={downloadBridgeDiagnostics}
                   hole={selectedHole}
-                  selectedClub={virtualStrategyClub}
-                  availableClubs={virtualClubOptions}
-                  lieSurface={virtualLieSurface}
-                  shotKind={virtualShotKind}
-                  shotKindOptions={virtualShotKindOptions}
-                  onShotKindChange={(kind) => {
-                    setVirtualShotKindChoice(kind);
-                    setVirtualAimDirectionDeg(0);
-                  }}
+                  strategy={strategyState}
+                  selectedClub={strategyClub}
                   onSelectClub={setStrategyClubId}
-                  start={virtualStart}
-                  aimDirectionDeg={virtualAimDirectionDeg}
-                  onAimDirectionChange={setVirtualAimDirectionDeg}
-                  shotNumber={virtualShotNumber}
-                  strokes={virtualStrokes}
-                  penaltyStrokes={virtualPenaltyStrokes}
-                  shot={virtualShot}
-                  simulation={virtualSimulation}
+                  handed={liveHanded}
+                  onHandedChange={setLiveHanded}
+                  shotNumber={liveShotNumber}
+                  strokes={liveStrokes}
+                  penaltyStrokes={livePenaltyStrokes}
+                  shot={liveShot}
+                  simulation={liveSimulation}
                   playback={playback}
                   sync={roundSync.status}
                   rules={activeRound.rulesJson}
-                  onPlay={() => {
-                    if (!virtualStrategyClub || roundSync.status === "saving") return;
-                    if (selectedHole.holeNumber !== activeRoundPhysicalHoleNumber) {
-                      restorePersistedRoundHole(activeRound);
-                      return;
-                    }
-                    setVirtualRoundEventId(crypto.randomUUID());
-                    setVirtualShot(
-                      buildCourseTwinVirtualShot({
-                        courseId: manifest.course.id,
-                        hole: selectedHole,
-                        start: virtualStart,
-                        club: virtualStrategyClub,
-                        aimOffsetYd: 0,
-                        aimDirectionDeg: virtualAimDirectionDeg,
-                        shotNumber: virtualShotNumber,
-                        lieSurface: virtualLieSurface,
-                        surfaceAt: classifySurface,
-                        requestedShotKind: virtualShotKind,
-                      }),
-                    );
-                    setVirtualStrokes((current) => current + 1);
-                    setPlayback(0);
-                    setPlaying(true);
-                    setCameraCommand(null);
-                  }}
                   onContinue={() => {
-                    if (!virtualSimulation || roundSync.status !== "ready") return;
-                    const next = virtualDropPoint(virtualSimulation);
-                    setVirtualStart([next.x, 0, next.z]);
-                    setVirtualShotNumber((current) => current + 1);
-                    setVirtualShotKindChoice(null);
-                    if (virtualSimulation.penalty) {
-                      setVirtualStrokes((current) => current + 1);
-                      setVirtualPenaltyStrokes((current) => current + 1);
+                    if (!liveSimulation || roundSync.status !== "ready") return;
+                    const next = virtualDropPoint(liveSimulation);
+                    setLiveStart([next.x, 0, next.z]);
+                    setLiveShotNumber((current) => current + 1);
+                    if (liveSimulation.penalty) {
+                      setLiveStrokes((current) => current + 1);
+                      setLivePenaltyStrokes((current) => current + 1);
                     }
-                    setVirtualShot(null);
-                    setVirtualRoundEventId(null);
+                    setLiveShot(null);
+                    setLiveRoundEventId(null);
                     setPlayback(0);
                     setPlaying(false);
                     setCameraCommand(null);
                   }}
                   onMulligan={() => {
-                    if (virtualRoundEventId) {
-                      void takePersistedMulligan("play", virtualRoundEventId);
-                    }
+                    if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
                   }}
                   onRetry={() => {
-                    if (virtualRoundEventId) {
-                      submittedRoundEventsRef.current.delete(virtualRoundEventId);
+                    if (liveRoundEventId) {
+                      submittedRoundEventsRef.current.delete(liveRoundEventId);
                     }
                     setRoundRetryToken((value) => value + 1);
                   }}
-                  onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
                 />
-              )
-            ) : null}
-          </>
-        ) : mode === "live" ? (
-          <>
-            <RoundSetupControls
-              mode="live"
-              puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
-              activeRound={activeRound}
-              holes={manifest.holes}
-              currentHoleStrokes={liveStrokes}
-              rules={roundRules}
-              holeCount={roundHoleCount}
-              startingHole={roundStartingHole}
-              sync={roundSync}
-              onRulesChange={setRoundRules}
-              onHoleCountChange={setRoundHoleCount}
-              onStartingHoleChange={setRoundStartingHole}
-              onStart={() => void startPersistedRound("live")}
-              onRetry={() => setRoundRetryToken((value) => value + 1)}
-            />
-            {activeRound?.mode === "live" && activeRound.status === "in_progress" ? (
-              <LiveRoundControls
-                bridge={bridgeState}
-                pairingCode={pairingCode}
-                onPairingCodeChange={setPairingCode}
-                onDetect={detectBridge}
-                onPair={pairBridge}
-                onDownloadDiagnostics={downloadBridgeDiagnostics}
-                hole={selectedHole}
-                strategy={strategyState}
-                selectedClub={strategyClub}
-                onSelectClub={setStrategyClubId}
-                handed={liveHanded}
-                onHandedChange={setLiveHanded}
-                shotNumber={liveShotNumber}
-                strokes={liveStrokes}
-                penaltyStrokes={livePenaltyStrokes}
-                shot={liveShot}
-                simulation={liveSimulation}
-                playback={playback}
-                sync={roundSync.status}
-                rules={activeRound.rulesJson}
-                onContinue={() => {
-                  if (!liveSimulation || roundSync.status !== "ready") return;
-                  const next = virtualDropPoint(liveSimulation);
-                  setLiveStart([next.x, 0, next.z]);
-                  setLiveShotNumber((current) => current + 1);
-                  if (liveSimulation.penalty) {
-                    setLiveStrokes((current) => current + 1);
-                    setLivePenaltyStrokes((current) => current + 1);
-                  }
-                  setLiveShot(null);
-                  setLiveRoundEventId(null);
-                  setPlayback(0);
-                  setPlaying(false);
-                  setCameraCommand(null);
-                }}
-                onMulligan={() => {
-                  if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
-                }}
-                onRetry={() => {
-                  if (liveRoundEventId) {
-                    submittedRoundEventsRef.current.delete(liveRoundEventId);
-                  }
-                  setRoundRetryToken((value) => value + 1);
-                }}
-              />
-            ) : null}
-          </>
-        ) : (
-          <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/70">
-            Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways, greens,
-            hazards and tree zones come from saved semantic geometry.
-          </div>
-        )}
+              ) : null}
+            </>
+          ) : (
+            <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/70">
+              Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways, greens,
+              hazards and tree zones come from saved semantic geometry.
+            </div>
+          )}
 
-        <div className="mt-5 text-xs leading-5 text-emerald-100/50">
-          {manifest.attribution.map((item) => (
-            <a
-              key={item.url}
-              href={item.url}
-              target="_blank"
-              rel="noreferrer"
-              className="underline"
-            >
-              {item.label} · {item.licence}
-            </a>
-          ))}
+          <details className="mt-4 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/50">
+            <summary className="cursor-pointer font-medium text-emerald-100/65">
+              Course data & licences
+            </summary>
+            <div className="mt-2 leading-5">
+              {manifest.attribution.map((item) => (
+                <a
+                  key={item.url}
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block underline"
+                >
+                  {item.label} · {item.licence}
+                </a>
+              ))}
+            </div>
+          </details>
         </div>
       </aside>
 
-      <section className="order-1 relative min-h-[62dvh] overflow-hidden xl:sticky xl:top-14 xl:order-2 xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:self-start">
+      <section className="order-1 relative min-h-[62dvh] overflow-hidden xl:absolute xl:inset-0 xl:order-none xl:h-auto xl:min-h-0">
         <Canvas
           shadows="percentage"
           dpr={[1, 1.75]}
@@ -2691,7 +2718,20 @@ export function CourseTwinScene({
             </>
           ) : null}
         </Canvas>
-        <div className="pointer-events-none absolute left-4 top-4 rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur">
+        <div
+          data-course-twin-hole-hud
+          className="pointer-events-none absolute left-1/2 top-3 z-10 hidden -translate-x-1/2 items-center gap-3 rounded-xl border border-white/20 bg-[#07150e]/82 px-4 py-2 text-sm font-semibold text-white shadow-xl backdrop-blur-xl xl:flex"
+        >
+          <span className="text-emerald-200">Hole {selectedHole.holeNumber}</span>
+          <span>Par {selectedHole.par}</span>
+          <span>{selectedHole.yards} yd</span>
+          {mode === "play" && activeRound?.status === "in_progress" ? (
+            <span className="border-l border-white/20 pl-3 text-[#e7ff6a]">
+              {Math.round(virtualRemainingYd)} yd remaining
+            </span>
+          ) : null}
+        </div>
+        <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur xl:hidden">
           {terrainError
             ? `Terrain unavailable · ${terrainError}`
             : sampleTerrain

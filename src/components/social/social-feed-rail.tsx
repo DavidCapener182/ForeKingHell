@@ -117,6 +117,7 @@ const hiddenRoutePrefixes = [
   "/login",
   "/auth",
   "/privacy",
+  "/play",
   "/share",
   "/shared",
   "/settings/invitations",

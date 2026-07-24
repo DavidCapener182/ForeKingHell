@@ -179,7 +179,14 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("const terrainStart = terrainSurfacePoint(start, sampleTerrain)");
     expect(sceneSource).toContain("terrainStart[1] + framing.eyeHeight");
     expect(sceneSource).toContain("terrainStart[1] + framing.eyeHeight - 0.35");
-    expect(sceneSource).toContain("xl:sticky xl:top-14 xl:order-2 xl:h-[calc(100dvh-3.5rem)]");
+    expect(pageSource).toContain("xl:h-[calc(100dvh-3.5rem)]");
+    expect(pageSource).toContain("xl:overflow-hidden");
+    expect(sceneSource).toContain("data-course-twin-stage");
+    expect(sceneSource).toContain("data-course-twin-hud");
+    expect(sceneSource).toContain("data-course-twin-primary-controls");
+    expect(sceneSource).toContain("data-course-twin-shot-controls");
+    expect(sceneSource).toContain("data-course-twin-hole-hud");
+    expect(sceneSource).toContain("xl:absolute xl:inset-0");
     expect(sceneSource).toContain("const GOLFER_TEE_CAMERA =");
     expect(sceneSource).toContain("behindDistance: 14");
     expect(sceneSource).toContain("lateralDistance: 0");
