@@ -599,14 +599,27 @@ export function CourseTwinScene({
     Math.hypot(selectedHole.green[0] - virtualStart[0], selectedHole.green[2] - virtualStart[2]) /
     0.9144;
   const virtualLieSurface = classifySurface(virtualStart[0], virtualStart[2]);
+  const virtualClubOptions = useMemo(
+    () => courseTwinVirtualClubOptions(strategyState.document?.clubs ?? [], virtualRemainingYd),
+    [strategyState.document?.clubs, virtualRemainingYd],
+  );
+  const virtualStrategyClub =
+    virtualClubOptions.find((club) => club.clubId === strategyClubId) ??
+    virtualClubOptions[0] ??
+    strategyClub;
   const virtualShotKindOptions = courseTwinVirtualShotKindOptions(
     virtualRemainingYd,
     virtualLieSurface,
+    virtualStrategyClub?.clubType,
   );
   const virtualShotKind =
     virtualShotKindChoice && virtualShotKindOptions.includes(virtualShotKindChoice)
       ? virtualShotKindChoice
-      : courseTwinVirtualShotKind(virtualRemainingYd, virtualLieSurface);
+      : courseTwinVirtualShotKind(
+          virtualRemainingYd,
+          virtualLieSurface,
+          virtualStrategyClub?.clubType,
+        );
   const virtualAimDirection = courseTwinAimDirection(
     virtualStart,
     selectedHole.green,
@@ -618,14 +631,6 @@ export function CourseTwinScene({
     0,
     virtualStart[2] + virtualAimDirection.z * virtualAimGuideDistanceM,
   ];
-  const virtualClubOptions = useMemo(
-    () => courseTwinVirtualClubOptions(strategyState.document?.clubs ?? [], virtualRemainingYd),
-    [strategyState.document?.clubs, virtualRemainingYd],
-  );
-  const virtualStrategyClub =
-    virtualClubOptions.find((club) => club.clubId === strategyClubId) ??
-    virtualClubOptions[0] ??
-    strategyClub;
   const activeHoleShots =
     activeRound?.summary.acceptedShots
       .filter((shot) => shot.holeNumber === activeRoundLedgerHoleNumber)

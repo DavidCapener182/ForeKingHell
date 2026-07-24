@@ -92,6 +92,7 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("courseTwinVirtualClubOptions");
     expect(sceneSource).toContain("courseTwinVirtualShotKind");
     expect(sceneSource).toContain("courseTwinVirtualShotKindOptions");
+    expect(sceneSource).toContain("virtualStrategyClub?.clubType");
     expect(sceneSource).toContain("Shot type");
     expect(sceneSource).toContain('if (kind === "half") return "Half shot"');
     expect(sceneSource).toContain("requestedShotKind: virtualShotKind");

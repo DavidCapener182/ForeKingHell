@@ -323,12 +323,33 @@ describe("Course Twin virtual round", () => {
     expect(courseTwinVirtualShotKindOptions(20, "rough")).toEqual(["chip", "pitch", "half"]);
     expect(courseTwinVirtualShotKindOptions(48, "fairway")).toEqual(["pitch", "half", "full"]);
     expect(courseTwinVirtualShotKindOptions(85, "fairway")).toEqual(["half", "full"]);
+    expect(courseTwinVirtualShotKindOptions(102, "fairway", "pw")).toEqual(["half", "full"]);
+    expect(courseTwinVirtualShotKindOptions(102, "fairway", "gw")).toEqual(["half", "full"]);
+    expect(courseTwinVirtualShotKindOptions(102, "fairway", "driver")).toEqual(["full"]);
     expect(courseTwinVirtualShotKindOptions(45, "bunker")).toEqual([
       "bunker-splash",
       "pitch",
       "half",
     ]);
     expect(courseTwinVirtualShotKindOptions(120, "fairway")).toEqual(["full"]);
+  });
+
+  it("keeps a controlled half shot available when a wedge is selected just beyond 100 yards", () => {
+    const controlledWedge = buildCourseTwinVirtualShot({
+      courseId: "bootle",
+      hole,
+      start: [236, 0, 0],
+      club: gapWedge,
+      aimOffsetYd: 0,
+      shotNumber: 8,
+      lieSurface: "fairway",
+      surfaceAt: () => "green",
+    });
+
+    expect(courseTwinVirtualShotKind(102, "fairway", "gw")).toBe("half");
+    expect(controlledWedge.sampled.shotKind).toBe("half");
+    expect(controlledWedge.sampled.carryYd).toBeGreaterThan(80);
+    expect(controlledWedge.sampled.totalYd).toBeLessThan(120);
   });
 
   it("honours the selected short-shot button without accepting an invalid choice", () => {

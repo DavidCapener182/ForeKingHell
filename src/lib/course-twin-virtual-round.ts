@@ -33,9 +33,11 @@ export type CourseTwinVirtualShot = {
 export function courseTwinVirtualShotKind(
   remainingYd: number,
   lieSurface: CourseTwinSurface,
+  clubType?: string | null,
 ): CourseTwinVirtualShotKind {
+  const controlledWedgeRange = isScoringClub(clubType ?? "") && remainingYd <= 130;
   if (
-    remainingYd > 100 ||
+    (remainingYd > 100 && !controlledWedgeRange) ||
     lieSurface === "green" ||
     lieSurface === "water" ||
     lieSurface === "out_of_bounds"
@@ -51,9 +53,11 @@ export function courseTwinVirtualShotKind(
 export function courseTwinVirtualShotKindOptions(
   remainingYd: number,
   lieSurface: CourseTwinSurface,
+  clubType?: string | null,
 ): CourseTwinVirtualShotKind[] {
+  const controlledWedgeRange = isScoringClub(clubType ?? "") && remainingYd <= 130;
   if (
-    remainingYd > 100 ||
+    (remainingYd > 100 && !controlledWedgeRange) ||
     lieSurface === "green" ||
     lieSurface === "water" ||
     lieSurface === "out_of_bounds"
@@ -103,11 +107,11 @@ export function buildCourseTwinVirtualShot({
   requestedShotKind?: CourseTwinVirtualShotKind;
 }): CourseTwinVirtualShot {
   const remainingYd = horizontalDistanceYd(start, hole.green);
-  const shotKindOptions = courseTwinVirtualShotKindOptions(remainingYd, lieSurface);
+  const shotKindOptions = courseTwinVirtualShotKindOptions(remainingYd, lieSurface, club.clubType);
   const shotKind =
     requestedShotKind && shotKindOptions.includes(requestedShotKind)
       ? requestedShotKind
-      : courseTwinVirtualShotKind(remainingYd, lieSurface);
+      : courseTwinVirtualShotKind(remainingYd, lieSurface, club.clubType);
   const effectiveAimOffsetYd =
     shotKind === "full"
       ? aimOffsetYd

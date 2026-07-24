@@ -179,3 +179,9 @@ Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real
 - A compact completed-hole scorecard exposes every par, birdie and over-par result, while the latest hole states its gross score, par, automatic putt count and measured leave from the mapped pin.
 - The cumulative score is derived from the canonical completed-hole ledger. Focused tests cover an over-par running total, a later birdie and the exact saved-finish-to-pin distance used by the 10 ft automatic-putting rule.
 - Authenticated browser verification loaded the live Bootle strategy round at `+3 through 9 holes`, showed hole 7 at `+4`, hole 9 as a birdie, and reconciled `38 completed + 0 current = 38 played` with zero console errors.
+
+## Completed milestone — 2026-07-24 wedge shot controls
+
+- Controlled shot choices now consider the selected club as well as remaining distance. PW, GW, AW, SW and LW retain `Half shot` alongside `Full swing` through 130 yd instead of being forced to full swing at 100.1 yd.
+- `Chip` remains limited to genuine 30 yd-or-shorter leaves, while pitch, bunker-splash and non-wedge full-shot boundaries keep their existing distance and lie rules.
+- Focused deterministic coverage reproduces the reported 102 yd gap-wedge leave, confirms `Half shot` is selected and scaled, and confirms a driver at the same distance remains full swing only.
