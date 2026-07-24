@@ -70,6 +70,9 @@ import {
   buildCourseTwinAutomaticGreenCompletion,
   buildCourseTwinManualGreenCompletion,
   courseTwinAutomaticPuttCount,
+  courseTwinDistanceToPinYd,
+  courseTwinHoleScoreLabel,
+  courseTwinRoundScore,
   type CourseTwinHoleCompletedPayload,
   type CourseTwinRoundEventInput,
   type CourseTwinRoundRules,
@@ -2330,6 +2333,8 @@ export function CourseTwinScene({
               mode="play"
               puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
               activeRound={activeRound}
+              holes={manifest.holes}
+              currentHoleStrokes={virtualStrokes}
               rules={roundRules}
               holeCount={roundHoleCount}
               startingHole={roundStartingHole}
@@ -2488,6 +2493,8 @@ export function CourseTwinScene({
               mode="live"
               puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
               activeRound={activeRound}
+              holes={manifest.holes}
+              currentHoleStrokes={liveStrokes}
               rules={roundRules}
               holeCount={roundHoleCount}
               startingHole={roundStartingHole}
@@ -4520,6 +4527,8 @@ function RoundSetupControls({
   mode,
   puttingVerified,
   activeRound,
+  holes,
+  currentHoleStrokes,
   rules,
   holeCount,
   startingHole,
@@ -4533,6 +4542,8 @@ function RoundSetupControls({
   mode: "play" | "live";
   puttingVerified: boolean;
   activeRound: CourseTwinRoundClientDocument | null;
+  holes: CourseTwinHole[];
+  currentHoleStrokes: number;
   rules: CourseTwinRoundRules;
   holeCount: 9 | 18;
   startingHole: 1 | 10;
@@ -4544,8 +4555,27 @@ function RoundSetupControls({
   onRetry: () => void;
 }) {
   if (activeRound?.status === "in_progress") {
-    const score = activeRound.summary.scorecard.reduce((sum, hole) => sum + hole.strokes, 0);
-    const par = activeRound.summary.scorecard.reduce((sum, hole) => sum + hole.par, 0);
+    const score = courseTwinRoundScore(activeRound.summary.scorecard);
+    const lastCompletedHole = activeRound.summary.scorecard.at(-1) ?? null;
+    const lastMappedHole = lastCompletedHole
+      ? holes.find((hole) => hole.holeNumber === lastCompletedHole.holeNumber)
+      : null;
+    const lastGreenShot =
+      lastCompletedHole && activeRound.rulesJson.greenRule !== "manual_putts"
+        ? activeRound.summary.acceptedShots
+            .filter((shot) => shot.holeNumber === lastCompletedHole.holeNumber)
+            .at(-1)
+        : null;
+    const automaticPuttDistanceFt =
+      lastMappedHole && lastGreenShot
+        ? courseTwinDistanceToPinYd(lastGreenShot.totalEnd, lastMappedHole.green) * 3
+        : null;
+    const relativeScore =
+      score.relativeToPar === 0
+        ? "Level par"
+        : `${score.relativeToPar > 0 ? "+" : ""}${score.relativeToPar}`;
+    const completedHoleCount = activeRound.summary.scorecard.length;
+    const playedStrokeCount = score.strokes + currentHoleStrokes;
     return (
       <div className="mt-5 rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-4">
         <div className="flex items-start justify-between gap-3">
@@ -4559,14 +4589,50 @@ function RoundSetupControls({
               {activeRound.mode === "play" ? "My Bag test round" : "Live launch-monitor round"}
             </p>
             <p className="text-sm text-emerald-100/60">
-              Hole {activeRound.currentHole} of {activeRound.holeCount} · {score || "Level"}
-              {score ? ` strokes (${score - par >= 0 ? "+" : ""}${score - par})` : " par"}
+              Hole {activeRound.currentHole} of {activeRound.holeCount} · {relativeScore} through{" "}
+              {completedHoleCount} {completedHoleCount === 1 ? "hole" : "holes"}
+            </p>
+            <p className="mt-1 text-xs text-emerald-100/50">
+              {score.strokes} completed + {currentHoleStrokes} current = {playedStrokeCount} played
             </p>
           </div>
           <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
             {sync.status === "saving" ? "Saving…" : `v${activeRound.version}`}
           </Badge>
         </div>
+        {lastCompletedHole ? (
+          <div className="mt-3 rounded-lg border border-emerald-300/15 bg-black/10 px-3 py-2">
+            <p className="text-xs font-semibold text-emerald-50">
+              Last hole · {lastCompletedHole.holeNumber} ·{" "}
+              {courseTwinHoleScoreLabel(lastCompletedHole.strokes, lastCompletedHole.par)}
+            </p>
+            <p className="mt-1 text-xs text-emerald-100/60">
+              {lastCompletedHole.strokes} on a par {lastCompletedHole.par}
+              {automaticPuttDistanceFt !== null
+                ? ` · automatic ${lastCompletedHole.putts}-putt from ${automaticPuttDistanceFt.toFixed(1)} ft`
+                : ` · ${lastCompletedHole.putts} ${lastCompletedHole.putts === 1 ? "putt" : "putts"}`}
+            </p>
+          </div>
+        ) : null}
+        {activeRound.summary.scorecard.length > 0 ? (
+          <div className="mt-3 grid grid-cols-6 gap-1.5" aria-label="Completed-hole scorecard">
+            {activeRound.summary.scorecard.map((hole) => {
+              const relative = hole.strokes - hole.par;
+              return (
+                <div
+                  key={hole.holeNumber}
+                  className="rounded-md border border-white/10 bg-white/5 px-1.5 py-1 text-center"
+                  title={`Hole ${hole.holeNumber}: ${courseTwinHoleScoreLabel(hole.strokes, hole.par)}`}
+                >
+                  <span className="block text-[10px] text-emerald-100/45">H{hole.holeNumber}</span>
+                  <span className="block text-xs font-semibold text-emerald-50">
+                    {relative === 0 ? "E" : `${relative > 0 ? "+" : ""}${relative}`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
         <p className="mt-3 text-xs leading-5 text-emerald-100/60">
           {activeRound.rulesJson.windSpeedMph} mph wind ·{" "}
           {activeRound.rulesJson.competition

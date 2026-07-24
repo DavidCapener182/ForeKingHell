@@ -172,3 +172,10 @@ Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real
 - Only the immediately preceding accepted shot is retained between shots. Its carry marker is hidden, and it is rendered only when its final physics position matches the current playable lie, leaving one ball and one next-shot marker at the actual origin.
 - The Three.js canvas now requests the supported percentage-closer shadow map instead of the deprecated soft-shadow constant.
 - The desktop course viewport is pinned to the available window instead of stretching to the full control-column height, keeping the ball, horizon and aim line visible together. A concurrent-tab 409 now refreshes the canonical round automatically rather than leaving the golfer on a stale `Retry save` state.
+
+## Completed milestone — 2026-07-24 live round scoring
+
+- The Course Twin round headline now separates the completed-hole score from the active hole and shows `completed + current = played`, so every shot changes the visible stroke count immediately instead of waiting for `hole.completed`.
+- A compact completed-hole scorecard exposes every par, birdie and over-par result, while the latest hole states its gross score, par, automatic putt count and measured leave from the mapped pin.
+- The cumulative score is derived from the canonical completed-hole ledger. Focused tests cover an over-par running total, a later birdie and the exact saved-finish-to-pin distance used by the 10 ft automatic-putting rule.
+- Authenticated browser verification loaded the live Bootle strategy round at `+3 through 9 holes`, showed hole 7 at `+4`, hole 9 as a birdie, and reconciled `38 completed + 0 current = 38 played` with zero console errors.

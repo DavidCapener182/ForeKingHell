@@ -3,8 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildCourseTwinAutomaticGreenCompletion,
   buildCourseTwinManualGreenCompletion,
-  courseTwinRoundCreatesAnalyticsSession,
   courseTwinAutomaticPuttCount,
+  courseTwinDistanceToPinYd,
+  courseTwinHoleScoreLabel,
+  courseTwinRoundCreatesAnalyticsSession,
+  courseTwinRoundScore,
   parseCourseTwinCreateRoundInput,
   parseCourseTwinRoundEventInput,
   reduceCourseTwinRoundEvents,
@@ -28,6 +31,52 @@ describe("Course Twin round contract", () => {
     expect(courseTwinAutomaticPuttCount(10 / 3)).toBe(1);
     expect(courseTwinAutomaticPuttCount(10.01 / 3)).toBe(2);
     expect(courseTwinAutomaticPuttCount(60 / 3)).toBe(2);
+  });
+
+  it("adds completed-hole scores and keeps the latest birdie visible", () => {
+    const scorecard = [
+      {
+        holeNumber: 1,
+        par: 4,
+        yards: 390,
+        strokes: 5,
+        putts: 2,
+        penalties: 0,
+        fairwayHit: false,
+        gir: false,
+      },
+      {
+        holeNumber: 2,
+        par: 4,
+        yards: 370,
+        strokes: 8,
+        putts: 2,
+        penalties: 2,
+        fairwayHit: false,
+        gir: false,
+      },
+      {
+        holeNumber: 3,
+        par: 5,
+        yards: 470,
+        strokes: 4,
+        putts: 1,
+        penalties: 0,
+        fairwayHit: true,
+        gir: true,
+      },
+    ];
+
+    expect(courseTwinRoundScore(scorecard)).toEqual({
+      strokes: 17,
+      par: 13,
+      relativeToPar: 4,
+    });
+    expect(courseTwinHoleScoreLabel(scorecard[2].strokes, scorecard[2].par)).toBe("Birdie");
+  });
+
+  it("measures automatic putt distance from the saved finish to the mapped pin", () => {
+    expect(courseTwinDistanceToPinYd([0, 0, 0], [0, 0, 3.048])).toBeCloseTo(10 / 3, 5);
   });
 
   it("accepts honest casual and competition rule sets", () => {

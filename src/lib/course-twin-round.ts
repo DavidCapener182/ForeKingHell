@@ -119,6 +119,12 @@ export type CourseTwinRoundSummary = {
   mulliganCount: number;
 };
 
+export type CourseTwinRoundScore = {
+  strokes: number;
+  par: number;
+  relativeToPar: number;
+};
+
 export type CourseTwinAutomaticGreenCompletion = {
   triggerShotClientEventId: string;
   remainingYd: number;
@@ -278,8 +284,7 @@ export function buildCourseTwinAutomaticGreenCompletion({
   const lastShot = holeShots.at(-1);
   if (!lastShot || lastShot.result.penalty || lastShot.result.finalSurface !== "green") return null;
 
-  const remainingYd =
-    Math.hypot(hole.green[0] - lastShot.totalEnd[0], hole.green[2] - lastShot.totalEnd[2]) / 0.9144;
+  const remainingYd = courseTwinDistanceToPinYd(lastShot.totalEnd, hole.green);
   const putts = courseTwinAutomaticPuttCount(remainingYd);
   const penalties = holeShots.filter((shot) => Boolean(shot.result.penalty)).length;
 
@@ -302,6 +307,32 @@ export function buildCourseTwinAutomaticGreenCompletion({
 export function courseTwinAutomaticPuttCount(remainingYd: number) {
   const feet = Math.max(0, remainingYd) * 3;
   return feet <= 10 ? 1 : 2;
+}
+
+export function courseTwinDistanceToPinYd(
+  position: readonly [number, number, number],
+  pin: readonly [number, number, number],
+) {
+  return Math.hypot(pin[0] - position[0], pin[2] - position[2]) / 0.9144;
+}
+
+export function courseTwinRoundScore(
+  scorecard: readonly CourseTwinHoleCompletedPayload[],
+): CourseTwinRoundScore {
+  const strokes = scorecard.reduce((total, hole) => total + hole.strokes, 0);
+  const par = scorecard.reduce((total, hole) => total + hole.par, 0);
+  return { strokes, par, relativeToPar: strokes - par };
+}
+
+export function courseTwinHoleScoreLabel(strokes: number, par: number) {
+  const relativeToPar = strokes - par;
+  if (relativeToPar <= -3) return "Albatross";
+  if (relativeToPar === -2) return "Eagle";
+  if (relativeToPar === -1) return "Birdie";
+  if (relativeToPar === 0) return "Par";
+  if (relativeToPar === 1) return "Bogey";
+  if (relativeToPar === 2) return "Double bogey";
+  return `+${relativeToPar}`;
 }
 
 export function buildCourseTwinManualGreenCompletion({

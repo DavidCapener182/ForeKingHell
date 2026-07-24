@@ -126,6 +126,13 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("ledgerHoleNumber: activeRound.currentHole");
     expect(sceneSource).toContain("shot.holeNumber === activeRoundLedgerHoleNumber");
     expect(sceneSource).toContain('roundSync.error === "Shot is not on the current hole."');
+    expect(sceneSource).toContain("courseTwinRoundScore(activeRound.summary.scorecard)");
+    expect(sceneSource).toContain("Last hole ·");
+    expect(sceneSource).toContain("automatic ${lastCompletedHole.putts}-putt from");
+    expect(sceneSource).toContain('aria-label="Completed-hole scorecard"');
+    expect(sceneSource).toContain(
+      "{score.strokes} completed + {currentHoleStrokes} current = {playedStrokeCount} played",
+    );
   });
 
   it("keeps live GSPro shots behind a paired loopback bridge and runs them through course physics", () => {
