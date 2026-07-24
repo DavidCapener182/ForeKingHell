@@ -4,7 +4,10 @@ import type {
   CourseTwinPoint,
   CourseTwinReplayShot,
 } from "@/lib/course-twin-contract";
+import type { CourseTwinSurface } from "@/lib/course-twin-surface";
 import type { CourseTwinStrategyClub } from "@/lib/course-twin-strategy";
+
+export type CourseTwinVirtualShotKind = "full" | "half" | "chip" | "pitch" | "bunker-splash";
 
 export type CourseTwinVirtualShot = {
   shot: CourseTwinReplayShot;
@@ -13,15 +16,68 @@ export type CourseTwinVirtualShot = {
     totalYd: number;
     sideYd: number;
     aimOffsetYd: number;
+    aimDirectionDeg: number;
     ballSpeedMph: number | null;
     launchAngleDeg: number;
     spinRateRpm: number | null;
     spinAxisDeg: number;
     shapeBias: "straight-weighted";
     shapeSource: "measured-spin-axis" | "inferred-from-dispersion";
+    shotKind: CourseTwinVirtualShotKind;
+    lieSurface: CourseTwinSurface;
+    landingSurface: CourseTwinSurface | null;
   };
   provenance: "sampled-from-measured-bag";
 };
+
+export function courseTwinVirtualShotKind(
+  remainingYd: number,
+  lieSurface: CourseTwinSurface,
+): CourseTwinVirtualShotKind {
+  if (
+    remainingYd > 100 ||
+    lieSurface === "green" ||
+    lieSurface === "water" ||
+    lieSurface === "out_of_bounds"
+  ) {
+    return "full";
+  }
+  if (lieSurface === "bunker" && remainingYd <= 60) return "bunker-splash";
+  if (remainingYd <= 30) return "chip";
+  if (remainingYd <= 60) return "pitch";
+  return "half";
+}
+
+export function courseTwinVirtualShotKindOptions(
+  remainingYd: number,
+  lieSurface: CourseTwinSurface,
+): CourseTwinVirtualShotKind[] {
+  if (
+    remainingYd > 100 ||
+    lieSurface === "green" ||
+    lieSurface === "water" ||
+    lieSurface === "out_of_bounds"
+  ) {
+    return ["full"];
+  }
+  if (lieSurface === "bunker" && remainingYd <= 60) {
+    return ["bunker-splash", "pitch", "half"];
+  }
+  if (remainingYd <= 30) return ["chip", "pitch", "half"];
+  if (remainingYd <= 60) return ["pitch", "half", "full"];
+  return ["half", "full"];
+}
+
+export function courseTwinVirtualClubOptions(clubs: CourseTwinStrategyClub[], remainingYd: number) {
+  if (remainingYd > 100) return clubs;
+  const scoringClubs = clubs
+    .filter((club) => isScoringClub(club.clubType))
+    .sort((left, right) => left.shotModel.carryMedianYd - right.shotModel.carryMedianYd);
+  if (scoringClubs.length > 0) return scoringClubs;
+  return [...clubs]
+    .sort((left, right) => left.shotModel.carryMedianYd - right.shotModel.carryMedianYd)
+    .slice(0, Math.min(2, clubs.length));
+}
 
 export function buildCourseTwinVirtualShot({
   courseId,
@@ -29,60 +85,130 @@ export function buildCourseTwinVirtualShot({
   start,
   club,
   aimOffsetYd,
+  aimDirectionDeg = 0,
   shotNumber,
+  lieSurface = "fairway",
+  surfaceAt,
+  requestedShotKind,
 }: {
   courseId: string;
   hole: CourseTwinHole;
   start: CourseTwinPoint;
   club: CourseTwinStrategyClub;
   aimOffsetYd: number;
+  aimDirectionDeg?: number;
   shotNumber: number;
+  lieSurface?: CourseTwinSurface;
+  surfaceAt?: (x: number, z: number) => CourseTwinSurface;
+  requestedShotKind?: CourseTwinVirtualShotKind;
 }): CourseTwinVirtualShot {
+  const remainingYd = horizontalDistanceYd(start, hole.green);
+  const shotKindOptions = courseTwinVirtualShotKindOptions(remainingYd, lieSurface);
+  const shotKind =
+    requestedShotKind && shotKindOptions.includes(requestedShotKind)
+      ? requestedShotKind
+      : courseTwinVirtualShotKind(remainingYd, lieSurface);
+  const effectiveAimOffsetYd =
+    shotKind === "full"
+      ? aimOffsetYd
+      : shotKind === "half"
+        ? clamp(aimOffsetYd, -8, 8)
+        : clamp(aimOffsetYd, -4, 4);
+  const effectiveAimDirectionDeg = clamp(
+    aimDirectionDeg,
+    -courseTwinAimLimitDeg(shotKind),
+    courseTwinAimLimitDeg(shotKind),
+  );
   const random = seededRandom(
-    hashString(`${courseId}:${hole.holeNumber}:${club.clubId}:${shotNumber}:${aimOffsetYd}`),
+    hashString(
+      shotKind === "full"
+        ? `${courseId}:${hole.holeNumber}:${club.clubId}:${shotNumber}`
+        : `${courseId}:${hole.holeNumber}:${club.clubId}:${shotNumber}:${lieSurface}`,
+    ),
   );
-  const carryYd = clamp(
-    club.shotModel.carryMedianYd + gaussian(random) * club.shotModel.carryStdDevYd,
-    2,
-    360,
-  );
-  const sideYd = clamp(
-    club.shotModel.sideMeanYd + aimOffsetYd + gaussian(random) * club.shotModel.sideStdDevYd,
-    -90,
-    90,
-  );
-  const medianRollYd = Math.max(
-    0,
-    (club.shotModel.totalMedianYd ?? club.shotModel.carryMedianYd) - club.shotModel.carryMedianYd,
-  );
-  const totalYd = clamp(carryYd + medianRollYd, carryYd, 390);
-  const direction = directionToTarget(start, hole.green);
-  const carryEnd = shotEnd(start, direction, carryYd, sideYd);
-  const totalEnd = shotEnd(start, direction, totalYd, sideYd);
-  const ballSpeedMph = sampleOptional(
-    random,
-    club.shotModel.ballSpeedMeanMph,
-    club.shotModel.ballSpeedStdDevMph,
-    8,
-    240,
-  );
-  const launchAngleDeg =
-    sampleOptional(
+  const direction = courseTwinAimDirection(start, hole.green, effectiveAimDirectionDeg);
+  let shortGame: ReturnType<typeof sampleShortGameShot> | null = null;
+  let sampledSpinAxis: ReturnType<typeof sampleSpinAxis>;
+  let carryYd: number;
+  let sideYd: number;
+  let fullShotTotalYd = 0;
+  let ballSpeedMph: number | null;
+  let launchAngleDeg: number;
+  let spinRateRpm: number | null;
+  let spinAxisDeg: number;
+  let apexFt: number;
+
+  if (shotKind === "full") {
+    carryYd = clamp(
+      club.shotModel.carryMedianYd + gaussian(random) * club.shotModel.carryStdDevYd,
+      2,
+      360,
+    );
+    sideYd = clamp(
+      club.shotModel.sideMeanYd +
+        effectiveAimOffsetYd +
+        gaussian(random) * club.shotModel.sideStdDevYd,
+      -90,
+      90,
+    );
+    const fullShotRollYd = Math.max(
+      0,
+      (club.shotModel.totalMedianYd ?? club.shotModel.carryMedianYd) - club.shotModel.carryMedianYd,
+    );
+    fullShotTotalYd = clamp(carryYd + fullShotRollYd, carryYd, 390);
+    ballSpeedMph = sampleOptional(
       random,
-      club.shotModel.launchMeanDeg ?? fallbackLaunchAngle(club.clubType),
-      club.shotModel.launchStdDevDeg,
-      1,
-      55,
-    ) ?? fallbackLaunchAngle(club.clubType);
-  const spinRateRpm = sampleOptional(
-    random,
-    club.shotModel.spinMeanRpm,
-    club.shotModel.spinStdDevRpm,
-    100,
-    12_000,
-  );
-  const sampledSpinAxis = sampleSpinAxis(random, club);
-  const spinAxisDeg = sampledSpinAxis.value;
+      club.shotModel.ballSpeedMeanMph,
+      club.shotModel.ballSpeedStdDevMph,
+      8,
+      240,
+    );
+    launchAngleDeg =
+      sampleOptional(
+        random,
+        club.shotModel.launchMeanDeg ?? fallbackLaunchAngle(club.clubType),
+        club.shotModel.launchStdDevDeg,
+        1,
+        55,
+      ) ?? fallbackLaunchAngle(club.clubType);
+    spinRateRpm = sampleOptional(
+      random,
+      club.shotModel.spinMeanRpm,
+      club.shotModel.spinStdDevRpm,
+      100,
+      12_000,
+    );
+    sampledSpinAxis = sampleSpinAxis(random, club);
+    spinAxisDeg = sampledSpinAxis.value;
+    apexFt = clamp(carryYd * 0.45, 3, 120);
+  } else {
+    sampledSpinAxis = sampleSpinAxis(random, club);
+    shortGame = sampleShortGameShot({
+      remainingYd,
+      lieSurface,
+      shotKind,
+      club,
+      aimOffsetYd: effectiveAimOffsetYd,
+      sampledSpinAxisDeg: sampledSpinAxis.value,
+      random,
+    });
+    carryYd = shortGame.carryYd;
+    sideYd = shortGame.sideYd;
+    ballSpeedMph = shortGame.ballSpeedMph;
+    launchAngleDeg = shortGame.launchAngleDeg;
+    spinRateRpm = shortGame.spinRateRpm;
+    spinAxisDeg = shortGame.spinAxisDeg;
+    apexFt = shortGame.apexFt;
+  }
+
+  const carryEnd = shotEnd(start, direction, carryYd, sideYd);
+  const carryDirection = directionToTarget(start, carryEnd);
+  const launchDirectionDeg = signedDirectionAngleDeg(carryDirection, direction);
+  const landingSurface = surfaceAt?.(carryEnd[0], carryEnd[2]) ?? null;
+  const totalYd = shortGame
+    ? shortGameTotalYd(shortGame, landingSurface ?? "green")
+    : fullShotTotalYd;
+  const totalEnd = shotEnd(start, direction, totalYd, sideYd);
 
   return {
     shot: {
@@ -98,30 +224,207 @@ export function buildCourseTwinVirtualShot({
         carryYd: derivedEvidence(carryYd),
         totalYd: derivedEvidence(totalYd),
         sideCarryYd: derivedEvidence(sideYd),
-        apexFt: derivedEvidence(clamp(carryYd * 0.45, 3, 120)),
+        apexFt: derivedEvidence(apexFt),
         ballSpeedMph: derivedEvidence(ballSpeedMph),
         launchAngleDeg: derivedEvidence(launchAngleDeg),
+        launchDirectionDeg: derivedEvidence(launchDirectionDeg),
         spinRate: derivedEvidence(spinRateRpm),
         spinAxis: derivedEvidence(spinAxisDeg),
       },
       placementProvenance: "derived",
       trajectoryProvenance: "reconstructed",
-      rollProvenance: medianRollYd > 0 ? "reconstructed" : "unavailable",
+      rollProvenance: totalYd > carryYd ? "reconstructed" : "unavailable",
     },
     sampled: {
       carryYd,
       totalYd,
       sideYd,
-      aimOffsetYd,
+      aimOffsetYd: effectiveAimOffsetYd,
+      aimDirectionDeg: effectiveAimDirectionDeg,
       ballSpeedMph,
       launchAngleDeg,
       spinRateRpm,
       spinAxisDeg,
       shapeBias: "straight-weighted",
       shapeSource: sampledSpinAxis.source,
+      shotKind,
+      lieSurface,
+      landingSurface,
     },
     provenance: "sampled-from-measured-bag",
   };
+}
+
+export function courseTwinAimLimitDeg(shotKind: CourseTwinVirtualShotKind) {
+  if (shotKind === "full") return 35;
+  if (shotKind === "half") return 28;
+  return 20;
+}
+
+export function courseTwinAimDirection(
+  start: CourseTwinPoint,
+  target: CourseTwinPoint,
+  aimDirectionDeg: number,
+) {
+  const direction = directionToTarget(start, target);
+  const radians = (aimDirectionDeg * Math.PI) / 180;
+  return {
+    x: direction.x * Math.cos(radians) - direction.z * Math.sin(radians),
+    z: direction.x * Math.sin(radians) + direction.z * Math.cos(radians),
+  };
+}
+
+export function courseTwinAimDirectionDegToPoint(
+  start: CourseTwinPoint,
+  target: CourseTwinPoint,
+  aimPoint: CourseTwinPoint,
+  shotKind: CourseTwinVirtualShotKind,
+) {
+  const targetDirection = directionToTarget(start, target);
+  const aimDirection = directionToTarget(start, aimPoint);
+  return clamp(
+    signedDirectionAngleDeg(targetDirection, aimDirection),
+    -courseTwinAimLimitDeg(shotKind),
+    courseTwinAimLimitDeg(shotKind),
+  );
+}
+
+function sampleShortGameShot({
+  remainingYd,
+  lieSurface,
+  shotKind,
+  club,
+  aimOffsetYd,
+  sampledSpinAxisDeg,
+  random,
+}: {
+  remainingYd: number;
+  lieSurface: CourseTwinSurface;
+  shotKind: Exclude<CourseTwinVirtualShotKind, "full">;
+  club: CourseTwinStrategyClub;
+  aimOffsetYd: number;
+  sampledSpinAxisDeg: number;
+  random: () => number;
+}) {
+  const strikeVariation =
+    lieSurface === "bunker"
+      ? 0.09
+      : lieSurface === "rough" || lieSurface === "trees"
+        ? 0.07
+        : 0.045;
+  const idealTotalYd = clamp(
+    remainingYd * (1 + gaussian(random) * strikeVariation),
+    remainingYd * 0.72,
+    remainingYd * 1.18,
+  );
+  const carryRatio =
+    shotKind === "bunker-splash"
+      ? 0.86
+      : shotKind === "half"
+        ? lieSurface === "rough" || lieSurface === "trees"
+          ? 0.88
+          : 0.92
+        : shotKind === "pitch"
+          ? lieSurface === "rough" || lieSurface === "trees"
+            ? 0.8
+            : 0.74
+          : lieSurface === "rough" || lieSurface === "trees"
+            ? 0.6
+            : 0.48;
+  const carryYd = clamp(idealTotalYd * carryRatio, 2, idealTotalYd);
+  const dispersionScale = clamp(
+    remainingYd / Math.max(1, club.shotModel.carryMedianYd),
+    0.05,
+    0.55,
+  );
+  const sideSpreadYd = Math.max(0.55, club.shotModel.sideStdDevYd * dispersionScale * 0.55);
+  const sideLimitYd = Math.max(2, Math.min(10, remainingYd * 0.32));
+  const sideYd = clamp(
+    club.shotModel.sideMeanYd * dispersionScale + aimOffsetYd + gaussian(random) * sideSpreadYd,
+    -sideLimitYd,
+    sideLimitYd,
+  );
+  const launchAngleDeg =
+    shotKind === "bunker-splash"
+      ? clamp(48 + gaussian(random) * 3, 40, 56)
+      : shotKind === "half"
+        ? clamp(30 + gaussian(random) * 2.5, 23, 38)
+        : shotKind === "pitch"
+          ? clamp(34 + gaussian(random) * 2.5, 27, 42)
+          : clamp(21 + gaussian(random) * 2, 15, 28);
+  const ballSpeedMph = clamp(
+    8 +
+      carryYd *
+        (shotKind === "half"
+          ? 0.82
+          : shotKind === "chip"
+            ? 1.15
+            : shotKind === "pitch"
+              ? 1.42
+              : 1.55),
+    10,
+    shotKind === "half" ? 92 : 68,
+  );
+  const spinRateRpm =
+    shotKind === "bunker-splash"
+      ? clamp(7_200 + gaussian(random) * 550, 5_500, 9_000)
+      : shotKind === "half"
+        ? clamp(6_300 + gaussian(random) * 550, 4_500, 8_500)
+        : shotKind === "pitch"
+          ? clamp(5_600 + gaussian(random) * 500, 4_000, 7_500)
+          : clamp(3_200 + gaussian(random) * 420, 2_000, 5_000);
+  const apexFt =
+    shotKind === "bunker-splash"
+      ? clamp(carryYd * 0.9, 7, 32)
+      : shotKind === "half"
+        ? clamp(carryYd * 0.55, 14, 48)
+        : shotKind === "pitch"
+          ? clamp(carryYd * 0.65, 6, 28)
+          : clamp(carryYd * 0.34, 2.5, 11);
+
+  return {
+    carryYd,
+    idealTotalYd,
+    sideYd,
+    ballSpeedMph,
+    launchAngleDeg,
+    spinRateRpm,
+    spinAxisDeg: clamp(sampledSpinAxisDeg * (shotKind === "half" ? 0.48 : 0.32), -8, 8),
+    apexFt,
+  };
+}
+
+function shortGameTotalYd(
+  sample: ReturnType<typeof sampleShortGameShot>,
+  landingSurface: CourseTwinSurface,
+) {
+  const rolloutRetention: Record<CourseTwinSurface, number> = {
+    green: 1,
+    fairway: 0.86,
+    tee: 0.8,
+    rough: 0.36,
+    trees: 0.24,
+    bunker: 0.08,
+    water: 0,
+    out_of_bounds: 0,
+  };
+  return sample.carryYd + (sample.idealTotalYd - sample.carryYd) * rolloutRetention[landingSurface];
+}
+
+function horizontalDistanceYd(start: CourseTwinPoint, target: CourseTwinPoint) {
+  return Math.hypot(target[0] - start[0], target[2] - start[2]) / 0.9144;
+}
+
+function isScoringClub(clubType: string) {
+  const club = clubType.toLowerCase().replaceAll(/[\s_-]/g, "");
+  return (
+    club.includes("wedge") ||
+    club.includes("pitching") ||
+    club.includes("gap") ||
+    club.includes("sand") ||
+    club.includes("lob") ||
+    ["pw", "gw", "aw", "sw", "lw"].includes(club)
+  );
 }
 
 function sampleSpinAxis(random: () => number, club: CourseTwinStrategyClub) {
@@ -151,6 +454,10 @@ function directionToTarget(start: CourseTwinPoint, target: CourseTwinPoint) {
   const z = target[2] - start[2];
   const length = Math.hypot(x, z) || 1;
   return { x: x / length, z: z / length };
+}
+
+function signedDirectionAngleDeg(from: { x: number; z: number }, to: { x: number; z: number }) {
+  return (Math.atan2(from.x * to.z - from.z * to.x, from.x * to.x + from.z * to.z) * 180) / Math.PI;
 }
 
 function shotEnd(

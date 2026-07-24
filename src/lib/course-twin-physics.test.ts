@@ -131,6 +131,42 @@ describe("Course Twin deterministic golf physics", () => {
     expect(finish?.position).toEqual(first.finalPosition);
   });
 
+  it("keeps a strongly shaped tracer smooth and progressing toward carry", () => {
+    const shaped = simulateCourseTwinReplayShot(
+      {
+        ...replayShot,
+        metrics: {
+          ...replayShot.metrics,
+          spinAxis: { value: 18, provenance: "derived" },
+          launchDirectionDeg: { value: -7, provenance: "derived" },
+        },
+      },
+      environment(() => "fairway"),
+    );
+    const flight = shaped.frames.filter(
+      (frame) => frame.timeS <= shaped.flightTimeS + Number.EPSILON,
+    );
+    const chord = {
+      x: shaped.carryPosition.x - flight[0].position.x,
+      z: shaped.carryPosition.z - flight[0].position.z,
+    };
+    const chordLength = Math.hypot(chord.x, chord.z);
+    let previousProgress = -Infinity;
+
+    for (const frame of flight) {
+      const relative = {
+        x: frame.position.x - flight[0].position.x,
+        z: frame.position.z - flight[0].position.z,
+      };
+      const progress = (relative.x * chord.x + relative.z * chord.z) / chordLength;
+      expect(progress).toBeGreaterThanOrEqual(previousProgress - 0.05);
+      previousProgress = progress;
+    }
+    expect(shaped.input.launchAzimuthDeg).toBe(-7);
+    expect(shaped.carryPosition.x).toBeCloseTo(replayShot.carryEnd[0]);
+    expect(shaped.carryPosition.z).toBeCloseTo(replayShot.carryEnd[2]);
+  });
+
   it("stops the reconstructed replay when its mapped ground path reaches water", () => {
     const result = simulateCourseTwinReplayShot(
       replayShot,

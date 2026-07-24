@@ -13,6 +13,10 @@ export type CourseTwinRoundEventType = (typeof COURSE_TWIN_ROUND_EVENT_TYPES)[nu
 export type CourseTwinGreenRule = "automatic_putts" | "manual_putts" | "competition_gimmes";
 export type CourseTwinRoundPosition = [number, number, number];
 
+export function courseTwinRoundCreatesAnalyticsSession(mode: string): mode is "live" {
+  return mode === "live";
+}
+
 export type CourseTwinRoundRules = {
   windSpeedMph: number;
   windDirectionDeg: number;

@@ -1,5 +1,29 @@
 Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real course packages, replay, strategy, virtual play, live launch-monitor integration, scalable course generation and later multiplayer.
 
+## Dedicated short-game model
+
+- My Bag play now recognises chips at 30 yd or less, pitches from 30–60 yd and bunker splashes inside 60 yd instead of sampling a full-swing club distribution.
+- The 60–100 yd gap now defaults to a distance-scaled half wedge. Under 100 yd the golfer gets explicit, distance-appropriate shot-type buttons: chip/pitch/half inside 30 yd, pitch/half/full from 30–60 yd, and half/full from 60–100 yd.
+- Short-game carry scales to the live pin distance, strike variation responds to fairway/rough/trees/bunker lies, and mapped landing surfaces retain different amounts of rollout before the existing physics/surface classifier determines the final lie.
+- Short leaves offer scoring clubs only (or the two shortest clubs as a fallback), use tighter aim offsets and show the shot type, lie and scaled carry disclosure before play.
+- A chip that finishes on the mapped green continues through the existing automatic or manual putting hand-off.
+- Regression coverage fixes the reported 20 yd rough-leave case, compares green and rough rollout, checks bunker splash launch, verifies 60–100 yd half shots and explicit shot-type selection, and checks short-list club selection. The full gate passes: 312 test files / 1,137 tests, ESLint, TypeScript and `git diff --check`.
+- Authenticated Bootle smoke reached a real 71 yd fairway leave and confirmed Half shot / Full swing controls, `gw` / `pw` choices, ±8 yd short-approach aim controls and scaled-carry copy. Playing the half wedge completed the mapped-green hand-off without a browser error.
+
+## My Bag strategy-sandbox isolation
+
+- My Bag rounds are a Course Twin strategy tool, not genuine played rounds. They retain the private Course Twin event ledger for deterministic play/resume but no longer materialise completed modelled shots into the main `sessions` and `shots` analytics tables.
+- Live launch-monitor rounds remain eligible to become real analytics sessions because their shots are measured rather than generated from the golfer's bag model.
+- The setup, active-round and completion copy now explicitly says My Bag test rounds are excluded from Rounds, Shots and performance stats.
+
+## Golfer-eye camera correction
+
+- Live 18-hole play inspection showed the selected-shot camera reading as an elevated tracer/broadcast view rather than the golfer's position.
+- The golfer shot preset now sits 4.5 m behind the strike point, only 0.85 m off the target line and at 1.72 m eye height, with a wider 56 degree field of view. The non-shot tee preset is also lower and closer while the aerial preset remains unchanged.
+- Authenticated Bootle visual verification confirmed a lower golfer-eye frame with substantially more fairway, tree-line and target context. The reset control returned to the corrected preset.
+- The official web-game client was also run; its isolated browser correctly stopped at the login boundary, so authenticated visual acceptance used the already signed-in Chrome window instead.
+- The separately observed 17–21 yd short-game gap is addressed by the dedicated chip/pitch model above.
+
 ## Full-plan continuation audit
 
 - The published foundation renders and simulates Play/Live shots, but round state is currently hole-local, green completion is a fixed two-putt estimate, and no canonical Course Twin round or shot ledger is persisted into the existing analytics model.
@@ -119,3 +143,32 @@ Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real
 - Automatic putt-out now follows the explicit golfer rule: 10 ft or less adds one putt, while every longer mapped-green leave adds two. There is no automatic three-putt band.
 - My Bag virtual shots now carry a deterministic spin-axis sample into the aerodynamic model. Measured per-club spin-axis history is preferred; measured lateral tendency supplies an honest fallback. Eighty percent of samples use a damped central distribution, with every non-putter retaining a visible curve and occasional fuller shapes still represented.
 - Live Chromium My Bag verification produced a shaped-right `-8.8°` driver and a softer `+3.8°` follow-up through the real terrain physics with no console errors. The current bag has no imported spin-axis values, so the UI correctly labels its curvature `Dispersion inferred`; the official web-game client separately returned ready LiDAR terrain, one visible replay shot and no captured error file. Disposable round/share evidence was deleted.
+
+## Completed milestone — 2026-07-24 My Bag shot continuity
+
+- Accepted My Bag shots remain as persistent amber flight-and-roll tracers for the current hole instead of disappearing when the golfer advances.
+- Between shots, the camera now reframes from the new lie with a wider golfer perspective. A white ball, lime ring and explicit `Next shot` marker identify the next origin while the most recent finish remains orange.
+- The semantic runtime reports completed tracer count and next-shot coordinates for deterministic browser inspection.
+- A real authenticated browser transition advanced an existing test round from shot 2 to shot 3: completed tracers increased from one to two, the next start matched shot 2's final physics position, the 29-yard lie correctly offered chip/pitch/half-shot controls, and the browser reported zero console errors.
+
+## Completed milestone — 2026-07-24 nine-hole second-circuit continuity
+
+- An 18-hole My Bag round can now loop a nine-hole Course Twin package without mixing the physical map hole with the canonical round-ledger hole. On Aintree, ledger holes 10–18 map deterministically back onto physical holes 1–9.
+- Shot and putt events persist against the ledger hole, while terrain, strategy and camera geometry continue to use the mapped physical hole. This removes the `Shot is not on the current hole` retry deadlock.
+- Resume state restores only accepted shots and putts from the active ledger hole. First-circuit hole-1 tracers no longer leak into second-circuit hole 10, and an already-rejected transient shot is cleared automatically.
+- Authenticated browser verification resumed Aintree at ledger hole 10 / mapped hole 1 with zero stale tracers, saved a new driver as version 43, advanced to shot 2 from its actual final lie and showed exactly one completed tracer plus the next-shot marker. The browser reported zero console errors.
+
+## Completed milestone — 2026-07-24 single next-shot marker
+
+- When a completed tracer ends at the current next-shot position, its orange finish ball and white finish ring are suppressed so the golfer sees one white ball and one lime next-shot ring.
+- Completed flight and rollout lines remain visible. A distinct penalty finish remains visible when the next playable position is a separate drop location.
+- The next-shot marker now samples the saved lie directly at ground level. It no longer reuses the 1.1 m raised hole-geometry anchor that made identical horizontal coordinates appear several feet apart in the golfer camera.
+
+## Completed milestone — 2026-07-24 behind-ball aiming and tracer shape
+
+- The pre-shot golfer camera is centred directly behind the current lie at eye height and rotates with the selected start direction. Golfers can aim with a bounded slider, quick five-degree controls or by clicking the course.
+- A terrain-following cyan guide shows the chosen initial heading. The old mapped centreline and raised tee cylinder are hidden during play so neither can be mistaken for the aim line or ball.
+- Virtual shots keep one deterministic sampled strike while aim changes, preserve a bounded launch-direction value in the round ledger and reconstruct a smooth start-tangent flight curve without loops, reversals or right-angle rollout.
+- Only the immediately preceding accepted shot is retained between shots. Its carry marker is hidden, and it is rendered only when its final physics position matches the current playable lie, leaving one ball and one next-shot marker at the actual origin.
+- The Three.js canvas now requests the supported percentage-closer shadow map instead of the deprecated soft-shadow constant.
+- The desktop course viewport is pinned to the available window instead of stretching to the full control-column height, keeping the ball, horizon and aim line visible together. A concurrent-tab 409 now refreshes the canonical round automatically rather than leaving the golfer on a stale `Retry save` state.

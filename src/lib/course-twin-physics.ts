@@ -249,13 +249,27 @@ export function simulateCourseTwinReplayShot(
         ? clamp(shot.metrics.ballSpeedMph.value * 0.44704, 4, 110)
         : fallbackBallSpeed(carryDistanceM, launchAngleDeg),
     launchAngleDeg,
+    launchAzimuthDeg: replayLaunchDirectionDeg(shot),
     backSpinRpm: clamp(Math.abs(spinRate * Math.cos(spinAxisRadians)), 150, 12_000),
     sideSpinRpm: clamp(spinRate * Math.sin(spinAxisRadians), -5_000, 5_000),
     windMps: options.windMps,
   };
   const raw = simulateCourseTwinShot(input, environment);
+  const launchDirection = rotate2d(
+    targetDirection.x,
+    targetDirection.z,
+    degreesToRadians(input.launchAzimuthDeg ?? 0),
+  );
   let frames = raw.frames.map((simulationFrame) =>
-    mapReplayFrame(simulationFrame, raw, start, carryTarget, totalTarget, environment),
+    mapReplayFrame(
+      simulationFrame,
+      raw,
+      start,
+      carryTarget,
+      totalTarget,
+      launchDirection,
+      environment,
+    ),
   );
 
   frames.push({
@@ -354,28 +368,21 @@ function mapReplayFrame(
   targetStart: CourseTwinVector3,
   targetCarry: CourseTwinVector3,
   targetTotal: CourseTwinVector3,
+  launchDirection: { x: number; z: number },
   environment: CourseTwinPhysicsEnvironment,
 ): CourseTwinSimulationFrame {
   const inFlight = simulationFrame.timeS <= raw.flightTimeS + Number.EPSILON;
-  const sourceStart = inFlight ? (raw.frames[0]?.position ?? targetStart) : raw.carryPosition;
-  const sourceEnd = inFlight ? raw.carryPosition : raw.finalPosition;
-  const mappedStart = inFlight ? targetStart : targetCarry;
-  const mappedEnd = inFlight ? targetCarry : targetTotal;
-  const mapped = mapHorizontalSegment(
-    simulationFrame.position,
-    sourceStart,
-    sourceEnd,
-    mappedStart,
-    mappedEnd,
-    inFlight
-      ? 0
-      : clamp(
-          (simulationFrame.timeS - raw.flightTimeS) /
-            Math.max(0.01, raw.totalTimeS - raw.flightTimeS),
-          0,
-          1,
-        ),
-  );
+  const progress = inFlight
+    ? clamp(simulationFrame.timeS / Math.max(0.01, raw.flightTimeS), 0, 1)
+    : clamp(
+        (simulationFrame.timeS - raw.flightTimeS) /
+          Math.max(0.01, raw.totalTimeS - raw.flightTimeS),
+        0,
+        1,
+      );
+  const mapped = inFlight
+    ? mapFlightCurve(targetStart, targetCarry, launchDirection, progress)
+    : mapGroundSegment(targetCarry, targetTotal, progress);
   const sourceGround = environment.groundHeight(
     simulationFrame.position.x,
     simulationFrame.position.z,
@@ -393,38 +400,45 @@ function mapReplayFrame(
   };
 }
 
-function mapHorizontalSegment(
-  point: CourseTwinVector3,
-  sourceStart: CourseTwinVector3,
-  sourceEnd: CourseTwinVector3,
-  targetStart: CourseTwinVector3,
-  targetEnd: CourseTwinVector3,
-  fallbackProgress: number,
+function mapFlightCurve(
+  start: CourseTwinVector3,
+  end: CourseTwinVector3,
+  launchDirection: { x: number; z: number },
+  progress: number,
 ) {
-  const sourceLength = horizontalDistance(sourceStart, sourceEnd);
-  const targetLength = horizontalDistance(targetStart, targetEnd);
-  if (sourceLength < 0.05 || targetLength < 0.05) {
-    return {
-      x: targetStart.x + (targetEnd.x - targetStart.x) * fallbackProgress,
-      z: targetStart.z + (targetEnd.z - targetStart.z) * fallbackProgress,
-    };
-  }
-  const sourceDirection = {
-    x: (sourceEnd.x - sourceStart.x) / sourceLength,
-    z: (sourceEnd.z - sourceStart.z) / sourceLength,
+  const length = horizontalDistance(start, end);
+  if (length < 0.05) return { x: start.x, z: start.z };
+  const finishDirection = normalize2d(end.x - start.x, end.z - start.z);
+  const firstControlDistance = length * 0.34;
+  const secondControlDistance = length * 0.28;
+  const first = {
+    x: start.x + launchDirection.x * firstControlDistance,
+    z: start.z + launchDirection.z * firstControlDistance,
   };
-  const targetDirection = {
-    x: (targetEnd.x - targetStart.x) / targetLength,
-    z: (targetEnd.z - targetStart.z) / targetLength,
+  const second = {
+    x: end.x - finishDirection.x * secondControlDistance,
+    z: end.z - finishDirection.z * secondControlDistance,
   };
-  const relativeX = point.x - sourceStart.x;
-  const relativeZ = point.z - sourceStart.z;
-  const along = relativeX * sourceDirection.x + relativeZ * sourceDirection.z;
-  const across = relativeX * -sourceDirection.z + relativeZ * sourceDirection.x;
-  const scale = targetLength / sourceLength;
+  const inverse = 1 - progress;
   return {
-    x: targetStart.x + targetDirection.x * along * scale + -targetDirection.z * across * scale,
-    z: targetStart.z + targetDirection.z * along * scale + targetDirection.x * across * scale,
+    x:
+      inverse * inverse * inverse * start.x +
+      3 * inverse * inverse * progress * first.x +
+      3 * inverse * progress * progress * second.x +
+      progress * progress * progress * end.x,
+    z:
+      inverse * inverse * inverse * start.z +
+      3 * inverse * inverse * progress * first.z +
+      3 * inverse * progress * progress * second.z +
+      progress * progress * progress * end.z,
+  };
+}
+
+function mapGroundSegment(start: CourseTwinVector3, end: CourseTwinVector3, progress: number) {
+  const eased = progress * progress * (3 - 2 * progress);
+  return {
+    x: start.x + (end.x - start.x) * eased,
+    z: start.z + (end.z - start.z) * eased,
   };
 }
 
@@ -445,6 +459,12 @@ function replayLaunchAngle(shot: CourseTwinReplayShot, carryDistanceM: number) {
   }
   const apexM = Math.max(1, (shot.metrics.apexFt.value ?? 45) * 0.3048);
   return clamp((Math.atan((4 * apexM) / Math.max(1, carryDistanceM)) * 180) / Math.PI, 4, 45);
+}
+
+function replayLaunchDirectionDeg(shot: CourseTwinReplayShot) {
+  const measured = shot.metrics.launchDirectionDeg?.value;
+  if (measured !== null && measured !== undefined) return clamp(measured, -35, 35);
+  return clamp(-(shot.metrics.spinAxis.value ?? 0) * 0.32, -6, 6);
 }
 
 function fallbackBallSpeed(carryDistanceM: number, launchAngleDeg: number) {

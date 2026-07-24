@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import {
+  courseTwinRoundCreatesAnalyticsSession,
   reduceCourseTwinRoundEvents,
   stableCourseTwinRoundJson,
   type CourseTwinCreateRoundInput,
@@ -197,7 +198,7 @@ export async function appendCourseTwinRoundEvent({
       })
       .returning();
 
-    if (summary.status === "complete") {
+    if (summary.status === "complete" && courseTwinRoundCreatesAnalyticsSession(updated.mode)) {
       const sessionId = await materialiseCompletedRound({
         tx,
         round: updated,
@@ -260,7 +261,7 @@ async function materialiseCompletedRound({
     .insert(sessions)
     .values({
       userId: round.userId,
-      source: round.mode === "live" ? "course_twin_live" : "course_twin_virtual",
+      source: "course_twin_live",
       type: "simulated_course",
       playContext: "simulated_course",
       date: round.startedAt,

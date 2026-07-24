@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CourseTwinComms } from "@/app/play/[courseId]/course-twin-comms";
 import type {
+  CourseTwinEvidenceValue,
   CourseTwinFeature,
   CourseTwinHole,
   CourseTwinManifest,
@@ -57,8 +58,12 @@ import {
 } from "@/lib/course-twin-physics";
 import {
   appendCourseTwinRoundEventClient,
+  CourseTwinRoundRequestError,
+  courseTwinRoundHoleResumeState,
+  courseTwinRoundPhysicalHoleNumber,
   createCourseTwinRoundClient,
   loadActiveCourseTwinRoundClient,
+  loadCourseTwinRoundClient,
   type CourseTwinRoundClientDocument,
 } from "@/lib/course-twin-round-client";
 import {
@@ -93,7 +98,14 @@ import type {
 } from "@/lib/course-twin-strategy";
 import {
   buildCourseTwinVirtualShot,
+  courseTwinAimDirection,
+  courseTwinAimDirectionDegToPoint,
+  courseTwinAimLimitDeg,
+  courseTwinVirtualClubOptions,
+  courseTwinVirtualShotKind,
+  courseTwinVirtualShotKindOptions,
   type CourseTwinVirtualShot,
+  type CourseTwinVirtualShotKind,
 } from "@/lib/course-twin-virtual-round";
 import { cn } from "@/lib/utils";
 
@@ -102,6 +114,18 @@ type ExploreTransport = "walk" | "cart";
 type CameraView = "golfer" | "aerial";
 type CameraControlAction = "orbit-left" | "orbit-right" | "zoom-in" | "zoom-out" | "reset";
 type CameraCommand = { id: number; action: CameraControlAction } | null;
+const GOLFER_SHOT_CAMERA = {
+  fov: 56,
+  behindDistance: 4.5,
+  lateralDistance: 0.85,
+  eyeHeight: 1.72,
+} as const;
+const GOLFER_TEE_CAMERA = {
+  fov: 56,
+  behindDistance: 14,
+  lateralDistance: 0,
+  eyeHeight: 1.72,
+} as const;
 type StrategyLoadState = {
   holeNumber: number | null;
   status: "idle" | "loading" | "ready" | "error";
@@ -218,6 +242,45 @@ const pbrSurfaceAssets: Record<
   bunker: { asset: "Ground080", metresPerTile: 1.25, normalScale: 1.15 },
 };
 
+function roundShotPayloadToReplayShot(
+  shot: CourseTwinShotEventPayload & { clientEventId: string },
+): CourseTwinReplayShot {
+  return {
+    id: `round-${shot.clientEventId}`,
+    holeNumber: shot.holeNumber,
+    holeShotNumber: shot.shotNumber,
+    clubType: shot.clubType,
+    start: shot.start,
+    carryEnd: shot.carryEnd,
+    totalEnd: shot.totalEnd,
+    trajectory: [],
+    metrics: {
+      carryYd: roundShotEvidence(shot.metrics.carryYd, shot.source),
+      totalYd: roundShotEvidence(shot.metrics.totalYd, shot.source),
+      sideCarryYd: roundShotEvidence(null, shot.source),
+      apexFt: roundShotEvidence(null, shot.source),
+      ballSpeedMph: roundShotEvidence(shot.metrics.ballSpeedMph, shot.source),
+      launchAngleDeg: roundShotEvidence(shot.metrics.launchAngleDeg, shot.source),
+      launchDirectionDeg: roundShotEvidence(shot.metrics.launchDirectionDeg, shot.source),
+      spinRate: roundShotEvidence(shot.metrics.spinRate, shot.source),
+      spinAxis: roundShotEvidence(shot.metrics.spinAxis, shot.source),
+    },
+    placementProvenance: "derived",
+    trajectoryProvenance: "reconstructed",
+    rollProvenance: shot.metrics.totalYd > shot.metrics.carryYd ? "reconstructed" : "unavailable",
+  };
+}
+
+function roundShotEvidence(
+  value: number | null,
+  source: CourseTwinShotEventPayload["source"],
+): CourseTwinEvidenceValue {
+  return {
+    value,
+    provenance: value === null ? "unavailable" : source === "measured" ? "measured" : "derived",
+  };
+}
+
 export function CourseTwinScene({
   manifest,
   replay,
@@ -253,7 +316,9 @@ export function CourseTwinScene({
   const [virtualShotNumber, setVirtualShotNumber] = useState(1);
   const [virtualStrokes, setVirtualStrokes] = useState(0);
   const [virtualPenaltyStrokes, setVirtualPenaltyStrokes] = useState(0);
-  const [virtualAimOffsetYd, setVirtualAimOffsetYd] = useState(0);
+  const [virtualAimDirectionDeg, setVirtualAimDirectionDeg] = useState(0);
+  const [virtualShotKindChoice, setVirtualShotKindChoice] =
+    useState<CourseTwinVirtualShotKind | null>(null);
   const [virtualShot, setVirtualShot] = useState<CourseTwinVirtualShot | null>(null);
   const [virtualComplete, setVirtualComplete] = useState(false);
   const [virtualRoundEventId, setVirtualRoundEventId] = useState<string | null>(null);
@@ -343,18 +408,22 @@ export function CourseTwinScene({
   const selectedHoleIndex = manifest.holes.findIndex(
     (hole) => hole.holeNumber === selectedHole.holeNumber,
   );
+  const activeRoundPhysicalHoleNumber = activeRound
+    ? courseTwinRoundPhysicalHoleNumber(activeRound, manifest.holes)
+    : null;
+  const activeRoundLedgerHoleNumber = activeRound?.currentHole ?? selectedHole.holeNumber;
   const roundLocksHole = activeRound?.status === "in_progress" && activeRound.mode === mode;
   const virtualPuttReplay = useMemo(
     () =>
       virtualPuttResult && virtualPuttEventId
         ? buildCourseTwinPuttReplay({
             id: virtualPuttEventId,
-            holeNumber: selectedHole.holeNumber,
+            holeNumber: activeRoundLedgerHoleNumber,
             puttNumber: virtualPuttNumber,
             result: virtualPuttResult,
           })
         : null,
-    [selectedHole.holeNumber, virtualPuttEventId, virtualPuttNumber, virtualPuttResult],
+    [activeRoundLedgerHoleNumber, virtualPuttEventId, virtualPuttNumber, virtualPuttResult],
   );
 
   useEffect(() => {
@@ -523,14 +592,84 @@ export function CourseTwinScene({
       null,
     [strategyClubId, strategyState.document],
   );
+  const virtualRemainingYd =
+    Math.hypot(selectedHole.green[0] - virtualStart[0], selectedHole.green[2] - virtualStart[2]) /
+    0.9144;
+  const virtualLieSurface = classifySurface(virtualStart[0], virtualStart[2]);
+  const virtualShotKindOptions = courseTwinVirtualShotKindOptions(
+    virtualRemainingYd,
+    virtualLieSurface,
+  );
+  const virtualShotKind =
+    virtualShotKindChoice && virtualShotKindOptions.includes(virtualShotKindChoice)
+      ? virtualShotKindChoice
+      : courseTwinVirtualShotKind(virtualRemainingYd, virtualLieSurface);
+  const virtualAimDirection = courseTwinAimDirection(
+    virtualStart,
+    selectedHole.green,
+    virtualAimDirectionDeg,
+  );
+  const virtualAimGuideDistanceM = THREE.MathUtils.clamp(virtualRemainingYd * 0.9144, 24, 165);
+  const virtualAimTarget: CourseTwinPoint = [
+    virtualStart[0] + virtualAimDirection.x * virtualAimGuideDistanceM,
+    0,
+    virtualStart[2] + virtualAimDirection.z * virtualAimGuideDistanceM,
+  ];
+  const virtualClubOptions = useMemo(
+    () => courseTwinVirtualClubOptions(strategyState.document?.clubs ?? [], virtualRemainingYd),
+    [strategyState.document?.clubs, virtualRemainingYd],
+  );
+  const virtualStrategyClub =
+    virtualClubOptions.find((club) => club.clubId === strategyClubId) ??
+    virtualClubOptions[0] ??
+    strategyClub;
   const activeHoleShots =
     activeRound?.summary.acceptedShots
-      .filter((shot) => shot.holeNumber === selectedHole.holeNumber)
+      .filter((shot) => shot.holeNumber === activeRoundLedgerHoleNumber)
       .sort((left, right) => left.shotNumber - right.shotNumber) ?? [];
   const activeHolePutts =
     activeRound?.summary.acceptedPutts
-      .filter((putt) => putt.holeNumber === selectedHole.holeNumber)
+      .filter((putt) => putt.holeNumber === activeRoundLedgerHoleNumber)
       .sort((left, right) => left.puttNumber - right.puttNumber) ?? [];
+  const activeRoundMode = activeRound?.mode;
+  const acceptedRoundShots = activeRound?.summary.acceptedShots;
+  const virtualCompletedTracers = useMemo(() => {
+    if (!sampleTerrain || activeRoundMode !== "play" || !acceptedRoundShots) return [];
+    const previousShot = acceptedRoundShots
+      .filter(
+        (shot) =>
+          shot.holeNumber === activeRoundLedgerHoleNumber &&
+          (!virtualShot || shot.clientEventId !== virtualRoundEventId),
+      )
+      .sort((left, right) => left.shotNumber - right.shotNumber)
+      .slice(-1);
+    return previousShot.flatMap((shot) => {
+      const replayShot = roundShotPayloadToReplayShot(shot);
+      const simulation = simulateCourseTwinReplayShot(
+        replayShot,
+        {
+          groundHeight: sampleTerrain,
+          surfaceAt: classifySurface,
+        },
+        { windMps: configuredWind },
+      );
+      if (!courseTwinGroundPositionsCoincide(simulation.finalPosition, virtualStart)) return [];
+      return {
+        id: shot.clientEventId,
+        simulation,
+      };
+    });
+  }, [
+    acceptedRoundShots,
+    activeRoundMode,
+    classifySurface,
+    configuredWind,
+    sampleTerrain,
+    activeRoundLedgerHoleNumber,
+    virtualRoundEventId,
+    virtualShot,
+    virtualStart,
+  ]);
   const latestActiveShot = activeHoleShots.at(-1) ?? null;
   const latestActivePutt = activeHolePutts.at(-1) ?? null;
   const manualPuttingActive =
@@ -553,7 +692,7 @@ export function CourseTwinScene({
       activeRound && activeRound.rulesJson.greenRule !== "manual_putts"
         ? buildCourseTwinAutomaticGreenCompletion({
             summary: activeRound.summary,
-            hole: selectedHole,
+            hole: { ...selectedHole, holeNumber: activeRound.currentHole },
           })
         : null,
     [activeRound, selectedHole],
@@ -563,7 +702,7 @@ export function CourseTwinScene({
       activeRound?.rulesJson.greenRule === "manual_putts"
         ? buildCourseTwinManualGreenCompletion({
             summary: activeRound.summary,
-            hole: selectedHole,
+            hole: { ...selectedHole, holeNumber: activeRound.currentHole },
           })
         : null,
     [activeRound, selectedHole],
@@ -634,6 +773,24 @@ export function CourseTwinScene({
         }
         return updated;
       } catch (error) {
+        if (error instanceof CourseTwinRoundRequestError && error.status === 409) {
+          try {
+            const canonical = await loadCourseTwinRoundClient(current.id);
+            activeRoundRef.current = canonical;
+            setActiveRound(canonical);
+            setRoundSync({ status: "ready", error: null });
+            return canonical;
+          } catch (refreshError) {
+            setRoundSync({
+              status: "error",
+              error:
+                refreshError instanceof Error
+                  ? refreshError.message
+                  : "Course Twin could not refresh the round.",
+            });
+            throw refreshError;
+          }
+        }
         setRoundSync({
           status: "error",
           error: error instanceof Error ? error.message : "Course Twin could not save the round.",
@@ -664,9 +821,11 @@ export function CourseTwinScene({
         simulation: virtualSimulation,
         clubId: strategyClub.clubId,
         source: "modelled",
+        ledgerHoleNumber: activeRound.currentHole,
       }),
     }).catch(() => submittedRoundEventsRef.current.delete(virtualRoundEventId));
   }, [
+    activeRound?.currentHole,
     activeRound?.mode,
     appendRoundEvent,
     roundRetryToken,
@@ -696,9 +855,11 @@ export function CourseTwinScene({
         simulation: liveSimulation,
         clubId: strategyClub.clubId,
         source: "measured",
+        ledgerHoleNumber: activeRound.currentHole,
       }),
     }).catch(() => submittedRoundEventsRef.current.delete(liveRoundEventId));
   }, [
+    activeRound?.currentHole,
     activeRound?.mode,
     appendRoundEvent,
     liveRoundEventId,
@@ -723,7 +884,7 @@ export function CourseTwinScene({
       type: "putt.accepted",
       clientEventId: virtualPuttEventId,
       payload: buildCourseTwinPuttEventPayload({
-        holeNumber: selectedHole.holeNumber,
+        holeNumber: activeRound.currentHole,
         puttNumber: virtualPuttNumber,
         result: virtualPuttResult,
       }),
@@ -733,7 +894,7 @@ export function CourseTwinScene({
     activeRound?.rulesJson.greenRule,
     appendRoundEvent,
     roundRetryToken,
-    selectedHole.holeNumber,
+    activeRound?.currentHole,
     virtualPuttEventId,
     virtualPuttNumber,
     virtualPuttResult,
@@ -748,12 +909,14 @@ export function CourseTwinScene({
       canAccept:
         activeRound?.mode === "live" &&
         activeRound.status === "in_progress" &&
+        activeRoundPhysicalHoleNumber === selectedHole.holeNumber &&
         !liveShot &&
         !liveComplete,
     };
   }, [
     activeRound?.mode,
     activeRound?.status,
+    activeRoundPhysicalHoleNumber,
     liveComplete,
     liveShot,
     liveShotNumber,
@@ -847,7 +1010,12 @@ export function CourseTwinScene({
                   : null,
               }
             : null,
-        visibleShotCount: mode === "replay" && selectedShot ? 1 : 0,
+        visibleShotCount:
+          mode === "replay" && selectedShot
+            ? 1
+            : mode === "play"
+              ? virtualCompletedTracers.length + (virtualShot ? 1 : 0)
+              : 0,
         selectedShotIndex: mode === "replay" && selectedShot ? shotIndex : null,
         shot:
           mode === "replay" && selectedShot
@@ -893,14 +1061,22 @@ export function CourseTwinScene({
         virtualRound:
           mode === "play"
             ? {
-                holeNumber: selectedHole.holeNumber,
+                holeNumber: activeRoundLedgerHoleNumber,
+                physicalHoleNumber: selectedHole.holeNumber,
                 shotNumber: virtualShotNumber,
                 strokes: virtualStrokes,
                 penaltyStrokes: virtualPenaltyStrokes,
                 complete: virtualComplete,
-                aimOffsetYd: virtualAimOffsetYd,
+                aimDirectionDeg: virtualAimDirectionDeg,
                 start: virtualStart,
-                club: strategyClub?.clubType ?? null,
+                club: virtualStrategyClub?.clubType ?? null,
+                remainingYd: Number(virtualRemainingYd.toFixed(1)),
+                lieSurface: virtualLieSurface,
+                shotKind: virtualShotKind,
+                shotKindOptions: virtualShotKindOptions,
+                availableClubs: virtualClubOptions.map((club) => club.clubType),
+                completedTracerCount: virtualCompletedTracers.length,
+                nextShotStart: virtualShot ? null : virtualStart,
                 sampledShot: virtualShot?.sampled ?? null,
                 physics: virtualSimulation
                   ? {
@@ -916,7 +1092,8 @@ export function CourseTwinScene({
             ? {
                 bridgeStatus: bridgeState.status,
                 launchMonitorConnected: bridgeState.launchMonitorConnected,
-                holeNumber: selectedHole.holeNumber,
+                holeNumber: activeRoundLedgerHoleNumber,
+                physicalHoleNumber: selectedHole.holeNumber,
                 shotNumber: liveShotNumber,
                 strokes: liveStrokes,
                 penaltyStrokes: livePenaltyStrokes,
@@ -983,6 +1160,7 @@ export function CourseTwinScene({
     };
   }, [
     activeRound,
+    activeRoundLedgerHoleNumber,
     automaticGreenCompletion,
     cameraCommand,
     cameraView,
@@ -1014,7 +1192,7 @@ export function CourseTwinScene({
     strategyState.holeNumber,
     strategyState.status,
     terrainError,
-    virtualAimOffsetYd,
+    virtualAimDirectionDeg,
     virtualComplete,
     virtualPenaltyStrokes,
     virtualPuttAimDeg,
@@ -1023,10 +1201,17 @@ export function CourseTwinScene({
     virtualPuttResult,
     virtualPuttStart,
     virtualShot,
+    virtualShotKind,
+    virtualShotKindOptions,
     virtualShotNumber,
     virtualSimulation,
     virtualStart,
+    virtualStrategyClub,
     virtualStrokes,
+    virtualClubOptions,
+    virtualCompletedTracers,
+    virtualLieSurface,
+    virtualRemainingYd,
   ]);
 
   const ensureBridgeClient = () => {
@@ -1223,7 +1408,8 @@ export function CourseTwinScene({
       setVirtualShotNumber(1);
       setVirtualStrokes(0);
       setVirtualPenaltyStrokes(0);
-      setVirtualAimOffsetYd(0);
+      setVirtualAimDirectionDeg(0);
+      setVirtualShotKindChoice(null);
       setVirtualShot(null);
       setVirtualComplete(false);
       setVirtualRoundEventId(null);
@@ -1246,6 +1432,52 @@ export function CourseTwinScene({
     if (mode === "live") loadStrategy(nextHoleNumber);
   };
 
+  const restorePersistedRoundHole = (round: CourseTwinRoundClientDocument) => {
+    const restored = courseTwinRoundHoleResumeState(round, manifest.holes);
+    if (!restored) {
+      setRoundSync({
+        status: "error",
+        error: `Hole ${round.currentHole} is unavailable in this Course Twin package.`,
+      });
+      return false;
+    }
+
+    setHoleNumber(restored.physicalHoleNumber);
+    setShotIndex(0);
+    setPlayback(0);
+    setPlaying(false);
+    setCameraView("golfer");
+    setCameraCommand(null);
+    setExplorePosition(restored.start);
+    if (round.mode === "play") {
+      setVirtualStart(restored.start);
+      setVirtualShotNumber(restored.shotNumber);
+      setVirtualStrokes(restored.strokes);
+      setVirtualPenaltyStrokes(restored.penaltyStrokes);
+      setVirtualAimDirectionDeg(0);
+      setVirtualShotKindChoice(null);
+      setVirtualShot(null);
+      setVirtualComplete(false);
+      setVirtualRoundEventId(null);
+      setVirtualPuttAimDeg(0);
+      setVirtualPuttPacePercent(100);
+      setVirtualPuttNumber(restored.puttNumber);
+      setVirtualPuttResult(null);
+      setVirtualPuttEventId(null);
+    } else {
+      setLiveStart(restored.start);
+      setLiveShotNumber(restored.shotNumber);
+      setLiveStrokes(restored.strokes);
+      setLivePenaltyStrokes(restored.penaltyStrokes);
+      setLiveShot(null);
+      setLiveComplete(false);
+      setLiveRoundEventId(null);
+    }
+    loadStrategy(restored.physicalHoleNumber);
+    setRoundSync({ status: "ready", error: null });
+    return true;
+  };
+
   useEffect(() => {
     if (readOnly) {
       activeRoundRef.current = null;
@@ -1260,23 +1492,6 @@ export function CourseTwinScene({
           setRoundSync({ status: "idle", error: null });
           return;
         }
-        const hole = manifest.holes.find((candidate) => candidate.holeNumber === round.currentHole);
-        const currentShots = round.summary.acceptedShots
-          .filter((shot) => shot.holeNumber === round.currentHole)
-          .sort((left, right) => left.shotNumber - right.shotNumber);
-        const lastShot = currentShots.at(-1);
-        const currentPutts = round.summary.acceptedPutts
-          .filter((putt) => putt.holeNumber === round.currentHole)
-          .sort((left, right) => left.puttNumber - right.puttNumber);
-        const lastPutt = currentPutts.at(-1);
-        const penalties = currentShots.filter((shot) => shot.result.penalty).length;
-        const restoredStart =
-          lastPutt?.end ??
-          (lastShot
-            ? lastShot.result.penalty
-              ? lastShot.carryEnd
-              : lastShot.totalEnd
-            : hole?.tee);
         activeRoundRef.current = round;
         setActiveRound(round);
         setRoundRules(round.rulesJson);
@@ -1286,31 +1501,7 @@ export function CourseTwinScene({
           modeRef.current = round.mode;
           setMode(round.mode);
         }
-        setHoleNumber(round.currentHole);
-        setPlayback(0);
-        setPlaying(false);
-        if (hole && restoredStart) {
-          if (round.mode === "play") {
-            setVirtualStart(restoredStart);
-            setVirtualShotNumber(currentShots.length + 1);
-            setVirtualStrokes(currentShots.length + currentPutts.length + penalties);
-            setVirtualPenaltyStrokes(penalties);
-            setVirtualShot(null);
-            setVirtualRoundEventId(null);
-            setVirtualPuttNumber(currentPutts.length + 1);
-            setVirtualPuttResult(null);
-            setVirtualPuttEventId(null);
-          } else {
-            setLiveStart(restoredStart);
-            setLiveShotNumber(currentShots.length + 1);
-            setLiveStrokes(currentShots.length + penalties);
-            setLivePenaltyStrokes(penalties);
-            setLiveShot(null);
-            setLiveRoundEventId(null);
-          }
-          loadStrategy(round.currentHole);
-        }
-        setRoundSync({ status: "ready", error: null });
+        restorePersistedRoundHole(round);
       })
       .catch((error) => {
         if (!mounted) return;
@@ -1325,6 +1516,41 @@ export function CourseTwinScene({
     // Resume is intentionally scoped to the published course identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [manifest.course.id, readOnly]);
+
+  useEffect(() => {
+    const rejectedWrongHoleShot =
+      roundSync.status === "error" && roundSync.error === "Shot is not on the current hole.";
+    if (
+      readOnly ||
+      !activeRound ||
+      activeRound.status !== "in_progress" ||
+      activeRound.mode !== mode ||
+      (activeRoundPhysicalHoleNumber === selectedHole.holeNumber && !rejectedWrongHoleShot)
+    ) {
+      return;
+    }
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) restorePersistedRoundHole(activeRound);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // The canonical ledger must win whenever the golfer returns to its active Play/Live mode.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeRound?.currentHole,
+    activeRound?.id,
+    activeRound?.mode,
+    activeRound?.status,
+    activeRound?.version,
+    activeRoundPhysicalHoleNumber,
+    mode,
+    readOnly,
+    roundSync.error,
+    roundSync.status,
+    selectedHole.holeNumber,
+  ]);
 
   const startPersistedRound = async (roundMode: "play" | "live") => {
     if (activeRound?.status === "in_progress") {
@@ -2016,7 +2242,9 @@ export function CourseTwinScene({
               </p>
               <p className="mt-1 text-xl font-semibold">Hole {selectedHole.holeNumber}</p>
               <p className="text-sm text-emerald-100/60">
-                Par {selectedHole.par} · {selectedHole.yards} yd
+                {roundLocksHole && activeRound.currentHole !== activeRoundPhysicalHoleNumber
+                  ? `Round hole ${activeRound.currentHole} · mapped hole ${selectedHole.holeNumber} · Par ${selectedHole.par} · ${selectedHole.yards} yd`
+                  : `Par ${selectedHole.par} · ${selectedHole.yards} yd`}
               </p>
             </div>
             <div className="flex gap-2">
@@ -2055,7 +2283,7 @@ export function CourseTwinScene({
                     ? "border-emerald-300 bg-emerald-300 text-[#092013]"
                     : "border-white/10 bg-white/5 text-white hover:bg-white/10",
                 )}
-                disabled={roundLocksHole && hole.holeNumber !== activeRound.currentHole}
+                disabled={roundLocksHole && hole.holeNumber !== activeRoundPhysicalHoleNumber}
                 onClick={() => selectHole(hole.holeNumber)}
               >
                 {hole.holeNumber}
@@ -2175,11 +2403,19 @@ export function CourseTwinScene({
                 <VirtualRoundControls
                   state={strategyState}
                   hole={selectedHole}
-                  selectedClub={strategyClub}
+                  selectedClub={virtualStrategyClub}
+                  availableClubs={virtualClubOptions}
+                  lieSurface={virtualLieSurface}
+                  shotKind={virtualShotKind}
+                  shotKindOptions={virtualShotKindOptions}
+                  onShotKindChange={(kind) => {
+                    setVirtualShotKindChoice(kind);
+                    setVirtualAimDirectionDeg(0);
+                  }}
                   onSelectClub={setStrategyClubId}
                   start={virtualStart}
-                  aimOffsetYd={virtualAimOffsetYd}
-                  onAimOffsetChange={setVirtualAimOffsetYd}
+                  aimDirectionDeg={virtualAimDirectionDeg}
+                  onAimDirectionChange={setVirtualAimDirectionDeg}
                   shotNumber={virtualShotNumber}
                   strokes={virtualStrokes}
                   penaltyStrokes={virtualPenaltyStrokes}
@@ -2189,16 +2425,24 @@ export function CourseTwinScene({
                   sync={roundSync.status}
                   rules={activeRound.rulesJson}
                   onPlay={() => {
-                    if (!strategyClub || roundSync.status === "saving") return;
+                    if (!virtualStrategyClub || roundSync.status === "saving") return;
+                    if (selectedHole.holeNumber !== activeRoundPhysicalHoleNumber) {
+                      restorePersistedRoundHole(activeRound);
+                      return;
+                    }
                     setVirtualRoundEventId(crypto.randomUUID());
                     setVirtualShot(
                       buildCourseTwinVirtualShot({
                         courseId: manifest.course.id,
                         hole: selectedHole,
                         start: virtualStart,
-                        club: strategyClub,
-                        aimOffsetYd: virtualAimOffsetYd,
+                        club: virtualStrategyClub,
+                        aimOffsetYd: 0,
+                        aimDirectionDeg: virtualAimDirectionDeg,
                         shotNumber: virtualShotNumber,
+                        lieSurface: virtualLieSurface,
+                        surfaceAt: classifySurface,
+                        requestedShotKind: virtualShotKind,
                       }),
                     );
                     setVirtualStrokes((current) => current + 1);
@@ -2211,6 +2455,7 @@ export function CourseTwinScene({
                     const next = virtualDropPoint(virtualSimulation);
                     setVirtualStart([next.x, 0, next.z]);
                     setVirtualShotNumber((current) => current + 1);
+                    setVirtualShotKindChoice(null);
                     if (virtualSimulation.penalty) {
                       setVirtualStrokes((current) => current + 1);
                       setVirtualPenaltyStrokes((current) => current + 1);
@@ -2324,10 +2569,13 @@ export function CourseTwinScene({
         </div>
       </aside>
 
-      <section className="order-1 relative min-h-[62dvh] overflow-hidden xl:order-2 xl:min-h-[calc(100dvh-5rem)]">
+      <section className="order-1 relative min-h-[62dvh] overflow-hidden xl:sticky xl:top-14 xl:order-2 xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:self-start">
         <Canvas
-          shadows
+          shadows="percentage"
           dpr={[1, 1.75]}
+          style={{
+            cursor: mode === "play" && !virtualShot && !virtualPuttReplay ? "crosshair" : "default",
+          }}
           camera={{ position: [0, 180, 240], fov: 48, near: 0.5, far: 6000 }}
           gl={{ antialias: true, powerPreference: "high-performance" }}
           fallback={
@@ -2383,6 +2631,44 @@ export function CourseTwinScene({
                           ? liveSimulation
                           : null
                   }
+                  completedTracers={mode === "play" ? virtualCompletedTracers : []}
+                  nextShotStart={
+                    mode === "play" && !virtualShot && !virtualPuttReplay ? virtualStart : null
+                  }
+                  aimStart={
+                    mode === "play" && !virtualShot && !virtualPuttReplay ? virtualStart : null
+                  }
+                  aimEnd={
+                    mode === "play" && !virtualShot && !virtualPuttReplay ? virtualAimTarget : null
+                  }
+                  onAimPoint={
+                    mode === "play" && !virtualShot && !virtualPuttReplay
+                      ? (point) =>
+                          setVirtualAimDirectionDeg(
+                            courseTwinAimDirectionDegToPoint(
+                              virtualStart,
+                              selectedHole.green,
+                              point,
+                              virtualShotKind,
+                            ),
+                          )
+                      : null
+                  }
+                  cameraStart={
+                    animatedShot?.start ??
+                    (mode === "play"
+                      ? virtualStart
+                      : mode === "live"
+                        ? liveStart
+                        : selectedHole.tee)
+                  }
+                  cameraEnd={
+                    animatedShot?.totalEnd ??
+                    (mode === "play" && !virtualShot && !virtualPuttReplay
+                      ? virtualAimTarget
+                      : selectedHole.green)
+                  }
+                  cameraUsesShotFraming={Boolean(animatedShot)}
                   strategyClub={mode === "strategy" ? strategyClub : null}
                   playback={playback}
                   cameraView={cameraView}
@@ -2436,6 +2722,14 @@ function CourseWorld({
   selectedHole,
   selectedShot,
   selectedSimulation,
+  completedTracers,
+  nextShotStart,
+  aimStart,
+  aimEnd,
+  onAimPoint,
+  cameraStart,
+  cameraEnd,
+  cameraUsesShotFraming,
   strategyClub,
   playback,
   cameraView,
@@ -2448,36 +2742,49 @@ function CourseWorld({
   selectedHole: CourseTwinHole;
   selectedShot: CourseTwinReplayShot | null;
   selectedSimulation: CourseTwinReplaySimulation | null;
+  completedTracers: Array<{ id: string; simulation: CourseTwinReplaySimulation }>;
+  nextShotStart: CourseTwinPoint | null;
+  aimStart: CourseTwinPoint | null;
+  aimEnd: CourseTwinPoint | null;
+  onAimPoint: ((point: CourseTwinPoint) => void) | null;
+  cameraStart: CourseTwinPoint;
+  cameraEnd: CourseTwinPoint;
+  cameraUsesShotFraming: boolean;
   strategyClub: CourseTwinStrategyClub | null;
   playback: number;
   cameraView: CameraView;
   cameraCommand: CameraCommand;
   exploreTransport: ExploreTransport | null;
 }) {
-  const cameraStart = selectedShot?.start ?? selectedHole.tee;
-  const cameraEnd = selectedShot?.totalEnd ?? selectedHole.green;
   const holeLength = Math.max(
     1,
     Math.hypot(cameraEnd[0] - cameraStart[0], cameraEnd[2] - cameraStart[2]),
   );
-  const focusDistance = selectedShot
+  const focusDistance = cameraUsesShotFraming
     ? cameraView === "golfer"
       ? THREE.MathUtils.clamp(holeLength * 0.65, 24, 72)
       : THREE.MathUtils.clamp(holeLength * 0.75, 38, 165)
     : cameraView === "golfer"
-      ? Math.min(holeLength * 0.46, 72)
+      ? THREE.MathUtils.clamp(holeLength * 0.62, 28, 85)
       : Math.min(holeLength * 0.58, 165);
   const focusX = cameraStart[0] + ((cameraEnd[0] - cameraStart[0]) / holeLength) * focusDistance;
   const focusZ = cameraStart[2] + ((cameraEnd[2] - cameraStart[2]) / holeLength) * focusDistance;
+  const golferFraming = cameraUsesShotFraming ? GOLFER_SHOT_CAMERA : GOLFER_TEE_CAMERA;
+  const focusGroundY = sampleTerrain(focusX, focusZ);
   const center: [number, number, number] = [
     focusX,
-    sampleTerrain(focusX, focusZ) + (selectedShot ? 0.6 : cameraView === "golfer" ? 2 : 0),
+    cameraView === "golfer"
+      ? Math.max(
+          focusGroundY + (cameraUsesShotFraming ? 0.6 : 0.5),
+          sampleTerrain(cameraStart[0], cameraStart[2]) + golferFraming.eyeHeight - 0.35,
+        )
+      : focusGroundY,
     focusZ,
   ];
 
   return (
     <group>
-      <Terrain manifest={manifest} samples={terrainSamples} />
+      <Terrain manifest={manifest} samples={terrainSamples} onAimPoint={onAimPoint} />
       {(manifest.puttingSurfaces ?? [])
         .filter((surface) => surface.holeNumber === selectedHole.holeNumber)
         .map((surface) => (
@@ -2500,7 +2807,10 @@ function CourseWorld({
           key={hole.holeNumber}
           hole={hole}
           selected={hole === selectedHole}
-          dimmed={hole === selectedHole && Boolean(selectedShot)}
+          dimmed={
+            hole === selectedHole &&
+            (Boolean(selectedShot) || completedTracers.length > 0 || Boolean(nextShotStart))
+          }
           sampleTerrain={sampleTerrain}
         />
       ))}
@@ -2512,6 +2822,25 @@ function CourseWorld({
           active
         />
       ) : null}
+      {completedTracers.map((tracer) => (
+        <ReplayTracer
+          key={tracer.id}
+          simulation={tracer.simulation}
+          playback={1}
+          active={false}
+          showCarryMarker={false}
+          showFinishMarker={
+            !nextShotStart ||
+            !courseTwinGroundPositionsCoincide(tracer.simulation.finalPosition, nextShotStart)
+          }
+        />
+      ))}
+      {nextShotStart ? (
+        <NextShotMarker position={nextShotStart} sampleTerrain={sampleTerrain} />
+      ) : null}
+      {aimStart && aimEnd ? (
+        <ShotAimGuide start={aimStart} end={aimEnd} sampleTerrain={sampleTerrain} />
+      ) : null}
       {strategyClub ? (
         <StrategyLandingCloud
           club={strategyClub}
@@ -2522,8 +2851,9 @@ function CourseWorld({
       {!exploreTransport ? (
         <>
           <CameraFocus
-            hole={selectedHole}
-            shot={selectedShot}
+            start={cameraStart}
+            end={cameraEnd}
+            shotFraming={cameraUsesShotFraming}
             sampleTerrain={sampleTerrain}
             view={cameraView}
             command={cameraCommand}
@@ -2589,7 +2919,15 @@ function PuttingSurfaceMesh({ surface }: { surface: CourseTwinPuttingSurface }) 
   );
 }
 
-function Terrain({ manifest, samples }: { manifest: CourseTwinManifest; samples: Float32Array }) {
+function Terrain({
+  manifest,
+  samples,
+  onAimPoint,
+}: {
+  manifest: CourseTwinManifest;
+  samples: Float32Array;
+  onAimPoint: ((point: CourseTwinPoint) => void) | null;
+}) {
   const asset = manifest.terrain.heightmap;
   const imagery = manifest.terrain.imagery;
   if (!asset || !imagery) return null;
@@ -2599,6 +2937,7 @@ function Terrain({ manifest, samples }: { manifest: CourseTwinManifest; samples:
       imageryUrl={imagery.url}
       samples={samples}
       features={manifest.features}
+      onAimPoint={onAimPoint}
     />
   );
 }
@@ -2608,11 +2947,13 @@ function LidarTerrain({
   imageryUrl,
   samples,
   features,
+  onAimPoint,
 }: {
   asset: NonNullable<CourseTwinManifest["terrain"]["heightmap"]>;
   imageryUrl: string;
   samples: Float32Array;
   features: CourseTwinFeature[];
+  onAimPoint: ((point: CourseTwinPoint) => void) | null;
 }) {
   const [texture, fairwayTexture, greenTexture, bunkerTexture] = useTexture([
     imageryUrl,
@@ -2664,7 +3005,18 @@ function LidarTerrain({
   const terrainWidth = asset.localBounds.maxX - asset.localBounds.minX;
   const terrainDepth = asset.localBounds.maxZ - asset.localBounds.minZ;
   return (
-    <mesh geometry={geometry} receiveShadow>
+    <mesh
+      geometry={geometry}
+      receiveShadow
+      onClick={
+        onAimPoint
+          ? (event) => {
+              event.stopPropagation();
+              onAimPoint([event.point.x, event.point.y, event.point.z]);
+            }
+          : undefined
+      }
+    >
       <meshStandardMaterial
         map={texture}
         color="#ffffff"
@@ -3409,9 +3761,9 @@ function HoleGeometry({
   dimmed: boolean;
   sampleTerrain: CourseTwinTerrainSampler;
 }) {
-  const points = hole.centerline.map((point) => toTerrainPoint(point, sampleTerrain));
-  const tee = toTerrainPoint(hole.tee, sampleTerrain);
-  const green = toTerrainPoint(hole.green, sampleTerrain);
+  const points = hole.centerline.map((point) => terrainSurfacePoint(point, sampleTerrain, 0.08));
+  const tee = terrainSurfacePoint(hole.tee, sampleTerrain, 0.08);
+  const green = terrainSurfacePoint(hole.green, sampleTerrain, 0);
   return (
     <group>
       <Line
@@ -3419,12 +3771,14 @@ function HoleGeometry({
         color={selected ? "#efffb5" : "#d7f5d1"}
         lineWidth={selected ? 2.4 : 0.8}
         transparent
-        opacity={dimmed ? 0.16 : selected ? 1 : 0.42}
+        opacity={dimmed ? 0 : selected ? 1 : 0.42}
       />
-      <mesh position={tee} castShadow>
-        <cylinderGeometry args={[0.22, 0.22, 0.16, 20]} />
-        <meshStandardMaterial color={selected ? "#f7f4de" : "#a7c6a2"} roughness={0.72} />
-      </mesh>
+      {!dimmed ? (
+        <mesh position={tee} castShadow>
+          <cylinderGeometry args={[0.22, 0.22, 0.16, 20]} />
+          <meshStandardMaterial color={selected ? "#f7f4de" : "#a7c6a2"} roughness={0.72} />
+        </mesh>
+      ) : null}
       {selected ? <HoleFlag position={green} /> : null}
     </group>
   );
@@ -3449,14 +3803,79 @@ function HoleFlag({ position }: { position: [number, number, number] }) {
   );
 }
 
+function NextShotMarker({
+  position,
+  sampleTerrain,
+}: {
+  position: CourseTwinPoint;
+  sampleTerrain: CourseTwinTerrainSampler;
+}) {
+  const point: [number, number, number] = [
+    position[0],
+    sampleTerrain(position[0], position[2]) + 0.02,
+    position[2],
+  ];
+  return (
+    <group position={point}>
+      <mesh position={[0, 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.14, 0.24, 32]} />
+        <meshBasicMaterial color="#e7ff6a" transparent opacity={0.72} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, 0.055, 0]} castShadow>
+        <sphereGeometry args={[0.045, 18, 18]} />
+        <meshStandardMaterial color="#ffffff" emissive="#e7ff6a" emissiveIntensity={0.35} />
+      </mesh>
+    </group>
+  );
+}
+
+function ShotAimGuide({
+  start,
+  end,
+  sampleTerrain,
+}: {
+  start: CourseTwinPoint;
+  end: CourseTwinPoint;
+  sampleTerrain: CourseTwinTerrainSampler;
+}) {
+  const points = Array.from({ length: 33 }, (_, index) => {
+    const progress = index / 32;
+    const x = start[0] + (end[0] - start[0]) * progress;
+    const z = start[2] + (end[2] - start[2]) * progress;
+    return [x, sampleTerrain(x, z) + 0.08, z] satisfies [number, number, number];
+  });
+  const target = points.at(-1) ?? points[0];
+  return (
+    <group>
+      <Line
+        points={points}
+        color="#7de8ff"
+        lineWidth={2.4}
+        transparent
+        opacity={0.74}
+        depthTest={false}
+        renderOrder={12}
+      />
+      <mesh position={target} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.3, 1.65, 40]} />
+        <meshBasicMaterial color="#7de8ff" transparent opacity={0.9} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function ReplayTracer({
   simulation,
   playback,
   active,
+  showCarryMarker = true,
+  showFinishMarker = true,
 }: {
   simulation: CourseTwinReplaySimulation;
   playback: number;
   active: boolean;
+  showCarryMarker?: boolean;
+  showFinishMarker?: boolean;
 }) {
   const flight = simulation.frames
     .filter((frame) => frame.timeS <= simulation.flightTimeS + Number.EPSILON)
@@ -3475,48 +3894,59 @@ function ReplayTracer({
       <Line
         points={flight.length >= 2 ? flight : [carry, carry]}
         color={active ? "#f8ff84" : "#ffbd70"}
-        lineWidth={active ? 2.1 : 1.05}
+        lineWidth={active ? 2.1 : 1.5}
         transparent
-        opacity={active ? 0.94 : 0.48}
+        opacity={active ? 0.94 : 0.78}
       />
       {ground.length >= 2 ? (
         <Line
           points={ground}
           color={active ? "#ffffff" : "#ffd3a0"}
-          lineWidth={active ? 2 : 1.1}
+          lineWidth={active ? 2 : 1.6}
           dashed
           dashSize={3}
           gapSize={2}
           transparent
-          opacity={active ? 0.9 : 0.45}
+          opacity={active ? 0.9 : 0.72}
         />
       ) : null}
-      <mesh position={carry} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.34, 0.5, 28]} />
-        <meshBasicMaterial color="#f8ff84" transparent opacity={0.82} depthWrite={false} />
-      </mesh>
-      <mesh position={finish} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.48, 0.66, 28]} />
-        <meshBasicMaterial
-          color={simulation.penalty ? "#fb7185" : "#ffffff"}
-          transparent
-          opacity={0.88}
-          depthWrite={false}
-        />
-      </mesh>
+      {showCarryMarker ? (
+        <mesh position={carry} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.34, 0.5, 28]} />
+          <meshBasicMaterial color="#f8ff84" transparent opacity={0.82} depthWrite={false} />
+        </mesh>
+      ) : null}
+      {showFinishMarker ? (
+        <mesh position={finish} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.48, 0.66, 28]} />
+          <meshBasicMaterial
+            color={simulation.penalty ? "#fb7185" : "#ffffff"}
+            transparent
+            opacity={0.88}
+            depthWrite={false}
+          />
+        </mesh>
+      ) : null}
       {active ? (
         <mesh position={marker} castShadow>
           <sphereGeometry args={[0.18, 20, 20]} />
           <meshStandardMaterial color="#ffffff" emissive="#e7ff6a" emissiveIntensity={1.4} />
         </mesh>
-      ) : (
+      ) : showFinishMarker ? (
         <mesh position={finish}>
           <sphereGeometry args={[0.24, 12, 12]} />
           <meshStandardMaterial color="#ffbd70" emissive="#ff8a3d" emissiveIntensity={0.4} />
         </mesh>
-      )}
+      ) : null}
     </group>
   );
+}
+
+function courseTwinGroundPositionsCoincide(
+  finish: { x: number; z: number },
+  nextStart: CourseTwinPoint,
+) {
+  return Math.hypot(finish.x - nextStart[0], finish.z - nextStart[2]) <= 0.25;
 }
 
 function replayFramePoint(frame: CourseTwinSimulationFrame): [number, number, number] {
@@ -3735,37 +4165,47 @@ function RoamController({
 }
 
 function CameraFocus({
-  hole,
-  shot,
+  start,
+  end,
+  shotFraming,
   sampleTerrain,
   view,
   command,
 }: {
-  hole: CourseTwinHole;
-  shot: CourseTwinReplayShot | null;
+  start: CourseTwinPoint;
+  end: CourseTwinPoint;
+  shotFraming: boolean;
   sampleTerrain: CourseTwinTerrainSampler;
   view: CameraView;
   command: CameraCommand;
 }) {
   const { camera } = useThree();
   useEffect(() => {
-    const start = toTerrainPoint(shot?.start ?? hole.tee, sampleTerrain);
-    const end = toTerrainPoint(shot?.totalEnd ?? hole.green, sampleTerrain);
-    const dx = end[0] - start[0];
-    const dz = end[2] - start[2];
+    const terrainStart = terrainSurfacePoint(start, sampleTerrain);
+    const terrainEnd = terrainSurfacePoint(end, sampleTerrain);
+    const dx = terrainEnd[0] - terrainStart[0];
+    const dz = terrainEnd[2] - terrainStart[2];
     const length = Math.max(1, Math.hypot(dx, dz));
     const directionX = dx / length;
     const directionZ = dz / length;
-    const targetDistance = shot
+    const targetDistance = shotFraming
       ? view === "golfer"
         ? THREE.MathUtils.clamp(length * 0.65, 24, 72)
         : THREE.MathUtils.clamp(length * 0.75, 38, 165)
       : view === "golfer"
-        ? Math.min(length * 0.46, 72)
+        ? THREE.MathUtils.clamp(length * 0.62, 28, 85)
         : Math.min(length * 0.58, 165);
-    const targetX = start[0] + directionX * targetDistance;
-    const targetZ = start[2] + directionZ * targetDistance;
-    const targetY = sampleTerrain(targetX, targetZ) + (shot ? 0.6 : view === "golfer" ? 2.5 : 3);
+    const targetX = terrainStart[0] + directionX * targetDistance;
+    const targetZ = terrainStart[2] + directionZ * targetDistance;
+    const framing = shotFraming ? GOLFER_SHOT_CAMERA : GOLFER_TEE_CAMERA;
+    const targetGroundY = sampleTerrain(targetX, targetZ);
+    const targetY =
+      view === "golfer"
+        ? Math.max(
+            targetGroundY + (shotFraming ? 0.6 : 0.5),
+            terrainStart[1] + framing.eyeHeight - 0.35,
+          )
+        : targetGroundY + 3;
     const target = new THREE.Vector3(targetX, targetY, targetZ);
 
     if (command && command.action !== "reset") {
@@ -3792,26 +4232,33 @@ function CameraFocus({
       return;
     }
 
-    if (camera instanceof THREE.PerspectiveCamera) setPerspectiveFov(camera, 48);
+    if (camera instanceof THREE.PerspectiveCamera) {
+      setPerspectiveFov(
+        camera,
+        view === "golfer" ? (shotFraming ? GOLFER_SHOT_CAMERA.fov : GOLFER_TEE_CAMERA.fov) : 48,
+      );
+    }
 
     if (view === "golfer") {
-      const behindDistance = shot ? 9 : 14;
-      const lateralDistance = shot ? 2.5 : 7;
       camera.position.set(
-        start[0] - directionX * behindDistance - directionZ * lateralDistance,
-        start[1] + (shot ? 3 : 11.5),
-        start[2] - directionZ * behindDistance + directionX * lateralDistance,
+        terrainStart[0] -
+          directionX * framing.behindDistance -
+          directionZ * framing.lateralDistance,
+        terrainStart[1] + framing.eyeHeight,
+        terrainStart[2] -
+          directionZ * framing.behindDistance +
+          directionX * framing.lateralDistance,
       );
     } else {
       camera.position.set(
-        start[0] - directionX * Math.min(62, length * 0.28) - directionZ * 42,
-        start[1] + Math.min(140, Math.max(62, length * 0.34)),
-        start[2] - directionZ * Math.min(62, length * 0.28) + directionX * 42,
+        terrainStart[0] - directionX * Math.min(62, length * 0.28) - directionZ * 42,
+        terrainStart[1] + Math.min(140, Math.max(62, length * 0.34)),
+        terrainStart[2] - directionZ * Math.min(62, length * 0.28) + directionX * 42,
       );
     }
     camera.lookAt(target);
     camera.updateProjectionMatrix();
-  }, [camera, command, hole, sampleTerrain, shot, view]);
+  }, [camera, command, end, sampleTerrain, shotFraming, start, view]);
   return null;
 }
 
@@ -4104,10 +4551,12 @@ function RoundSetupControls({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/70">
-              Verified round ledger
+              {activeRound.mode === "play"
+                ? "Course Twin strategy sandbox"
+                : "Verified round ledger"}
             </p>
             <p className="mt-2 font-semibold">
-              {activeRound.mode === "play" ? "My Bag round" : "Live launch-monitor round"}
+              {activeRound.mode === "play" ? "My Bag test round" : "Live launch-monitor round"}
             </p>
             <p className="text-sm text-emerald-100/60">
               Hole {activeRound.currentHole} of {activeRound.holeCount} · {score || "Level"}
@@ -4132,6 +4581,12 @@ function RoundSetupControls({
               : "playable approximate putting"
             : "automatic putt-out on mapped greens"}
         </p>
+        {activeRound.mode === "play" ? (
+          <p className="mt-2 text-xs leading-5 text-amber-100/75">
+            Strategy tool only. This test round and its modelled shots are not added to Rounds,
+            Shots or performance stats.
+          </p>
+        ) : null}
         {activeRound.mode !== mode ? (
           <p className="mt-3 rounded-lg border border-amber-200/20 bg-amber-100/5 px-3 py-2 text-xs text-amber-100/80">
             Finish the active {activeRound.mode === "play" ? "My Bag" : "Live"} round before
@@ -4154,12 +4609,22 @@ function RoundSetupControls({
   return (
     <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
-        {completed ? "Round saved" : mode === "play" ? "Start My Bag round" : "Start Live round"}
+        {completed
+          ? activeRound?.mode === "play"
+            ? "Sandbox complete"
+            : "Round saved"
+          : mode === "play"
+            ? "Start My Bag test round"
+            : "Start Live round"}
       </p>
       {completed ? (
         <div className="mt-3 rounded-lg border border-emerald-300/20 bg-emerald-300/5 p-3 text-sm text-emerald-100/80">
-          <p>Every shot is saved with a tamper-evident event chain.</p>
-          {activeRound.sessionId ? (
+          <p>
+            {activeRound.mode === "play"
+              ? "The test remains inside Course Twin for strategy review and is not included in your Rounds, Shots or stats."
+              : "Every measured shot is saved with a tamper-evident event chain."}
+          </p>
+          {activeRound.mode === "live" && activeRound.sessionId ? (
             <a
               className="mt-2 inline-block font-semibold text-[#e7ff6a] underline"
               href={`/rounds/${activeRound.sessionId}`}
@@ -4538,10 +5003,15 @@ function VirtualRoundControls({
   state,
   hole,
   selectedClub,
+  availableClubs,
+  lieSurface,
+  shotKind,
+  shotKindOptions,
+  onShotKindChange,
   onSelectClub,
   start,
-  aimOffsetYd,
-  onAimOffsetChange,
+  aimDirectionDeg,
+  onAimDirectionChange,
   shotNumber,
   strokes,
   penaltyStrokes,
@@ -4559,10 +5029,15 @@ function VirtualRoundControls({
   state: StrategyLoadState;
   hole: CourseTwinHole;
   selectedClub: CourseTwinStrategyClub | null;
+  availableClubs: CourseTwinStrategyClub[];
+  lieSurface: CourseTwinSurface;
+  shotKind: CourseTwinVirtualShotKind;
+  shotKindOptions: CourseTwinVirtualShotKind[];
+  onShotKindChange: (kind: CourseTwinVirtualShotKind) => void;
   onSelectClub: (clubId: string) => void;
   start: CourseTwinPoint;
-  aimOffsetYd: number;
-  onAimOffsetChange: (offsetYd: number) => void;
+  aimDirectionDeg: number;
+  onAimDirectionChange: (directionDeg: number) => void;
   shotNumber: number;
   strokes: number;
   penaltyStrokes: number;
@@ -4624,6 +5099,13 @@ function VirtualRoundControls({
   const remainingYd =
     Math.hypot(hole.green[0] - resultPosition.x, hole.green[2] - resultPosition.z) / 0.9144;
   const onGreen = simulation?.finalSurface === "green";
+  const shortGameActive = shotKind !== "full";
+  const aimLimitDeg = courseTwinAimLimitDeg(shotKind);
+  const effectiveAimDirectionDeg = THREE.MathUtils.clamp(
+    aimDirectionDeg,
+    -aimLimitDeg,
+    aimLimitDeg,
+  );
 
   return (
     <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -4653,7 +5135,18 @@ function VirtualRoundControls({
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
             <ReplayFact label="Club" value={shot.shot.clubType} />
+            <ReplayFact label="Shot" value={formatVirtualShotKind(shot.sampled.shotKind)} />
             <ReplayFact label="Sampled" value={`${shot.sampled.carryYd.toFixed(0)} yd carry`} />
+            <ReplayFact
+              label="Started"
+              value={
+                Math.abs(shot.sampled.aimDirectionDeg) < 0.05
+                  ? "Target line"
+                  : `${Math.abs(shot.sampled.aimDirectionDeg).toFixed(1)}° ${
+                      shot.sampled.aimDirectionDeg < 0 ? "left" : "right"
+                    }`
+              }
+            />
             <ReplayFact label="Shape" value={formatVirtualShape(shot.sampled.spinAxisDeg)} />
             <ReplayFact
               label="Shape source"
@@ -4732,8 +5225,44 @@ function VirtualRoundControls({
         </>
       ) : (
         <>
+          {shotKindOptions.length > 1 ? (
+            <>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                Shot type
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {shotKindOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={cn(
+                      "rounded-lg border px-2 py-2 text-xs font-semibold",
+                      option === shotKind
+                        ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                        : "border-white/10 bg-white/5",
+                    )}
+                    aria-label={`Select ${formatVirtualShotKind(option).toLowerCase()}`}
+                    onClick={() => onShotKindChange(option)}
+                  >
+                    {formatVirtualShotKind(option)}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
+          {shortGameActive ? (
+            <div className="mt-3 rounded-lg border border-sky-200/20 bg-sky-100/5 px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-100/80">
+                {formatVirtualShotKind(shotKind)} · {formatSurface(lieSurface)}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-sky-50/65">
+                Carry is scaled to this {remainingYd.toFixed(0)} yd leave. The mapped landing
+                surface controls bounce and rollout.
+              </p>
+            </div>
+          ) : null}
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {state.document.clubs.map((club) => (
+            {availableClubs.map((club) => (
               <button
                 key={club.clubId}
                 type="button"
@@ -4750,41 +5279,86 @@ function VirtualRoundControls({
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
-            Aim offset
-          </p>
-          <div className="mt-2 grid grid-cols-5 gap-1.5">
-            {[-15, -7.5, 0, 7.5, 15].map((offset) => (
-              <button
-                key={offset}
-                type="button"
-                className={cn(
-                  "rounded-lg border px-1 py-2 text-xs font-semibold",
-                  offset === aimOffsetYd
-                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
-                    : "border-white/10 bg-white/5",
-                )}
-                aria-label={`Aim ${offset === 0 ? "centre" : `${Math.abs(offset)} yards ${offset < 0 ? "left" : "right"}`}`}
-                onClick={() => onAimOffsetChange(offset)}
-              >
-                {offset === 0 ? "0" : `${offset > 0 ? "+" : ""}${offset}`}
-              </button>
-            ))}
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                Start direction
+              </p>
+              <p className="mt-1 text-xs text-emerald-100/50">
+                Click the course or move the slider
+              </p>
+            </div>
+            <p className="text-sm font-semibold text-[#e7ff6a]">
+              {Math.abs(effectiveAimDirectionDeg) < 0.05
+                ? "Target line"
+                : `${Math.abs(effectiveAimDirectionDeg).toFixed(1)}° ${
+                    effectiveAimDirectionDeg < 0 ? "left" : "right"
+                  }`}
+            </p>
+          </div>
+          <input
+            className="mt-3 w-full accent-[#e7ff6a]"
+            type="range"
+            min={-aimLimitDeg}
+            max={aimLimitDeg}
+            step={0.5}
+            value={effectiveAimDirectionDeg}
+            aria-label="Shot start direction"
+            onChange={(event) => onAimDirectionChange(Number(event.target.value))}
+          />
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs font-semibold"
+              aria-label="Aim five degrees left"
+              onClick={() =>
+                onAimDirectionChange(Math.max(-aimLimitDeg, effectiveAimDirectionDeg - 5))
+              }
+            >
+              5° left
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded-lg border px-2 py-2 text-xs font-semibold",
+                Math.abs(effectiveAimDirectionDeg) < 0.05
+                  ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                  : "border-white/10 bg-white/5",
+              )}
+              aria-label="Aim at mapped target"
+              onClick={() => onAimDirectionChange(0)}
+            >
+              Centre
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs font-semibold"
+              aria-label="Aim five degrees right"
+              onClick={() =>
+                onAimDirectionChange(Math.min(aimLimitDeg, effectiveAimDirectionDeg + 5))
+              }
+            >
+              5° right
+            </button>
           </div>
           <Button
             type="button"
             className="mt-3 w-full"
             disabled={sync === "saving"}
             onClick={onPlay}
+            aria-label={`Play ${selectedClub.clubType}`}
           >
-            Play {selectedClub.clubType}
+            {shortGameActive
+              ? `Play ${formatVirtualShotKind(shotKind).toLowerCase()} · ${selectedClub.clubType}`
+              : `Play ${selectedClub.clubType}`}
           </Button>
           <p className="mt-3 text-xs leading-5 text-amber-100/70">
-            {selectedClub.shotModel.spinAxisMeanDeg !== null
-              ? "Each shot samples your measured carry, dispersion and spin-axis shape."
-              : "Your imported shots do not contain spin axis, so curve is inferred from measured left/right dispersion."}{" "}
-            Softer central curves are weighted most heavily; this remains a model, not a guaranteed
-            result.
+            {shortGameActive
+              ? "Short-game strike variation is modelled from the selected scoring club and current lie."
+              : selectedClub.shotModel.spinAxisMeanDeg !== null
+                ? "Each shot samples your measured carry, dispersion and spin-axis shape."
+                : "Your imported shots do not contain spin axis, so curve is inferred from measured left/right dispersion."}{" "}
+            This remains a model, not a guaranteed result.
           </p>
         </>
       )}
@@ -5150,6 +5724,14 @@ function toTerrainPoint(
   return [point[0], sampleTerrain(point[0], point[2]) + 1.1, point[2]];
 }
 
+function terrainSurfacePoint(
+  point: CourseTwinPoint,
+  sampleTerrain: CourseTwinTerrainSampler,
+  lift = 0,
+): [number, number, number] {
+  return [point[0], sampleTerrain(point[0], point[2]) + lift, point[2]];
+}
+
 function setPerspectiveFov(camera: THREE.PerspectiveCamera, fov: number) {
   const focalLength =
     (0.5 * camera.getFilmHeight()) / Math.tan(THREE.MathUtils.degToRad(fov * 0.5));
@@ -5176,6 +5758,13 @@ function formatVirtualShape(spinAxisDeg: number) {
   if (magnitude < 0.1) return "Straight";
   const strength = magnitude < 4 ? "Soft" : magnitude < 9 ? "Shaped" : "Strong";
   return `${strength} ${spinAxisDeg > 0 ? "left" : "right"} · ${magnitude.toFixed(1)}°`;
+}
+
+function formatVirtualShotKind(kind: CourseTwinVirtualShotKind) {
+  if (kind === "bunker-splash") return "Bunker splash";
+  if (kind === "half") return "Half shot";
+  if (kind === "full") return "Full swing";
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
 }
 
 function formatProbability(probability: number) {
@@ -5217,14 +5806,16 @@ function buildRoundShotPayload({
   simulation,
   clubId,
   source,
+  ledgerHoleNumber,
 }: {
   shot: CourseTwinReplayShot;
   simulation: CourseTwinReplaySimulation;
   clubId: string;
   source: CourseTwinShotEventPayload["source"];
+  ledgerHoleNumber: number;
 }): CourseTwinShotEventPayload {
   return {
-    holeNumber: shot.holeNumber,
+    holeNumber: ledgerHoleNumber,
     shotNumber: shot.holeShotNumber ?? 1,
     clubId,
     clubType: shot.clubType,
@@ -5238,7 +5829,7 @@ function buildRoundShotPayload({
       ballSpeedMph: shot.metrics.ballSpeedMph.value,
       clubSpeedMph: null,
       launchAngleDeg: shot.metrics.launchAngleDeg.value,
-      launchDirectionDeg: null,
+      launchDirectionDeg: shot.metrics.launchDirectionDeg?.value ?? null,
       spinRate: shot.metrics.spinRate.value,
       spinAxis: shot.metrics.spinAxis.value,
     },

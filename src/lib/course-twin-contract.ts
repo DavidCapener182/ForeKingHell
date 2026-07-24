@@ -134,6 +134,7 @@ export type CourseTwinReplayShot = {
     apexFt: CourseTwinEvidenceValue;
     ballSpeedMph: CourseTwinEvidenceValue;
     launchAngleDeg: CourseTwinEvidenceValue;
+    launchDirectionDeg?: CourseTwinEvidenceValue;
     spinRate: CourseTwinEvidenceValue;
     spinAxis: CourseTwinEvidenceValue;
   };

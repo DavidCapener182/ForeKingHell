@@ -85,6 +85,47 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("Play putts");
     expect(sceneSource).toContain("Approximate green");
     expect(sceneSource).toContain("Read next putt");
+    expect(sceneSource).toContain("Course Twin strategy sandbox");
+    expect(sceneSource).toContain("Strategy tool only.");
+    expect(sceneSource).toContain("not added to Rounds");
+    expect(sceneSource).toContain('activeRound.mode === "live" && activeRound.sessionId');
+    expect(sceneSource).toContain("courseTwinVirtualClubOptions");
+    expect(sceneSource).toContain("courseTwinVirtualShotKind");
+    expect(sceneSource).toContain("courseTwinVirtualShotKindOptions");
+    expect(sceneSource).toContain("Shot type");
+    expect(sceneSource).toContain('if (kind === "half") return "Half shot"');
+    expect(sceneSource).toContain("requestedShotKind: virtualShotKind");
+    expect(sceneSource).toContain("Carry is scaled to this");
+    expect(sceneSource).toContain("The mapped landing");
+    expect(sceneSource).toContain("virtualCompletedTracers");
+    expect(sceneSource).toContain("completedTracers={mode ===");
+    expect(sceneSource).toContain("<NextShotMarker");
+    expect(sceneSource).toContain("courseTwinGroundPositionsCoincide");
+    expect(sceneSource).toContain("showFinishMarker={");
+    expect(sceneSource).toContain("showCarryMarker={false}");
+    expect(sceneSource).toContain("(!virtualShot || shot.clientEventId !== virtualRoundEventId)");
+    expect(sceneSource).toContain(".sort((left, right) => left.shotNumber - right.shotNumber)");
+    expect(sceneSource).toContain(".slice(-1)");
+    expect(sceneSource).toContain("previousShot.flatMap");
+    expect(sceneSource).toContain(
+      "!courseTwinGroundPositionsCoincide(simulation.finalPosition, virtualStart)",
+    );
+    expect(sceneSource).toContain("sampleTerrain(position[0], position[2]) + 0.02");
+    expect(sceneSource).toContain("nextShotStart: virtualShot ? null : virtualStart");
+    expect(sceneSource).toContain("cameraStart={");
+    expect(sceneSource).toContain("cameraUsesShotFraming");
+    expect(sceneSource).toContain("courseTwinRoundHoleResumeState");
+    expect(sceneSource).toContain("courseTwinRoundPhysicalHoleNumber");
+    expect(sceneSource).toContain(
+      "error instanceof CourseTwinRoundRequestError && error.status === 409",
+    );
+    expect(sceneSource).toContain("loadCourseTwinRoundClient(current.id)");
+    expect(sceneSource).toContain("activeRoundPhysicalHoleNumber === selectedHole.holeNumber");
+    expect(sceneSource).toContain("restorePersistedRoundHole(activeRound)");
+    expect(sceneSource).toContain("selectedHole.holeNumber !== activeRoundPhysicalHoleNumber");
+    expect(sceneSource).toContain("ledgerHoleNumber: activeRound.currentHole");
+    expect(sceneSource).toContain("shot.holeNumber === activeRoundLedgerHoleNumber");
+    expect(sceneSource).toContain('roundSync.error === "Shot is not on the current hole."');
   });
 
   it("keeps live GSPro shots behind a paired loopback bridge and runs them through course physics", () => {
@@ -109,14 +150,44 @@ describe("Course Twin route boundaries", () => {
   });
 
   it("keeps replay focus on one shot and provides explicit camera controls", () => {
-    expect(sceneSource).toContain('visibleShotCount: mode === "replay" && selectedShot ? 1 : 0');
+    expect(sceneSource).toContain("visibleShotCount:");
+    expect(sceneSource).toContain('mode === "replay" && selectedShot');
     expect(sceneSource).toContain("{selectedShot ? (");
     expect(sceneSource).not.toContain("replayShots.map");
-    expect(sceneSource).toContain("shot?.start ?? hole.tee");
-    expect(sceneSource).toContain("shot?.totalEnd ?? hole.green");
+    expect(sceneSource).toContain("cameraStart={");
+    expect(sceneSource).toContain("animatedShot?.totalEnd ??");
+    expect(sceneSource).toContain("? virtualAimTarget");
     expect(sceneSource).toContain('label="Orbit camera left"');
     expect(sceneSource).toContain('label="Zoom camera in"');
     expect(sceneSource).toContain('label="Orbit camera right"');
+  });
+
+  it("frames golfer view from a believable eye-height position behind the ball", () => {
+    expect(sceneSource).toContain("const GOLFER_SHOT_CAMERA =");
+    expect(sceneSource).toContain("fov: 56");
+    expect(sceneSource).toContain("behindDistance: 4.5");
+    expect(sceneSource).toContain("lateralDistance: 0.85");
+    expect(sceneSource).toContain("eyeHeight: 1.72");
+    expect(sceneSource).toContain("const terrainStart = terrainSurfacePoint(start, sampleTerrain)");
+    expect(sceneSource).toContain("terrainStart[1] + framing.eyeHeight");
+    expect(sceneSource).toContain("terrainStart[1] + framing.eyeHeight - 0.35");
+    expect(sceneSource).toContain("xl:sticky xl:top-14 xl:order-2 xl:h-[calc(100dvh-3.5rem)]");
+    expect(sceneSource).toContain("const GOLFER_TEE_CAMERA =");
+    expect(sceneSource).toContain("behindDistance: 14");
+    expect(sceneSource).toContain("lateralDistance: 0");
+    expect(sceneSource).toContain("eyeHeight: 1.72");
+    expect(sceneSource).toContain("THREE.MathUtils.clamp(length * 0.62, 28, 85)");
+  });
+
+  it("lets the golfer aim from the ball and keeps the mapped centreline out of play", () => {
+    expect(sceneSource).toContain("<ShotAimGuide");
+    expect(sceneSource).toContain("courseTwinAimDirectionDegToPoint");
+    expect(sceneSource).toContain('aria-label="Shot start direction"');
+    expect(sceneSource).toContain("Click the course or move the slider");
+    expect(sceneSource).toContain("depthTest={false}");
+    expect(sceneSource).toContain("opacity={dimmed ? 0");
+    expect(sceneSource).toContain("{!dimmed ? (");
+    expect(sceneSource).toContain('? "crosshair" : "default"');
   });
 
   it("supports terrain-following walk and cart exploration without OrbitControls fighting movement", () => {
