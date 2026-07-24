@@ -1,5 +1,13 @@
 Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real course packages, replay, strategy, virtual play, live launch-monitor integration, scalable course generation and later multiplayer.
 
+## Smooth LiDAR flight tracers
+
+- Reproduced the reported jagged driver tracer as a physics-mapping defect rather than a Three.js line-rendering issue.
+- The replay mapper previously subtracted the raw shot's local terrain height and added the mapped path's local terrain height at every airborne frame. Fine LiDAR changes on those two different ground tracks leaked into the ball altitude and created sharp mid-air kinks.
+- Airborne frames now preserve their aerodynamic height above a smooth start-to-carry terrain baseline. Bounce and roll frames still follow the sampled LiDAR surface.
+- Added a detailed-terrain regression that measured a 3.89 m vertical turn before the fix and now holds every airborne turn below 0.7 m, while the existing endpoint, shape, bounce, roll and penalty contracts remain covered.
+- The official web-game client reached the expected authenticated sign-in boundary. The signed-in Chrome scene loaded hole 8 and the corrected replay path, but direct WebGL screenshot capture timed out; deterministic physics coverage is the acceptance source for this defect.
+
 ## Dedicated short-game model
 
 - My Bag play now recognises chips at 30 yd or less, pitches from 30–60 yd and bunker splashes inside 60 yd instead of sampling a full-swing club distribution.

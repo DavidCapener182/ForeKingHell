@@ -167,6 +167,24 @@ describe("Course Twin deterministic golf physics", () => {
     expect(shaped.carryPosition.z).toBeCloseTo(replayShot.carryEnd[2]);
   });
 
+  it("keeps the airborne tracer smooth above detailed terrain", () => {
+    const detailedTerrain: CourseTwinPhysicsEnvironment = {
+      groundHeight: (x, z) => Math.sin(x * 0.8) * 1.4 + Math.cos(z * 1.1) * 0.6,
+      surfaceAt: () => "fairway",
+    };
+    const result = simulateCourseTwinReplayShot(replayShot, detailedTerrain);
+    const flight = result.frames.filter(
+      (frame) => frame.timeS <= result.flightTimeS + Number.EPSILON,
+    );
+    const verticalTurns = flight
+      .slice(1, -1)
+      .map((frame, index) =>
+        Math.abs(flight[index].position.y - 2 * frame.position.y + flight[index + 2].position.y),
+      );
+
+    expect(Math.max(...verticalTurns)).toBeLessThan(0.7);
+  });
+
   it("stops the reconstructed replay when its mapped ground path reaches water", () => {
     const result = simulateCourseTwinReplayShot(
       replayShot,

@@ -383,14 +383,23 @@ function mapReplayFrame(
   const mapped = inFlight
     ? mapFlightCurve(targetStart, targetCarry, launchDirection, progress)
     : mapGroundSegment(targetCarry, targetTotal, progress);
-  const sourceGround = environment.groundHeight(
-    simulationFrame.position.x,
-    simulationFrame.position.z,
-  );
-  const heightAboveGround = Math.max(BALL_RADIUS_M, simulationFrame.position.y - sourceGround);
+  const heightAboveGround = inFlight
+    ? mappedFlightHeight(simulationFrame, raw, progress, environment)
+    : Math.max(
+        BALL_RADIUS_M,
+        simulationFrame.position.y -
+          environment.groundHeight(simulationFrame.position.x, simulationFrame.position.z),
+      );
+  const mappedGround = inFlight
+    ? interpolate(
+        environment.groundHeight(targetStart.x, targetStart.z),
+        environment.groundHeight(targetCarry.x, targetCarry.z),
+        progress,
+      )
+    : environment.groundHeight(mapped.x, mapped.z);
   const position = {
     x: mapped.x,
-    y: environment.groundHeight(mapped.x, mapped.z) + heightAboveGround,
+    y: mappedGround + heightAboveGround,
     z: mapped.z,
   };
   return {
@@ -398,6 +407,21 @@ function mapReplayFrame(
     position,
     surface: environment.surfaceAt(position.x, position.z),
   };
+}
+
+function mappedFlightHeight(
+  simulationFrame: CourseTwinSimulationFrame,
+  raw: CourseTwinSimulationResult,
+  progress: number,
+  environment: CourseTwinPhysicsEnvironment,
+) {
+  const sourceStart = raw.frames[0]?.position ?? simulationFrame.position;
+  const sourceBaseline = interpolate(
+    environment.groundHeight(sourceStart.x, sourceStart.z),
+    environment.groundHeight(raw.carryPosition.x, raw.carryPosition.z),
+    progress,
+  );
+  return Math.max(BALL_RADIUS_M, simulationFrame.position.y - sourceBaseline);
 }
 
 function mapFlightCurve(
@@ -623,4 +647,8 @@ function degreesToRadians(degrees: number) {
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+function interpolate(start: number, end: number, progress: number) {
+  return start + (end - start) * progress;
 }
