@@ -1,8 +1,9 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 import {
+  discardThemePreview,
   previewThemePreference,
   themePreferenceChangeEvent,
   themePreviewStorageKey,
@@ -32,6 +33,8 @@ const themeDescriptions: Record<ThemePreference, string> = {
 };
 
 export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePreference }) {
+  useEffect(() => discardThemePreview, []);
+
   const selectedTheme = useSyncExternalStore(
     subscribeToThemePreference,
     readActiveThemePreference,

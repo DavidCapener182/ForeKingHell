@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   applyThemePreference,
+  discardThemePreview,
   previewThemePreference,
   themePreviewStorageKey,
 } from "@/components/theme-controller";
@@ -40,7 +41,7 @@ describe("applyThemePreference", () => {
     expect(setAttribute).toHaveBeenCalledWith("content", "#123a29");
   });
 
-  it("keeps a live preview available to the next navigation", () => {
+  it("stores a live preview until the Settings control unmounts", () => {
     const setItem = vi.fn();
     const dispatchEvent = vi.fn();
     vi.stubGlobal("window", {
@@ -52,6 +53,26 @@ describe("applyThemePreference", () => {
 
     expect(setItem).toHaveBeenCalledWith(themePreviewStorageKey, "clubhouse");
     expect(dispatchEvent).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
+
+  it("discards a settings preview and restores the saved preference", () => {
+    const removeItem = vi.fn();
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal("window", {
+      sessionStorage: { removeItem },
+      dispatchEvent,
+    });
+    vi.stubGlobal("document", {
+      documentElement: {
+        dataset: { savedThemePreference: "clubhouse" },
+      },
+    });
+
+    discardThemePreview();
+
+    expect(removeItem).toHaveBeenCalledWith(themePreviewStorageKey);
+    expect(dispatchEvent).toHaveBeenCalledWith(expect.objectContaining({ detail: "clubhouse" }));
     vi.unstubAllGlobals();
   });
 

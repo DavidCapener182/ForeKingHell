@@ -7,7 +7,7 @@ import { adminUsers, userProfiles, users, xpLedger } from "@/db/schema";
 import { getAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { ensureUserProfile, getCurrentUser, type CurrentUserPreferences } from "@/lib/current-user";
 import { cleanProfileLabel, profileLabelFromIdentity } from "@/lib/profile-label";
-import { parseTheme } from "@/lib/user-settings";
+import { defaultThemePreference, parseTheme } from "@/lib/user-settings";
 
 export type AppShellData = {
   userId: string | null;
@@ -24,7 +24,7 @@ export type AppShellData = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "system",
+  theme: defaultThemePreference,
   tableDensity: "comfortable",
 };
 

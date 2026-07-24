@@ -22,7 +22,8 @@ describe("user settings parsing", () => {
     expect(parseTheme("tour-broadcast")).toBe("tour-broadcast");
     expect(parseTheme("high-contrast")).toBe("high-contrast");
     expect(parseTheme("system")).toBe("system");
-    expect(parseTheme("sunlight")).toBe("system");
+    expect(parseTheme("sunlight")).toBe("clubhouse");
+    expect(parseTheme(null)).toBe("clubhouse");
   });
 
   it("filters dashboard pins to known values", () => {

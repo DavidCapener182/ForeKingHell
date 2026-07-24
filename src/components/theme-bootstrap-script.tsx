@@ -23,7 +23,7 @@ export function ThemeBootstrapScript({
     let preference = savedPreference;
     try {
       const previewPreference = sessionStorage.getItem(themePreviewStorageKey);
-      if (themeOptions.includes(previewPreference)) {
+      if (window.location.pathname === "/settings" && themeOptions.includes(previewPreference)) {
         preference = previewPreference;
       } else if (previewPreference !== null) {
         sessionStorage.removeItem(themePreviewStorageKey);

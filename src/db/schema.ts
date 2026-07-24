@@ -20,7 +20,7 @@ export const users = pgTable("fkh_users", {
   email: varchar("email", { length: 320 }),
   name: varchar("name", { length: 160 }),
   preferredUnits: varchar("preferred_units", { length: 16 }).notNull().default("yards"),
-  theme: varchar("theme", { length: 16 }).notNull().default("system"),
+  theme: varchar("theme", { length: 16 }).notNull().default("clubhouse"),
   tableDensity: varchar("table_density", { length: 16 }).notNull().default("comfortable"),
   dashboardPins: jsonb("dashboard_pins").$type<string[]>().notNull().default([]),
   privacySettingsJson: jsonb("privacy_settings_json")

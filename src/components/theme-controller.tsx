@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 import { resolveTheme, themeColourByMode, themePreviewStorageKey } from "@/lib/theme";
-import type { ThemePreference } from "@/lib/user-settings";
+import { defaultThemePreference, type ThemePreference } from "@/lib/user-settings";
 
 export const themePreferenceChangeEvent = "fkh:theme-preference-change";
 export { themePreviewStorageKey };
@@ -58,6 +58,18 @@ export function previewThemePreference(preference: ThemePreference) {
   window.dispatchEvent(new CustomEvent(themePreferenceChangeEvent, { detail: preference }));
 }
 
+export function discardThemePreview() {
+  try {
+    window.sessionStorage.removeItem(themePreviewStorageKey);
+  } catch {
+    // Storage can be unavailable; restoring the saved root preference still fixes this document.
+  }
+
+  const savedPreference = document.documentElement.dataset.savedThemePreference;
+  const preference = isThemePreference(savedPreference) ? savedPreference : defaultThemePreference;
+  window.dispatchEvent(new CustomEvent(themePreferenceChangeEvent, { detail: preference }));
+}
+
 export function applyThemePreference(
   root: ThemeRoot,
   meta: ThemeMeta,
@@ -86,7 +98,7 @@ function readThemePreference(): ThemePreference {
   }
 
   const value = document.documentElement.dataset.themePreference;
-  return isThemePreference(value) ? value : "system";
+  return isThemePreference(value) ? value : defaultThemePreference;
 }
 
 function isThemePreference(value: string | null | undefined): value is ThemePreference {

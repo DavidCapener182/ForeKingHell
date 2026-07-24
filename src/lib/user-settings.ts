@@ -26,6 +26,8 @@ export type ThemePreference = (typeof themeOptions)[number];
 export type TableDensity = (typeof tableDensityOptions)[number];
 export type DashboardPin = (typeof dashboardPinOptions)[number];
 
+export const defaultThemePreference = "clubhouse" satisfies ThemePreference;
+
 export type PrivacySettings = {
   allowCoachAccess: boolean;
   allowLeaderboard: boolean;
@@ -39,7 +41,7 @@ export function parsePreferredUnits(value: FormDataEntryValue | null): Preferred
 export function parseTheme(value: FormDataEntryValue | null): ThemePreference {
   return typeof value === "string" && themeOptions.includes(value as ThemePreference)
     ? (value as ThemePreference)
-    : "system";
+    : defaultThemePreference;
 }
 
 export function parseTableDensity(value: FormDataEntryValue | null): TableDensity {

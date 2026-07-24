@@ -14,7 +14,7 @@ import {
   profileLabelFromIdentity,
 } from "@/lib/profile-label";
 import { createSupabaseServerClient, isSupabaseAuthConfigured } from "@/lib/supabase/server";
-import { parseTheme, type ThemePreference } from "@/lib/user-settings";
+import { defaultThemePreference, parseTheme, type ThemePreference } from "@/lib/user-settings";
 
 export type CurrentUser = {
   id: string;
@@ -32,7 +32,7 @@ export type CurrentUserPreferences = {
 
 const defaultPreferences: CurrentUserPreferences = {
   preferredUnits: "yards",
-  theme: "system",
+  theme: defaultThemePreference,
   tableDensity: "comfortable",
 };
 

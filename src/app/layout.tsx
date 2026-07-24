@@ -6,6 +6,7 @@ import { ThemeBootstrapScript } from "@/components/theme-bootstrap-script";
 import { ThemeController } from "@/components/theme-controller";
 import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
 import { themeColourByMode } from "@/lib/theme";
+import { defaultThemePreference } from "@/lib/user-settings";
 import "./globals.css";
 import "./mobile-apple.css";
 
@@ -53,17 +54,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: themeColourByMode.light },
-    { media: "(prefers-color-scheme: dark)", color: themeColourByMode.dark },
-  ],
+  themeColor: themeColourByMode.clubhouse,
 };
 
 const publicPreferences = {
   preferredUnits: "yards",
-  theme: "system" as const,
-  tableDensity: "comfortable" as const,
-};
+  theme: defaultThemePreference,
+  tableDensity: "comfortable",
+} as const;
 
 export default function RootLayout({
   children,
@@ -79,7 +77,7 @@ export default function RootLayout({
         barlowCondensed.variable,
         libreBaskerville.variable,
       ].join(" ")}
-      data-theme="light"
+      data-theme={publicPreferences.theme}
       data-theme-preference={publicPreferences.theme}
       data-table-density={publicPreferences.tableDensity}
       data-preferred-units={publicPreferences.preferredUnits}
