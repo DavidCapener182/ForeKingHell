@@ -102,6 +102,19 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Apply every migration to an empty database
-        run: npm run db:migrate
+        run: |
+          set +e
+          output="$(npm run db:migrate 2>&1)"
+          status=$?
+          printf '%s\n' "$output"
+
+          if [ "$status" -ne 0 ]; then
+            output="${output//'%'/'%25'}"
+            output="${output//$'\n'/'%0A'}"
+            output="${output//$'\r'/'%0D'}"
+            echo "::error title=Migration replay failed::$output"
+          fi
+
+          exit "$status"
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell
