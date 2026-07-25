@@ -17,8 +17,7 @@ SET "location" = CASE
     "course_name" = CASE
       WHEN "course_name" = 'ForeKingHell Tour Links' THEN 'LM World Tour Links'
       ELSE "course_name"
-    END,
-    "updated_at" = now()
+    END
 WHERE "location" = 'ForeKingHell Tour Links'
    OR "course_name" = 'ForeKingHell Tour Links';
 --> statement-breakpoint
