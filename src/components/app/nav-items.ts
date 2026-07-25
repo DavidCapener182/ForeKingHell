@@ -87,13 +87,43 @@ export const mobilePrimaryItems: AppNavItem[] = [
   },
 ];
 
-const mobileMoreGroupOrder = ["Play", "Compete", "Social", "Account"] as const;
+const mobileMoreGroupOrder = [
+  "Home",
+  "Play",
+  "Analyse",
+  "Improve",
+  "Compete",
+  "Social",
+  "Account",
+] as const;
+
+function belongsInMobileMoreGroup(
+  item: AppRouteMetadata,
+  label: (typeof mobileMoreGroupOrder)[number],
+) {
+  if (
+    item.mobilePrimaryDestination ||
+    (item.desktopVisible === false && item.mobileMoreGroup === undefined)
+  ) {
+    return false;
+  }
+
+  if (label === "Social" || label === "Account") {
+    return item.mobileMoreGroup === label;
+  }
+
+  if (label === "Play") {
+    return item.navigationGroup === "Play" || item.mobileMoreGroup === "Play";
+  }
+
+  return item.navigationGroup === label;
+}
 
 export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
   .map((label) => ({
     label,
     items: routesAvailableTo(false)
-      .filter((item) => item.mobileMoreGroup === label)
+      .filter((item) => belongsInMobileMoreGroup(item, label))
       .map(toNavItem),
   }))
   .filter((group) => group.items.length > 0);

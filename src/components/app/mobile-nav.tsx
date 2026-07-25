@@ -381,7 +381,10 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
 }
 
 function mobileGroupDescription(label: string) {
+  if (label === "Home") return "Dashboard and account overview";
   if (label === "Play") return "Rounds, courses and import";
+  if (label === "Analyse") return "Shots, bag, comparisons and progress";
+  if (label === "Improve") return "Coaching, practice and speed";
   if (label === "Compete") return "Challenges, tournaments and records";
   if (label === "Social") return "Friends, groups and activity";
   if (label === "Account") return "Profile, providers, billing and settings";

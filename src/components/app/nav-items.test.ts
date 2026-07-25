@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDesktopNavGroups,
+  mobileMoreGroups,
   mobilePageTitle,
   mobilePrimaryItems,
 } from "@/components/app/nav-items";
+import { appRouteMetadata } from "@/components/app/route-metadata";
 
 describe("application navigation hierarchy", () => {
   it("keeps five action-first mobile destinations", () => {
@@ -26,6 +28,47 @@ describe("application navigation hierarchy", () => {
       true,
     );
     expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/feed")).toBe(true);
+  });
+
+  it("keeps every non-primary player destination reachable from More", () => {
+    expect(mobileMoreGroups.map((group) => group.label)).toEqual([
+      "Home",
+      "Play",
+      "Analyse",
+      "Improve",
+      "Compete",
+      "Social",
+      "Account",
+    ]);
+
+    const mobileMoreRoutes = mobileMoreGroups.flatMap((group) =>
+      group.items.map((item) => item.href),
+    );
+    const expectedMobileMoreRoutes = appRouteMetadata
+      .filter(
+        (route) =>
+          !route.adminOnly &&
+          !route.mobilePrimaryDestination &&
+          (route.desktopVisible !== false || route.mobileMoreGroup !== undefined),
+      )
+      .map((route) => route.route)
+      .sort();
+
+    expect([...mobileMoreRoutes].sort()).toEqual(expectedMobileMoreRoutes);
+    expect(mobileMoreRoutes).toEqual(
+      expect.arrayContaining([
+        "/dashboard",
+        "/bag",
+        "/shots",
+        "/compare",
+        "/progress",
+        "/practice",
+        "/practice/quick-range",
+        "/speed",
+        "/goals",
+        "/data-chat",
+      ]),
+    );
   });
 
   it("gives mobile chrome a stable route title", () => {
