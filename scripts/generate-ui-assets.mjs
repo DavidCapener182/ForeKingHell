@@ -6,6 +6,76 @@ const outRoot = "public/assets";
 
 const pageAssets = [
   {
+    file: "page-speed-bay.webp",
+    accent: "#0B7A3B",
+    secondary: "#38BDF8",
+    motif: "speed-grid",
+    layout: "hero",
+  },
+  {
+    file: "page-groups-clubhouse.webp",
+    accent: "#0B7A3B",
+    secondary: "#C7972B",
+    motif: "league-board",
+    layout: "hero",
+  },
+  {
+    file: "page-settings-locker.webp",
+    accent: "#0F766E",
+    secondary: "#64748B",
+    motif: "shield-gear",
+    layout: "hero",
+  },
+  {
+    file: "page-friends-match.webp",
+    accent: "#2563EB",
+    secondary: "#0B7A3B",
+    motif: "friends-card",
+    layout: "hero",
+  },
+  {
+    file: "page-leaderboard-podium.webp",
+    accent: "#C7972B",
+    secondary: "#0B7A3B",
+    motif: "podium-board",
+    layout: "hero",
+  },
+  {
+    file: "page-practice-grid.webp",
+    accent: "#0B7A3B",
+    secondary: "#EC4899",
+    motif: "practice-grid",
+    layout: "hero",
+  },
+  {
+    file: "page-stock-yardages-hero.webp",
+    accent: "#0B7A3B",
+    secondary: "#38BDF8",
+    motif: "yardage-rings",
+    layout: "hero",
+  },
+  {
+    file: "page-progress-hero.webp",
+    accent: "#0B7A3B",
+    secondary: "#C7972B",
+    motif: "trend-badges",
+    layout: "hero",
+  },
+  {
+    file: "page-rounds-hero.webp",
+    accent: "#0B7A3B",
+    secondary: "#2563EB",
+    motif: "scoreband",
+    layout: "hero",
+  },
+  {
+    file: "page-equipment-bag-panel.webp",
+    accent: "#111827",
+    secondary: "#0B7A3B",
+    motif: "bag-window",
+    layout: "hero",
+  },
+  {
     file: "page-import-rapsodo.webp",
     title: "Import",
     subtitle: "CSV + launch monitor",
@@ -102,7 +172,26 @@ const challengeAssets = [
   ["challenge-seven-iron-consistency.webp", "7i", "Consistency", "#EC4899", "target"],
 ];
 
-const clubTypes = ["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"];
+const clubTypes = [
+  "driver",
+  "3w",
+  "5w",
+  "7w",
+  "3h",
+  "4h",
+  "5h",
+  "4i",
+  "5i",
+  "6i",
+  "7i",
+  "8i",
+  "9i",
+  "pw",
+  "gw",
+  "aw",
+  "sw",
+  "lw",
+];
 
 mkdirSync(outRoot, { recursive: true });
 mkdirSync(path.join(outRoot, "tour-covers"), { recursive: true });
@@ -158,6 +247,7 @@ async function renderPng(file, svg, width, height) {
 }
 
 function pageSvg({ title, subtitle, accent, secondary, motif }) {
+  const showCard = title && subtitle;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
   <defs>
@@ -182,12 +272,16 @@ function pageSvg({ title, subtitle, accent, secondary, motif }) {
     <path d="M92 232 C278 164 468 182 610 244 S870 330 1116 270"/>
   </g>
   ${motifSvg(motif, accent, secondary)}
-  <g transform="translate(90 88)">
+  ${
+    showCard
+      ? `<g transform="translate(90 88)">
     <rect width="430" height="178" rx="24" fill="#ffffff" opacity="0.86" filter="url(#soft)"/>
     <text x="36" y="74" font-family="Inter,Arial,sans-serif" font-size="52" font-weight="800" fill="#050505">${escapeXml(title)}</text>
     <text x="38" y="124" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="600" fill="#6b7280">${escapeXml(subtitle)}</text>
     <rect x="36" y="144" width="156" height="8" rx="4" fill="url(#green)"/>
-  </g>
+  </g>`
+      : ""
+  }
 </svg>`;
 }
 
@@ -297,6 +391,131 @@ function motifSvg(motif, accent, secondary, dx = 0, dy = 0) {
   }
   if (motif === "trace") {
     return `<g transform="${transform} translate(650 244)" fill="none" stroke="${accent}" stroke-width="14" stroke-linecap="round"><path d="M18 250 C154 74 328 42 510 30" stroke-dasharray="24 18"/><path d="M28 264 C190 212 334 226 540 278" stroke-width="30" opacity="0.14"/><circle cx="510" cy="30" r="18" fill="${secondary}" stroke="none"/></g>`;
+  }
+  if (motif === "speed-grid") {
+    return `<g transform="${transform} translate(622 120)">
+      <rect x="30" y="220" width="498" height="232" rx="38" fill="#ffffff" opacity="0.62"/>
+      <path d="M86 380 C154 274 246 226 360 198 C392 192 426 190 462 190" fill="none" stroke="${accent}" stroke-width="18" stroke-linecap="round"/>
+      <path d="M102 392 C186 334 276 312 406 306" fill="none" stroke="${secondary}" stroke-width="12" stroke-linecap="round" opacity="0.82"/>
+      <path d="M440 152 C502 152 554 204 554 270" fill="none" stroke="${secondary}" stroke-width="14" opacity="0.34"/>
+      <path d="M414 126 C516 126 598 208 598 310" fill="none" stroke="${accent}" stroke-width="14" opacity="0.46"/>
+      <path d="M386 94 C526 94 640 208 640 348" fill="none" stroke="${accent}" stroke-width="14" opacity="0.2"/>
+      <circle cx="128" cy="388" r="20" fill="#111827"/>
+      <rect x="84" y="422" width="126" height="16" rx="8" fill="${mix(accent, "#ffffff", 0.12)}"/>
+      <rect x="252" y="354" width="128" height="16" rx="8" fill="${mix(secondary, "#ffffff", 0.1)}"/>
+      <rect x="410" y="284" width="112" height="16" rx="8" fill="${mix(accent, "#ffffff", 0.18)}"/>
+    </g>`;
+  }
+  if (motif === "league-board") {
+    return `<g transform="${transform} translate(628 116)">
+      <rect x="44" y="144" width="504" height="296" rx="40" fill="#ffffff" opacity="0.78"/>
+      <rect x="82" y="182" width="428" height="68" rx="22" fill="${mix(accent, "#ffffff", 0.16)}"/>
+      <rect x="82" y="270" width="428" height="56" rx="20" fill="${mix(secondary, "#ffffff", 0.18)}"/>
+      <rect x="82" y="344" width="428" height="56" rx="20" fill="${mix(accent, "#ffffff", 0.26)}"/>
+      <circle cx="132" cy="216" r="16" fill="${accent}"/>
+      <circle cx="132" cy="298" r="14" fill="${secondary}"/>
+      <circle cx="132" cy="372" r="14" fill="${accent}"/>
+      <path d="M176 216 H420 M176 298 H466 M176 372 H446" stroke="#0f172a" stroke-width="14" stroke-linecap="round" opacity="0.64"/>
+      <path d="M452 184 V404" stroke="${mix("#0f172a", "#ffffff", 0.72)}" stroke-width="6" opacity="0.42"/>
+      <path d="M496 198 V396" stroke="${mix("#0f172a", "#ffffff", 0.72)}" stroke-width="6" opacity="0.42"/>
+    </g>`;
+  }
+  if (motif === "shield-gear") {
+    return `<g transform="${transform} translate(644 118)">
+      <rect x="50" y="154" width="486" height="276" rx="40" fill="#ffffff" opacity="0.72"/>
+      <path d="M194 156 H392 V236 C392 310 344 354 292 378 C240 354 194 310 194 236 Z" fill="${mix(accent, "#ffffff", 0.1)}" stroke="${accent}" stroke-width="12"/>
+      <circle cx="418" cy="308" r="76" fill="${mix(secondary, "#ffffff", 0.18)}"/>
+      <circle cx="418" cy="308" r="42" fill="none" stroke="${secondary}" stroke-width="16"/>
+      <path d="M418 214 V248 M418 368 V402 M324 308 H358 M478 308 H512 M352 242 L378 268 M458 348 L484 374 M352 374 L378 348 M458 268 L484 242" stroke="${secondary}" stroke-width="12" stroke-linecap="round"/>
+      <path d="M248 236 L284 272 L340 210" fill="none" stroke="${accent}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>`;
+  }
+  if (motif === "friends-card") {
+    return `<g transform="${transform} translate(638 132)">
+      <rect x="56" y="152" width="220" height="246" rx="34" fill="#ffffff" opacity="0.78"/>
+      <rect x="250" y="118" width="240" height="268" rx="36" fill="#ffffff" opacity="0.88"/>
+      <circle cx="164" cy="230" r="38" fill="${secondary}"/>
+      <circle cx="344" cy="218" r="44" fill="${accent}"/>
+      <path d="M132 310 H214 M112 344 H226" stroke="#0f172a" stroke-width="14" stroke-linecap="round" opacity="0.52"/>
+      <path d="M298 314 H404 M288 350 H430" stroke="#0f172a" stroke-width="16" stroke-linecap="round" opacity="0.58"/>
+      <path d="M188 164 C244 120 298 120 352 166" fill="none" stroke="${mix(accent, secondary, 0.4)}" stroke-width="12" stroke-linecap="round" opacity="0.7"/>
+    </g>`;
+  }
+  if (motif === "podium-board") {
+    return `<g transform="${transform} translate(646 124)">
+      <rect x="60" y="108" width="500" height="168" rx="34" fill="#ffffff" opacity="0.82"/>
+      <path d="M114 172 H348 M114 214 H424 M442 150 H500 M442 192 H500" stroke="#0f172a" stroke-width="14" stroke-linecap="round" opacity="0.56"/>
+      <rect x="108" y="326" width="108" height="108" rx="24" fill="${mix(secondary, "#ffffff", 0.14)}"/>
+      <rect x="232" y="274" width="132" height="160" rx="28" fill="${mix(accent, "#ffffff", 0.08)}"/>
+      <rect x="380" y="344" width="108" height="90" rx="24" fill="${mix(secondary, "#ffffff", 0.28)}"/>
+      <circle cx="298" cy="248" r="30" fill="${accent}"/>
+      <circle cx="160" cy="298" r="24" fill="${secondary}"/>
+      <circle cx="434" cy="314" r="24" fill="${secondary}"/>
+    </g>`;
+  }
+  if (motif === "practice-grid") {
+    return `<g transform="${transform} translate(638 118)">
+      <rect x="52" y="120" width="504" height="300" rx="40" fill="#ffffff" opacity="0.76"/>
+      <rect x="90" y="160" width="180" height="98" rx="24" fill="${mix(accent, "#ffffff", 0.1)}"/>
+      <rect x="294" y="160" width="224" height="98" rx="24" fill="${mix(secondary, "#ffffff", 0.12)}"/>
+      <rect x="90" y="282" width="168" height="98" rx="24" fill="${mix(secondary, "#ffffff", 0.18)}"/>
+      <rect x="280" y="282" width="238" height="98" rx="24" fill="${mix(accent, "#ffffff", 0.2)}"/>
+      <path d="M126 208 L154 234 L214 176" fill="none" stroke="${accent}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="368" cy="210" r="40" fill="none" stroke="${secondary}" stroke-width="14"/>
+      <circle cx="368" cy="210" r="20" fill="none" stroke="${secondary}" stroke-width="10"/>
+      <path d="M402 340 C426 322 454 314 490 312" fill="none" stroke="${accent}" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="348" cy="334" r="14" fill="${accent}"/>
+    </g>`;
+  }
+  if (motif === "yardage-rings") {
+    return `<g transform="${transform} translate(624 122)">
+      <ellipse cx="270" cy="320" rx="210" ry="108" fill="${mix(accent, "#ffffff", 0.18)}"/>
+      <ellipse cx="270" cy="320" rx="154" ry="80" fill="${mix(accent, "#ffffff", 0.28)}"/>
+      <ellipse cx="270" cy="320" rx="96" ry="52" fill="${mix("#ffffff", accent, 0.22)}"/>
+      <circle cx="134" cy="372" r="16" fill="#111827"/>
+      <path d="M150 360 C218 286 318 254 462 248" fill="none" stroke="${accent}" stroke-width="16" stroke-linecap="round"/>
+      <path d="M144 390 C248 346 368 338 514 352" fill="none" stroke="${secondary}" stroke-width="12" stroke-linecap="round" opacity="0.84"/>
+      <rect x="386" y="136" width="138" height="154" rx="28" fill="#ffffff" opacity="0.84"/>
+      <path d="M430 174 H480 M430 210 H494 M430 246 H472" stroke="#0f172a" stroke-width="12" stroke-linecap="round" opacity="0.56"/>
+    </g>`;
+  }
+  if (motif === "trend-badges") {
+    return `<g transform="${transform} translate(620 128)">
+      <path d="M68 394 C146 312 220 286 304 252 C372 224 428 172 520 86" fill="none" stroke="${accent}" stroke-width="18" stroke-linecap="round"/>
+      <circle cx="68" cy="394" r="18" fill="${mix(accent, "#ffffff", 0.1)}"/>
+      <circle cx="304" cy="252" r="18" fill="${mix(secondary, "#ffffff", 0.08)}"/>
+      <circle cx="520" cy="86" r="18" fill="${accent}"/>
+      <rect x="58" y="120" width="162" height="92" rx="24" fill="#ffffff" opacity="0.84"/>
+      <rect x="246" y="176" width="184" height="98" rx="24" fill="#ffffff" opacity="0.78"/>
+      <rect x="404" y="274" width="150" height="90" rx="24" fill="#ffffff" opacity="0.72"/>
+      <path d="M98 160 H180 M98 190 H152" stroke="#0f172a" stroke-width="12" stroke-linecap="round" opacity="0.56"/>
+      <path d="M286 216 H390 M286 246 H354" stroke="#0f172a" stroke-width="12" stroke-linecap="round" opacity="0.56"/>
+      <path d="M440 312 H512 M440 340 H490" stroke="#0f172a" stroke-width="12" stroke-linecap="round" opacity="0.56"/>
+    </g>`;
+  }
+  if (motif === "scoreband") {
+    return `<g transform="${transform} translate(638 132)">
+      <rect x="50" y="130" width="506" height="290" rx="40" fill="#ffffff" opacity="0.8"/>
+      <rect x="86" y="172" width="432" height="60" rx="22" fill="${mix(accent, "#ffffff", 0.12)}"/>
+      <path d="M126 202 H422" stroke="#0f172a" stroke-width="14" stroke-linecap="round" opacity="0.54"/>
+      <circle cx="466" cy="202" r="20" fill="${secondary}"/>
+      <rect x="86" y="252" width="202" height="126" rx="26" fill="${mix(secondary, "#ffffff", 0.12)}"/>
+      <rect x="314" y="252" width="204" height="126" rx="26" fill="${mix(accent, "#ffffff", 0.18)}"/>
+      <path d="M126 300 H242 M126 334 H208" stroke="#0f172a" stroke-width="12" stroke-linecap="round" opacity="0.52"/>
+      <path d="M348 304 C376 276 416 264 466 266" fill="none" stroke="${accent}" stroke-width="14" stroke-linecap="round"/>
+      <circle cx="338" cy="314" r="14" fill="${accent}"/>
+    </g>`;
+  }
+  if (motif === "bag-window") {
+    return `<g transform="${transform} translate(630 110)">
+      <rect x="44" y="94" width="522" height="346" rx="42" fill="#ffffff" opacity="0.8"/>
+      <rect x="82" y="132" width="250" height="270" rx="30" fill="${mix(accent, "#ffffff", 0.08)}"/>
+      <path d="M186 138 C238 138 282 178 282 238 V326 C282 368 248 402 206 402 H158 C116 402 82 368 82 326 V206 C82 168 112 138 150 138 Z" fill="${mix(accent, "#ffffff", 0.18)}" stroke="${accent}" stroke-width="12"/>
+      <path d="M154 182 H208 M154 226 H226 M154 270 H214 M154 314 H202" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.34"/>
+      <circle cx="408" cy="210" r="74" fill="${mix(secondary, "#ffffff", 0.14)}"/>
+      <path d="M408 148 V172 M408 248 V272 M346 210 H370 M446 210 H470 M364 166 L382 184 M434 236 L452 254 M364 254 L382 236 M434 184 L452 166" stroke="${secondary}" stroke-width="12" stroke-linecap="round"/>
+      <path d="M344 338 C392 306 446 302 512 314" fill="none" stroke="${accent}" stroke-width="14" stroke-linecap="round"/>
+    </g>`;
   }
   return `<g transform="${transform} translate(734 174)"><rect x="42" y="70" width="316" height="230" rx="34" fill="#ffffff" stroke="${accent}" stroke-width="12"/><circle cx="200" cy="184" r="60" fill="${mix(accent, "#ffffff", 0.3)}"/><path d="M112 332 H288" stroke="${secondary}" stroke-width="18" stroke-linecap="round"/></g>`;
 }

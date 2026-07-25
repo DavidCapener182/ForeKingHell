@@ -145,6 +145,77 @@ export default async function CourseStrategyPage({
                   <StrategyDetail label="Common miss" value={strategy.commonMiss} />
                   <StrategyDetail label="Safe target" value={strategy.safeTarget} />
                 </dl>
+                <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                    Planned clubs
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground">First shot</p>
+                      <p className="font-semibold">
+                        {strategy.recommendedClub}
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          · {strategy.expectedCarryRange}
+                        </span>
+                      </p>
+                    </div>
+                    {strategy.followUpClubs.length ? (
+                      <>
+                        <ArrowRight
+                          className="hidden size-4 shrink-0 text-primary sm:block"
+                          aria-hidden
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs text-muted-foreground">
+                            {strategy.followUpClubs.length > 1
+                              ? "Follow-up shots"
+                              : "Club for the leave"}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                            {strategy.followUpClubs.map((club, index) => (
+                              <span
+                                key={`${strategy.holeNumber}-${club.label}-${index}`}
+                                className="inline-flex items-center gap-2"
+                              >
+                                {index > 0 ? (
+                                  <ArrowRight className="size-3.5 text-primary" aria-hidden />
+                                ) : null}
+                                <span>
+                                  {club.label}
+                                  <span className="font-normal text-muted-foreground">
+                                    {" "}
+                                    · {club.expectedCarryRange}
+                                  </span>
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {strategy.followUpClubs.length > 1
+                              ? `Combined ${strategy.followUpTotalRange} · `
+                              : ""}
+                            {strategy.followUpFit}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-primary">
+                          {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0
+                            ? "Short-game finish"
+                            : "No next club needed"}
+                        </p>
+                        {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0 ? (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {strategy.expectedLeaveYd} yd remains — choose the club from the live
+                            lie.
+                          </p>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="mt-3 grid gap-2 text-sm">
                   <p className="rounded-xl bg-amber-50 p-3 text-amber-950">
                     <span className="font-semibold">Hazard check: </span>
@@ -651,6 +722,7 @@ async function getCourseStrategyData(requestedCourseId?: string) {
       hazardsByHole,
       clubs: latestStocks.map((row) => ({
         clubId: row.clubId,
+        clubType: row.type,
         label: formatClubType(row.type),
         carryYd: row.carry!,
         minCarryYd: row.p25 ?? row.carry! * 0.94,

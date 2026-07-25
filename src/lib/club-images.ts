@@ -14,19 +14,58 @@ export type BrandLogoSearchCandidate = Pick<
   "url" | "title" | "displayLink" | "contextLink" | "mime" | "source"
 >;
 
-const knownClubArt = new Set(["driver", "5w", "5i", "6i", "7i", "8i", "9i", "pw", "sw"]);
+const knownClubArt = new Set([
+  "driver",
+  "3w",
+  "5w",
+  "7w",
+  "3h",
+  "4h",
+  "5h",
+  "4i",
+  "5i",
+  "6i",
+  "7i",
+  "8i",
+  "9i",
+  "pw",
+  "gw",
+  "aw",
+  "sw",
+  "lw",
+]);
 const CLUB_IMAGE_ROUTE_VERSION = "9";
 
 const clubArtAliases: Record<string, string> = {
-  "3w": "5w",
-  "7w": "5w",
-  "3h": "5i",
-  "4h": "5i",
-  "5h": "5i",
-  "4i": "5i",
-  gw: "pw",
-  aw: "pw",
-  lw: "sw",
+  "3-wood": "3w",
+  "3 wood": "3w",
+  "5-wood": "5w",
+  "5 wood": "5w",
+  "7-wood": "7w",
+  "7 wood": "7w",
+  "3-hybrid": "3h",
+  "3 hybrid": "3h",
+  "4-hybrid": "4h",
+  "4 hybrid": "4h",
+  "5-hybrid": "5h",
+  "5 hybrid": "5h",
+  "4-iron": "4i",
+  "4 iron": "4i",
+  "5-iron": "5i",
+  "5 iron": "5i",
+  "6-iron": "6i",
+  "6 iron": "6i",
+  "7-iron": "7i",
+  "7 iron": "7i",
+  "8-iron": "8i",
+  "8 iron": "8i",
+  "9-iron": "9i",
+  "9 iron": "9i",
+  "pitching wedge": "pw",
+  "gap wedge": "gw",
+  "approach wedge": "aw",
+  "sand wedge": "sw",
+  "lob wedge": "lw",
 };
 
 const brandLogoDomains: Record<string, string> = {

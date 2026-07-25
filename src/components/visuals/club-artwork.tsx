@@ -145,10 +145,13 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (/^[1-9]w$/.test(clubType) || clubType.includes("wood")) {
+  if (["3w", "5w", "7w"].includes(clubType) || clubType.includes("wood")) {
+    const label = ["3w", "5w", "7w"].includes(clubType) ? clubType.toUpperCase() : "FW";
+    const family = clubType === "3w" ? "3 wood" : clubType === "7w" ? "7 wood" : "Fairway wood";
+
     return {
-      label: "FW",
-      family: "Fairway wood",
+      label,
+      family,
       badgeFill: "#DBEAFE",
       headFill: "#1E293B",
       accent: "#60A5FA",
@@ -162,10 +165,21 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (clubType.includes("hybrid")) {
+  if (["3h", "4h", "5h"].includes(clubType) || clubType.includes("hybrid")) {
+    const label =
+      clubType === "3h" ? "3H" : clubType === "4h" ? "4H" : clubType === "5h" ? "5H" : "HY";
+    const family =
+      clubType === "3h"
+        ? "3 hybrid"
+        : clubType === "4h"
+          ? "4 hybrid"
+          : clubType === "5h"
+            ? "5 hybrid"
+            : "Hybrid";
+
     return {
-      label: "HY",
-      family: "Hybrid",
+      label,
+      family,
       badgeFill: "#E0F2FE",
       headFill: "#1F2937",
       accent: "#06B6D4",
@@ -179,15 +193,22 @@ function resolveFallbackSpec(clubType: string) {
   }
 
   if (["gw", "aw", "sw", "lw"].includes(clubType) || clubType.includes("wedge")) {
-    const isGap = clubType.includes("gap") || clubType === "gw" || clubType === "aw";
+    const isGap = clubType.includes("gap") || clubType === "gw";
+    const isApproach = clubType.includes("approach") || clubType === "aw";
     const isLob = clubType.includes("lob") || clubType === "lw";
 
     return {
-      label: isGap ? "GW" : isLob ? "LW" : "SW",
-      family: isGap ? "Gap wedge" : isLob ? "Lob wedge" : "Sand wedge",
-      badgeFill: isGap ? "#FEF3C7" : isLob ? "#FDE7F3" : "#DCFCE7",
-      headFill: isGap ? "#A16207" : isLob ? "#BE185D" : "#15803D",
-      accent: isGap ? "#F59E0B" : isLob ? "#EC4899" : "#22C55E",
+      label: isGap ? "GW" : isApproach ? "AW" : isLob ? "LW" : "SW",
+      family: isGap
+        ? "Gap wedge"
+        : isApproach
+          ? "Approach wedge"
+          : isLob
+            ? "Lob wedge"
+            : "Sand wedge",
+      badgeFill: isGap ? "#FEF3C7" : isApproach ? "#FDE68A" : isLob ? "#FDE7F3" : "#DCFCE7",
+      headFill: isGap ? "#A16207" : isApproach ? "#B45309" : isLob ? "#BE185D" : "#15803D",
+      accent: isGap ? "#F59E0B" : isApproach ? "#F97316" : isLob ? "#EC4899" : "#22C55E",
       sideShaft: "M112 248C175 221 249 184 334 137C387 108 425 87 450 74",
       sideHead: "M426 72L497 102L466 148L406 118Z",
       sideAccent: "M421 98C440 110 454 122 463 136",
@@ -198,8 +219,8 @@ function resolveFallbackSpec(clubType: string) {
   }
 
   return {
-    label: "IR",
-    family: "Iron",
+    label: clubType === "4i" ? "4I" : "IR",
+    family: clubType === "4i" ? "4 iron" : "Iron",
     badgeFill: "#E2E8F0",
     headFill: "#334155",
     accent: "#94A3B8",

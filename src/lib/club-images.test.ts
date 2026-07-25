@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   brandPreferredLogoImageUrls,
   brandLogoIconUrls,
+  clubArtworkPath,
   clubImageRoutePath,
   rankBrandLogoSearchCandidates,
 } from "@/lib/club-images";
@@ -89,6 +90,26 @@ describe("club image helpers", () => {
 
     expect(routePath).toContain("brand=TaylorMade");
     expect(routePath).toContain("model=Qi10");
+  });
+
+  it.each([
+    ["3w", "/assets/clubs/panel/3w-side.png"],
+    ["7w", "/assets/clubs/panel/7w-side.png"],
+    ["3h", "/assets/clubs/panel/3h-side.png"],
+    ["4h", "/assets/clubs/panel/4h-side.png"],
+    ["gw", "/assets/clubs/panel/gw-side.png"],
+    ["aw", "/assets/clubs/panel/aw-side.png"],
+    ["lw", "/assets/clubs/panel/lw-side.png"],
+  ])("keeps %s on a distinct fallback artwork path", (clubType, expectedPath) => {
+    expect(clubArtworkPath(clubType)).toBe(expectedPath);
+  });
+
+  it.each([
+    ["3-wood", "/assets/clubs/panel/3w-side.png"],
+    ["4 hybrid", "/assets/clubs/panel/4h-side.png"],
+    ["approach wedge", "/assets/clubs/panel/aw-side.png"],
+  ])("normalizes %s onto the matching club family artwork", (clubType, expectedPath) => {
+    expect(clubArtworkPath(clubType)).toBe(expectedPath);
   });
 });
 

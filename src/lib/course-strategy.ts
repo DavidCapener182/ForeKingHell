@@ -1,5 +1,6 @@
 export type StrategyClub = {
   clubId: string;
+  clubType?: string;
   label: string;
   carryYd: number;
   minCarryYd: number;
@@ -23,6 +24,13 @@ export type HoleStrategy = {
   hazardWarning: string;
   conservativeAlternative: string;
   expectedLeave: string;
+  expectedLeaveYd: number | null;
+  followUpClubs: Array<{
+    label: string;
+    expectedCarryRange: string;
+  }>;
+  followUpFit: "In measured range" | "Closest measured sequence" | null;
+  followUpTotalRange: string | null;
   confidence: "High" | "Moderate" | "Low";
   caveat: string;
 };
@@ -32,7 +40,9 @@ export function buildHoleStrategies(input: {
   clubs: StrategyClub[];
   hazardsByHole: Map<number, string[]>;
 }): HoleStrategy[] {
-  const clubs = [...input.clubs].sort((left, right) => right.carryYd - left.carryYd);
+  const clubs = uniqueClubsByIdentity(
+    [...input.clubs].sort((left, right) => right.carryYd - left.carryYd),
+  );
   return input.holes.map((hole) => {
     const selected = selectClub(hole, clubs);
     const selectedIndex = selected
@@ -40,6 +50,13 @@ export function buildHoleStrategies(input: {
       : -1;
     const alternative = selectedIndex >= 0 ? clubs[selectedIndex + 1] : null;
     const hazards = input.hazardsByHole.get(hole.holeNumber) ?? [];
+    const expectedLeaveYd = selected
+      ? Math.max(0, Math.round(hole.yards - selected.carryYd))
+      : null;
+    const followUpPlan =
+      expectedLeaveYd !== null && expectedLeaveYd > 0
+        ? selectClubsForLeave(expectedLeaveYd, clubs, selected)
+        : null;
     const miss = selected
       ? selected.leftYd > selected.rightYd
         ? "left"
@@ -74,9 +91,20 @@ export function buildHoleStrategies(input: {
       conservativeAlternative: alternative
         ? `${alternative.label} (${Math.round(alternative.minCarryYd)}–${Math.round(alternative.maxCarryYd)} yd)`
         : "Use the shortest club that keeps the next shot comfortable.",
-      expectedLeave: selected
-        ? `${Math.max(0, Math.round(hole.yards - selected.carryYd - (hole.par >= 5 ? selected.carryYd : 0)))} yd after the planned long shot${hole.par >= 5 ? "s" : ""}`
-        : "Unknown",
+      expectedLeave:
+        expectedLeaveYd !== null ? `${expectedLeaveYd} yd after the first shot` : "Unknown",
+      expectedLeaveYd,
+      followUpClubs:
+        followUpPlan?.clubs.map((club) => ({
+          label: club.label,
+          expectedCarryRange: carryRange(club),
+        })) ?? [],
+      followUpFit: followUpPlan
+        ? distanceFromPlanRange(expectedLeaveYd!, followUpPlan.clubs) === 0
+          ? "In measured range"
+          : "Closest measured sequence"
+        : null,
+      followUpTotalRange: followUpPlan ? combinedCarryRange(followUpPlan.clubs) : null,
       confidence,
       caveat: `${confidence} confidence from ${selected?.sampleSize ?? 0} measured shots. Historical dispersion informs this recommendation; wind, lie, pin and current hazards can change it.`,
     };
@@ -93,6 +121,102 @@ function selectClub(hole: StrategyHole, clubs: StrategyClub[]) {
     );
   const ceiling = hole.par >= 5 ? hole.yards * 0.48 : hole.yards * 0.66;
   return trusted.find((club) => club.maxCarryYd <= ceiling) ?? trusted[0] ?? null;
+}
+
+function selectClubsForLeave(
+  leaveYd: number,
+  clubs: StrategyClub[],
+  openingClub?: StrategyClub | null,
+) {
+  const openingClubIdentity = openingClub ? clubIdentity(openingClub) : null;
+  const trusted = uniqueClubsByIdentity(
+    clubs.filter(
+      (club) =>
+        club.sampleSize >= 5 &&
+        club.carryYd > 0 &&
+        !isDriverClub(club) &&
+        clubIdentity(club) !== openingClubIdentity,
+    ),
+  );
+  const minimumClubCount = leaveYd > 200 ? 2 : 1;
+  for (let clubCount = minimumClubCount; clubCount <= 3; clubCount += 1) {
+    const plan = bestPlanForDistance(leaveYd, clubCombinations(trusted, clubCount));
+    if (plan && isAcceptablePlan(leaveYd, plan)) return { clubs: plan };
+  }
+  return null;
+}
+
+function clubCombinations(clubs: StrategyClub[], count: number): StrategyClub[][] {
+  if (count === 1) return clubs.map((club) => [club]);
+  const combinations: StrategyClub[][] = [];
+  const visit = (startIndex: number, selected: StrategyClub[]) => {
+    if (selected.length === count) {
+      combinations.push(selected);
+      return;
+    }
+    for (let index = startIndex; index < clubs.length; index += 1) {
+      visit(index + 1, [...selected, clubs[index]!]);
+    }
+  };
+  visit(0, []);
+  return combinations;
+}
+
+function bestPlanForDistance(targetYd: number, plans: StrategyClub[][]) {
+  return (
+    [...plans].sort((left, right) => {
+      const rangeDifference =
+        distanceFromPlanRange(targetYd, left) - distanceFromPlanRange(targetYd, right);
+      if (rangeDifference !== 0) return rangeDifference;
+      return Math.abs(totalCarry(left) - targetYd) - Math.abs(totalCarry(right) - targetYd);
+    })[0] ?? null
+  );
+}
+
+function isAcceptablePlan(targetYd: number, clubs: StrategyClub[]) {
+  return distanceFromPlanRange(targetYd, clubs) <= Math.max(12, targetYd * 0.1);
+}
+
+function distanceFromPlanRange(targetYd: number, clubs: StrategyClub[]) {
+  const minCarryYd = clubs.reduce((total, club) => total + club.minCarryYd, 0);
+  const maxCarryYd = clubs.reduce((total, club) => total + club.maxCarryYd, 0);
+  if (targetYd < minCarryYd) return minCarryYd - targetYd;
+  if (targetYd > maxCarryYd) return targetYd - maxCarryYd;
+  return 0;
+}
+
+function totalCarry(clubs: StrategyClub[]) {
+  return clubs.reduce((total, club) => total + club.carryYd, 0);
+}
+
+function carryRange(club: StrategyClub) {
+  return `${Math.round(club.minCarryYd)}–${Math.round(club.maxCarryYd)} yd`;
+}
+
+function combinedCarryRange(clubs: StrategyClub[]) {
+  const minCarryYd = clubs.reduce((total, club) => total + club.minCarryYd, 0);
+  const maxCarryYd = clubs.reduce((total, club) => total + club.maxCarryYd, 0);
+  return `${Math.round(minCarryYd)}–${Math.round(maxCarryYd)} yd`;
+}
+
+function uniqueClubsByIdentity(clubs: StrategyClub[]) {
+  const uniqueClubs = new Map<string, StrategyClub>();
+  for (const club of clubs) {
+    const identity = clubIdentity(club);
+    if (!uniqueClubs.has(identity)) uniqueClubs.set(identity, club);
+  }
+  return [...uniqueClubs.values()];
+}
+
+function isDriverClub(club: StrategyClub) {
+  return ["driver", "1w", "1wood"].includes(clubIdentity(club));
+}
+
+function clubIdentity(club: StrategyClub) {
+  return (club.clubType ?? club.label)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "");
 }
 
 function confidenceLabel(club: StrategyClub): HoleStrategy["confidence"] {

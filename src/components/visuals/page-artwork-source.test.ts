@@ -21,4 +21,15 @@ describe("desktop page artwork variants", () => {
       expect(source).toContain(`${variant}: "from-`);
     }
   });
+
+  it("avoids the old placeholder artwork on the high-traffic golfer pages", () => {
+    expect(source).toContain('speed: "/assets/page-speed-bay.webp"');
+    expect(source).toContain('groups: "/assets/page-groups-clubhouse.webp"');
+    expect(source).toContain('settings: "/assets/page-settings-locker.webp"');
+    expect(source).toContain('friends: "/assets/page-friends-match.webp"');
+    expect(source).toContain('leaderboard: "/assets/page-leaderboard-podium.webp"');
+    expect(source).not.toContain('speed: "/assets/generated/strokes-gained-hole-tracers.png"');
+    expect(source).not.toContain('groups: "/assets/profile-trophy-shelf.webp"');
+    expect(source).not.toContain('settings: "/assets/provider-rapsodo-device.webp"');
+  });
 });
