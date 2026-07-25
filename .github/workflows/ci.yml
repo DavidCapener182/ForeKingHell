@@ -109,7 +109,7 @@ jobs:
           printf '%s\n' "$output"
 
           if [ "$status" -ne 0 ]; then
-            diagnostic="${output: -3000}"
+            diagnostic="${output: -800}"
             diagnostic="${diagnostic//%/%25}"
             diagnostic="${diagnostic//$'\n'/%0A}"
             diagnostic="${diagnostic//$'\r'/%0D}"
