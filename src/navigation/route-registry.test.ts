@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { adminNavGroup, mobileMoreGroups, navGroups } from "@/components/app/nav-items";
+import { appRouteMetadata } from "@/components/app/route-metadata";
 import { commandRoutes, findProductRoute, productRouteRegistry } from "@/navigation/route-registry";
 
 describe("product route registry", () => {
@@ -12,12 +12,8 @@ describe("product route registry", () => {
     expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 
-  it("covers desktop, mobile-more, and admin navigation from one registry", () => {
-    const expectedHrefs = new Set(
-      [...navGroups, ...mobileMoreGroups, adminNavGroup].flatMap((group) =>
-        group.items.map((item) => item.href),
-      ),
-    );
+  it("projects the canonical route metadata without maintaining another route list", () => {
+    const expectedHrefs = new Set(appRouteMetadata.map((route) => route.route));
 
     expect(new Set(productRouteRegistry.map((route) => route.href))).toEqual(expectedHrefs);
   });

@@ -162,7 +162,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
   const coachWorkbenchPrompts = [
     {
       label: "Regenerate plan",
-      prompt: `Regenerate my coach practice plan from ${coachPromptContext}. Use only my available ForeKingHell data and call out low-confidence evidence.`,
+      prompt: `Regenerate my coach practice plan from ${coachPromptContext}. Use only my available LM World Tour data and call out low-confidence evidence.`,
       icon: Sparkles,
     },
     {

@@ -25,6 +25,7 @@ import {
 import { MobileTabBar as SharedMobileTabBar, type MobileTab } from "@/components/mobile-tab-bar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { appRouteMetadata } from "@/components/app/route-metadata";
 
 type MobileAppShellProps = {
   children: ReactNode;
@@ -88,55 +89,40 @@ export function MobileIconButton({
   );
 }
 
-const mobileRouteGroups = {
-  dashboard: [
-    { key: "today", label: "Latest", href: "/today" },
-    { key: "dashboard", label: "Dashboard", href: "/dashboard" },
-    { key: "progress", label: "Progress", href: "/progress" },
-    { key: "strokes", label: "Strokes", href: "/strokes-gained" },
-  ],
-  play: [
-    { key: "rounds", label: "Rounds", href: "/rounds" },
-    { key: "courses", label: "Courses", href: "/courses" },
-    { key: "records", label: "Records", href: "/course-records" },
-    { key: "tournaments", label: "Tournaments", href: "/tournaments" },
-    { key: "handicap", label: "Handicap", href: "/handicap" },
-  ],
-  analyse: [
-    { key: "compare", label: "Compare", href: "/compare" },
-    { key: "bag", label: "Bag", href: "/bag" },
-    { key: "simulator-lab", label: "Lab", href: "/simulator-lab" },
-    { key: "speed", label: "Speed", href: "/speed" },
-    { key: "training", label: "Training", href: "/stats/training-over-time" },
-    { key: "equipment", label: "Equipment", href: "/equipment" },
-    { key: "shots", label: "Shots", href: "/shots" },
-    { key: "rapsodo", label: "Rapsodo", href: "/rapsodo" },
-  ],
-  improve: [
-    { key: "practice", label: "Practice", href: "/practice" },
-    { key: "coach", label: "Coach", href: "/coach" },
-    { key: "data-chat", label: "Data Chat", href: "/data-chat" },
-    { key: "achievements", label: "Achievements", href: "/achievements" },
-  ],
-  social: [
-    { key: "feed", label: "Feed", href: "/feed" },
-    { key: "friends", label: "Friends", href: "/friends" },
-    { key: "groups", label: "Groups", href: "/groups" },
-    { key: "challenges", label: "Challenges", href: "/challenges" },
-    { key: "leaderboard", label: "Leaderboards", href: "/leaderboard" },
-    { key: "profile", label: "Profile", href: "/profile" },
-    { key: "recaps", label: "Recaps & Safety", href: "/social-intelligence" },
-  ],
-  platform: [
-    { key: "settings", label: "Settings", href: "/settings" },
-    { key: "billing", label: "Billing", href: "/billing" },
-    { key: "providers", label: "Providers", href: "/providers" },
-    { key: "partners", label: "Partners", href: "/partners" },
-    { key: "admin", label: "Admin", href: "/admin" },
-  ],
-} satisfies Record<string, MobileTab[]>;
+type MobileRouteGroup = "dashboard" | "play" | "analyse" | "improve" | "social" | "platform";
 
-type MobileRouteGroup = keyof typeof mobileRouteGroups;
+const mobileRouteGroups: Record<MobileRouteGroup, MobileTab[]> = {
+  dashboard: routeTabs(
+    (item) =>
+      item.navigationGroup === "Home" || item.id === "progress" || item.id === "strokes-gained",
+  ),
+  play: routeTabs(
+    (item) =>
+      item.navigationGroup === "Play" ||
+      ["course-records", "tournaments", "handicap"].includes(item.id),
+  ),
+  analyse: routeTabs(
+    (item) =>
+      item.navigationGroup === "Analyse" ||
+      ["speed", "training-load", "equipment", "rapsodo"].includes(item.id),
+  ),
+  improve: routeTabs((item) => item.navigationGroup === "Improve" || item.id === "achievements"),
+  social: routeTabs(
+    (item) =>
+      item.mobileMoreGroup === "Social" ||
+      item.navigationGroup === "Compete" ||
+      item.id === "profile",
+  ),
+  platform: routeTabs(
+    (item) => item.navigationGroup === "Account" || item.navigationGroup === "Admin",
+  ),
+};
+
+function routeTabs(predicate: (item: (typeof appRouteMetadata)[number]) => boolean): MobileTab[] {
+  return appRouteMetadata
+    .filter((item) => predicate(item) && !item.adminOnly)
+    .map((item) => ({ key: item.tabKey ?? item.id, label: item.shortTitle, href: item.route }));
+}
 
 export function MobileRouteTabs({
   group,

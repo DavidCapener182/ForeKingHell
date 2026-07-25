@@ -66,7 +66,7 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   progress: "/assets/page-progress-hero.webp",
   strokesGained: "/assets/generated/strokes-gained-hole-tracers.png",
   rounds: "/assets/page-rounds-hero.webp",
-  stockYardages: "/assets/page-stock-yardages-hero.webp",
+  stockYardages: "/assets/page-stock-yardages.png",
   practice: "/assets/page-practice-grid.webp",
   dataChat: "/assets/page-shots-shot-trace.svg",
   speed: "/assets/page-speed-bay.webp",

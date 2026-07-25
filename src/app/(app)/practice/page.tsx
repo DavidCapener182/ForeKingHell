@@ -94,7 +94,7 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
 
   return (
     <PageShell size="full">
-      <MobileRouteHeader title="Coach" group="improve" activeKey="practice" />
+      <MobileRouteHeader title="Practice Planner" group="improve" activeKey="practice" />
       <PracticeSessionCockpit
         metrics={cockpit}
         plan={initialPlan}
@@ -112,7 +112,7 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
         helpItems={practiceWorkflowHelpItems}
         workflowRailBreakpoint="2xl"
       >
-        <header className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
+        <header className="rounded-xl border border-border bg-card p-3 shadow-sm ring-1 ring-primary/10">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
@@ -455,7 +455,7 @@ function PracticeSessionCockpit({
           detail={readinessDetail}
         />
       </div>
-      <div className="grid gap-2 rounded-lg border border-emerald-950/10 bg-white/80 p-3 text-sm">
+      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 text-sm">
         <DataPair
           label="Playable rate"
           value={metrics.playableRate === null ? "--" : `${metrics.playableRate}%`}
@@ -501,25 +501,25 @@ function PracticeCockpitMetric({
     <div
       className={`grid min-h-[7.25rem] content-between rounded-lg border p-3 ${
         emphasis
-          ? "border-emerald-800/25 bg-emerald-950 text-white"
-          : "border-emerald-950/10 bg-white/84 text-foreground"
+          ? "border-primary/30 bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground"
       }`}
     >
       <div className="flex items-center justify-between gap-3">
         <p
           className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
-            emphasis ? "text-emerald-50/78" : "text-muted-foreground"
+            emphasis ? "text-primary-foreground/78" : "text-muted-foreground"
           }`}
         >
           {label}
         </p>
-        <Icon className={`size-4 ${emphasis ? "text-emerald-100" : "text-emerald-700"}`} />
+        <Icon className={`size-4 ${emphasis ? "text-primary-foreground" : "text-primary"}`} />
       </div>
       <div>
         <p className="text-4xl font-semibold leading-none tracking-normal">{value}</p>
         <p
           className={`mt-1 line-clamp-1 text-xs leading-4 ${
-            emphasis ? "text-emerald-50/78" : "text-muted-foreground"
+            emphasis ? "text-primary-foreground/78" : "text-muted-foreground"
           }`}
         >
           {detail}

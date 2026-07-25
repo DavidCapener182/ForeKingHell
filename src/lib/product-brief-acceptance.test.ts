@@ -2,19 +2,25 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { mobilePrimaryItems } from "@/components/app/nav-items";
+import { appRouteMetadata } from "@/components/app/route-metadata";
+
 function source(path: string) {
   return readFileSync(join(process.cwd(), path), "utf8");
 }
 
 describe("product brief acceptance", () => {
   it("keeps the consolidated desktop and five-destination mobile navigation", () => {
-    const nav = source("src/components/app/nav-items.ts");
-    for (const group of ["Home", "Play", "Analyse", "Improve", "Compete", "Account"]) {
-      expect(nav).toContain(`label: "${group}"`);
-    }
-    for (const destination of ["Home", "Sessions", "Analyse", "Practice", "More"]) {
-      expect(nav).toContain(`label: "${destination}"`);
-    }
+    expect(new Set(appRouteMetadata.map((route) => route.navigationGroup))).toEqual(
+      new Set(["Home", "Play", "Analyse", "Improve", "Compete", "Account", "Admin"]),
+    );
+    expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
+      "Today",
+      "Sessions",
+      "Analyse",
+      "Improve",
+      "More",
+    ]);
   });
 
   it("ships every improvement-loop route named by the brief", () => {

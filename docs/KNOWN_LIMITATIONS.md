@@ -11,10 +11,10 @@ These are launch constraints, not hidden failures.
 - OpenAI coach and scorecard routes require `OPENAI_API_KEY`; rules-based fallbacks should remain understandable when the key is absent.
 - Stripe billing should not be shown to testers unless price IDs and webhook verification are configured in the target environment.
 - Course rating/slope and scorecard proof can still be incomplete for manual or imported rounds; Data Health should call this out.
-- `npm audit --audit-level=high` passes. The current lockfile still reports 29 moderate transitive
-  advisories in Next/PostCSS, Lighthouse/Sentry/OpenTelemetry, Drizzle tooling and the shadcn CLI;
-  npm's proposed remediations are breaking downgrades or major-version changes, so they are tracked
-  for upstream-compatible releases rather than force-applied to the beta branch.
+- `npm audit --audit-level=high` currently reports 38 transitive advisories (11 high and 27
+  moderate) in Next/PostCSS, Lighthouse/Sentry/OpenTelemetry, Drizzle tooling and the shadcn CLI.
+  npm's proposed remediations require breaking downgrades or major-version changes, so they are
+  tracked for upstream-compatible releases rather than force-applied to the beta branch.
 - The live rollback-only RLS matrix verifies owner, coach, viewer, editor, friend, stranger, blocked,
   group-moderator, administrator and anonymous boundaries. It does not replace deployed-preview
   browser verification or explicit user scoping for privileged application-server queries.

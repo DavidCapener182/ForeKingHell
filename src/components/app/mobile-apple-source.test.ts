@@ -46,6 +46,8 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("font-size: 0.6875rem !important;");
     expect(appleCssSource).toContain(".ios-tab-item:focus-visible");
     expect(appleCssSource).toContain("outline: 3px solid var(--ios-tint) !important;");
+    expect(appleCssSource).toContain('body[data-mobile-platform="apple"]');
+    expect(mobileNavSource).toContain("Search all tools");
   });
 
   it("uses bottom-sheet materials with reduced transparency and motion fallbacks", () => {

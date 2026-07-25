@@ -4,7 +4,7 @@ import Script from "next/script";
 import { InteractionFeedback } from "@/components/interaction-feedback";
 import { ThemeBootstrapScript } from "@/components/theme-bootstrap-script";
 import { ThemeController } from "@/components/theme-controller";
-import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_SHORT_NAME } from "@/lib/brand";
+import { BRAND_DESCRIPTION, BRAND_NAME, BRAND_PUBLIC_URL, BRAND_SHORT_NAME } from "@/lib/brand";
 import { themeColourByMode } from "@/lib/theme";
 import { defaultThemePreference } from "@/lib/user-settings";
 import "./globals.css";
@@ -31,7 +31,11 @@ const libreBaskerville = Libre_Baskerville({
 });
 
 export const metadata: Metadata = {
-  title: BRAND_NAME,
+  metadataBase: new URL(BRAND_PUBLIC_URL),
+  title: {
+    default: BRAND_NAME,
+    template: `%s | ${BRAND_NAME}`,
+  },
   description: BRAND_DESCRIPTION,
   applicationName: BRAND_NAME,
   manifest: "/manifest.webmanifest",
@@ -51,6 +55,12 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
+  openGraph: {
+    siteName: BRAND_NAME,
+    type: "website",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "LM World Tour" }],
+  },
+  twitter: { card: "summary_large_image", images: ["/opengraph-image"] },
 };
 
 export const viewport: Viewport = {

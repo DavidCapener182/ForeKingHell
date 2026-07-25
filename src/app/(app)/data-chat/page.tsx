@@ -44,13 +44,13 @@ const dataChatPrompts = [
   {
     label: "Explain my data",
     prompt:
-      "Explain what my current ForeKingHell data can and cannot prove. Cite available records and call out low-confidence areas.",
+      "Explain what my current LM World Tour data can and cannot prove. Cite available records and call out low-confidence areas.",
     icon: Lightbulb,
   },
   {
     label: "Build practice plan",
     prompt:
-      "Build a practice plan from my current ForeKingHell data. Prioritise the club or scoring area with the strongest evidence.",
+      "Build a practice plan from my current LM World Tour data. Prioritise the club or scoring area with the strongest evidence.",
     icon: Target,
   },
   {
@@ -72,7 +72,7 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
   return (
     <PageShell>
       <MobileAppShell>
-        <MobileTopBar title="Improve" />
+        <MobileTopBar title="Data Chat" />
         <MobileRouteTabs group="improve" activeKey="data-chat" />
         <section className="premium-hero grid gap-3 rounded-lg p-3">
           <div className="flex items-start justify-between gap-3">
@@ -82,10 +82,10 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
               </StatusPill>
               <h1 className="mt-3 text-2xl font-semibold tracking-normal">Data Chat</h1>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Ask about your ForeKingHell activity, bag, rounds and practice history.
+                Ask about your LM World Tour activity, bag, rounds and practice history.
               </p>
             </div>
-            <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100">
+            <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-1 ring-[var(--status-success-border)]">
               <MessageCircle className="size-5" />
             </div>
           </div>
@@ -113,7 +113,7 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
 
       <DesktopWorkbenchLayout
         scope="data-chat"
-        className="hidden sm:grid"
+        className="hidden lg:grid"
         rail={
           <DesktopInsightRail
             title="AI data rail"
@@ -164,7 +164,7 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
         <PageHeader
           eyebrow={<StatusPill tone={canUseDataChat ? "green" : "amber"}>AI assistant</StatusPill>}
           title="Data Chat"
-          description="Ask from your ForeKingHell activity, bag, rounds, speed work, practice plans and achievements."
+          description="Ask from your LM World Tour activity, bag, rounds, speed work, practice plans and achievements."
           visual={<PageArtwork variant="dataChat" alt="" className="h-full min-h-36" priority />}
           actions={
             canUseDataChat ? (
@@ -209,9 +209,9 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
 
         <DataPanel>
           <SectionHeader
-            title="Ask ForeKingHell"
+            title="Ask LM World Tour"
             description="Answers are grounded in your saved golf data and linked back to cited app records."
-            action={<Database className="size-5 text-emerald-700" />}
+            action={<Database className="size-5 text-primary" />}
           />
           <CardContent className="p-5" data-data-chat-panel="desktop">
             {canUseDataChat ? (
@@ -261,15 +261,15 @@ function normalizePrompt(prompt: string | string[] | undefined) {
 
 function LockedDataChatPanel() {
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5">
+    <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4 text-[var(--status-warning-foreground)] sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-amber-700 ring-1 ring-amber-200">
+          <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-card text-[var(--status-warning-foreground)] ring-1 ring-[var(--status-warning-border)]">
             <ShieldCheck className="size-5" />
           </div>
           <div>
-            <p className="font-semibold text-amber-950">Data Chat is a Pro AI feature</p>
-            <p className="mt-1 text-sm leading-6 text-amber-900">
+            <p className="font-semibold">Data Chat is a Pro AI feature</p>
+            <p className="mt-1 text-sm leading-6 opacity-85">
               Paid plans include monthly AI credits. ForeKing Hell full access remains available.
             </p>
           </div>

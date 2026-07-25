@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-const statsPath = ".next/diagnostics/route-bundle-stats.json";
+const statsPath = `${process.env.NEXT_DIST_DIR ?? ".next"}/diagnostics/route-bundle-stats.json`;
 const budgetsPath = "config/route-js-budgets.json";
 
 async function main() {

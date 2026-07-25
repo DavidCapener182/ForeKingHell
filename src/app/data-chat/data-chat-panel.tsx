@@ -272,7 +272,7 @@ export function DataChatPanel({
 
       {loadedQuestion ? (
         <div
-          className="flex flex-col gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-3 text-sm leading-6 text-emerald-950 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-3 text-sm leading-6 text-[var(--status-success-foreground)] sm:flex-row sm:items-center sm:justify-between"
           data-initial-data-chat-prompt
           role="status"
         >
@@ -280,15 +280,13 @@ export function DataChatPanel({
             <Sparkles className="mt-1 size-4 shrink-0" aria-hidden />
             <span className="min-w-0">
               <span className="font-semibold">Workspace prompt loaded.</span>{" "}
-              <span className="text-emerald-950/75">
-                Review it, then ask Data Chat when you are ready.
-              </span>
+              <span className="opacity-75">Review it, then ask Data Chat when you are ready.</span>
             </span>
           </span>
           <Button
             type="button"
             variant="outline"
-            className="shrink-0 bg-white"
+            className="shrink-0 bg-card"
             disabled={!isReady || isPending}
             onClick={() => void submitQuestion(loadedQuestion)}
           >
@@ -298,14 +296,14 @@ export function DataChatPanel({
         </div>
       ) : null}
 
-      <div className="grid min-h-[22rem] gap-3 rounded-lg border border-slate-200 bg-white/85 p-3 sm:p-4">
+      <div className="grid min-h-[22rem] gap-3 rounded-lg border border-border bg-card p-3 sm:p-4">
         {turns.length > 0 ? (
           <div className="grid content-start gap-3">
             {turns.map((turn, index) => {
               if (turn.role === "user") {
                 return (
                   <div key={turn.id} className="flex justify-end">
-                    <div className="max-w-[min(38rem,88%)] rounded-lg bg-emerald-700 px-3 py-2 text-sm leading-6 text-white shadow-sm">
+                    <div className="max-w-[min(38rem,88%)] rounded-lg bg-primary px-3 py-2 text-sm leading-6 text-primary-foreground shadow-sm">
                       {turn.content}
                     </div>
                   </div>
@@ -335,10 +333,10 @@ export function DataChatPanel({
             })}
           </div>
         ) : (
-          <div className="grid place-items-center rounded-lg border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center">
+          <div className="grid place-items-center rounded-lg border border-dashed border-border bg-muted p-6 text-center">
             <div>
-              <MessageCircle className="mx-auto size-8 text-emerald-700" />
-              <p className="mt-3 text-sm font-medium text-slate-900">Ask from your golf data</p>
+              <MessageCircle className="mx-auto size-8 text-primary" />
+              <p className="mt-3 text-sm font-medium text-foreground">Ask from your golf data</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
                 Stock yardages, shots, rounds, speed work, practice, challenges and achievements.
               </p>
@@ -348,7 +346,7 @@ export function DataChatPanel({
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-sm text-[var(--status-warning-foreground)]">
           {error}
         </div>
       ) : null}
@@ -361,7 +359,7 @@ export function DataChatPanel({
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Which part of my game is costing me most right now?"
-            className="min-h-24 resize-y bg-white"
+            className="min-h-24 resize-y bg-card"
             maxLength={800}
             disabled={!isReady}
             data-page-search
@@ -431,7 +429,7 @@ function PerformanceReportBuilder({
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "forekinghell-performance-report.md";
+    anchor.download = "lm-world-tour-performance-report.md";
     anchor.click();
     window.URL.revokeObjectURL(url);
     setShareStatus("exported");
@@ -450,7 +448,7 @@ function PerformanceReportBuilder({
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "ForeKingHell performance report",
+          title: "LM World Tour performance report",
           text: draft,
         });
         setShareStatus("shared");
@@ -575,7 +573,7 @@ function SavedAnswersWorkbench({
         columns={savedAnswerColumns}
         suggestedViews={savedAnswerSuggestedViews}
         exportTableId="data-chat-saved-answers"
-        exportFileName="forekinghell-data-chat-saved-answers.csv"
+        exportFileName="lm-world-tour-data-chat-saved-answers.csv"
         className="my-3"
       />
 
@@ -677,7 +675,7 @@ function buildPerformanceReportDraft(
     "Needs a cited Data Chat answer before this section can be filled without guessing.";
 
   return [
-    "# ForeKingHell Performance Report",
+    "# LM World Tour Performance Report",
     "",
     `Generated: ${new Date().toLocaleString("en-GB")}`,
     "",

@@ -304,6 +304,10 @@ describe("desktop workbench chrome source", () => {
       "utf8",
     );
     const navSource = readFileSync(join(process.cwd(), "src/components/app/nav-items.ts"), "utf8");
+    const routeMetadataSource = readFileSync(
+      join(process.cwd(), "src/components/app/route-metadata.ts"),
+      "utf8",
+    );
     const switcherBlock =
       source.match(/function WorkspaceSwitcher[\s\S]*?function getWorkspaceViews/)?.[0] ?? "";
     const viewsBlock = source.match(/function getWorkspaceViews[\s\S]*/)?.[0] ?? "";
@@ -328,8 +332,9 @@ describe("desktop workbench chrome source", () => {
     expect(viewsBlock).toContain('href: "/admin"');
     expect(viewsBlock).toContain('pathname.startsWith("/partners")');
     expect(chromeSource).toContain("commandRoutes(isAdmin)");
-    expect(registrySource).toContain("adminNavGroup");
-    expect(navSource).toContain('href: "/admin/system-checks"');
+    expect(registrySource).toContain("appRouteMetadata");
+    expect(navSource).toContain("routesAvailableTo(true)");
+    expect(routeMetadataSource).toContain('"/admin/system-checks"');
   });
 
   it("keeps desktop keyboard shortcuts discoverable and wired to implemented handlers", () => {

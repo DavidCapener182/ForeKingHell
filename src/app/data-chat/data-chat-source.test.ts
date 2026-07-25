@@ -53,7 +53,7 @@ describe("data chat desktop workbench", () => {
     expect(panelSource).toContain('aria-label="Editable performance report preview"');
     expect(panelSource).toContain("data-performance-report-preview");
     expect(panelSource).toContain("buildPerformanceReportDraft");
-    expect(panelSource).toContain("forekinghell-performance-report.md");
+    expect(panelSource).toContain("lm-world-tour-performance-report.md");
     expect(panelSource).toContain("navigator.clipboard.writeText(draft)");
     expect(panelSource).toContain("navigator.share");
     expect(panelSource).toContain('role="status"');

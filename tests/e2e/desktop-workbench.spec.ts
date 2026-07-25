@@ -24,7 +24,7 @@ const desktopMatrixRoutes = [
   { path: "/strokes-gained", ready: /AI strokes-gained rail|Strokes gained/i },
   { path: "/rounds?filter=scorecard-only", ready: /Round history|Rounds/i },
   { path: "/leaderboard?tab=monthly&sort=monthly-shots&dir=desc", ready: /Leaderboard/i },
-  { path: "/data-chat", ready: /AI data rail|Ask ForeKingHell/i },
+  { path: "/data-chat", ready: /AI data rail|Ask LM World Tour/i },
 ] as const;
 
 test.describe("desktop workbench", () => {
@@ -2538,14 +2538,14 @@ test.describe("desktop workbench", () => {
     ).toBeVisible();
     await expect(desktopPanel.locator("[data-performance-report-builder]")).toBeVisible();
     await expect(desktopPanel.getByLabel(/Editable performance report preview/i)).toHaveValue(
-      /ForeKingHell Performance Report/,
+      /LM World Tour Performance Report/,
     );
 
     const [reportDownload] = await Promise.all([
       page.waitForEvent("download"),
       desktopPanel.getByRole("button", { name: /Export .md/i }).click(),
     ]);
-    expect(reportDownload.suggestedFilename()).toBe("forekinghell-performance-report.md");
+    expect(reportDownload.suggestedFilename()).toBe("lm-world-tour-performance-report.md");
   });
 
   test("priority pages expose contextual AI controls without full-width desktop prompt slabs", async ({
@@ -2930,7 +2930,7 @@ test.describe("desktop workbench", () => {
       { path: "/import", ready: /Import/i },
       { path: "/rapsodo", ready: /Rapsodo/i },
       { path: "/providers", ready: /Providers/i },
-      { path: "/data-chat", ready: /AI data rail|Ask ForeKingHell/i },
+      { path: "/data-chat", ready: /AI data rail|Ask LM World Tour/i },
     ];
 
     for (const route of routes) {

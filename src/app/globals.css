@@ -405,6 +405,27 @@ html[data-theme="clubhouse"] .data-table-scroll tbody tr[data-state="selected"] 
   --surface-shadow: 0 24px 54px rgba(12, 31, 19, 0.12), 0 1px 0 rgba(255, 255, 255, 0.68) inset;
   --surface-shadow-soft: 0 18px 38px rgba(12, 31, 19, 0.075);
   --surface-shadow-lift: 0 28px 72px rgba(12, 31, 19, 0.16), 0 0 0 1px rgba(199, 151, 43, 0.06);
+  /* Semantic surface and status recipes for shared working UI. */
+  --surface-elevated: var(--surface-strong);
+  --surface-muted: var(--muted);
+  --surface-selected: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  --surface-hover: color-mix(in srgb, var(--primary) 6%, var(--surface));
+  --status-success-surface: color-mix(in srgb, var(--primary) 11%, var(--surface));
+  --status-success-border: color-mix(in srgb, var(--primary) 28%, var(--border));
+  --status-success-foreground: color-mix(in srgb, var(--primary) 82%, var(--foreground));
+  --status-warning-surface: color-mix(in srgb, var(--accent) 48%, var(--surface));
+  --status-warning-border: color-mix(in srgb, var(--accent-foreground) 27%, var(--border));
+  --status-warning-foreground: var(--accent-foreground);
+  --status-error-surface: color-mix(in srgb, var(--destructive) 10%, var(--surface));
+  --status-error-border: color-mix(in srgb, var(--destructive) 32%, var(--border));
+  --status-information-surface: color-mix(in srgb, var(--chart-2) 10%, var(--surface));
+  --status-information-border: color-mix(in srgb, var(--chart-2) 30%, var(--border));
+  --status-information-foreground: color-mix(in srgb, var(--chart-2) 72%, var(--foreground));
+  --focus-ring: var(--ring);
+  --operational-metric: var(--primary);
+  --confidence-high: var(--primary);
+  --confidence-medium: var(--accent-foreground);
+  --confidence-low: var(--destructive);
   --mobile-bar-shadow: 0 18px 46px rgba(7, 31, 18, 0.18);
   --sidebar: #fbfcf5;
   --sidebar-foreground: #172017;

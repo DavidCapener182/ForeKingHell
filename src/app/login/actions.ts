@@ -101,7 +101,9 @@ export async function signInWithPasswordAction(
   if (error || !data.user) {
     return {
       status: "error",
-      message: error?.message ?? "Invalid email or password.",
+      message: isAuthConfigurationError(error?.message)
+        ? "Sign-in could not reach the auth service. Try again in a moment."
+        : (error?.message ?? "Invalid email or password."),
     };
   }
 
@@ -167,4 +169,13 @@ export async function signInWithOAuthAction(formData: FormData) {
 
 function stringMetadata(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isAuthConfigurationError(message: string | undefined) {
+  const normalized = message?.trim().toLowerCase() ?? "";
+  return (
+    normalized.includes("invalid api key") ||
+    normalized.includes("invalid jwt") ||
+    normalized.includes("project not found")
+  );
 }

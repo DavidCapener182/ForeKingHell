@@ -10,6 +10,7 @@ import {
   LogOut,
   PanelLeftIcon,
   Rows3,
+  Search,
   Settings,
   Upload,
   UserRound,
@@ -18,6 +19,10 @@ import {
 
 import { BrandMark } from "@/components/brand-mark";
 import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome";
+import {
+  GlobalCommandCentre,
+  openGlobalCommandCentre,
+} from "@/components/app/global-command-centre";
 import type { MobileNavProfile } from "@/components/app/mobile-nav";
 import { buildDesktopNavGroups } from "@/components/app/nav-items";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -99,6 +104,13 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    document.body.dataset.mobilePlatform = "apple";
+    return () => {
+      delete document.body.dataset.mobilePlatform;
+    };
   }, []);
 
   useEffect(() => {
@@ -224,6 +236,22 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
         </SidebarHeader>
 
         <SidebarContent>
+          <div className="px-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={openGlobalCommandCentre}
+              className="hidden min-h-10 w-full justify-between lg:flex"
+              aria-label="Search LM World Tour, Command K"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="size-4" /> Search
+              </span>
+              <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                ⌘K
+              </kbd>
+            </Button>
+          </div>
           {desktopNavGroups.map((group) => (
             <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
               <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
@@ -329,6 +357,7 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
           }
         />
         {children}
+        <GlobalCommandCentre isAdmin={isAdmin} />
       </div>
     </SidebarProvider>
   );

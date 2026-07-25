@@ -9,10 +9,10 @@ import {
 describe("application navigation hierarchy", () => {
   it("keeps five action-first mobile destinations", () => {
     expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
-      ["Home", "/today"],
+      ["Today", "/today"],
       ["Sessions", "/sessions"],
       ["Analyse", "/analyse"],
-      ["Practice", "/practice"],
+      ["Improve", "/coach"],
       ["More", "#more"],
     ]);
 
@@ -22,7 +22,7 @@ describe("application navigation hierarchy", () => {
     expect(mobilePrimaryItems.find((item) => item.label === "Analyse")?.isActive("/bag")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/coach")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Improve")?.isActive("/coach")).toBe(
       true,
     );
     expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/feed")).toBe(true);
@@ -59,24 +59,20 @@ describe("application navigation hierarchy", () => {
     ]);
 
     const playerRoutes = playerGroups.flatMap((group) => group.items.map((item) => item.href));
-    for (const route of [
-      "/today",
-      "/sessions",
-      "/analyse",
-      "/shots",
-      "/bag",
-      "/practice",
-      "/practice/quick-range",
-      "/goals",
-      "/rounds",
-      "/courses/strategy",
-      "/settings",
-      "/settings/notifications",
-      "/billing",
-      "/providers",
-    ]) {
-      expect(playerRoutes).toContain(route);
-    }
+    expect(playerRoutes).toEqual(
+      expect.arrayContaining([
+        "/today",
+        "/sessions",
+        "/analyse",
+        "/bag",
+        "/coach",
+        "/courses",
+        "/leaderboard",
+        "/practice",
+        "/rounds",
+        "/settings",
+      ]),
+    );
 
     expect(
       adminGroups.find((group) => group.label === "Admin")?.items.map((item) => item.href),

@@ -2,6 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { mobilePrimaryItems } from "@/components/app/nav-items";
+import { appRouteMetadata } from "@/components/app/route-metadata";
+
 const root = process.cwd();
 
 describe("production readiness gate", () => {
@@ -276,12 +279,16 @@ describe("production readiness gate", () => {
   });
 
   it("keeps the mobile primary nav and drawer aligned to the launch-monitor IA", () => {
-    const navItemsSource = readFileSync(join(root, "src/components/app/nav-items.ts"), "utf8");
     const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
 
-    expect(navItemsSource).toContain('label: "Today"');
-    expect(navItemsSource).toContain('label: "Sessions"');
-    expect(navItemsSource).toContain('label: "Profile"');
+    expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
+      "Today",
+      "Sessions",
+      "Analyse",
+      "Improve",
+      "More",
+    ]);
+    expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
     expect(mobileNavSource).toContain("Search analysis, sessions or settings");
     expect(mobileNavSource).toContain('href="/settings"');
     expect(mobileNavSource).toContain('href="/privacy"');

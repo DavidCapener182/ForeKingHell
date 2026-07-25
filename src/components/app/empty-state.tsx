@@ -20,13 +20,27 @@ type EmptyStateProps = {
 
 export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <Empty className={cn("border border-dashed border-border bg-muted/30", className)}>
-      <EmptyHeader>
-        {icon ? <EmptyMedia variant="icon">{icon}</EmptyMedia> : null}
-        <EmptyTitle>{title}</EmptyTitle>
-        {description ? <EmptyDescription>{description}</EmptyDescription> : null}
+    <Empty
+      className={cn(
+        "border border-border/80 bg-card px-5 py-7 shadow-xs sm:px-7 sm:py-8",
+        className,
+      )}
+    >
+      <EmptyHeader className="gap-2.5">
+        {icon ? (
+          <EmptyMedia
+            variant="icon"
+            className="mb-1 size-10 rounded-xl bg-primary/10 text-primary [&_svg:not([class*='size-'])]:size-5"
+          >
+            {icon}
+          </EmptyMedia>
+        ) : null}
+        <EmptyTitle className="text-base font-semibold">{title}</EmptyTitle>
+        {description ? (
+          <EmptyDescription className="max-w-md">{description}</EmptyDescription>
+        ) : null}
       </EmptyHeader>
-      {action ? <EmptyContent>{action}</EmptyContent> : null}
+      {action ? <EmptyContent className="mt-1">{action}</EmptyContent> : null}
     </Empty>
   );
 }

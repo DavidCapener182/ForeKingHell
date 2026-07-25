@@ -42,6 +42,20 @@ Product-first golf analytics: quiet, dense, confident, and tactile. The UI shoul
 - Do not animate layout properties.
 - Respect `prefers-reduced-motion`.
 
+## Public marketing system
+
+- Public marketing components live under `src/components/marketing/` and style through the marketing CSS module. They must not add typography or surface rules to the authenticated shell.
+- The landing page can use a paced product narrative, but authenticated routes remain dense working surfaces. Do not bring decorative scrollytelling into app pages.
+- Reveals use one observer pattern and only animate opacity and transform. Reduced-motion users receive the complete document flow immediately; JavaScript failure must not hide content.
+- Course Twin marketing content begins with a lightweight static course plan. Optional runtime detail is requested only near the section and always has mobile, reduced-motion, low-power and error fallbacks.
+
+## Responsive and route identity contract
+
+- `lg` is the standard boundary for paired mobile and desktop render trees. At any viewport, only one complete route interface may be visible.
+- A navigation group is not a page title. Headers use the actual route title (for example, `Practice Planner` and `Data Chat`) and may show a smaller group label separately.
+- The Apple-style mobile stylesheet applies only when the authenticated shell sets `body[data-mobile-platform="apple"]`; public, login and privacy typography must remain independent.
+- Shared UI uses semantic surface, state, focus, confidence and operational-metric tokens. Keep intentional chart-series colours separate from those component recipes.
+
 ## Copy
 
 - Product copy should be concise and action-led.

@@ -25,6 +25,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { openGlobalCommandCentre } from "@/components/app/global-command-centre";
 
 export type MobileNavProfile = {
   displayName: string;
@@ -221,6 +222,18 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
                     </Link>
                   </SheetClose>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-12 justify-start"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    window.setTimeout(openGlobalCommandCentre, 0);
+                  }}
+                >
+                  <Search className="size-4" />
+                  Search all tools
+                </Button>
                 <Button asChild className="min-h-11 justify-center rounded-xl">
                   <SheetClose asChild>
                     <Link href="/import">

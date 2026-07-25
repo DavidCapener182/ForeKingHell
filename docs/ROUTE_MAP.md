@@ -1,6 +1,6 @@
 # Product route map
 
-The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The mobile shell exposes only Home, Sessions, Analyse, Practice and More; every existing feature remains reachable through the grouped secondary navigation below.
+The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The mobile shell exposes only Home, Sessions, Analyse, Practice and More; every existing feature remains reachable through the grouped secondary navigation below. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and global command-centre destinations.
 
 ## Primary personal analysis
 
@@ -53,14 +53,18 @@ The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The
 
 ## Profile, settings and platform
 
-| Feature                  | Routes                                                                  | Where users find it                   |
-| ------------------------ | ----------------------------------------------------------------------- | ------------------------------------- |
-| Profile                  | `/profile`                                                              | Mobile More and desktop Account.      |
-| Settings and invitations | `/settings`, `/settings/notifications`, `/settings/invitations/[token]` | Profile / More.                       |
-| Privacy and offline      | `/privacy`, `/offline`                                                  | Public/support and Profile settings.  |
-| Billing                  | `/billing`                                                              | Manage.                               |
-| Partners                 | `/partners`                                                             | Manage for authorised users.          |
-| Authentication and root  | `/login`, `/`                                                           | Public landing and dedicated sign-in. |
+| Feature                  | Routes                                                                  | Where users find it                                                                      |
+| ------------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Profile                  | `/profile`                                                              | Mobile More and desktop Account.                                                         |
+| Settings and invitations | `/settings`, `/settings/notifications`, `/settings/invitations/[token]` | Profile / More.                                                                          |
+| Privacy and offline      | `/privacy`, `/offline`                                                  | Public/support and Profile settings.                                                     |
+| Billing                  | `/billing`                                                              | Manage.                                                                                  |
+| Partners                 | `/partners`                                                             | Manage for authorised users.                                                             |
+| Authentication and root  | `/`, `/login`, `/welcome`                                               | Public product landing, dedicated sign-in and resumable real-account activation journey. |
+
+## Command centre
+
+The global command centre is available in the authenticated shell through `Command+K`, `Control+K`, `/` outside editable fields and a mobile More-sheet entry. It searches routes plus golf aliases such as driver, yardages, practice load and course plan, then exposes import, session, practice, round, Data Chat, Course Strategy and goals actions. Role-restricted destinations are filtered before display.
 
 ## Administration
 

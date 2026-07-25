@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
@@ -37,6 +38,11 @@ import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-han
 import { hashShareToken } from "@/lib/share-links";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Shared scorecard",
+  robots: { index: false, follow: false },
+};
 
 type PageProps = {
   params: Promise<{

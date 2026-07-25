@@ -67,6 +67,11 @@ real secret and never receives this fallback.
 - OpenAI coach and scorecard routes keep authentication, rate limits and request-size limits.
 - Export and delete flows verified in `/settings`.
 - Mobile first viewport checked for identity, status, one action and active content.
+- Public landing checked at 390px, 768px, 1024px and 1440px for overflow, duplicate paired interfaces, blocked sticky controls and broken media.
+- Data Chat has one complete interface per viewport; mobile and desktop trees must switch at `lg`.
+- Landing content remains readable with JavaScript disabled and with reduced motion enabled; Course Twin must retain its static fallback.
+- Verify the Join beta path reaches `/welcome`, activation progress is real-account derived, and established users continue to Today without a forced wizard.
+- Verify `Command+K`, `Control+K`, `/`, keyboard selection and the mobile command sheet without exposing role-restricted routes.
 - No empty media boxes, no raw debug metadata above the fold, no full mobile tables above the fold.
 
 ## Asset Usage Table

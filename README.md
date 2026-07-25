@@ -94,6 +94,16 @@ or override with `LIGHTHOUSE_ROUTES=/login,/dashboard` when auditing a smaller r
 - `/feed`, `/friends`, `/profile`, `/profile/[username]`, `/groups`, and `/social-intelligence` provide privacy-first feed cards, PB/record/tournament highlights, friend comparison, group digest, public profile preview, reporting and suspicious-activity review.
 - `/equipment`, `/billing`, `/providers`, `/partners`, `/settings`, and `/admin` cover active equipment setup, before/after equipment history, plans/entitlements, provider health, sponsor operations, privacy preview, collaborator access and admin moderation.
 
+## Public product experience
+
+`/` is a server-rendered LM World Tour product story, not an authenticated dashboard preview. It uses clearly-labelled fictional data only for the public sample tour; it never reads or writes a visitor's account data. The landing composition lives in `src/components/marketing/` and keeps client code to navigation, small demonstrations and viewport-triggered reveals.
+
+The public Join beta path preserves `/welcome` as the post-signup destination. `/welcome` derives each activation step from real account state (source selection, import, club matching, usable confidence, session review and practice plan), can be skipped and resumed, and never inserts sample shots. Today shows the compact setup-progress card only while that real activation loop is incomplete.
+
+Authenticated routes share `src/components/app/route-metadata.ts` for page identity, desktop navigation, the mobile shell, More-sheet grouping and the global command centre. Open the command centre with `Command+K`, `Control+K` or `/` outside editable fields; it also has shell entry points for touch users. It filters administrative destinations by role and only sends navigation/action names to the browser.
+
+Public indexing is deliberately narrow: the sitemap includes `/` and `/privacy`, while robots disallow account, admin, API and bearer-token routes. Public intent analytics are optional Plausible events—Join beta clicked, Sign in clicked, Sample tour started/completed, Course Twin demo opened and FAQ item opened—and contain no golf values, account identifiers, names or emails.
+
 ## Google Course Enrichment
 
 Migration `0023_google_course_enrichment.sql` adds Google Places metadata to courses: address, coordinates, Google Place ID, website, Google Maps URL, rating, rating count, opening hours, attribution JSON and enrichment timestamp. The course setup flow can import a Google Place, merge likely duplicates, and pull OSM hole geometry when coordinates are available.

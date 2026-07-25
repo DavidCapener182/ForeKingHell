@@ -448,7 +448,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       title: "Coach",
       description: "Open the next practice priority, diagnosis, and session plan.",
       href: "/coach",
-      metric: data.coachPreview ? data.coachPreview.clubName : "Practice plan",
+      metric: data.coachPreview?.clubName ?? "Practice plan",
       icon: Brain,
       accent: "text-rose-700 bg-rose-50",
     },
@@ -521,7 +521,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           {
             id: "coach-priority" as const,
             label: "Practice task",
-            detail: data.coachPreview ? data.coachPreview.clubName : "Coach signal",
+            detail: data.coachPreview?.clubName ?? "Coach signal",
             executive: true,
           },
         ]

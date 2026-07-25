@@ -10,3 +10,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return <PrivateAppShell data={data}>{children}</PrivateAppShell>;
 }
+import type { Metadata } from "next";
+export const metadata: Metadata = { robots: { index: false, follow: false } };
