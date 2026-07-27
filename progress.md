@@ -1,0 +1,203 @@
+Original prompt: Implement the proposed full ForeKingHell Course Twin plan: real course packages, replay, strategy, virtual play, live launch-monitor integration, scalable course generation and later multiplayer.
+
+## Smooth LiDAR flight tracers
+
+- Reproduced the reported jagged driver tracer as a physics-mapping defect rather than a Three.js line-rendering issue.
+- The replay mapper previously subtracted the raw shot's local terrain height and added the mapped path's local terrain height at every airborne frame. Fine LiDAR changes on those two different ground tracks leaked into the ball altitude and created sharp mid-air kinks.
+- Airborne frames now preserve their aerodynamic height above a smooth start-to-carry terrain baseline. Bounce and roll frames still follow the sampled LiDAR surface.
+- Added a detailed-terrain regression that measured a 3.89 m vertical turn before the fix and now holds every airborne turn below 0.7 m, while the existing endpoint, shape, bounce, roll and penalty contracts remain covered.
+- The official web-game client reached the expected authenticated sign-in boundary. The signed-in Chrome scene loaded hole 8 and the corrected replay path, but direct WebGL screenshot capture timed out; deterministic physics coverage is the acceptance source for this defect.
+
+## Dedicated short-game model
+
+- My Bag play now recognises chips at 30 yd or less, pitches from 30–60 yd and bunker splashes inside 60 yd instead of sampling a full-swing club distribution.
+- The 60–100 yd gap now defaults to a distance-scaled half wedge. Under 100 yd the golfer gets explicit, distance-appropriate shot-type buttons: chip/pitch/half inside 30 yd, pitch/half/full from 30–60 yd, and half/full from 60–100 yd.
+- Short-game carry scales to the live pin distance, strike variation responds to fairway/rough/trees/bunker lies, and mapped landing surfaces retain different amounts of rollout before the existing physics/surface classifier determines the final lie.
+- Short leaves offer scoring clubs only (or the two shortest clubs as a fallback), use tighter aim offsets and show the shot type, lie and scaled carry disclosure before play.
+- A chip that finishes on the mapped green continues through the existing automatic or manual putting hand-off.
+- Regression coverage fixes the reported 20 yd rough-leave case, compares green and rough rollout, checks bunker splash launch, verifies 60–100 yd half shots and explicit shot-type selection, and checks short-list club selection. The full gate passes: 312 test files / 1,137 tests, ESLint, TypeScript and `git diff --check`.
+- Authenticated Bootle smoke reached a real 71 yd fairway leave and confirmed Half shot / Full swing controls, `gw` / `pw` choices, ±8 yd short-approach aim controls and scaled-carry copy. Playing the half wedge completed the mapped-green hand-off without a browser error.
+
+## My Bag strategy-sandbox isolation
+
+- My Bag rounds are a Course Twin strategy tool, not genuine played rounds. They retain the private Course Twin event ledger for deterministic play/resume but no longer materialise completed modelled shots into the main `sessions` and `shots` analytics tables.
+- Live launch-monitor rounds remain eligible to become real analytics sessions because their shots are measured rather than generated from the golfer's bag model.
+- The setup, active-round and completion copy now explicitly says My Bag test rounds are excluded from Rounds, Shots and performance stats.
+
+## Golfer-eye camera correction
+
+- Live 18-hole play inspection showed the selected-shot camera reading as an elevated tracer/broadcast view rather than the golfer's position.
+- The golfer shot preset now sits 4.5 m behind the strike point, only 0.85 m off the target line and at 1.72 m eye height, with a wider 56 degree field of view. The non-shot tee preset is also lower and closer while the aerial preset remains unchanged.
+- Authenticated Bootle visual verification confirmed a lower golfer-eye frame with substantially more fairway, tree-line and target context. The reset control returned to the corrected preset.
+- The official web-game client was also run; its isolated browser correctly stopped at the login boundary, so authenticated visual acceptance used the already signed-in Chrome window instead.
+- The separately observed 17–21 yd short-game gap is addressed by the dedicated chip/pitch model above.
+
+## Full-plan continuation audit
+
+- The published foundation renders and simulates Play/Live shots, but round state is currently hole-local, green completion is a fixed two-putt estimate, and no canonical Course Twin round or shot ledger is persisted into the existing analytics model.
+- Wind is supported by the deterministic physics core but is not yet exposed as a round rule in the golfer-facing runtime.
+- The builder selects USGS, LINZ and NRCan adapters in build plans, but the standalone worker currently executes only Environment Agency, Welsh Government and Copernicus terrain retrieval.
+- Invite-only rooms persist presence and optimistic host state, but the runtime does not yet publish canonical shared shots, spectator membership, competition locks or verified final-round hashes.
+- Bridge executables and privileged-port helpers build locally; public signed/notarised distribution still depends on external release certificates.
+
+# Course Twin goal progress
+
+## Verified foundation
+
+- Bootle pilot route renders mapped holes, semantic surfaces and reconstructed Rapsodo replays.
+- Authenticated manifest and replay APIs return scoped, provenance-labelled documents.
+- Course Twin schema migration is applied to Supabase with forced RLS and authenticated SELECT-only grants.
+- Three.js remains lazy and route-local; the current route passes its JavaScript budget.
+- Course and round entry points, API boundaries and WebGL mounting have focused tests and browser smoke evidence.
+- Bootle now has a reproducible Environment Agency LiDAR package with a 2.4 m browser mesh, georeferenced aerial reference imagery and a verified authenticated browser capture.
+- The LiDAR work is isolated on `codex/course-twin-full` so the public-beta release checkout can remain frozen.
+- Bootle now uses browser-sized ambientCG CC0 colour, normal and roughness maps for fairways, greens, tees, rough and bunker sand, with an auditable asset ledger. A feathered terrain-splat shader blends fairway, green, tee, bunker and water masks into the LiDAR terrain material instead of drawing opaque polygon overlays.
+- Mapped woodland now uses four photographic British parkland tree silhouettes and four shrub silhouettes on crossed, instanced billboards. This replaces the toy low-poly canopies while keeping deterministic placement inside mapped woodland and outside mapped golf surfaces and water.
+- The scene now includes a blue atmospheric dome, a full ring of low cloud banks and a restrained distant tree/roof line so golfer-level views no longer terminate in a flat white background.
+- The runtime now offers separate Golfer and Aerial camera presets; the lower view exposes material detail and keeps replay tracers in the same real-terrain scene.
+- Replay now renders only the selected shot. Selecting another shot resets playback and moves a lower Shot view camera behind that shot's recorded start coordinate, looking down its own start-to-end direction. Short chips retain at least 24 m of forward course context.
+- Accessible camera controls now provide left/right orbit, optical zoom in/out and reset-to-selected-shot actions alongside drag/scroll controls. Optical zoom preserves the shot-start anchor instead of dollying past short shots.
+
+## Active work
+
+- [x] Add deterministic runtime state hooks for automated gameplay inspection.
+- [x] Replace prototype trajectory-only playback with a tested golf-flight, bounce and roll engine.
+- [x] Classify semantic landing surfaces and apply lie and water/out-of-bounds penalty rules.
+- [x] Add player-specific dispersion strategy and My Bag virtual-round play.
+- [x] Produce a versioned real-terrain Bootle package through a repeatable course-builder pipeline.
+- [x] Add secure GSPro localhost bridge protocol and a signed-app build path.
+- [x] Add on-demand course jobs, package storage/versioning, QA corrections and wider-course adapters.
+- [x] Complete Course Twin performance, accessibility, security, browser gameplay and regression verification.
+
+## Remaining full-platform phases
+
+- [x] Start the isolated Course Twin development server on port 3200 and open the Bootle twin for user inspection.
+- [x] Make queued build plans executable by including the course identity, geographic bounds, hole centre-lines and mapped source geometry in the signed worker payload.
+- [x] Add worker-produced terrain and texture assets to immutable package storage and issue short-lived browser delivery URLs.
+- [x] Run the standalone Environment Agency/Copernicus terrain-builder worker from the signed queue contract.
+- [x] Complete production bridge installation and privileged GSPro port handling on macOS/Linux.
+- [x] Add multiplayer session state plus walk/cart runtime controls.
+- [x] Verify the wider UK course-generation batch and finish the final publish gate.
+
+## Known constraints
+
+- The current Bootle runtime uses a Grade B 2.4 m mesh generated from Environment Agency 1 m LiDAR; putting contours remain explicitly unverified.
+- Imported shot metrics are measured, but current course placement and flight animation are reconstructed.
+- Private multiplayer foundations now include invite-only rooms, capped membership, terrain-following walk/cart presence, append-only events, host-owned optimistic state and an in-scene group panel. Real-time shot synchronisation, hosted lobbies and voice/chat remain later product phases. Live launch-monitor play uses the documented GSPro Open Connect v1 route through a loopback-only bridge; signed/notarised public installers still require the product's external release certificates.
+- The terrain-splat PBR pass and Golfer view are typechecked and have a clean hole 5 automated browser state; final full-page visual acceptance is recorded separately.
+- The billboard vegetation and atmosphere pass typechecks cleanly. A live authenticated browser smoke selected Bootle hole 5, retained the saved-round replay tracers and visually confirmed the new foliage, clouds and distant background.
+- Final visual evidence is saved at `/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/bootle-hole-5-real-vegetation-sky.png`.
+- Camera/replay interaction evidence: the web-game state reports `visibleShotCount: 1`; selecting shot 2 changes `selectedShotIndex` from 0 to 1 and changes the camera anchor from shot 1's end to shot 2's start. Browser smoke confirmed the control panel, shot replacement, short-chip framing, orbit and anchored optical zoom.
+- Production build and the formal route budget pass; `/play/[courseId]` is 954 KiB against a 1,025 KiB uncompressed limit. The new source-contract assertions pass directly.
+- Selected-shot replay now runs the deterministic aerodynamic, bounce and terrain-roll model against the loaded LiDAR sampler and semantic surface classifier. The rendered path is reconciled to the saved round's derived carry/total positions, while the runtime reports current phase, landing lie, final lie, bounce count and water/out-of-bounds penalties.
+- Renaming the Vitest config to an explicit ESM `.mts` boundary fixes the Vitest 4 `std-env` startup failure. The focused Course Twin physics, replay, surface, terrain and strategy suites now run normally: 5 files and 15 tests pass.
+- Strategy mode now loads the authenticated dispersion Monte Carlo document only when requested, renders the selected club's landing cloud and aim line over the real hole, and shows measured-sample confidence, serious-hazard probability, bunker probability and expected leave. Hole 5 browser verification returned a recommended club cloud with no console errors.
+- Play mode now samples a deterministic virtual shot from the selected club's measured carry, launch, spin and side-dispersion distributions, applies the real terrain/surface physics, advances multi-shot state, handles penalty drops, and offers an explicitly modelled 2-putt finish once the ball reaches a mapped green. Browser verification completed hole 5 in three modelled strokes and advanced hole 6 from a driver result into shot 2 with no console errors.
+- The local launch-monitor bridge now binds GSPro TCP and browser control sockets only to loopback, parses fragmented/concatenated JSON safely, validates official v1 fields and realistic ranges, rate-limits input, pairs browsers with one-time codes and short-lived hashed tokens, and relays only normalised shot measurements. Sixteen Node protocol/security/integration tests pass, including a real TCP-to-authenticated-WebSocket shot and the GSPro 201 player/club response.
+- Live mode maps the next paired GSPro shot into the selected hole from the current lie, renders only that measured shot through the same LiDAR/surface physics, advances strokes and penalties, and sends handedness plus selected-club information back to the monitor. The connector token remains in memory and never enters a URL or browser storage.
+- `npm run bridge:build` provides a pinned Node single-executable build, target-platform self-test and SHA-256 output, with macOS/Windows production-signing hooks that require protected external certificate credentials.
+- Course generation is now a real queued platform boundary rather than a Vercel request: admin-only idempotent jobs fingerprint course/map/correction inputs, select Environment Agency, USGS, LINZ, NRCan or Copernicus terrain adapters, and dispatch signed jobs to a separately deployed builder. Worker callbacks are size-capped and protected by timestamped SHA-256 HMAC signatures.
+- Generated manifests are uploaded to a private Supabase Storage bucket under immutable version paths, SHA-verified before use, staged for review, and published atomically while the prior version becomes superseded. Published packages load through this version registry before the Bootle pilot fallback.
+- Manual QA supports validated feature upsert/delete and tee/green anchor corrections. Accepted corrections force a new fingerprinted build, are applied without mutating the source manifest, and must pass a separate admin publication step.
+- Quality grading is evidence-derived: Grade A is impossible without verified putting contours; Grade B allows full shots with approximate greens; Grade C is limited to flyover/replay/strategy; Grade D remains 2D-only. The deployed GDAL worker and signing/notarisation certificates remain external infrastructure, configured through explicit environment contracts.
+- Final focused verification passes: 290 Vitest files/1,067 tests, 7 terrain-builder tests, 18 bridge protocol/security/integration tests, TypeScript, ESLint, Prettier, Drizzle schema validation, production build, the formal route budget and authenticated Course Twin browser journeys in desktop Chromium and the iPhone viewport. The final browser journey opens the exact saved Bootle round with 58 Rapsodo shots, enters Explore, moves the cart over the LiDAR terrain, creates an invite-only room on desktop and reopens the selected-shot replay.
+- The resumed full-platform phase fixed a material worker-contract gap: build jobs now include the bounded course origin, geographic extent, hole tee/green/centre-line geometry and mapped course features. Focused build-plan tests and TypeScript pass after the change.
+- Worker completions now carry bounded base64 assets with content-type and SHA-256 metadata. The app re-verifies every digest, uploads assets under immutable version paths, stores non-public `storage://` references in the manifest and resolves them to one-hour signed URLs only when an authenticated published manifest is loaded.
+- The standalone builder verifies exact-body HMAC jobs, restricts callback origins and paths, serialises jobs, retrieves Environment Agency WCS or keyed Copernicus GLO-30 terrain, converts geographic holes/features to local ENU coordinates, packages float32 terrain plus aerial imagery and posts a signed callback. Five builder protocol/generator/server tests pass. A live non-Bootle Royal Liverpool smoke produced 263,169 LiDAR samples, a 1,052,676-byte terrain asset and a 449,813-byte aerial asset with verified SHA-256 digests.
+- The bridge now selects official port 921 on Windows/root and an unprivileged port 4921 for ordinary macOS/Linux users. The packaged macOS helper is a minimal loopback-only launch daemon that forwards 921 to 4921 while the browser bridge stays unprivileged; Linux emits a `setcap cap_net_bind_service` setup script. A real TCP forwarding test raises the bridge suite to 18 passing tests. The rebuilt macOS arm64 executable self-tests, verifies with `codesign --strict`, emits syntax-checked install/uninstall helpers and has SHA-256 `3a15c7852c20a5e159f274fc2299af3d316a1380d714d69044527d3821c26145`.
+- Explore mode now provides terrain-following walk and cart controls, deterministic camera inspection, and selected-mode state that correctly hides replay shots. Private group rooms are applied to Supabase with forced RLS and no browser-role grants; a live browser-created room returned an eight-character invite and published the host's hole/transport presence.
+- Wales now has an executable Welsh Government one-metre DTM COG adapter with bounded HTTP range reads and WGS84-to-British-National-Grid reprojection. A live Celtic Manor-area smoke produced 263,169 samples at 4.30 m runtime spacing and verified SHA-256 `650cc591770f9eaf17f3bbb10ea3d80deecc8878074806446c7f5743e1a70761`. Copernicus fallbacks are labelled `global_dem` and capped at Grade C rather than being presented as LiDAR.
+- The admin-only UK batch preview ranks mapped, geocoded courses and the queue caps requests at 50 while reusing the idempotent per-course build path. The live catalogue currently has only one UK course with both mapped holes and coordinates after Bootle's verified package origin was repaired; the preview reports Bootle at readiness 95. Aintree, Mountain Park and the synthetic Tour Links entry remain excluded until trustworthy coordinates are supplied.
+- The standalone builder now executes USGS 3DEP, NRCan HRDEM and LINZ 1 m STAC/COG terrain adapters in addition to the existing England, Wales and Copernicus paths. A bounded OSM refresh fills missing golf, water and woodland semantics, and an opt-in official Overture client fills missing water/wooded land-cover features without replacing checked source geometry.
+- A pinned Node 24 builder container installs the official Overture Maps 1.0.1 CLI and production GeoTIFF/projection dependencies. Thirteen builder tests pass, a production-only npm install imports GeoTIFF successfully, and live USGS and NRCan terrain smokes returned 513 x 513 float heightfields. The LINZ static catalogue path remains unit-covered but its first uncached live regional-index scan is slower than the current interactive smoke window.
+- The launch-monitor bridge now emits a redacted downloadable support report from the CLI, loopback API and Live-mode UI. It records runtime, ports, monitor/browser state and counters while explicitly excluding pairing codes, session tokens and raw shot payloads.
+- Bridge packaging is pinned to Node 24, tolerates both thin and universal macOS runtimes, and emits a versioned artifact manifest with sizes and SHA-256 digests. Beta/stable release channels fail closed without external code-signing and Ed25519 manifest credentials; stable macOS additionally requires notary submission. Twenty-three connector tests pass, and the rebuilt ad-hoc macOS arm64 executable passes self-test, strict code-signature verification, checksum validation, version output and diagnostics output.
+- Private rooms now distinguish host, player and spectator capacity. Spectators can inspect presence and the shared ledger but cannot mutate it; competition rooms reject mulligans, and only the host can finalise or abandon the canonical room state.
+- Shared shot, hole and terminal events use a room-wide optimistic version plus a deterministic SHA-256 previous-hash chain. Personal Play/Live round events publish into that room ledger without making the golfer's own saved round depend on network presence. The Explore panel now exposes practice/competition creation, player/spectator joining, role, verified event count and the final hash prefix.
+- Migration 0049 is applied to the configured Supabase project. Readback confirms all five room columns, forced RLS on `fkh_course_twin_shared_round_events`, no anon/authenticated table grants and exact service-role CRUD. A live authenticated room API smoke created a competition room, wrote and read sequence 1 with a 64-character final hash, then closed the test room; the focused Chromium group journey also passes.
+- The playable-round continuation is now canonical rather than hole-local: 9/18-hole rules, wind, manual putting, competition gimmes, mulligan restrictions, resume/abandon, and completion materialisation into the existing session/shot analytics model all use an idempotent hash-chained ledger. Migration 0048 is applied to the configured Supabase project.
+- The global builder path is executable for Environment Agency, Wales, USGS 3DEP, NRCan HRDEM, LINZ STAC/COG and Copernicus terrain, with OSM semantics and opt-in Overture augmentation. The Node 24 container pins the official Overture CLI; 13 builder tests pass, and live USGS/NRCan 513 x 513 terrain smokes verified the adapters. LINZ's first uncached regional catalogue scan remains the only slow external-data smoke, while its catalogue/COG path is unit-covered.
+- Connector distribution now includes redacted diagnostics, versioned SHA-256 artifact manifests, Ed25519 manifest signing for beta/stable, and fail-closed stable macOS notarisation requirements. Twenty-three connector tests pass; the current macOS arm64 binary passes self-test, strict ad-hoc code-signature validation and checksum verification. Public production signatures still require the product owner's external Apple/Windows certificates.
+- Shared rounds now have player/spectator roles, practice/competition rules, a deterministic room-wide event hash chain, optimistic shared versions, host-only terminal events and a verified final hash. Personal Play/Live shots publish into the shared ledger without making a saved personal round depend on room connectivity.
+- Final authoritative verification passes on Node 24.15.0: Prettier, ESLint, Next route type generation, TypeScript, 296 Vitest files/1,088 tests, Drizzle validation, the optimized Next 16 production build and all formal route budgets. `/play/[courseId]` remains route-local at 954 KiB against its 1,025 KiB uncompressed limit.
+- Final isolated-server browser verification passes both Course Twin Chromium journeys (2/2): authenticated manifest/replay/API boundaries and discoverability, plus start/resume/abandon of a persisted My Bag round. The official web-game capture loop also reports Bootle's 2.44 m LiDAR mesh, selected-shot-only replay, deterministic flight state and a fairway landing with no captured console errors. Final frame and text-state artifacts are under `/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/final-course-twin/`.
+- Automatic putt-out regression: Safari can reload the WebGL page after a shot is saved, which discarded the transient simulation and incorrectly offered another full club from a persisted green lie. Green completion is now derived from the canonical accepted-shot ledger, assigns a clearly modelled 1/2/3-putt result from remaining mapped-pin distance, and recovers after reload before advancing the hole. A clean official web-game recovery test resumed a saved green shot, recorded one modelled putt and a 2 on Bootle's first, advanced to hole 2, matched `render_game_to_text`, and reported no console errors. The temporary test user and round were removed afterward; evidence is under `.../auto-putt-recovery-clean/`.
+- Replay continuity regression fixed: a follow-up shot now inherits the prior shot's lateral lane instead of treating its measured side deviation as an absolute offset from the hole centre line. Bootle hole 1 shot 2's carry-to-roll heading change fell from the visually near-perpendicular turn to 1.9 degrees; the focused replay/physics suites pass 10/10 and the official web-game capture confirms only the corrected selected shot is visible.
+- Aintree Golf Centre is now a checked-in nine-hole Grade B pilot tied to the existing course id `4de11156-16fd-4a36-84e0-fadda53456b0`, not a duplicate. Its package contains a 513 x 513 Environment Agency LiDAR heightfield, Esri aerial reference, all nine mapped holes and 82 scoped semantic features; the browser reports the honest 4.4 m runtime resolution and unverified putting caveat.
+- The reusable local-pilot exporter and first-wave catalogue now preserve Aintree among 21 mapped UK candidates. Package-integrity tests verify the Aintree terrain digest, byte length and hole count, and the authenticated Chromium route journey opens the exact existing Aintree record successfully.
+- Public 3D replay links are now truly read-only: they skip active-round restoration and expose only Flyover and Replay. A late persisted-round response can no longer override a golfer-selected mode, preventing Explore/multiplayer controls from disappearing during initial load.
+- Final verification after the Aintree and sharing work passes: 308 Vitest files/1,110 tests, 19 builder tests, 25 bridge tests, TypeScript, ESLint, Prettier, Drizzle validation, the optimized Next 16 production build, all three authenticated Course Twin Chromium journeys and every formal route budget. `/play/[courseId]` remains 954 KiB against its 1,025 KiB uncompressed limit.
+- The resumable first-wave package exporter now completes 21/21 real mapped UK courses with zero failures, including the existing Aintree record. Every package has a 513 x 513 terrain heightfield, aerial reference, manifest SHA ledger and Grade B provenance; all 21 manifests and 42 immutable assets pass authenticated API/digest checks, while manual visual QA remains truthfully separate in the report.
+- Static first-wave manifests are loaded by course id before the Bootle fallback, so all 21 generated courses open through the reusable `/play/[courseId]` runtime. Live browser smokes rendered Aintree, Arrowe Park and Alsager with no captured console errors.
+- Same-origin microphone access is now allowed while camera, geolocation, payment and USB remain denied. The Chromium journey creates a public competition room, confirms it appears in matchmaking, persists chat, enables a real fake-device WebRTC audio track, writes a shared hash-chained event and closes the room cleanly.
+- `npm run course-twin:acceptance:platform` exercises the real localhost APIs with disposable data: active-admin enforcement, 0.25 m/10 mm putting-grid import, verified Grade A rebuild queueing with the survey embedded, an unauthenticated read-only replay, a complete no-mulligan nine-hole ledger, and a verified tournament submission. The evidence report confirms all temporary course, survey, build, share, tournament, round, session and feed records are removed.
+- The physical MLM2PRO acceptance runner was exercised against the locally built bridge and failed closed as intended with no monitor/browser/shots connected. A production physical sign-off still requires an actual MLM2PRO in Premium GSPro mode plus the packaged port-921 helper; signed/notarised public releases still require external Apple/Windows credentials.
+- All 21 first-wave packages now pass one authenticated Chromium render gate: every manifest and immutable terrain/aerial asset returns its expected bytes, every `/play/[courseId]` route mounts a visible WebGL canvas, and every runtime reports terrain `ready`. This is technical package/render verification; the catalogue continues to report manual geographic visual QA as incomplete.
+- The builder workflow now publishes a full-commit-SHA GHCR image from a verified branch run while reserving `latest` for `main`. Workflow run `29963104206` passed worker tests, container build and registry push; the registry returned the published two-platform OCI index for commit `0d4c37df4818e9cadb78ffa964de4e566b41a29a`.
+- A fresh production-readiness audit confirms that hosted builder/callback/cron/service-role configuration and Apple/Windows production-signing secrets are not present in the isolated local environment. The software paths fail closed, but a real hosted deployment, public signed installers, physical MLM2PRO acceptance and a real Grade A surveyed-green package cannot be truthfully marked complete until those external credentials, hardware and survey grids are supplied.
+- The first-wave catalogue now has an auditable per-course visual review ledger rather than an unqualified screenshot claim. All 21 generated ids/slugs, including the existing Aintree record, have an inspected 1280 x 720 Chromium frame and a Grade B caveat verdict; known distant-aerial stretching is recorded for affected courses. Regeneration derives `manualVisualQaComplete` from exact ledger coverage and fails the completeness claim for missing, rejected, mismatched, duplicated or unexpected entries. Twenty-three builder tests and the four-journey Chromium suite pass with `21/21` approved.
+- `npm run course-twin:acceptance:production` is now the fail-closed final evidence gate. It checks hosted builder health, redacted configuration presence, the private package bucket, published immutable versions, the 21-course QA ledger, a real physical MLM2PRO report, Ed25519 stable manifests plus Apple notarisation/Authenticode, and complete verified putting grids for a named Grade A course. The current real-environment run passes the 21/21 catalogue and redacted database connection checks, then correctly fails every still-absent external credential, hosted service, physical report, stable signed manifest, published CDN version and real surveyed course.
+
+## Completed milestone — 2026-07-23 playable putting
+
+- My Bag rounds keep automatic putt-out as the safe default and now offer opt-in playable putting. Grade A packages are labelled surveyed; Grade B packages remain explicitly approximate.
+- `src/lib/course-twin-putting.ts` provides deterministic 120 Hz contour-aware roll, friction, cup capture, replay frames and tamper-evident ledger payloads. The 3D runtime renders only the active putt tracer and ball.
+- Manual putting exposes left/right aim, die/cup/firm pace, measured leave, retry, multi-putt continuation and automatic hole advancement after a holed putt. A saved round resumes from the latest persisted putt rather than offering another full shot.
+- Private and shared ledgers now accept explicit `putt.accepted` events, enforce green-only ordered play, reconcile putts with the completed-hole score and preserve modelled/measured provenance.
+- Migration `0053_course_twin_manual_putt_events.sql` is applied as Drizzle migration id 38. Readback matched the SQL SHA-256, found `putt.accepted` in both constraints and confirmed enabled/forced RLS on both ledgers.
+- The authenticated Chromium journey seeded a mapped Bootle green lie, rendered the approximate putting controls, holed the contour-model putt, persisted one putt and a two-stroke score, advanced to hole 2 and cleaned up the disposable round.
+- Final verification passes: Prettier, ESLint, TypeScript, Drizzle validation, 311 Vitest files/1,125 tests, 23 builder tests, 25 bridge tests, optimized Next 16 build, all route budgets and all five Course Twin Chromium journeys. `/play/[courseId]` is 955 KiB against its 1,025 KiB uncompressed limit.
+- The official web-game client reported ready 2.44 m LiDAR terrain, selected-shot-only physics state and no captured console errors. The inspected final frame showed textured terrain, flag, trees, sky and the active 3D tracer.
+- Automatic putt-out now follows the explicit golfer rule: 10 ft or less adds one putt, while every longer mapped-green leave adds two. There is no automatic three-putt band.
+- My Bag virtual shots now carry a deterministic spin-axis sample into the aerodynamic model. Measured per-club spin-axis history is preferred; measured lateral tendency supplies an honest fallback. Eighty percent of samples use a damped central distribution, with every non-putter retaining a visible curve and occasional fuller shapes still represented.
+- Live Chromium My Bag verification produced a shaped-right `-8.8°` driver and a softer `+3.8°` follow-up through the real terrain physics with no console errors. The current bag has no imported spin-axis values, so the UI correctly labels its curvature `Dispersion inferred`; the official web-game client separately returned ready LiDAR terrain, one visible replay shot and no captured error file. Disposable round/share evidence was deleted.
+
+## Completed milestone — 2026-07-24 My Bag shot continuity
+
+- Accepted My Bag shots remain as persistent amber flight-and-roll tracers for the current hole instead of disappearing when the golfer advances.
+- Between shots, the camera now reframes from the new lie with a wider golfer perspective. A white ball, lime ring and explicit `Next shot` marker identify the next origin while the most recent finish remains orange.
+- The semantic runtime reports completed tracer count and next-shot coordinates for deterministic browser inspection.
+- A real authenticated browser transition advanced an existing test round from shot 2 to shot 3: completed tracers increased from one to two, the next start matched shot 2's final physics position, the 29-yard lie correctly offered chip/pitch/half-shot controls, and the browser reported zero console errors.
+
+## Completed milestone — 2026-07-24 nine-hole second-circuit continuity
+
+- An 18-hole My Bag round can now loop a nine-hole Course Twin package without mixing the physical map hole with the canonical round-ledger hole. On Aintree, ledger holes 10–18 map deterministically back onto physical holes 1–9.
+- Shot and putt events persist against the ledger hole, while terrain, strategy and camera geometry continue to use the mapped physical hole. This removes the `Shot is not on the current hole` retry deadlock.
+- Resume state restores only accepted shots and putts from the active ledger hole. First-circuit hole-1 tracers no longer leak into second-circuit hole 10, and an already-rejected transient shot is cleared automatically.
+- Authenticated browser verification resumed Aintree at ledger hole 10 / mapped hole 1 with zero stale tracers, saved a new driver as version 43, advanced to shot 2 from its actual final lie and showed exactly one completed tracer plus the next-shot marker. The browser reported zero console errors.
+
+## Completed milestone — 2026-07-24 single next-shot marker
+
+- When a completed tracer ends at the current next-shot position, its orange finish ball and white finish ring are suppressed so the golfer sees one white ball and one lime next-shot ring.
+- Completed flight and rollout lines remain visible. A distinct penalty finish remains visible when the next playable position is a separate drop location.
+- The next-shot marker now samples the saved lie directly at ground level. It no longer reuses the 1.1 m raised hole-geometry anchor that made identical horizontal coordinates appear several feet apart in the golfer camera.
+
+## Completed milestone — 2026-07-24 behind-ball aiming and tracer shape
+
+- The pre-shot golfer camera is centred directly behind the current lie at eye height and rotates with the selected start direction. Golfers can aim with a bounded slider, quick five-degree controls or by clicking the course.
+- A terrain-following cyan guide shows the chosen initial heading. The old mapped centreline and raised tee cylinder are hidden during play so neither can be mistaken for the aim line or ball.
+- Virtual shots keep one deterministic sampled strike while aim changes, preserve a bounded launch-direction value in the round ledger and reconstruct a smooth start-tangent flight curve without loops, reversals or right-angle rollout.
+- Only the immediately preceding accepted shot is retained between shots. Its carry marker is hidden, and it is rendered only when its final physics position matches the current playable lie, leaving one ball and one next-shot marker at the actual origin.
+- The Three.js canvas now requests the supported percentage-closer shadow map instead of the deprecated soft-shadow constant.
+- The desktop course viewport is pinned to the available window instead of stretching to the full control-column height, keeping the ball, horizon and aim line visible together. A concurrent-tab 409 now refreshes the canonical round automatically rather than leaving the golfer on a stale `Retry save` state.
+
+## Completed milestone — 2026-07-24 live round scoring
+
+- The Course Twin round headline now separates the completed-hole score from the active hole and shows `completed + current = played`, so every shot changes the visible stroke count immediately instead of waiting for `hole.completed`.
+- A compact completed-hole scorecard exposes every par, birdie and over-par result, while the latest hole states its gross score, par, automatic putt count and measured leave from the mapped pin.
+- The cumulative score is derived from the canonical completed-hole ledger. Focused tests cover an over-par running total, a later birdie and the exact saved-finish-to-pin distance used by the 10 ft automatic-putting rule.
+- Authenticated browser verification loaded the live Bootle strategy round at `+3 through 9 holes`, showed hole 7 at `+4`, hole 9 as a birdie, and reconciled `38 completed + 0 current = 38 played` with zero console errors.
+
+## Completed milestone — 2026-07-24 wedge shot controls
+
+- Controlled shot choices now consider the selected club as well as remaining distance. PW, GW, AW, SW and LW retain `Half shot` alongside `Full swing` through 130 yd instead of being forced to full swing at 100.1 yd.
+- `Chip` remains limited to genuine 30 yd-or-shorter leaves, while pitch, bunker-splash and non-wedge full-shot boundaries keep their existing distance and lie rules.
+- Focused deterministic coverage reproduces the reported 102 yd gap-wedge leave, confirms `Half shot` is selected and scaled, and confirms a driver at the same distance remains full swing only.
+
+## Completed milestone — 2026-07-24 simulator viewport HUD
+
+- The desktop Course Twin now occupies exactly the app viewport below the 56 px workbench header, so the document cannot grow taller than the browser and the golfer no longer has to scroll the page to reach controls.
+- The existing simulator controls are preserved in compact, translucent left and right HUD cards over the full-width Three.js course. A central hole readout keeps hole, par, yardage and active-round distance visible without covering the aiming view.
+- Mobile keeps the safe stacked flow, while unusually short desktop windows can scroll inside an individual HUD card without moving the course or browser page.
+- The global social-feed launcher and PWA install/update toast are suppressed on `/play` so they cannot compete with the simulator controls or cover the course.
+- Signed-in Chrome verification measured a 999 px viewport, document, route and Three.js stage with zero page overflow; Play mode's 572 px right HUD fit without internal scrolling. The 1280 x 720 game-runtime capture also confirmed the compact two-row mode grid and unobstructed centre hole readout.

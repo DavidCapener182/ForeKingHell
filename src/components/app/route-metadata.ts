@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   CreditCard,
+  Cuboid,
   Database,
   Flag,
   Gauge,
@@ -105,6 +106,17 @@ export const appRouteMetadata: AppRouteMetadata[] = [
     "sessions",
     MapPinned,
     ["course", "hole", "golf course"],
+    { mobileMoreGroup: "Play" },
+  ),
+  meta(
+    "course-twins",
+    "/course-twins",
+    "Course Twins",
+    "Course Twin",
+    "Play",
+    "sessions",
+    Cuboid,
+    ["course twin", "course simulator", "play a course", "virtual round"],
     { mobileMoreGroup: "Play" },
   ),
   meta(
@@ -507,9 +519,17 @@ function meta(
 }
 
 export function findRouteMetadata(pathname: string) {
-  return [...appRouteMetadata]
+  const directMatch = [...appRouteMetadata]
     .sort((left, right) => right.route.length - left.route.length)
     .find((item) => pathname === item.route || pathname.startsWith(`${item.route}/`));
+
+  if (directMatch) return directMatch;
+
+  if (pathname.startsWith("/play/")) {
+    return appRouteMetadata.find((item) => item.id === "course-twins");
+  }
+
+  return undefined;
 }
 
 export function routesAvailableTo(isAdmin: boolean) {

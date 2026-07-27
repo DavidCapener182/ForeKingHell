@@ -12,11 +12,13 @@ import {
   MapPinned,
   Save,
   ShieldCheck,
+  Share2,
   Upload,
 } from "lucide-react";
 import { and, asc, desc, eq } from "drizzle-orm";
 
 import {
+  createCourseTwinReplayShareLinkAction,
   updateClubAction,
   updateRoundContextAction,
   updateRoundCourseLinkAction,
@@ -226,15 +228,24 @@ export default async function RoundDetailPage({ params }: PageProps) {
         </Button>
         <div className="flex flex-wrap justify-end gap-2">
           {round.session.courseId ? (
-            <Button asChild variant="outline">
-              <Link
-                href={`/play/${round.session.courseId}?sessionId=${sessionId}`}
-                prefetch={false}
-              >
-                <Cuboid className="size-4" />
-                3D replay pilot
-              </Link>
-            </Button>
+            <>
+              <form action={createCourseTwinReplayShareLinkAction}>
+                <input type="hidden" name="sessionId" value={sessionId} />
+                <Button type="submit" variant="outline">
+                  <Share2 className="size-4" />
+                  Share 3D replay
+                </Button>
+              </form>
+              <Button asChild variant="outline">
+                <Link
+                  href={`/play/${round.session.courseId}?sessionId=${sessionId}`}
+                  prefetch={false}
+                >
+                  <Cuboid className="size-4" />
+                  Open 3D replay
+                </Link>
+              </Button>
+            </>
           ) : null}
           <Button asChild variant="outline">
             <Link href="/shots">

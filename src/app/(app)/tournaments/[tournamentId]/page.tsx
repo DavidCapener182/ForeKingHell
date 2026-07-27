@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CalendarDays,
+  Cuboid,
   Eye,
   EyeOff,
   MessageCircle,
@@ -397,6 +398,16 @@ export default async function TournamentDetailPage({
                 {data.tournament.roundCount} rounds
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
+                {data.course?.id && data.viewerEntered && viewerTermsCurrent ? (
+                  <Button asChild size="sm" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                    <Link
+                      href={`/play/${data.course.id}?tournamentId=${data.tournament.id}&roundNumber=${data.nextRoundNumber ?? data.tournament.roundCount}`}
+                      prefetch={false}
+                    >
+                      <Cuboid className="size-4" /> Play verified 3D round
+                    </Link>
+                  </Button>
+                ) : null}
                 {data.tournament.endsAt ? (
                   <Badge variant="outline" className="gap-1">
                     <CalendarDays className="size-3" />

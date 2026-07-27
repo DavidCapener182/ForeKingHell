@@ -41,6 +41,7 @@ import {
 import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isCourseTwinAvailable } from "@/lib/course-twin-data";
 import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/course-auto-enrichment";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 import { CourseHoleMapEditor } from "@/app/courses/[courseId]/holes/course-hole-map-editor";
@@ -112,7 +113,10 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const allowManualHoleEditing = data.isEditable && (hasMappedGeometry || !usesAutomaticCourseData);
   const showTeeSetTools = Boolean(primaryTeeSet && (hasMappedGeometry || !usesAutomaticCourseData));
   const shotPatternEnabled = isShotPatternFeatureEnabled();
-  const hasCourseTwinPilot = data.course.externalId === "bootle-golf-course";
+  const hasCourseTwinPilot = await isCourseTwinAvailable({
+    courseId,
+    externalId: data.course.externalId,
+  });
   const holeSlots = createHoleSlots(primaryTeeSet?.par ?? 72, holesForPrimaryTeeSet.length);
   const holeByNumber = new Map(holesForPrimaryTeeSet.map((hole) => [hole.holeNumber, hole]));
   const mapStatus =
@@ -143,7 +147,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
               <Button asChild variant="outline">
                 <Link href={`/play/${courseId}`} prefetch={false}>
                   <Cuboid className="size-4" />
-                  3D pilot
+                  Open Course Twin
                 </Link>
               </Button>
             ) : null}

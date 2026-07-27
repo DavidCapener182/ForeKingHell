@@ -131,6 +131,12 @@ const specialEntries: Array<Omit<DataGovernanceEntry, "table" | "redactedFields"
   },
   owned("accountInvitations", "account", ["ownerUserId"], "explicit", false),
   owned("courses", "golf", ["createdByUserId"], "explicit", true),
+  owned("courseTwinRooms", "golf", ["hostUserId"], "explicit", true),
+  owned("courseTwinRoomMembers", "golf", ["userId"], "explicit", true),
+  owned("courseTwinRoomEvents", "golf", ["userId"], "explicit", true),
+  owned("courseTwinSharedRoundEvents", "golf", ["userId"], "cascade", true),
+  owned("courseTwinRounds", "golf", ["userId"], "cascade", true),
+  owned("courseTwinRoundEvents", "golf", ["userId"], "cascade", true),
   owned("courseRecords", "competition", ["createdByUserId"], "explicit", true),
   owned("courseRecordFlags", "administrative", ["reporterUserId"], "retain", true),
   owned("tournaments", "competition", ["createdByUserId"], "explicit", true),
@@ -153,8 +159,10 @@ const retainedDatasets = new Set([
   "courseFeatures",
   "courseTwins",
   "courseTwinBuilds",
+  "courseTwinCatalogJobs",
   "courseTwinVersions",
   "courseTwinCorrections",
+  "courseTwinPuttingSurveys",
   "strokesGainedBaselines",
   "golfTrainingDailyLoad",
   "courseProviderAliases",
@@ -226,8 +234,16 @@ const allSchemaDatasets = [
   "courseFeatures",
   "courseTwins",
   "courseTwinBuilds",
+  "courseTwinCatalogJobs",
   "courseTwinVersions",
   "courseTwinCorrections",
+  "courseTwinPuttingSurveys",
+  "courseTwinRooms",
+  "courseTwinRoomMembers",
+  "courseTwinRoomEvents",
+  "courseTwinSharedRoundEvents",
+  "courseTwinRounds",
+  "courseTwinRoundEvents",
   "weatherSnapshots",
   "sessions",
   "importRows",
@@ -288,7 +304,13 @@ const redactions: Record<string, string[]> = {
   billingCustomers: ["stripeCustomerId"],
   contentExports: ["storagePath"],
   courseTwinBuilds: ["executionReference", "errorMessage", "idempotencyKey", "inputFingerprint"],
+  courseTwinCatalogJobs: ["candidateJson", "errorMessage", "idempotencyKey"],
   courseTwinCorrections: ["correctionJson"],
+  courseTwinPuttingSurveys: ["gridJson"],
+  courseTwinRoomEvents: ["payloadJson"],
+  courseTwinSharedRoundEvents: ["payloadJson", "previousHash", "eventHash"],
+  courseTwinRooms: ["inviteCode", "stateJson"],
+  courseTwinRoundEvents: ["payloadJson", "previousHash", "eventHash"],
   courseTwinVersions: ["manifestPath", "inputFingerprint"],
   importSourceFiles: ["storagePath", "metadataJson"],
   offlineOperations: ["requestHash", "responseJson"],
@@ -370,7 +392,7 @@ function withPhysicalTable(
 
 function categoryFor(dataset: string): DataGovernanceCategory {
   if (
-    /^(admin|moderation|socialReports|courseRecordFlags|courseTwinBuilds|courseTwinCorrections)/.test(
+    /^(admin|moderation|socialReports|courseRecordFlags|courseTwinBuilds|courseTwinCatalogJobs|courseTwinCorrections|courseTwinPuttingSurveys)/.test(
       dataset,
     )
   )

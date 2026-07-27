@@ -1460,7 +1460,7 @@ export const courseTwins = pgTable(
     activeVersionId: uuid("active_version_id"),
     qualityGrade: varchar("quality_grade", { length: 4 }).notNull().default("D"),
     supportedModesJson: jsonb("supported_modes_json")
-      .$type<Array<"flyover" | "replay" | "strategy" | "play">>()
+      .$type<Array<"flyover" | "replay" | "strategy" | "play" | "live" | "explore">>()
       .notNull()
       .default([]),
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -1505,6 +1505,40 @@ export const courseTwinBuilds = pgTable(
       table.createdAt,
     ),
     index("fkh_course_twin_builds_requester_idx").on(table.requestedByUserId, table.createdAt),
+  ],
+);
+
+export const courseTwinCatalogJobs = pgTable(
+  "fkh_course_twin_catalog_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requestedByUserId: uuid("requested_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    externalId: varchar("external_id", { length: 180 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 160 }).notNull(),
+    candidateJson: jsonb("candidate_json").$type<Record<string, unknown>>().notNull(),
+    force: boolean("force").notNull().default(false),
+    status: varchar("status", { length: 24 }).notNull().default("queued"),
+    retryCount: integer("retry_count").notNull().default(0),
+    courseId: uuid("course_id").references(() => courses.id, { onDelete: "set null" }),
+    buildId: uuid("build_id").references(() => courseTwinBuilds.id, { onDelete: "set null" }),
+    errorCode: varchar("error_code", { length: 80 }),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_catalog_jobs_idempotency_idx").on(table.idempotencyKey),
+    index("fkh_course_twin_catalog_jobs_status_attempt_idx").on(
+      table.status,
+      table.nextAttemptAt,
+      table.createdAt,
+    ),
+    index("fkh_course_twin_catalog_jobs_external_idx").on(table.externalId, table.createdAt),
   ],
 );
 
@@ -1567,6 +1601,177 @@ export const courseTwinCorrections = pgTable(
       table.createdAt,
     ),
     index("fkh_course_twin_corrections_creator_idx").on(table.createdByUserId, table.createdAt),
+  ],
+);
+
+export const courseTwinPuttingSurveys = pgTable(
+  "fkh_course_twin_putting_surveys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    holeNumber: integer("hole_number").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("pending"),
+    sourceName: varchar("source_name", { length: 180 }).notNull(),
+    sourceUrl: text("source_url"),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+    coordinateSystem: varchar("coordinate_system", { length: 80 }).notNull().default("EPSG:4326"),
+    gridSpacingM: doublePrecision("grid_spacing_m").notNull(),
+    verticalAccuracyMm: doublePrecision("vertical_accuracy_mm").notNull(),
+    gridJson: jsonb("grid_json")
+      .$type<{
+        bounds: {
+          minLatitude: number;
+          maxLatitude: number;
+          minLongitude: number;
+          maxLongitude: number;
+        };
+        width: number;
+        height: number;
+        elevationsM: number[];
+      }>()
+      .notNull(),
+    reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_putting_surveys_course_hole_idx").on(
+      table.courseId,
+      table.holeNumber,
+    ),
+    index("fkh_course_twin_putting_surveys_status_idx").on(
+      table.courseId,
+      table.status,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export const courseTwinRooms = pgTable(
+  "fkh_course_twin_rooms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    hostUserId: uuid("host_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    inviteCode: varchar("invite_code", { length: 12 }).notNull(),
+    visibility: varchar("visibility", { length: 16 }).notNull().default("private"),
+    status: varchar("status", { length: 20 }).notNull().default("lobby"),
+    mode: varchar("mode", { length: 20 }).notNull().default("explore"),
+    maxPlayers: integer("max_players").notNull().default(4),
+    holeNumber: integer("hole_number").notNull().default(1),
+    stateVersion: integer("state_version").notNull().default(1),
+    stateJson: jsonb("state_json").$type<Record<string, unknown>>().notNull().default({}),
+    competition: boolean("competition").notNull().default(false),
+    spectatorLimit: integer("spectator_limit").notNull().default(8),
+    sharedRoundVersion: integer("shared_round_version").notNull().default(1),
+    finalEventHash: varchar("final_event_hash", { length: 64 }),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_rooms_invite_idx").on(table.inviteCode),
+    index("fkh_course_twin_rooms_course_status_idx").on(
+      table.courseId,
+      table.status,
+      table.updatedAt,
+    ),
+    index("fkh_course_twin_rooms_matchmaking_idx").on(
+      table.courseId,
+      table.visibility,
+      table.status,
+      table.updatedAt,
+    ),
+    index("fkh_course_twin_rooms_host_idx").on(table.hostUserId, table.updatedAt),
+    index("fkh_course_twin_rooms_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const courseTwinRoomMembers = pgTable(
+  "fkh_course_twin_room_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => courseTwinRooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: varchar("display_name", { length: 160 }).notNull(),
+    role: varchar("role", { length: 20 }).notNull().default("player"),
+    transport: varchar("transport", { length: 12 }).notNull().default("walk"),
+    positionJson: jsonb("position_json").$type<[number, number, number] | null>(),
+    holeNumber: integer("hole_number").notNull().default(1),
+    isReady: boolean("is_ready").notNull().default(false),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+    leftAt: timestamp("left_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_room_members_room_user_idx").on(table.roomId, table.userId),
+    index("fkh_course_twin_room_members_room_presence_idx").on(
+      table.roomId,
+      table.leftAt,
+      table.lastSeenAt,
+    ),
+    index("fkh_course_twin_room_members_user_idx").on(table.userId, table.lastSeenAt),
+  ],
+);
+
+export const courseTwinRoomEvents = pgTable(
+  "fkh_course_twin_room_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => courseTwinRooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    eventType: varchar("event_type", { length: 40 }).notNull(),
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_twin_room_events_room_created_idx").on(table.roomId, table.createdAt),
+    index("fkh_course_twin_room_events_user_created_idx").on(table.userId, table.createdAt),
+  ],
+);
+
+export const courseTwinSharedRoundEvents = pgTable(
+  "fkh_course_twin_shared_round_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => courseTwinRooms.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientEventId: uuid("client_event_id").notNull(),
+    sequence: integer("sequence").notNull(),
+    eventType: varchar("event_type", { length: 40 }).notNull(),
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().notNull(),
+    previousHash: varchar("previous_hash", { length: 64 }),
+    eventHash: varchar("event_hash", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_shared_events_room_client_idx").on(
+      table.roomId,
+      table.clientEventId,
+    ),
+    uniqueIndex("fkh_course_twin_shared_events_room_sequence_idx").on(table.roomId, table.sequence),
+    uniqueIndex("fkh_course_twin_shared_events_room_hash_idx").on(table.roomId, table.eventHash),
+    index("fkh_course_twin_shared_events_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
 
@@ -1778,6 +1983,77 @@ export const shots = pgTable(
     index("fkh_shots_session_idx").on(table.sessionId),
     index("fkh_shots_club_type_idx").on(table.clubType),
     index("fkh_shots_shot_at_idx").on(table.shotAt),
+  ],
+);
+
+export const courseTwinRounds = pgTable(
+  "fkh_course_twin_rounds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    mode: varchar("mode", { length: 12 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("in_progress"),
+    holeCount: integer("hole_count").notNull(),
+    startingHole: integer("starting_hole").notNull().default(1),
+    currentHole: integer("current_hole").notNull().default(1),
+    version: integer("version").notNull().default(1),
+    rulesJson: jsonb("rules_json").$type<Record<string, unknown>>().notNull().default({}),
+    scorecardJson: jsonb("scorecard_json")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    finalEventHash: varchar("final_event_hash", { length: 64 }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_twin_rounds_user_updated_idx").on(table.userId, table.updatedAt),
+    index("fkh_course_twin_rounds_course_status_idx").on(
+      table.courseId,
+      table.status,
+      table.updatedAt,
+    ),
+    index("fkh_course_twin_rounds_session_idx").on(table.sessionId),
+  ],
+);
+
+export const courseTwinRoundEvents = pgTable(
+  "fkh_course_twin_round_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => courseTwinRounds.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientEventId: uuid("client_event_id").notNull(),
+    sequence: integer("sequence").notNull(),
+    eventType: varchar("event_type", { length: 40 }).notNull(),
+    payloadJson: jsonb("payload_json").$type<Record<string, unknown>>().notNull(),
+    previousHash: varchar("previous_hash", { length: 64 }),
+    eventHash: varchar("event_hash", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_twin_round_events_round_client_idx").on(
+      table.roundId,
+      table.clientEventId,
+    ),
+    uniqueIndex("fkh_course_twin_round_events_round_sequence_idx").on(
+      table.roundId,
+      table.sequence,
+    ),
+    uniqueIndex("fkh_course_twin_round_events_round_hash_idx").on(table.roundId, table.eventHash),
+    index("fkh_course_twin_round_events_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
 
@@ -3239,8 +3515,14 @@ export type NewTeeSet = typeof teeSets.$inferInsert;
 export type NewHole = typeof holes.$inferInsert;
 export type NewCourseTwin = typeof courseTwins.$inferInsert;
 export type NewCourseTwinBuild = typeof courseTwinBuilds.$inferInsert;
+export type NewCourseTwinCatalogJob = typeof courseTwinCatalogJobs.$inferInsert;
 export type NewCourseTwinVersion = typeof courseTwinVersions.$inferInsert;
 export type NewCourseTwinCorrection = typeof courseTwinCorrections.$inferInsert;
+export type NewCourseTwinPuttingSurvey = typeof courseTwinPuttingSurveys.$inferInsert;
+export type NewCourseTwinRoom = typeof courseTwinRooms.$inferInsert;
+export type NewCourseTwinRoomMember = typeof courseTwinRoomMembers.$inferInsert;
+export type NewCourseTwinRoomEvent = typeof courseTwinRoomEvents.$inferInsert;
+export type NewCourseTwinSharedRoundEvent = typeof courseTwinSharedRoundEvents.$inferInsert;
 export type NewWeatherSnapshot = typeof weatherSnapshots.$inferInsert;
 export type NewBallModel = typeof ballModels.$inferInsert;
 export type NewClubEquipmentHistory = typeof clubEquipmentHistory.$inferInsert;

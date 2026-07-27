@@ -17,6 +17,7 @@ describe("installed app claims", () => {
     expect(register).toContain("retained for a safe retry");
     expect(register).toContain("needsReview > 0");
     expect(register).toContain("review in Settings");
+    expect(register).toContain('pathname.startsWith("/play/")');
     expect(register).not.toContain("Offline import sync finished.");
   });
 

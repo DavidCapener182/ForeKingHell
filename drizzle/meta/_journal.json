@@ -334,8 +334,50 @@
     {
       "idx": 47,
       "version": "7",
-      "when": 1784880000000,
-      "tag": "0054_clubhouse_manager_default",
+      "when": 1784731000000,
+      "tag": "0047_course_twin_multiplayer",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1784742500000,
+      "tag": "0048_course_twin_round_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1784745200000,
+      "tag": "0049_course_twin_shared_rounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1784752000000,
+      "tag": "0050_course_twin_catalog_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1784752800000,
+      "tag": "0051_course_twin_public_rooms",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1784753400000,
+      "tag": "0052_course_twin_putting_surveys",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1784808000000,
+      "tag": "0053_course_twin_manual_putt_events",
       "breakpoints": true
     }
   ]

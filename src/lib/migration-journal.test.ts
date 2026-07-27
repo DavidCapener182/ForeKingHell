@@ -15,6 +15,6 @@ describe("Drizzle migration journal", () => {
       expect(existsSync(resolve(root, `drizzle/${entry.tag}.sql`))).toBe(true);
     }
 
-    expect(journal.entries.at(-1)?.tag).toBe("0054_clubhouse_manager_default");
+    expect(journal.entries.at(-1)?.tag).toBe("0053_course_twin_manual_putt_events");
   });
 });

@@ -61,12 +61,15 @@ export function buildCourseTwinReplay({
       holeYards,
     );
     const carryProgress = clamp(previousProgress + (carryYd ?? totalYd ?? 0), 0, totalProgress);
-    const start = endByHole.get(hole.holeNumber) ?? pointAlongCenterline(hole, previousProgress);
+    const previousBase = pointAlongCenterline(hole, previousProgress);
+    const start = endByHole.get(hole.holeNumber) ?? previousBase;
     const carryBase = pointAlongCenterline(hole, carryProgress);
     const totalBase = pointAlongCenterline(hole, totalProgress);
     const sideYd = finiteOrNull(source.sideCarryYd) ?? 0;
-    const carryEnd = offsetPerpendicular(hole, carryBase, carryProgress, sideYd * 0.9144);
-    const totalEnd = offsetPerpendicular(hole, totalBase, totalProgress, sideYd * 0.9144);
+    const carryLane = translateWithCenterline(start, previousBase, carryBase);
+    const totalLane = translateWithCenterline(start, previousBase, totalBase);
+    const carryEnd = offsetPerpendicular(hole, carryLane, carryProgress, sideYd * 0.9144);
+    const totalEnd = offsetPerpendicular(hole, totalLane, totalProgress, sideYd * 0.9144);
     const apexFt = finiteOrNull(source.apexFt);
     const reconstructedApexM =
       apexFt !== null
@@ -155,6 +158,18 @@ function offsetPerpendicular(
   const dz = ahead[2] - near[2];
   const length = Math.hypot(dx, dz) || 1;
   return [point[0] + (-dz / length) * sideM, point[1], point[2] + (dx / length) * sideM];
+}
+
+function translateWithCenterline(
+  shotStart: CourseTwinPoint,
+  previousBase: CourseTwinPoint,
+  targetBase: CourseTwinPoint,
+): CourseTwinPoint {
+  return [
+    shotStart[0] + targetBase[0] - previousBase[0],
+    shotStart[1] + targetBase[1] - previousBase[1],
+    shotStart[2] + targetBase[2] - previousBase[2],
+  ];
 }
 
 function reconstructedTrajectory(

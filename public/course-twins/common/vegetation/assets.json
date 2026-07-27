@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "assetName": "Course Twin British Parkland Vegetation Billboards",
+      "creator": "OpenAI image generation",
+      "sourcePage": "internal://course-twin/vegetation-billboards",
+      "licence": "OpenAI generated asset",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "course-twin-british-vegetation-contact-sheet.png",
+      "modifiedFiles": [
+        "billboards/tree-oak.png",
+        "billboards/tree-birch.png",
+        "billboards/tree-sycamore.png",
+        "billboards/tree-windswept.png",
+        "billboards/bush-hawthorn.png",
+        "billboards/bush-white-flower.png",
+        "billboards/bush-dog-rose.png",
+        "billboards/bush-native-evergreen.png"
+      ],
+      "modifications": [
+        "generated four distinct British parkland tree silhouettes and four native shrub silhouettes",
+        "removed the generated contact-sheet background and white matte",
+        "cropped and resized transparent PNGs for browser delivery",
+        "rendered as crossed instanced billboards with deterministic placement"
+      ]
+    },
+    {
+      "assetName": "KayKit Forest Nature Pack 1.0 FREE",
+      "creator": "Kay Lousberg",
+      "sourcePage": "https://kaylousberg.itch.io/kaykit-forest",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "KayKit_Forest_Nature_Pack_1.0_FREE.zip",
+      "modifiedFiles": [
+        "kaykit-forest/Tree_1_B_Color1.gltf",
+        "kaykit-forest/Tree_2_C_Color1.gltf",
+        "kaykit-forest/Tree_3_B_Color1.gltf",
+        "kaykit-forest/Tree_4_B_Color1.gltf",
+        "kaykit-forest/Bush_1_C_Color1.gltf",
+        "kaykit-forest/Bush_2_E_Color1.gltf",
+        "kaykit-forest/Bush_4_E_Color1.gltf",
+        "kaykit-forest/forest_texture.png"
+      ],
+      "modifications": [
+        "selected four tree silhouettes and three shrub silhouettes",
+        "retained the shared texture atlas",
+        "rendered as deterministic instanced vegetation"
+      ]
+    },
+    {
+      "assetName": "Searsia Lucida",
+      "creator": "Poly Haven",
+      "sourcePage": "https://polyhaven.com/a/searsia_lucida",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "searsia_lucida_1k.gltf",
+      "modifiedFiles": ["poly-haven/searsia-lucida-f-512.glb"],
+      "modifications": [
+        "selected the lightest supplied silhouette",
+        "removed unselected source variants",
+        "resized PBR textures to 512 px WebP",
+        "packed geometry and textures into GLB",
+        "retained 8,754 uploaded vertices for instanced close trees"
+      ]
+    },
+    {
+      "assetName": "Shrub 03",
+      "creator": "Poly Haven",
+      "sourcePage": "https://polyhaven.com/a/shrub_03",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "shrub_03_1k.gltf",
+      "modifiedFiles": ["poly-haven/shrub-03-a-512.glb"],
+      "modifications": [
+        "selected one supplied shrub silhouette",
+        "removed unselected source variants",
+        "resized PBR textures to 512 px WebP",
+        "packed geometry and textures into GLB",
+        "retained 1,697 uploaded vertices for instancing"
+      ]
+    }
+  ]
+}

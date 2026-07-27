@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "assetName": "Grass 001",
+      "creator": "ambientCG",
+      "sourcePage": "https://ambientcg.com/a/Grass001",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "Grass001_1K-JPG.zip",
+      "modifiedFiles": ["Grass001-Color.jpg", "Grass001-NormalGL.jpg", "Grass001-Roughness.jpg"],
+      "modifications": ["resized to 512 px", "JPEG quality reduced for browser delivery"]
+    },
+    {
+      "assetName": "Grass 005",
+      "creator": "ambientCG",
+      "sourcePage": "https://ambientcg.com/a/Grass005",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "Grass005_1K-JPG.zip",
+      "modifiedFiles": ["Grass005-Color.jpg", "Grass005-NormalGL.jpg", "Grass005-Roughness.jpg"],
+      "modifications": ["resized to 512 px", "JPEG quality reduced for browser delivery"]
+    },
+    {
+      "assetName": "Grass 008",
+      "creator": "ambientCG",
+      "sourcePage": "https://ambientcg.com/a/Grass008",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "Grass008_1K-JPG.zip",
+      "modifiedFiles": ["Grass008-Color.jpg", "Grass008-NormalGL.jpg", "Grass008-Roughness.jpg"],
+      "modifications": ["resized to 512 px", "JPEG quality reduced for browser delivery"]
+    },
+    {
+      "assetName": "Ground 080",
+      "creator": "ambientCG",
+      "sourcePage": "https://ambientcg.com/a/Ground080",
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-07-22",
+      "originalFile": "Ground080_1K-JPG.zip",
+      "modifiedFiles": ["Ground080-Color.jpg", "Ground080-NormalGL.jpg", "Ground080-Roughness.jpg"],
+      "modifications": ["resized to 512 px", "JPEG quality reduced for browser delivery"]
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-07-22T23:05:26Z",
+  "reviewer": "ForeKingHell Course Twin visual QA",
+  "scope": "Authenticated Chromium inspection of each generated course in golfer view at 1280x720. The pass requires the correct course identity, a visible and coherent terrain/aerial scene, sky and horizon, a usable hole line and flag, and no blank canvas or catastrophic texture failure.",
+  "evidenceCollection": "/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/catalogue-qa",
+  "contactSheet": "/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/course-twin-21-course-contact-sheet.jpg",
+  "limitations": [
+    "This visual pass verifies browser rendering and gross course coherence, not current club routing, scorecard accuracy or survey-grade putting contours.",
+    "All accepted packages remain Grade B and retain the unverified-putting warning.",
+    "A club-reported mapping discrepancy still requires a manual correction and rebuilt immutable package before promotion."
+  ],
+  "courses": [
+    {
+      "courseId": "4de11156-16fd-4a36-84e0-fadda53456b0",
+      "slug": "aintree-v1",
+      "evidenceFile": "01-aintree-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Existing nine-hole Aintree record; terrain, atmosphere, centre line and flag are visible. Sparse vegetation remains acceptable at Grade B."
+      ]
+    },
+    {
+      "courseId": "1b95d085-59c0-476c-b0ff-c2d369c2aadc",
+      "slug": "aldenham-golf-club-v1",
+      "evidenceFile": "02-aldenham-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "0036f96c-d14f-4cf1-a6d3-923cc664f3f6",
+      "slug": "alexander-park-resort-v1",
+      "evidenceFile": "03-alexander-park-resort-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "19930c7b-c92b-48f9-86a9-2428ed909fc6",
+      "slug": "alsager-golf-and-country-club-v1",
+      "evidenceFile": "04-alsager-golf-and-country-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "0c4ef63e-2172-41e7-b1c8-57e883b4624c",
+      "slug": "altrincham-golf-course-v1",
+      "evidenceFile": "05-altrincham-golf-course-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Distant aerial reference is visibly stretched at the horizon; the playable corridor remains coherent and the package stays Grade B."
+      ]
+    },
+    {
+      "courseId": "65359509-5de2-485e-8f85-392bba752710",
+      "slug": "arrowe-park-v1",
+      "evidenceFile": "06-arrowe-park-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "53ee459c-235c-4c65-81bf-8d29ba052145",
+      "slug": "arscott-v1",
+      "evidenceFile": "07-arscott-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "742d90a2-797d-4032-a5a7-cb31d667ec20",
+      "slug": "ash-valley-golf-club-v1",
+      "evidenceFile": "08-ash-valley-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "First-hole view is visually sparse, but the terrain profile, playable corridor and green target remain legible."
+      ]
+    },
+    {
+      "courseId": "105ffa8e-c95f-4cae-bf1e-fa112938e68b",
+      "slug": "ashton-lea-golf-club-v1",
+      "evidenceFile": "09-ashton-lea-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "02ff11c8-fd08-42cb-99e5-1a792008fd38",
+      "slug": "astbury-golf-course-v1",
+      "evidenceFile": "10-astbury-golf-course-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "816b540a-6ca1-437b-a563-2b4558874dbf",
+      "slug": "badgemore-park-golf-club-v1",
+      "evidenceFile": "11-badgemore-park-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757",
+      "slug": "barkway-park-golf-club-v1",
+      "evidenceFile": "12-barkway-park-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "2c214875-84f0-43a7-b0de-7d8ab9a1efee",
+      "slug": "barnard-castle-golf-course-v1",
+      "evidenceFile": "13-barnard-castle-golf-course-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "6f648057-430a-4290-82c9-e39e50242160",
+      "slug": "bearwood-lakes-golf-club-v1",
+      "evidenceFile": "14-bearwood-lakes-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "e77dcc63-9748-418e-a026-f4dd0c878c48",
+      "slug": "belton-park-golf-club-v1",
+      "evidenceFile": "15-belton-park-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "1b52ef05-0c0a-4253-8245-013566b3d14b",
+      "slug": "bentham-golf-club-v1",
+      "evidenceFile": "16-bentham-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "7171685a-331c-459e-a745-40f2aff561a3",
+      "slug": "benton-hall-golf-and-country-club-v1",
+      "evidenceFile": "17-benton-hall-golf-and-country-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Aerial stretching is visible beyond the playable corridor; the fairway, terrain and target remain usable at Grade B."
+      ]
+    },
+    {
+      "courseId": "034d2dad-1e95-4319-bbdb-627b706364b4",
+      "slug": "bird-hills-golf-centre-v1",
+      "evidenceFile": "18-bird-hills-golf-centre-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81",
+      "slug": "bletchingley-golf-course-v1",
+      "evidenceFile": "19-bletchingley-golf-course-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9",
+      "slug": "bransford-golf-club-v1",
+      "evidenceFile": "20-bransford-golf-club-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    },
+    {
+      "courseId": "852fa52c-51d2-4729-952c-159238faeb5d",
+      "slug": "brett-vale-golf-course-v1",
+      "evidenceFile": "21-brett-vale-golf-course-v1.png",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": []
+    }
+  ]
+}

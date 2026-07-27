@@ -12,6 +12,8 @@ const PUBLIC_PATHS = new Set([
   "/privacy",
   "/auth/callback",
   "/api/cron/tour-leaderboards",
+  "/api/cron/course-twin-builds",
+  "/api/cron/course-twin-catalog",
   "/api/security/csp-report",
   "/api/stripe/webhook",
   "/sw.js",

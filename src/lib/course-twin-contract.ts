@@ -2,7 +2,7 @@ export const COURSE_TWIN_SCHEMA_VERSION = 1;
 export const COURSE_TWIN_RUNTIME_VERSION = "1.0.0";
 export const COURSE_TWIN_REPLAY_MODEL_VERSION = "reconstruction-v1";
 
-export type CourseTwinMode = "flyover" | "replay" | "strategy" | "play";
+export type CourseTwinMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
 export type CourseTwinProvenance = "measured" | "derived" | "reconstructed" | "unavailable";
 export type CourseTwinPoint = [x: number, elevation: number, z: number];
 
@@ -10,6 +10,45 @@ export type CourseTwinAttribution = {
   label: string;
   url: string;
   licence: string;
+};
+
+export type CourseTwinGeographicBounds = {
+  minLatitude: number;
+  maxLatitude: number;
+  minLongitude: number;
+  maxLongitude: number;
+};
+
+export type CourseTwinTerrainAsset = {
+  url: string;
+  encoding: "float32_le_relative_metres";
+  width: number;
+  height: number;
+  localBounds: CourseTwinManifest["bounds"];
+  geographicBounds: CourseTwinGeographicBounds;
+  minElevationM: number;
+  maxElevationM: number;
+  sha256: string;
+};
+
+export type CourseTwinImageryAsset = {
+  url: string;
+  kind: "aerial_reference";
+  geographicBounds: CourseTwinGeographicBounds;
+  attribution: string;
+};
+
+export type CourseTwinPuttingSurface = {
+  holeNumber: number;
+  sourceName: string;
+  sourceUrl: string | null;
+  capturedAt: string;
+  gridSpacingM: number;
+  verticalAccuracyMm: number;
+  localBounds: CourseTwinManifest["bounds"];
+  width: number;
+  height: number;
+  elevationsM: number[];
 };
 
 export type CourseTwinHole = {
@@ -25,7 +64,7 @@ export type CourseTwinHole = {
 export type CourseTwinFeature = {
   id: string;
   holeNumber: number | null;
-  type: "fairway" | "green" | "bunker" | "water" | "rough" | "trees" | "course_boundary";
+  type: "tee" | "fairway" | "green" | "bunker" | "water" | "rough" | "trees" | "course_boundary";
   rings: CourseTwinPoint[][];
   source: string;
 };
@@ -52,10 +91,12 @@ export type CourseTwinManifest = {
     maxZ: number;
   };
   terrain: {
-    kind: "prototype_semantic" | "lidar_dtm";
+    kind: "prototype_semantic" | "lidar_dtm" | "global_dem";
     resolutionM: number | null;
     verticalDatum: string | null;
     warning: string | null;
+    heightmap: CourseTwinTerrainAsset | null;
+    imagery: CourseTwinImageryAsset | null;
   };
   quality: {
     grade: "A" | "B" | "C" | "D";
@@ -68,6 +109,7 @@ export type CourseTwinManifest = {
   supportedModes: CourseTwinMode[];
   holes: CourseTwinHole[];
   features: CourseTwinFeature[];
+  puttingSurfaces?: CourseTwinPuttingSurface[];
   attribution: CourseTwinAttribution[];
 };
 
@@ -92,6 +134,7 @@ export type CourseTwinReplayShot = {
     apexFt: CourseTwinEvidenceValue;
     ballSpeedMph: CourseTwinEvidenceValue;
     launchAngleDeg: CourseTwinEvidenceValue;
+    launchDirectionDeg?: CourseTwinEvidenceValue;
     spinRate: CourseTwinEvidenceValue;
     spinAxis: CourseTwinEvidenceValue;
   };

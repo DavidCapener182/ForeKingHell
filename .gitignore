@@ -23,10 +23,12 @@
 /.next/
 /.next-production/
 /.next-e2e/
+/.next-course-twin-build/
 /out/
 
 # production
 /build
+/dist/
 
 # misc
 /tmp/

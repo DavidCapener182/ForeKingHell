@@ -52,7 +52,34 @@ export async function getOsmCourseFeatures(
     return [];
   }
 
-  return parseOverpassGolfFeatures(await response.json());
+  return scopeOsmFeaturesToCourse(parseOverpassGolfFeatures(await response.json()), lat, lon);
+}
+
+export function scopeOsmFeaturesToCourse(
+  features: OsmCourseFeature[],
+  latitude: number,
+  longitude: number,
+) {
+  const boundaries = features.filter((feature) => feature.featureType === "course_boundary");
+  if (boundaries.length === 0) return features;
+  const queryPoint: [number, number] = [longitude, latitude];
+  const containing = boundaries.filter((feature) =>
+    pointInRing(queryPoint, feature.geometryJson.coordinates[0] ?? []),
+  );
+  const selectedBoundary = (containing.length > 0 ? containing : boundaries)
+    .map((feature) => ({ feature, distance: polygonDistanceSquared(feature, queryPoint) }))
+    .sort((left, right) => left.distance - right.distance)[0]?.feature;
+  if (!selectedBoundary) return features;
+  const courseRing = selectedBoundary.geometryJson.coordinates[0] ?? [];
+  return features.filter((feature) => {
+    if (feature.featureType === "course_boundary") return feature === selectedBoundary;
+    const featureRing = feature.geometryJson.coordinates[0] ?? [];
+    const center = ringCenter(featureRing);
+    return (
+      pointInRing(center, courseRing) ||
+      featureRing.some((point) => pointInRing([point[0], point[1]], courseRing))
+    );
+  });
 }
 
 export function buildOverpassGolfFeatureQuery(lat: number, lon: number) {
@@ -155,6 +182,40 @@ function parseHoleNumber(value: string | undefined) {
   return holeNumber !== null && Number.isInteger(holeNumber) && holeNumber >= 1 && holeNumber <= 27
     ? holeNumber
     : null;
+}
+
+function polygonDistanceSquared(feature: OsmCourseFeature, point: [number, number]) {
+  const center = ringCenter(feature.geometryJson.coordinates[0] ?? []);
+  return (center[0] - point[0]) ** 2 + (center[1] - point[1]) ** 2;
+}
+
+function ringCenter(ring: number[][]): [number, number] {
+  const points = ring.slice(0, -1).filter((point) => point.length >= 2);
+  if (points.length === 0) return [0, 0];
+  return [
+    points.reduce((total, point) => total + point[0], 0) / points.length,
+    points.reduce((total, point) => total + point[1], 0) / points.length,
+  ];
+}
+
+function pointInRing(point: [number, number], ring: number[][]) {
+  let inside = false;
+  for (
+    let index = 0, previous = ring.length - 1;
+    index < ring.length;
+    previous = index, index += 1
+  ) {
+    const currentPoint = ring[index];
+    const previousPoint = ring[previous];
+    const intersects =
+      currentPoint[1] > point[1] !== previousPoint[1] > point[1] &&
+      point[0] <
+        ((previousPoint[0] - currentPoint[0]) * (point[1] - currentPoint[1])) /
+          (previousPoint[1] - currentPoint[1]) +
+          currentPoint[0];
+    if (intersects) inside = !inside;
+  }
+  return inside;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

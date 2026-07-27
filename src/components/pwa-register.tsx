@@ -257,6 +257,7 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
     pathname.startsWith("/share/") ||
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/today") ||
+    pathname.startsWith("/play/") ||
     dismissed ||
     (!installPrompt && !updateReady && isOnline && pendingOfflineActions === 0 && !syncMessage)
   ) {

@@ -74,11 +74,23 @@ describe("data governance manifest", () => {
       containsSensitiveData: true,
       redactedFields: ["executionReference", "errorMessage", "idempotencyKey", "inputFingerprint"],
     });
+    expect(entries.courseTwinCatalogJobs).toMatchObject({
+      category: "administrative",
+      export: false,
+      containsSensitiveData: true,
+      redactedFields: ["candidateJson", "errorMessage", "idempotencyKey"],
+    });
     expect(entries.courseTwinCorrections).toMatchObject({
       category: "administrative",
       export: false,
       containsSensitiveData: true,
       redactedFields: ["correctionJson"],
+    });
+    expect(entries.courseTwinPuttingSurveys).toMatchObject({
+      category: "administrative",
+      export: false,
+      containsSensitiveData: true,
+      redactedFields: ["gridJson"],
     });
   });
 });

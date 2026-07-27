@@ -13,6 +13,7 @@ describe("social feed rail route suppression", () => {
       "/import",
       "/rapsodo",
       "/providers",
+      "/play",
       "/coach",
       "/practice",
       "/data-chat",

@@ -8,11 +8,14 @@ describe("central route metadata", () => {
     expect(findRouteMetadata("/practice")?.mobilePrimaryGroup).toBe("practice");
     expect(findRouteMetadata("/data-chat")?.pageTitle).toBe("Data Chat");
     expect(findRouteMetadata("/data-chat")?.mobilePrimaryGroup).toBe("analyse");
+    expect(findRouteMetadata("/play/bootle")?.pageTitle).toBe("Course Twins");
+    expect(findRouteMetadata("/play/bootle")?.mobilePrimaryGroup).toBe("sessions");
   });
 
   it("keeps aliases available for command search without exposing admin routes to players", () => {
     expect(findRouteMetadata("/bag")?.searchAliases).toContain("yardages");
     expect(findRouteMetadata("/courses/strategy")?.searchAliases).toContain("course plan");
+    expect(findRouteMetadata("/course-twins")?.searchAliases).toContain("course simulator");
     expect(routesAvailableTo(false).some((route) => route.route === "/admin")).toBe(false);
     expect(routesAvailableTo(true).some((route) => route.route === "/admin")).toBe(true);
   });

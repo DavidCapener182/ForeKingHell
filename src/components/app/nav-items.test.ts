@@ -27,6 +27,9 @@ describe("application navigation hierarchy", () => {
     expect(mobilePrimaryItems.find((item) => item.label === "Improve")?.isActive("/coach")).toBe(
       true,
     );
+    expect(
+      mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/play/bootle"),
+    ).toBe(true);
     expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/feed")).toBe(true);
   });
 
@@ -110,6 +113,7 @@ describe("application navigation hierarchy", () => {
         "/bag",
         "/coach",
         "/courses",
+        "/course-twins",
         "/leaderboard",
         "/practice",
         "/rounds",
