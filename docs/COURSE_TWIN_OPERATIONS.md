@@ -10,7 +10,9 @@ Generate up to 50 ranked UK candidates without writing application data:
 npm run builder:catalog -- --limit 30 --output /tmp/course-twin-candidates.json
 ```
 
-An administrator imports a reviewed candidate document through `POST /api/course-twins/catalog/import`. Import returns immediately after writing durable `fkh_course_twin_catalog_jobs` rows. Vercel invokes `/api/cron/course-twin-catalog` every five minutes; each invocation atomically claims one job, imports real mapped holes and course-scoped OSM surfaces, queues a build, and retries transient failures with exponential backoff. Do not count a course as first-wave ready until the job is `completed` with at least nine mapped holes. Replace persistent `no_geometry_found` candidates rather than presenting them as playable.
+An administrator imports a reviewed candidate document through `POST /api/course-twins/catalog/import`. Import returns immediately after writing durable `fkh_course_twin_catalog_jobs` rows. On the current Vercel Hobby deployment, `/api/cron/course-twin-catalog` runs daily and atomically claims one job, imports real mapped holes and course-scoped OSM surfaces, queues a build, and retries transient failures with exponential backoff. Do not count a course as first-wave ready until the job is `completed` with at least nine mapped holes. Replace persistent `no_geometry_found` candidates rather than presenting them as playable.
+
+For near-real-time catalogue or build draining, run the same protected cron routes from an external scheduler or move the Vercel project to Pro; Hobby projects permit daily invocations only. The local, reviewed Course Twin packages remain immediately playable and do not depend on those background queues.
 
 The Aintree first-wave entry deliberately reuses the existing `Aintree Golf Centre` course and nine-hole scorecard so saved rounds remain connected to the generated twin.
 

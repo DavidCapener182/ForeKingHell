@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/course-twin-builds",
-      "schedule": "* * * * *"
+      "schedule": "0 1 * * *"
     },
     {
       "path": "/api/cron/course-twin-catalog",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/tour-leaderboards",
