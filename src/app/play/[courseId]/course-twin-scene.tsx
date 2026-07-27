@@ -2582,8 +2582,9 @@ export function CourseTwinScene({
             </>
           ) : (
             <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/70">
-              Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways, greens,
-              hazards and tree zones come from saved semantic geometry.
+              Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways, greens
+              and hazards come from saved semantic geometry; native screening vegetation completes
+              the visual course context where source tree geometry is incomplete.
             </div>
           )}
 
@@ -2851,6 +2852,7 @@ function CourseWorld({
       ))}
       <InstancedVegetation
         features={manifest.features}
+        holes={manifest.holes}
         terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
         sampleTerrain={sampleTerrain}
       />
@@ -3563,20 +3565,22 @@ type VegetationInstance = {
 
 function InstancedVegetation({
   features,
+  holes,
   terrainBounds,
   sampleTerrain,
 }: {
   features: CourseTwinFeature[];
+  holes: CourseTwinHole[];
   terrainBounds: CourseTwinManifest["bounds"];
   sampleTerrain: CourseTwinTerrainSampler;
 }) {
   const trees = useMemo(
-    () => buildTreeInstances(features, terrainBounds, sampleTerrain),
-    [features, sampleTerrain, terrainBounds],
+    () => buildTreeInstances(features, holes, terrainBounds, sampleTerrain),
+    [features, holes, sampleTerrain, terrainBounds],
   );
   const bushes = useMemo(
-    () => buildBushInstances(features, terrainBounds, sampleTerrain),
-    [features, sampleTerrain, terrainBounds],
+    () => buildBushInstances(features, holes, terrainBounds, sampleTerrain),
+    [features, holes, sampleTerrain, terrainBounds],
   );
   const textures = useTexture([
     ...treeBillboards.map(({ url }) => url),
@@ -3691,6 +3695,7 @@ function InstancedBillboardPlane({
 
 function buildTreeInstances(
   features: CourseTwinFeature[],
+  holes: CourseTwinHole[],
   terrainBounds: CourseTwinManifest["bounds"],
   sampleTerrain: CourseTwinTerrainSampler,
 ) {
@@ -3735,11 +3740,15 @@ function buildTreeInstances(
       accepted += 1;
     }
   }
-  return instances.slice(0, 650);
+  return [
+    ...buildCourseTwinScreenTrees(features, holes, terrainBounds, sampleTerrain),
+    ...instances,
+  ].slice(0, 650);
 }
 
 function buildBushInstances(
   features: CourseTwinFeature[],
+  holes: CourseTwinHole[],
   terrainBounds: CourseTwinManifest["bounds"],
   sampleTerrain: CourseTwinTerrainSampler,
 ) {
@@ -3782,7 +3791,85 @@ function buildBushInstances(
       accepted += 1;
     }
   }
-  return instances.slice(0, 1_200);
+  const screeningBushes = buildCourseTwinScreenTrees(features, holes, terrainBounds, sampleTerrain)
+    .filter((_, index) => index % 2 === 0)
+    .map((tree, index) => {
+      const random = seededRandom(hashString(`screening-bush:${tree.x}:${tree.z}`));
+      const distance = 2.6 + random() * 3.8;
+      const angle = random() * Math.PI * 2;
+      const x = tree.x + Math.cos(angle) * distance;
+      const z = tree.z + Math.sin(angle) * distance;
+      return {
+        x,
+        y: sampleTerrain(x, z),
+        z,
+        height: 1.2 + random() * 1.9,
+        widthScale: 0.86 + random() * 0.36,
+        tint: random() * 2 - 1,
+        variant: index % bushBillboards.length,
+        rotation: random() * Math.PI * 2,
+      };
+    });
+  return [...instances, ...screeningBushes].slice(0, 1_200);
+}
+
+function buildCourseTwinScreenTrees(
+  features: CourseTwinFeature[],
+  holes: CourseTwinHole[],
+  terrainBounds: CourseTwinManifest["bounds"],
+  sampleTerrain: CourseTwinTerrainSampler,
+) {
+  const exclusions = features.filter((feature) =>
+    ["tee", "fairway", "green", "bunker", "water"].includes(feature.type),
+  );
+  const instances: VegetationInstance[] = [];
+
+  for (const hole of holes) {
+    const start = hole.centerline[0] ?? hole.tee;
+    const end = hole.centerline.at(-1) ?? hole.green;
+    const dx = end[0] - start[0];
+    const dz = end[2] - start[2];
+    const length = Math.hypot(dx, dz);
+    if (length < 1) continue;
+
+    const directionX = dx / length;
+    const directionZ = dz / length;
+    const sideX = -directionZ;
+    const sideZ = directionX;
+    const pairs = THREE.MathUtils.clamp(Math.round(length / 78), 3, 8);
+    const random = seededRandom(hashString(`screening:${hole.holeNumber}:${start[0]}:${start[2]}`));
+
+    for (let index = 0; index < pairs; index += 1) {
+      const progress = (index + 0.5 + (random() - 0.5) * 0.35) / pairs;
+      const along = length * progress;
+      for (const side of [-1, 1] as const) {
+        const setback = 28 + random() * 38;
+        const x = start[0] + directionX * along + sideX * setback * side;
+        const z = start[2] + directionZ * along + sideZ * setback * side;
+        if (
+          x < terrainBounds.minX + 8 ||
+          x > terrainBounds.maxX - 8 ||
+          z < terrainBounds.minZ + 8 ||
+          z > terrainBounds.maxZ - 8 ||
+          exclusions.some((feature) => courseTwinFeatureContains(feature, x, z))
+        ) {
+          continue;
+        }
+        instances.push({
+          x,
+          y: sampleTerrain(x, z),
+          z,
+          height: 8.5 + random() * 8,
+          widthScale: 0.78 + random() * 0.5,
+          tint: random() * 2 - 1,
+          variant: Math.floor(random() * treeBillboards.length),
+          rotation: random() * Math.PI * 2,
+        });
+      }
+    }
+  }
+
+  return instances.slice(0, 260);
 }
 
 function hashString(value: string) {

@@ -152,6 +152,9 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("InstancedVegetationBillboard");
     expect(sceneSource).toContain("treeBillboards");
     expect(sceneSource).toContain("bushBillboards");
+    expect(sceneSource).toContain("holes={manifest.holes}");
+    expect(sceneSource).toContain("buildCourseTwinScreenTrees");
+    expect(sceneSource).toContain("native screening vegetation completes");
     expect(sceneSource).not.toContain("TreeCanopyLobes");
     expect(vegetationLedgerSource).toContain("Course Twin British Parkland Vegetation Billboards");
     expect(vegetationLedgerSource).toContain("OpenAI generated asset");
