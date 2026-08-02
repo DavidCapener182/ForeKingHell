@@ -103,7 +103,7 @@ export function buildSessionQualityReadout(input: TodaySessionQualityInput): Ses
       score,
       label: "Good",
       detail:
-        "Useful practice session. Strike and playability made the evidence worth keeping; scoring control is judged separately.",
+        "Useful practice session. Strike and lateral control made the evidence worth keeping; scoring control is judged separately.",
       tone: "green",
     };
   }
@@ -113,7 +113,7 @@ export function buildSessionQualityReadout(input: TodaySessionQualityInput): Ses
       score,
       label: "Productive",
       detail:
-        "Productive range session. The ball was playable, even if scoring control still needs work.",
+        "Productive range session. The ball stayed inside a workable lateral window, even if scoring control still needs work.",
       tone: "amber",
     };
   }

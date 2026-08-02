@@ -632,8 +632,8 @@ function buildWhatChangedInsights({
   if (strongestCarryChange?.carryDelta !== null && strongestCarryChange?.carryDelta !== undefined) {
     insights.push({
       label: `${formatClubType(strongestCarryChange.clubType)} carry`,
-      value: `${formatSignedYards(strongestCarryChange.carryDelta)} vs previous 30`,
-      detail: `${strongestCarryChange.currentCount} recent shots compared with ${strongestCarryChange.previousCount} older shots.`,
+      value: `${formatSignedYards(strongestCarryChange.carryDelta)} last 30d`,
+      detail: `Median carry: ${strongestCarryChange.currentCount} shots in the last 30 days vs ${strongestCarryChange.previousCount} in the preceding 30 days.`,
       tone: strongestCarryChange.carryDelta >= 0 ? "green" : "amber",
     });
   }
@@ -647,7 +647,7 @@ function buildWhatChangedInsights({
     insights.push({
       label: `${formatClubType(strongestMissChange.clubType)} dispersion`,
       value: `${numberFormatter.format(Math.abs(strongestMissChange.missDelta))} yd ${tighter ? "tighter" : "wider"}`,
-      detail: "Average left/right miss compared with the previous 30-day window.",
+      detail: "Average left/right miss: last 30 days vs the preceding 30 days.",
       tone: tighter ? "green" : "amber",
     });
   }
@@ -665,7 +665,7 @@ function buildWhatChangedInsights({
     insights.push({
       label: `${formatClubType(strongestSpeedChange.clubType)} speed`,
       value: `${formatSignedNumber(strongestSpeedChange.ballSpeedDelta)} mph`,
-      detail: "Ball speed movement against the previous 30-day window.",
+      detail: "Ball speed: last 30 days vs the preceding 30 days.",
       tone: strongestSpeedChange.ballSpeedDelta >= 0 ? "sky" : "slate",
     });
   }

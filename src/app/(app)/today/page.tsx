@@ -63,7 +63,7 @@ import {
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { isEstimatedClubData } from "@/lib/club-analytics";
-import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
+import { calculateClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -125,7 +125,7 @@ const todayClubPerformanceColumns: DesktopWorkbenchColumn[] = [
   { id: "carry", label: "Carry" },
   { id: "offline", label: "Offline" },
   { id: "straight", label: "Straight" },
-  { id: "playable", label: "Playable" },
+  { id: "playable", label: "Lateral window" },
   { id: "signal", label: "Signal" },
 ];
 
@@ -231,6 +231,8 @@ type DriverHealthSummary = {
   startLine: number | null;
   faceAngle: number | null;
   faceToPath: number | null;
+  measuredShotCount: number;
+  totalShotCount: number;
   status: string;
   detail: string;
   tone: ReviewTone;
@@ -320,7 +322,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
               tone: deltaTone(selectedReviewOverall.straightRateDelta, "higher"),
             },
             {
-              label: "Playable",
+              label: "Lateral window",
               value: formatRate(selectedReviewOverall.today.playableRate),
               detail: deltaText(selectedReviewOverall.playableRateDelta, "pp", true),
               tone: deltaTone(selectedReviewOverall.playableRateDelta, "higher"),
@@ -924,7 +926,7 @@ function todayInsightEvidence(
     `${integerFormatter.format(data.shots.length)} clean shots from ${integerFormatter.format(
       selectedClubCount(data),
     )} clubs on ${data.dateLabel}.`,
-    `${formatRate(data.overall.today.playableRate)} playable, ${formatRate(
+    `${formatRate(data.overall.today.playableRate)} inside the lateral window, ${formatRate(
       data.overall.today.straightRate,
     )} straight and ${formatYards(data.overall.today.offlineAverageYd)} offline.`,
     `Practice usefulness ${score.score}/100; scoring control ${score.scoringControlLabel.toLowerCase()}.`,
@@ -942,7 +944,7 @@ function todayInsightEvidence(
 
   if (data.dataCleaning.excludedShotCount > 0) {
     evidence.push(
-      `Clean scoring excluded ${integerFormatter.format(
+      `Clean scoring held out ${integerFormatter.format(
         data.dataCleaning.excludedShotCount,
       )} ${data.dataCleaning.reasonLabel.toLowerCase()} shot rows.`,
     );
@@ -1027,12 +1029,12 @@ function TodayDataCleaningImpactCard({
         <div>
           <p className="text-sm font-semibold text-emerald-950">Data cleaning impact</p>
           <p className="mt-1 text-sm leading-5 text-emerald-900">
-            Excluded shots stay in raw history and are removed from clean scoring, stock carry and
-            plan matching.
+            Rows held for review stay in raw history and are held out of clean scoring, session
+            comparisons and highlights.
           </p>
         </div>
         <Badge variant="outline" className="border-emerald-200 bg-white/80 text-emerald-800">
-          {integerFormatter.format(data.dataCleaning.excludedShotCount)} excluded
+          {integerFormatter.format(data.dataCleaning.excludedShotCount)} held out
         </Badge>
       </div>
       <div className="grid gap-2 sm:grid-cols-4">
@@ -1045,7 +1047,7 @@ function TodayDataCleaningImpactCard({
           value={integerFormatter.format(data.dataCleaning.cleanShotCount)}
         />
         <DataCleaningMetric
-          label="Excluded"
+          label="Held out"
           value={integerFormatter.format(data.dataCleaning.excludedShotCount)}
         />
         <DataCleaningMetric label="Reason" value={data.dataCleaning.reasonLabel} />
@@ -1744,10 +1746,7 @@ function TodayVerdictHero({
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <HeroScopePill label={selectedClubLabel(data)} value="Scope" />
-        <HeroScopePill
-          label={`${integerFormatter.format(data.comparisonShots.length)} comparison`}
-          value="Baseline"
-        />
+        <HeroScopePill label="Up to 50 earlier / club" value="Baseline" />
         <HeroScopePill
           label={bestShot ? bestShotTitle(bestShot) : "No shot yet"}
           value="Shot of the day"
@@ -1825,7 +1824,7 @@ function TodayKpiStrip({ data, className = "" }: { data: TodayPracticeData; clas
       />
       <ReviewKpi
         icon={<ShieldCheck className="size-4" />}
-        label="Playable"
+        label="Lateral window"
         value={formatRate(data.overall.today.playableRate)}
         detail={deltaText(data.overall.playableRateDelta, "pp", true)}
         status={rateStatus(data.overall.playableRateDelta, "Solid")}
@@ -1929,7 +1928,7 @@ function PracticeScoreHeroCard({
       </div>
       <p className="mt-1 text-sm font-semibold text-slate-700">{score.sessionQualityLabel}</p>
       <div className={`mt-3 grid gap-2 ${planResult ? "grid-cols-2" : "grid-cols-3"}`}>
-        <ScoreMiniMetric label="Playable" value={score.playableRateLabel} />
+        <ScoreMiniMetric label="Lateral window" value={score.playableRateLabel} />
         <ScoreMiniMetric label="Strike quality" value={`${score.strikeScore}/10`} />
         <ScoreMiniMetric
           label="Scoring control"
@@ -1969,7 +1968,7 @@ function WhatChangedCard({
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-              Compared to last session
+              Compared with prior same-club shots
             </p>
             <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
               What changed
@@ -2026,12 +2025,18 @@ function DriverHealthCard({
         <DriverHealthMetric label="Path" value={formatDegrees(summary.path)} />
         <DriverHealthMetric label="Draw target" value={formatDegrees(summary.targetPath)} />
         <DriverHealthMetric label="Start line" value={formatDegrees(summary.startLine)} />
-        <DriverHealthMetric label="Face angle" value={formatDegrees(summary.faceAngle)} />
-        <DriverHealthMetric label="Face-to-path" value={formatDegrees(summary.faceToPath)} />
+        <DriverHealthMetric label="Modelled face" value={formatDegrees(summary.faceAngle)} />
+        <DriverHealthMetric label="Modelled F-to-P" value={formatDegrees(summary.faceToPath)} />
       </div>
       <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
         {summary.detail}
       </p>
+      {summary.totalShotCount > 0 ? (
+        <p className="mt-2 text-xs font-medium leading-5 text-slate-700">
+          Delivery evidence: {summary.measuredShotCount}/{summary.totalShotCount} driver rows had
+          measured club data. Face and face-to-path are modelled from path and launch direction.
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -2780,7 +2785,7 @@ function ClubPerformancePanel({
           mobile={
             <MobileHorizontalRail
               title="Club performance"
-              description="This review against the latest previous shots."
+              description="This session against up to 50 earlier clean shots for the same club."
             >
               {comparisons.map((comparison) => (
                 <MobileDataCard
@@ -2837,7 +2842,7 @@ function ClubPerformancePanel({
           >
             <TableCaption id="today-club-performance-summary" className="sr-only">
               Latest practice club comparison table showing current and previous shot counts, carry,
-              offline, straight, playable and signal values.
+              offline, straight, lateral-window and signal values.
             </TableCaption>
             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
               <TableRow>
@@ -2863,7 +2868,7 @@ function ClubPerformancePanel({
                   Straight
                 </TableHead>
                 <TableHead data-column="playable" className="h-8 px-2 text-right">
-                  Playable
+                  Lateral
                 </TableHead>
                 <TableHead
                   data-column="signal"
@@ -2992,7 +2997,7 @@ function ClubSummaryCard({
       <p className="mt-1 text-sm text-slate-700">
         {detail ??
           (comparison
-            ? `${formatRate(comparison.today.straightRate)} straight · ${formatRate(comparison.today.playableRate)} playable`
+            ? `${formatRate(comparison.today.straightRate)} straight · ${formatRate(comparison.today.playableRate)} in lateral window`
             : "No club data")}
       </p>
       {comparison ? (
@@ -4688,9 +4693,9 @@ function whatChangedItems(data: TodayPracticeData): WhatChangedItem[] {
       priority: 0,
     },
     {
-      label: "Playable",
+      label: "Lateral window",
       value: deltaText(data.overall.playableRateDelta, "pp", true),
-      detail: "playable shot rate",
+      detail: "inside the lateral window",
       tone: deltaTone(data.overall.playableRateDelta, "higher"),
       priority: 0,
     },
@@ -4816,12 +4821,25 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
     averageNumbers(driverShots.map((shot) => shot.launchDirectionDeg)),
   );
   const faceAngle = roundOneNumber(
-    averageNumbers(measuredDriverShots.map((shot) => resolveClubFaceAngleDeg(shot))),
+    averageNumbers(
+      measuredDriverShots.map((shot) =>
+        calculateClubFaceAngleDeg(shot.launchDirectionDeg, shot.clubPathDeg),
+      ),
+    ),
   );
   const faceToPath = roundOneNumber(
-    averageNumbers(measuredDriverShots.map((shot) => calculateFaceToPathDeg(shot))),
+    averageNumbers(
+      measuredDriverShots.map((shot) => {
+        const modelledFace = calculateClubFaceAngleDeg(shot.launchDirectionDeg, shot.clubPathDeg);
+        return isNumber(modelledFace) && isNumber(shot.clubPathDeg)
+          ? modelledFace - shot.clubPathDeg
+          : null;
+      }),
+    ),
   );
   const targetPath = 5;
+  const measuredShotCount = measuredDriverShots.length;
+  const totalShotCount = driverShots.length;
 
   if (driverShots.length === 0) {
     return {
@@ -4830,6 +4848,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine: null,
       faceAngle: null,
       faceToPath: null,
+      measuredShotCount,
+      totalShotCount,
       status: "No driver in review",
       detail: "Add driver shots to see path, face angle and draw health here.",
       tone: "slate",
@@ -4843,6 +4863,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine,
       faceAngle,
       faceToPath: null,
+      measuredShotCount,
+      totalShotCount,
       status: "Driver path missing",
       detail: "Driver shots are present, but club-path data was not captured.",
       tone: "amber",
@@ -4860,6 +4882,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine,
       faceAngle,
       faceToPath,
+      measuredShotCount,
+      totalShotCount,
       status: "Healthy push draw",
       detail: "Path is sitting close to your normal draw window.",
       tone: "green",
@@ -4873,6 +4897,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine,
       faceAngle,
       faceToPath,
+      measuredShotCount,
+      totalShotCount,
       status: "Playable, monitor path",
       detail:
         "Path is below the draw-window target, but delivery is playable. Monitor start line before adding more inside path.",
@@ -4887,6 +4913,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine,
       faceAngle,
       faceToPath,
+      measuredShotCount,
+      totalShotCount,
       status: "Face too open",
       detail: "Path is usable, but face angle is drifting too far open.",
       tone: "pink",
@@ -4900,6 +4928,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
       startLine,
       faceAngle,
       faceToPath,
+      measuredShotCount,
+      totalShotCount,
       status: "Face closing",
       detail: "Path is present, but face angle is closing against it.",
       tone: "amber",
@@ -4912,6 +4942,8 @@ function driverHealthSummary(data: TodayPracticeData): DriverHealthSummary {
     startLine,
     faceAngle,
     faceToPath,
+    measuredShotCount,
+    totalShotCount,
     status: "Driver delivery needs a check",
     detail:
       "Driver delivery is outside the preferred window. Treat this as a check, not a reason to chase a bigger draw.",
@@ -5007,7 +5039,7 @@ function clubPerformanceNarrative(data: TodayPracticeData) {
   const reliableReadout = clubTrustReadout(reliable);
 
   if (!best || !work || !reliable) {
-    return "This review against the latest previous shots for the same club.";
+    return "This session against up to 50 earlier clean shots for the same club.";
   }
 
   return `${best.clubLabel} was today's best scoring read, ${reliable.clubLabel} ${reliableReadout.narrative}, and ${work.clubLabel} is the biggest opportunity.`;
@@ -5481,6 +5513,10 @@ function shotQualityBadgeClass(shot: TodayPracticeShot) {
 }
 
 function formatShotQualityLabel(shot: TodayPracticeShot) {
+  if (shot.dataIntegrityIssue === "trajectory-review") {
+    return "Review: trajectory";
+  }
+
   if (isShotExcluded(shot)) {
     return `Excluded: ${formatQualityTag(shot.qualityTag)}`;
   }
@@ -5489,7 +5525,7 @@ function formatShotQualityLabel(shot: TodayPracticeShot) {
 }
 
 function isShotExcluded(shot: TodayPracticeShot) {
-  return isExcludedPracticeQualityTag(shot.qualityTag);
+  return shot.dataIntegrityIssue !== null || isExcludedPracticeQualityTag(shot.qualityTag);
 }
 
 function formatQualityTag(value: string | null) {

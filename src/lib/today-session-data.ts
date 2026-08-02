@@ -4,6 +4,10 @@ import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import {
+  detectShotDataIntegrityIssue,
+  type ShotDataIntegrityIssue,
+} from "@/lib/shot-data-integrity";
 import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
 
 const APP_TIME_ZONE = "Europe/London";
@@ -45,6 +49,7 @@ export type TodayPracticeShot = {
   faceAngleDeg: number | null;
   clubDataEstType: string | null;
   qualityTag: string | null;
+  dataIntegrityIssue: ShotDataIntegrityIssue | null;
 };
 
 export type TodayPracticeSession = {
@@ -851,8 +856,8 @@ function isRawComparisonShot(shot: TodayPracticeShot) {
   return isNumber(shot.carryYd) || isNumber(shot.sideCarryYd) || isNumber(shot.ballSpeedMph);
 }
 
-function isCleanPracticeShot(shot: Pick<TodayPracticeShot, "qualityTag">) {
-  return !isExcludedPracticeQualityTag(shot.qualityTag);
+function isCleanPracticeShot(shot: Pick<TodayPracticeShot, "qualityTag" | "dataIntegrityIssue">) {
+  return !isExcludedPracticeQualityTag(shot.qualityTag) && shot.dataIntegrityIssue === null;
 }
 
 export function isExcludedPracticeQualityTag(qualityTag: string | null | undefined) {
@@ -895,7 +900,7 @@ function buildDataCleaningSummary(
   const tagCounts = new Map<string, number>();
 
   for (const shot of excludedShots) {
-    const tag = shot.qualityTag?.trim().toLowerCase() || "excluded";
+    const tag = (shot.dataIntegrityIssue ?? shot.qualityTag?.trim().toLowerCase()) || "excluded";
     tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
   }
 
@@ -929,6 +934,8 @@ function qualityTagLabel(tag: string) {
       return "bad data";
     case "misread":
       return "misread";
+    case "trajectory-review":
+      return "trajectory review";
     case "delete":
     case "deleted":
       return "excluded";
@@ -992,9 +999,12 @@ function clubOptions(shots: ShotRow[]) {
     .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
 }
 
-function toShotRows<T extends Omit<TodayPracticeShot, "clubSort">>(rows: T[]): ShotRow[] {
+function toShotRows<T extends Omit<TodayPracticeShot, "clubSort" | "dataIntegrityIssue">>(
+  rows: T[],
+): ShotRow[] {
   return rows.map((row) => ({
     ...row,
+    dataIntegrityIssue: detectShotDataIntegrityIssue(row),
     clubSort: clubSortValue(row.clubType),
   }));
 }

@@ -9,6 +9,8 @@ describe("today session data cleaning source", () => {
     expect(source).toContain("qualityTag: shots.qualityTag");
     expect(source).toContain('"top"');
     expect(source).toContain("isExcludedPracticeQualityTag");
+    expect(source).toContain("detectShotDataIntegrityIssue");
+    expect(source).toContain("dataIntegrityIssue === null");
     expect(source).toContain(
       "const cleanTodayRows = filteredTodayRows.filter(isCleanPracticeShot)",
     );
