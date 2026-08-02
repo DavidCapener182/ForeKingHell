@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, ArrowUpDown, GitCompareArrows } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, GitCompareArrows } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ShotDeleteButton } from "@/app/shots/shot-delete-button";
 import {
   Table,
   TableBody,
@@ -244,12 +245,38 @@ function sortAriaValue(dir: "asc" | "desc") {
   return dir === "desc" ? "descending" : "ascending";
 }
 
-function SelectedShotDetail({ shot }: { shot: ShotMasterDetailRow | null }) {
+export function SelectedShotDetail({
+  shot,
+  compact = false,
+}: {
+  shot: ShotMasterDetailRow | null;
+  compact?: boolean;
+}) {
+  const primaryEvidence = [
+    ["File", shot?.fileNameLabel],
+    ["Launch", shot?.launchLabel],
+    ["Ball speed", shot?.ballSpeedLabel],
+    ["Club speed", shot?.clubSpeedLabel],
+    ["Direction", shot?.launchDirectionLabel],
+    ["Apex", shot?.apexLabel],
+  ] as const;
+  const advancedEvidence = [
+    ["Attack", shot?.attackLabel],
+    ["Path", shot?.pathLabel],
+    ["Face", shot?.faceLabel],
+    ["Descent", shot?.descentLabel],
+    ["Smash", shot?.smashLabel],
+    ["Estimate", shot?.estimateLabel],
+  ] as const;
+
   return (
     <aside
       role="region"
       aria-label="Selected shot detail"
-      className="premium-command-surface grid min-w-0 gap-4 rounded-lg border border-emerald-950/10 p-4 2xl:sticky 2xl:top-20 2xl:self-start"
+      className={cn(
+        "premium-command-surface grid min-w-0 rounded-lg border border-emerald-950/10 2xl:sticky 2xl:top-20 2xl:self-start",
+        compact ? "gap-3 p-3" : "gap-4 p-4",
+      )}
     >
       {shot ? (
         <>
@@ -258,10 +285,17 @@ function SelectedShotDetail({ shot }: { shot: ShotMasterDetailRow | null }) {
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 Selected shot
               </p>
-              <h2 className="mt-2 truncate text-2xl font-semibold tracking-normal text-foreground">
+              <h2
+                className={cn(
+                  "truncate font-semibold tracking-normal text-foreground",
+                  compact ? "mt-1 text-xl" : "mt-2 text-2xl",
+                )}
+              >
                 {shot.clubLabel}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p
+                className={cn("text-muted-foreground", compact ? "mt-0.5 text-xs" : "mt-1 text-sm")}
+              >
                 {shot.shotAtLabel} - shot {shot.shotNumberLabel}
               </p>
             </div>
@@ -269,42 +303,59 @@ function SelectedShotDetail({ shot }: { shot: ShotMasterDetailRow | null }) {
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <ShotDetailMetric label="Carry" value={shot.carryLabel} />
-            <ShotDetailMetric label="Total" value={shot.totalLabel} />
-            <ShotDetailMetric label="Side" value={shot.sideLabel} tone={shot.sideTone} />
+            <ShotDetailMetric label="Carry" value={shot.carryLabel} compact={compact} />
+            <ShotDetailMetric label="Total" value={shot.totalLabel} compact={compact} />
+            <ShotDetailMetric
+              label="Side"
+              value={shot.sideLabel}
+              tone={shot.sideTone}
+              compact={compact}
+            />
           </div>
 
-          <dl className="grid gap-2 text-sm">
-            <ShotDetailPair label="File" value={shot.fileNameLabel} />
-            <ShotDetailPair label="Launch" value={shot.launchLabel} />
-            <ShotDetailPair label="Ball speed" value={shot.ballSpeedLabel} />
-            <ShotDetailPair label="Club speed" value={shot.clubSpeedLabel} />
-            <ShotDetailPair label="Direction" value={shot.launchDirectionLabel} />
-            <ShotDetailPair label="Apex" value={shot.apexLabel} />
-            <ShotDetailPair label="Attack" value={shot.attackLabel} />
-            <ShotDetailPair label="Path" value={shot.pathLabel} />
-            <ShotDetailPair label="Face" value={shot.faceLabel} />
-            <ShotDetailPair label="Descent" value={shot.descentLabel} />
-            <ShotDetailPair label="Smash" value={shot.smashLabel} />
-            <ShotDetailPair label="Estimate" value={shot.estimateLabel} />
+          <dl className={cn("grid text-sm", compact ? "grid-cols-2 gap-1.5" : "gap-2")}>
+            {primaryEvidence.map(([label, value], index) => (
+              <ShotDetailPair
+                key={label}
+                label={label}
+                value={value ?? "--"}
+                compact={compact}
+                className={compact && index === 0 ? "col-span-2" : undefined}
+              />
+            ))}
           </dl>
 
+          {compact ? (
+            <details className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs">
+              <summary className="cursor-pointer font-semibold text-foreground">
+                More delivery and strike data
+              </summary>
+              <dl className="mt-2 grid grid-cols-2 gap-1.5">
+                {advancedEvidence.map(([label, value]) => (
+                  <ShotDetailPair key={label} label={label} value={value ?? "--"} compact />
+                ))}
+              </dl>
+            </details>
+          ) : (
+            <dl className="grid gap-2 text-sm">
+              {advancedEvidence.map(([label, value]) => (
+                <ShotDetailPair key={label} label={label} value={value ?? "--"} />
+              ))}
+            </dl>
+          )}
+
           <div className="grid gap-2">
-            <Button asChild variant="outline" className="justify-between">
-              <Link href={`/shots?club=${encodeURIComponent(shot.clubType)}`} prefetch={false}>
-                Filter this club
-                <ArrowRight className="size-4" />
-              </Link>
-            </Button>
             <Button
               asChild
               className="justify-between bg-emerald-800 text-white hover:bg-emerald-900"
+              size={compact ? "sm" : "default"}
             >
               <Link href="/compare" prefetch={false}>
                 Compare session
                 <GitCompareArrows className="size-4" />
               </Link>
             </Button>
+            <ShotDeleteButton shotId={shot.id} />
           </div>
         </>
       ) : (
@@ -320,15 +371,18 @@ function ShotDetailMetric({
   label,
   value,
   tone = "slate",
+  compact = false,
 }: {
   label: string;
   value: string;
   tone?: ShotMasterDetailRow["sideTone"];
+  compact?: boolean;
 }) {
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white/80 p-2 text-center",
+        "rounded-lg border bg-white/80 text-center",
+        compact ? "p-1.5" : "p-2",
         tone === "green" && "border-emerald-200 bg-emerald-50",
         tone === "amber" && "border-amber-200 bg-amber-50",
         tone === "red" && "border-rose-200 bg-rose-50",
@@ -337,14 +391,39 @@ function ShotDetailMetric({
       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
+      <p
+        className={cn(
+          "truncate font-semibold text-foreground",
+          compact ? "mt-0.5 text-xs" : "mt-1 text-sm",
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
 
-function ShotDetailPair({ label, value }: { label: string; value: string }) {
+function ShotDetailPair({
+  label,
+  value,
+  compact = false,
+  className,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+  className?: string;
+}) {
   return (
-    <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] gap-2 rounded-lg border border-border bg-white/70 px-3 py-2">
+    <div
+      className={cn(
+        "grid rounded-lg border border-border bg-white/70",
+        compact
+          ? "grid-cols-[minmax(0,1fr)_auto] gap-1 px-2 py-1.5"
+          : "grid-cols-[6.75rem_minmax(0,1fr)] gap-2 px-3 py-2",
+        className,
+      )}
+    >
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="truncate text-right font-semibold text-foreground">{value}</dd>
     </div>

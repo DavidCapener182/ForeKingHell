@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamicImport from "next/dynamic";
+import { redirect } from "next/navigation";
 import {
   ArrowLeft,
   ArrowUpDown,
@@ -44,7 +45,13 @@ import {
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { ShotTraceMotif } from "@/components/visuals/page-artwork";
+import { ShotMapDistanceGuides } from "@/components/visuals/shot-map-distance-guides";
 import {
+  InteractiveDesktopShotMapContent,
+  type InteractiveShotShapeMapRow,
+} from "@/app/shots/interactive-shot-shape-map";
+import {
+  SelectedShotDetail,
   ShotsMasterDetailTable,
   type ShotMasterDetailRow,
   type ShotTableSort,
@@ -64,6 +71,11 @@ import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/cl
 import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { buildShotShapeTrace, type ShotShapeTrace } from "@/lib/shot-shape-trace";
+import {
+  SHOT_MAP_MAX_CARRY_YD,
+  SHOT_MAP_MAX_SIDE_YD,
+  shotMapPointForYards,
+} from "@/lib/shot-map-scale";
 import { buildShotPatternGroups } from "@/lib/shot-pattern-clusters";
 import { reportServerFailure } from "@/lib/server-observability";
 
@@ -168,6 +180,7 @@ const shotSortMetrics = [
   "descent",
   "smash",
 ] as const;
+const shotIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 type ShotSortMetric = (typeof shotSortMetrics)[number];
 type ShotSortDirection = "asc" | "desc";
 
@@ -196,7 +209,9 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
 export default async function ShotsPage({ searchParams }: { searchParams: SearchParams }) {
-  const filters = parseFilters(await searchParams);
+  const resolvedSearchParams = await searchParams;
+  const filters = parseFilters(resolvedSearchParams);
+  const selectedShotId = parseSelectedShotId(resolvedSearchParams);
   const [
     {
       stats,
@@ -204,16 +219,28 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
       sessionSummaries,
       savedShots,
       dispersionShots,
+      selectedShot,
       totalFilteredShots,
       clubsForFilter,
       categories,
     },
     featureData,
-  ] = await Promise.all([getShotDatabase(filters), getFeatureIdeasData()]);
+  ] = await Promise.all([getShotDatabase(filters, selectedShotId), getFeatureIdeasData()]);
   const totalPages = Math.max(1, Math.ceil(totalFilteredShots / PAGE_SIZE));
+  if (filters.page > totalPages) {
+    redirect(pageHref(filters, totalPages));
+  }
   const activeFilterChips = buildActiveFilterChips(filters, clubsForFilter, sessionSummaries);
   const currentViewLabel = buildShotCurrentViewLabel(filters, activeFilterChips);
+  const mapScopeFilters = { ...filters, club: "" };
+  const mapScopeFilterChips = buildActiveFilterChips(
+    mapScopeFilters,
+    clubsForFilter,
+    sessionSummaries,
+  );
+  const mapScopeLabel = buildShotCurrentViewLabel(mapScopeFilters, mapScopeFilterChips);
   const desktopShotRows = savedShots.map(serializeShotForMasterDetail);
+  const selectedMapShotDetail = selectedShot ? serializeShotForMasterDetail(selectedShot) : null;
   const desktopShotSorts = buildShotTableSorts(filters);
   const filterForm = (
     <ShotFilterFields
@@ -339,6 +366,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
         shots={dispersionShots}
         filters={filters}
         clubsForFilter={clubsForFilter}
+        selectedShotId={selectedShotId}
+        selectedShot={selectedMapShotDetail}
       />
 
       <div id="filters" className="grid gap-3 scroll-mt-28">
@@ -389,7 +418,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               sessionSummaries.slice(0, 5).map((session) => (
                 <MobileDataCard
                   key={session.id}
-                  href={isRoundSession(session.type) ? `/rounds/${session.id}` : undefined}
+                  href={sessionImportHref(filters, session.id, "dispersion")}
                   title={session.fileName ?? "Untitled import"}
                   subtitle={formatDate(session.date)}
                   action={<Badge variant="secondary">{formatSessionType(session.type)}</Badge>}
@@ -430,7 +459,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             <CardHeader>
               <CardTitle>Session imports</CardTitle>
               <CardDescription>
-                Saved files, CSV dates, shot rows, and retained raw rows.
+                Select a file to focus the map and shot explorer on that import.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -455,7 +484,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                       sessionSummaries.slice(0, 8).map((session) => (
                         <MobileDataCard
                           key={session.id}
-                          href={isRoundSession(session.type) ? `/rounds/${session.id}` : undefined}
+                          href={sessionImportHref(filters, session.id, "dispersion")}
                           title={session.fileName ?? "Untitled import"}
                           subtitle={formatDate(session.date)}
                           action={
@@ -505,27 +534,50 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sessionSummaries.slice(0, 8).map((session) => (
-                      <TableRow key={session.id} tabIndex={0} className="focus-aaa outline-none">
-                        <TableCell
-                          data-column="file"
-                          className="sticky left-0 z-10 max-w-64 truncate bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    {sessionSummaries.slice(0, 8).map((session) => {
+                      const selected = filters.sessionId === session.id;
+                      const href = sessionImportHref(filters, session.id);
+
+                      return (
+                        <TableRow
+                          key={session.id}
+                          tabIndex={0}
+                          aria-selected={selected}
+                          data-selected-session={selected ? "true" : undefined}
+                          className={`focus-aaa outline-none ${selected ? "bg-emerald-50/70" : ""}`}
                         >
-                          {isRoundSession(session.type) ? (
-                            <Link href={`/rounds/${session.id}`} className="hover:underline">
+                          <TableCell
+                            data-column="file"
+                            className={`sticky left-0 z-10 max-w-64 truncate font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)] ${
+                              selected ? "bg-emerald-50" : "bg-white"
+                            }`}
+                          >
+                            <Link
+                              href={href}
+                              prefetch={false}
+                              aria-current={selected ? "page" : undefined}
+                              className="focus-aaa rounded-sm outline-none hover:underline"
+                            >
                               {session.fileName ?? "Untitled import"}
                             </Link>
-                          ) : (
-                            (session.fileName ?? "Untitled import")
-                          )}
-                        </TableCell>
-                        <TableCell data-column="date">{formatDate(session.date)}</TableCell>
-                        <TableCell data-column="type">{formatSessionType(session.type)}</TableCell>
-                        <TableCell data-column="shots" className="text-right">
-                          {integerFormatter.format(session.shotCount)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell data-column="date">{formatDate(session.date)}</TableCell>
+                          <TableCell data-column="type">
+                            {formatSessionType(session.type)}
+                          </TableCell>
+                          <TableCell data-column="shots" className="text-right">
+                            <Link
+                              href={href}
+                              prefetch={false}
+                              className="focus-aaa rounded-sm font-semibold text-blue-700 outline-none hover:underline"
+                              aria-label={`Show ${integerFormatter.format(session.shotCount)} shots from ${session.fileName ?? formatDate(session.date)}`}
+                            >
+                              {integerFormatter.format(session.shotCount)}
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {sessionSummaries.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
@@ -617,7 +669,11 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           />
         }
       >
-        <DesktopShotDispersionMap shots={dispersionShots} currentViewLabel={currentViewLabel} />
+        <DesktopShotDispersionMap
+          shots={dispersionShots}
+          currentViewLabel={mapScopeLabel}
+          initialClub={filters.club}
+        />
         <ShotPatternExplorer
           groups={buildShotPatternGroups(dispersionShots.map(serializePatternShot))}
         />
@@ -731,13 +787,25 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
 
 type DispersionShot = {
   id: string;
+  fileName: string | null;
   shotAt: Date;
+  shotNumber: number | null;
+  courseHoleNumber: number | null;
+  courseHoleShotNumber: number | null;
   clubType: string;
   carryYd: number | null;
+  totalYd: number | null;
   sideCarryYd: number | null;
+  launchAngleDeg: number | null;
   launchDirectionDeg: number | null;
   spinAxis: number | null;
   ballSpeedMph: number | null;
+  clubSpeedMph: number | null;
+  apexFt: number | null;
+  attackAngleDeg: number | null;
+  clubPathDeg: number | null;
+  faceAngleDeg: number | null;
+  descentAngleDeg: number | null;
   smashFactor: number | null;
   sessionId: string;
   sessionLabel: string | null;
@@ -769,12 +837,19 @@ function MobileShotDispersionMap({
   shots,
   filters,
   clubsForFilter,
+  selectedShotId,
+  selectedShot,
 }: {
   shots: DispersionShot[];
   filters: ShotFilters;
   clubsForFilter: string[];
+  selectedShotId: string;
+  selectedShot: ShotMasterDetailRow | null;
 }) {
-  const model = buildShotShapeMapModel(shots, 36);
+  const visibleShots = filters.club
+    ? shots.filter((shot) => shot.clubType === filters.club)
+    : shots;
+  const model = buildShotShapeMapModel(visibleShots, 36);
   const clubCounts = clubsForFilter.map((clubType) => ({
     clubType,
     count: shots.filter((shot) => shot.clubType === clubType).length,
@@ -786,7 +861,7 @@ function MobileShotDispersionMap({
         <div className="min-w-0">
           <h2 className="text-xl font-semibold tracking-normal text-foreground">Dispersion map</h2>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            Recent matching shots with inferred top-down shape where telemetry allows.
+            Fixed 0-250 yd and +/-75 yd reference frame with inferred shape where telemetry allows.
           </p>
         </div>
         <Badge variant="secondary">
@@ -836,7 +911,17 @@ function MobileShotDispersionMap({
         mediaClassName="aspect-[4/3] min-h-[14rem] max-h-[15rem]"
         metricClassName="bottom-[4.5rem]"
         imageSizes="calc(100vw - 2rem)"
+        selectedShotId={selectedShotId}
+        shotHref={(shot) => selectedShotHref(filters, shot.id, "dispersion")}
       />
+      {selectedShot ? (
+        <div className="grid gap-2">
+          <Button asChild variant="outline" size="sm" className="w-fit">
+            <Link href={clearSelectedShotHref(filters, "dispersion")}>Clear map selection</Link>
+          </Button>
+          <SelectedShotDetail shot={selectedShot} />
+        </div>
+      ) : null}
       <MobileDataList>
         {model.plottedShots.slice(0, 3).map((shot) => (
           <MobileDataCard
@@ -861,12 +946,13 @@ function MobileShotDispersionMap({
 function DesktopShotDispersionMap({
   shots,
   currentViewLabel,
+  initialClub,
 }: {
   shots: DispersionShot[];
   currentViewLabel: string;
+  initialClub: string;
 }) {
   const model = buildShotShapeMapModel(shots, 64);
-  const latestRows = model.plottedShots.slice(0, 6);
 
   return (
     <Card id="dispersion-desktop" className="premium-card hidden scroll-mt-28 sm:block">
@@ -875,8 +961,9 @@ function DesktopShotDispersionMap({
           <div>
             <CardTitle>Top-down shot shape</CardTitle>
             <CardDescription>
-              Estimated curves use launch direction. Rows without start line fall back to landing
-              lines. {currentViewLabel}.
+              Fixed 0-250 yd and +/-75 yd reference frame. Estimated curves use launch direction;
+              rows without start line fall back to landing lines. Select a landing point to inspect
+              or remove that shot. {currentViewLabel}.
             </CardDescription>
           </div>
           <Badge variant="secondary" className="w-fit">
@@ -884,91 +971,26 @@ function DesktopShotDispersionMap({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <ShotShapeMapField
-          model={model}
-          className="overflow-hidden rounded-lg border border-emerald-950/10 bg-[#eef6ef]"
-          mediaClassName="aspect-[16/9] min-h-[28rem]"
-          imageSizes="(min-width: 1280px) 58vw, 100vw"
-          showMetrics={false}
+      <CardContent>
+        <InteractiveDesktopShotMapContent
+          key={currentViewLabel}
+          shots={shots.map(serializeShotForInteractiveMap)}
+          initialClub={initialClub}
         />
-        <div className="grid content-start gap-4">
-          <CompactReadoutGrid
-            columnsClassName="sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3"
-            items={[
-              {
-                label: "Carry",
-                value: formatYards(model.averageCarry),
-                detail: "Average plotted carry",
-                tone: "green",
-              },
-              {
-                label: "Playable",
-                value: `${model.playableCount}/${model.plottedShots.length || 0}`,
-                detail: "Inside 20 yd offline",
-                tone: "sky",
-              },
-              {
-                label: "Shape",
-                value: `${model.telemetryTraceCount}/${model.shapeTraces.length}`,
-                detail: "Launch-derived curves",
-                tone: "amber",
-              },
-            ]}
-          />
-          <DataTableFrame label="Latest inferred shot shape rows" stickyFirstColumn>
-            <Table
-              data-workbench-scope="shots-shape-evidence"
-              aria-describedby="shots-shape-evidence-summary"
-            >
-              <TableCaption id="shots-shape-evidence-summary" className="sr-only">
-                Latest inferred shot-shape evidence table showing shot, side distance and launch
-                telemetry used for the desktop shot-shape map.
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead data-column="shot">Shot</TableHead>
-                  <TableHead data-column="side">Side</TableHead>
-                  <TableHead data-column="shape">Shape evidence</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {latestRows.map((shot) => (
-                  <TableRow
-                    key={`desktop-shape-${shot.id}`}
-                    tabIndex={0}
-                    className="focus-aaa outline-none"
-                  >
-                    <TableCell data-column="shot" className="font-medium">
-                      <span className="block">{formatClubType(shot.clubType)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatYards(shot.carryYd)} · {formatDate(shot.shotAt)}
-                      </span>
-                    </TableCell>
-                    <TableCell data-column="side">{formatSignedYards(shot.sideCarryYd)}</TableCell>
-                    <TableCell data-column="shape">
-                      {formatShapeTelemetry(shot.launchDirectionDeg, shot.spinAxis)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {latestRows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                      No carry and side data match this filter yet.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-          <p className="text-sm leading-6 text-muted-foreground">
-            This is an inferred top-down path, not measured ball-flight tracking. Landing position
-            uses carry and side; curved shape requires launch direction.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
+}
+
+function serializeShotForInteractiveMap(shot: DispersionShot): InteractiveShotShapeMapRow {
+  return {
+    ...serializeShotForMasterDetail(shot),
+    shotAt: shot.shotAt.toISOString(),
+    carryYd: shot.carryYd,
+    sideCarryYd: shot.sideCarryYd,
+    launchDirectionDeg: shot.launchDirectionDeg,
+    spinAxis: shot.spinAxis,
+  };
 }
 
 function ShotShapeMapField({
@@ -978,6 +1000,8 @@ function ShotShapeMapField({
   metricClassName,
   imageSizes,
   showMetrics = true,
+  selectedShotId = "",
+  shotHref,
 }: {
   model: ShotShapeMapModel;
   className: string;
@@ -985,6 +1009,8 @@ function ShotShapeMapField({
   metricClassName?: string;
   imageSizes: string;
   showMetrics?: boolean;
+  selectedShotId?: string;
+  shotHref?: (shot: DispersionShot) => string;
 }) {
   return (
     <div className={className}>
@@ -1009,7 +1035,7 @@ function ShotShapeMapField({
             className="absolute inset-0 z-[1] h-full w-full"
           >
             <path
-              d="M 50 88 L 50 12"
+              d="M 50 88 L 50 16"
               fill="none"
               stroke="rgba(15,23,42,0.18)"
               strokeDasharray="2 3"
@@ -1017,6 +1043,7 @@ function ShotShapeMapField({
               strokeWidth="1.5"
               vectorEffect="non-scaling-stroke"
             />
+            <ShotMapDistanceGuides />
             {model.shapeTraces.map((trace) => (
               <path
                 key={trace.id}
@@ -1042,15 +1069,33 @@ function ShotShapeMapField({
         ) : null}
         {model.plottedShots.length > 0 ? (
           model.plottedShots.slice(0, 80).map((shot) => {
-            const x = clampPercent(50 + (Number(shot.sideCarryYd) / model.maxSide) * 38, 8, 92);
-            const y = clampPercent(88 - (Number(shot.carryYd) / model.maxCarry) * 72, 8, 90);
+            const { x, y } = shotMapPointForYards({
+              carryYd: Number(shot.carryYd),
+              sideCarryYd: Number(shot.sideCarryYd),
+            });
 
-            return (
+            const pointClass = `size-3 rounded-full border border-white shadow-[0_0_0_4px_rgba(255,255,255,0.5)] ${dispersionPointClass(
+              shot.sideCarryYd,
+            )}`;
+
+            return shotHref ? (
+              <Link
+                key={shot.id}
+                href={shotHref(shot)}
+                aria-label={`Show ${formatClubType(shot.clubType)} shot ${shot.shotNumber ?? "--"} from ${formatDate(shot.shotAt)}`}
+                aria-current={selectedShotId === shot.id ? "true" : undefined}
+                className="focus-aaa absolute z-[2] -translate-x-1/2 -translate-y-1/2 rounded-full p-2 outline-none"
+                style={{ left: `${x}%`, top: `${y}%` }}
+              >
+                <span
+                  className={`${pointClass} block ${selectedShotId === shot.id ? "ring-2 ring-amber-300 ring-offset-2" : ""}`}
+                  aria-hidden="true"
+                />
+              </Link>
+            ) : (
               <span
                 key={shot.id}
-                className={`absolute z-[2] size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-[0_0_0_4px_rgba(255,255,255,0.5)] ${dispersionPointClass(
-                  shot.sideCarryYd,
-                )}`}
+                className={`absolute z-[2] -translate-x-1/2 -translate-y-1/2 ${pointClass}`}
                 style={{ left: `${x}%`, top: `${y}%` }}
                 aria-hidden="true"
               />
@@ -1083,8 +1128,8 @@ function buildShotShapeMapModel(shots: DispersionShot[], traceLimit: number): Sh
   const plottedShots = shots.filter(
     (shot) => isFiniteShotMetric(shot.carryYd) && isFiniteShotMetric(shot.sideCarryYd),
   );
-  const maxCarry = Math.max(1, ...plottedShots.map((shot) => Number(shot.carryYd)));
-  const maxSide = Math.max(12, ...plottedShots.map((shot) => Math.abs(Number(shot.sideCarryYd))));
+  const maxCarry = SHOT_MAP_MAX_CARRY_YD;
+  const maxSide = SHOT_MAP_MAX_SIDE_YD;
   const shapeTraces = plottedShots
     .slice(0, traceLimit)
     .map((shot) =>
@@ -1239,9 +1284,9 @@ function ShotFilterFields({
   );
 }
 
-async function getShotDatabase(filters: ShotFilters) {
+async function getShotDatabase(filters: ShotFilters, selectedShotId: string) {
   try {
-    return await getLiveShotDatabase(filters);
+    return await getLiveShotDatabase(filters, selectedShotId);
   } catch (error) {
     if (isPlaywrightE2eAuthBypassEnabled()) {
       reportServerFailure("shots_e2e_fallback", error, {
@@ -1255,10 +1300,11 @@ async function getShotDatabase(filters: ShotFilters) {
   }
 }
 
-async function getLiveShotDatabase(filters: ShotFilters) {
+async function getLiveShotDatabase(filters: ShotFilters, selectedShotId: string) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const where = buildShotWhere(filters, userId);
+  const mapWhere = buildShotWhere({ ...filters, club: "" }, userId);
 
   const [
     [shotCount],
@@ -1272,6 +1318,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
     [filteredCount],
     savedShots,
     dispersionShots,
+    selectedShotRows,
   ] = await Promise.all([
     db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
     db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
@@ -1349,13 +1396,25 @@ async function getLiveShotDatabase(filters: ShotFilters) {
     db
       .select({
         id: shots.id,
+        fileName: sessions.fileName,
         shotAt: shots.shotAt,
+        shotNumber: shots.shotNumber,
+        courseHoleNumber: shots.courseHoleNumber,
+        courseHoleShotNumber: shots.courseHoleShotNumber,
         clubType: shots.clubType,
         carryYd: shots.carryYd,
+        totalYd: shots.totalYd,
         sideCarryYd: shots.sideCarryYd,
+        launchAngleDeg: shots.launchAngleDeg,
         launchDirectionDeg: shots.launchDirectionDeg,
         spinAxis: shots.spinAxis,
         ballSpeedMph: shots.ballSpeedMph,
+        clubSpeedMph: shots.clubSpeedMph,
+        apexFt: shots.apexFt,
+        attackAngleDeg: shots.attackAngleDeg,
+        clubPathDeg: shots.clubPathDeg,
+        faceAngleDeg: shots.faceAngleDeg,
+        descentAngleDeg: shots.descentAngleDeg,
         smashFactor: shots.smashFactor,
         sessionId: shots.sessionId,
         sessionLabel: sessions.fileName,
@@ -1371,9 +1430,56 @@ async function getLiveShotDatabase(filters: ShotFilters) {
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
       .innerJoin(clubs, eq(shots.clubId, clubs.id))
-      .where(where)
+      .where(mapWhere)
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
       .limit(90),
+    selectedShotId
+      ? db
+          .select({
+            id: shots.id,
+            fileName: sessions.fileName,
+            shotAt: shots.shotAt,
+            shotNumber: shots.shotNumber,
+            courseHoleNumber: shots.courseHoleNumber,
+            courseHoleShotNumber: shots.courseHoleShotNumber,
+            clubType: shots.clubType,
+            carryYd: shots.carryYd,
+            totalYd: shots.totalYd,
+            sideCarryYd: shots.sideCarryYd,
+            launchAngleDeg: shots.launchAngleDeg,
+            launchDirectionDeg: shots.launchDirectionDeg,
+            spinAxis: shots.spinAxis,
+            ballSpeedMph: shots.ballSpeedMph,
+            clubSpeedMph: shots.clubSpeedMph,
+            apexFt: shots.apexFt,
+            attackAngleDeg: shots.attackAngleDeg,
+            clubPathDeg: shots.clubPathDeg,
+            faceAngleDeg: shots.faceAngleDeg,
+            descentAngleDeg: shots.descentAngleDeg,
+            smashFactor: shots.smashFactor,
+            sessionId: shots.sessionId,
+            sessionLabel: sessions.fileName,
+            sessionCourseName: sessions.courseName,
+            playContext: shots.playContext,
+            shotShape: shots.shotShape,
+            qualityTag: shots.qualityTag,
+            clubDataEstType: shots.clubDataEstType,
+            clubBrand: clubs.brand,
+            clubModel: clubs.model,
+            sourceRawJson: shots.sourceRawJson,
+          })
+          .from(shots)
+          .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+          .innerJoin(clubs, eq(shots.clubId, clubs.id))
+          .where(
+            and(
+              eq(shots.id, selectedShotId),
+              eq(shots.userId, userId),
+              eq(sessions.userId, userId),
+            ),
+          )
+          .limit(1)
+      : Promise.resolve([]),
   ]);
 
   const shotCountBySessionId = new Map(
@@ -1397,6 +1503,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
     sessionSummaries,
     savedShots,
     dispersionShots,
+    selectedShot: selectedShotRows[0] ?? null,
     totalFilteredShots: filteredCount?.value ?? 0,
     clubsForFilter: [...new Set(clubRows.map((club) => club.type))].filter(isTrackedClubType),
     categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
@@ -1441,6 +1548,7 @@ function emptyShotDatabase() {
     sessionSummaries: [],
     savedShots: [],
     dispersionShots: [],
+    selectedShot: null,
     totalFilteredShots: 0,
     clubsForFilter: [],
     categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
@@ -1525,6 +1633,11 @@ function parseFilters(params: Awaited<SearchParams>): ShotFilters {
     sort,
     dir,
   };
+}
+
+function parseSelectedShotId(params: Awaited<SearchParams>) {
+  const selectedShotId = first(params.selectedShot);
+  return shotIdPattern.test(selectedShotId) ? selectedShotId : "";
 }
 
 function allToEmpty(value: string) {
@@ -1639,6 +1752,35 @@ function shotsHref(filters: ShotFilters) {
 
   const query = params.toString();
   return query ? `/shots?${query}` : "/shots";
+}
+
+function selectedShotHref(filters: ShotFilters, shotId: string, fragment: string) {
+  const href = shotsHref(filters);
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}selectedShot=${encodeURIComponent(shotId)}#${fragment}`;
+}
+
+function clearSelectedShotHref(filters: ShotFilters, fragment: string) {
+  return `${shotsHref(filters)}#${fragment}`;
+}
+
+function sessionImportHref(
+  filters: ShotFilters,
+  sessionId: string,
+  fragment = "dispersion-desktop",
+) {
+  return `${shotsHref({
+    ...filters,
+    page: 1,
+    club: "",
+    sessionId,
+    category: "",
+    q: "",
+    from: "",
+    to: "",
+    sort: "recent",
+    dir: "desc",
+  })}#${fragment}`;
 }
 
 function sortHref(filters: ShotFilters, sort: ShotSortMetric) {
@@ -1819,10 +1961,6 @@ function averageShotMetric(values: Array<number | null>) {
   return finite.reduce((total, value) => total + value, 0) / finite.length;
 }
 
-function clampPercent(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function dispersionPointClass(sideCarryYd: number | null) {
   if (sideCarryYd === null) {
     return "bg-slate-500";
@@ -1884,15 +2022,6 @@ function formatSessionType(value: string) {
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
-}
-
-function isRoundSession(value: string) {
-  return (
-    value === "round" ||
-    value === "simulator" ||
-    value === "simulated_course" ||
-    value === "real_round"
-  );
 }
 
 function formatHole(holeNumber: number | null, holeShotNumber: number | null) {

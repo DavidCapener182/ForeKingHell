@@ -15,6 +15,8 @@ describe("shots master-detail desktop table", () => {
     expect(source).toContain("<TableCaption");
     expect(source).toContain("SelectedShotDetail");
     expect(source).toContain('aria-label="Selected shot detail"');
+    expect(source).toContain("ShotDeleteButton");
+    expect(source).toContain("<ShotDeleteButton shotId={shot.id} />");
     expect(source).toContain("data-selected-shot");
     expect(source).toContain("tabIndex={0}");
 
