@@ -686,7 +686,7 @@ function buildWhatChangedInsights({
 
   if (bestConfidenceClub) {
     insights.push({
-      label: "Most trusted club",
+      label: "Most trusted historically",
       value: `${formatClubType(bestConfidenceClub.type)} / ${Math.round(bestConfidenceClub.stock.confidenceScore)}%`,
       detail: `Reliable with ${integerFormatter.format(bestConfidenceClub.shotCount)} saved shots.`,
       tone: "green",

@@ -1987,7 +1987,7 @@ function DashboardSummaryHero({
           tone="amber"
         />
         <HeroInsightCard
-          title="Most trusted club"
+          title="Most trusted historically"
           value={bagSummary.mostTrusted?.label ?? (bestClub ? formatClubType(bestClub.type) : "--")}
           detail={
             bagSummary.mostTrusted
@@ -2009,7 +2009,7 @@ function DashboardSummaryHero({
           tone={driverStatus.tone}
         />
         <HeroInsightCard
-          title="Scoring zone"
+          title="Best course scoring club"
           value={
             scoringZone
               ? `${scoringZone.label} ${formatYards(scoringZone.fullCarryYd)}`
@@ -3621,7 +3621,11 @@ function BagConfidencePanel({
         <div className="grid gap-5">
           <div className="grid auto-rows-fr gap-3 xl:grid-cols-2">
             {bagSummary.mostTrusted ? (
-              <BagCaddieCard title="Most trusted club" club={bagSummary.mostTrusted} tone="green" />
+              <BagCaddieCard
+                title="Most trusted historically"
+                club={bagSummary.mostTrusted}
+                tone="green"
+              />
             ) : null}
             {bagSummary.leastTrusted ? (
               <BagCaddieCard

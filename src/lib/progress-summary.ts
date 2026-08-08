@@ -284,7 +284,7 @@ function buildSignals(
 
   if (rankings.mostTrusted) {
     signals.push({
-      label: "Most trusted",
+      label: "Most trusted historically",
       value: `${formatClubType(rankings.mostTrusted.clubType)} / ${rankings.mostTrusted.trustIndex}%`,
       detail: `${rankings.mostTrusted.confidenceLabel}. ${rankings.mostTrusted.sampleSize} clean stock shots.`,
       tone: "green",

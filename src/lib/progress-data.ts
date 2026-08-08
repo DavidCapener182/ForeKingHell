@@ -9,12 +9,18 @@ import {
   type ClubAnalyticsShot,
 } from "@/lib/club-analytics";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isComparableScoredRound } from "@/lib/progress-readiness";
 import type { ProgressClub } from "@/lib/progress-summary";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { observeServerOperation } from "@/lib/server-observability";
 
 export type ProgressData = {
   clubs: ProgressClub[];
+};
+
+export type ProgressScoringEvidence = {
+  comparableRoundCount: number;
+  latestComparableRoundAt: Date | null;
 };
 
 export async function getProgressData(userId?: string): Promise<ProgressData> {
@@ -122,6 +128,29 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
       return { clubs: progressClubs };
     },
   );
+}
+
+export async function getProgressScoringEvidence(
+  userId?: string,
+): Promise<ProgressScoringEvidence> {
+  userId ??= await requireCurrentUserId();
+
+  const roundRows = await getDb()
+    .select({
+      date: sessions.date,
+      scorecardJson: sessions.scorecardJson,
+    })
+    .from(sessions)
+    .where(and(eq(sessions.userId, userId), eq(sessions.type, "real_round")))
+    .orderBy(desc(sessions.date));
+  const comparableRounds = roundRows.filter((round) =>
+    isComparableScoredRound(round.scorecardJson),
+  );
+
+  return {
+    comparableRoundCount: comparableRounds.length,
+    latestComparableRoundAt: comparableRounds[0]?.date ?? null,
+  };
 }
 
 type ProgressShotRow = {

@@ -1306,7 +1306,7 @@ function BagHealthHero({
           <PageArtwork variant="stockYardages" alt="" className="h-48 rounded-lg" priority />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
             <BagHealthSignal
-              label="Strongest club"
+              label="Most trusted historically"
               value={strongestClub ? formatClubType(strongestClub.type) : "--"}
               detail={
                 strongestClub

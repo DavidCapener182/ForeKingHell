@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/page.tsx"), "utf8");
 
 describe("bag desktop workbench source", () => {
+  it("labels stock-confidence leadership as historical trust", () => {
+    expect(source).toContain('label="Most trusted historically"');
+    expect(source).not.toContain('label="Strongest club"');
+  });
+
   it("keeps the AI bag rail as a large-monitor enhancement", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";

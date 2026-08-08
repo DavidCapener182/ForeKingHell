@@ -17,7 +17,7 @@ describe("progress desktop workbench source", () => {
     expect(layoutBlock).toContain("DesktopInsightRail");
     expect(layoutBlock).toContain('title="AI progress rail"');
     expect(layoutBlock).toContain('railBreakpoint="wide"');
-    expect(layoutBlock).toContain("progressInsightMetrics(summary)");
+    expect(layoutBlock).toContain("progressInsightMetrics(summary, scoringEvidence)");
     expect(layoutBlock).toContain("progressInsightEvidence(summary)");
     expect(layoutBlock).not.toContain('railBreakpoint="2xl"');
     expect(source).toContain("progressWorkbenchPrompts");
@@ -108,5 +108,21 @@ describe("progress desktop workbench source", () => {
       expect(source).toContain(`label: "${label}"`);
     }
     expect(source).toContain("more shots is not automatic improvement");
+  });
+
+  it("keeps technical readiness separate from real-round scoring confidence", () => {
+    expect(source).toContain('label: "Technical readiness"');
+    expect(source).toContain('label: "Scoring confidence"');
+    expect(source).toContain("Technical profile");
+    expect(source).toContain("This does not predict a score.");
+    expect(source).toContain("comparable real");
+    expect(source).toContain("not enough to connect range form to scoring");
+    expect(source).not.toContain("Break 80 readiness");
+    expect(source).not.toContain("Competition ready");
+  });
+
+  it("names current form and historical trust as separate club signals", () => {
+    expect(source).toContain('label="Best current form"');
+    expect(source).toContain('label="Most trusted historically"');
   });
 });

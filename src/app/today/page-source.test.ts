@@ -125,7 +125,7 @@ describe("latest practice desktop dashboard", () => {
       "How useful the session was; scoring control and planned-drill result stay separate.",
     );
     expect(source).toContain("The session was useful. The planned drill was not fully proven.");
-    expect(source).toContain("Best scoring read");
+    expect(source).toContain("Best current form");
     expect(source).toContain("Most trusted long-term");
     expect(source).toContain('scoringControl.label === "Mixed"');
     expect(source).toContain('? "Productive"');

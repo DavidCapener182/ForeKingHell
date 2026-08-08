@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/dashboard/page.tsx"), "utf8");
 
 describe("dashboard desktop source", () => {
+  it("separates historical trust from the best course-scoring club", () => {
+    expect(source).toContain('title="Most trusted historically"');
+    expect(source).toContain('title="Best course scoring club"');
+  });
+
   it("does not present a path moving away from neutral as an improvement", () => {
     expect(source).toContain("if (changeTowardNeutral <= 0.05)");
     expect(source).not.toContain('return "Holding steady";');

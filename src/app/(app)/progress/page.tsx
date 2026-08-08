@@ -63,7 +63,11 @@ import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
 import type { ClubAnalytics } from "@/lib/club-analytics";
-import { getProgressData } from "@/lib/progress-data";
+import {
+  getProgressData,
+  getProgressScoringEvidence,
+  type ProgressScoringEvidence,
+} from "@/lib/progress-data";
 import {
   buildProgressSummary,
   type BestSignal,
@@ -83,6 +87,7 @@ import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas"
 import { cn } from "@/lib/utils";
 import { buildWeeklyChangeReview, type WeeklyChangeReview } from "@/lib/weekly-change-review";
 import { getWeeklyChangeEvidence } from "@/lib/weekly-change-review-data";
+import { calculateScoringConfidence } from "@/lib/progress-readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -163,13 +168,15 @@ const progressWorkbenchPrompts: DesktopAiPrompt[] = [
 
 export default async function ProgressPage({ searchParams }: ProgressPageProps) {
   const userId = await requireCurrentUserId();
-  const [params, data, featureData, practicePlannerSummary, weeklyEvidence] = await Promise.all([
-    searchParams,
-    getProgressData(userId),
-    getFeatureIdeasData(),
-    getPracticePlannerProgressSummary(userId),
-    getWeeklyChangeEvidence(userId),
-  ]);
+  const [params, data, scoringEvidence, featureData, practicePlannerSummary, weeklyEvidence] =
+    await Promise.all([
+      searchParams,
+      getProgressData(userId),
+      getProgressScoringEvidence(userId),
+      getFeatureIdeasData(),
+      getPracticePlannerProgressSummary(userId),
+      getWeeklyChangeEvidence(userId),
+    ]);
   const summary = buildProgressSummary(data.clubs);
   const weeklyChangeReview = buildWeeklyChangeReview({
     clubRows: summary.clubRows,
@@ -205,7 +212,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
           <DesktopInsightRail
             title="AI progress rail"
             description="Explain what is improving, what is weak and which practice block moves the bag forward."
-            metrics={progressInsightMetrics(summary)}
+            metrics={progressInsightMetrics(summary, scoringEvidence)}
             evidence={progressInsightEvidence(summary)}
             prompts={progressWorkbenchPrompts}
             actions={[
@@ -321,7 +328,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
         ) : (
           <>
             <ProgressScorePanel summary={summary} />
-            <GoalProgressPanel summary={summary} />
+            <GoalProgressPanel summary={summary} scoringEvidence={scoringEvidence} />
             <MobileProgressFirstCard summary={summary} />
             <MobileProgressDimensions summary={summary} clubs={data.clubs} />
             <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
@@ -380,10 +387,14 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
   );
 }
 
-function progressInsightMetrics(summary: ProgressSummary): DesktopInsightMetric[] {
+function progressInsightMetrics(
+  summary: ProgressSummary,
+  scoringEvidence: ProgressScoringEvidence,
+): DesktopInsightMetric[] {
   const score = progressScore(summary);
   const momentum = progressScoreMomentum(summary);
-  const readiness = break80Progress(summary);
+  const readiness = technicalReadiness(summary);
+  const scoringConfidence = scoringConfidenceReadout(scoringEvidence);
   const priority = summary.practicePlan[0];
 
   return [
@@ -394,10 +405,16 @@ function progressInsightMetrics(summary: ProgressSummary): DesktopInsightMetric[
       tone: score >= 78 ? "green" : score >= 62 ? "amber" : "sky",
     },
     {
-      label: "Break 80 readiness",
+      label: "Technical readiness",
       value: `${readiness}%`,
-      detail: progressCoachSentence(summary),
+      detail: `Launch-monitor evidence only. ${progressCoachSentence(summary)}`,
       tone: readiness >= 70 ? "green" : readiness >= 50 ? "amber" : "sky",
+    },
+    {
+      label: "Scoring confidence",
+      value: scoringConfidence.label,
+      detail: scoringConfidence.detail,
+      tone: scoringConfidence.tone,
     },
     {
       label: "Average trust",
@@ -624,11 +641,18 @@ function ProgressScorePanel({ summary }: { summary: ProgressSummary }) {
   );
 }
 
-function GoalProgressPanel({ summary }: { summary: ProgressSummary }) {
-  const progress = break80Progress(summary);
+function GoalProgressPanel({
+  summary,
+  scoringEvidence,
+}: {
+  summary: ProgressSummary;
+  scoringEvidence: ProgressScoringEvidence;
+}) {
+  const progress = technicalReadiness(summary);
   const trend = break80Trend(summary);
   const needs = break80Needs(summary);
   const sentence = progressCoachSentence(summary);
+  const scoringConfidence = scoringConfidenceReadout(scoringEvidence);
 
   return (
     <section className="grid gap-4 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center lg:p-6">
@@ -636,7 +660,7 @@ function GoalProgressPanel({ summary }: { summary: ProgressSummary }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill tone="green">
             <Target className="mr-1 size-3.5" />
-            Score goal
+            Technical profile
           </StatusPill>
           <StatusPill tone={trend >= 0 ? "green" : "amber"}>
             {trend >= 0 ? (
@@ -648,10 +672,10 @@ function GoalProgressPanel({ summary }: { summary: ProgressSummary }) {
           </StatusPill>
         </div>
         <h2 className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
-          Break 80 readiness
+          Technical readiness
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#667085]">
-          How close the current bag profile is to a round-ready scoring goal.
+          How strong the current launch-monitor pattern is. This does not predict a score.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
@@ -676,17 +700,26 @@ function GoalProgressPanel({ summary }: { summary: ProgressSummary }) {
             {sentence}
           </p>
         </div>
-        <div className="grid min-w-[10rem] gap-2 rounded-xl border border-[#DFE7DF] bg-[#F8FCF9] p-3">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">Need</p>
-          <div className="flex flex-wrap gap-2 md:grid">
-            {needs.map((club) => (
-              <span
-                key={club}
-                className="rounded-lg border border-[#CFE7D6] bg-white px-3 py-1.5 text-sm font-semibold text-[#087A3D]"
-              >
-                {club}
-              </span>
-            ))}
+        <div className="grid min-w-[11rem] gap-3">
+          <div className="rounded-xl border border-[#DFE7DF] bg-[#F8FCF9] p-3">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">
+              Scoring confidence
+            </p>
+            <p className="mt-1 text-lg font-bold text-[#111827]">{scoringConfidence.label}</p>
+            <p className="mt-1 text-xs leading-5 text-[#667085]">{scoringConfidence.detail}</p>
+          </div>
+          <div className="grid gap-2 rounded-xl border border-[#DFE7DF] bg-[#F8FCF9] p-3">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">Need</p>
+            <div className="flex flex-wrap gap-2 md:grid">
+              {needs.map((club) => (
+                <span
+                  key={club}
+                  className="rounded-lg border border-[#CFE7D6] bg-white px-3 py-1.5 text-sm font-semibold text-[#087A3D]"
+                >
+                  {club}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1360,7 +1393,7 @@ function ProgressSignalsPanel({
       </div>
       <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
         <SignalSummaryCard
-          label="Long-term trust"
+          label="Most trusted historically"
           value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
           detail={
             mostReliable
@@ -1372,7 +1405,7 @@ function ProgressSignalsPanel({
           tone="sky"
         />
         <SignalSummaryCard
-          label="Current form"
+          label="Best current form"
           value={currentForm ? formatClubType(currentForm.clubType) : "--"}
           detail={currentForm ? currentFormDetail(currentForm) : "Need latest-session clean shots"}
           href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
@@ -2838,7 +2871,7 @@ function progressScoreReadout(summary: ProgressSummary, momentum: number) {
   return "Keep adding comparable stock-shot sessions so the score can separate real movement from noise.";
 }
 
-function break80Progress(summary: ProgressSummary) {
+function technicalReadiness(summary: ProgressSummary) {
   const score = progressScore(summary);
   const playable = summary.totals.averagePlayableRate ?? summary.totals.averageTrust;
   const trustedShare =
@@ -2884,11 +2917,11 @@ function progressCoachSentence(summary: ProgressSummary) {
 
 function goalProgressLabel(progress: number) {
   if (progress >= 80) {
-    return "Competition ready";
+    return "Strong technical base";
   }
 
   if (progress >= 65) {
-    return "Getting close";
+    return "Technical base forming";
   }
 
   if (progress >= 45) {
@@ -2896,6 +2929,36 @@ function goalProgressLabel(progress: number) {
   }
 
   return "Needs baseline";
+}
+
+function scoringConfidenceReadout(evidence: ProgressScoringEvidence): {
+  label: string;
+  detail: string;
+  tone: Tone;
+} {
+  const count = evidence.comparableRoundCount;
+  const confidence = calculateScoringConfidence(count);
+  const roundLabel = `${integerFormatter.format(count)} comparable real ${count === 1 ? "round" : "rounds"}`;
+  const latest = evidence.latestComparableRoundAt
+    ? ` Latest: ${shortDateFormatter.format(evidence.latestComparableRoundAt)}.`
+    : "";
+
+  if (count > 0) {
+    return {
+      label: confidence.label,
+      detail:
+        count < 3
+          ? `${roundLabel}; not enough to connect range form to scoring.${latest}`
+          : `${roundLabel}.${latest}`,
+      tone: confidence.tone,
+    };
+  }
+
+  return {
+    label: confidence.label,
+    detail: "Add a scored real round before making a scoring-readiness call.",
+    tone: confidence.tone,
+  };
 }
 
 type ProgressScoreClubSignal = {

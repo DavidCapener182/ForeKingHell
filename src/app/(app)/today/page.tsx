@@ -555,7 +555,7 @@ function TodayMobileVerdictCard({
         label="Control"
         value={`${score.scoringControlLabel} · strike ${score.strikeScore}/10`}
       />
-      <TodayVerdictRow label="Best scoring read" value={best?.clubLabel ?? score.strong} />
+      <TodayVerdictRow label="Best current form" value={best?.clubLabel ?? score.strong} />
       <TodayVerdictRow label="Practise first" value={work?.clubLabel ?? score.weak} />
       {planResult ? <TodayVerdictRow label="Planned drill" value={planResult.label} /> : null}
       <div className="bg-secondary/55 px-4 py-3">
@@ -1755,7 +1755,7 @@ function TodayVerdictHero({
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <VerdictStoryCard
-          label="Best scoring read"
+          label="Best current form"
           value={best?.clubLabel ?? score.strong}
           detail={best ? bestPerformerDetail(best) : "Building signal"}
           tone="green"
@@ -2945,7 +2945,7 @@ function ClubPerformanceSummaryCards({ data }: { data: TodayPracticeData }) {
   return (
     <div className="grid gap-2 md:grid-cols-3">
       <ClubSummaryCard
-        label="Best scoring read"
+        label="Best current form"
         comparison={best}
         icon={<Award className="size-4" />}
         tone="green"
@@ -5042,7 +5042,7 @@ function clubPerformanceNarrative(data: TodayPracticeData) {
     return "This session against up to 50 earlier clean shots for the same club.";
   }
 
-  return `${best.clubLabel} was today's best scoring read, ${reliable.clubLabel} ${reliableReadout.narrative}, and ${work.clubLabel} is the biggest opportunity.`;
+  return `${best.clubLabel} had today's best current form, ${reliable.clubLabel} ${reliableReadout.narrative}, and ${work.clubLabel} is the biggest opportunity.`;
 }
 
 function clubPerformanceRead(data: TodayPracticeData) {
@@ -5055,7 +5055,7 @@ function clubPerformanceRead(data: TodayPracticeData) {
     return data.overall.summary;
   }
 
-  return `${best.clubLabel} was today's best scoring read, ${reliable.clubLabel} ${reliableReadout.read}, and ${work.clubLabel} is the first practice job.`;
+  return `${best.clubLabel} had today's best current form, ${reliable.clubLabel} ${reliableReadout.read}, and ${work.clubLabel} is the first practice job.`;
 }
 
 function clubTrustReadout(comparison: ClubDayComparison | null): {
