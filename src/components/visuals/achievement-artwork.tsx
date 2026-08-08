@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-const achievementArtworkPath = "/assets/page-achievements.png";
+const achievementArtworkPath = "/assets/page-achievements-hero.webp";
 
 export function AchievementArtwork({
   className,
@@ -46,7 +46,7 @@ export function AchievementArtwork({
           <p className="text-xs">
             Drop your image at{" "}
             <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px] text-slate-700">
-              public/assets/page-achievements.png
+              public/assets/page-achievements-hero.webp
             </code>
           </p>
         </div>

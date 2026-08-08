@@ -51,7 +51,7 @@ const artworkByVariant: Record<PageArtworkVariant, string> = {
   scorecard: greenComplexArtwork,
   coach: "/assets/page-coach-drill-board.webp",
   equipment: "/assets/page-equipment-bag-panel.webp",
-  achievements: "/assets/page-achievements.png",
+  achievements: "/assets/page-achievements-hero.webp",
   import: "/assets/page-import-rapsodo.webp",
   handicap: "/assets/page-handicap-scorecard.webp",
   courseMap: "/assets/course-placeholder-map.webp",

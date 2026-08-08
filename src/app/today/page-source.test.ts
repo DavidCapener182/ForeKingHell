@@ -119,7 +119,7 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("Scoring control");
     expect(source).toContain("Planned drill result");
     expect(source).toContain(
-      '<ScoreMiniMetric label="Playable" value={score.playableRateLabel} />',
+      '<ScoreMiniMetric label="Lateral window" value={score.playableRateLabel} />',
     );
     expect(source).toContain(
       "How useful the session was; scoring control and planned-drill result stay separate.",

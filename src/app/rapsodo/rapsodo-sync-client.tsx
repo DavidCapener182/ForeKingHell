@@ -341,6 +341,24 @@ export function RapsodoSyncClient({
       const choice = choicesByKey.get(selectedClubByRow[shot.rowNumber]);
       return choice && choice.clubType !== "unknown" && choice.clubType !== "other";
     }) ?? false;
+  const clubMappingLabel =
+    clubSelectionMode === "recommendations"
+      ? "Recommended club"
+      : clubSelectionMode === "rapsodo"
+        ? "Rapsodo club"
+        : "Selected club";
+  const clubMappingPluralLabel =
+    clubSelectionMode === "recommendations"
+      ? "Recommended clubs"
+      : clubSelectionMode === "rapsodo"
+        ? "Rapsodo clubs"
+        : "Selected clubs";
+  const clubMappingStatusLabel =
+    clubSelectionMode === "recommendations"
+      ? "recommended"
+      : clubSelectionMode === "rapsodo"
+        ? "from Rapsodo"
+        : "selected";
   const courseReady =
     !isCoursePreview ||
     courseShotOnlyImport ||
@@ -404,7 +422,7 @@ export function RapsodoSyncClient({
       ? loadingLabel === "Updating Rapsodo clubs"
         ? "Updating Rapsodo"
         : "Importing session"
-      : "Save confirmed shots";
+      : `Save ${clubMappingStatusLabel} shots`;
   const canSave = Boolean(
     preview && everyShotHasClub && courseReady && !isPending && !previewAlreadyImported,
   );
@@ -630,10 +648,12 @@ export function RapsodoSyncClient({
     setNotice({ kind: "idle" });
     setSaveStatus({
       kind: "saving",
-      title: updateRapsodoClubs ? "Updating Rapsodo clubs" : "Saving confirmed shots",
+      title: updateRapsodoClubs
+        ? "Updating Rapsodo clubs"
+        : `Saving ${clubMappingStatusLabel} shots`,
       message: updateRapsodoClubs
-        ? `Updating ${rapsodoWritebackRows.updatableCount} Rapsodo club match${rapsodoWritebackRows.updatableCount === 1 ? "" : "es"} first, then importing ${preview.shotCount} confirmed shot${preview.shotCount === 1 ? "" : "s"}. Keep this page open.`
-        : `Importing ${preview.shotCount} confirmed shot${preview.shotCount === 1 ? "" : "s"} into LM World Tour. Keep this page open.`,
+        ? `Updating ${rapsodoWritebackRows.updatableCount} Rapsodo club match${rapsodoWritebackRows.updatableCount === 1 ? "" : "es"} first, then importing ${preview.shotCount} ${clubMappingStatusLabel} shot${preview.shotCount === 1 ? "" : "s"}. Keep this page open.`
+        : `Importing ${preview.shotCount} ${clubMappingStatusLabel} shot${preview.shotCount === 1 ? "" : "s"} into LM World Tour. Keep this page open.`,
     });
     const shotOverrides = preview.shots.map((shot): RapsodoShotOverride => {
       const choice = choicesByKey.get(selectedClubByRow[shot.rowNumber]) ?? shot.suggestion.choice;
@@ -690,8 +710,8 @@ export function RapsodoSyncClient({
         setLoadingLabel("Saving shots");
         setSaveStatus({
           kind: "saving",
-          title: "Saving confirmed shots",
-          message: `Rapsodo club update finished. Saving ${preview.shotCount} confirmed shot${preview.shotCount === 1 ? "" : "s"} into LM World Tour now.`,
+          title: `Saving ${clubMappingStatusLabel} shots`,
+          message: `Rapsodo club update finished. Saving ${preview.shotCount} ${clubMappingStatusLabel} shot${preview.shotCount === 1 ? "" : "s"} into LM World Tour now.`,
         });
       }
 
@@ -852,8 +872,8 @@ export function RapsodoSyncClient({
                     Rapsodo cloud sync
                   </h1>
                   <p className="text-sm leading-6 text-muted-foreground">
-                    Pull R-Cloud CSV exports, review club matches, and save confirmed shots into LM
-                    World Tour.
+                    Pull R-Cloud CSV exports, review club matches, use recommendations, and save
+                    trusted shots into LM World Tour.
                   </p>
                 </div>
                 <div data-primary-action className="shrink-0">
@@ -1470,7 +1490,7 @@ export function RapsodoSyncClient({
                     <CompactSummaryTile label="Date" value={formatDate(preview.sessionDate)} />
                     <CompactSummaryTile
                       label="Clubs"
-                      value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount}`}
+                      value={`${selectedClubCount(preview, selectedClubByRow)}/${preview.shotCount}`}
                     />
                     <CompactSummaryTile label="Duplicate" value={preview.rawCsvHash.slice(0, 12)} />
                   </div>
@@ -1480,9 +1500,9 @@ export function RapsodoSyncClient({
                         <div>
                           <p className="text-sm font-semibold">Review trust</p>
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            Confirmed clubs, duplicate hash, warnings and save status decide whether
-                            this session is trusted for bag numbers, coach scoring and challenge
-                            proof.
+                            {clubMappingPluralLabel}, duplicate hash, warnings and save status
+                            decide whether this session is trusted for bag numbers, coach scoring
+                            and challenge proof.
                           </p>
                         </div>
                         <Badge
@@ -1494,7 +1514,7 @@ export function RapsodoSyncClient({
                       <div className="grid gap-2 text-sm">
                         <DataPair
                           label="Club mapping"
-                          value={`${confirmedClubCount(preview, selectedClubByRow)}/${preview.shotCount} confirmed`}
+                          value={`${selectedClubCount(preview, selectedClubByRow)}/${preview.shotCount} ${clubMappingStatusLabel}`}
                         />
                         <DataPair
                           label="Warnings"
@@ -1540,9 +1560,9 @@ export function RapsodoSyncClient({
                           <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
                           <DataPair label="Total" value={formatMetric(shot.totalYd)} />
                           <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-                            Confirmed club
+                            {clubMappingLabel}
                             <select
-                              aria-label={`Confirmed club for shot ${
+                              aria-label={`${clubMappingLabel} for shot ${
                                 shot.shotNumber ?? shot.rowNumber
                               }`}
                               className="h-10 rounded-md border bg-background px-2 text-sm text-foreground"
@@ -1576,7 +1596,7 @@ export function RapsodoSyncClient({
                         <TableRow>
                           <TableHead className="h-8 w-14 px-3">Shot</TableHead>
                           <TableHead className="h-8 w-24 px-2">Rapsodo</TableHead>
-                          <TableHead className="h-8 w-64 px-2">Confirmed club</TableHead>
+                          <TableHead className="h-8 w-64 px-2">{clubMappingLabel}</TableHead>
                           <TableHead className="h-8 w-20 px-2 text-right">Carry</TableHead>
                           <TableHead className="h-8 w-20 px-2 text-right">Total</TableHead>
                           <TableHead className="h-8 px-2">Match</TableHead>
@@ -1595,7 +1615,7 @@ export function RapsodoSyncClient({
                             </TableCell>
                             <TableCell className="px-2 py-1.5">
                               <select
-                                aria-label={`Confirmed club for shot ${
+                                aria-label={`${clubMappingLabel} for shot ${
                                   shot.shotNumber ?? shot.rowNumber
                                 }`}
                                 className="h-8 w-56 rounded-md border bg-background px-2 text-xs"
@@ -2336,7 +2356,7 @@ function formatMetric(value: number | null) {
   return value === null ? "--" : numberFormatter.format(value);
 }
 
-function confirmedClubCount(
+function selectedClubCount(
   preview: RapsodoSessionPreview,
   selectedClubByRow: Record<number, string>,
 ) {

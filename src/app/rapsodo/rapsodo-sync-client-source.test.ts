@@ -41,4 +41,13 @@ describe("rapsodo desktop provider console", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("defaults club mapping to recommendations and labels the saved choice accurately", () => {
+    expect(source).toContain('useState<ClubSelectionMode>("recommendations")');
+    expect(source).toContain('? "Recommended club"');
+    expect(source).toContain('? "Recommended clubs"');
+    expect(source).toContain('? "recommended"');
+    expect(source).not.toContain("Confirmed club");
+    expect(source).not.toContain("confirmed shots");
+  });
 });
