@@ -320,6 +320,16 @@ describe("Course Twin route boundaries", () => {
     expect(mobileStylesSource).toContain("@media (max-height: 500px) and (orientation: landscape)");
   });
 
+  it("keeps the mobile Play tray compact without hiding modelled provenance", () => {
+    expect(sceneSource).toContain("mobileStyles.compactPlayTray");
+    expect(sceneSource).toContain("mobileStyles.compactShotToolbar");
+    expect(sceneSource).toContain("data-course-twin-modelled-label");
+    expect(mobileStylesSource).toContain(".compactPlayTray,");
+    expect(mobileStylesSource).toContain(".compactShotToolbar {");
+    expect(mobileStylesSource).toContain(".compactAimRange {");
+    expect(mobileStylesSource).toContain("min-height: 2.75rem;");
+  });
+
   it("keeps mobile Live, Explore and modelled putting controls honest and touch-operable", () => {
     expect(sceneSource).toContain("<MobileLiveControls");
     expect(sceneSource).toContain('aria-label="Six-digit pairing code"');

@@ -315,16 +315,16 @@ test.describe("Course Twin", () => {
   test("keeps Course Twin full-screen with every mobile control inside the viewport", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(300_000);
+    test.setTimeout(420_000);
     test.skip(testInfo.project.name !== "chromium", "The viewport matrix runs once in Chromium.");
     skipWhenNoAuth();
 
     const courseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
     const mobileViewports = [
-      { width: 320, height: 568 },
-      { width: 390, height: 844 },
-      { width: 430, height: 932 },
-      { width: 844, height: 390 },
+      { width: 320, height: 568, maxBottomStackRatio: 0.34 },
+      { width: 390, height: 844, maxBottomStackRatio: 0.23 },
+      { width: 430, height: 932, maxBottomStackRatio: 0.23 },
+      { width: 844, height: 390, maxBottomStackRatio: 0.32 },
     ] as const;
 
     await page.setViewportSize(mobileViewports[0]);
@@ -397,26 +397,32 @@ test.describe("Course Twin", () => {
       await playMode.click();
       await expect(playMode).toHaveAttribute("aria-pressed", "true");
       await expect(actionTray).toBeVisible();
-      expectBoxInsideViewport(
-        await readElementBox(page, "[data-course-twin-action-tray]"),
-        viewport,
-      );
+      const modelledLabel = actionTray.locator("[data-course-twin-modelled-label]");
+      await expect(modelledLabel).toBeVisible();
+      await expect(modelledLabel).toContainText("Modelled");
 
-      const compactActions = actionTray.locator("button:visible, select:visible, input:visible");
-      const compactActionBoxes = await compactActions.evaluateAll((controls) =>
-        controls.map((control) => {
-          const rectangle = control.getBoundingClientRect();
-          return {
-            x: rectangle.x,
-            y: rectangle.y,
-            width: rectangle.width,
-            height: rectangle.height,
-          };
-        }),
+      const compactLayout = await readCompactPlayLayout(page);
+      expectBoxInsideViewport(compactLayout.actionTray, viewport);
+      expectBoxInsideViewport(compactLayout.modeDock, viewport);
+      expect(compactLayout.bottomStackRatio).toBeLessThanOrEqual(viewport.maxBottomStackRatio);
+      expect(compactLayout.actionTrayScrollHeight).toBeLessThanOrEqual(
+        compactLayout.actionTrayClientHeight + 1,
       );
-      expect(compactActionBoxes.length).toBeGreaterThan(0);
-      for (const box of compactActionBoxes) {
-        expectBoxInsideViewport(box, viewport, 44);
+      expect(compactLayout.actionTrayScrollWidth).toBeLessThanOrEqual(
+        compactLayout.actionTrayClientWidth + 1,
+      );
+      expect(compactLayout.modeDockScrollHeight).toBeLessThanOrEqual(
+        compactLayout.modeDockClientHeight + 1,
+      );
+      expect(compactLayout.modeDockScrollWidth).toBeLessThanOrEqual(
+        compactLayout.modeDockClientWidth + 1,
+      );
+      expect(compactLayout.modelledLabelVisible).toBe(true);
+      expect(compactLayout.modelledLabelText).toContain("Modelled");
+      expect(compactLayout.interactiveControls.length).toBeGreaterThan(0);
+      for (const control of compactLayout.interactiveControls) {
+        expectBoxInsideViewport(control.box, viewport, 44, 44);
+        expectBoxInsideBox(control.box, compactLayout.actionTray);
       }
 
       if (viewport.width === 390) {
@@ -459,6 +465,9 @@ test.describe("Course Twin", () => {
     );
     await expect(page.getByRole("link", { name: "Exit Course Twin" })).toBeHidden();
     await expect(page.locator("[data-course-twin-mobile-chrome]")).toBeHidden();
+    await expect(page.locator("[data-course-twin-action-tray]")).toBeHidden();
+    await expect(page.locator("[data-course-twin-mode-dock]")).toBeHidden();
+    await expect(page.locator("[data-course-twin-modelled-label]")).toBeHidden();
     await expect(page.locator("[data-course-twin-stage] canvas")).toBeVisible({ timeout: 30_000 });
     const desktopMetrics = await page.evaluate(() => {
       const root = document.documentElement;
@@ -797,6 +806,71 @@ async function readImmersiveCourseTwinLayout(page: import("@playwright/test").Pa
   });
 }
 
+async function readCompactPlayLayout(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const requiredElement = (selector: string) => {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (!element) throw new Error(`Missing compact Course Twin element: ${selector}`);
+      return element;
+    };
+    const box = (element: Element) => {
+      const rectangle = element.getBoundingClientRect();
+      return {
+        x: rectangle.x,
+        y: rectangle.y,
+        width: rectangle.width,
+        height: rectangle.height,
+      };
+    };
+    const isVisible = (element: HTMLElement) => {
+      const style = getComputedStyle(element);
+      const rectangle = element.getBoundingClientRect();
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        Number(style.opacity) !== 0 &&
+        rectangle.width > 0 &&
+        rectangle.height > 0
+      );
+    };
+    const actionTray = requiredElement("[data-course-twin-action-tray]");
+    const modeDock = requiredElement("[data-course-twin-mode-dock]");
+    const modelledLabel = requiredElement("[data-course-twin-modelled-label]");
+    const actionTrayBox = box(actionTray);
+    const modeDockBox = box(modeDock);
+    const stackTop = Math.min(actionTrayBox.y, modeDockBox.y);
+    const stackBottom = Math.max(
+      actionTrayBox.y + actionTrayBox.height,
+      modeDockBox.y + modeDockBox.height,
+    );
+
+    return {
+      actionTray: actionTrayBox,
+      modeDock: modeDockBox,
+      bottomStackHeight: stackBottom - stackTop,
+      bottomStackRatio: (stackBottom - stackTop) / window.innerHeight,
+      actionTrayClientHeight: actionTray.clientHeight,
+      actionTrayScrollHeight: actionTray.scrollHeight,
+      actionTrayClientWidth: actionTray.clientWidth,
+      actionTrayScrollWidth: actionTray.scrollWidth,
+      modeDockClientHeight: modeDock.clientHeight,
+      modeDockScrollHeight: modeDock.scrollHeight,
+      modeDockClientWidth: modeDock.clientWidth,
+      modeDockScrollWidth: modeDock.scrollWidth,
+      modelledLabelVisible: isVisible(modelledLabel),
+      modelledLabelText: modelledLabel.textContent?.trim() ?? "",
+      interactiveControls: Array.from(
+        actionTray.querySelectorAll<HTMLElement>("button, select, input, a[href]"),
+      )
+        .filter(isVisible)
+        .map((element) => ({
+          tagName: element.tagName.toLowerCase(),
+          box: box(element),
+        })),
+    };
+  });
+}
+
 async function readElementBox(page: import("@playwright/test").Page, selector: string) {
   return page.evaluate((targetSelector) => {
     const element = document.querySelector<HTMLElement>(targetSelector);
@@ -811,12 +885,25 @@ async function readElementBox(page: import("@playwright/test").Page, selector: s
   }, selector);
 }
 
-function expectBoxInsideViewport(box: ElementBox, viewport: TestViewport, minimumHeight = 0) {
+function expectBoxInsideViewport(
+  box: ElementBox,
+  viewport: TestViewport,
+  minimumHeight = 0,
+  minimumWidth = 0,
+) {
   expect(box.x).toBeGreaterThanOrEqual(-1);
   expect(box.y).toBeGreaterThanOrEqual(-1);
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
   expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
   expect(box.height).toBeGreaterThanOrEqual(minimumHeight);
+  expect(box.width).toBeGreaterThanOrEqual(minimumWidth);
+}
+
+function expectBoxInsideBox(inner: ElementBox, outer: ElementBox) {
+  expect(inner.x).toBeGreaterThanOrEqual(outer.x - 1);
+  expect(inner.y).toBeGreaterThanOrEqual(outer.y - 1);
+  expect(inner.x + inner.width).toBeLessThanOrEqual(outer.x + outer.width + 1);
+  expect(inner.y + inner.height).toBeLessThanOrEqual(outer.y + outer.height + 1);
 }
 
 function expectBoxFillsViewport(box: ElementBox, viewport: TestViewport) {

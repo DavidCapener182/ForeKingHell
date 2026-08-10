@@ -2080,6 +2080,31 @@ export function CourseTwinScene({
     setCameraCommand(null);
   };
 
+  const mobileHoleStatus = (() => {
+    if (mode === "play") {
+      if (activeRound?.mode !== "play" || activeRound.status !== "in_progress") {
+        return "Modelled My Bag round";
+      }
+      if (manualPuttingVisible && !virtualShot && virtualPuttStart) {
+        const puttDistanceFt =
+          Math.hypot(
+            selectedHole.green[0] - virtualPuttStart[0],
+            selectedHole.green[2] - virtualPuttStart[2],
+          ) * 3.280_84;
+        return `Putt ${virtualPuttNumber} · ${puttDistanceFt < 10 ? puttDistanceFt.toFixed(1) : puttDistanceFt.toFixed(0)} ft · Modelled`;
+      }
+      if (virtualShot) {
+        return `${virtualShot.shot.clubType} · ${virtualShot.sampled.carryYd.toFixed(0)} yd · Modelled`;
+      }
+      return `Shot ${virtualShotNumber} · ${virtualRemainingYd.toFixed(0)} yd · ${formatMobileAim(virtualAimDirectionDeg)} · Modelled`;
+    }
+    if (mode === "replay") return "Measured launch · reconstructed flight";
+    if (mode === "strategy") return "Modelled plan from measured shots";
+    if (mode === "live") return "Measured launch · reconstructed placement";
+    if (mode === "explore") return "Mapped terrain · touch controls";
+    return "Mapped course view";
+  })();
+
   const mobileActionContent: ReactNode =
     mode === "play" ? (
       activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
@@ -3085,6 +3110,7 @@ export function CourseTwinScene({
           selectedHole={selectedHole}
           selectedHoleIndex={selectedHoleIndex}
           holeCount={manifest.holes.length}
+          statusText={mobileHoleStatus}
           roundLocksHole={roundLocksHole}
           coursePanelOpen={hudPanel === "course"}
           analysisPanelOpen={hudPanel === "analysis"}
@@ -3454,6 +3480,7 @@ function MobileCourseTwinChrome({
   selectedHole,
   selectedHoleIndex,
   holeCount,
+  statusText,
   roundLocksHole,
   coursePanelOpen,
   analysisPanelOpen,
@@ -3471,6 +3498,7 @@ function MobileCourseTwinChrome({
   selectedHole: CourseTwinHole;
   selectedHoleIndex: number;
   holeCount: number;
+  statusText: string;
   roundLocksHole: boolean;
   coursePanelOpen: boolean;
   analysisPanelOpen: boolean;
@@ -3530,9 +3558,15 @@ function MobileCourseTwinChrome({
             <ChevronLeft className="size-4" aria-hidden="true" />
           </button>
           <div className={mobileStyles.holeCopy}>
-            <p className={mobileStyles.holeTitle}>Hole {selectedHole.holeNumber}</p>
+            <p className={mobileStyles.holeTitle}>
+              Hole {selectedHole.holeNumber} · {selectedHole.yards} yd · Par {selectedHole.par}
+            </p>
             <p className={mobileStyles.holeMeta}>
-              {selectedHole.yards} yd · Par {selectedHole.par}
+              {statusText.includes("Modelled") ? (
+                <span data-course-twin-modelled-label>{statusText}</span>
+              ) : (
+                statusText
+              )}
             </p>
           </div>
           <button
@@ -3768,15 +3802,7 @@ function MobileVirtualRoundControls({
         hole.green[2] - simulation.finalPosition.z,
       ) / 0.9144;
     return (
-      <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
-        <div className={mobileStyles.playMeta}>
-          <p className={mobileStyles.playMetaPrimary}>
-            {shot.shot.clubType} · {shot.sampled.carryYd.toFixed(0)} yd
-          </p>
-          <p className={mobileStyles.playMetaSecondary}>
-            {playback < 1 ? "Shot in flight" : `${resultRemainingYd.toFixed(0)} yd left`}
-          </p>
-        </div>
+      <div className={mobileStyles.compactResultTray}>
         <div className={mobileStyles.progressTrack} aria-hidden="true">
           <div className={mobileStyles.progressFill} style={{ width: `${playback * 100}%` }} />
         </div>
@@ -3792,7 +3818,8 @@ function MobileVirtualRoundControls({
               ? "Take penalty drop"
               : "Play next shot"}
         </button>
-        <p className={mobileStyles.provenance}>
+        <p className="sr-only">
+          {playback < 1 ? "Shot in flight. " : `${resultRemainingYd.toFixed(0)} yards left. `}
           Modelled from recent measured shots · not a guaranteed result
         </p>
       </div>
@@ -3802,95 +3829,66 @@ function MobileVirtualRoundControls({
   const aimLimit = courseTwinAimLimitDeg(shotKind);
   const effectiveAim = THREE.MathUtils.clamp(aimDirectionDeg, -aimLimit, aimLimit);
   return (
-    <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
-      <div className={mobileStyles.playMeta}>
-        <p className={mobileStyles.playMetaPrimary}>
-          Shot {shotNumber} · {strokes} {strokes === 1 ? "stroke" : "strokes"}
-        </p>
-        <p className={mobileStyles.playMetaSecondary}>{remainingYd.toFixed(0)} yd to pin</p>
-      </div>
-      <div
-        className={cn(
-          mobileStyles.selectors,
-          shotKindOptions.length <= 1 && mobileStyles.selectorsSingle,
-        )}
-      >
-        <label className={mobileStyles.compactSelect}>
+    <div className={mobileStyles.compactPlayTray}>
+      {shotKindOptions.length > 1 ? (
+        <label className={mobileStyles.compactShotType}>
+          <span className="sr-only">Shot type</span>
+          <select
+            className={mobileStyles.select}
+            aria-label="Shot type"
+            value={shotKind}
+            onChange={(event) => onShotKindChange(event.target.value as CourseTwinVirtualShotKind)}
+          >
+            {shotKindOptions.map((kind) => (
+              <option key={kind} value={kind}>
+                {formatVirtualShotKind(kind)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      <div className={mobileStyles.compactShotToolbar}>
+        <label className={mobileStyles.compactClubSelect}>
           <span className="sr-only">Club</span>
           <select
             className={mobileStyles.select}
-            aria-label="Club"
+            aria-label="Club and modelled carry in yards"
             value={selectedClub.clubId}
             onChange={(event) => onSelectClub(event.target.value)}
           >
             {availableClubs.map((club) => (
               <option key={club.clubId} value={club.clubId}>
-                {club.clubType} · {club.carryMedianYd.toFixed(0)} yd
+                {club.clubType === "driver" ? "Drv" : club.clubType} ·{" "}
+                {club.carryMedianYd.toFixed(0)} yd
               </option>
             ))}
           </select>
         </label>
-        {shotKindOptions.length > 1 ? (
-          <label className={mobileStyles.compactSelect}>
-            <span className="sr-only">Shot type</span>
-            <select
-              className={mobileStyles.select}
-              aria-label="Shot type"
-              value={shotKind}
-              onChange={(event) =>
-                onShotKindChange(event.target.value as CourseTwinVirtualShotKind)
-              }
-            >
-              {shotKindOptions.map((kind) => (
-                <option key={kind} value={kind}>
-                  {formatVirtualShotKind(kind)}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-      </div>
-      <div className={mobileStyles.shotActionRow}>
-        <div className={mobileStyles.aimControl}>
-          <button
-            type="button"
-            className={mobileStyles.aimButton}
-            aria-label="Aim five degrees left"
-            onClick={() => onAimDirectionChange(Math.max(-aimLimit, effectiveAim - 5))}
-          >
-            −5°
-          </button>
-          <input
-            className={mobileStyles.aimRange}
-            type="range"
-            min={-aimLimit}
-            max={aimLimit}
-            step={0.5}
-            value={effectiveAim}
-            aria-label="Shot start direction"
-            onChange={(event) => onAimDirectionChange(Number(event.target.value))}
-          />
-          <button
-            type="button"
-            className={mobileStyles.aimButton}
-            aria-label="Aim five degrees right"
-            onClick={() => onAimDirectionChange(Math.min(aimLimit, effectiveAim + 5))}
-          >
-            +5°
-          </button>
-        </div>
+        <input
+          className={mobileStyles.compactAimRange}
+          type="range"
+          min={-aimLimit}
+          max={aimLimit}
+          step={0.5}
+          value={effectiveAim}
+          aria-label="Shot start direction"
+          aria-valuetext={formatMobileAim(effectiveAim)}
+          onChange={(event) => onAimDirectionChange(Number(event.target.value))}
+        />
         <button
           type="button"
-          className={mobileStyles.primaryAction}
+          className={cn(mobileStyles.primaryAction, mobileStyles.compactPlayAction)}
           disabled={sync === "saving"}
           onClick={onPlay}
           aria-label={`Play ${selectedClub.clubType}`}
         >
-          Play {selectedClub.clubType}
+          Play
         </button>
       </div>
-      <p className={mobileStyles.provenance}>
-        Modelled from recent measured shots · not a guaranteed result
+      <p className="sr-only">
+        Shot {shotNumber}. {strokes} {strokes === 1 ? "stroke" : "strokes"}.{" "}
+        {remainingYd.toFixed(0)}
+        yards to the pin. Modelled from recent measured shots; not a guaranteed result.
       </p>
     </div>
   );
@@ -4256,6 +4254,11 @@ function MobileExploreControls({
 
 function runtimeModeLabel(mode: RuntimeMode) {
   return mode.charAt(0).toUpperCase() + mode.slice(1);
+}
+
+function formatMobileAim(directionDeg: number) {
+  if (Math.abs(directionDeg) < 0.25) return "Centre";
+  return `${Math.abs(directionDeg).toFixed(directionDeg % 1 === 0 ? 0 : 1)}° ${directionDeg < 0 ? "left" : "right"}`;
 }
 
 function CinematicPerformanceHud({

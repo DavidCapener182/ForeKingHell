@@ -219,7 +219,8 @@
   .primaryAction:focus-visible,
   .secondaryAction:focus-visible,
   .select:focus-visible,
-  .aimRange:focus-visible {
+  .aimRange:focus-visible,
+  .compactAimRange:focus-visible {
     outline: 3px solid white;
     outline-offset: 2px;
   }
@@ -336,6 +337,43 @@
     display: grid;
     gap: 0.5rem;
     padding: 0.625rem;
+  }
+
+  .compactPlayTray,
+  .compactResultTray {
+    display: grid;
+    gap: 0.375rem;
+    padding: 0.375rem;
+  }
+
+  .compactShotToolbar {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(8.5rem, 1.6fr) minmax(3rem, 0.5fr) minmax(4.5rem, 0.75fr);
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .compactClubSelect,
+  .compactShotType {
+    min-width: 0;
+  }
+
+  .compactAimRange {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    accent-color: #e7ff6a;
+  }
+
+  .compactPlayAction {
+    padding-right: 0.5rem;
+    padding-left: 0.5rem;
+  }
+
+  .compactResultTray {
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 0.55fr);
+    align-items: center;
   }
 
   .playMeta {
@@ -548,9 +586,19 @@
   }
 
   @media (max-height: 500px) and (orientation: landscape) {
-    .actionTray,
+    .actionTray {
+      right: calc(50% + 0.25rem);
+      bottom: var(--course-twin-safe-bottom);
+      left: var(--course-twin-safe-left);
+      max-width: none;
+      margin: 0;
+    }
+
     .modeDock {
-      max-width: min(42rem, calc(100% - 1rem));
+      right: var(--course-twin-safe-right);
+      left: calc(50% + 0.25rem);
+      max-width: none;
+      margin: 0;
     }
 
     .landscapeControls {
