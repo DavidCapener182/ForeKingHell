@@ -68,9 +68,9 @@ describe("achievements desktop unlock ledger", () => {
   });
 
   it("preserves translucent overlays inside intentional dark surfaces", () => {
-    expect(clientSource).toContain("data-clubhouse-preserve-dark");
-    expect(notificationSource).toContain("data-clubhouse-preserve-dark");
-    expect(rapsodoSyncSource).toContain("data-clubhouse-preserve-dark");
-    expect(globalsSource).toContain('[data-clubhouse-preserve-dark] [class*="bg-white/"]');
+    expect(clientSource).toContain("data-mobile-preserve-dark");
+    expect(notificationSource).toContain("data-mobile-preserve-dark");
+    expect(rapsodoSyncSource).toContain("data-mobile-preserve-dark");
+    expect(globalsSource).toContain('[data-mobile-preserve-dark] [class*="bg-white/"]');
   });
 });

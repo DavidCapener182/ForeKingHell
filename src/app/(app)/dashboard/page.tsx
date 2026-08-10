@@ -55,7 +55,6 @@ import {
   PageHeader,
   PageShell,
   SectionHeader,
-  StickyMobileAction,
   StatusPill,
 } from "@/components/premium";
 import { Card, CardContent } from "@/components/ui/card";
@@ -619,7 +618,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         aiCaddieBrief={aiCaddieBrief}
       />
 
-      <DesktopWorkbenchLayout scope="dashboard" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="dashboard" className="hidden lg:grid">
         <DashboardSummaryHero
           latestSession={latestSession}
           bestClub={bestClub}
@@ -900,12 +899,12 @@ function DashboardMobileLayout({
   );
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-4 overflow-x-clip sm:hidden [&>*]:min-w-0">
+    <div className="ios-mobile-screen grid w-full min-w-0 max-w-full gap-4 overflow-x-clip lg:hidden [&>*]:min-w-0">
       <DashboardMobileHeader initialActiveKey={activeDashboardSection} />
 
       <div
         id="dashboard-mobile-today"
-        className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
+        className="scroll-mt-[calc(6.75rem+env(safe-area-inset-top))]"
       />
       <DashboardAiCaddieBriefCard brief={aiCaddieBrief} />
       <DashboardTodayCompanionHero
@@ -958,7 +957,7 @@ function DashboardMobileLayout({
 
       <div
         id="dashboard-mobile-decisions"
-        className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
+        className="scroll-mt-[calc(6.75rem+env(safe-area-inset-top))]"
       />
       <MobileCompanionAccordion
         items={[
@@ -985,7 +984,7 @@ function DashboardMobileLayout({
 
       <div
         id="dashboard-mobile-more"
-        className="scroll-mt-[calc(8.25rem+env(safe-area-inset-top))]"
+        className="scroll-mt-[calc(6.75rem+env(safe-area-inset-top))]"
       />
       <MobileCompanionAccordion
         items={[
@@ -1030,155 +1029,163 @@ function DashboardMobileLayout({
           },
         ]}
       />
-      <StickyMobileAction>
-        <Button asChild className="premium-action min-h-12 w-full rounded-lg">
-          <Link href={aiCaddieBrief.actions.primary.href} prefetch={false}>
-            <Crosshair className="size-4" aria-hidden />
-            {aiCaddieBrief.actions.primary.label}
-          </Link>
-        </Button>
-      </StickyMobileAction>
     </div>
   );
 }
 
 function DashboardAiCaddieBriefCard({ brief }: { brief: AiCaddieBrief }) {
-  const confidenceTone =
-    brief.confidence === "high" ? "green" : brief.confidence === "medium" ? "sky" : "amber";
   const primaryBlock =
     brief.practice.blocks.find((block) => block.balls > 0) ?? brief.practice.blocks[0];
 
   return (
     <section
       aria-labelledby="dashboard-ai-caddie-title"
-      className="overflow-hidden rounded-lg border border-emerald-950/10 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.12)] ring-1 ring-white"
+      data-mobile-surface="grouped"
+      className="ios-grouped-list overflow-hidden bg-[var(--ios-grouped-surface)]"
     >
-      <div className="bg-[linear-gradient(135deg,#f8fff8_0%,#eef8ff_52%,#fff7ed_100%)] p-4">
+      <div className="ios-grouped-row p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="grid size-11 place-items-center rounded-lg bg-emerald-700 text-white shadow-[0_10px_24px_rgba(8,122,61,0.22)]">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-[0.625rem] bg-[var(--ios-fill)] text-[var(--ios-tint)]">
                 <Brain className="size-5" aria-hidden />
               </span>
-              <div className="grid gap-1">
-                <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-700">
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold leading-4 text-[var(--ios-label)]">
                   {brief.title}
                 </p>
-                <StatusPill tone={confidenceTone}>AI caddie / {brief.confidence}</StatusPill>
+                <p className="mt-0.5 text-[13px] leading-4 text-[var(--ios-secondary-label)]">
+                  AI caddie · <span className="capitalize">{brief.confidence}</span> confidence
+                </p>
               </div>
             </div>
             <h2
               id="dashboard-ai-caddie-title"
-              className="mt-4 text-[1.7rem] font-black leading-8 tracking-normal text-slate-950"
+              className="mt-4 text-[1.75rem] font-bold leading-[1.13] tracking-[-0.025em] text-[var(--ios-label)]"
             >
               {brief.headline}
             </h2>
           </div>
-          <div className="shrink-0 rounded-lg bg-white/82 px-3 py-2 text-right shadow-sm ring-1 ring-emerald-950/10">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-600">
-              Session
+          <div className="shrink-0 text-right">
+            <p className="text-[12px] font-medium text-[var(--ios-secondary-label)]">Session</p>
+            <p className="mt-0.5 text-[20px] font-semibold tracking-[-0.015em] text-[var(--ios-label)]">
+              {brief.practice.durationMinutes} min
             </p>
-            <p className="mt-1 text-lg font-black text-slate-950">
-              {brief.practice.durationMinutes}m
-            </p>
-            <p className="text-xs font-semibold text-slate-600">
+            <p className="text-[13px] text-[var(--ios-secondary-label)]">
               {brief.practice.ballCount ? `${brief.practice.ballCount} balls` : "Import first"}
             </p>
           </div>
         </div>
 
-        <p className="mt-3 text-sm font-medium leading-6 text-slate-700">{brief.summary}</p>
+        <p className="mt-3 text-[15px] leading-[1.47] text-[var(--ios-secondary-label)]">
+          {brief.summary}
+        </p>
+      </div>
 
-        <div className="mt-4 grid gap-2 rounded-lg bg-white/86 p-3 shadow-sm ring-1 ring-emerald-950/10">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-600">
+      <div className="ios-grouped-row p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[13px] font-medium text-[var(--ios-secondary-label)]">
             Practice block
           </p>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-            <div className="min-w-0">
-              <p className="text-base font-black tracking-normal text-slate-950">
-                {primaryBlock.label}
-              </p>
-              <p className="mt-1 text-sm leading-5 text-slate-700">{primaryBlock.task}</p>
-            </div>
-            <span className="grid min-h-11 min-w-11 place-items-center rounded-lg bg-slate-950 px-3 text-sm font-black text-white">
-              {primaryBlock.balls}
-            </span>
-          </div>
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold leading-5 text-emerald-950">
+          <span className="rounded-full bg-[var(--ios-fill)] px-2.5 py-1 text-[13px] font-semibold text-[var(--ios-label)]">
+            {primaryBlock.balls} balls
+          </span>
+        </div>
+        <p className="mt-2 text-[17px] font-semibold tracking-[-0.012em] text-[var(--ios-label)]">
+          {primaryBlock.label}
+        </p>
+        <p className="mt-1 text-[15px] leading-[1.4] text-[var(--ios-secondary-label)]">
+          {primaryBlock.task}
+        </p>
+        <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-[0.625rem] bg-[var(--ios-fill)] px-3 py-2.5">
+          <CheckCircle2 className="mt-0.5 size-4 text-[var(--ios-tint)]" aria-hidden />
+          <p className="text-[14px] font-medium leading-5 text-[var(--ios-label)]">
             Success: {brief.practice.successMetric}
           </p>
         </div>
-
-        {brief.warnings.length > 0 ? (
-          <div className="mt-3 grid gap-2">
-            {brief.warnings.map((warning) => (
-              <p
-                key={warning}
-                className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-950"
-              >
-                {warning}
-              </p>
-            ))}
-          </div>
-        ) : null}
       </div>
 
-      <div className="grid gap-3 p-3">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+      {brief.warnings.map((warning) => (
+        <div
+          key={warning}
+          className="ios-grouped-row grid grid-cols-[auto_minmax(0,1fr)] gap-2 p-4"
+        >
+          <span className="mt-[0.42rem] size-2 rounded-full bg-[var(--ios-warning)]" aria-hidden />
+          <div>
+            <p className="text-[13px] font-medium text-[var(--ios-warning)]">Needs attention</p>
+            <p className="mt-0.5 text-[14px] leading-5 text-[var(--ios-label)]">{warning}</p>
+          </div>
+        </div>
+      ))}
+
+      <div data-primary-action className="ios-grouped-row p-3">
+        <Button asChild className="min-h-12 w-full rounded-[0.75rem] text-[17px] font-semibold">
+          <Link href={brief.actions.primary.href} prefetch={false}>
+            <Crosshair className="size-4" aria-hidden />
+            {brief.actions.primary.label}
+          </Link>
+        </Button>
+      </div>
+
+      <nav aria-label="AI caddie actions" className="ios-grouped-row px-4">
+        <div className="divide-y divide-[var(--ios-separator)]">
           {brief.actions.secondary.map((action) => (
-            <Button
+            <Link
               key={action.label}
-              asChild
-              variant="outline"
-              className="min-h-11 shrink-0 rounded-lg px-3 text-xs font-bold"
+              href={action.href}
+              prefetch={false}
+              className="focus-aaa flex min-h-12 items-center justify-between gap-3 text-[15px] font-medium text-[var(--ios-link)] outline-none"
             >
-              <Link href={action.href} prefetch={false}>
-                {action.label}
-              </Link>
-            </Button>
+              <span>{action.label}</span>
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
           ))}
         </div>
+      </nav>
 
-        <div id="dashboard-caddie-evidence" className="grid gap-2 scroll-mt-28">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-black tracking-normal text-slate-950">Data used</p>
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">
-              Structured JSON
-            </span>
-          </div>
-          <div className="grid gap-2">
-            {brief.dataUsed.slice(0, 4).map((item) => (
-              <div
-                key={item.label}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-600">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 truncate text-sm font-black text-slate-950">{item.value}</p>
-                  <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-slate-600">
-                    {item.detail}
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "grid min-h-8 place-items-center rounded-full px-2 text-[11px] font-black capitalize",
-                    item.status === "ready"
-                      ? "bg-emerald-100 text-emerald-900"
-                      : item.status === "limited"
-                        ? "bg-amber-100 text-amber-950"
-                        : "bg-slate-200 text-slate-700",
-                  )}
-                >
-                  {item.status}
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs font-medium leading-5 text-slate-600">{brief.confidenceReason}</p>
-        </div>
+      <div
+        id="dashboard-caddie-evidence"
+        className="ios-grouped-row flex scroll-mt-28 items-baseline justify-between gap-3 px-4 py-3"
+      >
+        <p className="text-[17px] font-semibold tracking-[-0.012em] text-[var(--ios-label)]">
+          Data used
+        </p>
+        <span className="text-[13px] text-[var(--ios-secondary-label)]">Structured JSON</span>
       </div>
+
+      {brief.dataUsed.slice(0, 4).map((item) => (
+        <div
+          key={item.label}
+          className="ios-grouped-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3"
+        >
+          <div className="min-w-0">
+            <p className="text-[13px] text-[var(--ios-secondary-label)]">{item.label}</p>
+            <p className="mt-0.5 truncate text-[16px] font-semibold tracking-[-0.01em] text-[var(--ios-label)]">
+              {item.value}
+            </p>
+            <p className="mt-0.5 line-clamp-2 text-[13px] leading-[1.35] text-[var(--ios-secondary-label)]">
+              {item.detail}
+            </p>
+          </div>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 text-[13px] font-medium capitalize",
+              item.status === "ready"
+                ? "text-[var(--ios-link)]"
+                : item.status === "limited"
+                  ? "text-[var(--ios-warning)]"
+                  : "text-[var(--ios-secondary-label)]",
+            )}
+          >
+            <span className="size-1.5 rounded-full bg-current" aria-hidden />
+            {item.status}
+          </span>
+        </div>
+      ))}
+
+      <p className="ios-grouped-row px-4 py-3 text-[13px] leading-5 text-[var(--ios-secondary-label)]">
+        {brief.confidenceReason}
+      </p>
     </section>
   );
 }
@@ -1200,15 +1207,19 @@ function DashboardMobileGroup({
     <section className="grid gap-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold tracking-normal">{title}</p>
+          <p className="text-[17px] font-semibold tracking-[-0.012em] text-[var(--ios-label)]">
+            {title}
+          </p>
           {description ? (
-            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{description}</p>
+            <p className="mt-0.5 text-[13px] leading-[1.35] text-[var(--ios-secondary-label)]">
+              {description}
+            </p>
           ) : null}
         </div>
         {action ? (
           <div className="shrink-0">{action}</div>
         ) : count ? (
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+          <span className="shrink-0 rounded-full bg-[var(--ios-fill)] px-2.5 py-1 text-[13px] font-medium text-[var(--ios-secondary-label)]">
             {count}
           </span>
         ) : null}
@@ -1266,7 +1277,8 @@ function DashboardMobileNextPractice({
         <Link
           href={`/bag/${coachPreview.clubId}/analytics`}
           prefetch={false}
-          className="apple-panel-strong block p-4 transition-colors hover:border-emerald-300"
+          data-mobile-surface="grouped"
+          className="ios-grouped-list block p-4 transition-colors active:bg-[var(--ios-fill)]"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1283,7 +1295,7 @@ function DashboardMobileNextPractice({
           <Progress value={coachPreview.trustIndex} className="mt-4" />
         </Link>
       ) : (
-        <div className="apple-panel-strong p-5">
+        <div data-mobile-surface="grouped" className="ios-grouped-list p-5">
           <p className="font-semibold">No coach priority yet</p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Import a range session to unlock club-specific practice recommendations.
@@ -1321,7 +1333,8 @@ function DashboardMobileBagConfidence({ clubs }: { clubs: DashboardData["bagPrev
             key={club.id}
             href={`/bag/${club.id}`}
             prefetch={false}
-            className="apple-panel-strong block p-4"
+            data-mobile-surface="grouped"
+            className="ios-grouped-list block p-4 active:bg-[var(--ios-fill)]"
           >
             <p className="text-lg font-semibold tracking-normal">{formatClubType(club.type)}</p>
             <p className="mt-1 truncate text-sm text-muted-foreground">{club.brandModel}</p>
@@ -1331,21 +1344,22 @@ function DashboardMobileBagConfidence({ clubs }: { clubs: DashboardData["bagPrev
               <MiniMetric label="Trust" value={`${club.stock.confidenceScore}%`} />
               <MiniMetric label="Miss" value={formatStockMiss(club.stock)} />
             </div>
-            <div className="mt-4 flex flex-wrap gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em]">
+            <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1.5">
               <span
                 className={cn(
-                  "rounded-full px-2 py-1",
+                  "inline-flex items-center gap-1.5 text-[13px] font-medium",
                   club.stock.confidenceScore < 35
-                    ? "bg-rose-50 text-rose-700"
+                    ? "text-[var(--ios-warning)]"
                     : club.stock.confidenceScore < 60
-                      ? "bg-amber-50 text-amber-700"
-                      : "bg-emerald-50 text-emerald-700",
+                      ? "text-[var(--ios-secondary-label)]"
+                      : "text-[var(--ios-link)]",
                 )}
               >
+                <span className="size-1.5 rounded-full bg-current" aria-hidden />
                 {club.stock.label}
               </span>
               {club.stock.sampleSize < 20 ? (
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+                <span className="text-[13px] font-medium text-[var(--ios-secondary-label)]">
                   Needs {formatShotCount(20 - club.stock.sampleSize, "clean")}
                 </span>
               ) : null}
@@ -1371,7 +1385,7 @@ function DashboardMobileLatestRound({
     >
       {latestRound ? (
         <div className="grid gap-4">
-          <div className="apple-panel-strong p-4">
+          <div data-mobile-surface="grouped" className="ios-grouped-list p-4">
             <p className="text-sm text-muted-foreground">
               {formatDate(latestRound.date)} - {formatSessionType(latestRound.type)}
             </p>
@@ -1404,7 +1418,7 @@ function DashboardMobileLatestRound({
           </div>
         </div>
       ) : (
-        <div className="apple-panel p-6">
+        <div data-mobile-surface="grouped" className="ios-grouped-list p-6">
           <p className="font-medium">No round imports yet</p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Save a simulated-course CSV to unlock scorecards, hole review, and round shot maps.
@@ -1444,9 +1458,10 @@ function DashboardMobileTools({
                 key={`${card.title}-${card.href}`}
                 href={card.href}
                 prefetch={false}
-                className="apple-panel-strong block min-h-28 p-3"
+                data-mobile-surface="grouped"
+                className="ios-grouped-list block min-h-28 p-3 active:bg-[var(--ios-fill)]"
               >
-                <div className={`mb-3 grid size-10 place-items-center rounded-xl ${card.accent}`}>
+                <div className="mb-3 grid size-10 place-items-center rounded-[0.625rem] bg-[var(--ios-fill)] text-[var(--ios-tint)]">
                   <Icon className="size-5" />
                 </div>
                 <p className="font-semibold tracking-normal">{card.title}</p>
@@ -1520,20 +1535,42 @@ function DashboardFirstRunOnboarding({ compactMobile = false }: { compactMobile?
 
   const content = (
     <>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-7">
+      <div
+        className={cn(
+          "grid",
+          compactMobile ? "ios-grouped-list gap-0" : "gap-2 sm:grid-cols-2 xl:grid-cols-7",
+        )}
+      >
         {steps.map((step, index) => (
           <Link
             key={step.title}
             href={step.href}
             prefetch={false}
-            className="apple-panel-strong p-3 text-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50/35"
+            className={cn(
+              "text-sm transition-colors",
+              compactMobile
+                ? "ios-grouped-row p-4 active:bg-[var(--ios-fill)]"
+                : "apple-panel-strong p-3 hover:border-emerald-300 hover:bg-emerald-50/35",
+            )}
           >
             <div className="flex items-center justify-between gap-3">
-              <span className="grid size-7 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold">
+              <span
+                className={cn(
+                  "grid size-7 place-items-center rounded-md text-xs font-semibold",
+                  compactMobile
+                    ? "bg-[var(--ios-fill)] text-[var(--ios-secondary-label)]"
+                    : "bg-[#F5F6F4]",
+                )}
+              >
                 {index + 1}
               </span>
               {step.ready ? (
-                <CheckCircle2 className="size-4 text-emerald-700" />
+                <CheckCircle2
+                  className={cn(
+                    "size-4",
+                    compactMobile ? "text-[var(--ios-tint)]" : "text-emerald-700",
+                  )}
+                />
               ) : (
                 <span className="text-xs font-medium text-muted-foreground">Next</span>
               )}
@@ -1543,7 +1580,12 @@ function DashboardFirstRunOnboarding({ compactMobile = false }: { compactMobile?
           </Link>
         ))}
       </div>
-      <div className="trust-indicator mt-3 rounded-lg p-3">
+      <div
+        className={cn(
+          "mt-3 rounded-lg p-3",
+          compactMobile ? "bg-[var(--ios-fill)]" : "trust-indicator",
+        )}
+      >
         <p className="text-sm font-semibold">What happens to my data?</p>
         <div className="mt-2 grid gap-2 text-sm leading-5 text-muted-foreground sm:grid-cols-4">
           <p>Private by default.</p>
@@ -1588,7 +1630,7 @@ function DashboardFirstRunOnboarding({ compactMobile = false }: { compactMobile?
 
 function DashboardMobileDataHealth({ dataHealth }: { dataHealth: FeatureIdeasData["dataHealth"] }) {
   return (
-    <section className="premium-card grid gap-3 rounded-lg p-3 sm:hidden">
+    <section data-mobile-surface="grouped" className="ios-grouped-list grid gap-3 p-4 lg:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Can I trust this?</p>
@@ -1634,14 +1676,15 @@ function DashboardMobileSocialPulse({
       <Link
         href={topItem?.proofUrl ?? "/feed"}
         prefetch={false}
-        className="grid gap-3 rounded-xl border bg-slate-50 px-3 py-3 text-sm transition-colors hover:bg-white"
+        data-mobile-surface="grouped"
+        className="ios-grouped-list grid gap-3 px-3 py-3 text-sm transition-colors active:bg-[var(--ios-fill)]"
       >
         <div className="grid grid-cols-2 gap-2">
           <DataPair label="Friends" value={social.friendCount.toString()} />
           <DataPair label="Network PBs" value={pbCount.toString()} />
         </div>
         {topItem ? (
-          <div className="border-t border-slate-200 pt-3">
+          <div className="border-t border-[var(--ios-separator)] pt-3">
             <p className="font-semibold leading-5">{topItem.headline}</p>
             <p className="mt-1 line-clamp-2 text-muted-foreground">
               {topItem.metricValue
@@ -1650,7 +1693,7 @@ function DashboardMobileSocialPulse({
             </p>
           </div>
         ) : (
-          <p className="border-t border-slate-200 pt-3 text-muted-foreground">
+          <p className="border-t border-[var(--ios-separator)] pt-3 text-muted-foreground">
             Add friends or join a challenge to populate this pulse.
           </p>
         )}
@@ -1680,9 +1723,11 @@ function formatStockMiss(stock: DashboardData["bagPreview"][number]["stock"]) {
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate text-lg font-semibold tracking-normal">{value}</p>
+    <div className="rounded-[0.625rem] bg-[var(--ios-fill)] px-3 py-2">
+      <p className="text-[13px] font-medium text-[var(--ios-secondary-label)]">{label}</p>
+      <p className="mt-0.5 truncate text-lg font-semibold tracking-normal text-[var(--ios-label)]">
+        {value}
+      </p>
     </div>
   );
 }
@@ -1706,9 +1751,9 @@ function HeroMissionMetric({
 
 function RoundMetric({ label, value }: { label: string; value: number | string | null }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-slate-50/80 px-3 py-2">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="font-semibold">
+    <div className="flex items-center justify-between rounded-[0.625rem] bg-[var(--ios-fill)] px-3 py-2.5">
+      <span className="text-[15px] text-[var(--ios-secondary-label)]">{label}</span>
+      <span className="font-semibold text-[var(--ios-label)]">
         {typeof value === "number" ? integerFormatter.format(value) : (value ?? "--")}
       </span>
     </div>

@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
 
 const mobileRoutes = [
+  { path: "/dashboard", ready: /AI caddie|Start today's practice|Dashboard/i },
   { path: "/today", ready: /Latest session|Today/i },
   { path: "/analyse", ready: /Evidence hub|Analyse/i },
   { path: "/bag", ready: /Bag health|Bag confidence ladder|Bag score trend/i },
@@ -119,6 +120,56 @@ test.describe("site-wide Apple mobile presentation", () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test("follows the OS appearance on mobile and ignores the saved product theme", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    runOnceInBaseChromium(browserName, testInfo.project.name);
+    skipWhenNoAuth();
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    for (const appearance of [
+      {
+        scheme: "light" as const,
+        theme: "light",
+        canvas: "rgb(242, 242, 247)",
+        group: "rgb(255, 255, 255)",
+      },
+      {
+        scheme: "dark" as const,
+        theme: "dark",
+        canvas: "rgb(0, 0, 0)",
+        group: "rgb(28, 28, 30)",
+      },
+    ]) {
+      await page.emulateMedia({ colorScheme: appearance.scheme });
+      await gotoAuthenticatedRoute(
+        page,
+        "/dashboard",
+        /AI caddie|Start today's practice|Dashboard/i,
+      );
+
+      await expect(page.locator("html")).toHaveAttribute("data-theme", appearance.theme);
+      await expect(page.locator("html")).toHaveAttribute("data-theme-preference", /.+/);
+      await expectExactSurface(page.locator("body"), appearance.canvas, `${appearance.theme} body`);
+      await expectExactSurface(
+        page.locator("[data-mobile-platform='apple']").first(),
+        appearance.canvas,
+        `${appearance.theme} app frame`,
+      );
+      await expectExactSurface(
+        page.locator("[data-mobile-surface='grouped']").first(),
+        appearance.group,
+        `${appearance.theme} grouped surface`,
+      );
+      await expect(page.getByRole("banner", { name: "Mobile app bar" })).toContainText("Dashboard");
+      await expect(page.getByText("Home", { exact: true }).filter({ visible: true })).toHaveCount(
+        0,
+      );
+      await expectNoHorizontalOverflow(page);
+    }
+  });
+
   test("restores the existing desktop workbench at 1024px and above", async ({
     browserName,
     page,
@@ -191,6 +242,12 @@ async function expectNeutralSurface(locator: Locator, label: string) {
     surface.spread,
     `${label} should be white, grey or black: ${surface.colour}`,
   ).toBeLessThanOrEqual(12);
+}
+
+async function expectExactSurface(locator: Locator, expected: string, label: string) {
+  await expect(locator, `${label} should be visible`).toBeVisible();
+  const colour = await locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+  expect(colour, label).toBe(expected);
 }
 
 async function expectNoHorizontalOverflow(page: Page) {

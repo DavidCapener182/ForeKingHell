@@ -107,6 +107,10 @@ describe("app shell account data", () => {
     expect(controllerSource).toContain(
       'colourScheme.addEventListener("change", handleSystemChange)',
     );
+    expect(controllerSource).toContain(
+      'mobileViewport.addEventListener("change", handleViewportChange)',
+    );
+    expect(controllerSource).toContain('if (mobileViewport.matches || preference === "system")');
     expect(controllerSource).toContain('theme === "range-night"');
     expect(controllerSource).toContain('root.classList.toggle("dark", usesDarkColourScheme)');
   });

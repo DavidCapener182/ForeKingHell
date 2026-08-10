@@ -64,7 +64,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: themeColourByMode.clubhouse,
+  themeColor: [
+    {
+      media: "(prefers-color-scheme: light) and (max-width: 1023px)",
+      color: "#f2f2f7",
+    },
+    {
+      media: "(prefers-color-scheme: dark) and (max-width: 1023px)",
+      color: "#000000",
+    },
+    { media: "(min-width: 1024px)", color: themeColourByMode.clubhouse },
+  ],
 };
 
 const publicPreferences = {

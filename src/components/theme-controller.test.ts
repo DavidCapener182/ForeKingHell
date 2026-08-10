@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyThemePreference,
   discardThemePreview,
+  mobileThemeMediaQuery,
   previewThemePreference,
   themePreviewStorageKey,
 } from "@/components/theme-controller";
@@ -26,6 +27,10 @@ function createRoot() {
 }
 
 describe("applyThemePreference", () => {
+  it("uses the shared authenticated-shell breakpoint for the mobile OS appearance", () => {
+    expect(mobileThemeMediaQuery).toBe("(max-width: 1023px)");
+  });
+
   it("applies Clubhouse Manager without enabling the dark class", () => {
     const { root, classes } = createRoot();
     const setAttribute = vi.fn();
@@ -98,5 +103,59 @@ describe("applyThemePreference", () => {
     expect(light.root.dataset.theme).toBe("light");
     expect(light.classes.has("dark")).toBe(false);
     expect(light.root.style.colorScheme).toBe("light");
+  });
+
+  it("uses only the OS light appearance on mobile while preserving the product preference", () => {
+    const { root, classes } = createRoot();
+    const setAttribute = vi.fn();
+
+    applyThemePreference(root, { setAttribute }, "clubhouse", false, true);
+
+    expect(root.dataset).toMatchObject({
+      themePreference: "clubhouse",
+      theme: "light",
+    });
+    expect(classes.has("dark")).toBe(false);
+    expect(root.style.colorScheme).toBe("light");
+    expect(setAttribute).toHaveBeenCalledWith("content", "#f2f2f7");
+  });
+
+  it("uses only the OS dark appearance on mobile while preserving the product preference", () => {
+    const { root, classes } = createRoot();
+    const setAttribute = vi.fn();
+
+    applyThemePreference(root, { setAttribute }, "outdoor", true, true);
+
+    expect(root.dataset).toMatchObject({
+      themePreference: "outdoor",
+      theme: "dark",
+    });
+    expect(classes.has("dark")).toBe(true);
+    expect(root.style.colorScheme).toBe("dark");
+    expect(setAttribute).toHaveBeenCalledWith("content", "#000000");
+  });
+
+  it("lets the OS appearance override explicit light and dark preferences on mobile", () => {
+    const savedDark = createRoot();
+    applyThemePreference(savedDark.root, null, "dark", false, true);
+    expect(savedDark.root.dataset).toMatchObject({ themePreference: "dark", theme: "light" });
+    expect(savedDark.classes.has("dark")).toBe(false);
+
+    const savedLight = createRoot();
+    applyThemePreference(savedLight.root, null, "light", true, true);
+    expect(savedLight.root.dataset).toMatchObject({ themePreference: "light", theme: "dark" });
+    expect(savedLight.classes.has("dark")).toBe(true);
+  });
+
+  it("restores the selected product theme outside the mobile viewport", () => {
+    const { root } = createRoot();
+
+    applyThemePreference(root, null, "tour-broadcast", false, false);
+
+    expect(root.dataset).toMatchObject({
+      themePreference: "tour-broadcast",
+      theme: "tour-broadcast",
+    });
+    expect(root.style.colorScheme).toBe("light");
   });
 });

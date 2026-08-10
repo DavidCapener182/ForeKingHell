@@ -1974,7 +1974,7 @@ function SaveConfirmationToast({
       className="fixed inset-x-3 top-[calc(5rem+env(safe-area-inset-top))] z-[70] mx-auto max-w-md sm:inset-x-auto sm:right-4 sm:top-24"
     >
       <div
-        data-clubhouse-preserve-dark
+        data-mobile-preserve-dark
         className="overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl"
       >
         <div className="flex items-start gap-3 px-4 py-3">

@@ -520,7 +520,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         )}
       >
         <Card
-          data-clubhouse-preserve-dark
+          data-mobile-preserve-dark
           className="border border-zinc-800 bg-[#111827] text-white shadow-[0_18px_44px_rgba(7,17,11,0.18)]"
           style={{
             background:

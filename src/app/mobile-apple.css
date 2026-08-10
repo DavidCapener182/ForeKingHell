@@ -2,11 +2,13 @@
 @media (max-width: 1023px) {
   body[data-mobile-platform="apple"],
   body:has([data-mobile-platform="apple"]),
-  [data-mobile-platform="apple"] {
+  body:has(.ios-public-auth),
+  [data-mobile-platform="apple"],
+  .ios-public-auth {
     --ios-background: #f2f2f7;
     --ios-grouped-surface: #ffffff;
     --ios-secondary-surface: #f2f2f7;
-    --ios-tertiary-surface: #e9e9ef;
+    --ios-tertiary-surface: #e5e5ea;
     --ios-label: #111113;
     /* Darker than the platform default so small analytical labels meet WCAG AA. */
     --ios-secondary-label: rgba(46, 46, 52, 0.78);
@@ -15,8 +17,11 @@
     --ios-fill: rgba(120, 120, 128, 0.12);
     --ios-material: rgba(248, 248, 250, 0.82);
     --ios-material-strong: rgba(248, 248, 250, 0.94);
-    --ios-tint: #087a42;
-    --ios-tint-pressed: #056735;
+    --ios-tint: #007aff;
+    --ios-tint-pressed: #0062cc;
+    --ios-link: #0066cc;
+    --ios-action: #0066cc;
+    --ios-action-pressed: #0057b8;
     --ios-positive: #248a3d;
     --ios-warning: #c93400;
     --ios-radius: 0.875rem;
@@ -26,7 +31,7 @@
     --card-foreground: var(--ios-label);
     --popover: var(--ios-grouped-surface);
     --popover-foreground: var(--ios-label);
-    --primary: var(--ios-tint);
+    --primary: var(--ios-action);
     --primary-foreground: #ffffff;
     --secondary: var(--ios-secondary-surface);
     --secondary-foreground: var(--ios-label);
@@ -37,158 +42,107 @@
     --border: var(--ios-separator);
     --input: var(--ios-separator);
     --ring: var(--ios-tint);
+    --destructive: #d70015;
+    --radius: var(--ios-radius);
+    /* Legacy product surfaces inherit from the mobile platform layer so saved desktop themes
+       cannot leak parchment, forest or broadcast materials into the compact interface. */
+    --surface: var(--ios-grouped-surface);
+    --surface-strong: var(--ios-grouped-surface);
+    --surface-soft: var(--ios-secondary-surface);
+    --surface-glass: var(--ios-material-strong);
+    --surface-border: var(--ios-separator);
+    --surface-border-strong: var(--ios-separator);
+    --surface-shadow: none;
+    --surface-shadow-soft: none;
+    --surface-shadow-lift: none;
+    --mobile-bar-shadow: 0 -10px 28px rgba(0, 0, 0, 0.06);
+    --lux-ivory: var(--ios-grouped-surface);
+    --lux-ivory-soft: var(--ios-background);
+    --lux-charcoal: var(--ios-label);
+    --lux-emerald-950: var(--ios-label);
+    --lux-emerald-900: var(--ios-label);
+    --lux-emerald-800: var(--ios-link);
+    --lux-emerald-700: var(--ios-link);
+    --lux-emerald-600: var(--ios-link);
+    --lux-champagne: var(--ios-secondary-label);
+    --lux-champagne-soft: var(--ios-tertiary-surface);
+    --lux-sky: var(--ios-tint);
+    --sidebar: var(--ios-grouped-surface);
+    --sidebar-foreground: var(--ios-label);
+    --sidebar-primary: var(--ios-action);
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: var(--ios-fill);
+    --sidebar-accent-foreground: var(--ios-label);
+    --sidebar-border: var(--ios-separator);
+    --sidebar-ring: var(--ios-tint);
+    --chart-1: #007aff;
+    --chart-2: #5856d6;
+    --chart-3: #ff9500;
+    --chart-4: #5ac8fa;
+    --chart-5: #ff2d55;
+    --chart-plot-background: var(--ios-grouped-surface);
+    --chart-grid: var(--ios-separator);
+    --chart-grid-strong: var(--ios-secondary-label);
+    --chart-axis: var(--ios-secondary-label);
+    --chart-zone-fill: var(--ios-fill);
+    --chart-positive: var(--ios-positive);
+    --chart-comparison: #5856d6;
+    --chart-marker: #ff9500;
+    --chart-series-green: var(--ios-positive);
+    --chart-series-sky: var(--ios-tint);
+    --chart-series-pink: #ff2d55;
+    --chart-series-amber: #ff9500;
+    --chart-series-slate: var(--ios-secondary-label);
+    --delivery-chart-background: var(--ios-grouped-surface);
+    --delivery-face: var(--ios-tint);
+    --delivery-path: #ff9500;
+    --delivery-target: var(--ios-secondary-label);
+    --delivery-centre: var(--ios-grouped-surface);
     --font-ui:
       -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
     --font-display:
       -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+    color-scheme: light;
   }
 
-  html[data-theme="dark"] body[data-mobile-platform="apple"],
-  html[data-theme="dark"] body:has([data-mobile-platform="apple"]),
-  html[data-theme="dark"] [data-mobile-platform="apple"] {
-    --ios-background: #000000;
-    --ios-grouped-surface: #1c1c1e;
-    --ios-secondary-surface: #2c2c2e;
-    --ios-tertiary-surface: #3a3a3c;
-    --ios-label: #ffffff;
-    --ios-secondary-label: rgba(235, 235, 245, 0.76);
-    --ios-tertiary-label: rgba(235, 235, 245, 0.42);
-    --ios-separator: rgba(84, 84, 88, 0.65);
-    --ios-fill: rgba(120, 120, 128, 0.24);
-    --ios-material: rgba(28, 28, 30, 0.82);
-    --ios-material-strong: rgba(28, 28, 30, 0.94);
-    --ios-tint: #63d894;
-    --ios-tint-pressed: #4fc47f;
-    --ios-positive: #30d158;
-    --ios-warning: #ff9f0a;
-    --primary-foreground: #07110b;
-  }
-
-  html[data-theme="clubhouse"] body[data-mobile-platform="apple"],
-  html[data-theme="clubhouse"] body:has([data-mobile-platform="apple"]),
-  html[data-theme="clubhouse"] [data-mobile-platform="apple"] {
-    --ios-background: #f2f2f7;
-    --ios-grouped-surface: #ffffff;
-    --ios-secondary-surface: #f2f2f7;
-    --ios-tertiary-surface: #e9e9ef;
-    --ios-label: #111113;
-    --ios-secondary-label: rgba(46, 46, 52, 0.78);
-    --ios-tertiary-label: rgba(60, 60, 67, 0.42);
-    --ios-separator: rgba(60, 60, 67, 0.18);
-    --ios-fill: rgba(120, 120, 128, 0.12);
-    --ios-material: rgba(248, 248, 250, 0.82);
-    --ios-material-strong: rgba(248, 248, 250, 0.94);
-    --ios-tint: #087a42;
-    --ios-tint-pressed: #056735;
-    --ios-positive: #248a3d;
-    --ios-warning: #c93400;
-    --ios-radius: 0.875rem;
-    --background: var(--ios-background);
-    --foreground: var(--ios-label);
-    --card: var(--ios-grouped-surface);
-    --card-foreground: var(--ios-label);
-    --popover: var(--ios-grouped-surface);
-    --popover-foreground: var(--ios-label);
-    --primary: var(--ios-tint);
-    --primary-foreground: #ffffff;
-    --secondary: var(--ios-secondary-surface);
-    --secondary-foreground: var(--ios-label);
-    --muted: var(--ios-secondary-surface);
-    --muted-foreground: var(--ios-secondary-label);
-    --accent: var(--ios-fill);
-    --accent-foreground: var(--ios-label);
-    --border: var(--ios-separator);
-    --input: var(--ios-separator);
-    --ring: var(--ios-tint);
-  }
-
-  html[data-theme="outdoor"] body[data-mobile-platform="apple"],
-  html[data-theme="outdoor"] body:has([data-mobile-platform="apple"]),
-  html[data-theme="outdoor"] [data-mobile-platform="apple"] {
-    --ios-background: #f2f2f7;
-    --ios-grouped-surface: #ffffff;
-    --ios-secondary-surface: #f2f2f7;
-    --ios-tertiary-surface: #e9e9ef;
-    --ios-label: #111113;
-    --ios-secondary-label: rgba(46, 46, 52, 0.78);
-    --ios-tertiary-label: rgba(60, 60, 67, 0.42);
-    --ios-separator: rgba(60, 60, 67, 0.18);
-    --ios-fill: rgba(120, 120, 128, 0.12);
-    --ios-material: rgba(248, 248, 250, 0.82);
-    --ios-material-strong: rgba(248, 248, 250, 0.94);
-    --ios-tint: #087a42;
-    --ios-tint-pressed: #056735;
-    --ios-positive: #248a3d;
-    --ios-warning: #c93400;
-    --ios-radius: 0.875rem;
-  }
-
-  html[data-theme="range-night"] body[data-mobile-platform="apple"],
-  html[data-theme="range-night"] body:has([data-mobile-platform="apple"]),
-  html[data-theme="range-night"] [data-mobile-platform="apple"] {
-    --ios-background: #000000;
-    --ios-grouped-surface: #1c1c1e;
-    --ios-secondary-surface: #2c2c2e;
-    --ios-tertiary-surface: #3a3a3c;
-    --ios-label: #ffffff;
-    --ios-secondary-label: rgba(235, 235, 245, 0.76);
-    --ios-tertiary-label: rgba(235, 235, 245, 0.42);
-    --ios-separator: rgba(84, 84, 88, 0.65);
-    --ios-fill: rgba(120, 120, 128, 0.24);
-    --ios-material: rgba(28, 28, 30, 0.82);
-    --ios-material-strong: rgba(28, 28, 30, 0.94);
-    --ios-tint: #63d894;
-    --ios-tint-pressed: #4fc47f;
-    --ios-positive: #30d158;
-    --ios-warning: #ff9f0a;
-    --primary-foreground: #04110a;
-  }
-
-  html[data-theme="tour-broadcast"] body[data-mobile-platform="apple"],
-  html[data-theme="tour-broadcast"] body:has([data-mobile-platform="apple"]),
-  html[data-theme="tour-broadcast"] [data-mobile-platform="apple"] {
-    --ios-background: #f2f2f7;
-    --ios-grouped-surface: #ffffff;
-    --ios-secondary-surface: #f2f2f7;
-    --ios-tertiary-surface: #e9e9ef;
-    --ios-label: #111113;
-    --ios-secondary-label: rgba(46, 46, 52, 0.78);
-    --ios-tertiary-label: rgba(60, 60, 67, 0.42);
-    --ios-separator: rgba(60, 60, 67, 0.18);
-    --ios-fill: rgba(120, 120, 128, 0.12);
-    --ios-material: rgba(248, 248, 250, 0.82);
-    --ios-material-strong: rgba(248, 248, 250, 0.94);
-    --ios-tint: #087a42;
-    --ios-tint-pressed: #056735;
-    --ios-positive: #248a3d;
-    --ios-warning: #c93400;
-    --ios-radius: 0.875rem;
-  }
-
-  html[data-theme="high-contrast"] body[data-mobile-platform="apple"],
-  html[data-theme="high-contrast"] body:has([data-mobile-platform="apple"]),
-  html[data-theme="high-contrast"] [data-mobile-platform="apple"] {
-    --ios-background: #000000;
-    --ios-grouped-surface: #000000;
-    --ios-secondary-surface: #000000;
-    --ios-tertiary-surface: #161616;
-    --ios-label: #ffffff;
-    --ios-secondary-label: #ffffff;
-    --ios-tertiary-label: #ffffff;
-    --ios-separator: #ffffff;
-    --ios-fill: #ffffff;
-    --ios-material: #000000;
-    --ios-material-strong: #000000;
-    --ios-tint: #ffff00;
-    --ios-tint-pressed: #00ffff;
-    --ios-positive: #00ff66;
-    --ios-warning: #ff8c00;
-    --ios-radius: 0;
-    --primary-foreground: #000000;
+  @media (prefers-color-scheme: dark) {
+    body[data-mobile-platform="apple"],
+    body:has([data-mobile-platform="apple"]),
+    body:has(.ios-public-auth),
+    [data-mobile-platform="apple"],
+    .ios-public-auth {
+      --ios-background: #000000;
+      --ios-grouped-surface: #1c1c1e;
+      --ios-secondary-surface: #2c2c2e;
+      --ios-tertiary-surface: #3a3a3c;
+      --ios-label: #ffffff;
+      --ios-secondary-label: rgba(235, 235, 245, 0.76);
+      --ios-tertiary-label: rgba(235, 235, 245, 0.42);
+      --ios-separator: rgba(84, 84, 88, 0.65);
+      --ios-fill: rgba(120, 120, 128, 0.24);
+      --ios-material: rgba(28, 28, 30, 0.82);
+      --ios-material-strong: rgba(28, 28, 30, 0.94);
+      --ios-tint: #0a84ff;
+      --ios-tint-pressed: #409cff;
+      --ios-link: #409cff;
+      --ios-action: #0066cc;
+      --ios-action-pressed: #0057b8;
+      --ios-positive: #30d158;
+      --ios-warning: #ff9f0a;
+      --primary-foreground: #ffffff;
+      --destructive: #ff453a;
+      --chart-1: #0a84ff;
+      --chart-2: #5e5ce6;
+      --chart-3: #ff9f0a;
+      --chart-4: #64d2ff;
+      --chart-5: #ff375f;
+      color-scheme: dark;
+    }
   }
 
   body[data-mobile-platform="apple"],
-  body:has([data-mobile-platform="apple"]) {
+  body:has([data-mobile-platform="apple"]),
+  body:has(.ios-public-auth) {
     background: var(--ios-background) !important;
     color: var(--ios-label);
     font-family:
@@ -197,21 +151,6 @@
   }
 
   .ios-public-auth {
-    --ios-background: #f2f2f7;
-    --ios-grouped-surface: #ffffff;
-    --ios-label: #111113;
-    --ios-secondary-label: rgba(46, 46, 52, 0.78);
-    --ios-separator: rgba(60, 60, 67, 0.18);
-    --surface: #ffffff;
-    --surface-strong: #ffffff;
-    --foreground: #111113;
-    --muted: #f2f2f7;
-    --muted-foreground: #66666c;
-    --primary: #087a42;
-    --primary-foreground: #ffffff;
-    --border: rgba(60, 60, 67, 0.18);
-    --input: rgba(60, 60, 67, 0.18);
-    --ring: #087a42;
     background: var(--ios-background) !important;
     color: var(--ios-label) !important;
     font-family:
@@ -222,10 +161,6 @@
   .ios-public-auth :where(h1, h2, h3, h4) {
     font-family:
       -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
-  }
-
-  html[data-theme="clubhouse"] body[data-mobile-platform="apple"] [class~="text-[#667085]"] {
-    color: var(--ios-secondary-label) !important;
   }
 
   body[data-mobile-platform="apple"]
@@ -316,7 +251,7 @@
     border-radius: 999px !important;
     background: transparent !important;
     box-shadow: none !important;
-    color: var(--ios-tint) !important;
+    color: var(--ios-link) !important;
   }
 
   .ios-nav-button:active {
@@ -401,7 +336,7 @@
 
   .ios-drawer-link[aria-current="page"] {
     background: var(--ios-fill) !important;
-    color: var(--ios-tint) !important;
+    color: var(--ios-link) !important;
     box-shadow: none !important;
   }
 
@@ -427,7 +362,7 @@
   }
 
   .ios-tab-item[aria-current="page"] {
-    color: var(--ios-tint) !important;
+    color: var(--ios-link) !important;
   }
 
   .ios-tab-item:focus-visible {
@@ -452,6 +387,55 @@
     gap: 0.75rem !important;
     background: var(--ios-background);
     color: var(--ios-label);
+  }
+
+  [data-mobile-platform="apple"] :where(.premium-mobile-bar, .premium-mobile-action-bar) {
+    border: 0 !important;
+    border-top: 0.5px solid var(--ios-separator) !important;
+    border-bottom: 0.5px solid var(--ios-separator) !important;
+    background: var(--ios-material-strong) !important;
+    box-shadow: none !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  [data-mobile-platform="apple"] .premium-route-tabs {
+    gap: 0.1875rem !important;
+    padding: 0.1875rem !important;
+    border: 0 !important;
+    border-radius: 0.625rem !important;
+    background: var(--ios-fill) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [data-mobile-platform="apple"] .premium-route-tab-active {
+    border: 0 !important;
+    border-radius: 0.5rem !important;
+    background: var(--ios-grouped-surface) !important;
+    color: var(--ios-label) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16) !important;
+  }
+
+  [data-mobile-platform="apple"] [data-tone-role="surface"] {
+    border: 0 !important;
+    background: var(--ios-fill) !important;
+    color: var(--ios-label) !important;
+    box-shadow: none !important;
+  }
+
+  [data-mobile-platform="apple"] [data-mobile-surface="grouped"] {
+    border-color: var(--ios-separator) !important;
+    background: var(--ios-grouped-surface) !important;
+    color: var(--ios-label) !important;
+    box-shadow: none !important;
+  }
+
+  [data-mobile-platform="apple"] [data-mobile-surface="secondary"] {
+    border-color: var(--ios-separator) !important;
+    background: var(--ios-secondary-surface) !important;
+    color: var(--ios-label) !important;
+    box-shadow: none !important;
   }
 
   .ios-large-title {
@@ -573,9 +557,7 @@
     box-shadow: none !important;
   }
 
-  [data-mobile-platform="apple"]
-    main#main-content
-    [data-slot="card"][data-clubhouse-preserve-dark] {
+  [data-mobile-platform="apple"] main#main-content [data-slot="card"][data-mobile-preserve-dark] {
     border: 1px solid #27272a !important;
     background: #111827 !important;
     color: #ffffff !important;
@@ -644,7 +626,7 @@
   .ios-mobile-screen .premium-action,
   .ios-mobile-screen [data-primary-action] [data-slot="button"]:not([data-variant="outline"]) {
     border: 0 !important;
-    background: var(--ios-tint) !important;
+    background: var(--ios-action) !important;
     color: #ffffff !important;
     box-shadow: none !important;
   }
@@ -653,14 +635,6 @@
     border: 1px solid var(--ios-separator) !important;
     background: var(--ios-grouped-surface) !important;
     color: var(--ios-label) !important;
-  }
-
-  html[data-theme="dark"] .ios-mobile-screen .premium-action,
-  html[data-theme="dark"]
-    .ios-mobile-screen
-    [data-primary-action]
-    [data-slot="button"]:not([data-variant="outline"]) {
-    color: #07110b !important;
   }
 
   .ios-mobile-screen :where(details, [data-slot="accordion-item"]) {
@@ -866,73 +840,5 @@
     .ios-mobile-screen :where(.premium-card, [data-slot="card"], .premium-hero) {
       border: 1px solid var(--ios-separator) !important;
     }
-  }
-
-  /* Keep the Apple shell neutral even when the desktop uses the Clubhouse theme. Theme identity
-     remains available through tint, data and imagery rather than a dark-green mobile canvas. */
-  html[data-theme="clubhouse"] .ios-app-header {
-    border-bottom: 0.5px solid var(--ios-separator) !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-tab-bar {
-    border-top: 0.5px solid var(--ios-separator) !important;
-    background: var(--ios-material-strong) !important;
-    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.06) !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-tab-bar .ios-tab-item {
-    color: var(--ios-secondary-label) !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-tab-bar .ios-tab-item[aria-current="page"] {
-    color: var(--ios-tint) !important;
-    box-shadow: none !important;
-  }
-
-  html[data-theme="clubhouse"]
-    .ios-mobile-screen
-    :where(.premium-card, [data-slot="card"], .premium-hero) {
-    border: 0 !important;
-    border-radius: var(--ios-radius) !important;
-    background: var(--ios-grouped-surface) !important;
-    box-shadow: none !important;
-  }
-
-  html[data-theme="clubhouse"]
-    .ios-mobile-screen
-    :where(
-      .premium-command-surface,
-      .apple-panel,
-      .apple-panel-strong,
-      .soft-panel,
-      .premium-rail-card,
-      .trust-indicator
-    ) {
-    border: 0 !important;
-    border-radius: 0.75rem !important;
-    background: var(--ios-secondary-surface) !important;
-    box-shadow: none !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-route-tab[aria-current="page"] {
-    border: 0 !important;
-    border-radius: 0.5rem !important;
-    background: var(--ios-grouped-surface) !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16) !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-mobile-screen :where(.data-table-scroll, .chart-frame) {
-    border: 0.5px solid var(--ios-separator) !important;
-    border-radius: var(--ios-radius) !important;
-    background: var(--ios-grouped-surface) !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-mobile-screen [data-slot="card-header"] {
-    background: transparent !important;
-  }
-
-  html[data-theme="clubhouse"] .ios-mobile-screen [data-current="true"] {
-    border-color: var(--clubhouse-cobalt) !important;
-    border-radius: 2px !important;
   }
 }

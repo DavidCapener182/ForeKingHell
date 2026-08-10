@@ -7,12 +7,17 @@ const globals = readFileSync(join(root, "src/app/globals.css"), "utf8");
 const mobile = readFileSync(join(root, "src/app/mobile-apple.css"), "utf8");
 
 describe("functional appearance modes", () => {
-  it("defines Outdoor, Range Night and Tour Broadcast from the agreed palettes", () => {
+  it("keeps Outdoor, Range Night and Tour Broadcast as desktop-only product themes", () => {
     for (const theme of ["outdoor", "range-night", "tour-broadcast"]) {
       expect(globals).toContain(`html[data-theme="${theme}"]`);
-      expect(mobile).toContain(`html[data-theme="${theme}"]`);
+      expect(mobile).not.toContain(`data-theme="${theme}"`);
       expect(globals).toContain(`[data-theme-swatch="${theme}"]`);
     }
+
+    expect(mobile).not.toContain("data-theme");
+    expect(mobile).not.toContain("clubhouse");
+    expect(mobile).toContain("--ios-tint: #007aff");
+    expect(mobile).toContain("--ios-tint: #0a84ff");
 
     expect(globals).toContain("--background: #fffdf4");
     expect(globals).toContain("--ring: #ff5a1f");
@@ -24,6 +29,7 @@ describe("functional appearance modes", () => {
 
   it("treats High Contrast as an accessibility mode", () => {
     expect(globals).toContain('html[data-theme="high-contrast"]');
+    expect(mobile).not.toContain('data-theme="high-contrast"');
     expect(globals).toContain("outline: 3px solid #ffff00 !important");
     expect(globals).toContain("text-decoration: underline");
     expect(globals).toContain("min-height: 44px");

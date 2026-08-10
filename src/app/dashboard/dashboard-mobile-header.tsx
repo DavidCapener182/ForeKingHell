@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { type MouseEvent, useEffect, useState } from "react";
 
-import { cn } from "@/lib/utils";
-
 const dashboardTabs = [
   {
     key: "today",
@@ -85,25 +83,18 @@ export function DashboardMobileHeader({
 
     event.preventDefault();
     window.history.replaceState(null, "", tab.href);
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    section.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
   }
 
   return (
-    <section className="premium-mobile-bar sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-4 grid max-w-[100vw] gap-0 overflow-x-clip px-4 sm:hidden">
-      <header className="-mx-4 grid h-11 max-w-[100vw] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-y border-border/70 px-4">
-        <span aria-hidden="true" />
-        <div
-          className="truncate text-center text-[1.15rem] font-semibold leading-7 tracking-normal text-foreground"
-          data-mobile-route-label
-        >
-          Home
-        </div>
-        <span aria-hidden="true" />
-      </header>
+    <section className="sticky top-[calc(3.25rem+env(safe-area-inset-top))] z-40 -mx-4 -mt-3 grid max-w-[100vw] overflow-x-clip border-b border-[var(--ios-separator)] bg-[var(--ios-material-strong)] px-4 py-2 backdrop-blur-xl lg:hidden">
       <nav
-        aria-label="Dashboard sections"
+        aria-label="Dashboard views"
         tabIndex={0}
-        className="premium-route-tabs focus-aaa -mx-4 flex max-w-[100vw] gap-1.5 overflow-x-auto border-b px-4 py-1 outline-none"
+        className="ios-route-tabs focus-aaa flex w-full max-w-full overflow-x-auto outline-none"
       >
         {dashboardTabs.map((tab) => {
           const active = tab.key === activeKey;
@@ -115,12 +106,7 @@ export function DashboardMobileHeader({
               prefetch={false}
               aria-current={active ? "page" : undefined}
               onClick={(event) => handleTabClick(event, tab)}
-              className={cn(
-                "focus-aaa min-h-11 shrink-0 touch-manipulation whitespace-nowrap rounded-md border px-3.5 py-2.5 text-sm font-semibold tracking-normal transition-[border-color,background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.98]",
-                active
-                  ? "premium-route-tab-active"
-                  : "border-transparent text-muted-foreground hover:bg-white/60 hover:text-foreground",
-              )}
+              className="ios-route-tab focus-aaa min-h-11 min-w-0 flex-1 touch-manipulation whitespace-nowrap text-center outline-none transition-[background-color,color,box-shadow,transform] duration-100 ease-out active:scale-[0.98]"
             >
               {tab.label}
             </Link>

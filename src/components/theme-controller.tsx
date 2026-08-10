@@ -8,19 +8,28 @@ import { defaultThemePreference, type ThemePreference } from "@/lib/user-setting
 export const themePreferenceChangeEvent = "fkh:theme-preference-change";
 export { themePreviewStorageKey };
 
+export const mobileThemeMediaQuery = "(max-width: 1023px)";
+
+const mobileThemeColour = {
+  light: "#f2f2f7",
+  dark: "#000000",
+} as const;
+
 type ThemeRoot = Pick<HTMLElement, "classList" | "dataset" | "style">;
 type ThemeMeta = Pick<HTMLMetaElement, "setAttribute"> | null;
 
 export function ThemeController() {
   useEffect(() => {
     const colourScheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const mobileViewport = window.matchMedia(mobileThemeMediaQuery);
 
     function apply(preference = readThemePreference()) {
       applyThemePreference(
         document.documentElement,
-        document.querySelector<HTMLMetaElement>('meta[name="theme-color"]'),
+        findActiveThemeMeta(),
         preference,
         colourScheme.matches,
+        mobileViewport.matches,
       );
     }
 
@@ -30,18 +39,25 @@ export function ThemeController() {
     }
 
     function handleSystemChange() {
-      if (readThemePreference() === "system") {
-        apply("system");
+      const preference = readThemePreference();
+      if (mobileViewport.matches || preference === "system") {
+        apply(preference);
       }
+    }
+
+    function handleViewportChange() {
+      apply();
     }
 
     apply();
     window.addEventListener(themePreferenceChangeEvent, handlePreferenceChange);
     colourScheme.addEventListener("change", handleSystemChange);
+    mobileViewport.addEventListener("change", handleViewportChange);
 
     return () => {
       window.removeEventListener(themePreferenceChangeEvent, handlePreferenceChange);
       colourScheme.removeEventListener("change", handleSystemChange);
+      mobileViewport.removeEventListener("change", handleViewportChange);
     };
   }, []);
 
@@ -75,8 +91,13 @@ export function applyThemePreference(
   meta: ThemeMeta,
   preference: ThemePreference,
   prefersDark: boolean,
+  isMobileViewport = false,
 ) {
-  const theme = resolveTheme(preference, prefersDark);
+  const theme = isMobileViewport
+    ? prefersDark
+      ? "dark"
+      : "light"
+    : resolveTheme(preference, prefersDark);
 
   root.dataset.themePreference = preference;
   root.dataset.theme = theme;
@@ -84,7 +105,22 @@ export function applyThemePreference(
     theme === "dark" || theme === "range-night" || theme === "high-contrast";
   root.classList.toggle("dark", usesDarkColourScheme);
   root.style.colorScheme = usesDarkColourScheme ? "dark" : "light";
-  meta?.setAttribute("content", themeColourByMode[theme]);
+  meta?.setAttribute(
+    "content",
+    isMobileViewport ? mobileThemeColour[theme as "light" | "dark"] : themeColourByMode[theme],
+  );
+}
+
+function findActiveThemeMeta() {
+  const themeMetas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+  return (
+    Array.from(themeMetas).find((meta) => {
+      const media = meta.getAttribute("media");
+      return !media || window.matchMedia(media).matches;
+    }) ??
+    themeMetas.item(0) ??
+    null
+  );
 }
 
 function readThemePreference(): ThemePreference {

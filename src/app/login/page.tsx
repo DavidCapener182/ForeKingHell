@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   return (
     <PageShell
       size="full"
-      className="ios-public-auth relative isolate overflow-hidden bg-[#F2F2F7] px-0 py-0 pb-0 font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Helvetica_Neue',Arial,sans-serif] text-[#111113] sm:px-0 sm:pb-0 sm:pt-0 lg:bg-[#07110B] lg:px-0 lg:font-[var(--font-ui-source)] lg:text-white"
+      className="ios-public-auth relative isolate overflow-hidden bg-[var(--ios-background)] px-0 py-0 pb-0 font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Helvetica_Neue',Arial,sans-serif] text-[var(--ios-label)] sm:px-0 sm:pb-0 sm:pt-0 lg:bg-[#07110B] lg:px-0 lg:font-[var(--font-ui-source)] lg:text-white"
       contentClassName="relative min-h-[100svh] w-full !max-w-none gap-0 overflow-hidden lg:min-h-screen lg:w-screen"
     >
       <Image
@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         <header className="grid gap-4 lg:hidden">
           <Link
             href="/"
-            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[10px] text-[15px] font-semibold tracking-[-0.01em] text-[#111113] outline-none focus-visible:ring-2 focus-visible:ring-[#087A42] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F2F2F7]"
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[10px] text-[15px] font-semibold tracking-[-0.01em] text-[var(--ios-label)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-tint)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ios-background)]"
             aria-label={`${BRAND_NAME} home`}
           >
             <BrandMark className="size-9 rounded-[9px]" sizes="36px" priority />
@@ -52,10 +52,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           </Link>
 
           <div className="max-w-xl pb-1">
-            <h1 className="text-[2.125rem] font-bold leading-[1.08] tracking-[-0.03em] text-[#111113] text-balance sm:text-[2.5rem]">
+            <h1 className="text-[2.125rem] font-bold leading-[1.08] tracking-[-0.03em] text-[var(--ios-label)] text-balance sm:text-[2.5rem]">
               Sign in or join.
             </h1>
-            <p className="mt-2 max-w-lg text-[17px] leading-[1.47] tracking-[-0.01em] text-[#55555B]">
+            <p className="mt-2 max-w-lg text-[17px] leading-[1.47] tracking-[-0.01em] text-[var(--ios-secondary-label)]">
               Your rounds, records and range work in one clubhouse.
             </p>
           </div>
@@ -104,20 +104,20 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         </header>
 
         <section
-          className="relative order-2 overflow-hidden rounded-[14px] bg-white p-4 text-slate-950 shadow-none sm:p-5 lg:order-2 lg:rounded-lg lg:border lg:border-white/20 lg:shadow-2xl lg:shadow-black/30"
+          className="relative order-2 overflow-hidden rounded-[14px] bg-[var(--ios-grouped-surface)] p-4 text-[var(--ios-label)] shadow-none sm:p-5 lg:order-2 lg:rounded-lg lg:border lg:border-white/20 lg:bg-white lg:text-slate-950 lg:shadow-2xl lg:shadow-black/30"
           aria-label="Sign in options"
         >
           <div className="absolute inset-x-0 top-0 hidden h-1 bg-[linear-gradient(90deg,#0B7A3B,#A7F3D0,#C7972B)] lg:block" />
           <div className="mb-5 hidden rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 lg:block">
             <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[#EFEFF4] text-[#087A42] lg:rounded-lg lg:bg-[#0B7A3B] lg:text-white">
+              <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[var(--ios-fill)] text-[var(--ios-tint)] lg:rounded-lg lg:bg-[#0B7A3B] lg:text-white">
                 <ShieldCheck className="size-5" aria-hidden />
               </span>
               <div className="min-w-0">
                 <h2 className="text-[1.375rem] font-semibold leading-7 tracking-[-0.02em] lg:text-2xl lg:leading-8 lg:tracking-normal">
                   Sign in or join
                 </h2>
-                <p className="mt-0.5 text-[15px] leading-5 text-[#66666C] lg:mt-1 lg:text-sm lg:leading-6 lg:text-slate-600">
+                <p className="mt-0.5 text-[15px] leading-5 text-[var(--ios-secondary-label)] lg:mt-1 lg:text-sm lg:leading-6 lg:text-slate-600">
                   Use email and password, Google, Apple or a secure email link.
                 </p>
               </div>
@@ -161,18 +161,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <div className="flex items-end justify-between gap-4 px-1">
             <h2
               id="account-data-heading"
-              className="text-[20px] font-semibold leading-6 tracking-[-0.02em] text-[#111113]"
+              className="text-[20px] font-semibold leading-6 tracking-[-0.02em] text-[var(--ios-label)]"
             >
               Your golf profile
             </h2>
             <Link
               href="/privacy"
-              className="min-h-11 content-center text-[15px] font-medium text-[#087A42] underline-offset-4 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087A42]"
+              className="min-h-11 content-center text-[15px] font-medium text-[var(--ios-link)] underline-offset-4 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-tint)]"
             >
               Data notice
             </Link>
           </div>
-          <div className="overflow-hidden rounded-[14px] bg-white">
+          <div className="overflow-hidden rounded-[14px] bg-[var(--ios-grouped-surface)]">
             <GolfProof
               mobile
               icon={<LockKeyhole className="size-[18px]" />}
@@ -211,15 +211,15 @@ function GolfProof({
 }) {
   if (mobile) {
     return (
-      <div className="grid min-h-[4.5rem] grid-cols-[2rem_minmax(0,1fr)] gap-3 border-b border-[#D9D9DE] px-4 py-3 last:border-b-0">
-        <span className="grid size-8 place-items-center self-start rounded-[9px] bg-[#EFEFF4] text-[#087A42]">
+      <div className="grid min-h-[4.5rem] grid-cols-[2rem_minmax(0,1fr)] gap-3 border-b border-[var(--ios-separator)] px-4 py-3 last:border-b-0">
+        <span className="grid size-8 place-items-center self-start rounded-[9px] bg-[var(--ios-fill)] text-[var(--ios-tint)]">
           {icon}
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold leading-5 tracking-[-0.01em] text-[#111113]">
+          <p className="text-[15px] font-semibold leading-5 tracking-[-0.01em] text-[var(--ios-label)]">
             {label}
           </p>
-          <p className="mt-0.5 text-[15px] leading-5 text-[#66666C]">{value}</p>
+          <p className="mt-0.5 text-[15px] leading-5 text-[var(--ios-secondary-label)]">{value}</p>
         </div>
       </div>
     );

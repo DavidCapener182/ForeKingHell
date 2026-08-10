@@ -23,7 +23,9 @@ describe("Clubhouse Manager default theme contract", () => {
 
     expect(layout).toContain("theme: defaultThemePreference");
     expect(layout).toContain("data-theme={publicPreferences.theme}");
-    expect(layout).toContain("themeColor: themeColourByMode.clubhouse");
+    expect(layout).toContain(
+      '{ media: "(min-width: 1024px)", color: themeColourByMode.clubhouse }',
+    );
     expect(controller).toContain(
       "return isThemePreference(value) ? value : defaultThemePreference;",
     );

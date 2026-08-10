@@ -1897,7 +1897,7 @@ export function CourseTwinScene({
 
   return (
     <div
-      data-clubhouse-preserve-dark
+      data-mobile-preserve-dark
       data-course-twin-stage
       className="relative grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:h-full xl:min-h-0 xl:overflow-hidden"
     >

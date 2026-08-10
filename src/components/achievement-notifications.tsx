@@ -137,7 +137,7 @@ function AchievementToastCard({
 
   return (
     <div
-      data-clubhouse-preserve-dark
+      data-mobile-preserve-dark
       className="pointer-events-auto overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl"
     >
       <div className="flex items-start gap-3 border-b border-white/10 px-4 py-3">

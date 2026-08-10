@@ -1032,7 +1032,7 @@ html[data-theme="clubhouse"] .bg-slate-100 {
 
 /* Preserve intentionally translucent overlays inside explicitly dark product surfaces. */
 html[data-theme="clubhouse"]
-  [class*="bg-white/"]:not([data-clubhouse-preserve-dark] [class*="bg-white/"]) {
+  [class*="bg-white/"]:not([data-mobile-preserve-dark] [class*="bg-white/"]) {
   background-color: var(--surface-glass) !important;
 }
 

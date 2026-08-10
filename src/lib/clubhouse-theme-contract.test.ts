@@ -76,12 +76,15 @@ describe("Clubhouse Manager theme contract", () => {
   });
 
   it("keeps the mobile shell neutral while preserving the clubhouse desktop theme", () => {
-    expect(mobile).toContain('html[data-theme="clubhouse"]');
+    expect(mobile).not.toContain("data-theme");
+    expect(mobile).not.toContain("clubhouse");
     expect(mobile).toContain("--ios-background: #f2f2f7");
     expect(mobile).toContain("--ios-grouped-surface: #ffffff");
+    expect(mobile).toContain("--ios-tint: #007aff");
+    expect(mobile).toContain("--ios-tint: #0a84ff");
     expect(mobile).toContain("--ios-radius: 0.875rem");
     expect(mobile).not.toContain("--ios-material-strong: rgba(9, 39, 27, 0.97)");
-    expect(mobile).toContain('.ios-tab-bar .ios-tab-item[aria-current="page"]');
+    expect(mobile).toContain('.ios-tab-item[aria-current="page"]');
     expect(controller).toContain(
       'root.style.colorScheme = usesDarkColourScheme ? "dark" : "light"',
     );
@@ -93,12 +96,18 @@ describe("Clubhouse Manager theme contract", () => {
     expect(layout).toContain("<head>");
     expect(themeBootstrap).toContain("dangerouslySetInnerHTML={{ __html: script }}");
     expect(themeBootstrap).not.toContain('strategy="beforeInteractive"');
-    expect(themeBootstrap).toContain('const theme = preference === "system"');
+    expect(themeBootstrap).toContain(
+      'const isMobileViewport = window.matchMedia("(max-width: 1023px)").matches',
+    );
+    expect(themeBootstrap).toContain("const theme = isMobileViewport");
+    expect(themeBootstrap).toContain(': preference === "system"');
     expect(themeBootstrap).toContain("const colours = ${JSON.stringify(themeColourByMode)}");
     expect(themeBootstrap).toContain(
       'root.style.colorScheme = usesDarkColourScheme ? "dark" : "light"',
     );
-    expect(themeBootstrap).toContain('meta.setAttribute("content", colours[theme])');
+    expect(themeBootstrap).toContain(
+      'activeMeta.setAttribute("content", isMobileViewport ? mobileColours[theme] : colours[theme])',
+    );
     expect(themeBootstrap).toContain("sessionStorage.getItem(themePreviewStorageKey)");
     expect(themeBootstrap).toContain("sessionStorage.removeItem(themePreviewStorageKey)");
     expect(themeBootstrap).not.toContain("if (previewPreference === savedPreference)");

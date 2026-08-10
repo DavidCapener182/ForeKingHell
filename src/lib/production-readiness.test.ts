@@ -259,6 +259,7 @@ describe("production readiness gate", () => {
     const mobileSportsSource = readFileSync(join(root, "src/components/mobile-sports.tsx"), "utf8");
     const mobileTabsSource = readFileSync(join(root, "src/components/mobile-tab-bar.tsx"), "utf8");
     const premiumSource = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
+    const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
     const dashboardMobileHeaderSource = readFileSync(
       join(root, "src/app/dashboard/dashboard-mobile-header.tsx"),
       "utf8",
@@ -268,7 +269,9 @@ describe("production readiness gate", () => {
     expect(mobileSportsSource).not.toContain("<h1");
     expect(dashboardMobileHeaderSource).not.toContain("<h1");
     expect(mobileSportsSource).toContain("data-mobile-route-label");
-    expect(dashboardMobileHeaderSource).toContain("data-mobile-route-label");
+    expect(mobileNavSource).toContain("data-mobile-route-label");
+    expect(dashboardMobileHeaderSource).not.toContain("data-mobile-route-label");
+    expect(dashboardMobileHeaderSource).not.toContain(">Home<");
     expect(mobileTabsSource).toContain("min-h-11");
     expect(premiumSource).toContain("min-h-11");
     expect(dashboardMobileHeaderSource).toContain("min-h-11");
@@ -374,7 +377,8 @@ describe("production readiness gate", () => {
     expect(dashboardSource).toContain("DashboardAiCaddieBriefCard");
     expect(dashboardSource).toContain("brief.title");
     expect(dashboardSource).toContain("Structured JSON");
-    expect(dashboardSource).toContain("StickyMobileAction");
+    expect(dashboardSource).toContain("data-primary-action");
+    expect(dashboardSource).not.toContain("StickyMobileAction");
     expect(caddieSource).toContain("Today's AI Caddie Brief");
     expect(caddieSource).toContain("schemaVersion: 1");
     expect(caddieSource).toContain("dataUsed");

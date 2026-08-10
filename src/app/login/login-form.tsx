@@ -42,7 +42,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
       >
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <label
-          className="grid gap-2 text-[15px] font-medium text-[#333338] lg:text-sm lg:text-slate-800"
+          className="grid gap-2 text-[15px] font-medium text-[var(--ios-label)] lg:text-sm lg:text-slate-800"
           htmlFor="email"
         >
           Email
@@ -53,11 +53,11 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             autoComplete="email"
             inputMode="email"
             placeholder="you@example.com"
-            className="h-[3.125rem] rounded-xl border-[#C7C7CC] bg-[#F7F7F8] px-3.5 text-[17px] text-[#111113] shadow-none placeholder:text-[#8E8E93] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
+            className="h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
           />
         </label>
         <label
-          className="grid gap-2 text-[15px] font-medium text-[#333338] lg:text-sm lg:text-slate-800"
+          className="grid gap-2 text-[15px] font-medium text-[var(--ios-label)] lg:text-sm lg:text-slate-800"
           htmlFor="password"
         >
           Password
@@ -67,14 +67,14 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             type="password"
             autoComplete="current-password"
             placeholder="Your password"
-            className="h-[3.125rem] rounded-xl border-[#C7C7CC] bg-[#F7F7F8] px-3.5 text-[17px] text-[#111113] shadow-none placeholder:text-[#8E8E93] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
+            className="h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
           />
         </label>
         <Button
           type="submit"
           size="lg"
           disabled={passwordPending}
-          className="h-[3.125rem] rounded-xl bg-[#087A42] text-[17px] font-semibold text-white shadow-none active:scale-[0.985] hover:bg-[#056735] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:bg-[#0B7A3B] lg:text-sm lg:font-medium lg:shadow-[0_8px_18px_rgba(11,122,59,0.18)] lg:hover:bg-[#064E3B] lg:focus-visible:ring-ring/50 lg:active:scale-100"
+          className="h-[3.125rem] rounded-xl bg-[var(--ios-action)] text-[17px] font-semibold text-white shadow-none active:scale-[0.985] hover:bg-[var(--ios-action-pressed)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:bg-[#0B7A3B] lg:text-sm lg:font-medium lg:shadow-[0_8px_18px_rgba(11,122,59,0.18)] lg:hover:bg-[#064E3B] lg:focus-visible:ring-ring/50 lg:active:scale-100"
         >
           <KeyRound className="size-4" />
           {passwordPending ? "Signing in…" : "Sign in with password"}
@@ -85,8 +85,8 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             role="alert"
             className={
               passwordIsError
-                ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[15px] leading-5 text-amber-900 lg:rounded-lg lg:py-2 lg:text-sm"
-                : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[15px] leading-5 text-emerald-900 lg:rounded-lg lg:py-2 lg:text-sm"
+                ? "rounded-xl border border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3 py-2.5 text-[15px] leading-5 text-[var(--ios-label)] lg:rounded-lg lg:border-amber-200 lg:bg-amber-50 lg:py-2 lg:text-sm lg:text-amber-900"
+                : "rounded-xl border border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3 py-2.5 text-[15px] leading-5 text-[var(--ios-label)] lg:rounded-lg lg:border-emerald-200 lg:bg-emerald-50 lg:py-2 lg:text-sm lg:text-emerald-900"
             }
             aria-live="assertive"
           >
@@ -96,11 +96,11 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
       </form>
 
       <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-200" />
-        <p className="text-[13px] font-medium text-[#6C6C70] lg:text-xs lg:uppercase lg:text-slate-500">
+        <div className="h-px flex-1 bg-[var(--ios-separator)] lg:bg-slate-200" />
+        <p className="text-[13px] font-medium text-[var(--ios-secondary-label)] lg:text-xs lg:uppercase lg:text-slate-500">
           or continue with
         </p>
-        <div className="h-px flex-1 bg-slate-200" />
+        <div className="h-px flex-1 bg-[var(--ios-separator)] lg:bg-slate-200" />
       </div>
 
       <div className="grid gap-2">
@@ -115,17 +115,17 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           <OAuthButton
             icon={<AppleIcon />}
             label="Continue with Apple"
-            className="border-black bg-black text-white hover:bg-black/90 hover:text-white"
+            className="border-[var(--ios-label)] bg-[var(--ios-label)] text-[var(--ios-background)] hover:bg-[var(--ios-label)] hover:text-[var(--ios-background)] dark:border-[var(--ios-label)] dark:bg-[var(--ios-label)] dark:hover:bg-[var(--ios-label)] lg:border-black lg:bg-black lg:text-white lg:hover:bg-black/90 lg:hover:text-white"
           />
         </form>
       </div>
 
-      <div className="grid gap-3 rounded-[14px] bg-[#F2F2F7] p-4 lg:rounded-lg lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3">
+      <div className="grid gap-3 rounded-[14px] bg-[var(--ios-secondary-surface)] p-4 lg:rounded-lg lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3">
         <div>
-          <p className="text-[15px] font-semibold leading-5 text-[#111113] lg:text-sm lg:text-slate-900">
+          <p className="text-[15px] font-semibold leading-5 text-[var(--ios-label)] lg:text-sm lg:text-slate-900">
             Create an account or skip the password
           </p>
-          <p className="mt-1 text-[15px] leading-5 text-[#66666C] lg:text-sm lg:text-slate-600">
+          <p className="mt-1 text-[15px] leading-5 text-[var(--ios-secondary-label)] lg:text-sm lg:text-slate-600">
             We will email a secure link. If you are new, that link starts your account.
           </p>
         </div>
@@ -137,7 +137,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         >
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <label
-            className="grid gap-2 text-[15px] font-medium text-[#333338] lg:text-sm lg:text-slate-800"
+            className="grid gap-2 text-[15px] font-medium text-[var(--ios-label)] lg:text-sm lg:text-slate-800"
             htmlFor="magic-email"
           >
             <span className="sr-only">Magic link address</span>
@@ -148,7 +148,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
-              className="h-[3.125rem] rounded-xl border-[#C7C7CC] bg-white px-3.5 text-[17px] text-[#111113] shadow-none placeholder:text-[#8E8E93] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
+              className="h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-grouped-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
             />
           </label>
           <Button
@@ -156,7 +156,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             variant="outline"
             size="lg"
             disabled={magicPending}
-            className="h-[3.125rem] w-full rounded-xl border-[#C7C7CC] bg-white text-[17px] font-semibold text-[#111113] shadow-none active:scale-[0.985] hover:bg-[#F7F7F8] hover:text-[#111113] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:text-sm lg:font-medium lg:text-slate-900 lg:hover:bg-slate-100 lg:hover:text-slate-900 lg:focus-visible:ring-ring/50 lg:active:scale-100"
+            className="h-[3.125rem] w-full rounded-xl border-[var(--ios-separator)] bg-[var(--ios-grouped-surface)] text-[17px] font-semibold text-[var(--ios-label)] shadow-none active:scale-[0.985] hover:bg-[var(--ios-fill)] hover:text-[var(--ios-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:text-sm lg:font-medium lg:text-slate-900 lg:hover:bg-slate-100 lg:hover:text-slate-900 lg:focus-visible:ring-ring/50 lg:active:scale-100"
           >
             <Mail className="size-4" />
             {magicPending ? "Sending…" : "Email me a secure link"}
@@ -167,8 +167,8 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
               role="alert"
               className={
                 magicIsError
-                  ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[15px] leading-5 text-amber-900 lg:rounded-lg lg:py-2 lg:text-sm"
-                  : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[15px] leading-5 text-emerald-900 lg:rounded-lg lg:py-2 lg:text-sm"
+                  ? "rounded-xl border border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3 py-2.5 text-[15px] leading-5 text-[var(--ios-label)] lg:rounded-lg lg:border-amber-200 lg:bg-amber-50 lg:py-2 lg:text-sm lg:text-amber-900"
+                  : "rounded-xl border border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3 py-2.5 text-[15px] leading-5 text-[var(--ios-label)] lg:rounded-lg lg:border-emerald-200 lg:bg-emerald-50 lg:py-2 lg:text-sm lg:text-emerald-900"
               }
               aria-live="assertive"
             >
@@ -184,7 +184,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
 function OAuthButton({
   icon,
   label,
-  className = "border-[#DADCE0] bg-white text-[#3C4043] hover:bg-white hover:text-[#202124]",
+  className = "border-[var(--ios-separator)] bg-[var(--ios-grouped-surface)] text-[var(--ios-label)] hover:bg-[var(--ios-fill)] hover:text-[var(--ios-label)] lg:border-[#DADCE0] lg:bg-white lg:text-[#3C4043] lg:hover:bg-white lg:hover:text-[#202124]",
 }: {
   icon: ReactNode;
   label: string;
@@ -195,7 +195,7 @@ function OAuthButton({
       type="submit"
       variant="outline"
       size="lg"
-      className={`h-[3.125rem] w-full justify-center rounded-xl text-[17px] font-semibold shadow-none active:scale-[0.985] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:text-base lg:shadow-sm lg:focus-visible:ring-ring/50 lg:active:scale-100 ${className}`}
+      className={`h-[3.125rem] w-full justify-center rounded-xl text-[17px] font-semibold shadow-none active:scale-[0.985] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:text-base lg:shadow-sm lg:focus-visible:ring-ring/50 lg:active:scale-100 ${className}`}
     >
       {icon}
       {label}

@@ -56,3 +56,45 @@ describe("dashboard desktop source", () => {
     expect(practiceCardBlock).not.toContain("xl:grid-cols-[minmax(0,1fr)_310px]");
   });
 });
+
+describe("dashboard mobile Apple system surfaces", () => {
+  it("uses the compact platform wrapper without duplicating the desktop workbench", () => {
+    const mobileLayoutBlock =
+      source.match(
+        /function DashboardMobileLayout[\s\S]*?function DashboardAiCaddieBriefCard/,
+      )?.[0] ?? "";
+
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="dashboard" className="hidden lg:grid">',
+    );
+    expect(mobileLayoutBlock).toContain("ios-mobile-screen");
+    expect(mobileLayoutBlock).toContain("lg:hidden");
+    expect(mobileLayoutBlock).not.toContain("StickyMobileAction");
+  });
+
+  it("keeps the AI brief neutral and exposes its action and evidence in DOM content", () => {
+    const briefBlock =
+      source.match(
+        /function DashboardAiCaddieBriefCard[\s\S]*?function DashboardMobileGroup/,
+      )?.[0] ?? "";
+
+    expect(briefBlock).toContain('data-mobile-surface="grouped"');
+    expect(briefBlock).toContain("ios-grouped-row");
+    expect(briefBlock).toContain("data-primary-action");
+    expect(briefBlock).toContain("Data used");
+    expect(briefBlock).not.toContain("linear-gradient");
+    expect(briefBlock).not.toContain("bg-emerald");
+    expect(briefBlock).not.toContain("bg-amber");
+    expect(briefBlock).not.toContain("StatusPill");
+  });
+
+  it("uses one system symbol treatment for mobile tool cards", () => {
+    const toolsBlock =
+      source.match(
+        /function DashboardMobileTools[\s\S]*?function DashboardFirstRunOnboarding/,
+      )?.[0] ?? "";
+
+    expect(toolsBlock).toContain("bg-[var(--ios-fill)] text-[var(--ios-tint)]");
+    expect(toolsBlock).not.toContain("card.accent");
+  });
+});

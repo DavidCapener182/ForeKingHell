@@ -43,7 +43,6 @@ type MobileNavProps = {
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
 const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
-const compactTitleThreshold = 44;
 
 export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: MobileNavProps) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
@@ -54,7 +53,6 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
   );
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
-  const [compactTitleVisible, setCompactTitleVisible] = useState(false);
   const scrollFrameRef = useRef<number | null>(null);
   const activePrimaryHref =
     mobilePrimaryItems.find((item) => item.isActive(pathname))?.href ?? pathname;
@@ -90,10 +88,6 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
 
     const rememberCurrentScroll = () => {
       const scrollY = Math.max(0, window.scrollY);
-      setCompactTitleVisible((current) => {
-        const next = scrollY > compactTitleThreshold;
-        return current === next ? current : next;
-      });
 
       try {
         window.sessionStorage.setItem(tabScrollStorageKey, String(scrollY));
@@ -255,14 +249,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
             </SheetContent>
           </Sheet>
 
-          <p
-            aria-hidden={!compactTitleVisible}
-            className={cn(
-              "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
-              compactTitleVisible ? "opacity-100" : "pointer-events-none opacity-0",
-            )}
-            data-mobile-route-label
-          >
+          <p className="ios-inline-title min-w-0 truncate text-center" data-mobile-route-label>
             {pageTitle}
           </p>
 

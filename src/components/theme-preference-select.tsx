@@ -44,11 +44,35 @@ export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePre
   return (
     <fieldset className="grid gap-2 text-sm font-medium md:col-span-3">
       <legend>Appearance</legend>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div
+        data-mobile-appearance-note
+        data-mobile-surface="secondary"
+        className="grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3 lg:hidden"
+      >
+        <span className="grid min-w-0 gap-0.5">
+          <span className="font-semibold">Mobile appearance</span>
+          <span className="text-[13px] font-normal leading-[1.35] text-muted-foreground">
+            Always follows this device&apos;s system Light or Dark mode.
+          </span>
+        </span>
+        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+          Automatic
+        </span>
+      </div>
+
+      <div className="mt-2 grid gap-0.5 lg:hidden">
+        <p className="font-semibold">Desktop appearance</p>
+        <p className="text-[13px] font-normal leading-[1.35] text-muted-foreground">
+          Choose how ForeKingHell looks on larger screens. This preference is saved for desktop and
+          does not change the mobile appearance above.
+        </p>
+      </div>
+
+      <div className="grid divide-y overflow-hidden rounded-xl border bg-card lg:grid-cols-2 lg:gap-2 lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent xl:grid-cols-4">
         {themeOptions.map((value) => (
           <label
             key={value}
-            className="group relative grid min-h-24 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-x-3 rounded-lg border bg-card p-3 transition-colors hover:border-primary/45 has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring"
+            className="group relative grid min-h-14 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-x-3 bg-transparent px-4 py-3 transition-colors has-[:checked]:bg-primary/5 has-[:focus-visible]:z-10 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-[-3px] has-[:focus-visible]:outline-ring lg:min-h-24 lg:rounded-lg lg:border lg:bg-card lg:p-3 lg:hover:border-primary/45 lg:has-[:checked]:border-primary lg:has-[:focus-visible]:outline-offset-2"
           >
             <input
               type="radio"
@@ -73,7 +97,10 @@ export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePre
           </label>
         ))}
       </div>
-      <span className="text-xs font-normal leading-5 text-muted-foreground">
+      <span className="text-xs font-normal leading-5 text-muted-foreground lg:hidden">
+        Save settings to keep this as your desktop preference. Mobile remains automatic.
+      </span>
+      <span className="hidden text-xs font-normal leading-5 text-muted-foreground lg:inline">
         Preview changes immediately. Save settings to keep the selection on your account.
       </span>
     </fieldset>
@@ -103,7 +130,7 @@ function ThemeSwatch({ theme }: { theme: ThemePreference }) {
     <span
       aria-hidden="true"
       data-theme-swatch={theme}
-      className="mt-1 grid h-6 grid-cols-[1.5fr_1fr_0.4fr] overflow-hidden rounded-sm border border-black/10"
+      className="mt-1 hidden h-6 grid-cols-[1.5fr_1fr_0.4fr] overflow-hidden rounded-sm border border-black/10 lg:grid"
     >
       <span />
       <span />
