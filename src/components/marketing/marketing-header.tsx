@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import { BRAND_NAME } from "@/lib/brand";
 import { marketingJoinBetaHref } from "@/lib/marketing-links";
@@ -84,6 +91,9 @@ export function MarketingMobileMenu() {
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className={styles.mobileSheet} showCloseButton={false}>
+        <SheetDescription className="sr-only">
+          Navigate the LM World Tour product pages, sign in or join the beta.
+        </SheetDescription>
         <div className={styles.mobileSheetTop}>
           <SheetTitle className={styles.mobileSheetTitle}>{BRAND_NAME}</SheetTitle>
           <SheetClose asChild>
@@ -113,10 +123,6 @@ export function MarketingMobileMenu() {
               Join the beta
             </Link>
           </Button>
-          <p className={styles.menuSearchHint}>
-            <Search className="size-4" aria-hidden /> Explore the product before you create an
-            account.
-          </p>
         </div>
       </SheetContent>
     </Sheet>

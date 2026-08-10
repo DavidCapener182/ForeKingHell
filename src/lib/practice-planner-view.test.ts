@@ -135,9 +135,10 @@ describe("practice planner view helpers", () => {
     expect(source).toContain("SelectedBlockDetail");
     expect(source).toContain("PracticeResultsOverview");
     expect(source).toContain("Analysed from upload");
-    expect(source).toContain("sm:grid-cols-12");
-    expect(source).toContain("sm:col-span-5 xl:col-span-4");
-    expect(source).toContain("sm:col-span-2 xl:col-span-3");
+    expect(source).toContain("lg:grid-cols-12");
+    expect(source).toContain("lg:col-span-5 xl:col-span-4");
+    expect(source).toContain("lg:col-span-2 xl:col-span-3");
+    expect(source).not.toContain("sm:grid-cols-12");
     expect(source.indexOf("<PracticeAgenda")).toBeLessThan(source.indexOf("<SelectedBlockDetail"));
     expect(source.indexOf("<SelectedBlockDetail")).toBeLessThan(
       source.indexOf("<SessionControlPanel"),

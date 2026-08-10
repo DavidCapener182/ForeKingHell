@@ -136,14 +136,6 @@
   margin-top: auto;
   padding-top: 1.5rem;
 }
-.menuSearchHint {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  color: color-mix(in srgb, var(--marketing-ink) 66%, transparent);
-  font-size: 0.84rem;
-  line-height: 1.4;
-}
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 0.86fr) minmax(34rem, 1.14fr);
@@ -2020,5 +2012,1301 @@
   }
   .footer {
     gap: 2rem;
+  }
+}
+
+/* Public homepage mobile treatment. Keep this exact boundary so the existing
+   desktop composition remains unchanged from 768px upwards. */
+@media (max-width: 767px) {
+  .page {
+    --font-mobile-apple:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    --mobile-gutter: clamp(1rem, 4.6vw, 1.25rem);
+    --mobile-section-space: clamp(4.25rem, 14vw, 5.5rem);
+    --mobile-surface: #ffffff;
+    --mobile-grouped: #f2f2f7;
+    --mobile-secondary-label: #6e6e73;
+    --mobile-separator: rgba(60, 60, 67, 0.18);
+    --marketing-ink: #1d1d1f;
+    --marketing-green: #0b6b43;
+    --marketing-green-deep: #063e2b;
+    --marketing-line: var(--mobile-separator);
+    overflow: clip;
+    background: var(--mobile-grouped);
+    color: var(--marketing-ink);
+    font-family: var(--font-mobile-apple);
+    font-size: 17px;
+    line-height: 1.52;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page :global(button),
+  .page :global(input),
+  .page :global(select),
+  .page :global(textarea),
+  .mobileSheet :global(button),
+  .mobileSheet :global(a) {
+    font-family: var(--font-mobile-apple);
+  }
+
+  .page :global(a):focus-visible,
+  .page :global(button):focus-visible,
+  .mobileSheet :global(a):focus-visible,
+  .mobileSheet :global(button):focus-visible {
+    outline: 3px solid #17824f;
+    outline-offset: 3px;
+  }
+
+  .page :global(button:active),
+  .page :global(a:active),
+  .mobileSheet :global(button:active),
+  .mobileSheet :global(a:active) {
+    opacity: 0.65;
+    transition: none;
+  }
+
+  .header,
+  .header[data-scrolled="true"] {
+    padding: max(0.5rem, env(safe-area-inset-top))
+      max(var(--mobile-gutter), env(safe-area-inset-right)) 0.5rem
+      max(var(--mobile-gutter), env(safe-area-inset-left));
+    border-bottom: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.96);
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease;
+  }
+
+  .header[data-scrolled="true"] {
+    border-bottom-color: var(--mobile-separator);
+  }
+
+  .headerInner,
+  .header[data-scrolled="true"] .headerInner {
+    min-height: 2.75rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .brand {
+    gap: 0.55rem;
+    font-family: var(--font-mobile-apple);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+  }
+
+  .brandMark {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.55rem;
+  }
+
+  .menuTrigger {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border-color: transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--marketing-ink);
+    box-shadow: none;
+  }
+
+  .mobileSheet {
+    --font-mobile-apple:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    --mobile-gutter: clamp(1rem, 4.6vw, 1.25rem);
+    --mobile-surface: #fff;
+    --mobile-grouped: #f2f2f7;
+    --mobile-separator: rgba(60, 60, 67, 0.18);
+    --marketing-ink: #1d1d1f;
+    --marketing-green: #0b6b43;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    min-height: 100svh;
+    border: 0;
+    background: var(--mobile-grouped);
+    padding: max(1rem, env(safe-area-inset-top))
+      max(var(--mobile-gutter), env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom))
+      max(var(--mobile-gutter), env(safe-area-inset-left));
+    font-family: var(--font-mobile-apple);
+    box-shadow: none;
+  }
+
+  .mobileSheetTop {
+    min-height: 2.75rem;
+  }
+
+  .mobileSheetTop :global(button) {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border-radius: 50%;
+  }
+
+  .mobileSheetTitle {
+    font-family: var(--font-mobile-apple);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .mobileLinks {
+    gap: 0;
+    margin-top: clamp(1.5rem, 7vh, 3.5rem);
+    overflow: hidden;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-grouped);
+  }
+
+  .mobileLinks a {
+    min-height: 3.5rem;
+    margin-left: 1rem;
+    border-color: var(--mobile-separator);
+    padding-right: 1rem;
+    font-family: var(--font-mobile-apple);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+  }
+
+  .mobileLinks a:last-child {
+    border-bottom: 0;
+  }
+
+  .mobileMenuActions {
+    gap: 0.65rem;
+  }
+
+  .mobileMenuActions :global(a) {
+    min-height: 3.125rem;
+    border-radius: 0.8rem;
+    font-size: 1rem;
+  }
+
+  .mobileMenuActions :global(a:first-child) {
+    border-color: var(--mobile-separator);
+    background: var(--mobile-surface);
+    color: var(--marketing-ink);
+  }
+
+  .mobileMenuActions :global(a:last-child) {
+    border-color: var(--marketing-green);
+    background: var(--marketing-green);
+    color: #fff;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2.5rem;
+    min-height: auto;
+    padding: clamp(2.75rem, 10vw, 4rem) max(var(--mobile-gutter), env(safe-area-inset-right))
+      var(--mobile-section-space) max(var(--mobile-gutter), env(safe-area-inset-left));
+    background: var(--mobile-surface);
+  }
+
+  .heroCopy {
+    max-width: 38rem;
+  }
+
+  .eyebrow,
+  .panelEyebrow,
+  .storyStepEyebrow,
+  .phoneEyebrow {
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    line-height: 1.35;
+    text-transform: none;
+  }
+
+  .hero h1,
+  .sectionIntro h2,
+  .tourHeading h2,
+  .courseTwinCopy h2,
+  .mobileShowcase h2,
+  .privacyHeading h2,
+  .betaSection h2,
+  .faqSection h2 {
+    font-family: var(--font-mobile-apple);
+    font-weight: 700;
+    text-wrap: pretty;
+  }
+
+  .hero h1 {
+    max-width: 35rem;
+    margin-top: 0.75rem;
+    font-size: clamp(2.5rem, 10.8vw, 2.75rem);
+    letter-spacing: -0.045em;
+    line-height: 1.02;
+  }
+
+  .heroLead {
+    max-width: 35rem;
+    margin-top: 1.1rem;
+    font-size: 1.06rem;
+    line-height: 1.55;
+    color: var(--mobile-secondary-label);
+  }
+
+  .heroActions {
+    display: grid;
+    gap: 0.25rem;
+    margin-top: 1.5rem;
+  }
+
+  .heroPrimary,
+  .heroSecondary {
+    width: 100%;
+    min-height: 3.125rem;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding-inline: 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .heroPrimary {
+    box-shadow: none;
+  }
+
+  .heroSecondary {
+    width: fit-content;
+    min-height: 2.75rem;
+    justify-content: flex-start;
+    border: 0 !important;
+    background: transparent !important;
+    padding-inline: 0;
+    color: var(--marketing-green);
+    box-shadow: none !important;
+  }
+
+  .existingUserLink {
+    min-height: 2.75rem;
+    align-items: center;
+    margin-top: 0.45rem;
+    font-size: 1rem;
+  }
+
+  .heroFootnote {
+    max-width: 31rem;
+    margin: 0.85rem 0 0;
+    font-size: 0.94rem;
+    line-height: 1.45;
+    color: var(--mobile-secondary-label);
+  }
+
+  .productStage {
+    min-height: clamp(33rem, 140vw, 38rem);
+    border-radius: 1.25rem;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  }
+
+  .stageRangeImage {
+    animation: none;
+    object-position: 66% center;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+
+  .stageRangeShade {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(3, 29, 19, 0.64),
+        rgba(3, 29, 19, 0.1) 46%,
+        rgba(3, 22, 14, 0.74)
+      ),
+      linear-gradient(90deg, rgba(3, 29, 19, 0.28), transparent 68%);
+  }
+
+  .stageBackdrop {
+    opacity: 0.26;
+  }
+
+  .demoPanel {
+    border-color: rgba(255, 255, 255, 0.46);
+    border-radius: 0.875rem;
+    background: rgba(255, 255, 250, 0.94);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(18px) saturate(1.08);
+  }
+
+  .verdictPanel {
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    padding: 1rem;
+    transform: none;
+  }
+
+  .verdictHeader {
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.5rem;
+  }
+
+  .verdictHeader strong {
+    max-width: 15rem;
+    font-size: 1.05rem;
+    line-height: 1.22;
+  }
+
+  .signalMixed {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.74rem;
+  }
+
+  .sparkBars {
+    height: 2.8rem;
+    margin-block: 0.75rem 0.5rem;
+  }
+
+  .verdictPanel > p,
+  .dispersionPanel p {
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .dispersionPanel {
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    top: auto;
+    width: auto;
+    padding: 0.9rem;
+    transform: none;
+  }
+
+  .dispersionField {
+    height: clamp(7.5rem, 34vw, 9.5rem);
+    margin-top: 0.6rem;
+  }
+
+  .dispersionField i {
+    width: 0.65rem;
+    height: 0.65rem;
+  }
+
+  .dispersionField b {
+    font-size: 0.78rem;
+  }
+
+  .bagPanel,
+  .practicePanel,
+  .coursePanel,
+  .mobileStageRail {
+    display: none;
+  }
+
+  .trustStrip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0 max(var(--mobile-gutter), env(safe-area-inset-right)) 0
+      max(var(--mobile-gutter), env(safe-area-inset-left));
+    overflow: hidden;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+    box-shadow: none;
+  }
+
+  .trustItem,
+  .trustItem:nth-child(2n),
+  .trustItem:last-child {
+    min-height: 4.75rem;
+    grid-column: auto;
+    align-items: center;
+    border: 0;
+    position: relative;
+    border-bottom: 0;
+    padding: 0.9rem 1rem;
+  }
+
+  .trustItem::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 3.15rem;
+    height: 1px;
+    background: var(--mobile-separator);
+    content: "";
+  }
+
+  .trustItem:last-child {
+    border-bottom: 0;
+  }
+
+  .trustItem:last-child::after {
+    content: none;
+  }
+
+  .trustItem > svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .trustItem strong {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  .trustItem small {
+    font-size: 0.88rem;
+    line-height: 1.4;
+    color: var(--mobile-secondary-label);
+  }
+
+  .storySection,
+  .featuresSection,
+  .tourSection,
+  .courseTwinSection,
+  .mobileShowcase,
+  .privacySection,
+  .betaSection,
+  .faqSection {
+    padding: var(--mobile-section-space) max(var(--mobile-gutter), env(safe-area-inset-right))
+      var(--mobile-section-space) max(var(--mobile-gutter), env(safe-area-inset-left));
+  }
+
+  .sectionIntro,
+  .tourHeading,
+  .courseTwinCopy,
+  .privacyHeading,
+  .betaSection > div:first-child,
+  .faqSection > div:first-child {
+    max-width: 38rem;
+  }
+
+  .sectionIntro h2,
+  .tourHeading h2,
+  .courseTwinCopy h2,
+  .mobileShowcase h2,
+  .privacyHeading h2,
+  .betaSection h2,
+  .faqSection h2 {
+    margin-top: 0.65rem;
+    font-size: clamp(2rem, 8.5vw, 2.25rem);
+    letter-spacing: -0.038em;
+    line-height: 1.07;
+  }
+
+  .sectionIntro > p:last-child,
+  .tourHeading > p,
+  .courseTwinCopy > p,
+  .mobileShowcase > div > p,
+  .privacyHeading > p,
+  .betaSection > div > p,
+  .faqSection > div > p {
+    margin-top: 1rem;
+    font-size: 1.06rem;
+    line-height: 1.55;
+    color: var(--mobile-secondary-label);
+  }
+
+  .courseTwinSection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    background: var(--mobile-surface);
+  }
+
+  .twinProof {
+    margin-top: 1.25rem;
+    font-size: 0.96rem;
+    line-height: 1.45;
+  }
+
+  .storySection {
+    background: var(--mobile-grouped);
+  }
+
+  .storyGrid {
+    display: block;
+    margin-top: 1.75rem;
+  }
+
+  .storyVisual {
+    display: none;
+  }
+
+  .storySteps {
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+    padding: 0;
+  }
+
+  .storyStep {
+    max-width: none;
+    min-height: 0;
+    scroll-margin-top: 5rem;
+    border: 0;
+    border-bottom: 1px solid var(--mobile-separator);
+    border-radius: 0;
+    background: var(--mobile-surface);
+    padding: 1.125rem 1rem;
+    box-shadow: none;
+  }
+
+  .storyStep:last-child {
+    border-bottom: 0;
+  }
+
+  .storyStep h3 {
+    margin-top: 0.45rem;
+    font-family: var(--font-mobile-apple);
+    font-size: 1.38rem;
+    letter-spacing: -0.027em;
+    line-height: 1.12;
+  }
+
+  .storyStep p:not(.storyStepEyebrow) {
+    margin-block: 0.55rem;
+    color: var(--mobile-secondary-label);
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .storyStep > span {
+    margin-top: 0.15rem;
+    border: 0;
+    font-size: 0.91rem;
+    line-height: 1.4;
+  }
+
+  .featuresSection {
+    background: var(--mobile-surface);
+    color: var(--marketing-ink);
+  }
+
+  .featuresSection .eyebrow {
+    color: var(--marketing-green);
+  }
+
+  .featuresSection .sectionIntro > p:last-child {
+    color: var(--mobile-secondary-label);
+  }
+
+  .featureGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    overflow: hidden;
+    margin-top: 1.75rem;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-grouped);
+  }
+
+  .featureCard {
+    min-height: 0;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0.9rem 0.8rem;
+    border: 0;
+    border-bottom: 1px solid var(--mobile-separator);
+    border-radius: 0;
+    background: transparent;
+    padding: 1.125rem 1rem;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .featureCard:last-child {
+    border-bottom: 0;
+  }
+
+  .featureCard:hover {
+    border-color: var(--mobile-separator);
+    background: transparent;
+    transform: none;
+  }
+
+  .featureIconWrap {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.625rem;
+    border-color: transparent;
+    background: rgba(11, 107, 67, 0.1);
+  }
+
+  .featureIcon {
+    color: var(--marketing-green);
+  }
+
+  .featureCard h3 {
+    font-family: var(--font-mobile-apple);
+    font-size: 1.38rem;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+  }
+
+  .featureCard p {
+    margin-top: 0.35rem;
+    font-size: 1rem;
+    line-height: 1.48;
+    color: var(--mobile-secondary-label);
+  }
+
+  .featureCard ul {
+    grid-column: 2;
+    gap: 0.5rem;
+    font-size: 0.94rem;
+    line-height: 1.45;
+    color: var(--mobile-secondary-label);
+  }
+
+  .featureCard li::before {
+    color: var(--marketing-green);
+  }
+
+  .communityProof {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--mobile-separator);
+    padding-top: 1.25rem;
+    font-size: 0.96rem;
+    line-height: 1.5;
+    color: var(--mobile-secondary-label);
+  }
+
+  .communityProof strong {
+    color: var(--marketing-ink);
+  }
+
+  .tourSection {
+    background: var(--mobile-grouped);
+  }
+
+  .tourHeading {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .tourHeading > p {
+    max-width: 34rem;
+    margin-top: 0.85rem;
+    font-size: 0.94rem;
+    color: var(--mobile-secondary-label);
+  }
+
+  .tourShell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 1.75rem;
+  }
+
+  .tourControls {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+    padding: 1rem;
+  }
+
+  .tourControls fieldset + fieldset {
+    border-top: 1px solid var(--mobile-separator);
+    padding-top: 1rem;
+  }
+
+  .tourControls legend {
+    font-size: 0.84rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: none;
+    color: var(--mobile-secondary-label);
+  }
+
+  .segmentedControl {
+    display: flex;
+    gap: 0.25rem;
+    border-radius: 0.625rem;
+    background: rgba(118, 118, 128, 0.12);
+    padding: 0.2rem;
+  }
+
+  .segmentedControl button {
+    position: relative;
+    min-width: 0;
+    min-height: 2.75rem;
+    flex: 1 1 0;
+    border: 0;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.35rem;
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .segmentedControl button[aria-pressed="true"] {
+    background: #fff;
+    color: var(--marketing-green);
+    box-shadow:
+      0 0 0 0.5px rgba(0, 0, 0, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+
+  .tourStage {
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+    box-shadow: none;
+  }
+
+  .tourTopline {
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    color: var(--mobile-secondary-label);
+  }
+
+  .tourTabs {
+    gap: 0.4rem;
+    justify-content: space-between;
+    overflow: visible;
+    scroll-snap-type: none;
+    padding: 0 1rem;
+    scrollbar-width: none;
+  }
+
+  .tourTabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tourTabs button {
+    min-height: 2.75rem;
+    scroll-snap-align: start;
+    border: 0;
+    border-radius: 0;
+    padding: 0.45rem 0;
+    flex: 0 1 auto;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .tourTabs button[aria-selected="true"] {
+    background: transparent;
+    color: var(--marketing-green);
+    box-shadow: inset 0 -2px var(--marketing-green);
+  }
+
+  .tourView {
+    min-height: 0;
+    padding: clamp(1rem, 5vw, 1.5rem);
+  }
+
+  .tourView h3 {
+    font-family: var(--font-mobile-apple);
+    font-size: clamp(1.6rem, 7.5vw, 2rem);
+    letter-spacing: -0.032em;
+    line-height: 1.1;
+  }
+
+  .tourView p {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .tourSession,
+  .tourDispersion,
+  .tourPracticeView,
+  .tourCourseView {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    min-height: 0;
+  }
+
+  .miniDataTable {
+    border-color: var(--mobile-separator);
+    background: var(--mobile-separator);
+  }
+
+  .miniDataTable span {
+    background: var(--mobile-surface);
+    padding: 0.75rem;
+    font-size: 0.94rem;
+  }
+
+  .largeDispersion {
+    min-height: 13rem;
+    border-radius: 0.9rem;
+  }
+
+  .largeDispersion span {
+    font-size: 0.82rem;
+  }
+
+  .tourTrustView {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    min-height: 0;
+  }
+
+  .tourCarry {
+    height: 9.5rem;
+    border-radius: 0.9rem;
+  }
+
+  .tourCarry strong {
+    font-family: var(--font-mobile-apple);
+    font-size: 4.25rem;
+  }
+
+  .tourCarry span {
+    font-size: 0.94rem;
+  }
+
+  .tourTrustFacts {
+    gap: 0.75rem;
+  }
+
+  .tourTrustFacts span {
+    font-size: 0.95rem;
+    line-height: 1.35;
+  }
+
+  .tourTrustFacts b {
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .tourTrustView > p {
+    grid-column: auto;
+  }
+
+  .practiceDial {
+    width: 9rem;
+    height: 9rem;
+    justify-self: center;
+    border-width: 10px;
+  }
+
+  .practiceDial strong {
+    font-family: var(--font-mobile-apple);
+    font-size: 3.1rem;
+  }
+
+  .practiceDial span {
+    font-size: 0.88rem;
+  }
+
+  .tourHole {
+    height: 12.5rem;
+    border-radius: 0.9rem;
+  }
+
+  .tourHole span,
+  .tourHole em {
+    font-size: 0.72rem;
+  }
+
+  .tourNext {
+    min-height: 0;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    font-size: 0.94rem;
+  }
+
+  .tourNext :global(button),
+  .tourNext :global(a) {
+    width: 100%;
+    min-height: 3rem;
+    justify-content: center;
+    border-radius: 0.75rem;
+  }
+
+  .tourEndActions {
+    display: grid !important;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mobileShowcase {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    background: var(--mobile-grouped);
+  }
+
+  .mobileBullets {
+    gap: 0;
+    overflow: hidden;
+    margin-top: 1.5rem;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+    font-size: 0.98rem;
+  }
+
+  .mobileBullets span {
+    min-height: 3.5rem;
+    border-bottom: 1px solid var(--mobile-separator);
+    padding: 0.8rem 1rem;
+  }
+
+  .mobileBullets span:last-child {
+    border-bottom: 0;
+  }
+
+  .phoneFrame {
+    width: 100%;
+    max-width: 38rem;
+    justify-self: stretch;
+    border: 0;
+    border-radius: 1.25rem;
+    background: var(--mobile-surface);
+    padding: 1.15rem 1.15rem 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .phoneStatus {
+    display: none;
+  }
+
+  .phoneEyebrow {
+    margin-top: 0.35rem;
+  }
+
+  .phoneFrame h3 {
+    margin-block: 0.55rem;
+    font-family: var(--font-mobile-apple);
+    font-size: 2rem;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+  }
+
+  .phoneFrame > p:not(.phoneEyebrow) {
+    font-size: 0.96rem;
+    color: var(--mobile-secondary-label);
+  }
+
+  .phoneCard {
+    margin: 1.5rem 0 3.5rem;
+    border-radius: 0.9rem;
+    padding: 1rem;
+  }
+
+  .phoneCard span {
+    font-size: 0.78rem;
+  }
+
+  .phoneCard strong {
+    font-size: 1rem;
+  }
+
+  .phoneNav {
+    margin-inline: -1.15rem;
+    padding: 0.75rem 0.35rem max(0.85rem, env(safe-area-inset-bottom));
+  }
+
+  .phoneNav span {
+    font-size: clamp(0.62rem, 2.8vw, 0.74rem);
+  }
+
+  .privacySection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    background: var(--mobile-grouped);
+  }
+
+  .privacyHeading a {
+    min-height: 2.75rem;
+    align-items: center;
+    margin-top: 0.8rem;
+    font-size: 1rem;
+  }
+
+  .privacyGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+  }
+
+  .privacyGrid article,
+  .privacyGrid article:last-child {
+    display: grid;
+    min-height: 0;
+    grid-column: auto;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    border-bottom: 1px solid var(--mobile-separator);
+    background: var(--mobile-surface);
+    padding: 1rem;
+  }
+
+  .privacyGrid article:last-child {
+    border-bottom: 0;
+  }
+
+  .privacyGrid svg {
+    grid-row: span 2;
+    margin-top: 0.1rem;
+  }
+
+  .privacyGrid h3 {
+    margin: 0;
+    font-family: var(--font-mobile-apple);
+    font-size: 1.08rem;
+    letter-spacing: -0.012em;
+    line-height: 1.3;
+  }
+
+  .privacyGrid p {
+    grid-column: 2;
+    margin-top: 0.2rem;
+    font-size: 0.94rem;
+    line-height: 1.45;
+    color: var(--mobile-secondary-label);
+  }
+
+  .betaSection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    background: var(--mobile-grouped);
+  }
+
+  .betaPanel {
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+    padding: 1rem;
+    color: var(--marketing-ink);
+    box-shadow: none;
+  }
+
+  .betaPanel ul {
+    gap: 0;
+  }
+
+  .betaPanel li {
+    min-height: 3.5rem;
+    align-items: flex-start;
+    border-bottom: 1px solid var(--mobile-separator);
+    padding-block: 0.85rem;
+    font-size: 0.98rem;
+    line-height: 1.45;
+    color: var(--mobile-secondary-label);
+  }
+
+  .betaPanel li:last-child {
+    border-bottom: 0;
+  }
+
+  .betaPanel li svg {
+    color: var(--marketing-green);
+  }
+
+  .betaActions {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 1.15rem;
+  }
+
+  .betaActions :global(button),
+  .betaActions :global(a) {
+    width: 100%;
+    min-height: 3.125rem;
+    justify-content: center;
+    border-radius: 0.8rem;
+    font-size: 1rem;
+  }
+
+  .betaActions :global(a:first-child) {
+    border-color: var(--marketing-green);
+    background: var(--marketing-green);
+    color: #fff;
+  }
+
+  .betaActions :global(a:last-child) {
+    width: fit-content;
+    min-height: 2.75rem;
+    justify-self: center;
+    border: 0 !important;
+    background: transparent !important;
+    padding-inline: 0.75rem;
+    color: var(--marketing-green);
+    box-shadow: none !important;
+  }
+
+  .faqSection {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    background: var(--mobile-grouped);
+  }
+
+  .faqList {
+    overflow: hidden;
+    border: 0;
+    border-radius: 0.875rem;
+    background: var(--mobile-surface);
+  }
+
+  .faqList article {
+    margin-left: 1rem;
+    border-color: var(--mobile-separator);
+    padding-right: 1rem;
+  }
+
+  .faqList article:last-child {
+    border-bottom: 0;
+  }
+
+  .faqList button {
+    min-height: 4.5rem;
+    font-family: var(--font-mobile-apple);
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    line-height: 1.35;
+  }
+
+  .faqList button svg {
+    flex: 0 0 auto;
+  }
+
+  .faqList article > div {
+    padding: 0 0 1.4rem;
+  }
+
+  .faqList p {
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--mobile-secondary-label);
+  }
+
+  .footer {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding: 2.75rem max(var(--mobile-gutter), env(safe-area-inset-right))
+      max(2rem, env(safe-area-inset-bottom)) max(var(--mobile-gutter), env(safe-area-inset-left));
+    background: var(--mobile-grouped);
+  }
+
+  .footer strong {
+    font-family: var(--font-mobile-apple);
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+  }
+
+  .footer p {
+    max-width: 30rem;
+    font-size: 0.94rem;
+    line-height: 1.5;
+    color: var(--mobile-secondary-label);
+  }
+
+  .footer nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border-top: 1px solid var(--mobile-separator);
+  }
+
+  .footer nav a {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    border-bottom: 1px solid var(--mobile-separator);
+    font-size: 0.94rem;
+  }
+
+  .footer nav a:last-child {
+    grid-column: 1 / -1;
+    justify-content: center;
+    color: var(--marketing-green);
+  }
+
+  .footerLegal {
+    grid-column: auto;
+    margin: 0;
+    font-size: 0.94rem;
+  }
+
+  .page [data-marketing-motion="pending"] {
+    opacity: 0;
+    transform: none;
+  }
+
+  .page [data-marketing-motion="visible"] {
+    opacity: 1;
+    transform: none;
+    transition: opacity 240ms ease-out var(--marketing-motion-delay, 0s);
+  }
+}
+
+@media (max-width: 359px) {
+  .tourTabs {
+    justify-content: flex-start;
+    gap: 0.65rem;
+    overflow-x: auto;
+    padding-inline: 0.75rem;
+    scroll-snap-type: x proximity;
+  }
+
+  .tourTabs button {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+}
+
+@supports ((-webkit-backdrop-filter: blur(18px)) or (backdrop-filter: blur(18px))) {
+  @media (max-width: 767px) {
+    .header,
+    .header[data-scrolled="true"] {
+      background: rgba(255, 255, 255, 0.78);
+      -webkit-backdrop-filter: saturate(1.35) blur(18px);
+      backdrop-filter: saturate(1.35) blur(18px);
+    }
+
+    .mobileSheet {
+      background: rgba(242, 242, 247, 0.94);
+      -webkit-backdrop-filter: saturate(1.25) blur(24px);
+      backdrop-filter: saturate(1.25) blur(24px);
+    }
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-transparency: reduce) {
+  .header,
+  .header[data-scrolled="true"],
+  .demoPanel {
+    background: #fff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .mobileSheet {
+    background: #f2f2f7;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .page [data-marketing-motion],
+  .page [data-marketing-reveal],
+  .stageRangeImage,
+  .faqList button svg {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 }

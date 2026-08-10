@@ -59,4 +59,40 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("@media (prefers-reduced-motion: reduce)");
     expect(appleCssSource).toContain("animation: none !important;");
   });
+
+  it("keeps every light mobile theme on neutral iOS surfaces with green reserved for tint", () => {
+    expect(appleCssSource).toContain(
+      'html[data-theme="clubhouse"] body[data-mobile-platform="apple"]',
+    );
+    expect(appleCssSource).toContain("--ios-background: #f2f2f7;");
+    expect(appleCssSource).toContain("--ios-grouped-surface: #ffffff;");
+    expect(appleCssSource).toContain("--ios-tint: #087a42;");
+    expect(appleCssSource).not.toContain("--ios-material-strong: rgba(9, 39, 27, 0.97)");
+    expect(appleCssSource).not.toContain("font-family: var(--font-editorial-source)");
+    expect(appleCssSource).not.toContain("color: #d6f356 !important");
+  });
+
+  it("applies neutral tokens and native headings before client hydration", () => {
+    expect(appleCssSource).toContain('[data-mobile-platform="apple"] {');
+    expect(appleCssSource).toContain('html[data-theme="clubhouse"] [data-mobile-platform="apple"]');
+    expect(appleCssSource).toContain('body:has([data-mobile-platform="apple"])');
+    expect(appleCssSource).toContain('[class*="font-editorial"]');
+    expect(appleCssSource).toContain('"SF Pro Display"');
+    expect(appleCssSource).toContain("sans-serif !important;");
+  });
+
+  it("keeps mobile presentations active until the shared shell changes at the lg breakpoint", () => {
+    expect(appleCssSource).toContain('[class~="sm:hidden"][class~="grid"]');
+    expect(appleCssSource).toContain('[class~="hidden"][class~="sm:block"]');
+    expect(appleCssSource).toContain("display: none !important;");
+  });
+
+  it("gives portalled controls and data surfaces the same mobile material contract", () => {
+    expect(appleCssSource).toContain('[data-slot="dialog-content"]');
+    expect(appleCssSource).toContain('[data-slot="alert-dialog-content"]');
+    expect(appleCssSource).toContain('[data-slot="popover-content"]');
+    expect(appleCssSource).toContain('[data-slot="dropdown-menu-content"]');
+    expect(appleCssSource).toContain('[data-slot="select-content"]');
+    expect(appleCssSource).toContain(":where(.data-table-scroll, .chart-frame)");
+  });
 });

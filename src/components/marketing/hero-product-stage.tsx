@@ -45,8 +45,8 @@ export function HeroProductStage() {
           src="/assets/generated/lmwt-range-hero.png"
           alt="Golfer using a launch monitor on a golf range at dusk"
           fill
-          priority
-          sizes="(max-width: 850px) 100vw, 56vw"
+          preload
+          sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 850px) 100vw, 56vw"
         />
         <div className={styles.stageRangeShade} aria-hidden />
         <div className={styles.stageBackdrop} aria-hidden />

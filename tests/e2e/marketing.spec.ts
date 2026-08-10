@@ -1,4 +1,51 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+async function browserSupportsWebGl(page: Page) {
+  return page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    return Boolean(
+      canvas.getContext("webgl2") ||
+      canvas.getContext("webgl") ||
+      canvas.getContext("experimental-webgl"),
+    );
+  });
+}
+
+async function expectInteractiveCourseTwin(
+  page: Page,
+  viewport: { width: number; height: number },
+) {
+  await page.setViewportSize(viewport);
+  await page.goto("/");
+  const supportsWebGl = await browserSupportsWebGl(page);
+  const section = page.locator("#course-twin");
+  await section.scrollIntoViewIfNeeded();
+
+  if (!supportsWebGl) {
+    await expect(section.locator("[data-course-twin-fallback]")).toBeVisible();
+    return;
+  }
+
+  const runtime = section.locator("[data-course-twin-runtime]");
+  await expect(runtime).toBeVisible({ timeout: 30_000 });
+  await expect(runtime.locator("canvas")).toBeVisible();
+  await expect(runtime.getByRole("button", { name: "3 Wood" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(runtime.getByText("214–224 yd", { exact: true })).toBeVisible();
+
+  await runtime.getByRole("button", { name: "Driver" }).click();
+  await expect(runtime.getByRole("button", { name: "Driver" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(runtime.getByText("234–249 yd", { exact: true })).toBeVisible();
+
+  const status = runtime.locator('[aria-live="polite"]');
+  await runtime.getByRole("button", { name: "Replay shot plan" }).click();
+  await expect(status).toContainText(/Driver|shot|plan|replay/i);
+}
 
 test.describe("public product landing", () => {
   test("shows the product journey, CTAs, sample tour and FAQ without sign-in", async ({ page }) => {
@@ -49,6 +96,9 @@ test.describe("public product landing", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toBeHidden();
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page.getByRole("button", { name: "Close navigation" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
     const width = await page.evaluate(() => ({
       viewport: window.innerWidth,
       content: document.documentElement.scrollWidth,
@@ -85,6 +135,139 @@ test.describe("public product landing", () => {
 
     expect(after).not.toBe(before);
     await expect(page.locator("#how-it-works")).toBeAttached();
+  });
+});
+
+test.describe("public landing responsive and Course Twin verification", () => {
+  test("stays horizontally in bounds across the required viewport matrix", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The explicit viewport matrix runs once in the base Chromium project.",
+    );
+
+    const viewports = [
+      { width: 320, height: 720 },
+      { width: 375, height: 812 },
+      { width: 390, height: 844 },
+      { width: 430, height: 932 },
+      { width: 767, height: 900 },
+      { width: 768, height: 900 },
+      { width: 844, height: 390 },
+    ] as const;
+
+    await page.goto("/");
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+          }),
+      );
+      const widths = await page.evaluate(() => ({
+        viewport: window.innerWidth,
+        document: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth,
+      }));
+      expect(widths.document, `${viewport.width}px document overflow`).toBeLessThanOrEqual(
+        widths.viewport + 2,
+      );
+      expect(widths.body, `${viewport.width}px body overflow`).toBeLessThanOrEqual(
+        widths.viewport + 2,
+      );
+    }
+  });
+
+  test("switches to the Apple system stack only below the desktop boundary", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The exact CSS boundary is exercised once in Chromium.",
+    );
+
+    await page.setViewportSize({ width: 767, height: 900 });
+    await page.goto("/");
+    const compactFont = await page
+      .locator("main#product")
+      .evaluate((element) => getComputedStyle(element).fontFamily);
+    expect(compactFont).toContain("-apple-system");
+    expect(compactFont).toContain("SF Pro Text");
+
+    await page.setViewportSize({ width: 768, height: 900 });
+    const desktopFont = await page
+      .locator("main#product")
+      .evaluate((element) => getComputedStyle(element).fontFamily);
+    expect(desktopFont).not.toContain("-apple-system");
+    expect(desktopFont).not.toContain("SF Pro Text");
+  });
+
+  test("runs the same interactive WebGL Course Twin on mobile and desktop", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The shared WebGL runtime is exercised once in Chromium.",
+    );
+
+    await expectInteractiveCourseTwin(page, { width: 390, height: 844 });
+    await expectInteractiveCourseTwin(page, { width: 1440, height: 900 });
+  });
+
+  test("keeps the premium static plan for reduced motion", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The fallback capability gate is exercised once in Chromium.",
+    );
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const section = page.locator("#course-twin");
+    await section.scrollIntoViewIfNeeded();
+    await expect(section.locator("[data-course-twin-fallback]")).toBeVisible();
+    await expect(section.locator("[data-course-twin-runtime]")).toHaveCount(0);
+  });
+
+  test("keeps the premium static plan when WebGL is unavailable", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The fallback capability gate is exercised once in Chromium.",
+    );
+
+    await page.addInitScript(() => {
+      const originalGetContext = HTMLCanvasElement.prototype.getContext;
+      Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+        configurable: true,
+        value(this: HTMLCanvasElement, contextId: string, ...args: unknown[]) {
+          if (
+            contextId === "webgl2" ||
+            contextId === "webgl" ||
+            contextId === "experimental-webgl"
+          ) {
+            return null;
+          }
+          return Reflect.apply(originalGetContext, this, [contextId, ...args]);
+        },
+      });
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    const section = page.locator("#course-twin");
+    await section.scrollIntoViewIfNeeded();
+    await expect(section.locator("[data-course-twin-fallback]")).toBeVisible();
+    await expect(section.locator("[data-course-twin-runtime]")).toHaveCount(0);
   });
 });
 

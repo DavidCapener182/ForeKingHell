@@ -33,15 +33,18 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
   const magicIsError = magicState.status === "error";
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-6 lg:gap-5">
       <form
         action={passwordAction}
-        className="grid gap-3"
+        className="grid gap-3.5 lg:gap-3"
         aria-describedby={passwordMessage ? "password-login-message" : undefined}
         noValidate
       >
         {next ? <input type="hidden" name="next" value={next} /> : null}
-        <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="email">
+        <label
+          className="grid gap-2 text-[15px] font-medium text-[#333338] lg:text-sm lg:text-slate-800"
+          htmlFor="email"
+        >
           Email
           <Input
             id="email"
@@ -50,10 +53,13 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             autoComplete="email"
             inputMode="email"
             placeholder="you@example.com"
-            className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
+            className="h-[3.125rem] rounded-xl border-[#C7C7CC] bg-[#F7F7F8] px-3.5 text-[17px] text-[#111113] shadow-none placeholder:text-[#8E8E93] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
           />
         </label>
-        <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="password">
+        <label
+          className="grid gap-2 text-[15px] font-medium text-[#333338] lg:text-sm lg:text-slate-800"
+          htmlFor="password"
+        >
           Password
           <Input
             id="password"
@@ -61,14 +67,14 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             type="password"
             autoComplete="current-password"
             placeholder="Your password"
-            className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
+            className="h-[3.125rem] rounded-xl border-[#C7C7CC] bg-[#F7F7F8] px-3.5 text-[17px] text-[#111113] shadow-none placeholder:text-[#8E8E93] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
           />
         </label>
         <Button
           type="submit"
           size="lg"
           disabled={passwordPending}
-          className="h-12 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+          className="h-[3.125rem] rounded-xl bg-[#087A42] text-[17px] font-semibold text-white shadow-none active:scale-[0.985] hover:bg-[#056735] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:bg-[#0B7A3B] lg:text-sm lg:font-medium lg:shadow-[0_8px_18px_rgba(11,122,59,0.18)] lg:hover:bg-[#064E3B] lg:focus-visible:ring-ring/50 lg:active:scale-100"
         >
           <KeyRound className="size-4" />
           {passwordPending ? "Signing in…" : "Sign in with password"}
@@ -79,8 +85,8 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             role="alert"
             className={
               passwordIsError
-                ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                : "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[15px] leading-5 text-amber-900 lg:rounded-lg lg:py-2 lg:text-sm"
+                : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[15px] leading-5 text-emerald-900 lg:rounded-lg lg:py-2 lg:text-sm"
             }
             aria-live="assertive"
           >
@@ -91,7 +97,9 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
 
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-slate-200" />
-        <p className="text-xs font-medium uppercase text-slate-500">or continue with</p>
+        <p className="text-[13px] font-medium text-[#6C6C70] lg:text-xs lg:uppercase lg:text-slate-500">
+          or continue with
+        </p>
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 
@@ -112,12 +120,12 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         </form>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="grid gap-3 rounded-[14px] bg-[#F2F2F7] p-4 lg:rounded-lg lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3">
         <div>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-[15px] font-semibold leading-5 text-[#111113] lg:text-sm lg:text-slate-900">
             Create an account or skip the password
           </p>
-          <p className="mt-1 text-sm leading-5 text-slate-600">
+          <p className="mt-1 text-[15px] leading-5 text-[#66666C] lg:text-sm lg:text-slate-600">
             We will email a secure link. If you are new, that link starts your account.
           </p>
         </div>
@@ -128,7 +136,10 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           noValidate
         >
           {next ? <input type="hidden" name="next" value={next} /> : null}
-          <label className="grid gap-2 text-sm font-medium text-slate-800" htmlFor="magic-email">
+          <label
+            className="grid gap-2 text-[15px] font-medium text-[#333338] lg:text-sm lg:text-slate-800"
+            htmlFor="magic-email"
+          >
             <span className="sr-only">Magic link address</span>
             <Input
               id="magic-email"
@@ -137,7 +148,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
-              className="h-12 rounded-lg border-slate-200 bg-white text-base text-slate-950 placeholder:text-slate-400"
+              className="h-[3.125rem] rounded-xl border-[#C7C7CC] bg-white px-3.5 text-[17px] text-[#111113] shadow-none placeholder:text-[#8E8E93] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
             />
           </label>
           <Button
@@ -145,7 +156,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             variant="outline"
             size="lg"
             disabled={magicPending}
-            className="h-12 w-full rounded-lg border-slate-200 bg-white text-slate-900 hover:bg-slate-100 hover:text-slate-900"
+            className="h-[3.125rem] w-full rounded-xl border-[#C7C7CC] bg-white text-[17px] font-semibold text-[#111113] shadow-none active:scale-[0.985] hover:bg-[#F7F7F8] hover:text-[#111113] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:text-sm lg:font-medium lg:text-slate-900 lg:hover:bg-slate-100 lg:hover:text-slate-900 lg:focus-visible:ring-ring/50 lg:active:scale-100"
           >
             <Mail className="size-4" />
             {magicPending ? "Sending…" : "Email me a secure link"}
@@ -156,8 +167,8 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
               role="alert"
               className={
                 magicIsError
-                  ? "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-                  : "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                  ? "rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[15px] leading-5 text-amber-900 lg:rounded-lg lg:py-2 lg:text-sm"
+                  : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[15px] leading-5 text-emerald-900 lg:rounded-lg lg:py-2 lg:text-sm"
               }
               aria-live="assertive"
             >
@@ -184,7 +195,7 @@ function OAuthButton({
       type="submit"
       variant="outline"
       size="lg"
-      className={`h-12 w-full justify-center rounded-lg text-base font-semibold shadow-sm ${className}`}
+      className={`h-[3.125rem] w-full justify-center rounded-xl text-[17px] font-semibold shadow-none active:scale-[0.985] focus-visible:ring-[#087A42] lg:h-12 lg:rounded-lg lg:text-base lg:shadow-sm lg:focus-visible:ring-ring/50 lg:active:scale-100 ${className}`}
     >
       {icon}
       {label}

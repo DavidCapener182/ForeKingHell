@@ -478,8 +478,8 @@ export function PracticePlannerClient({
         summary={sessionSummary}
       />
 
-      <div className="grid gap-3 sm:grid-cols-12 sm:items-start">
-        <div className="min-w-0 sm:col-span-5 xl:col-span-4">
+      <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
+        <div className="min-w-0 lg:col-span-5 xl:col-span-4">
           <PracticeAgenda
             blocks={plan.blocks}
             comparison={comparison}
@@ -487,7 +487,7 @@ export function PracticePlannerClient({
             onSelect={setSelectedBlockId}
           />
         </div>
-        <div className="min-w-0 sm:sticky sm:top-4 sm:col-span-5 sm:self-start xl:col-span-5">
+        <div className="min-w-0 lg:sticky lg:top-4 lg:col-span-5 lg:self-start xl:col-span-5">
           <SelectedBlockDetail
             block={selectedBlock}
             comparison={comparison}
@@ -498,7 +498,7 @@ export function PracticePlannerClient({
             isPending={isPending}
           />
         </div>
-        <div className="min-w-0 sm:col-span-2 xl:col-span-3">
+        <div className="min-w-0 lg:col-span-2 xl:col-span-3">
           <SessionControlPanel
             context={context}
             plan={plan}
@@ -586,19 +586,23 @@ function PracticePlanImageDialog({
         </DialogHeader>
 
         <div className="grid min-h-0 overflow-hidden lg:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.1fr)]">
-          <div className="min-h-0 overflow-y-auto bg-[#f8f7ed] p-3">
+          <div className="min-h-0 overflow-y-auto bg-[#f8f7ed] p-3 max-lg:bg-[#F2F2F7]">
             <div className="overflow-hidden rounded-lg border bg-white shadow-inner">
-              <div className="rounded-t-lg bg-[#0b5130] p-4 text-white">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100">
+              <div className="rounded-t-lg bg-[#0b5130] p-4 text-white max-lg:border-b max-lg:border-slate-200 max-lg:bg-white max-lg:text-slate-950">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100 max-lg:text-slate-500">
                   LM World Tour
                 </p>
                 <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-2xl font-semibold tracking-normal">{plan.title}</h3>
-                    <p className="mt-1 text-sm text-emerald-50">{plan.summary}</p>
+                    <p className="mt-1 text-sm text-emerald-50 max-lg:text-slate-600">
+                      {plan.summary}
+                    </p>
                   </div>
-                  <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-right">
-                    <p className="text-xs uppercase tracking-wide text-emerald-100">Reference</p>
+                  <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-right max-lg:border-slate-200 max-lg:bg-[#F2F2F7]">
+                    <p className="text-xs uppercase tracking-wide text-emerald-100 max-lg:text-slate-500">
+                      Reference
+                    </p>
                     <p className="text-sm font-semibold">{plannedVolume}</p>
                   </div>
                 </div>
@@ -638,7 +642,7 @@ function PracticePlanImageDialog({
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto border-t bg-[#f6f4e7] p-3 lg:border-l lg:border-t-0">
+          <div className="min-h-0 overflow-y-auto border-t bg-[#f6f4e7] p-3 max-lg:bg-[#F2F2F7] lg:border-l lg:border-t-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">PNG preview</p>
               <Badge variant="outline">{pngPreviewUrl ? "Generated" : "Not generated"}</Badge>
@@ -1180,7 +1184,7 @@ function PracticeResultsOverview({
     : `${comparison.planVsActual.actualShots} imported shots`;
 
   return (
-    <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 shadow-sm ring-1 ring-emerald-950/5">
+    <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 shadow-sm ring-1 ring-emerald-950/5 max-lg:border-slate-200 max-lg:bg-white max-lg:shadow-none max-lg:ring-0">
       <div className="grid gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -1193,7 +1197,7 @@ function PracticeResultsOverview({
           <h3 className="mt-2 text-xl font-semibold tracking-normal">
             Practice result: {score ? `${score.score}/100` : "session matched"}
           </h3>
-          <p className="mt-1 max-w-5xl text-sm leading-5 text-emerald-950/80">
+          <p className="mt-1 max-w-5xl text-sm leading-5 text-emerald-950/80 max-lg:text-slate-600">
             {comparison.summary}
           </p>
         </div>
@@ -1448,7 +1452,7 @@ function PracticeBlockEditControls({
   const nextSuggestion = nextPracticeDrillSuggestion(block, options);
 
   return (
-    <div className="mt-3 rounded-lg border bg-emerald-50/40 p-3">
+    <div className="mt-3 rounded-lg border bg-emerald-50/40 p-3 max-lg:border-slate-200 max-lg:bg-[#F2F2F7]">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold">Tune block</p>
         <Button
@@ -1573,7 +1577,7 @@ function SessionControlPanel({
           : "Draft";
 
   return (
-    <aside className="min-w-0 max-sm:sticky max-sm:bottom-2 max-sm:z-20 sm:sticky sm:top-4 sm:self-start">
+    <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
       <Card className="premium-card overflow-hidden">
         <CardHeader className="gap-3 pb-3">
           <div>

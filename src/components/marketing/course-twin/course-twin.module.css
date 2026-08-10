@@ -1,0 +1,506 @@
+.runtimeShell,
+.fallbackShell {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 1.45rem;
+  background: #0b261b;
+  box-shadow:
+    0 34px 76px rgba(5, 35, 22, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.12);
+  color: #f7f4e8;
+  isolation: isolate;
+}
+
+.scenePanel,
+.fallbackMap {
+  position: relative;
+  height: clamp(29rem, 43vw, 36rem);
+  min-height: 29rem;
+  overflow: hidden;
+  background: #aeb69c;
+}
+
+.scenePanel::after,
+.fallbackMap::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 31, 23, 0.27), transparent 23%),
+    linear-gradient(0deg, rgba(5, 25, 17, 0.52), transparent 31%),
+    radial-gradient(circle at 68% 38%, transparent 45%, rgba(5, 31, 20, 0.2));
+  content: "";
+  pointer-events: none;
+}
+
+.sceneCanvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: pan-y;
+}
+
+.sceneBadges,
+.fallbackBadges {
+  position: absolute;
+  z-index: 4;
+  top: 1rem;
+  left: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-width: calc(100% - 2rem);
+  pointer-events: none;
+}
+
+.sceneBadges span,
+.fallbackBadges span {
+  display: inline-flex;
+  min-height: 1.8rem;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(7, 34, 24, 0.78);
+  padding: 0.32rem 0.58rem;
+  box-shadow: 0 7px 20px rgba(2, 19, 12, 0.14);
+  color: #f4f3e9;
+  font-size: 0.62rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.sceneBadges span:last-child,
+.fallbackBadges span:last-child {
+  border-color: rgba(248, 220, 141, 0.42);
+  color: #ffe7a4;
+}
+
+.sceneLegend,
+.fallbackLegend {
+  position: absolute;
+  z-index: 4;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.42rem 0.78rem;
+  max-width: calc(100% - 2rem);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.72rem;
+  background: rgba(7, 31, 22, 0.79);
+  padding: 0.52rem 0.65rem;
+  color: #eef1e6;
+  font-size: 0.67rem;
+  font-weight: 680;
+  pointer-events: none;
+  backdrop-filter: blur(11px);
+}
+
+.sceneLegend span,
+.fallbackLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.sceneLegend span::before,
+.fallbackLegend span::before {
+  width: 0.58rem;
+  height: 0.58rem;
+  border: 2px solid #f8f0c7;
+  border-radius: 50%;
+  content: "";
+}
+
+.sceneLegend [data-kind="miss"]::before,
+.fallbackLegend [data-kind="miss"]::before {
+  border-color: #efad89;
+  border-radius: 0.08rem;
+  transform: rotate(45deg);
+}
+
+.canvasFallback {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  background: linear-gradient(145deg, #426844, #82975e);
+  padding: 2rem;
+  color: #fff;
+  text-align: center;
+}
+
+.hud {
+  position: relative;
+  z-index: 5;
+  border-top: 1px solid rgba(255, 255, 255, 0.13);
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.035), transparent 48%), #0d2d21;
+  padding: 1rem;
+}
+
+.hudPrimaryRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.clubFieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.clubFieldset legend {
+  margin: 0 0 0.42rem;
+  color: #b5c6b7;
+  font-size: 0.68rem;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.segmentedControl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: min(17rem, 46vw);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 0.8rem;
+  background: rgba(2, 18, 12, 0.36);
+  padding: 0.22rem;
+}
+
+.segmentedControl button,
+.replayButton {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.62rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.15;
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.segmentedControl button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  background: transparent;
+  color: #bfcfc1;
+  padding: 0.55rem 0.68rem;
+}
+
+.segmentedControl button[data-selected="true"] {
+  background: #f5f1e5;
+  box-shadow: 0 5px 14px rgba(2, 18, 11, 0.22);
+  color: #113426;
+}
+
+.selectionMark {
+  display: inline-grid;
+  width: 0.9rem;
+  height: 0.9rem;
+  place-items: center;
+  font-size: 0.67rem;
+}
+
+.replayButton {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 1px solid rgba(247, 225, 164, 0.3);
+  background: rgba(247, 225, 164, 0.1);
+  padding: 0.58rem 0.85rem;
+  color: #ffe7a4;
+}
+
+.replayButton span {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.segmentedControl button:hover,
+.replayButton:hover {
+  background-color: rgba(255, 255, 255, 0.13);
+}
+
+.segmentedControl button[data-selected="true"]:hover {
+  background: #fffaf0;
+}
+
+.segmentedControl button:active,
+.replayButton:active {
+  transform: translateY(1px);
+}
+
+.segmentedControl button:focus-visible,
+.replayButton:focus-visible {
+  outline: 3px solid #f8d878;
+  outline-offset: 2px;
+}
+
+.metrics,
+.fallbackMetrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 0.9rem 0 0;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 0.82rem;
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.metrics > div,
+.fallbackMetrics > div {
+  min-width: 0;
+  background: rgba(5, 30, 21, 0.88);
+  padding: 0.72rem;
+}
+
+.metrics dt,
+.fallbackMetrics dt {
+  color: #aebfb1;
+  font-size: 0.61rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.metrics dd,
+.fallbackMetrics dd {
+  margin: 0.28rem 0 0;
+  color: #f4f3e9;
+  font-size: 0.76rem;
+  font-weight: 720;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.metrics > div:first-child dd,
+.fallbackMetrics > div:nth-child(2) dd {
+  color: #ffe5a0;
+  font-variant-numeric: tabular-nums;
+}
+
+.planDisclosure {
+  max-width: 52rem;
+  margin: 0.68rem 0 0;
+  color: #aebfb1;
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.liveStatus {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.fallbackMap {
+  isolation: isolate;
+}
+
+.fallbackPicture {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: block;
+}
+
+.fallbackImage {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 50%;
+  filter: saturate(0.78) contrast(1.06) brightness(0.83);
+  transform: scale(1.035);
+}
+
+.fallbackShade {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 68% 28%, rgba(240, 219, 154, 0.2), transparent 30%),
+    linear-gradient(112deg, rgba(5, 30, 19, 0.42), transparent 54%),
+    linear-gradient(0deg, rgba(5, 27, 18, 0.52), transparent 50%);
+}
+
+.fallbackDetails {
+  padding: 1rem;
+}
+
+.fallbackMetrics {
+  margin-top: 0;
+}
+
+.fallbackStatus {
+  margin: 0.72rem 0 0;
+  color: #b9c9bb;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 767px) {
+  .runtimeShell,
+  .fallbackShell {
+    border-radius: 1.1rem;
+    box-shadow: 0 20px 44px rgba(5, 35, 22, 0.18);
+  }
+
+  .scenePanel,
+  .fallbackMap {
+    height: clamp(23.5rem, 112vw, 30rem);
+    min-height: 23.5rem;
+  }
+
+  .sceneBadges,
+  .fallbackBadges {
+    top: 0.7rem;
+    left: 0.7rem;
+    max-width: calc(100% - 1.4rem);
+  }
+
+  .sceneBadges span,
+  .fallbackBadges span {
+    min-height: 1.65rem;
+    padding: 0.28rem 0.48rem;
+    font-size: 0.57rem;
+  }
+
+  .sceneLegend,
+  .fallbackLegend {
+    right: 0.7rem;
+    bottom: 0.7rem;
+    max-width: calc(100% - 1.4rem);
+    padding: 0.46rem 0.56rem;
+    font-size: 0.62rem;
+  }
+
+  .hud {
+    padding: 0.85rem;
+  }
+
+  .hudPrimaryRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .segmentedControl {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .segmentedControl button,
+  .replayButton {
+    min-height: 2.75rem;
+    font-size: 0.8rem;
+  }
+
+  .replayButton {
+    width: 100%;
+  }
+
+  .metrics,
+  .fallbackMetrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metrics > div:last-child,
+  .fallbackMetrics > div:last-child {
+    grid-column: span 2;
+  }
+
+  .metrics > div,
+  .fallbackMetrics > div {
+    min-height: 4.2rem;
+    padding: 0.66rem;
+  }
+
+  .metrics dt,
+  .fallbackMetrics dt {
+    font-size: 0.58rem;
+  }
+
+  .metrics dd,
+  .fallbackMetrics dd {
+    font-size: 0.74rem;
+  }
+
+  .planDisclosure {
+    font-size: 0.67rem;
+  }
+}
+
+@media (max-width: 350px) {
+  .scenePanel,
+  .fallbackMap {
+    height: 22.75rem;
+    min-height: 22.75rem;
+  }
+
+  .sceneBadges span:nth-child(2),
+  .fallbackBadges span:nth-child(2) {
+    display: none;
+  }
+
+  .sceneLegend,
+  .fallbackLegend {
+    left: 0.7rem;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-height: 500px) and (pointer: coarse) {
+  .scenePanel,
+  .fallbackMap {
+    height: 21rem;
+    min-height: 21rem;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sceneBadges span,
+  .fallbackBadges span,
+  .sceneLegend,
+  .fallbackLegend {
+    background: #0b2b1f;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segmentedControl button,
+  .replayButton,
+  .fallbackImage {
+    transition: none;
+    transform: none;
+  }
+}

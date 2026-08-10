@@ -75,9 +75,12 @@ describe("Clubhouse Manager theme contract", () => {
     }
   });
 
-  it("keeps the mobile shell and light colour scheme scoped to clubhouse", () => {
+  it("keeps the mobile shell neutral while preserving the clubhouse desktop theme", () => {
     expect(mobile).toContain('html[data-theme="clubhouse"]');
-    expect(mobile).toContain("--ios-radius: 0.375rem");
+    expect(mobile).toContain("--ios-background: #f2f2f7");
+    expect(mobile).toContain("--ios-grouped-surface: #ffffff");
+    expect(mobile).toContain("--ios-radius: 0.875rem");
+    expect(mobile).not.toContain("--ios-material-strong: rgba(9, 39, 27, 0.97)");
     expect(mobile).toContain('.ios-tab-bar .ios-tab-item[aria-current="page"]');
     expect(controller).toContain(
       'root.style.colorScheme = usesDarkColourScheme ? "dark" : "light"',

@@ -16,7 +16,9 @@ export function ScrollZoomFrame({ className, ...props }: ScrollZoomFrameProps) {
 
   useEffect(() => {
     const element = ref.current;
-    if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const usesCompactLayout = window.matchMedia("(max-width: 767px)").matches;
+    if (!element || prefersReducedMotion || usesCompactLayout) return;
 
     let active = false;
     let frame: number | null = null;

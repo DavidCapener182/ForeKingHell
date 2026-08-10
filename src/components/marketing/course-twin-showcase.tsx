@@ -1,24 +1,36 @@
 "use client";
 
-import { MapPinned, Play, ShieldCheck } from "lucide-react";
-import Image from "next/image";
+import { ShieldCheck } from "lucide-react";
 import { useEffect, useState, type ComponentType } from "react";
 
 import { trackPlausibleEvent } from "@/lib/analytics";
 
+import {
+  CourseTwinStaticFallback,
+  type CourseTwinFallbackMode,
+} from "./course-twin/course-twin-static-fallback";
 import { useInViewOnce } from "./reveal";
 import { ScrollZoomFrame } from "./scroll-zoom-frame";
 import styles from "./marketing.module.css";
 
+type RuntimeCapability = {
+  canLoad: boolean;
+  fallbackMode: CourseTwinFallbackMode;
+};
+
+const initialCapability: RuntimeCapability = {
+  canLoad: false,
+  fallbackMode: "checking",
+};
+
 export function CourseTwinShowcase() {
   const { ref, isVisible } = useInViewOnce<HTMLElement>("280px 0px");
   const [Runtime, setRuntime] = useState<ComponentType | null>(null);
-  const [canLoadRuntime, setCanLoadRuntime] = useState(false);
+  const [capability, setCapability] = useState(initialCapability);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const compactViewport = window.matchMedia("(max-width: 767px)").matches;
       const connection = (navigator as Navigator & { connection?: unknown }).connection as
         | { saveData?: boolean; effectiveType?: string }
         | undefined;
@@ -28,31 +40,42 @@ export function CourseTwinShowcase() {
         connection?.effectiveType === "2g";
       const canvas = document.createElement("canvas");
       const webglAvailable = Boolean(
-        canvas.getContext("webgl") || canvas.getContext("experimental-webgl"),
+        canvas.getContext("webgl2") ||
+        canvas.getContext("webgl") ||
+        canvas.getContext("experimental-webgl"),
       );
 
-      setCanLoadRuntime(
-        !reducedMotion && !compactViewport && !lowPowerConnection && webglAvailable,
-      );
+      if (reducedMotion) {
+        setCapability({ canLoad: false, fallbackMode: "reduced-motion" });
+      } else if (lowPowerConnection) {
+        setCapability({ canLoad: false, fallbackMode: "data-saving" });
+      } else if (!webglAvailable) {
+        setCapability({ canLoad: false, fallbackMode: "unsupported" });
+      } else {
+        setCapability({ canLoad: true, fallbackMode: "approaching" });
+      }
     });
 
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !canLoadRuntime || Runtime) return;
+    if (!isVisible || !capability.canLoad || Runtime) return;
     let mounted = true;
     void import("./course-twin-demo-runtime")
       .then((module) => {
         if (mounted) setRuntime(() => module.default);
       })
       .catch(() => {
-        // The static mapped-hole preview remains available when optional runtime loading fails.
+        if (mounted) setCapability({ canLoad: false, fallbackMode: "runtime-error" });
       });
     return () => {
       mounted = false;
     };
-  }, [Runtime, canLoadRuntime, isVisible]);
+  }, [Runtime, capability.canLoad, isVisible]);
+
+  const fallbackMode: CourseTwinFallbackMode =
+    isVisible && capability.canLoad ? "loading" : capability.fallbackMode;
 
   return (
     <section
@@ -70,10 +93,10 @@ export function CourseTwinShowcase() {
           measured launch-monitor evidence.
         </p>
         <div className={styles.twinProof}>
-          <ShieldCheck className="size-5" />
+          <ShieldCheck className="size-5" aria-hidden />
           <span>
-            <strong>Evidence stays honest</strong>Measured rows, replay and modelled completion
-            never get conflated.
+            <strong>Evidence stays honest</strong>Measured rows, reconstructed terrain and modelled
+            completion never get conflated.
           </span>
         </div>
       </div>
@@ -81,39 +104,8 @@ export function CourseTwinShowcase() {
         className={styles.courseTwinDemo}
         onClick={() => trackPlausibleEvent("Public Course Twin Demo Opened")}
       >
-        {Runtime ? <Runtime /> : <CourseTwinStaticFallback loading={isVisible && canLoadRuntime} />}
+        {Runtime ? <Runtime /> : <CourseTwinStaticFallback mode={fallbackMode} />}
       </ScrollZoomFrame>
     </section>
-  );
-}
-
-function CourseTwinStaticFallback({ loading = false }: { loading?: boolean }) {
-  return (
-    <div className={styles.twinFallback}>
-      <div className={styles.twinFallbackMap}>
-        <Image
-          className={styles.twinAerialImage}
-          src="/assets/generated/lmwt-course-twin-aerial.png"
-          alt="Aerial view of a mapped golf hole used as a Course Twin demo"
-          fill
-          sizes="(max-width: 850px) 100vw, 52vw"
-        />
-        <div className={styles.twinAerialShade} aria-hidden />
-        <span className={styles.twinFallbackRoute} aria-hidden />
-        <span className={styles.twinFallbackStart}>Tee</span>
-        <span className={styles.twinFallbackDistance}>220 yd carry</span>
-        <b>Safe target</b>
-        <i>Mapped green</i>
-      </div>
-      <div className={styles.twinFallbackStats}>
-        <span>
-          <MapPinned className="size-4" /> Mapped-hole preview
-        </span>
-        <span>
-          <Play className="size-4" />{" "}
-          {loading ? "Loading interactive route…" : "Interactive route loads near this section"}
-        </span>
-      </div>
-    </div>
   );
 }

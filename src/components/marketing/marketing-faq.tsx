@@ -20,10 +20,12 @@ export function MarketingFaq() {
         {marketingFaqs.map((item, index) => {
           const isOpen = open === index;
           const id = `marketing-faq-${index}`;
+          const triggerId = `${id}-trigger`;
           return (
             <article key={item.question}>
               <h3>
                 <button
+                  id={triggerId}
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={id}
@@ -36,7 +38,7 @@ export function MarketingFaq() {
                   <ChevronDown className="size-5" aria-hidden />
                 </button>
               </h3>
-              <div id={id} hidden={!isOpen}>
+              <div id={id} role="region" aria-labelledby={triggerId} hidden={!isOpen}>
                 <p>{item.answer}</p>
               </div>
             </article>

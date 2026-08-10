@@ -25,8 +25,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
   return (
     <PageShell
       size="full"
-      className="relative isolate overflow-hidden bg-[#07110B] px-0 py-0 pb-0 text-white sm:px-0 sm:pb-0 sm:pt-0 lg:px-0"
-      contentClassName="relative min-h-screen w-screen !max-w-none gap-0 overflow-hidden"
+      className="ios-public-auth relative isolate overflow-hidden bg-[#F2F2F7] px-0 py-0 pb-0 font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Text','Helvetica_Neue',Arial,sans-serif] text-[#111113] sm:px-0 sm:pb-0 sm:pt-0 lg:bg-[#07110B] lg:px-0 lg:font-[var(--font-ui-source)] lg:text-white"
+      contentClassName="relative min-h-[100svh] w-full !max-w-none gap-0 overflow-hidden lg:min-h-screen lg:w-screen"
     >
       <Image
         src="/assets/hole-350-aerial.jpg"
@@ -34,14 +34,34 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         fill
         loading="eager"
         fetchPriority="high"
-        sizes="100vw"
-        className="-z-20 object-cover object-[center_34%] opacity-80 saturate-[1.05] brightness-[0.72]"
+        sizes="(max-width: 1023px) 1px, 100vw"
+        className="-z-20 hidden object-cover object-[center_34%] opacity-80 saturate-[1.05] brightness-[0.72] lg:block"
       />
-      <div className="absolute inset-0 -z-10 bg-[linear-gradient(110deg,rgba(5,12,7,0.9)_0%,rgba(5,12,7,0.76)_42%,rgba(5,12,7,0.42)_100%)]" />
-      <div className="absolute inset-x-0 bottom-0 -z-10 h-1/2 bg-[linear-gradient(0deg,rgba(5,12,7,0.92),rgba(5,12,7,0))]" />
+      <div className="absolute inset-0 -z-10 hidden bg-[linear-gradient(110deg,rgba(5,12,7,0.9)_0%,rgba(5,12,7,0.76)_42%,rgba(5,12,7,0.42)_100%)] lg:block" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 hidden h-1/2 bg-[linear-gradient(0deg,rgba(5,12,7,0.92),rgba(5,12,7,0))] lg:block" />
 
-      <div className="mx-auto grid min-h-screen w-full max-w-none items-center gap-8 px-5 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-8 xl:px-10">
-        <header className="order-2 grid gap-7 py-6 lg:order-1 lg:py-10">
+      <div className="mx-auto grid min-h-[100svh] w-full max-w-none content-start gap-5 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-6 lg:min-h-screen lg:grid-cols-[minmax(0,1fr)_460px] lg:content-normal lg:items-center lg:gap-8 lg:px-8 lg:py-8 xl:px-10">
+        <header className="grid gap-4 lg:hidden">
+          <Link
+            href="/"
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[10px] text-[15px] font-semibold tracking-[-0.01em] text-[#111113] outline-none focus-visible:ring-2 focus-visible:ring-[#087A42] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F2F2F7]"
+            aria-label={`${BRAND_NAME} home`}
+          >
+            <BrandMark className="size-9 rounded-[9px]" sizes="36px" priority />
+            {BRAND_NAME}
+          </Link>
+
+          <div className="max-w-xl pb-1">
+            <h1 className="text-[2.125rem] font-bold leading-[1.08] tracking-[-0.03em] text-[#111113] text-balance sm:text-[2.5rem]">
+              Sign in or join.
+            </h1>
+            <p className="mt-2 max-w-lg text-[17px] leading-[1.47] tracking-[-0.01em] text-[#55555B]">
+              Your rounds, records and range work in one clubhouse.
+            </p>
+          </div>
+        </header>
+
+        <header className="order-2 hidden gap-7 py-6 lg:order-1 lg:grid lg:py-10">
           <div className="inline-flex w-fit items-center gap-2 rounded-lg border border-white/20 bg-[#07110B]/70 px-3 py-2 text-sm font-medium text-white">
             <BrandMark className="size-12 rounded-md" sizes="48px" priority />
             {BRAND_NAME}
@@ -83,16 +103,21 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           </div>
         </header>
 
-        <section className="relative order-1 overflow-hidden rounded-lg border border-white/20 bg-white p-4 text-slate-950 shadow-2xl shadow-black/30 sm:p-5 lg:order-2">
-          <div className="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,#0B7A3B,#A7F3D0,#C7972B)]" />
-          <div className="mb-5 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
+        <section
+          className="relative order-2 overflow-hidden rounded-[14px] bg-white p-4 text-slate-950 shadow-none sm:p-5 lg:order-2 lg:rounded-lg lg:border lg:border-white/20 lg:shadow-2xl lg:shadow-black/30"
+          aria-label="Sign in options"
+        >
+          <div className="absolute inset-x-0 top-0 hidden h-1 bg-[linear-gradient(90deg,#0B7A3B,#A7F3D0,#C7972B)] lg:block" />
+          <div className="mb-5 hidden rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 lg:block">
             <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-[#0B7A3B] text-white">
+              <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[#EFEFF4] text-[#087A42] lg:rounded-lg lg:bg-[#0B7A3B] lg:text-white">
                 <ShieldCheck className="size-5" aria-hidden />
               </span>
               <div className="min-w-0">
-                <h2 className="text-2xl font-semibold tracking-normal">Sign in or join</h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
+                <h2 className="text-[1.375rem] font-semibold leading-7 tracking-[-0.02em] lg:text-2xl lg:leading-8 lg:tracking-normal">
+                  Sign in or join
+                </h2>
+                <p className="mt-0.5 text-[15px] leading-5 text-[#66666C] lg:mt-1 lg:text-sm lg:leading-6 lg:text-slate-600">
                   Use email and password, Google, Apple or a secure email link.
                 </p>
               </div>
@@ -128,12 +153,78 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           ) : null}
           <LoginForm error={first(params.error) || null} next={safeNextPath(first(params.next))} />
         </section>
+
+        <section
+          className="order-3 grid gap-3 pb-2 lg:hidden"
+          aria-labelledby="account-data-heading"
+        >
+          <div className="flex items-end justify-between gap-4 px-1">
+            <h2
+              id="account-data-heading"
+              className="text-[20px] font-semibold leading-6 tracking-[-0.02em] text-[#111113]"
+            >
+              Your golf profile
+            </h2>
+            <Link
+              href="/privacy"
+              className="min-h-11 content-center text-[15px] font-medium text-[#087A42] underline-offset-4 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087A42]"
+            >
+              Data notice
+            </Link>
+          </div>
+          <div className="overflow-hidden rounded-[14px] bg-white">
+            <GolfProof
+              mobile
+              icon={<LockKeyhole className="size-[18px]" />}
+              label="Private by default"
+              value="Your shot data stays scoped to your account."
+            />
+            <GolfProof
+              mobile
+              icon={<Zap className="size-[18px]" />}
+              label="Practice ready"
+              value="Import sessions and turn range work into progress."
+            />
+            <GolfProof
+              mobile
+              icon={<Trophy className="size-[18px]" />}
+              label="Record chasing"
+              value="Track PBs, achievements and course records."
+            />
+          </div>
+        </section>
       </div>
     </PageShell>
   );
 }
 
-function GolfProof({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function GolfProof({
+  icon,
+  label,
+  value,
+  mobile = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  mobile?: boolean;
+}) {
+  if (mobile) {
+    return (
+      <div className="grid min-h-[4.5rem] grid-cols-[2rem_minmax(0,1fr)] gap-3 border-b border-[#D9D9DE] px-4 py-3 last:border-b-0">
+        <span className="grid size-8 place-items-center self-start rounded-[9px] bg-[#EFEFF4] text-[#087A42]">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold leading-5 tracking-[-0.01em] text-[#111113]">
+            {label}
+          </p>
+          <p className="mt-0.5 text-[15px] leading-5 text-[#66666C]">{value}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border border-white/20 bg-[#07110B]/58 p-3 text-white shadow-sm">
       <div className="flex items-center gap-2 text-emerald-100">

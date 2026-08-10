@@ -13,8 +13,9 @@ export function ScrollProductStory() {
 
   useEffect(() => {
     const root = ref.current;
-    if (!root || !isVisible || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-      return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const usesCompactLayout = window.matchMedia("(max-width: 767px)").matches;
+    if (!root || !isVisible || prefersReducedMotion || usesCompactLayout) return;
     const steps = Array.from(root.querySelectorAll<HTMLElement>("[data-story-step]"));
     const observer = new IntersectionObserver(
       (entries) => {
