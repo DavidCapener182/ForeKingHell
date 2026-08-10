@@ -237,18 +237,22 @@ const highDetailSurfaceMaps = {
   rough: {
     colour: "/course-twins/common/materials/high-detail/Grass001-Color.webp?v=1",
     metresPerTile: pbrSurfaceAssets.rough.metresPerTile,
+    visualMetresPerTile: pbrSurfaceAssets.rough.metresPerTile,
   },
   fairway: {
     colour: "/course-twins/common/materials/high-detail/Grass005-Color.webp?v=1",
     metresPerTile: pbrSurfaceAssets.fairway.metresPerTile,
+    visualMetresPerTile: pbrSurfaceAssets.fairway.metresPerTile,
   },
   green: {
     colour: "/course-twins/common/materials/high-detail/Grass008-Color.webp?v=1",
     metresPerTile: pbrSurfaceAssets.green.metresPerTile,
+    visualMetresPerTile: pbrSurfaceAssets.green.metresPerTile,
   },
   bunker: {
     colour: "/course-twins/common/materials/high-detail/Ground080-Color.webp?v=1",
     metresPerTile: pbrSurfaceAssets.bunker.metresPerTile,
+    visualMetresPerTile: pbrSurfaceAssets.bunker.metresPerTile,
   },
 } as const;
 
@@ -2638,15 +2642,18 @@ export function CourseTwinScene({
         >
           <color attach="background" args={["#6aa3c6"]} />
           <fog attach="fog" args={["#a9c8cf", 900, 3_100]} />
-          <hemisphereLight args={["#cce4ef", "#263a28", 0.82]} />
-          <ambientLight intensity={0.14} />
+          <hemisphereLight args={["#d9efff", "#1d3b24", 0.58]} />
+          <ambientLight color="#d9f0df" intensity={0.06} />
           <directionalLight
             castShadow
-            position={[-280, 330, 210]}
-            intensity={1.45}
+            color="#fff2d2"
+            position={[-260, 285, 170]}
+            intensity={1.7}
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
+            shadow-bias={-0.00012}
           />
+          <directionalLight color="#9fd5ff" position={[340, 170, -280]} intensity={0.12} />
           {terrainAsset && terrainSamples && sampleTerrain ? (
             <>
               {mode === "explore" ? (
@@ -3176,10 +3183,10 @@ function LidarTerrain({
           };
           shader.uniforms.courseSurfaceTileSize = {
             value: new THREE.Vector4(
-              highDetailSurfaceMaps.rough.metresPerTile,
-              highDetailSurfaceMaps.fairway.metresPerTile,
-              highDetailSurfaceMaps.green.metresPerTile,
-              highDetailSurfaceMaps.bunker.metresPerTile,
+              highDetailSurfaceMaps.rough.visualMetresPerTile,
+              highDetailSurfaceMaps.fairway.visualMetresPerTile,
+              highDetailSurfaceMaps.green.visualMetresPerTile,
+              highDetailSurfaceMaps.bunker.visualMetresPerTile,
             ),
           };
           shader.fragmentShader = shader.fragmentShader.replace(
@@ -3201,22 +3208,136 @@ uniform vec4 courseSurfaceTileSize;`,
   vec4 aerialColour = texture2D(map, vMapUv);
   vec3 surfaceWeights = texture2D(courseSurfaceMask, vMapUv).rgb;
   float waterWeight = texture2D(courseWaterMask, vMapUv).r;
-  vec2 roughSurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.x);
-  vec2 fairwaySurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.y);
-  vec2 greenSurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.z);
-  vec2 bunkerSurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.w);
+  vec2 roughSurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.x;
+  vec2 fairwaySurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.y;
+  vec2 greenSurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.z;
+  vec2 bunkerSurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.w;
+  vec2 roughSurfaceUv = fract(roughSurfaceCoordinate);
+  vec2 fairwaySurfaceUv = fract(fairwaySurfaceCoordinate);
+  vec2 greenSurfaceUv = fract(greenSurfaceCoordinate);
+  vec2 bunkerSurfaceUv = fract(bunkerSurfaceCoordinate);
   vec3 roughColour = texture2D(roughColourMap, roughSurfaceUv).rgb;
   vec3 fairwayColour = texture2D(fairwayColourMap, fairwaySurfaceUv).rgb;
   vec3 greenColour = texture2D(greenColourMap, greenSurfaceUv).rgb;
   vec3 bunkerColour = texture2D(bunkerColourMap, bunkerSurfaceUv).rgb;
+  float roughWeight = clamp(
+    1.0 - surfaceWeights.r - surfaceWeights.g - surfaceWeights.b,
+    0.0,
+    1.0
+  );
+  float surfaceDetailNearness = 1.0 - smoothstep(160.0, 780.0, length(vViewPosition));
+  vec3 roughSurfaceColour = clamp((roughColour - vec3(0.33)) * 1.42 + vec3(0.33), 0.0, 1.0);
+  vec3 fairwaySurfaceColour = clamp(
+    (fairwayColour - vec3(0.47)) * 1.38 + vec3(0.47),
+    0.0,
+    1.0
+  );
+  vec3 greenSurfaceColour = clamp((greenColour - vec3(0.47)) * 1.14 + vec3(0.47), 0.0, 1.0);
+  vec3 bunkerSurfaceColour = clamp((bunkerColour - vec3(0.63)) * 1.42 + vec3(0.63), 0.0, 1.0);
   float aerialLuma = dot(aerialColour.rgb, vec3(0.2126, 0.7152, 0.0722));
   vec3 gradedAerial = mix(vec3(aerialLuma), aerialColour.rgb, 0.72) * vec3(1.14, 1.09, 0.98);
   gradedAerial = pow(clamp((gradedAerial - 0.5) * 1.02 + 0.518, 0.0, 1.0), vec3(0.9));
-  float roughDetail = dot(roughColour, vec3(0.2126, 0.7152, 0.0722));
-  vec3 courseColour = gradedAerial * mix(0.97, 1.035, roughDetail);
-  courseColour = mix(courseColour, fairwayColour * vec3(0.74, 0.9, 0.68), surfaceWeights.r * 0.22);
-  courseColour = mix(courseColour, greenColour * vec3(0.72, 0.94, 0.68), surfaceWeights.g * 0.32);
-  courseColour = mix(courseColour, bunkerColour * vec3(1.04, 0.98, 0.88), surfaceWeights.b * 0.72);
+  vec3 courseColour = mix(
+    gradedAerial,
+    roughSurfaceColour * vec3(0.75, 0.89, 0.64),
+    roughWeight * mix(0.28, 0.44, surfaceDetailNearness)
+  );
+  courseColour = mix(
+    courseColour,
+    fairwaySurfaceColour * vec3(0.74, 0.9, 0.68),
+    surfaceWeights.r * mix(0.64, 0.78, surfaceDetailNearness)
+  );
+  courseColour = mix(
+    courseColour,
+    greenSurfaceColour * vec3(0.72, 0.94, 0.68),
+    surfaceWeights.g * mix(0.58, 0.72, surfaceDetailNearness)
+  );
+  courseColour = mix(
+    courseColour,
+    bunkerSurfaceColour * vec3(1.04, 0.98, 0.88),
+    surfaceWeights.b * mix(0.8, 0.9, surfaceDetailNearness)
+  );
+  mat2 courseSurfaceDetailRotation = mat2(0.8, -0.6, 0.6, 0.8);
+  vec2 roughFineCoordinate = courseSurfaceDetailRotation * roughSurfaceCoordinate * 1.35 + vec2(0.19, 0.43);
+  vec2 fairwayFineCoordinate = courseSurfaceDetailRotation * fairwaySurfaceCoordinate * 1.85 + vec2(0.37, 0.11);
+  vec2 greenFineCoordinate = courseSurfaceDetailRotation * greenSurfaceCoordinate * 1.35 + vec2(0.63, 0.29);
+  vec2 bunkerFineCoordinate = courseSurfaceDetailRotation * bunkerSurfaceCoordinate * 1.55 + vec2(0.73, 0.31);
+  vec3 roughFineColour = texture2D(roughColourMap, fract(roughFineCoordinate)).rgb;
+  vec3 fairwayFineColour = texture2D(fairwayColourMap, fract(fairwayFineCoordinate)).rgb;
+  vec3 greenFineColour = texture2D(greenColourMap, fract(greenFineCoordinate)).rgb;
+  vec3 bunkerFineColour = texture2D(bunkerColourMap, fract(bunkerFineCoordinate)).rgb;
+  float roughFineLuma = dot(roughFineColour, vec3(0.2126, 0.7152, 0.0722));
+  float fairwayFineLuma = dot(fairwayFineColour, vec3(0.2126, 0.7152, 0.0722));
+  float greenFineLuma = dot(greenFineColour, vec3(0.2126, 0.7152, 0.0722));
+  float bunkerFineLuma = dot(bunkerFineColour, vec3(0.2126, 0.7152, 0.0722));
+  float roughFineFootprint = max(fwidth(roughFineCoordinate.x), fwidth(roughFineCoordinate.y));
+  float fairwayFineFootprint = max(fwidth(fairwayFineCoordinate.x), fwidth(fairwayFineCoordinate.y));
+  float greenFineFootprint = max(fwidth(greenFineCoordinate.x), fwidth(greenFineCoordinate.y));
+  float bunkerFineFootprint = max(fwidth(bunkerFineCoordinate.x), fwidth(bunkerFineCoordinate.y));
+  float roughFineVisible = (1.0 - smoothstep(0.04, 0.115, roughFineFootprint)) * surfaceDetailNearness;
+  float fairwayFineVisible = (1.0 - smoothstep(0.04, 0.115, fairwayFineFootprint)) * surfaceDetailNearness;
+  float greenFineVisible = (1.0 - smoothstep(0.04, 0.115, greenFineFootprint)) * surfaceDetailNearness;
+  float bunkerFineVisible = (1.0 - smoothstep(0.04, 0.115, bunkerFineFootprint)) * surfaceDetailNearness;
+  float roughFineGrain = clamp(
+    1.0 + (roughFineLuma - 0.33) * 0.72,
+    0.82,
+    1.18
+  );
+  float fairwayFineGrain = clamp(
+    1.0 + (fairwayFineLuma - 0.47) * 0.64,
+    0.84,
+    1.16
+  );
+  float greenFineGrain = clamp(
+    1.0 + (greenFineLuma - 0.47) * 0.3,
+    0.92,
+    1.08
+  );
+  float bunkerFineGrain = clamp(
+    1.0 + (bunkerFineLuma - 0.63) * 0.72,
+    0.82,
+    1.18
+  );
+  courseColour = mix(
+    courseColour,
+    roughFineColour * vec3(0.75, 0.89, 0.64),
+    roughWeight * roughFineVisible * 0.18
+  );
+  courseColour = mix(
+    courseColour,
+    fairwayFineColour * vec3(0.74, 0.9, 0.68),
+    surfaceWeights.r * fairwayFineVisible * 0.16
+  );
+  courseColour = mix(
+    courseColour,
+    greenFineColour * vec3(0.72, 0.94, 0.68),
+    surfaceWeights.g * greenFineVisible * 0.08
+  );
+  courseColour = mix(
+    courseColour,
+    bunkerFineColour * vec3(1.04, 0.98, 0.88),
+    surfaceWeights.b * bunkerFineVisible * 0.2
+  );
+  courseColour *= mix(
+    1.0,
+    roughFineGrain,
+    roughWeight * roughFineVisible * 0.82
+  );
+  courseColour *= mix(
+    1.0,
+    fairwayFineGrain,
+    surfaceWeights.r * fairwayFineVisible * 0.72
+  );
+  courseColour *= mix(
+    1.0,
+    greenFineGrain,
+    surfaceWeights.g * greenFineVisible * 0.35
+  );
+  courseColour *= mix(
+    1.0,
+    bunkerFineGrain,
+    surfaceWeights.b * bunkerFineVisible * 0.82
+  );
   vec3 reflectedWater = mix(courseColour * vec3(0.34, 0.58, 0.7), vec3(0.09, 0.4, 0.55), 0.58);
   courseColour = mix(courseColour, reflectedWater, waterWeight * 0.76);
   courseColour = pow(max(courseColour, vec3(0.0)), vec3(0.98));
@@ -3241,10 +3362,10 @@ uniform vec4 courseSurfaceTileSize;`,
   vec3 courseFairwayNormal = texture2D(normalMap, courseFairwayNormalUv).xyz * 2.0 - 1.0;
   vec3 courseGreenNormal = texture2D(normalMap, courseGreenNormalUv).xyz * 2.0 - 1.0;
   vec3 courseBunkerNormal = texture2D(normalMap, courseBunkerNormalUv).xyz * 2.0 - 1.0;
-  courseRoughNormal.xy *= 0.46;
-  courseFairwayNormal.xy *= 0.38;
-  courseGreenNormal.xy *= 0.28;
-  courseBunkerNormal.xy *= 0.58;
+  courseRoughNormal.xy *= 0.76;
+  courseFairwayNormal.xy *= 0.66;
+  courseGreenNormal.xy *= 0.44;
+  courseBunkerNormal.xy *= 0.78;
   vec3 courseBlendedNormal = normalize(
     courseRoughNormal * courseRoughWeight +
     courseFairwayNormal * courseNormalWeights.r +

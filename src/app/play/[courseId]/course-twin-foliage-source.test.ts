@@ -82,11 +82,23 @@ describe("Course Twin high-detail foliage", () => {
     expect(sceneSource).toContain("course-surface-normal-atlas.webp");
     expect(sceneSource).toContain("course-surface-roughness-atlas.webp");
     expect(sceneSource).toContain("courseSurfaceRoughnessAtlas");
+    expect(sceneSource).toContain("courseSurfaceDetailRotation");
+    expect(sceneSource).toContain("fairwayFineCoordinate");
+    expect(sceneSource).toContain("fairwayFineVisible");
+    expect(sceneSource).toContain("fwidth(fairwayFineCoordinate.x)");
+    expect(sceneSource).toContain("roughSurfaceColour");
+    expect(sceneSource).toContain("fairwaySurfaceColour");
+    expect(sceneSource).toContain("greenSurfaceColour");
+    expect(sceneSource).toContain("bunkerSurfaceColour");
+    expect(sceneSource).toContain("surfaceDetailNearness");
 
     for (const [material, surface] of highDetailSurfaceMaps) {
       expect(sceneSource).toContain(`${surface}: {`);
       expect(sceneSource).toContain(`high-detail/${material}-Color.webp`);
       expect(sceneSource).toContain(`metresPerTile: pbrSurfaceAssets.${surface}.metresPerTile`);
+      expect(sceneSource).toContain(
+        `visualMetresPerTile: pbrSurfaceAssets.${surface}.metresPerTile`,
+      );
     }
 
     expect(materialsLedgerSource).toContain("Course Twin High-detail Surface Material Derivatives");
