@@ -5,6 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/speed/page.tsx"), "utf8");
 
 describe("speed centre desktop evidence ledger", () => {
+  it("keeps the wider distance-loss diagnosis out of the speed workbench", () => {
+    expect(source).not.toContain("DistanceLossDiagnosisPanel");
+    expect(source).not.toContain("What is driving the distance loss?");
+  });
+
   it("uses the speed artwork variant in the desktop header", () => {
     expect(source).toContain('variant="speed"');
     expect(source).toContain("visual={<PageArtwork");

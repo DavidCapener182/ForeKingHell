@@ -6,6 +6,17 @@ const source = readFileSync(join(process.cwd(), "src/app/(app)/progress/page.tsx
 const globalStyles = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
 describe("progress desktop workbench source", () => {
+  it("owns the multifactor distance-loss diagnosis rather than treating it as speed training", () => {
+    expect(source).toContain("getDistanceLossDiagnosisData(userId)");
+    expect(source).toContain("DistanceLossDiagnosisPanel");
+    expect(source).toContain("diagnosis={distanceLossDiagnosis}");
+
+    const recapIndex = source.indexOf("<WeeklyRecapPanel");
+    const diagnosisIndex = source.indexOf("<DistanceLossDiagnosisPanel");
+    expect(recapIndex).toBeGreaterThan(-1);
+    expect(diagnosisIndex).toBeGreaterThan(recapIndex);
+  });
+
   it("uses the optional desktop AI rail without crowding laptop workbenches", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";

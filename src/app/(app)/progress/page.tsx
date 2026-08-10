@@ -35,6 +35,7 @@ import {
   StatusPill,
 } from "@/components/premium";
 import { MobileRouteHeader, MobileTabBar } from "@/components/mobile-sports";
+import { DistanceLossDiagnosisPanel } from "@/components/progress/distance-loss-diagnosis-panel";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,7 @@ import {
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getDistanceLossDiagnosisData } from "@/lib/distance-loss-diagnosis-data";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
 import type { ClubAnalytics } from "@/lib/club-analytics";
 import {
@@ -168,15 +170,23 @@ const progressWorkbenchPrompts: DesktopAiPrompt[] = [
 
 export default async function ProgressPage({ searchParams }: ProgressPageProps) {
   const userId = await requireCurrentUserId();
-  const [params, data, scoringEvidence, featureData, practicePlannerSummary, weeklyEvidence] =
-    await Promise.all([
-      searchParams,
-      getProgressData(userId),
-      getProgressScoringEvidence(userId),
-      getFeatureIdeasData(),
-      getPracticePlannerProgressSummary(userId),
-      getWeeklyChangeEvidence(userId),
-    ]);
+  const [
+    params,
+    data,
+    scoringEvidence,
+    distanceLossDiagnosis,
+    featureData,
+    practicePlannerSummary,
+    weeklyEvidence,
+  ] = await Promise.all([
+    searchParams,
+    getProgressData(userId),
+    getProgressScoringEvidence(userId),
+    getDistanceLossDiagnosisData(userId),
+    getFeatureIdeasData(),
+    getPracticePlannerProgressSummary(userId),
+    getWeeklyChangeEvidence(userId),
+  ]);
   const summary = buildProgressSummary(data.clubs);
   const weeklyChangeReview = buildWeeklyChangeReview({
     clubRows: summary.clubRows,
@@ -338,6 +348,9 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
                   summary={summary}
                   review={weeklyChangeReview}
                 />
+              </ProgressBentoItem>
+              <ProgressBentoItem span={12}>
+                <DistanceLossDiagnosisPanel diagnosis={distanceLossDiagnosis} />
               </ProgressBentoItem>
               <ProgressBentoItem span={12}>
                 <ProgressRoadmapPanel summary={summary} />
