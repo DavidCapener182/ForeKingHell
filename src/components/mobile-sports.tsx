@@ -57,9 +57,9 @@ export function MobileTopBar({ title, leading, actions, className }: MobileTopBa
     <header className={cn("ios-large-title min-w-0", className)}>
       <div className="min-w-0">
         {leading ? <div className="mb-1 flex min-w-0 items-center gap-1.5">{leading}</div> : null}
-        <div className="truncate" data-mobile-route-label>
+        <h1 className="min-w-0 break-words" data-mobile-route-label>
           {title}
-        </div>
+        </h1>
       </div>
       <div className="flex min-w-0 items-center justify-end gap-1.5">{actions}</div>
     </header>
@@ -160,9 +160,9 @@ export function MobileRouteHeader({
   return (
     <section className={cn("grid min-w-0 gap-3 lg:hidden", className)}>
       <header className="ios-large-title">
-        <div className="truncate" data-mobile-route-label>
+        <h1 className="min-w-0 break-words" data-mobile-route-label>
           {title}
-        </div>
+        </h1>
       </header>
       <MobileRouteTabs group={group} activeKey={activeKey} sticky={false} />
     </section>
@@ -186,7 +186,7 @@ export function MobileStatusAction({
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {label}
         </p>
-        <p className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground">
+        <p className="mt-1 min-w-0 break-words text-2xl font-semibold tracking-normal text-foreground [overflow-wrap:anywhere]">
           {value}
         </p>
         {detail ? (
@@ -260,7 +260,7 @@ export function BottomSheet({
           {label}
           <ChevronDown className="size-4" aria-hidden />
         </DrawerTrigger>
-        <DrawerContent className="max-h-[86vh]">
+        <DrawerContent className="max-h-[86dvh]">
           <DrawerHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-left">
             <div>
               <DrawerTitle className="text-xl tracking-normal">{title}</DrawerTitle>

@@ -14,7 +14,9 @@ type GolfLoadingProps = {
     | "strokes"
     | "shots"
     | "rounds"
+    | "sessions"
     | "coach"
+    | "analyse"
     | "dataChat"
     | "compare"
     | "courses"
@@ -50,7 +52,39 @@ export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: Gol
 
   return (
     <PageShell>
-      <div className="grid gap-5">
+      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4 lg:hidden">
+        <header className="ios-page-header">
+          <p className="text-[13px] font-semibold text-primary">{variantLabel(variant)}</p>
+          <h1>{title}</h1>
+          <p className="mt-1 text-[15px] leading-5 text-muted-foreground">{subtitle}</p>
+        </header>
+        <section className="ios-grouped-list overflow-hidden" aria-label="Loading summary">
+          <div className="ios-grouped-row px-4 py-4">
+            <div className="h-3 w-24 animate-pulse rounded-full bg-border motion-reduce:animate-none" />
+            <div className="mt-3 h-8 w-32 animate-pulse rounded-md bg-primary/12 motion-reduce:animate-none" />
+          </div>
+          {metricLabels.slice(0, 3).map((label, index) => (
+            <div
+              key={label}
+              className="ios-grouped-row grid min-h-14 grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3 px-4 py-2.5"
+            >
+              <div>
+                <p className="text-[13px] text-muted-foreground">{label}</p>
+                <div
+                  className={cn(
+                    "mt-1.5 h-3 animate-pulse rounded-full bg-border motion-reduce:animate-none",
+                    index === 1 ? "w-28" : "w-20",
+                  )}
+                />
+              </div>
+              <div className="h-6 animate-pulse rounded-md bg-secondary motion-reduce:animate-none" />
+            </div>
+          ))}
+        </section>
+        <p className="px-1 text-[13px] text-muted-foreground">Preparing your measured golf data…</p>
+      </div>
+
+      <div className="hidden gap-5 lg:grid">
         <section className="premium-card overflow-hidden rounded-lg border border-border bg-card">
           <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
             <div className="min-w-0">
@@ -144,8 +178,12 @@ function variantLabel(variant: NonNullable<GolfLoadingProps["variant"]>) {
       return "Shot explorer";
     case "rounds":
       return "Round review";
+    case "sessions":
+      return "Sessions";
     case "coach":
       return "Coach desk";
+    case "analyse":
+      return "Analysis";
     case "dataChat":
       return "Data chat";
     case "compare":
@@ -231,12 +269,18 @@ function loadingMetricLabels(variant: NonNullable<GolfLoadingProps["variant"]>) 
     case "practice":
     case "trainingLoad":
       return ["Load", "Focus", "Blocks", "Recovery"];
+    case "analyse":
+      return ["Conclusion", "Evidence", "Trend", "Action"];
+    case "compare":
+      return ["Verdict", "Difference", "Confidence", "Evidence"];
+    case "sessions":
+      return ["Recent", "Type", "Result", "Status"];
     case "equipment":
       return ["Bag", "Change", "Impact", "Notes"];
     case "handicap":
       return ["Index", "Rounds", "Proof", "Trend"];
     case "simulatorLab":
-      return ["Course", "Hole", "Overlay", "Timeline"];
+      return ["Playing level", "Main leak", "Readiness", "Next action"];
     default:
       return ["Trust", "Round ready", "Carry", "Pattern"];
   }

@@ -43,3 +43,19 @@ describe("challenges desktop board", () => {
     }
   });
 });
+
+describe("challenges mobile board", () => {
+  it("renders every mobile tab from the same filtered board rows as desktop", () => {
+    expect(source).toContain("const mobileChallenges = challengeBoardRows.flatMap");
+    expect(source).toContain("const mobileTemplates = challengeBoardRows.flatMap");
+    expect(source).toContain("const mobilePrimaryChallenge = mobileChallenges[0] ?? null;");
+    expect(source).toContain("const mobileRemainingChallenges = mobileChallenges.slice(1);");
+    expect(source).toContain("mobileRemainingChallenges.map");
+    expect(source).not.toMatch(/activeTab === "joined" \? data\.mine : data\.challenges/);
+  });
+
+  it("keeps the mobile composition active until the lg desktop breakpoint", () => {
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden sm:contents"');
+  });
+});

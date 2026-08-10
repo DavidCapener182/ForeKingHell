@@ -23,6 +23,13 @@ import {
   saveEquipmentHistoryAction,
 } from "@/app/equipment/actions";
 import { BagOrderForm, type BagOrderClubItem } from "@/app/equipment/bag-order-form";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -39,7 +46,7 @@ import {
   StatusPill,
   type Tone,
 } from "@/components/premium";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -139,21 +146,14 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Analyse" group="analyse" activeKey="equipment" />
+      <MobileEquipmentExperience
+        data={data}
+        intelligence={intelligence}
+        featureData={featureData}
+        saved={params?.saved}
+      />
 
-      <div data-primary-action className="sm:hidden">
-        <Button
-          asChild
-          className="h-11 w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-        >
-          <Link href="#equipment-forms" prefetch={false}>
-            <Save className="size-4" />
-            Add setup
-          </Link>
-        </Button>
-      </div>
-
-      <DesktopWorkbenchLayout scope="equipment">
+      <DesktopWorkbenchLayout scope="equipment" className="hidden lg:grid">
         <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/bag" prefetch={false}>
@@ -367,6 +367,563 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+function MobileEquipmentExperience({
+  data,
+  intelligence,
+  featureData,
+  saved,
+}: {
+  data: EquipmentData;
+  intelligence: EquipmentIntelligence;
+  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
+  saved?: string;
+}) {
+  const profiles = [...intelligence.activeProfiles].sort(
+    (left, right) => clubSortValue(left.club.type) - clubSortValue(right.club.type),
+  );
+  const bagOrderItems = buildBagOrderItems(profiles);
+  const currentBall = data.ballModels[0] ?? null;
+
+  return (
+    <MobileAppShell className="gap-5">
+      <div data-equipment-mobile-experience className="grid gap-5">
+        <MobileRouteHeader title="Equipment" group="analyse" activeKey="equipment" />
+
+        {saved ? (
+          <Alert className="ios-grouped-list">
+            <CircleDot className="size-4" />
+            <AlertTitle>{equipmentSavedTitle(saved)}</AlertTitle>
+            <AlertDescription>{equipmentSavedDescription(saved)}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <section className="grid gap-2.5" aria-label="Current bag fit">
+          <IOSSectionHeader
+            title="Current bag fit"
+            description="The setup signal and the first window to check."
+          />
+          <IOSGroupedList label="Current bag fit summary">
+            <IOSListRow
+              icon={Gauge}
+              label="Bag fit"
+              value={`${intelligence.bagFitScore}%`}
+              detail={intelligence.fitDetail}
+              status={
+                <IOSInlineStatus
+                  label={intelligence.bagFitScore > 0 ? "Current score" : "Needs shot data"}
+                  tone={iosStatusTone(intelligence.bagFitTone)}
+                />
+              }
+            />
+            <IOSListRow
+              icon={Target}
+              label="Weak window"
+              value={intelligence.weakness.label}
+              detail={intelligence.weakness.detail}
+              status={
+                <IOSInlineStatus
+                  label={intelligence.weakness.tone === "green" ? "No urgent gap" : "Review first"}
+                  tone={iosStatusTone(intelligence.weakness.tone)}
+                />
+              }
+            />
+          </IOSGroupedList>
+          <Button asChild className="min-h-11 w-full rounded-lg">
+            <Link href="#equipment-mobile-actions" prefetch={false}>
+              <Wrench className="size-4" aria-hidden />
+              Manage setup
+            </Link>
+          </Button>
+        </section>
+
+        <section className="grid gap-2.5" aria-label="Owned equipment">
+          <IOSSectionHeader
+            title="Owned setup"
+            description={`${profiles.length} active ${profiles.length === 1 ? "club" : "clubs"}. Carry is shown when shot evidence is available.`}
+          />
+          <IOSGroupedList label="Owned equipment and clubs">
+            {profiles.length > 0 ? (
+              profiles.map((profile) => (
+                <IOSListRow
+                  key={profile.club.id}
+                  label={formatClubType(profile.club.type)}
+                  detail={profile.equipmentName}
+                  value={
+                    profile.carryLabel === "--"
+                      ? `${profile.confidence}% trust`
+                      : profile.carryLabel
+                  }
+                  href={`/bag/${profile.club.id}`}
+                  ariaLabel={`Open ${formatClubType(profile.club.type)} equipment details`}
+                />
+              ))
+            ) : (
+              <IOSListRow
+                icon={Wrench}
+                label="No active clubs"
+                detail="Add a setup or import shots to start your owned-equipment list."
+                status={<IOSInlineStatus label="Setup required" tone="attention" />}
+              />
+            )}
+            {currentBall ? (
+              <IOSListRow
+                icon={CircleDot}
+                label="Ball"
+                detail={[currentBall.brand, currentBall.model].filter(Boolean).join(" ")}
+                value="Current"
+              />
+            ) : null}
+          </IOSGroupedList>
+        </section>
+
+        <section
+          id="equipment-mobile-actions"
+          className="grid scroll-mt-28 gap-2.5"
+          aria-label="Equipment detail and actions"
+        >
+          <IOSSectionHeader
+            title="Details and actions"
+            description="Open one section at a time for deeper setup work."
+          />
+          <IOSDisclosureGroup
+            label="Equipment detail and actions"
+            items={[
+              {
+                value: "score",
+                title: "Bag score and guidance",
+                summary: `${intelligence.bagFitScore}%`,
+                description: "Strength, next move and fitting evidence",
+                content: (
+                  <MobileBagScoreDetails intelligence={intelligence} featureData={featureData} />
+                ),
+              },
+              {
+                value: "timeline",
+                title: "Bag order and timeline",
+                summary: `${profiles.length} clubs`,
+                description: "Reorder, capture a snapshot or retire a club",
+                content: (
+                  <MobileBagTimelineDetails
+                    profiles={profiles}
+                    clubs={bagOrderItems}
+                    snapshots={data.snapshots}
+                  />
+                ),
+              },
+              {
+                value: "impact",
+                title: "Equipment impact",
+                summary:
+                  intelligence.impacts.length > 0
+                    ? `${intelligence.impacts.length} comparisons`
+                    : "No baseline",
+                description: "Before-and-after performance signals",
+                content: <MobileEquipmentImpactDetails impacts={intelligence.impacts} />,
+              },
+              {
+                value: "builder",
+                title: "Bag builder",
+                summary: intelligence.nextUpgrade ?? "Current bag",
+                description: "Projected setup moves from current evidence",
+                content: <MobileBagBuilderDetails scenarios={intelligence.builderScenarios} />,
+              },
+              {
+                value: "forms",
+                title: "Add or edit setup",
+                summary: "Ball and club",
+                description: "Save a ball model or active club specification",
+                content: <MobileEquipmentForms data={data} />,
+              },
+              {
+                value: "history",
+                title: "History and specifications",
+                summary: `${data.history.length + data.retiredClubs.length} records`,
+                description: "Previous builds, active specifications and retired clubs",
+                content: <MobileEquipmentHistoryDetails data={data} />,
+              },
+            ]}
+          />
+          <IOSGroupedList label="Equipment tools">
+            <IOSListRow
+              icon={Sparkles}
+              label="Experiment Lab"
+              detail="Compare measured setup changes before making a decision."
+              href="/equipment/experiments"
+            />
+          </IOSGroupedList>
+        </section>
+      </div>
+    </MobileAppShell>
+  );
+}
+
+function MobileBagScoreDetails({
+  intelligence,
+  featureData,
+}: {
+  intelligence: EquipmentIntelligence;
+  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
+}) {
+  return (
+    <div className="grid gap-5">
+      <div className="grid divide-y divide-border/70">
+        <MobileEquipmentDetailRow
+          label="Strength"
+          value={intelligence.strength.label}
+          detail={intelligence.strength.detail}
+        />
+        <MobileEquipmentDetailRow
+          label="Weak window"
+          value={intelligence.weakness.label}
+          detail={intelligence.weakness.detail}
+        />
+        <MobileEquipmentDetailRow
+          label="Next move"
+          value={intelligence.nextUpgrade ?? "Build sample"}
+          detail={intelligence.nextUpgradeDetail}
+        />
+        <MobileEquipmentDetailRow
+          label="Average confidence"
+          value={`${intelligence.averageConfidence}%`}
+          detail={`${intelligence.trustedCount} trusted clubs`}
+        />
+      </div>
+      <section className="grid gap-2.5" aria-label="Fitting guidance">
+        <h3 className="text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
+          Fitting guidance
+        </h3>
+        <BagFeaturePanel data={featureData} compactMobile />
+      </section>
+    </div>
+  );
+}
+
+function MobileBagTimelineDetails({
+  profiles,
+  clubs,
+  snapshots,
+}: {
+  profiles: ClubProfile[];
+  clubs: BagOrderClubItem[];
+  snapshots: EquipmentSnapshotRow[];
+}) {
+  return (
+    <div className="grid gap-6">
+      <section className="grid gap-3" aria-label="Bag order">
+        <div>
+          <h3 className="text-[15px] font-semibold text-foreground">Bag order</h3>
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+            Drag with a pointer, or use the section picker and 44px move controls on touch and
+            keyboard.
+          </p>
+        </div>
+        {clubs.length > 0 ? (
+          <BagOrderForm clubs={clubs} />
+        ) : (
+          <p className="text-[13px] leading-5 text-muted-foreground">
+            Add a club before arranging the bag.
+          </p>
+        )}
+      </section>
+
+      <section className="grid gap-3" aria-label="Bag snapshots">
+        <div>
+          <h3 className="text-[15px] font-semibold text-foreground">Bag snapshot</h3>
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+            Save the current setup before a fitting or equipment change.
+          </p>
+        </div>
+        <form action={captureEquipmentSnapshotAction} className="grid gap-3">
+          <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />
+          <Button type="submit" className="min-h-11 w-full rounded-lg">
+            <Save className="size-4" aria-hidden />
+            Capture snapshot
+          </Button>
+        </form>
+        <div className="grid divide-y divide-border/70">
+          {snapshots.length > 0 ? (
+            snapshots.slice(0, 4).map((snapshot) => (
+              <div key={snapshot.id} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-foreground">{snapshot.label}</p>
+                  <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    {compactDateFormatter.format(snapshot.capturedAt)}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
+                  {snapshot.items.length} clubs
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="py-3 text-[13px] leading-5 text-muted-foreground">
+              No bag snapshots yet.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="grid gap-2" aria-label="Current club timeline">
+        <h3 className="text-[15px] font-semibold text-foreground">Current club timeline</h3>
+        <div className="grid divide-y divide-border/70">
+          {profiles.map((profile) => (
+            <div key={profile.club.id} className="grid gap-2 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-foreground">
+                    {formatClubType(profile.club.type)}
+                  </p>
+                  <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
+                    {profile.equipmentName}
+                  </p>
+                </div>
+                <span className="shrink-0 text-[15px] tabular-nums text-muted-foreground">
+                  {profile.carryLabel}
+                </span>
+              </div>
+              <p className="text-[13px] leading-5 text-muted-foreground">
+                {profile.shotCount.toLocaleString("en-GB")} shots · added{" "}
+                {profile.addedAt ? compactDateFormatter.format(profile.addedAt) : "date unknown"} ·{" "}
+                {profile.performanceLabel.toLowerCase()}
+              </p>
+              <RetireClubForm club={profile.club as ActiveClub} compact />
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MobileEquipmentImpactDetails({ impacts }: { impacts: EquipmentImpact[] }) {
+  if (impacts.length === 0) {
+    return (
+      <p className="text-[13px] leading-5 text-muted-foreground">
+        No measured before-and-after equipment comparison is available yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid divide-y divide-border/70">
+      {impacts.map((impact) => (
+        <section
+          key={`${impact.clubLabel}-${impact.equipmentName}-${impact.addedLabel}`}
+          className="grid gap-2 py-3 first:pt-0 last:pb-0"
+          aria-label={`${impact.clubLabel} equipment impact`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-medium text-foreground">{impact.equipmentName}</h3>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">
+                {impact.clubLabel} · added {impact.addedLabel}
+              </p>
+            </div>
+            <IOSInlineStatus label={impact.verdict} tone={iosStatusTone(impact.tone)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-[13px]">
+            <MobileEquipmentValue label="Carry" value={formatDeltaYards(impact.carryDeltaYd)} />
+            <MobileEquipmentValue label="Offline" value={formatOfflineChange(impact)} />
+          </div>
+          <p className="text-[13px] leading-5 text-muted-foreground">{impact.detail}</p>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function MobileBagBuilderDetails({ scenarios }: { scenarios: BuilderScenario[] }) {
+  return (
+    <div className="grid divide-y divide-border/70">
+      {scenarios.map((scenario) => (
+        <MobileEquipmentDetailRow
+          key={scenario.label}
+          label={scenario.label}
+          value={`${scenario.score}%`}
+          detail={scenario.detail}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MobileEquipmentForms({ data }: { data: EquipmentData }) {
+  return (
+    <div className="grid gap-6">
+      <section className="grid gap-3" aria-label="Add ball model">
+        <div>
+          <h3 className="text-[15px] font-semibold text-foreground">Add ball model</h3>
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+            Save the ball used for before-and-after launch comparisons.
+          </p>
+        </div>
+        <form action={createBallModelAction} className="grid gap-3">
+          <FormField label="Brand" name="brand" placeholder="Titleist" />
+          <FormField label="Model" name="model" placeholder="Pro V1" required />
+          <Button type="submit" className="min-h-11 w-full rounded-lg">
+            <Save className="size-4" aria-hidden />
+            Save ball
+          </Button>
+        </form>
+      </section>
+
+      <section className="grid gap-3" aria-label="Add club specification">
+        <div>
+          <h3 className="text-[15px] font-semibold text-foreground">Add club specification</h3>
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+            A new active setup automatically closes the previous setup for that club.
+          </p>
+        </div>
+        <form action={saveEquipmentHistoryAction} className="grid gap-3">
+          <SelectField
+            label="Club"
+            name="clubId"
+            values={data.activeClubs.map((club) => ({
+              value: club.id,
+              label: formatClubType(club.type),
+            }))}
+          />
+          <SelectField
+            label="Ball model"
+            name="ballModelId"
+            optionalLabel="No ball model"
+            values={data.ballModels.map((ball) => ({
+              value: ball.id,
+              label: [ball.brand, ball.model].filter(Boolean).join(" "),
+            }))}
+          />
+          <FormField label="Effective from" name="effectiveFrom" type="date" />
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
+            <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
+          </div>
+          <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
+          <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
+          <FormField
+            label="Notes"
+            name="notes"
+            placeholder="Grip, length, adapter setting, build notes"
+          />
+          <Button type="submit" className="min-h-11 w-full rounded-lg">
+            <Save className="size-4" aria-hidden />
+            Save specification
+          </Button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function MobileEquipmentHistoryDetails({ data }: { data: EquipmentData }) {
+  return (
+    <div className="grid gap-6">
+      <section className="grid gap-2" aria-label="Equipment specification history">
+        <h3 className="text-[15px] font-semibold text-foreground">Specification history</h3>
+        <div className="grid divide-y divide-border/70">
+          {data.history.length > 0 ? (
+            data.history.map((row) => (
+              <div key={row.id} className="grid gap-1.5 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-medium text-foreground">
+                      {formatClubType(row.clubType ?? "")}
+                    </p>
+                    <p className="text-[13px] leading-5 text-muted-foreground">
+                      {formatDate(row.effectiveFrom)} –{" "}
+                      {row.effectiveTo ? formatDate(row.effectiveTo) : "current"}
+                    </p>
+                  </div>
+                  <IOSInlineStatus
+                    label={row.effectiveTo ? "Previous" : "Active"}
+                    tone={row.effectiveTo ? "neutral" : "positive"}
+                  />
+                </div>
+                <p className="text-[13px] leading-5 text-muted-foreground">
+                  Ball {formatBall(row.ballBrand, row.ballModel)} · loft/lie{" "}
+                  {formatNumber(row.loftDeg)}/{formatNumber(row.lieDeg)} · {row.shaft ?? "No shaft"}
+                </p>
+                {row.notes ? (
+                  <p className="text-[13px] leading-5 text-muted-foreground">{row.notes}</p>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <p className="py-3 text-[13px] leading-5 text-muted-foreground">
+              No equipment specifications have been saved yet.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="grid gap-2" aria-label="Retired equipment">
+        <h3 className="text-[15px] font-semibold text-foreground">Retired equipment</h3>
+        <div className="grid divide-y divide-border/70">
+          {data.retiredClubs.length > 0 ? (
+            data.retiredClubs.map((club) => (
+              <div key={club.id} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-medium text-foreground">
+                    {formatClubType(club.type)}
+                  </p>
+                  <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
+                    {[club.brand, club.model].filter(Boolean).join(" ") || "Unknown model"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-right text-[13px] leading-5 text-muted-foreground">
+                  {club.shotCount.toLocaleString("en-GB")} shots
+                  <br />
+                  {club.lastShotAt ? formatDate(club.lastShotAt) : "No last shot"}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="py-3 text-[13px] leading-5 text-muted-foreground">No retired clubs.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function MobileEquipmentDetailRow({
+  label,
+  value,
+  detail,
+}: {
+  label: ReactNode;
+  value: ReactNode;
+  detail?: ReactNode;
+}) {
+  return (
+    <div className="grid gap-1 py-3 first:pt-0 last:pb-0">
+      <div className="flex items-start justify-between gap-3">
+        <span className="text-[13px] text-muted-foreground">{label}</span>
+        <span className="max-w-[58%] text-right text-[15px] font-medium leading-5 text-foreground tabular-nums">
+          {value}
+        </span>
+      </div>
+      {detail ? <p className="text-[13px] leading-5 text-muted-foreground">{detail}</p> : null}
+    </div>
+  );
+}
+
+function MobileEquipmentValue({ label, value }: { label: ReactNode; value: ReactNode }) {
+  return (
+    <div>
+      <p className="text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-medium text-foreground tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function iosStatusTone(tone: Tone): ComponentProps<typeof IOSInlineStatus>["tone"] {
+  if (tone === "green") return "positive";
+  if (tone === "amber") return "attention";
+  if (tone === "pink") return "critical";
+  if (tone === "sky") return "info";
+  return "neutral";
 }
 
 function EquipmentMobileDisclosure({
@@ -970,7 +1527,7 @@ function RetireClubForm({ club, compact = false }: { club: ActiveClub; compact?:
         type="submit"
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+        className="min-h-11 border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
         aria-label={`Retire ${label}`}
       >
         <Archive className="size-4" />
@@ -2039,7 +2596,7 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="h-10 rounded-xl bg-white" {...props} />
+      <Input name={name} className="min-h-11 rounded-xl bg-white" {...props} />
     </label>
   );
 }
@@ -2061,7 +2618,7 @@ function SelectField({
       <select
         name={name}
         required={!optionalLabel}
-        className="h-10 rounded-xl border bg-white px-3 text-sm"
+        className="min-h-11 rounded-xl border bg-white px-3 text-sm"
       >
         {optionalLabel ? <option value="">{optionalLabel}</option> : null}
         {values.map((value) => (

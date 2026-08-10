@@ -18,6 +18,7 @@ import {
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
+  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -27,7 +28,14 @@ import {
   PlanBadge,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { BottomSheet, MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Input } from "@/components/ui/input";
 import { getAdminBillingData, requireAdminUser } from "@/lib/admin";
@@ -66,6 +74,7 @@ type AdminBillingPageProps = {
     adminError?: string;
     sort?: string;
     dir?: string;
+    view?: string;
   }>;
 };
 
@@ -95,6 +104,13 @@ const adminBillingSortDefaultDirections: Record<AdminBillingSortMetric, AdminBil
     created: "desc",
   };
 
+const billingAttentionStatuses = new Set([
+  "past_due",
+  "unpaid",
+  "incomplete",
+  "incomplete_expired",
+]);
+
 export default async function AdminBillingPage({ searchParams }: AdminBillingPageProps) {
   const params = await searchParams;
   const sortState = parseAdminBillingSort(params?.sort, params?.dir);
@@ -107,14 +123,42 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
   const activeSubscriptions = data.subscriptions.filter(
     (row) => row.status === "active" || row.status === "trialing",
   );
+  const attentionSubscriptions = sortedSubscriptions.filter((row) =>
+    billingAttentionStatuses.has(row.status),
+  );
+  const mobileView = parseAdminBillingMobileView(params?.view);
+  const mobileSubscriptions =
+    mobileView === "attention"
+      ? attentionSubscriptions
+      : mobileView === "active"
+        ? sortedSubscriptions.filter((row) => row.status === "active" || row.status === "trialing")
+        : sortedSubscriptions;
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="admin" />
-      <AdminNav active="/admin/billing" />
-      <AdminNotice status={params?.adminStatus} error={params?.adminError} />
+      <AdminMobileShell
+        title="Billing"
+        active="/admin/billing"
+        status={params?.adminStatus}
+        error={params?.adminError}
+      >
+        <AdminMobileBilling
+          data={data}
+          subscriptions={mobileSubscriptions}
+          activeCount={activeSubscriptions.length}
+          attentionCount={attentionSubscriptions.length}
+          canGrantLifetime={canGrantLifetime}
+          lifetimeCount={lifetimeEntitlements.length}
+          mobileView={mobileView}
+        />
+      </AdminMobileShell>
 
-      <DesktopWorkbenchLayout scope="admin-billing">
+      <div className="hidden gap-3 lg:grid">
+        <AdminNav active="/admin/billing" />
+        <AdminNotice status={params?.adminStatus} error={params?.adminError} />
+      </div>
+
+      <DesktopWorkbenchLayout scope="admin-billing" className="hidden lg:grid">
         <AdminPageHeader
           eyebrow="Admin billing"
           title="Billing and entitlements"
@@ -328,6 +372,193 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type AdminBillingMobileView = "attention" | "active" | "all";
+
+function AdminMobileBilling({
+  data,
+  subscriptions,
+  activeCount,
+  attentionCount,
+  canGrantLifetime,
+  lifetimeCount,
+  mobileView,
+}: {
+  data: AdminBillingData;
+  subscriptions: AdminBillingSubscription[];
+  activeCount: number;
+  attentionCount: number;
+  canGrantLifetime: boolean;
+  lifetimeCount: number;
+  mobileView: AdminBillingMobileView;
+}) {
+  const primarySubscriptions = subscriptions.slice(0, 12);
+  const olderSubscriptions = subscriptions.slice(12);
+
+  return (
+    <>
+      <MobileStatusAction
+        label="Billing attention"
+        value={attentionCount}
+        detail={`${activeCount} active or trialing · ${lifetimeCount} lifetime full grants`}
+        action={canGrantLifetime ? <MobileBillingGrant /> : undefined}
+      />
+
+      <MobileTabBar
+        activeKey={mobileView}
+        ariaLabel="Filter subscription rows"
+        tabs={[
+          { key: "attention", label: "Attention", href: "/admin/billing?view=attention" },
+          { key: "active", label: "Active", href: "/admin/billing?view=active" },
+          { key: "all", label: "All", href: "/admin/billing?view=all" },
+        ]}
+      />
+
+      <section className="grid gap-2" aria-label="Mobile subscription directory">
+        <IOSSectionHeader
+          title="Subscriptions"
+          description={`${subscriptions.length} ${mobileView} ${subscriptions.length === 1 ? "row" : "rows"}`}
+        />
+        <MobileBillingRows subscriptions={primarySubscriptions} />
+        {olderSubscriptions.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More billing subscriptions"
+            items={[
+              {
+                value: "more-subscriptions",
+                title: "More subscriptions",
+                summary: olderSubscriptions.length,
+                description: "Additional rows in this filter",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileBillingRows subscriptions={olderSubscriptions} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      <IOSDisclosureGroup
+        label="Billing supporting detail"
+        items={[
+          {
+            value: "recent-entitlements",
+            title: "Recent entitlements",
+            summary: data.entitlements.length,
+            description: "Current feature-access rows and sources",
+            contentClassName: "px-0 pb-0 pt-0",
+            content: (
+              <IOSGroupedList label="Recent entitlement rows" className="border-0">
+                {data.entitlements.length > 0 ? (
+                  data.entitlements
+                    .slice(0, 40)
+                    .map((entitlement) => (
+                      <IOSListRow
+                        key={entitlement.id}
+                        label={entitlement.displayName}
+                        value={label(entitlement.source)}
+                        detail={`${label(entitlement.entitlementKey)} · ${entitlement.email ?? "No email"}`}
+                      />
+                    ))
+                ) : (
+                  <IOSListRow
+                    label="No entitlement rows"
+                    detail="Entitlements appear after feature access is granted."
+                  />
+                )}
+              </IOSGroupedList>
+            ),
+          },
+          {
+            value: "full-plan-limits",
+            title: "Full plan limits",
+            summary: data.planLimits.filter((row) => row.planKey === "full").length,
+            description: "Configured limit values used by feature checks",
+            contentClassName: "px-0 pb-0 pt-0",
+            content: (
+              <IOSGroupedList label="Full plan limit rows" className="border-0">
+                {data.planLimits
+                  .filter((row) => row.planKey === "full")
+                  .map((limit) => (
+                    <IOSListRow
+                      key={limit.id}
+                      label={label(limit.limitKey)}
+                      detail={JSON.stringify(limit.limitValueJson)}
+                    />
+                  ))}
+              </IOSGroupedList>
+            ),
+          },
+        ]}
+      />
+    </>
+  );
+}
+
+function MobileBillingRows({ subscriptions }: { subscriptions: AdminBillingSubscription[] }) {
+  return (
+    <IOSGroupedList label="Subscription rows">
+      {subscriptions.length > 0 ? (
+        subscriptions.map((subscription) => {
+          const needsAttention = billingAttentionStatuses.has(subscription.status);
+          const renewal = subscription.currentPeriodEnd
+            ? `${subscription.cancelAtPeriodEnd ? "Cancels" : "Renews"} ${formatDateTime(subscription.currentPeriodEnd)}`
+            : "No renewal date";
+
+          return (
+            <IOSListRow
+              key={subscription.id}
+              label={subscription.displayName}
+              value={label(subscription.planKey)}
+              detail={`${subscription.email ?? "No email"} · ${renewal}`}
+              status={
+                <IOSInlineStatus
+                  label={label(subscription.status)}
+                  tone={needsAttention ? "critical" : "positive"}
+                />
+              }
+            />
+          );
+        })
+      ) : (
+        <IOSListRow
+          label="No subscription rows"
+          detail={
+            "No subscriptions match this filter. Switch filters to inspect active or historical rows."
+          }
+          status={<IOSInlineStatus label="No action in this view" tone="positive" />}
+        />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function MobileBillingGrant() {
+  return (
+    <BottomSheet label="Grant" title="Grant lifetime full">
+      <form action={grantLifetimeFullAction} className="grid gap-3">
+        <input type="hidden" name="returnTo" value="/admin/billing" />
+        <label className="grid gap-1 text-sm font-medium">
+          User email
+          <Input name="email" type="email" className="h-11" required />
+        </label>
+        <AdminConfirmSubmitButton
+          type="submit"
+          className="min-h-11"
+          confirmTitle="Grant lifetime full access"
+          confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
+          confirmActionLabel="Grant full access"
+        >
+          <Zap className="size-4" />
+          Grant full access
+        </AdminConfirmSubmitButton>
+      </form>
+    </BottomSheet>
+  );
+}
+
+function parseAdminBillingMobileView(value: string | undefined): AdminBillingMobileView {
+  return value === "active" || value === "all" ? value : "attention";
 }
 
 function SortableAdminBillingHead({

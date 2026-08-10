@@ -103,11 +103,11 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
   return (
     <PageShell
       size="full"
-      className="px-0 py-0 pb-0 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8"
-      contentClassName="gap-0 sm:gap-5 lg:gap-6"
+      className="px-0 py-0 pb-0 lg:px-8 lg:pb-8 lg:pt-6"
+      contentClassName="gap-0 lg:gap-6"
     >
       <DesktopWorkbenchLayout scope="course-shot-pattern">
-        <div className="hidden items-center justify-between gap-4 sm:flex">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href={`/courses/${courseId}/holes`} prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -122,7 +122,7 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
           </Button>
         </div>
 
-        <div className="hidden sm:block">
+        <div className="hidden lg:block">
           <PageHeader
             eyebrow={
               <StatusPill tone={hasMappedHoles ? "green" : "amber"}>On-course tool</StatusPill>
@@ -212,7 +212,7 @@ function ShotPatternSetupBoard({ courseId, setup }: { courseId: string; setup: S
   return (
     <section
       id="shot-pattern-setup"
-      className="hidden scroll-mt-28 gap-4 sm:grid"
+      className="hidden scroll-mt-28 gap-4 lg:grid"
       data-workbench-scope="shot-pattern-setup"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -465,13 +465,13 @@ function ShotPatternPageLoading() {
   return (
     <PageShell
       size="full"
-      className="px-0 py-0 pb-0 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8"
-      contentClassName="gap-0 sm:gap-5 lg:gap-6"
+      className="px-0 py-0 pb-0 lg:px-8 lg:pb-8 lg:pt-6"
+      contentClassName="gap-0 lg:gap-6"
     >
-      <div className="map-frame relative h-[100svh] min-h-[100svh] overflow-hidden bg-[#101827] sm:h-[72vh] sm:min-h-[420px] lg:min-h-[620px]">
-        <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 h-14 animate-pulse rounded-lg bg-white/80 sm:top-3" />
-        <div className="absolute inset-x-6 top-1/3 h-48 animate-pulse rounded-lg border border-white/15 bg-white/10" />
-        <div className="absolute inset-x-10 bottom-16 h-20 animate-pulse rounded-lg bg-white/15" />
+      <div className="map-frame relative h-[100svh] min-h-[100svh] overflow-hidden bg-[#101827] lg:h-[72vh] lg:min-h-[620px]">
+        <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 h-14 animate-pulse rounded-lg bg-white/80 motion-reduce:animate-none lg:top-3" />
+        <div className="absolute inset-x-6 top-1/3 h-48 animate-pulse rounded-lg border border-white/15 bg-white/10 motion-reduce:animate-none" />
+        <div className="absolute inset-x-10 bottom-16 h-20 animate-pulse rounded-lg bg-white/15 motion-reduce:animate-none" />
       </div>
     </PageShell>
   );

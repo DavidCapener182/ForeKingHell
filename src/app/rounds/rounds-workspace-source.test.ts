@@ -5,6 +5,17 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/rounds/rounds-workspace.tsx"), "utf8");
 
 describe("rounds desktop workspace source", () => {
+  it("renders concise mobile rows and progressively discloses older rounds", () => {
+    expect(source).toContain("export function RoundsMobileList");
+    expect(source).toContain('label="Round type"');
+    expect(source).toContain('label="Search and data filters"');
+    expect(source).toContain("const recentRounds = filteredRounds.slice(0, 10)");
+    expect(source).toContain("const olderRounds = filteredRounds.slice(10)");
+    expect(source).toContain('label="Recent round history"');
+    expect(source).toContain('label="Older round history"');
+    expect(source).toContain("href={`/rounds/${round.id}`}");
+  });
+
   it("keeps round history as a controlled desktop workbench table", () => {
     expect(source).toContain("DesktopWorkbenchControls");
     expect(source).toContain('viewKey="rounds"');

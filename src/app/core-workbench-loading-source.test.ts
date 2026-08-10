@@ -21,6 +21,8 @@ describe("core desktop workbench loading states", () => {
 
   it("keeps data-heavy desktop workbench and detail routes on loading skeletons", () => {
     const routes = [
+      { route: "analyse", variant: "analyse" },
+      { route: "analyse/compare", variant: "compare" },
       { route: "compare", variant: "compare" },
       { route: "courses", variant: "courses" },
       { route: "course-records", variant: "courseRecords" },
@@ -29,6 +31,7 @@ describe("core desktop workbench loading states", () => {
       { route: "rounds/[sessionId]", variant: "roundDetail" },
       { route: "courses/[courseId]/holes", variant: "courses" },
       { route: "courses/[courseId]/records", variant: "courseRecords" },
+      { route: "sessions", variant: "sessions" },
     ];
 
     for (const { route, variant } of routes) {
@@ -82,7 +85,9 @@ describe("core desktop workbench loading states", () => {
     for (const variant of [
       "shots",
       "rounds",
+      "sessions",
       "coach",
+      "analyse",
       "dataChat",
       "compare",
       "courses",

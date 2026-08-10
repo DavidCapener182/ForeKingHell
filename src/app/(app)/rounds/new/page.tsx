@@ -5,7 +5,7 @@ import { asc, eq, inArray, or } from "drizzle-orm";
 import { createManualRoundAction } from "@/app/rounds/actions";
 import { DesktopWorkflowLayout } from "@/components/app/desktop-workbench";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -58,70 +58,86 @@ export default async function NewRoundPage() {
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
+      <MobileAppShell className="gap-3">
+        <MobileTopBar title="Add Round" />
+        <p className="px-1 text-sm leading-5 text-muted-foreground">
+          Pick a course, enter the scorecard, then review it before saving.
+        </p>
+        <NewRoundForm
+          instanceId="mobile-round"
+          courses={courseOptions}
+          createRoundAction={createManualRoundAction}
+        />
+      </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/rounds" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Rounds
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/courses" prefetch={false}>
-            <MapPinned className="size-4" />
-            Courses
-          </Link>
-        </Button>
+      <div className="hidden gap-4 lg:grid" data-new-round-desktop-workflow>
+        <div className="flex items-center justify-between gap-4">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/rounds" prefetch={false}>
+              <ArrowLeft className="size-4" />
+              Rounds
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/courses" prefetch={false}>
+              <MapPinned className="size-4" />
+              Courses
+            </Link>
+          </Button>
+        </div>
+
+        <PageHeader
+          eyebrow={<StatusPill tone="green">Real round</StatusPill>}
+          title="Add Round"
+          description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
+          visual={
+            <PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" priority />
+          }
+          metrics={[
+            {
+              label: "Course source",
+              value: "LMWT courses",
+              detail: "Pick from saved course and tee-set records.",
+            },
+            {
+              label: "Round type",
+              value: "Real",
+              detail: "No launch-monitor shots are created.",
+            },
+            {
+              label: "Map",
+              value: "Estimated",
+              detail: "Non-putt strokes are shown only as estimated markers.",
+            },
+            {
+              label: "Handicap",
+              value: "WHS-style",
+              detail: "Uses tee rating and slope when available.",
+            },
+          ]}
+        />
+
+        <DesktopWorkflowLayout
+          steps={roundWorkflowSteps}
+          helpTitle="Round entry help"
+          helpDescription="Keep the scorecard reliable"
+          helpItems={roundWorkflowHelpItems}
+        >
+          <DataPanel>
+            <SectionHeader
+              title="Scorecard"
+              description="Enter the score and putting data you have now. You can edit every hole after saving."
+            />
+            <CardContent>
+              <NewRoundForm
+                instanceId="desktop-round"
+                courses={courseOptions}
+                createRoundAction={createManualRoundAction}
+              />
+            </CardContent>
+          </DataPanel>
+        </DesktopWorkflowLayout>
       </div>
-
-      <PageHeader
-        eyebrow={<StatusPill tone="green">Real round</StatusPill>}
-        title="Add Round"
-        description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
-        visual={
-          <PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" priority />
-        }
-        metrics={[
-          {
-            label: "Course source",
-            value: "LMWT courses",
-            detail: "Pick from saved course and tee-set records.",
-          },
-          {
-            label: "Round type",
-            value: "Real",
-            detail: "No launch-monitor shots are created.",
-          },
-          {
-            label: "Map",
-            value: "Estimated",
-            detail: "Non-putt strokes are shown only as estimated markers.",
-          },
-          {
-            label: "Handicap",
-            value: "WHS-style",
-            detail: "Uses tee rating and slope when available.",
-          },
-        ]}
-      />
-
-      <DesktopWorkflowLayout
-        steps={roundWorkflowSteps}
-        helpTitle="Round entry help"
-        helpDescription="Keep the scorecard reliable"
-        helpItems={roundWorkflowHelpItems}
-      >
-        <DataPanel>
-          <SectionHeader
-            title="Scorecard"
-            description="Enter the score and putting data you have now. You can edit every hole after saving."
-          />
-          <CardContent>
-            <NewRoundForm courses={courseOptions} createRoundAction={createManualRoundAction} />
-          </CardContent>
-        </DataPanel>
-      </DesktopWorkflowLayout>
     </PageShell>
   );
 }

@@ -1,14 +1,27 @@
 import Link from "next/link";
 import { AlertTriangle, Bot, Cable, CreditCard, ShieldCheck } from "lucide-react";
 
-import { AdminMetric, AdminNav, AdminPageHeader, AdminSection } from "@/app/admin/admin-components";
+import {
+  AdminMetric,
+  AdminMobileShell,
+  AdminNav,
+  AdminPageHeader,
+  AdminSection,
+} from "@/app/admin/admin-components";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileStatusAction } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { getAdminOperationsSnapshot } from "@/lib/admin";
@@ -26,7 +39,7 @@ const adminSystemCheckColumns: DesktopWorkbenchColumn[] = [
 
 const adminSystemCheckViews: DesktopSavedViewSuggestion[] = [
   {
-    title: "Provider health",
+    title: "Provider status",
     href: "/admin/system-checks#admin-system-checks-table",
     detail: "Review provider accounts, import jobs and failed provider imports.",
   },
@@ -44,19 +57,25 @@ const adminSystemCheckViews: DesktopSavedViewSuggestion[] = [
 
 export default async function AdminSystemChecksPage() {
   const operations = await getAdminOperationsSnapshot();
-  const providerStatus = operations.providerImportFailures > 0 ? "Needs review" : "Healthy";
-  const billingStatus = operations.billingFailures > 0 ? "Needs review" : "Clear";
+  const providerStatus =
+    operations.providerImportFailures > 0 ? "Needs review" : "No failures flagged";
+  const billingStatus = operations.billingFailures > 0 ? "Needs review" : "No failures flagged";
   const systemCheckRows = buildSystemCheckRows(operations);
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="admin" />
-      <AdminNav active="/admin/system-checks" />
+      <AdminMobileShell title="System checks" active="/admin/system-checks">
+        <AdminMobileSystemChecks operations={operations} rows={systemCheckRows} />
+      </AdminMobileShell>
 
-      <DesktopWorkbenchLayout scope="admin-system-checks">
+      <div className="hidden lg:block">
+        <AdminNav active="/admin/system-checks" />
+      </div>
+
+      <DesktopWorkbenchLayout scope="admin-system-checks" className="hidden lg:grid">
         <AdminPageHeader
           eyebrow="Admin system checks"
-          title="Provider health and platform checks"
+          title="Provider status and platform checks"
           description="Review provider imports, billing failures and operating signals before opening support or moderation work."
           action={
             <StatusPill tone={operations.providerImportFailures > 0 ? "amber" : "green"}>
@@ -180,9 +199,13 @@ export default async function AdminSystemChecksPage() {
                       {row.impact}
                     </td>
                     <td data-column="action" className="px-3 py-3">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={row.href}>{row.action}</Link>
-                      </Button>
+                      {row.href && row.action ? (
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={row.href}>{row.action}</Link>
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No live result</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -219,6 +242,86 @@ export default async function AdminSystemChecksPage() {
   );
 }
 
+function AdminMobileSystemChecks({
+  operations,
+  rows,
+}: {
+  operations: Awaited<ReturnType<typeof getAdminOperationsSnapshot>>;
+  rows: SystemCheckTableRow[];
+}) {
+  const attentionRows = rows.filter((row) => row.tone === "amber");
+  const observedRows = rows.filter((row) => row.tone !== "amber");
+
+  return (
+    <>
+      <MobileStatusAction
+        label="Checks needing review"
+        value={attentionRows.length}
+        detail={`${operations.providerImportFailures} failed imports · ${operations.billingFailures} billing failures`}
+        action={
+          <Button asChild className="min-h-11">
+            <Link href="/providers#provider-jobs">Provider jobs</Link>
+          </Button>
+        }
+      />
+
+      <section className="grid gap-2" aria-label="System checks requiring attention">
+        <IOSSectionHeader
+          title="Review first"
+          description="Counts that can affect data confidence or account access"
+        />
+        {attentionRows.length > 0 ? (
+          <MobileSystemCheckRows rows={attentionRows} />
+        ) : (
+          <IOSGroupedList label="System checks with no current failures">
+            <IOSListRow
+              label="No operational failures flagged"
+              detail="The snapshot found no failed provider imports or billing failure rows."
+              status={<IOSInlineStatus label="No action required" tone="positive" />}
+            />
+          </IOSGroupedList>
+        )}
+      </section>
+
+      <IOSDisclosureGroup
+        label="Observed platform signals"
+        items={[
+          {
+            value: "observed-platform-signals",
+            title: "Observed platform signals",
+            summary: observedRows.length,
+            description: "Provider, social, partner, AI and verification context",
+            contentClassName: "px-0 pb-0 pt-0",
+            content: <MobileSystemCheckRows rows={observedRows} />,
+          },
+        ]}
+      />
+    </>
+  );
+}
+
+function MobileSystemCheckRows({ rows }: { rows: SystemCheckTableRow[] }) {
+  return (
+    <IOSGroupedList label="Admin system check rows">
+      {rows.map((row) => (
+        <IOSListRow
+          key={row.id}
+          label={row.label}
+          value={row.count}
+          detail={`${row.detail} ${row.impact}`}
+          href={row.href}
+          status={
+            <IOSInlineStatus
+              label={row.status}
+              tone={row.tone === "amber" ? "attention" : row.tone === "green" ? "positive" : "info"}
+            />
+          }
+        />
+      ))}
+    </IOSGroupedList>
+  );
+}
+
 type SystemCheckTableRow = {
   id: string;
   label: string;
@@ -228,8 +331,8 @@ type SystemCheckTableRow = {
   tone: Tone;
   count: string;
   impact: string;
-  href: string;
-  action: string;
+  href?: string;
+  action?: string;
 };
 
 function buildSystemCheckRows(
@@ -256,8 +359,18 @@ function buildSystemCheckRows(
       label: "Import jobs",
       detail: "Provider and source-file imports tracked by the platform.",
       area: "Provider",
-      status: operations.providerImportFailures > 0 ? "Needs review" : "Tracked",
-      tone: operations.providerImportFailures > 0 ? "amber" : "green",
+      status:
+        operations.providerImportFailures > 0
+          ? "Needs review"
+          : operations.importJobs > 0
+            ? "No failures flagged"
+            : "No jobs",
+      tone:
+        operations.providerImportFailures > 0
+          ? "amber"
+          : operations.importJobs > 0
+            ? "green"
+            : "slate",
       count: operations.importJobs.toLocaleString("en-GB"),
       impact:
         operations.providerImportFailures > 0
@@ -339,16 +452,14 @@ function buildSystemCheckRows(
       action: "Data chat",
     },
     {
-      id: "rls-runbook",
-      label: "RLS/test status",
-      detail: "Use the CI and Supabase runbooks before changing access controls.",
+      id: "verification-evidence",
+      label: "Verification evidence",
+      detail: "CI, RLS and automated test results are not queried by this operations snapshot.",
       area: "Access",
-      status: "Runbook ready",
-      tone: "green",
-      count: "Runbook",
-      impact: "Do not change access controls without the runbook and test gate.",
-      href: "/admin",
-      action: "Admin overview",
+      status: "No live verification result",
+      tone: "slate",
+      count: "--",
+      impact: "Use current CI and database-check evidence before changing access controls.",
     },
   ];
 }

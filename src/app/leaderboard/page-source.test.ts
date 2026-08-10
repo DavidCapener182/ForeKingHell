@@ -76,3 +76,19 @@ describe("leaderboard desktop workspace source", () => {
     }
   });
 });
+
+describe("leaderboard mobile state", () => {
+  it("exposes the monthly board and scopes shot filters to player boards", () => {
+    expect(source).toContain('{ key: "monthly", label: "Monthly"');
+    expect(source).toContain("const showMobilePlayerFilters = isPlayerLeaderboardTab(activeTab);");
+    expect(source).toContain("showMobilePlayerFilters ? (");
+    expect(source).not.toContain('<option value="mixed">Mixed</option>');
+  });
+
+  it("uses an in-page mobile full leaderboard instead of a desktop-only anchor", () => {
+    expect(source).toContain("MobilePlayerLeaderboardDisclosure");
+    expect(source).not.toContain('viewAllHref="#full-leaderboard"');
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden sm:contents"');
+  });
+});

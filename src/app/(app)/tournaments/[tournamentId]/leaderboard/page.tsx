@@ -8,5 +8,5 @@ export default async function TournamentLeaderboardRoute({
   params,
 }: TournamentLeaderboardRouteProps) {
   const { tournamentId } = await params;
-  redirect(`/tournaments/${tournamentId}#standings`);
+  redirect(`/tournaments/${tournamentId}?tab=board`);
 }

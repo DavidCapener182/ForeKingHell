@@ -6,7 +6,7 @@ const source = readFileSync(join(process.cwd(), "src/app/rounds/new/new-round-fo
 
 describe("new round scorecard entry grid", () => {
   it("keeps desktop hole entry as a keyboard-friendly row grid", () => {
-    expect(source).toContain('id="scorecard-entry-grid"');
+    expect(source).toContain("id={scorecardGridId}");
     expect(source).toContain("data-scorecard-entry-grid");
     expect(source).toContain('aria-label="Keyboard-friendly scorecard hole entry grid"');
     expect(source).toContain("<fieldset");
@@ -32,5 +32,18 @@ describe("new round scorecard entry grid", () => {
     ]) {
       expect(source).toContain(field);
     }
+  });
+
+  it("requires a complete scorecard for a completed round and keeps phone controls tappable", () => {
+    expect(source).toContain("completedScoreCount");
+    expect(source).toContain("missingScoreCount");
+    expect(source).toContain("completeRoundNeedsScores");
+    expect(source).toContain("id={reviewCompletenessId}");
+    expect(source).toContain('role={completeRoundNeedsScores ? "alert" : "status"}');
+    expect(source).toContain("disabled={completeRoundNeedsScores}");
+    expect(source).toContain('required={roundStatus === "complete"}');
+    expect(source).toContain("change the round status to In progress");
+    expect(source).toContain("h-11 rounded-xl");
+    expect(source).toContain("min-h-11 shrink-0");
   });
 });

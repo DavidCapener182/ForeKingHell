@@ -31,7 +31,22 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileRouteHeader, NativeListSection } from "@/components/mobile-sports";
+import {
+  BottomSheet,
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTopBar,
+  NativeListSection,
+} from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+  type IOSDisclosureItem,
+} from "@/components/app/ios-mobile";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +81,8 @@ type FriendGraphRow = {
   status: FriendGraphStatus;
   requestId?: string;
 };
+
+type FriendsPageData = Awaited<ReturnType<typeof getFriendsPageData>>;
 
 const friendGraphColumns: DesktopWorkbenchColumn[] = [
   { id: "golfer", label: "Golfer", locked: true },
@@ -125,9 +142,36 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Social" group="social" activeKey="friends" />
+      <MobileAppShell>
+        <MobileTopBar title="Friends" />
+        <MobileRouteTabs group="social" activeKey="friends" />
+        <MobileStatusAction
+          label="Connections"
+          value={`${data.friends.length} ${data.friends.length === 1 ? "friend" : "friends"}`}
+          detail={`${data.incomingRequests.length} incoming · ${data.outgoingRequests.length} sent`}
+          action={
+            <BottomSheet label="Find" title="Find friends">
+              <MobileFriendSearch data={data} query={query} />
+            </BottomSheet>
+          }
+        />
 
-      <DesktopWorkbenchLayout scope="friends">
+        {params?.request || params?.friend || params?.user ? (
+          <IOSGroupedList label="Friend update status">
+            <IOSListRow
+              label="Friends updated"
+              detail="Your relationship and visibility state has been refreshed."
+              status={<IOSInlineStatus label="Saved" tone="positive" />}
+            />
+          </IOSGroupedList>
+        ) : null}
+
+        <MobileFriendRequests rows={data.incomingRequests} />
+        <MobileFriendList profiles={data.friends} />
+        <MobileFriendDetails data={data} profileUrl={profileUrl} />
+      </MobileAppShell>
+
+      <DesktopWorkbenchLayout scope="friends" className="hidden lg:grid">
         <div className="hidden items-center justify-between gap-3 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
@@ -381,6 +425,390 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+function MobileFriendRequests({ rows }: { rows: FriendsPageData["incomingRequests"] }) {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const primaryRows = rows.slice(0, 3);
+  const olderRows = rows.slice(3);
+
+  return (
+    <section className="grid gap-2" aria-label="Incoming friend requests">
+      <IOSSectionHeader
+        title="Requests"
+        description={`${rows.length} ${rows.length === 1 ? "person is" : "people are"} waiting for your response`}
+      />
+      <MobileFriendRequestRows rows={primaryRows} />
+      {olderRows.length > 0 ? (
+        <IOSDisclosureGroup
+          label="More incoming friend requests"
+          items={[
+            {
+              value: "more-friend-requests",
+              title: "More requests",
+              summary: olderRows.length,
+              description: "Additional people waiting for a response",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: <MobileFriendRequestRows rows={olderRows} />,
+            },
+          ]}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function MobileFriendRequestRows({ rows }: { rows: FriendsPageData["incomingRequests"] }) {
+  return (
+    <IOSGroupedList label="Incoming friend requests">
+      {rows.map((row) => (
+        <IOSListRow
+          key={row.request.id}
+          label={row.profile.displayName}
+          detail={`@${row.profile.username}`}
+          leading={
+            <span className="hidden min-[360px]:block">
+              <SocialAvatar
+                displayName={row.profile.displayName}
+                username={row.profile.username}
+                avatarUrl={row.profile.avatarUrl}
+                href={`/profile/${row.profile.username}`}
+                size="sm"
+              />
+            </span>
+          }
+          status={<IOSInlineStatus label="Requested you" tone="attention" />}
+          className="max-[359px]:gap-2 max-[359px]:px-3"
+          trailing={
+            <div className="flex items-center gap-1">
+              <form action={acceptFriendRequestAction}>
+                <input type="hidden" name="requestId" value={row.request.id} />
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="size-11 rounded-full"
+                  aria-label={`Accept ${row.profile.displayName}'s friend request`}
+                >
+                  <Check className="size-4" />
+                </Button>
+              </form>
+              <form action={declineFriendRequestAction}>
+                <input type="hidden" name="requestId" value={row.request.id} />
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 rounded-full"
+                  aria-label={`Decline ${row.profile.displayName}'s friend request`}
+                >
+                  <X className="size-4" />
+                </Button>
+              </form>
+            </div>
+          }
+        />
+      ))}
+    </IOSGroupedList>
+  );
+}
+
+function MobileFriendList({ profiles }: { profiles: FriendsPageData["friends"] }) {
+  return (
+    <section className="grid gap-2" aria-label="Friends">
+      <IOSSectionHeader
+        title="Friends"
+        description={`${profiles.length} connected ${profiles.length === 1 ? "golfer" : "golfers"}`}
+      />
+      <IOSGroupedList label="Connected friends">
+        {profiles.length > 0 ? (
+          profiles.map((profile) => (
+            <IOSListRow
+              key={profile.userId}
+              label={profile.displayName}
+              detail={`@${profile.username}${profile.homeCourse ? ` · ${profile.homeCourse}` : ""}`}
+              value={profile.handicapBand ?? undefined}
+              href={`/profile/${profile.username}`}
+              leading={
+                <SocialAvatar
+                  displayName={profile.displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatarUrl}
+                  size="sm"
+                />
+              }
+              status={<IOSInlineStatus label="Friend" tone="positive" />}
+            />
+          ))
+        ) : (
+          <IOSListRow
+            label="No friends yet"
+            detail="Find a public profile or share your invite link to get started."
+          />
+        )}
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileFriendSearch({ data, query }: { data: FriendsPageData; query: string }) {
+  return (
+    <div className="grid gap-4">
+      <form className="grid gap-3" action="/friends">
+        <label className="grid gap-1 text-sm font-medium">
+          Username
+          <Input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder="Search public profiles"
+            autoCapitalize="none"
+            autoCorrect="off"
+            className="h-11"
+          />
+        </label>
+        <Button type="submit" className="min-h-11">
+          <Search className="size-4" />
+          Search
+        </Button>
+      </form>
+      {query ? (
+        <IOSGroupedList label="Friend search results">
+          {data.searchResults.length > 0 ? (
+            data.searchResults.map((profile) => (
+              <IOSListRow
+                key={profile.userId}
+                label={profile.displayName}
+                detail={`@${profile.username}`}
+                leading={
+                  <SocialAvatar
+                    displayName={profile.displayName}
+                    username={profile.username}
+                    avatarUrl={profile.avatarUrl}
+                    href={`/profile/${profile.username}`}
+                    size="sm"
+                  />
+                }
+                trailing={<SearchResultAction profile={profile} />}
+              />
+            ))
+          ) : (
+            <IOSListRow label="No public match" detail={`No visible profile matched “${query}”.`} />
+          )}
+        </IOSGroupedList>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileFriendDetails({ data, profileUrl }: { data: FriendsPageData; profileUrl: string }) {
+  const items: IOSDisclosureItem[] = [];
+
+  if (data.outgoingRequests.length > 0) {
+    items.push({
+      value: "sent-requests",
+      title: "Sent requests",
+      summary: data.outgoingRequests.length,
+      description: "Requests still awaiting a response",
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Sent friend requests" className="border-0">
+          {data.outgoingRequests.map((row) => (
+            <IOSListRow
+              key={row.request.id}
+              label={row.profile.displayName}
+              detail={`@${row.profile.username}`}
+              leading={
+                <SocialAvatar
+                  displayName={row.profile.displayName}
+                  username={row.profile.username}
+                  avatarUrl={row.profile.avatarUrl}
+                  href={`/profile/${row.profile.username}`}
+                  size="sm"
+                />
+              }
+              trailing={
+                <form action={cancelFriendRequestAction}>
+                  <input type="hidden" name="requestId" value={row.request.id} />
+                  <Button type="submit" variant="outline" className="min-h-11">
+                    Cancel
+                  </Button>
+                </form>
+              }
+            />
+          ))}
+        </IOSGroupedList>
+      ),
+    });
+  }
+
+  items.push({
+    value: "manage-friends",
+    title: "Manage friends",
+    summary: data.friends.length,
+    description: "Remove or block a connected golfer",
+    contentClassName: "px-0 pb-0 pt-0",
+    content: (
+      <IOSGroupedList label="Manage connected friends" className="border-0">
+        {data.friends.length > 0 ? (
+          data.friends.map((profile) => (
+            <IOSListRow
+              key={profile.userId}
+              label={profile.displayName}
+              detail={`@${profile.username}`}
+              leading={
+                <SocialAvatar
+                  displayName={profile.displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatarUrl}
+                  href={`/profile/${profile.username}`}
+                  size="sm"
+                />
+              }
+              trailing={
+                <div className="flex items-center gap-1">
+                  <form action={removeFriendAction}>
+                    <input type="hidden" name="friendUserId" value={profile.userId} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 rounded-full"
+                      aria-label={`Remove ${profile.displayName} as a friend`}
+                    >
+                      <UserMinus className="size-4" />
+                    </Button>
+                  </form>
+                  <form action={blockUserAction} data-friend-block-form>
+                    <input type="hidden" name="blockedUserId" value={profile.userId} />
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 rounded-full text-destructive"
+                      aria-label={`Block ${profile.displayName}`}
+                    >
+                      <Ban className="size-4" />
+                    </Button>
+                  </form>
+                </div>
+              }
+            />
+          ))
+        ) : (
+          <IOSListRow label="No connected friends to manage" />
+        )}
+      </IOSGroupedList>
+    ),
+  });
+
+  items.push({
+    value: "suggested-friends",
+    title: "Suggested golfers",
+    summary: data.suggestedProfiles.length,
+    description: "Public profiles outside your friend graph",
+    contentClassName: "px-0 pb-0 pt-0",
+    content: (
+      <IOSGroupedList label="Suggested golfers" className="border-0">
+        {data.suggestedProfiles.length > 0 ? (
+          data.suggestedProfiles.map((profile) => (
+            <IOSListRow
+              key={profile.userId}
+              label={profile.displayName}
+              detail={`@${profile.username}`}
+              leading={
+                <SocialAvatar
+                  displayName={profile.displayName}
+                  username={profile.username}
+                  avatarUrl={profile.avatarUrl}
+                  href={`/profile/${profile.username}`}
+                  size="sm"
+                />
+              }
+              trailing={<SearchResultAction profile={profile} />}
+            />
+          ))
+        ) : (
+          <IOSListRow label="No public suggestions yet" />
+        )}
+      </IOSGroupedList>
+    ),
+  });
+
+  items.push({
+    value: "invite",
+    title: "Invite a friend",
+    summary: "QR or link",
+    description: "Share your real public profile address",
+    content: (
+      <div className="grid gap-3">
+        <div className="rounded-xl border bg-background p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`/friends/qr/${data.profile.username}`}
+            alt={`QR invite for @${data.profile.username}`}
+            className="mx-auto aspect-square w-full max-w-40"
+          />
+        </div>
+        <code className="break-all rounded-lg bg-muted px-3 py-2 text-xs">{profileUrl}</code>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href={profileUrl} prefetch={false}>
+            <Copy className="size-4" />
+            Open invite page
+          </Link>
+        </Button>
+      </div>
+    ),
+  });
+
+  items.push({
+    value: "friend-activity",
+    title: "Friend activity",
+    summary: "Open",
+    description: "Feed, leaderboard and challenge views",
+    contentClassName: "px-0 pb-0 pt-0",
+    content: (
+      <IOSGroupedList label="Friend activity shortcuts" className="border-0">
+        <IOSListRow label="Friends feed" href="/feed?filter=friends" icon={Users} />
+        <IOSListRow label="Friends leaderboard" href="/leaderboard?tab=friends" icon={Trophy} />
+        <IOSListRow label="Challenges" href="/challenges" icon={Award} />
+      </IOSGroupedList>
+    ),
+  });
+
+  if (data.blockedUsers.length > 0) {
+    items.push({
+      value: "blocked-users",
+      title: "Blocked users",
+      summary: data.blockedUsers.length,
+      description: "Profiles hidden from friend-scoped activity",
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Blocked users" className="border-0">
+          {data.blockedUsers.map((profile) => (
+            <IOSListRow
+              key={profile.userId}
+              label={profile.displayName}
+              detail={`@${profile.username}`}
+              destructive
+              trailing={
+                <form action={unblockUserAction}>
+                  <input type="hidden" name="blockedUserId" value={profile.userId} />
+                  <Button type="submit" variant="outline" className="min-h-11">
+                    Unblock
+                  </Button>
+                </form>
+              }
+            />
+          ))}
+        </IOSGroupedList>
+      ),
+    });
+  }
+
+  return <IOSDisclosureGroup label="Friend details" items={items} />;
 }
 
 function FriendGraphTable({ rows, query }: { rows: FriendGraphRow[]; query: string }) {

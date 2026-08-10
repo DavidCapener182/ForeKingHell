@@ -30,7 +30,13 @@ import {
   StatusPill,
 } from "@/components/premium";
 import {
-  CompactLeaderboard,
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
+import {
+  BottomSheet,
   MobileAppShell,
   MobileStatusAction,
   MobileTabBar,
@@ -105,13 +111,6 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
       <MobileAppShell>
         <MobileTopBar
           title={data.challenge.title}
-          leading={
-            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
-              <Link href="/challenges" prefetch={false} aria-label="Challenges">
-                <ArrowLeft className="size-5" />
-              </Link>
-            </Button>
-          }
           actions={<Badge variant="outline">{data.challenge.templateName}</Badge>}
         />
         <MobileStatusAction
@@ -140,10 +139,12 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             )
           }
         />
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-3">
-          <p className="text-sm font-semibold text-[#0B7A3B]">Challenge</p>
+        <section className="ios-grouped-list p-4">
+          <p className="text-sm font-semibold text-primary">Challenge</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-normal">{data.challenge.title}</h2>
-          <p className="mt-1 text-sm leading-5 text-[#6B7280]">{data.challenge.rulesSummary}</p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            {data.challenge.rulesSummary}
+          </p>
         </section>
         <MobileTabBar
           activeKey={activeTab}
@@ -154,93 +155,162 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             { key: "chat", label: "Chat", href: `/challenges/${data.challenge.id}?tab=chat` },
           ]}
         />
+        {query?.invite ? (
+          <IOSInlineStatus label="Invite sent" tone="positive" className="px-1" />
+        ) : null}
         {activeTab === "rules" ? (
           <NativeListSection title="Rules" description={data.challenge.rulesSummary}>
-            {data.challenge.rulesBullets.map((rule) => (
-              <div
-                key={rule}
-                className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm leading-5 text-[#050505]"
-              >
-                {rule}
-              </div>
-            ))}
+            <IOSGroupedList label="Challenge rules">
+              {data.challenge.rulesBullets.map((rule) => (
+                <IOSListRow
+                  key={rule}
+                  label={rule}
+                  leading={<ShieldCheck className="size-5 shrink-0 text-primary" aria-hidden />}
+                />
+              ))}
+            </IOSGroupedList>
           </NativeListSection>
         ) : activeTab === "shots" ? (
           <NativeListSection
             title="Imported shots"
             description="This board is calculated from qualifying imported shots. New imports update it automatically."
           >
-            {data.attempts.slice(0, 8).map(({ attempt, profile }) => (
-              <div
-                key={attempt.id}
-                className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm"
-              >
-                <Link
-                  href={`/profile/${profile.username}`}
-                  prefetch={false}
-                  className="font-semibold hover:underline"
-                >
-                  {profile.displayName}
-                </Link>
-                <p className="mt-1 text-[#6B7280]">
-                  {attemptScoreLabel(attempt)} · {attempt.verificationLabel}
-                </p>
-                <p className="mt-1 text-xs text-[#6B7280]">
-                  {attemptMetadataLabel(attempt.metadataJson)}
-                </p>
-              </div>
-            ))}
-            {data.attempts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-3 text-sm text-[#6B7280]">
-                No qualifying imported shots yet. Import shots during the challenge window and they
-                will appear here automatically.
-              </div>
+            <IOSGroupedList label="Recent qualifying challenge shots">
+              {data.attempts.length > 0 ? (
+                data.attempts
+                  .slice(0, 8)
+                  .map(({ attempt, profile }) => (
+                    <IOSListRow
+                      key={attempt.id}
+                      label={profile.displayName}
+                      value={attemptScoreLabel(attempt)}
+                      detail={`${attempt.verificationLabel} · ${attemptMetadataLabel(attempt.metadataJson)}`}
+                      href={`/profile/${profile.username}`}
+                    />
+                  ))
+              ) : (
+                <IOSListRow
+                  label="No qualifying imported shots yet"
+                  detail="Import shots during the challenge window and they will appear automatically."
+                />
+              )}
+            </IOSGroupedList>
+            {data.attempts.length > 8 ? (
+              <IOSDisclosureGroup
+                label="Older challenge attempts"
+                items={[
+                  {
+                    value: "older-attempts",
+                    title: "Older qualifying shots",
+                    summary: `${data.attempts.length - 8}`,
+                    content: (
+                      <IOSGroupedList label="Older qualifying challenge shots">
+                        {data.attempts.slice(8).map(({ attempt, profile }) => (
+                          <IOSListRow
+                            key={attempt.id}
+                            label={profile.displayName}
+                            value={attemptScoreLabel(attempt)}
+                            detail={`${attempt.verificationLabel} · ${attemptMetadataLabel(attempt.metadataJson)}`}
+                            href={`/profile/${profile.username}`}
+                          />
+                        ))}
+                      </IOSGroupedList>
+                    ),
+                  },
+                ]}
+              />
             ) : null}
           </NativeListSection>
         ) : activeTab === "chat" ? (
           <NativeListSection title="Chat">
-            {data.comments.map((comment) => (
-              <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                <Link
-                  href={`/profile/${comment.profile.username}`}
-                  prefetch={false}
-                  className="font-semibold hover:underline"
-                >
-                  {comment.profile.displayName}
-                </Link>
-                <p className="mt-1 text-[#6B7280]">{comment.body}</p>
-              </div>
-            ))}
+            <IOSGroupedList label="Challenge comments">
+              {data.comments.length > 0 ? (
+                data.comments.map((comment) => (
+                  <IOSListRow
+                    key={comment.id}
+                    label={comment.profile.displayName}
+                    detail={comment.body}
+                    href={`/profile/${comment.profile.username}`}
+                  />
+                ))
+              ) : (
+                <IOSListRow
+                  label="No comments yet"
+                  detail="Start the challenge conversation below."
+                />
+              )}
+            </IOSGroupedList>
             <form action={addChallengeCommentAction} className="grid gap-2">
               <input type="hidden" name="challengeId" value={data.challenge.id} />
-              <Input name="body" placeholder="Add a comment" className="h-11 rounded-lg bg-white" />
-              <Button type="submit" variant="outline" className="rounded-full">
+              <Input
+                name="body"
+                placeholder="Add a comment"
+                className="h-11 rounded-xl bg-card text-base"
+              />
+              <Button type="submit" variant="outline" className="min-h-11 rounded-xl">
                 Comment
               </Button>
             </form>
           </NativeListSection>
         ) : (
-          <NativeListSection title="Podium">
-            <CompactLeaderboard
-              current={
-                viewerResult
-                  ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}`
-                  : "No qualifying imported shots yet"
-              }
-              items={podium.map((row) => ({
-                rank: row.result.rank,
-                name: row.profile.displayName,
-                href: `/profile/${row.profile.username}`,
-                value: row.result.scoreLabel,
-                detail: row.verificationLabel,
-              }))}
-              viewAllHref={`/challenges/${data.challenge.id}#board`}
-            />
+          <NativeListSection
+            title="Leaderboard"
+            description={
+              viewerResult
+                ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}`
+                : "No qualifying imported shots yet"
+            }
+          >
+            <IOSGroupedList label="Challenge podium">
+              {podium.length > 0 ? (
+                podium.map((row) => (
+                  <IOSListRow
+                    key={row.result.userId}
+                    label={`${row.result.rank}. ${row.profile.displayName}`}
+                    value={row.result.scoreLabel}
+                    detail={row.verificationLabel}
+                    href={`/profile/${row.profile.username}`}
+                  />
+                ))
+              ) : (
+                <IOSListRow
+                  label="No leaderboard result yet"
+                  detail="Qualifying imported shots will populate this board automatically."
+                />
+              )}
+            </IOSGroupedList>
+            {data.results.length > 3 ? (
+              <IOSDisclosureGroup
+                label="Full challenge leaderboard"
+                items={[
+                  {
+                    value: "full-board",
+                    title: "Full leaderboard",
+                    summary: `${data.results.length}`,
+                    description: "Every qualifying result",
+                    content: (
+                      <IOSGroupedList label="All challenge leaderboard results">
+                        {data.results.map((row) => (
+                          <IOSListRow
+                            key={row.result.userId}
+                            label={`${row.result.rank}. ${row.profile.displayName}`}
+                            value={row.result.scoreLabel}
+                            detail={row.verificationLabel}
+                            href={`/profile/${row.profile.username}`}
+                          />
+                        ))}
+                      </IOSGroupedList>
+                    ),
+                  },
+                ]}
+              />
+            ) : null}
+            <ChallengeInviteSheet data={data} />
           </NativeListSection>
         )}
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="challenge-detail" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="challenge-detail" className="hidden lg:grid">
         <div className="flex items-center justify-between gap-3">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/challenges" prefetch={false}>
@@ -509,6 +579,58 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
 }
 
 type PodiumRow = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>["results"][number];
+
+function ChallengeInviteSheet({ data }: { data: ChallengeDetail }) {
+  return (
+    <BottomSheet
+      label={
+        <>
+          <Send className="size-4" aria-hidden />
+          Invite a friend
+        </>
+      }
+      title="Invite to this challenge"
+      triggerClassName="min-h-11 w-full rounded-xl border border-border bg-card text-foreground"
+    >
+      {data.friendOptions.length > 0 ? (
+        <form
+          action={inviteFriendToChallengeAction}
+          className="grid gap-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        >
+          <input type="hidden" name="challengeId" value={data.challenge.id} />
+          <label className="grid gap-1.5 text-sm font-semibold">
+            Friend
+            <select
+              name="inviteeUserId"
+              className="min-h-11 rounded-xl border bg-card px-3 text-base"
+            >
+              {data.friendOptions.map((friend) => (
+                <option key={friend.userId} value={friend.userId}>
+                  {friend.displayName} (@{friend.username})
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" className="min-h-11 rounded-xl">
+            <Send className="size-4" aria-hidden />
+            Send invitation
+          </Button>
+        </form>
+      ) : (
+        <div className="grid gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Add friends before sending a private challenge invitation.
+          </p>
+          <Button asChild variant="outline" className="min-h-11 rounded-xl">
+            <Link href="/friends" prefetch={false}>
+              Open Friends
+            </Link>
+          </Button>
+        </div>
+      )}
+    </BottomSheet>
+  );
+}
 
 function ChallengeCommandTables({
   data,

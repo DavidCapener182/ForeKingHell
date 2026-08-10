@@ -2,6 +2,12 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays, Clock3, Globe2, Trophy } from "lucide-react";
 
 import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
+import {
   EventHeroCard,
   MobileAppShell,
   MobileRouteTabs,
@@ -48,7 +54,7 @@ type TournamentListItem = Awaited<ReturnType<typeof getTournamentsPageData>>["to
 type TournamentHubTab = "live" | "mine" | "majors" | "past";
 
 type TournamentsPageProps = {
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<{ tab?: string; courseId?: string }>;
 };
 
 const tournamentHubColumns: DesktopWorkbenchColumn[] = [
@@ -91,13 +97,31 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
   const params = await searchParams;
   const [data, featureData] = await Promise.all([getTournamentsPageData(), getFeatureIdeasData()]);
   const activeTab = parseTournamentHubTab(params?.tab);
+  const courseId = params?.courseId?.trim() || null;
+  const courseFilter = courseId
+    ? (data.courseOptions.find((course) => course.courseId === courseId) ?? null)
+    : null;
+  const visibleTournaments = courseId
+    ? data.tournaments.filter((tournament) => tournament.courseId === courseId)
+    : data.tournaments;
+  const visibleEntries = courseId
+    ? data.myEntries.filter((tournament) => tournament.courseId === courseId)
+    : data.myEntries;
   const scheduledEvents = [
     data.scheduled.daily,
     data.scheduled.weekly,
     data.scheduled.monthly,
-  ].filter((event): event is TournamentListItem => Boolean(event));
-  const customEvents = data.tournaments.filter((tournament) => !tournament.scheduleKind);
-  const tournamentBoardEvents = filterTournamentHubEvents(data.tournaments, activeTab);
+  ].filter(
+    (event): event is TournamentListItem =>
+      Boolean(event) && (!courseId || event?.courseId === courseId),
+  );
+  const customEvents = visibleTournaments.filter((tournament) => !tournament.scheduleKind);
+  const tournamentBoardEvents = filterTournamentHubEvents(visibleTournaments, activeTab);
+  const mobileFeatured = tournamentBoardEvents[0] ?? null;
+  const mobileRemainingEvents = tournamentBoardEvents.slice(1);
+  const mobileStatus = tournamentMobileStatus(activeTab, tournamentBoardEvents);
+  const proofItems = buildTournamentProofItems(mobileFeatured);
+  const nextEntryWithRoundDue = visibleEntries.find((event) => event.viewerRoundsDue > 0) ?? null;
   const reminderSteps = [
     {
       title: "Daily round",
@@ -118,98 +142,86 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
     {
       title: "Monthly major",
       detail: data.scheduled.monthly
-        ? "Four-round major status stays pinned."
+        ? `${data.scheduled.monthly.roundCount} round${data.scheduled.monthly.roundCount === 1 ? "" : "s"} scheduled at ${data.scheduled.monthly.courseName}.`
         : "No monthly major scheduled.",
       href: data.scheduled.monthly ? `/tournaments/${data.scheduled.monthly.id}` : "/tournaments",
       status: data.scheduled.monthly ? ("ready" as const) : ("optional" as const),
     },
     {
       title: "Proof due",
-      detail: "Attach scorecard and source before deadline.",
-      href: "/rounds",
-      status: "needed" as const,
+      detail: nextEntryWithRoundDue
+        ? `${nextEntryWithRoundDue.viewerRoundsDue} round${nextEntryWithRoundDue.viewerRoundsDue === 1 ? "" : "s"} still due in ${nextEntryWithRoundDue.title}.`
+        : visibleEntries.length > 0
+          ? "All required rounds are submitted in your visible entries."
+          : "Enter an event before submission proof is required.",
+      href: nextEntryWithRoundDue
+        ? `/tournaments/${nextEntryWithRoundDue.id}?tab=submit`
+        : "/tournaments?tab=mine",
+      status: nextEntryWithRoundDue
+        ? ("needed" as const)
+        : visibleEntries.length > 0
+          ? ("ready" as const)
+          : ("optional" as const),
     },
     {
       title: "Entry status",
-      detail: `${data.myEntries.length} event${data.myEntries.length === 1 ? "" : "s"} entered.`,
-      href: "/tournaments?tab=mine",
-      status: data.myEntries.length > 0 ? ("ready" as const) : ("optional" as const),
+      detail: `${visibleEntries.length} event${visibleEntries.length === 1 ? "" : "s"} entered.`,
+      href: tournamentHubHref("mine", courseId),
+      status: visibleEntries.length > 0 ? ("ready" as const) : ("optional" as const),
     },
   ];
-  const proofItems = [
-    {
-      label: "Rapsodo import",
-      detail: "Attach the session or cloud sync behind the entered round.",
-      status: "ready" as const,
-      href: "/import",
-    },
-    {
-      label: "Scorecard screenshot",
-      detail: "Upload card evidence for event review and tie-break checks.",
-      status: "needed" as const,
-      href: "/rounds",
-    },
-    {
-      label: "Course match",
-      detail: "Tournament course, imported course and scorecard course must agree.",
-      status: "ready" as const,
-      href: "/courses",
-    },
-    {
-      label: "Date match",
-      detail: "Round date must sit inside the event window.",
-      status: "needed" as const,
-    },
-    {
-      label: "Tee match",
-      detail: "Tee set must match the event setup before the score counts.",
-      status: "needed" as const,
-    },
-  ];
-
   return (
     <PageShell>
       <MobileAppShell>
-        <MobileTopBar title="Tournaments" />
+        <MobileTopBar title={courseId ? "Course tournaments" : "Tournaments"} />
         <MobileRouteTabs group="play" activeKey="tournaments" />
         <MobileTabBar
           activeKey={activeTab}
           className="-mt-4"
           tabs={[
-            { key: "live", label: "Live", href: "/tournaments" },
-            { key: "mine", label: "My Events", href: "/tournaments?tab=mine" },
-            { key: "majors", label: "Majors", href: "/tournaments?tab=majors" },
-            { key: "past", label: "Past", href: "/tournaments?tab=past" },
+            { key: "live", label: "Live", href: tournamentHubHref("live", courseId) },
+            { key: "mine", label: "My Events", href: tournamentHubHref("mine", courseId) },
+            { key: "majors", label: "Majors", href: tournamentHubHref("majors", courseId) },
+            { key: "past", label: "Past", href: tournamentHubHref("past", courseId) },
           ]}
         />
+        {courseId ? (
+          <IOSGroupedList label="Applied tournament filters">
+            <IOSListRow
+              label="Course filter"
+              value={courseFilter?.courseName ?? "Selected course"}
+              detail="Only tournaments attached to this course are shown."
+              href="/tournaments"
+              ariaLabel="Clear course tournament filter"
+            />
+          </IOSGroupedList>
+        ) : null}
         <MobileStatusAction
-          label="Live event schedule"
-          value={`${data.tournaments.length} events`}
-          detail={`${data.myEntries.length} entered · Rapsodo + scorecard proof`}
+          label={mobileStatus.label}
+          value={mobileStatus.value}
+          detail={mobileStatus.detail}
           action={
-            data.featured ? (
+            mobileFeatured ? (
               <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <Link href={`/tournaments/${data.featured.id}`} prefetch={false}>
-                  Enter
+                <Link href={`/tournaments/${mobileFeatured.id}`} prefetch={false}>
+                  {tournamentActionLabel(mobileFeatured)}
                 </Link>
               </Button>
             ) : null
           }
         />
-        {data.featured ? (
+        {mobileFeatured ? (
           <EventHeroCard
-            eyebrow={data.featured.scheduleEyebrow ?? "Live event"}
-            title={
-              data.featured.scheduleKind === "monthly" ? "Spring Major Week" : data.featured.title
-            }
-            description={`${data.featured.roundCount} rounds · ${data.featured.directRapsodoRequired ? "Gold proof required" : "Silver proof accepted"}`}
-            href={`/tournaments/${data.featured.id}`}
-            actionLabel={data.featured.viewerEntered ? "Open" : "Enter"}
+            eyebrow={mobileFeatured.scheduleEyebrow ?? tournamentTypeLabel(mobileFeatured)}
+            title={mobileFeatured.title}
+            description={`${mobileFeatured.courseName} · ${mobileFeatured.teeSetName} · ${tournamentEvidenceSummary(mobileFeatured)}`}
+            href={`/tournaments/${mobileFeatured.id}`}
+            actionLabel={tournamentActionLabel(mobileFeatured)}
             media={
               <PageArtwork
                 variant="tourCover"
                 alt=""
-                cropKey={data.featured.id}
+                cropKey={mobileFeatured.id}
                 className="block h-full min-h-0 rounded-none"
                 sizes="(min-width: 640px) 640px, calc(100vw - 2rem)"
                 priority
@@ -217,59 +229,76 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             }
             meta={
               <span>
-                {data.featured.leader ? `Leader: ${data.featured.leader.displayName} · ` : ""}
-                {data.featured.entryCount} players
+                {mobileFeatured.leader
+                  ? `Leader: ${mobileFeatured.leader.displayName} · ${mobileFeatured.leader.grossTotal}`
+                  : "No accepted score yet"}
+                {` · ${mobileFeatured.entryCount} ${mobileFeatured.entryCount === 1 ? "entry" : "entries"}`}
               </span>
             }
-            joined={data.featured.viewerEntered ? <Badge variant="secondary">Entered</Badge> : null}
+            joined={
+              mobileFeatured.viewerEntered ? <Badge variant="secondary">Entered</Badge> : null
+            }
           />
         ) : null}
-        <ProofChecklistPanel
-          title="Tournament proof"
-          description="Make the entry requirements explicit before a tester submits a tournament round."
-          items={proofItems}
-          actionHref={data.featured ? `/tournaments/${data.featured.id}` : "/rounds"}
-          actionLabel={data.featured?.viewerEntered ? "Open entry" : "Check entry"}
-        />
-        <DataFirstFlowPanel
-          title="Round due reminders"
-          description="Show the next daily, weekly and monthly tournament obligations before the full event list."
-          steps={reminderSteps}
-          actionHref="/tournaments?tab=mine"
-          actionLabel="My events"
-        />
-        <CompetitionFeaturePanel data={featureData} />
         <NativeListSection
-          title={
-            activeTab === "mine" ? "My events" : activeTab === "majors" ? "Majors" : "Live boards"
+          title={tournamentMobileListTitle(activeTab)}
+          description={
+            mobileRemainingEvents.length > 0
+              ? `${mobileRemainingEvents.length} more ${mobileRemainingEvents.length === 1 ? "event" : "events"}`
+              : mobileFeatured
+                ? "The selected event is shown above."
+                : undefined
           }
         >
-          {tournamentBoardEvents.slice(0, 10).map((event) => (
-            <MobileTournamentCard
-              key={event.id}
-              title={event.scheduleKind === "monthly" ? "Spring Major Week" : event.title}
-              description={`${event.courseName} · ${event.teeSetName}`}
-              href={`/tournaments/${event.id}`}
-              cta={event.viewerEntered ? "Open" : "Enter"}
-              leader={
-                event.leader
-                  ? `Leader: ${event.leader.displayName} · ${event.leader.grossTotal}`
-                  : undefined
-              }
-              meta={
-                <>
-                  <span>{event.roundCount} rounds</span>
-                  <span>{event.entryCount} entries</span>
-                  <span>{formatLabel(event.format)}</span>
-                </>
-              }
-            />
-          ))}
+          {mobileRemainingEvents.length > 0 ? (
+            mobileRemainingEvents.slice(0, 9).map((event) => (
+              <MobileTournamentCard
+                key={event.id}
+                title={event.title}
+                description={`${event.courseName} · ${event.teeSetName}`}
+                href={`/tournaments/${event.id}`}
+                cta={tournamentActionLabel(event)}
+                leader={
+                  event.leader
+                    ? `Leader: ${event.leader.displayName} · ${event.leader.grossTotal}`
+                    : "No accepted score yet"
+                }
+                meta={
+                  <>
+                    <span>{event.roundCount} rounds</span>
+                    <span>{event.entryCount} entries</span>
+                    <span>{formatLabel(event.format)}</span>
+                  </>
+                }
+              />
+            ))
+          ) : mobileFeatured ? (
+            <IOSGroupedList label="Tournament list status">
+              <IOSListRow
+                label="No other events in this view"
+                detail="Change the tournament tab to browse another event group."
+              />
+            </IOSGroupedList>
+          ) : (
+            <IOSGroupedList label="Tournament list status">
+              <IOSListRow
+                label="No tournaments in this view"
+                detail={tournamentMobileEmptyDetail(activeTab)}
+              />
+            </IOSGroupedList>
+          )}
         </NativeListSection>
+
+        <MobileTournamentEvidence
+          event={mobileFeatured}
+          proofItems={proofItems}
+          reminderSteps={reminderSteps}
+        />
+        <CompetitionFeaturePanel data={featureData} />
       </MobileAppShell>
 
       <DesktopWorkbenchLayout scope="tournaments">
-        <div className="hidden items-center justify-between gap-3 sm:flex">
+        <div className="hidden items-center justify-between gap-3 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/challenges" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -284,7 +313,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
           </Button>
         </div>
 
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <header className="premium-hero p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -299,9 +328,12 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Badge variant="secondary">{data.tournaments.length} live events</Badge>
-                <Badge variant="outline">{data.myEntries.length} entered</Badge>
-                <Badge variant="outline">Rapsodo + scorecard proof</Badge>
+                <Badge variant="secondary">{visibleTournaments.length} visible events</Badge>
+                <Badge variant="outline">{visibleEntries.length} entered</Badge>
+                <Badge variant="outline">
+                  {visibleEntries.reduce((total, event) => total + event.viewerSubmissionCount, 0)}
+                  {" submitted rounds"}
+                </Badge>
               </div>
             </div>
           </header>
@@ -312,19 +344,21 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
             ))}
           </section>
 
-          <ProofChecklistPanel
-            title="Tournament proof"
-            description="Make the entry requirements explicit before a tester submits a tournament round."
-            items={proofItems}
-            actionHref={data.featured ? `/tournaments/${data.featured.id}` : "/rounds"}
-            actionLabel={data.featured?.viewerEntered ? "Open entry" : "Check entry"}
-          />
+          {mobileFeatured && proofItems.length > 0 ? (
+            <ProofChecklistPanel
+              title={`${mobileFeatured.title} proof`}
+              description="Stored submissions and event-specific proof requirements for the selected tournament view."
+              items={proofItems}
+              actionHref={`/tournaments/${mobileFeatured.id}`}
+              actionLabel={mobileFeatured.viewerEntered ? "Open entry" : "Open event"}
+            />
+          ) : null}
 
           <DataFirstFlowPanel
             title="Round due reminders"
             description="Show the next daily, weekly and monthly tournament obligations before the full event list."
             steps={reminderSteps}
-            actionHref="/tournaments?tab=mine"
+            actionHref={tournamentHubHref("mine", courseId)}
             actionLabel="My events"
           />
 
@@ -336,7 +370,8 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
                 activeTab={activeTab}
                 customCount={customEvents.length}
                 events={tournamentBoardEvents}
-                totalCount={data.tournaments.length}
+                totalCount={visibleTournaments.length}
+                courseId={courseId}
               />
             </section>
 
@@ -350,7 +385,7 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
                   <RuleRow label="Daily" value="1 round, new global course every day" />
                   <RuleRow label="Weekly Open" value="2 rounds, Monday to Sunday" />
                   <RuleRow label="Monthly Major" value="4 rounds on a famous course" />
-                  <RuleRow label="Proof" value="Saved round plus scorecard evidence" />
+                  <RuleRow label="Proof" value="Requirements vary by event and submission" />
                 </div>
               </section>
 
@@ -375,11 +410,13 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
 
 function TournamentHubEventTable({
   activeTab,
+  courseId,
   customCount,
   events,
   totalCount,
 }: {
   activeTab: TournamentHubTab;
+  courseId: string | null;
   customCount: number;
   events: TournamentListItem[];
   totalCount: number;
@@ -405,7 +442,7 @@ function TournamentHubEventTable({
         </div>
       </div>
 
-      <TournamentHubFilterTabs activeTab={activeTab} />
+      <TournamentHubFilterTabs activeTab={activeTab} courseId={courseId} />
 
       <div className="mt-4 grid gap-3">
         <DesktopTableWorkbenchControls
@@ -515,12 +552,18 @@ function TournamentHubEventTable({
   );
 }
 
-function TournamentHubFilterTabs({ activeTab }: { activeTab: TournamentHubTab }) {
+function TournamentHubFilterTabs({
+  activeTab,
+  courseId,
+}: {
+  activeTab: TournamentHubTab;
+  courseId: string | null;
+}) {
   const tabs: Array<{ key: TournamentHubTab; label: string; href: string }> = [
-    { key: "live", label: "Live", href: "/tournaments" },
-    { key: "mine", label: "My events", href: "/tournaments?tab=mine" },
-    { key: "majors", label: "Majors", href: "/tournaments?tab=majors" },
-    { key: "past", label: "Past", href: "/tournaments?tab=past" },
+    { key: "live", label: "Live", href: tournamentHubHref("live", courseId) },
+    { key: "mine", label: "My events", href: tournamentHubHref("mine", courseId) },
+    { key: "majors", label: "Majors", href: tournamentHubHref("majors", courseId) },
+    { key: "past", label: "Past", href: tournamentHubHref("past", courseId) },
   ];
 
   return (
@@ -640,6 +683,257 @@ function RuleRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+type TournamentChecklistStatus = "ready" | "needed" | "optional";
+
+type TournamentChecklistItem = {
+  label: string;
+  detail: string;
+  status: TournamentChecklistStatus;
+  href?: string;
+};
+
+type TournamentReminderItem = {
+  title: string;
+  detail: string;
+  status: TournamentChecklistStatus;
+  href?: string;
+};
+
+function MobileTournamentEvidence({
+  event,
+  proofItems,
+  reminderSteps,
+}: {
+  event: TournamentListItem | null;
+  proofItems: TournamentChecklistItem[];
+  reminderSteps: TournamentReminderItem[];
+}) {
+  const disclosureItems = [
+    ...(event
+      ? [
+          {
+            value: "submission-evidence",
+            title: "Your submission evidence",
+            summary: `${event.viewerSubmissionCount}/${event.roundCount}`,
+            description: event.viewerEntered
+              ? "Stored round and proof state"
+              : "Requirements before you enter",
+            contentClassName: "px-0 pb-0 pt-0",
+            content: (
+              <IOSGroupedList label={`${event.title} submission evidence`} className="border-0">
+                {proofItems.map((item) => (
+                  <IOSListRow
+                    key={item.label}
+                    label={item.label}
+                    detail={item.detail}
+                    href={item.href}
+                    status={
+                      <IOSInlineStatus
+                        label={tournamentChecklistStatusLabel(item.status)}
+                        tone={tournamentChecklistStatusTone(item.status)}
+                      />
+                    }
+                  />
+                ))}
+              </IOSGroupedList>
+            ),
+          },
+        ]
+      : []),
+    {
+      value: "event-schedule",
+      title: "Event schedule",
+      summary: `${reminderSteps.filter((step) => step.status === "ready").length} available`,
+      description: "Daily, weekly, monthly and entry state",
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Tournament schedule" className="border-0">
+          {reminderSteps.map((step) => (
+            <IOSListRow
+              key={step.title}
+              label={step.title}
+              detail={step.detail}
+              href={step.href}
+              status={
+                <IOSInlineStatus
+                  label={tournamentChecklistStatusLabel(step.status)}
+                  tone={tournamentChecklistStatusTone(step.status)}
+                />
+              }
+            />
+          ))}
+        </IOSGroupedList>
+      ),
+    },
+  ];
+
+  return (
+    <IOSDisclosureGroup label="Tournament details" items={disclosureItems} className="self-start" />
+  );
+}
+
+function buildTournamentProofItems(event: TournamentListItem | null): TournamentChecklistItem[] {
+  if (!event) {
+    return [];
+  }
+
+  const eventHref = `/tournaments/${event.id}?tab=submit`;
+  const items: TournamentChecklistItem[] = [
+    {
+      label: "Round submissions",
+      detail: event.viewerEntered
+        ? `${event.viewerSubmissionCount}/${event.roundCount} required rounds are stored.`
+        : event.viewerSubmissionCount > 0
+          ? `${event.viewerSubmissionCount}/${event.roundCount} rounds remain stored for this event.`
+          : "No rounds submitted by you; enter the event before a round is due.",
+      status: event.viewerEntered ? (event.viewerRoundsDue === 0 ? "ready" : "needed") : "optional",
+      href: eventHref,
+    },
+    {
+      label: "Verified submissions",
+      detail: `${event.viewerVerifiedSubmissionCount}/${event.viewerSubmissionCount} submitted rounds are verified.`,
+      status:
+        event.viewerSubmissionCount === 0
+          ? "optional"
+          : event.viewerVerifiedSubmissionCount === event.viewerSubmissionCount
+            ? "ready"
+            : "needed",
+      href: eventHref,
+    },
+  ];
+
+  if (event.directRapsodoRequired) {
+    items.push({
+      label: "Direct Rapsodo evidence",
+      detail: `${event.viewerRapsodoProofCount}/${event.viewerSubmissionCount} submitted rounds include a direct sync.`,
+      status: tournamentEvidenceRequirementStatus(event, event.viewerRapsodoProofCount),
+      href: eventHref,
+    });
+  }
+
+  if (event.screenshotRequired) {
+    items.push({
+      label: "Scorecard evidence",
+      detail: `${event.viewerScorecardProofCount}/${event.viewerSubmissionCount} submitted rounds include a scorecard image.`,
+      status: tournamentEvidenceRequirementStatus(event, event.viewerScorecardProofCount),
+      href: eventHref,
+    });
+  }
+
+  return items;
+}
+
+function tournamentEvidenceRequirementStatus(
+  event: TournamentListItem,
+  evidenceCount: number,
+): TournamentChecklistStatus {
+  if (!event.viewerEntered) {
+    return "optional";
+  }
+
+  if (event.viewerSubmissionCount === 0) {
+    return "needed";
+  }
+
+  return evidenceCount === event.viewerSubmissionCount ? "ready" : "needed";
+}
+
+function tournamentEvidenceSummary(event: TournamentListItem) {
+  if (!event.viewerEntered && event.viewerSubmissionCount === 0) {
+    return "No rounds submitted by you";
+  }
+
+  return `${event.viewerSubmissionCount}/${event.roundCount} submitted · ${event.viewerVerifiedSubmissionCount} verified`;
+}
+
+function tournamentActionLabel(event: TournamentListItem) {
+  if (isPastTournamentEvent(event)) {
+    return "Review";
+  }
+
+  if (event.viewerEntered) {
+    return "Open";
+  }
+
+  return event.status === "open" ? "Enter" : "View";
+}
+
+function tournamentMobileStatus(activeTab: TournamentHubTab, events: TournamentListItem[]) {
+  const featured = events[0] ?? null;
+  const label =
+    activeTab === "mine"
+      ? "Your tournament entries"
+      : activeTab === "majors"
+        ? "Major tournament boards"
+        : activeTab === "past"
+          ? "Past tournament boards"
+          : "Open tournament boards";
+
+  return {
+    label,
+    value: `${events.length} ${events.length === 1 ? "event" : "events"}`,
+    detail: featured
+      ? `${featured.title} · ${featured.courseName} · ${tournamentEvidenceSummary(featured)}`
+      : tournamentMobileEmptyDetail(activeTab),
+  };
+}
+
+function tournamentMobileListTitle(activeTab: TournamentHubTab) {
+  if (activeTab === "mine") {
+    return "My events";
+  }
+
+  if (activeTab === "majors") {
+    return "Major boards";
+  }
+
+  if (activeTab === "past") {
+    return "Past events";
+  }
+
+  return "Open boards";
+}
+
+function tournamentMobileEmptyDetail(activeTab: TournamentHubTab) {
+  if (activeTab === "mine") {
+    return "You have not entered a visible tournament yet.";
+  }
+
+  if (activeTab === "majors") {
+    return "No major tournament is visible in the current schedule.";
+  }
+
+  if (activeTab === "past") {
+    return "No completed tournament is available to review.";
+  }
+
+  return "No open tournament is available right now.";
+}
+
+function tournamentChecklistStatusLabel(status: TournamentChecklistStatus) {
+  if (status === "ready") {
+    return "Ready";
+  }
+
+  if (status === "needed") {
+    return "Needed";
+  }
+
+  return "Optional";
+}
+
+function tournamentChecklistStatusTone(status: TournamentChecklistStatus) {
+  if (status === "ready") {
+    return "positive" as const;
+  }
+
+  if (status === "needed") {
+    return "attention" as const;
+  }
+
+  return "neutral" as const;
+}
+
 function filterTournamentHubEvents(events: TournamentListItem[], activeTab: TournamentHubTab) {
   if (activeTab === "mine") {
     return events.filter((event) => event.viewerEntered);
@@ -728,4 +1022,12 @@ function parseTournamentHubTab(value?: string): TournamentHubTab {
   }
 
   return "live";
+}
+
+function tournamentHubHref(tab: TournamentHubTab, courseId: string | null) {
+  const params = new URLSearchParams();
+  if (tab !== "live") params.set("tab", tab);
+  if (courseId) params.set("courseId", courseId);
+  const query = params.toString();
+  return query ? `/tournaments?${query}` : "/tournaments";
 }

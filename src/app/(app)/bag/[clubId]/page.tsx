@@ -34,7 +34,7 @@ export default async function ClubDetailPage({ params }: PageProps) {
   return (
     <PageShell>
       <DesktopWorkbenchLayout scope="club-profile">
-        <div className="flex items-center justify-between gap-4">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/bag">
               <ArrowLeft className="size-4" />

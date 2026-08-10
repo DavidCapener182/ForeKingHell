@@ -39,6 +39,7 @@ import {
   syncRapsodoShotClubsAction,
 } from "@/app/rapsodo/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
+import { IOSGroupedList, IOSInlineStatus, IOSListRow } from "@/components/app/ios-mobile";
 import { CourseScorecardSvg } from "@/components/course-scorecard-svg";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +51,6 @@ import {
   MobileAccordionSection,
   MobileBentoSummary,
   MobileDataCard,
-  MobileDataList,
   StickyMobileAction,
 } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
@@ -821,8 +821,8 @@ export function RapsodoSyncClient({
       className={cn(
         "min-h-0 px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
         showStickyReviewBar
-          ? "pb-[calc(7.75rem+env(safe-area-inset-bottom))] sm:pb-6"
-          : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] sm:pb-6",
+          ? "pb-[calc(7.75rem+env(safe-area-inset-bottom))] lg:pb-6"
+          : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-6",
       )}
     >
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
@@ -834,7 +834,7 @@ export function RapsodoSyncClient({
           helpDescription="Keep provider imports deterministic"
           helpItems={rapsodoWorkflowHelpItems}
         >
-          <div className="hidden items-center justify-between gap-4 sm:flex">
+          <div className="hidden items-center justify-between gap-4 lg:flex">
             <Button asChild variant="ghost" className="px-0">
               <Link href="/dashboard">
                 <ArrowLeft className="size-4" />
@@ -861,7 +861,7 @@ export function RapsodoSyncClient({
             onPreviewSession={previewSession}
           />
 
-          <header className="premium-hero hidden p-5 sm:block">
+          <header className="premium-hero hidden p-5 lg:block">
             <div className="grid gap-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-2xl space-y-2">
@@ -905,7 +905,7 @@ export function RapsodoSyncClient({
           </header>
 
           {!status.connected ? (
-            <section className="premium-command-surface hidden rounded-2xl p-5 sm:grid sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center">
+            <section className="premium-command-surface hidden rounded-2xl p-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center lg:gap-4">
               <div className="space-y-2">
                 <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
                   Why connect
@@ -1002,10 +1002,11 @@ export function RapsodoSyncClient({
                   <option value="range">Range</option>
                   <option value="course">Course</option>
                 </select>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   <Input
                     aria-label="Session start date"
                     type="date"
+                    className="min-h-11"
                     value={dateFilter.startDate}
                     onChange={(event) =>
                       setDateFilter((current) => ({ ...current, startDate: event.target.value }))
@@ -1014,6 +1015,7 @@ export function RapsodoSyncClient({
                   <Input
                     aria-label="Session end date"
                     type="date"
+                    className="min-h-11"
                     value={dateFilter.endDate}
                     onChange={(event) =>
                       setDateFilter((current) => ({ ...current, endDate: event.target.value }))
@@ -1060,7 +1062,7 @@ export function RapsodoSyncClient({
             className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]"
           >
             <Card
-              className={cn("premium-card", showMobileConnectionCard ? "flex" : "hidden sm:flex")}
+              className={cn("premium-card", showMobileConnectionCard ? "flex" : "hidden lg:flex")}
             >
               <CardHeader>
                 <CardTitle>Connection</CardTitle>
@@ -1126,20 +1128,29 @@ export function RapsodoSyncClient({
                       login();
                     }}
                   >
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="Rapsodo email"
-                      value={email}
-                      onChange={(event) => setEmail(event.target.value)}
-                    />
-                    <Input
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="Rapsodo password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                    />
+                    <label className="grid gap-1.5 text-sm font-medium">
+                      Rapsodo email
+                      <Input
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        className="min-h-11"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        required
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-medium">
+                      Rapsodo password
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        className="min-h-11"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                      />
+                    </label>
                     <Button type="submit" className="premium-action w-full" disabled={isPending}>
                       {loadingLabel === "Signing in" ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -1151,7 +1162,7 @@ export function RapsodoSyncClient({
                   </form>
                 )}
 
-                <div className="hidden gap-2 sm:grid sm:grid-cols-2">
+                <div className="hidden gap-2 lg:grid lg:grid-cols-2">
                   <Input
                     aria-label="Session start date"
                     type="date"
@@ -1173,7 +1184,7 @@ export function RapsodoSyncClient({
             </Card>
 
             <Card
-              className={cn("premium-card", showMobileSessionsCard ? "flex" : "hidden sm:flex")}
+              className={cn("premium-card", showMobileSessionsCard ? "flex" : "hidden lg:flex")}
             >
               <CardHeader>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1186,7 +1197,7 @@ export function RapsodoSyncClient({
                   </div>
                   <select
                     aria-label="Remote session type"
-                    className="hidden h-9 rounded-md border bg-background px-3 text-sm sm:block"
+                    className="hidden h-9 rounded-md border bg-background px-3 text-sm lg:block"
                     value={sessionFilter}
                     onChange={(event) =>
                       setSessionFilter(event.target.value as typeof sessionFilter)
@@ -1199,44 +1210,13 @@ export function RapsodoSyncClient({
                 </div>
               </CardHeader>
               <CardContent>
-                <MobileDataList className="sm:hidden">
-                  {filteredSessions.length > 0 ? (
-                    filteredSessions.map((session) => (
-                      <MobileDataCard
-                        key={`${session.providerKind}-${session.providerSessionId}`}
-                        title={session.title}
-                        subtitle={session.dateIso ? formatDate(session.dateIso) : "No date"}
-                        action={
-                          session.isNew && !session.importedSessionId ? (
-                            <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
-                          ) : null
-                        }
-                      >
-                        <DataPair label="Type" value={formatSessionKind(session)} />
-                        <DataPair
-                          label="Shots"
-                          value={session.shotCount === null ? "--" : session.shotCount}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => previewSession(session)}
-                          disabled={isPending}
-                        >
-                          Preview
-                        </Button>
-                      </MobileDataCard>
-                    ))
-                  ) : (
-                    <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                      {status.connected
-                        ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
-                        : "Sign in to load sessions."}
-                    </div>
-                  )}
-                </MobileDataList>
-                <div data-workbench-scope="rapsodo">
+                <MobileRapsodoSessionRows
+                  sessions={filteredSessions}
+                  connected={status.connected}
+                  isPending={isPending}
+                  onPreview={previewSession}
+                />
+                <div className="hidden lg:block" data-workbench-scope="rapsodo">
                   <DesktopTableWorkbenchControls
                     viewKey="rapsodo-sessions"
                     scope="rapsodo"
@@ -1252,7 +1232,6 @@ export function RapsodoSyncClient({
                     mainTable
                     mainTableLabel="Rapsodo remote sessions table"
                     stickyFirstColumn
-                    className="hidden sm:block"
                   >
                     <Table
                       data-workbench-export-table="rapsodo-sessions"
@@ -1389,7 +1368,7 @@ export function RapsodoSyncClient({
                 "space-y-4 scroll-mt-4",
                 ["preview", "clubs", "course", "import", "review"].includes(visibleMobileStep)
                   ? "block"
-                  : "hidden sm:block",
+                  : "hidden lg:block",
               )}
             >
               <Card className="premium-card">
@@ -1424,7 +1403,7 @@ export function RapsodoSyncClient({
                   <div
                     className={cn(
                       "premium-command-surface grid gap-2 rounded-lg p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
-                      visibleMobileStep === "clubs" ? "grid" : "hidden sm:grid",
+                      visibleMobileStep === "clubs" ? "grid" : "hidden lg:grid",
                     )}
                   >
                     <Button
@@ -1478,7 +1457,7 @@ export function RapsodoSyncClient({
                         visibleMobileStep === "import" ||
                         visibleMobileStep === "review"
                         ? "grid"
-                        : "hidden sm:grid",
+                        : "hidden lg:grid",
                     )}
                   >
                     <CompactSummaryTile
@@ -1590,7 +1569,7 @@ export function RapsodoSyncClient({
                       ))}
                     </div>
                   </MobileAccordionSection>
-                  <div className="hidden rounded-lg border sm:block">
+                  <div className="hidden rounded-lg border lg:block">
                     <Table className="text-xs">
                       <TableHeader>
                         <TableRow>
@@ -1674,7 +1653,7 @@ export function RapsodoSyncClient({
                 <Card
                   className={cn(
                     "premium-card",
-                    visibleMobileStep === "course" ? "flex" : "hidden sm:flex",
+                    visibleMobileStep === "course" ? "flex" : "hidden lg:flex",
                   )}
                 >
                   <CardHeader>
@@ -1877,7 +1856,7 @@ export function RapsodoSyncClient({
               onDismiss={() => setSaveConfirmation(null)}
             />
           ) : null}
-          {children}
+          {children ? <div className="hidden lg:block">{children}</div> : null}
         </DesktopWorkflowLayout>
       </div>
     </main>
@@ -2040,6 +2019,67 @@ function SaveConfirmationToast({
   );
 }
 
+function MobileRapsodoSessionRows({
+  sessions,
+  connected,
+  isPending,
+  onPreview,
+}: {
+  sessions: RapsodoSessionListItem[];
+  connected: boolean;
+  isPending: boolean;
+  onPreview: (session: RapsodoSessionListItem) => void;
+}) {
+  return (
+    <IOSGroupedList label="Remote Rapsodo sessions" className="lg:hidden">
+      {sessions.length > 0 ? (
+        sessions.map((session) => (
+          <IOSListRow
+            key={`${session.providerKind}-${session.providerSessionId}`}
+            label={session.title}
+            detail={`${session.dateIso ? formatDate(session.dateIso) : "No date"} · ${formatSessionKind(session)} · ${session.shotCount === null ? "shots pending preview" : `${session.shotCount} shots`}`}
+            status={
+              session.isNew ? (
+                <IOSInlineStatus label="New session" tone="info" />
+              ) : (
+                <IOSInlineStatus label="Ready to review" tone="positive" />
+              )
+            }
+            trailing={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-11 px-3"
+                aria-label={`Review ${session.title}`}
+                onClick={() => onPreview(session)}
+                disabled={isPending}
+              >
+                Review
+              </Button>
+            }
+          />
+        ))
+      ) : (
+        <IOSListRow
+          label={connected ? "No sessions waiting" : "R-Cloud is not connected"}
+          detail={
+            connected
+              ? "No unimported sessions match these filters. Imported sessions stay out of this inbox."
+              : "Sign in to load sessions, or use the manual CSV import."
+          }
+          status={
+            <IOSInlineStatus
+              label={connected ? "Inbox clear" : "Action required"}
+              tone={connected ? "positive" : "attention"}
+            />
+          }
+        />
+      )}
+    </IOSGroupedList>
+  );
+}
+
 function RapsodoInboxPrimaryCard({
   session,
   connected,
@@ -2070,13 +2110,13 @@ function RapsodoInboxPrimaryCard({
       : "Connect R-Cloud to open the inbox";
 
   return (
-    <section className="premium-hero grid gap-2 p-2.5 sm:hidden">
+    <section className="premium-hero grid gap-2 p-2.5 lg:hidden">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge className="w-fit bg-primary/10 text-primary hover:bg-primary/10">Inbox</Badge>
-          <h1 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">
+          <h2 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">
             Rapsodo Inbox
-          </h1>
+          </h2>
           <p className="sr-only">Review sessions from R-Cloud.</p>
         </div>
         <div className="premium-command-surface min-w-20 rounded-lg px-2.5 py-2 text-right">
@@ -2096,9 +2136,9 @@ function RapsodoInboxPrimaryCard({
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
               Newest unimported
             </p>
-            <h2 className="mt-1 line-clamp-1 text-xl font-semibold leading-tight tracking-normal">
+            <h3 className="mt-1 line-clamp-1 text-xl font-semibold leading-tight tracking-normal">
               {session ? session.title : connected ? "No sessions waiting" : "Connect R-Cloud"}
-            </h2>
+            </h3>
             <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
               {session
                 ? latestCopy
@@ -2149,7 +2189,7 @@ function RapsodoMobileStepper({
     <nav
       aria-label="Rapsodo steps"
       tabIndex={0}
-      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:hidden"
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
     >
       {steps.map((item) => (
         <button

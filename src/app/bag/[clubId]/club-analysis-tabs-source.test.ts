@@ -8,6 +8,18 @@ const source = readFileSync(
 );
 
 describe("club profile desktop shot evidence table", () => {
+  it("uses one-level phone disclosures and flat shot evidence around the specialist canvases", () => {
+    expect(source).toContain("mobileSupport?: ReactNode");
+    expect(source).toContain("<IOSDisclosureGroup");
+    expect(source).toContain('title: "Club intelligence"');
+    expect(source).toContain('title: "Trajectory"');
+    expect(source).toContain('title: "Measured shot evidence"');
+    expect(source).toContain("MobileShotEvidenceRows");
+    expect(source).toContain("data-mobile-shot-evidence");
+    expect(source).toContain('className="hidden space-y-5 lg:block"');
+    expect(source).toContain('className="hidden scroll-mt-28 gap-3 lg:grid"');
+  });
+
   it("keeps club profile shots in a desktop workbench table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('id="club-shot-evidence-table"');

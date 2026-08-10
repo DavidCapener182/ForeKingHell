@@ -3,8 +3,23 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/shared/[userId]/page.tsx"), "utf8");
+const routeMetadataSource = readFileSync(
+  join(process.cwd(), "src/components/app/route-metadata.ts"),
+  "utf8",
+);
 
 describe("shared account desktop workspace source", () => {
+  it("keeps shared access and recent sessions concise on mobile", () => {
+    expect(source).toContain("MobileSharedAccount");
+    expect(source).toContain("MobileSharedSessionRows");
+    expect(source).toContain("IOSGroupedList");
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain('<MobileTopBar title="Shared account" />');
+    expect(routeMetadataSource).toContain("if (/^\\/shared\\/[^/]+\\/?$/.test(pathname))");
+    expect(routeMetadataSource).toContain('return { href: "/settings", label: "Settings" };');
+    expect(source).toContain('className="hidden lg:grid"');
+  });
+
   it("keeps shared account review inside the desktop workbench shell", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('scope="shared-account"');

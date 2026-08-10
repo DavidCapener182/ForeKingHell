@@ -3,6 +3,12 @@ import Image from "next/image";
 import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
+import {
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { CompetitionFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
@@ -136,6 +142,20 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
     mine: data.mine,
     templates: data.templates,
   });
+  const mobileChallenges = challengeBoardRows.flatMap((row) =>
+    row.kind === "challenge" ? [row.challenge] : [],
+  );
+  const mobileTemplates = challengeBoardRows.flatMap((row) =>
+    row.kind === "template" ? [row.template] : [],
+  );
+  const mobilePrimaryChallenge = mobileChallenges[0] ?? null;
+  const mobileRemainingChallenges = mobileChallenges.slice(1);
+  const mobileStatus = mobileChallengeStatus({
+    activeTab,
+    challengeCount: mobileChallenges.length,
+    templateCount: mobileTemplates.length,
+    joinedCount: data.mine.length,
+  });
   const friendsCompeting = data.challenges
     .filter((challenge) => !challenge.viewerJoined && challenge.participantCount > 0)
     .slice(0, 4);
@@ -155,19 +175,19 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
       title: "Wedge window",
       detail: "12 shots inside the launch and carry window.",
       href: "/coach#more-drills",
-      status: "ready" as const,
+      status: "optional" as const,
     },
     {
       title: "Fairway finders",
       detail: "Ten tee shots with playable offline misses.",
       href: "/today?club=driver",
-      status: "ready" as const,
+      status: "optional" as const,
     },
     {
       title: "7i consistency",
       detail: "Seven-iron carry and start-line repeatability.",
       href: "/bag",
-      status: "ready" as const,
+      status: "optional" as const,
     },
     {
       title: "Closest to pin",
@@ -200,9 +220,9 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
           ]}
         />
         <MobileStatusAction
-          label="Live challenge boards"
-          value={`${data.active.length} active`}
-          detail={`${data.mine.length} joined · ${data.templates.length} templates`}
+          label={mobileStatus.label}
+          value={mobileStatus.value}
+          detail={mobileStatus.detail}
           action={
             <BottomSheet
               label={
@@ -301,28 +321,84 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
           }
         />
         {activeTab === "templates" ? (
-          <NativeListSection title="Templates">
-            {data.templates.map((template) => (
-              <div key={template.id} className="rounded-lg border border-[#E5E7EB] bg-white p-3">
-                <p className="font-semibold">{template.name}</p>
-                <p className="mt-1 line-clamp-2 text-sm text-[#6B7280]">{template.description}</p>
-              </div>
-            ))}
-          </NativeListSection>
+          <section className="grid gap-2" aria-label="Challenge templates">
+            <IOSSectionHeader
+              title="Templates"
+              description="Choose a measured format before creating a board."
+            />
+            <IOSGroupedList label="Challenge templates">
+              {mobileTemplates.length > 0 ? (
+                mobileTemplates.map((template) => (
+                  <IOSListRow
+                    key={template.id}
+                    label={template.name}
+                    value={template.scoringDirection === "asc" ? "Lower wins" : "Higher wins"}
+                    detail={template.description}
+                  />
+                ))
+              ) : (
+                <IOSListRow
+                  label="No templates available"
+                  detail="Challenge templates will appear here when configured."
+                />
+              )}
+            </IOSGroupedList>
+          </section>
         ) : (
           <>
-            {featured ? <MobilePremiumChallengeCard challenge={featured} featured /> : null}
-            <NativeListSection title={activeTab === "joined" ? "Joined" : "Recommended"}>
-              {(activeTab === "joined" ? data.mine : data.challenges)
-                .slice(0, 10)
-                .map((challenge, index) => (
-                  <MobilePremiumChallengeCard
-                    key={challenge.id}
-                    challenge={challenge}
-                    eager={index === 0}
+            {mobilePrimaryChallenge ? (
+              <MobilePremiumChallengeCard challenge={mobilePrimaryChallenge} featured />
+            ) : null}
+            <section className="grid gap-2" aria-label={mobileChallengeListTitle(activeTab)}>
+              <IOSSectionHeader
+                title={mobileChallengeListTitle(activeTab)}
+                description={
+                  mobilePrimaryChallenge
+                    ? `${mobileRemainingChallenges.length} more in this view`
+                    : "Nothing is available in this view yet."
+                }
+              />
+              <IOSGroupedList label={mobileChallengeListTitle(activeTab)}>
+                {mobileRemainingChallenges.length > 0 ? (
+                  mobileRemainingChallenges.map((challenge) => (
+                    <IOSListRow
+                      key={challenge.id}
+                      label={challenge.title}
+                      value={
+                        challenge.viewerRank
+                          ? `#${challenge.viewerRank}`
+                          : `${challenge.participantCount} players`
+                      }
+                      detail={`${challenge.templateName} · ${formatChallengeWindow(challenge)}`}
+                      href={`/challenges/${challenge.id}`}
+                      status={
+                        <IOSInlineStatus
+                          label={
+                            challenge.viewerJoined
+                              ? "Joined"
+                              : isPastChallenge(challenge)
+                                ? titleCase(challenge.status.replaceAll("_", " "))
+                                : "Open board"
+                          }
+                          tone={
+                            challenge.viewerJoined
+                              ? "positive"
+                              : isPastChallenge(challenge)
+                                ? "neutral"
+                                : "info"
+                          }
+                        />
+                      }
+                    />
+                  ))
+                ) : (
+                  <IOSListRow
+                    label={mobilePrimaryChallenge ? "No more boards" : "No boards in this view"}
+                    detail={mobileChallengeEmptyDetail(activeTab)}
                   />
-                ))}
-            </NativeListSection>
+                )}
+              </IOSGroupedList>
+            </section>
           </>
         )}
         <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
@@ -330,7 +406,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
       </MobileAppShell>
 
       <DesktopWorkbenchLayout scope="challenges">
-        <div className="hidden items-center justify-between gap-3 sm:flex">
+        <div className="hidden items-center justify-between gap-3 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -345,7 +421,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
           </Button>
         </div>
 
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <PageHeader
             eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
             title="Competition hub"
@@ -1472,6 +1548,70 @@ function challengeBoardViewLabel(activeTab: ChallengeHubTab) {
   }
 
   return "Live challenge boards";
+}
+
+function mobileChallengeStatus({
+  activeTab,
+  challengeCount,
+  templateCount,
+  joinedCount,
+}: {
+  activeTab: ChallengeHubTab;
+  challengeCount: number;
+  templateCount: number;
+  joinedCount: number;
+}) {
+  if (activeTab === "templates") {
+    return {
+      label: "Challenge templates",
+      value: `${templateCount} available`,
+      detail: "Measured formats available for a new board.",
+    };
+  }
+
+  if (activeTab === "joined") {
+    return {
+      label: "Your challenge boards",
+      value: `${challengeCount} joined`,
+      detail: "Only boards where your entry is already active.",
+    };
+  }
+
+  if (activeTab === "seasons") {
+    return {
+      label: "Season challenge boards",
+      value: `${challengeCount} visible`,
+      detail: `${joinedCount} joined across all challenge types.`,
+    };
+  }
+
+  if (activeTab === "past") {
+    return {
+      label: "Past challenge boards",
+      value: `${challengeCount} archived`,
+      detail: "Completed and expired boards available for review.",
+    };
+  }
+
+  return {
+    label: "Live challenge boards",
+    value: `${challengeCount} visible`,
+    detail: `${joinedCount} joined · ${templateCount} templates available.`,
+  };
+}
+
+function mobileChallengeListTitle(activeTab: ChallengeHubTab) {
+  if (activeTab === "joined") return "Joined boards";
+  if (activeTab === "seasons") return "Season boards";
+  if (activeTab === "past") return "Past boards";
+  return "More live boards";
+}
+
+function mobileChallengeEmptyDetail(activeTab: ChallengeHubTab) {
+  if (activeTab === "joined") return "Join a visible board to keep it here.";
+  if (activeTab === "seasons") return "No four-week-or-longer board is visible yet.";
+  if (activeTab === "past") return "Completed and expired boards will remain available here.";
+  return "Create a board or check again when a new challenge opens.";
 }
 
 function formatChallengeWindow(challenge: ChallengeListItem) {

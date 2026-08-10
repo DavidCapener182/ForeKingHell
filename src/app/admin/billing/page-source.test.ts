@@ -7,7 +7,9 @@ const source = readFileSync(join(process.cwd(), "src/app/(admin)/admin/billing/p
 describe("admin billing desktop console source", () => {
   it("uses the shared billing workbench shell without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-billing">');
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="admin-billing" className="hidden lg:grid">',
+    );
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -39,5 +41,14 @@ describe("admin billing desktop console source", () => {
     expect(source).toContain('confirmTitle="Grant lifetime full access"');
     expect(source).toContain("creates a permanent full-plan entitlement");
     expect(source).toContain('confirmActionLabel="Grant full access"');
+  });
+
+  it("prioritises billing failures in a segmented native mobile directory", () => {
+    expect(source).toContain("AdminMobileShell");
+    expect(source).toContain("AdminMobileBilling");
+    expect(source).toContain("MobileBillingGrant");
+    expect(source).toContain("MobileTabBar");
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain("billingAttentionStatuses");
   });
 });

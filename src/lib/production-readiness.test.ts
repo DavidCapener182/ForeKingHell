@@ -110,7 +110,6 @@ describe("production readiness gate", () => {
       join(root, "src/components/visuals/page-artwork.tsx"),
       "utf8",
     );
-    const feedPageSource = readFileSync(join(root, "src/app/(app)/feed/page.tsx"), "utf8");
     const feedCardSource = readFileSync(
       join(root, "src/components/social/feed-card-list.tsx"),
       "utf8",
@@ -118,8 +117,6 @@ describe("production readiness gate", () => {
 
     expect(existsSync(join(root, "public/assets/feed-pb-card-bg.webp"))).toBe(true);
     expect(artworkSource).toContain('feedPb: "/assets/feed-pb-card-bg.webp"');
-    expect(feedPageSource).toContain('return "feedPb" as const');
-    expect(feedPageSource).toContain('artworkVariant === "feedPb" ? undefined : "random"');
     expect(feedCardSource).toContain('variant="feedPb"');
     expect(feedCardSource).toContain("isPbFeedType");
     expect(feedCardSource).toContain("h-24 min-h-0 md:h-28");
@@ -255,7 +252,7 @@ describe("production readiness gate", () => {
     expect(playwright).not.toContain("FKH_SKIP_ENV_VALIDATION");
   });
 
-  it("keeps the AAA mobile shell primitives explicit and route chrome out of the h1 outline", () => {
+  it("keeps the AAA mobile shell primitives explicit with semantic in-page titles", () => {
     const mobileSportsSource = readFileSync(join(root, "src/components/mobile-sports.tsx"), "utf8");
     const mobileTabsSource = readFileSync(join(root, "src/components/mobile-tab-bar.tsx"), "utf8");
     const premiumSource = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
@@ -266,7 +263,9 @@ describe("production readiness gate", () => {
     );
     const globalsSource = readFileSync(join(root, "src/app/globals.css"), "utf8");
 
-    expect(mobileSportsSource).not.toContain("<h1");
+    expect(mobileSportsSource).toContain("<h1");
+    expect(mobileSportsSource).toContain('className="min-w-0 break-words"');
+    expect(mobileSportsSource).not.toContain('className="truncate" data-mobile-route-label');
     expect(dashboardMobileHeaderSource).not.toContain("<h1");
     expect(mobileSportsSource).toContain("data-mobile-route-label");
     expect(mobileNavSource).toContain("data-mobile-route-label");

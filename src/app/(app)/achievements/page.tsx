@@ -29,10 +29,10 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Coach" group="improve" activeKey="achievements" />
+      <MobileRouteHeader title="Achievements" group="improve" activeKey="achievements" />
 
       <DesktopWorkbenchLayout scope="achievements">
-        <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
+        <div className="hidden flex-col items-start gap-3 lg:flex lg:flex-row lg:items-center lg:justify-between">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
               <ArrowLeft className="size-4" />
@@ -73,13 +73,13 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           </div>
         </div>
 
-        <section className="premium-card p-3 sm:hidden">
+        <section className="premium-card p-3 lg:hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Achievements
               </p>
-              <h1 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h1>
+              <h2 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h2>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">
                 {data.unlockedCount}/{data.totalCount} badges unlocked ·{" "}
                 {data.totalXp.toLocaleString("en-GB")} XP
@@ -99,7 +99,7 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           </Button>
         </section>
 
-        <div className="hidden sm:block">
+        <div className="hidden lg:block">
           <PageHeader
             eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
             title="Progress worth tracking"
@@ -108,55 +108,61 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           />
         </div>
 
-        <AchievementsClient data={data} focusAchievementId={focusAchievementId || null} />
-
-        <DataFirstFlowPanel
-          title="Achievement categories"
-          description="The badge catalogue is grouped by golfer progress, not generic activity."
-          steps={[
-            {
-              title: "Data",
-              detail: "Imports, mapped clubs and clean samples.",
-              href: "/import",
-              status: "ready",
-            },
-            {
-              title: "Practice",
-              detail: "Drills, PBs and launch-window work.",
-              href: "/today",
-              status: "ready",
-            },
-            {
-              title: "Rounds",
-              detail: "Completed scorecards and handicap-ready rounds.",
-              href: "/rounds",
-              status: "ready",
-            },
-            {
-              title: "Course Records",
-              detail: "Verified course champions and board attempts.",
-              href: "/course-records",
-              status: "ready",
-            },
-            {
-              title: "Tournaments",
-              detail: "Daily, weekly and major-style event results.",
-              href: "/tournaments",
-              status: "ready",
-            },
-            {
-              title: "Social",
-              detail: "Friends, groups, kudos and shared moments.",
-              href: "/feed",
-              status: "optional",
-            },
-          ]}
-        />
-
-        <AchievementSocialPanel
+        <AchievementsClient
+          key={focusAchievementId || "achievement-hub"}
           data={data}
-          latestFeedItemId={latestAchievementFeedItem?.id ?? null}
+          focusAchievementId={focusAchievementId || null}
         />
+
+        <div className="hidden lg:contents">
+          <DataFirstFlowPanel
+            title="Achievement categories"
+            description="The badge catalogue is grouped by golfer progress, not generic activity."
+            steps={[
+              {
+                title: "Data",
+                detail: "Imports, mapped clubs and clean samples.",
+                href: "/import",
+                status: "ready",
+              },
+              {
+                title: "Practice",
+                detail: "Drills, PBs and launch-window work.",
+                href: "/today",
+                status: "ready",
+              },
+              {
+                title: "Rounds",
+                detail: "Completed scorecards and handicap-ready rounds.",
+                href: "/rounds",
+                status: "ready",
+              },
+              {
+                title: "Course Records",
+                detail: "Verified course champions and board attempts.",
+                href: "/course-records",
+                status: "ready",
+              },
+              {
+                title: "Tournaments",
+                detail: "Daily, weekly and major-style event results.",
+                href: "/tournaments",
+                status: "ready",
+              },
+              {
+                title: "Social",
+                detail: "Friends, groups, kudos and shared moments.",
+                href: "/feed",
+                status: "optional",
+              },
+            ]}
+          />
+
+          <AchievementSocialPanel
+            data={data}
+            latestFeedItemId={latestAchievementFeedItem?.id ?? null}
+          />
+        </div>
       </DesktopWorkbenchLayout>
     </PageShell>
   );

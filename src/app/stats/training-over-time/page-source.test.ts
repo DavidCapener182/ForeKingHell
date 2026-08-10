@@ -16,6 +16,16 @@ describe("training load page source", () => {
     expect(source).not.toContain("DesktopInsightRail");
   });
 
+  it("uses a separate answer-first mobile composition without removing the desktop workbench", () => {
+    expect(source.indexOf("<MobileTrainingLoadRangeView")).toBeLessThan(
+      source.indexOf("<DesktopWorkbenchLayout"),
+    );
+    expect(source).toContain("<MobileAppShell");
+    expect(source).toContain('title="Training Load"');
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).toContain("practiceSummary={{");
+  });
+
   it("keeps Practice Planner load fit visible without adding a dense rail", () => {
     expect(source).toContain("Practice Planner load fit");
     expect(source).toContain("practiceSummary.latestCompleted");

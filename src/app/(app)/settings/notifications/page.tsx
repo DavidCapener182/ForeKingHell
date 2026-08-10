@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, BellRing, CheckCircle2, ShieldCheck } from "lucide-react";
 
 import { saveNotificationPreferencesAction } from "@/app/settings/notifications/actions";
+import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,8 +76,8 @@ const deliveryOptions: Array<{ key: NotificationCategory; title: string; detail:
 const deliveryLabels: Record<NotificationDelivery, string> = {
   in_app: "In-app",
   digest: "Email digest",
-  immediate: "Immediate email",
-  weekly: "Weekly only",
+  immediate: "Email now",
+  weekly: "Weekly email",
   off: "Off",
 };
 
@@ -96,17 +97,19 @@ export default async function NotificationSettingsPage({
         title="Notifications"
         description="Choose which evidence and activity appears in your in-app notification centre."
         actions={
-          <Button asChild variant="outline" className="min-h-11 rounded-xl">
-            <Link href="/settings">
-              <ArrowLeft className="size-4" aria-hidden />
-              Settings
-            </Link>
-          </Button>
+          <span className="hidden lg:inline-flex">
+            <Button asChild variant="outline" className="min-h-11 rounded-xl">
+              <Link href="/settings">
+                <ArrowLeft className="size-4" aria-hidden />
+                Settings
+              </Link>
+            </Button>
+          </span>
         }
       />
       {params?.saved === "1" ? (
         <div
-          className="flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950"
+          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/55 dark:text-emerald-100"
           role="status"
         >
           <CheckCircle2 className="size-5" aria-hidden />
@@ -114,34 +117,38 @@ export default async function NotificationSettingsPage({
         </div>
       ) : null}
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card className="premium-card">
-          <CardHeader>
+        <Card className="border-0 bg-transparent shadow-none lg:rounded-3xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+          <CardHeader className="hidden lg:flex">
             <CardTitle className="flex items-center gap-2">
               <BellRing className="size-5 text-primary" aria-hidden />
               In-app notification centre
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form action={saveNotificationPreferencesAction} className="grid gap-3">
-              <fieldset className="grid gap-3">
-                <legend className="mb-1 font-semibold">Delivery by category</legend>
+          <CardContent className="px-0 pb-20 lg:px-6 lg:pb-6">
+            <form action={saveNotificationPreferencesAction} className="grid gap-5 lg:gap-3">
+              <fieldset className="ios-grouped-list grid overflow-hidden lg:gap-3 lg:overflow-visible lg:bg-transparent">
+                <legend className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground lg:mb-1 lg:px-0 lg:text-base lg:normal-case lg:tracking-normal lg:text-foreground">
+                  Delivery by category
+                </legend>
                 {deliveryOptions.map((option) => (
                   <label
                     key={option.key}
-                    htmlFor={option.key}
-                    className="grid min-h-20 gap-3 rounded-2xl border border-border/70 bg-secondary/45 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-center"
+                    htmlFor={`delivery-${option.key}`}
+                    className="ios-grouped-row grid min-h-16 cursor-pointer grid-cols-[minmax(0,1fr)_8.75rem] items-center gap-3 px-4 py-2.5 lg:min-h-20 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-secondary/45 lg:grid-cols-[minmax(0,1fr)_12rem] lg:py-3"
                   >
                     <span>
-                      <span className="block font-semibold">{option.title}</span>
-                      <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">
+                      <span className="block text-[15px] font-medium leading-5 lg:font-semibold">
+                        {option.title}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground lg:text-sm lg:leading-5">
                         {option.detail}
                       </span>
                     </span>
                     <select
-                      id={option.key}
+                      id={`delivery-${option.key}`}
                       name={option.key}
                       defaultValue={preferences.delivery[option.key]}
-                      className="min-h-11 rounded-xl border bg-background px-3 text-sm font-semibold"
+                      className="min-h-11 min-w-0 rounded-xl border bg-background px-2 text-sm font-medium lg:px-3 lg:font-semibold"
                     >
                       {Object.entries(deliveryLabels).map(([value, label]) => (
                         <option key={value} value={value}>
@@ -153,22 +160,26 @@ export default async function NotificationSettingsPage({
                 ))}
               </fieldset>
 
-              <fieldset className="mt-4 grid gap-3 border-t border-border pt-4">
-                <legend className="px-1 font-semibold">In-app feed compatibility</legend>
+              <fieldset className="ios-grouped-list grid overflow-hidden lg:mt-4 lg:gap-3 lg:overflow-visible lg:border-t lg:border-border lg:bg-transparent lg:pt-4">
+                <legend className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground lg:mb-0 lg:text-base lg:normal-case lg:tracking-normal lg:text-foreground">
+                  In-app feed compatibility
+                </legend>
                 {options.map((option) => (
                   <label
                     key={option.key}
-                    htmlFor={option.key}
-                    className="flex min-h-16 cursor-pointer items-center justify-between gap-4 rounded-2xl border border-border/70 bg-secondary/45 px-4 py-3"
+                    htmlFor={`legacy-${option.key}`}
+                    className="ios-grouped-row flex min-h-16 cursor-pointer touch-manipulation items-center justify-between gap-4 px-4 py-2.5 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-secondary/45 lg:py-3"
                   >
                     <span>
-                      <span className="block font-semibold">{option.title}</span>
-                      <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">
+                      <span className="block text-[15px] font-medium leading-5 lg:font-semibold">
+                        {option.title}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground lg:text-sm lg:leading-5">
                         {option.detail}
                       </span>
                     </span>
                     <Switch
-                      id={option.key}
+                      id={`legacy-${option.key}`}
                       name={`legacy_${option.key}`}
                       defaultChecked={preferences[option.key]}
                       aria-label={option.title}
@@ -176,13 +187,41 @@ export default async function NotificationSettingsPage({
                   </label>
                 ))}
               </fieldset>
-              <Button type="submit" className="premium-action mt-2 min-h-11 rounded-xl">
+              <Button
+                type="submit"
+                className="premium-action sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-1 min-h-12 rounded-xl shadow-lg lg:static lg:mt-2 lg:min-h-11 lg:shadow-none"
+              >
                 Save preferences
               </Button>
             </form>
           </CardContent>
         </Card>
-        <aside className="rounded-3xl border border-border bg-card p-5">
+        <div className="lg:hidden">
+          <IOSDisclosureGroup
+            label="Notification guidance"
+            items={[
+              {
+                value: "quiet-by-choice",
+                title: "Quiet by choice",
+                summary: "About",
+                description: "What can be turned off and what remains essential",
+                content: (
+                  <div className="grid gap-3 text-sm leading-6 text-muted-foreground">
+                    <p>
+                      Turning a category off removes it from the in-app feed. Essential account and
+                      security messages are never hidden by these controls.
+                    </p>
+                    <p>
+                      Security and billing can stay immediate while social and progress updates
+                      remain in-app or weekly.
+                    </p>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </div>
+        <aside className="hidden rounded-3xl border border-border bg-card p-5 lg:block">
           <ShieldCheck className="size-6 text-primary" aria-hidden />
           <h2 className="mt-4 font-display text-xl font-semibold">Quiet by choice</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">

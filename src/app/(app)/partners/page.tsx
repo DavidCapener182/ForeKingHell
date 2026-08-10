@@ -11,7 +11,20 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import {
+  BottomSheet,
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTopBar,
+} from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import {
   DataPair,
   DataPanel,
@@ -73,7 +86,12 @@ const sponsorPipelineSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
-export default async function PartnersPage() {
+export default async function PartnersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ sponsor?: string; offer?: string }>;
+}) {
+  const params = await searchParams;
   const data = await getPartnersPageData();
   const activeContextualOffers = data.offers.filter((offer) => Boolean(offer.targetContext)).length;
   const sponsorAssetCount = data.sponsors.filter(
@@ -82,9 +100,26 @@ export default async function PartnersPage() {
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="partners" />
+      <MobileAppShell>
+        <MobileTopBar title="Partners" />
+        <MobileRouteTabs group="platform" activeKey="partners" />
+        <MobilePartnersOperations
+          data={data}
+          sponsorAssetCount={sponsorAssetCount}
+          activeContextualOffers={activeContextualOffers}
+          status={
+            params?.sponsor === "created"
+              ? "Sponsor added"
+              : params?.offer === "created"
+                ? "Offer created"
+                : params?.offer === "clicked"
+                  ? "Offer click recorded"
+                  : undefined
+          }
+        />
+      </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="partners">
+      <DesktopWorkbenchLayout scope="partners" className="hidden lg:grid">
         <PageHeader
           eyebrow={<StatusPill tone="amber">Sponsored growth</StatusPill>}
           title="Sponsors and partner offers"
@@ -243,6 +278,322 @@ export default async function PartnersPage() {
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function MobilePartnersOperations({
+  data,
+  sponsorAssetCount,
+  activeContextualOffers,
+  status,
+}: {
+  data: PartnersPageData;
+  sponsorAssetCount: number;
+  activeContextualOffers: number;
+  status?: string;
+}) {
+  const sponsorsNeedingContact = data.sponsors.filter(
+    (sponsor) => !sponsor.websiteUrl && !sponsor.contactEmail,
+  );
+  const primaryOffers = data.offers.slice(0, 6);
+  const olderOffers = data.offers.slice(6);
+  const primarySponsors = data.sponsors.slice(0, 10);
+  const olderSponsors = data.sponsors.slice(10);
+
+  return (
+    <>
+      {status ? (
+        <IOSGroupedList label="Partner update status">
+          <IOSListRow
+            label={status}
+            detail="Partner operations have been refreshed."
+            status={<IOSInlineStatus label="Saved" tone="positive" />}
+          />
+        </IOSGroupedList>
+      ) : null}
+
+      <MobileStatusAction
+        label="Prospects needing contact"
+        value={sponsorsNeedingContact.length}
+        detail={`${data.sponsors.length} sponsors · ${data.offers.length} active offers · ${activeContextualOffers} contextual`}
+        action={
+          <BottomSheet label="Sponsor" title="Add sponsor prospect">
+            <MobileSponsorForm />
+          </BottomSheet>
+        }
+      />
+
+      <section className="grid gap-2" aria-label="Active partner offers">
+        <IOSSectionHeader
+          title="Active offers"
+          description={`${data.offers.length} labelled partner ${data.offers.length === 1 ? "offer" : "offers"}`}
+          action={
+            <BottomSheet label="Offer" title="Create partner offer">
+              <MobilePartnerOfferForm sponsors={data.ownedSponsors} />
+            </BottomSheet>
+          }
+        />
+        <MobilePartnerOfferRows offers={primaryOffers} />
+        {olderOffers.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More active partner offers"
+            items={[
+              {
+                value: "more-partner-offers",
+                title: "More active offers",
+                summary: olderOffers.length,
+                description: "Additional offers in this account",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobilePartnerOfferRows offers={olderOffers} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      <section className="grid gap-2" aria-label="Sponsor pipeline">
+        <IOSSectionHeader
+          title="Sponsor pipeline"
+          description={`${sponsorAssetCount} of ${data.sponsors.length} have a contact route`}
+        />
+        <MobileSponsorRows sponsors={primarySponsors} currentUserId={data.userId} />
+        {olderSponsors.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More sponsor prospects"
+            items={[
+              {
+                value: "more-sponsors",
+                title: "More sponsors",
+                summary: olderSponsors.length,
+                description: "Additional prospects in the pipeline",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileSponsorRows sponsors={olderSponsors} currentUserId={data.userId} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      {data.recentClicks.length > 0 ? (
+        <IOSDisclosureGroup
+          label="Recent partner click evidence"
+          items={[
+            {
+              value: "recent-partner-clicks",
+              title: "Recent clicks",
+              summary: data.recentClicks.length,
+              description: "Click rows recorded for this admin account",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: (
+                <IOSGroupedList label="Recent partner click rows" className="border-0">
+                  {data.recentClicks.map((click) => (
+                    <IOSListRow
+                      key={click.id}
+                      label="Recorded offer click"
+                      value={dateFormatter.format(click.createdAt)}
+                      detail={
+                        <span className="[overflow-wrap:anywhere]">
+                          {click.source ? `${click.source} · ` : ""}
+                          {click.offerId}
+                        </span>
+                      }
+                    />
+                  ))}
+                </IOSGroupedList>
+              ),
+            },
+          ]}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function MobilePartnerOfferRows({ offers }: { offers: PartnersPageData["offers"] }) {
+  return (
+    <IOSGroupedList label="Active partner offer rows">
+      {offers.length > 0 ? (
+        offers.map((offer) => (
+          <IOSListRow
+            key={offer.id}
+            label={offer.title}
+            detail={
+              <>
+                <span className="block font-medium text-foreground">
+                  {label(offer.offerType)}
+                  {offer.couponCode ? ` · Code ${offer.couponCode}` : ""}
+                </span>
+                <span className="mt-0.5 line-clamp-2 block">
+                  {offer.targetContext ? `${offer.targetContext} · ` : ""}
+                  {offer.description ?? "No description supplied"}
+                </span>
+              </>
+            }
+            status={
+              <IOSInlineStatus
+                label={offer.targetContext ? "Contextual offer" : "General offer"}
+                tone={offer.targetContext ? "positive" : "neutral"}
+              />
+            }
+            trailing={
+              offer.offerUrl ? (
+                <form action={recordOfferClickAction}>
+                  <input type="hidden" name="offerId" value={offer.id} />
+                  <input type="hidden" name="offerUrl" value={offer.offerUrl} />
+                  <input type="hidden" name="source" value="partners_mobile" />
+                  <Button type="submit" variant="outline" className="min-h-11">
+                    Open
+                  </Button>
+                </form>
+              ) : undefined
+            }
+          />
+        ))
+      ) : (
+        <IOSListRow
+          label="No active offers"
+          detail="Create an offer after adding a sponsor owned by this account."
+        />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function MobileSponsorRows({
+  sponsors,
+  currentUserId,
+}: {
+  sponsors: Sponsor[];
+  currentUserId: string;
+}) {
+  return (
+    <IOSGroupedList label="Sponsor pipeline rows">
+      {sponsors.length > 0 ? (
+        sponsors.map((sponsor) => (
+          <IOSListRow
+            key={sponsor.id}
+            label={sponsor.name}
+            value={label(sponsor.status)}
+            detail={`${sponsor.ownerUserId === currentUserId ? "Owned by you" : "Other admin"} · ${sponsorContactLabel(sponsor)}`}
+            status={
+              <IOSInlineStatus
+                label={
+                  sponsor.websiteUrl || sponsor.contactEmail
+                    ? "Contact route available"
+                    : "Contact needed"
+                }
+                tone={sponsor.websiteUrl || sponsor.contactEmail ? "positive" : "attention"}
+              />
+            }
+          />
+        ))
+      ) : (
+        <IOSListRow
+          label="No sponsor prospects"
+          detail="Add a sponsor to start the partner pipeline."
+        />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function MobileSponsorForm() {
+  return (
+    <form action={createSponsorAction} className="grid gap-3">
+      <label className="grid gap-1 text-sm font-medium">
+        Sponsor name
+        <Input name="name" placeholder="Local range or golf shop" className="h-11" required />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Website
+        <Input
+          name="websiteUrl"
+          type="url"
+          inputMode="url"
+          placeholder="https://example.com"
+          className="h-11"
+        />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Contact email
+        <Input
+          name="contactEmail"
+          type="email"
+          placeholder="partner@example.com"
+          className="h-11"
+        />
+      </label>
+      <Button type="submit" className="min-h-11">
+        <Plus className="size-4" />
+        Add sponsor
+      </Button>
+    </form>
+  );
+}
+
+function MobilePartnerOfferForm({ sponsors }: { sponsors: PartnersPageData["ownedSponsors"] }) {
+  if (sponsors.length === 0) {
+    return (
+      <IOSGroupedList label="Partner offer first-use state">
+        <IOSListRow
+          label="Add an owned sponsor first"
+          detail="Offers can only be attached to sponsors owned by this admin account."
+          status={<IOSInlineStatus label="Sponsor required" tone="attention" />}
+        />
+      </IOSGroupedList>
+    );
+  }
+
+  return (
+    <form action={createPartnerOfferAction} className="grid gap-3">
+      <label className="grid gap-1 text-sm font-medium">
+        Sponsor
+        <select name="sponsorId" className="min-h-11 rounded-lg border px-3" required>
+          {sponsors.map((sponsor) => (
+            <option key={sponsor.id} value={sponsor.id}>
+              {sponsor.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Offer title
+        <Input name="title" className="h-11" required />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Description
+        <textarea name="description" rows={3} className="rounded-lg border px-3 py-2 text-sm" />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Offer type
+        <select
+          name="offerType"
+          defaultValue="affiliate"
+          className="min-h-11 rounded-lg border px-3"
+        >
+          <option value="affiliate">Affiliate</option>
+          <option value="discount">Discount</option>
+          <option value="prize">Prize</option>
+          <option value="range_credit">Range credit</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Golf context
+        <Input name="targetContext" placeholder="wedge, challenge, range credit" className="h-11" />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Offer URL
+        <Input name="offerUrl" type="url" inputMode="url" className="h-11" />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        Coupon code
+        <Input name="couponCode" autoCapitalize="characters" className="h-11" />
+      </label>
+      <Button type="submit" className="min-h-11">
+        <TicketPercent className="size-4" />
+        Save offer
+      </Button>
+    </form>
   );
 }
 

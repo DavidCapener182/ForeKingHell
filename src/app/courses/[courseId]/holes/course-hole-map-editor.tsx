@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ComponentProps } from "react";
 import type * as Leaflet from "leaflet";
-import { Crosshair, MapPinned, Save } from "lucide-react";
+import { ChevronDown, Crosshair, MapPinned, Save } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,8 @@ export function CourseHoleMapEditor({
   const [leaflet, setLeaflet] = useState<typeof Leaflet | null>(null);
   const [selectedHoleNumber, setSelectedHoleNumber] = useState(holes[0]?.holeNumber ?? 1);
   const [placementTarget, setPlacementTarget] = useState<"tee" | "green">("tee");
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const controlsId = useId();
   const placementTargetRef = useRef<"tee" | "green">("tee");
   const selectedHole = holes.find((hole) => hole.holeNumber === selectedHoleNumber) ?? null;
   const [draft, setDraft] = useState<DraftHole>(() =>
@@ -257,167 +259,219 @@ export function CourseHoleMapEditor({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.75fr_1.25fr]">
-      <div className="apple-panel p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-              {teeSetName}
-            </Badge>
-            <h3 className="mt-3 text-2xl font-semibold tracking-normal">Click-to-place editor</h3>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Pick a hole, choose tee or green, then click the satellite map. Save when both points
-              look right.
-            </p>
-          </div>
-          <MapPinned className="size-5 text-sky-600" />
+    <div className="grid gap-4" data-selected-hole={selectedHoleNumber}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-950/60">
+            {teeSetName}
+          </Badge>
+          <h3 className="mt-2 text-xl font-semibold tracking-normal text-foreground">
+            Select a hole, then place its points
+          </h3>
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+            The map stays primary. Detailed values and save controls open underneath on mobile.
+          </p>
         </div>
+        <MapPinned className="mt-1 size-5 shrink-0 text-sky-600" aria-hidden />
+      </div>
 
-        <div className="mt-4 grid grid-cols-6 gap-2">
+      <div className="-mx-1 overflow-x-auto px-1 pb-1" aria-label="Choose a hole to edit">
+        <div className="flex min-w-max gap-2 lg:grid lg:min-w-0 lg:grid-cols-9">
           {holeNumbers.map((holeNumber) => (
             <Button
               key={holeNumber}
               type="button"
               variant={selectedHoleNumber === holeNumber ? "default" : "outline"}
+              aria-pressed={selectedHoleNumber === holeNumber}
+              aria-label={`Edit hole ${holeNumber}`}
               className={cn(
-                "h-10 rounded-lg",
-                selectedHoleNumber === holeNumber ? "bg-[#0B7A3B] text-white" : "bg-white",
+                "size-11 shrink-0 rounded-lg p-0",
+                selectedHoleNumber === holeNumber ? "bg-[#0B7A3B] text-white" : "bg-background",
               )}
-              onClick={() => {
-                const nextHole = holes.find((hole) => hole.holeNumber === holeNumber) ?? null;
-                setSelectedHoleNumber(holeNumber);
-                setDraft(draftFromHole(holeNumber, nextHole));
-                setPlacementTarget("tee");
-              }}
+              onClick={() => selectHole(holeNumber)}
             >
               {holeNumber}
             </Button>
           ))}
         </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant={placementTarget === "tee" ? "default" : "outline"}
-            className={placementTarget === "tee" ? "bg-[#0B7A3B] text-white" : "bg-white"}
-            onClick={() => setPlacementTarget("tee")}
-          >
-            Tee point
-          </Button>
-          <Button
-            type="button"
-            variant={placementTarget === "green" ? "default" : "outline"}
-            className={placementTarget === "green" ? "bg-[#0B7A3B] text-white" : "bg-white"}
-            onClick={() => setPlacementTarget("green")}
-          >
-            Green point
-          </Button>
-        </div>
-
-        <form action={saveHoleAction} className="mt-4 grid gap-3">
-          <input type="hidden" name="courseId" value={courseId} />
-          <input type="hidden" name="teeSetId" value={teeSetId} />
-          <input type="hidden" name="holeNumber" value={selectedHoleNumber} />
-
-          <div className="grid grid-cols-3 gap-2">
-            <Field
-              label="Par"
-              name="par"
-              value={draft.par}
-              onChange={setDraftValue("par")}
-              type="number"
-              min={1}
-              required
-            />
-            <Field
-              label="Yards"
-              name="yards"
-              value={draft.yards}
-              onChange={setDraftValue("yards")}
-              type="number"
-              min={1}
-              required
-            />
-            <Field
-              label="SI"
-              name="strokeIndex"
-              value={draft.strokeIndex}
-              onChange={setDraftValue("strokeIndex")}
-              type="number"
-              min={1}
-              max={18}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <Field
-              label="Tee lat"
-              name="teeLat"
-              value={draft.teeLat}
-              onChange={setDraftValue("teeLat")}
-              type="number"
-              step="0.000001"
-              required
-            />
-            <Field
-              label="Tee lng"
-              name="teeLng"
-              value={draft.teeLng}
-              onChange={setDraftValue("teeLng")}
-              type="number"
-              step="0.000001"
-              required
-            />
-            <Field
-              label="Green lat"
-              name="greenLat"
-              value={draft.greenLat}
-              onChange={setDraftValue("greenLat")}
-              type="number"
-              step="0.000001"
-              required
-            />
-            <Field
-              label="Green lng"
-              name="greenLng"
-              value={draft.greenLng}
-              onChange={setDraftValue("greenLng")}
-              type="number"
-              step="0.000001"
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 bg-white"
-              onClick={focusSelectedHole}
-            >
-              <Crosshair className="size-4" />
-              Focus hole
-            </Button>
-            <Button type="submit" className="flex-1 bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <Save className="size-4" />
-              Save geometry
-            </Button>
-          </div>
-        </form>
-
-        <p className="mt-3 text-xs leading-5 text-muted-foreground">
-          Current draft: tee {formatCoordinatePair(draft.teeLat, draft.teeLng)} / green{" "}
-          {formatCoordinatePair(draft.greenLat, draft.greenLng)}.
-        </p>
       </div>
 
-      <div className="map-frame relative">
-        <div
-          ref={setMapContainerRef}
-          className="h-[68vh] min-h-[360px] w-full lg:h-[620px] lg:min-h-[460px]"
-        />
-        <div className="pointer-events-none absolute left-4 top-4 rounded-xl bg-white/92 px-3 py-2 text-sm font-semibold shadow-sm">
-          Hole {selectedHoleNumber} - click {placementTarget}
+      <div className="grid gap-4 lg:grid-cols-[minmax(18rem,0.75fr)_minmax(0,1.25fr)] lg:items-start">
+        <div className="map-frame relative order-1 lg:order-2">
+          <div
+            ref={setMapContainerRef}
+            className="h-[56dvh] min-h-[360px] max-h-[560px] w-full lg:h-[620px] lg:min-h-[460px] lg:max-h-none"
+          />
+          <div className="pointer-events-none absolute left-3 top-3 rounded-lg bg-background/92 px-3 py-2 text-sm font-semibold text-foreground shadow-sm backdrop-blur-md">
+            Hole {selectedHoleNumber} · place {placementTarget}
+          </div>
+        </div>
+
+        <div className="order-2 lg:order-1">
+          <button
+            type="button"
+            aria-expanded={controlsOpen}
+            aria-controls={controlsId}
+            onClick={() => setControlsOpen((open) => !open)}
+            className="ios-grouped-list focus-aaa flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2.5 text-left lg:hidden"
+          >
+            <span className="min-w-0">
+              <span className="block text-[15px] font-medium text-foreground">
+                Hole {selectedHoleNumber} controls
+              </span>
+              <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
+                {selectedHole ? `${selectedHole.yards} yd · mapped` : "Add par, yardage and points"}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none",
+                controlsOpen && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+
+          <div
+            id={controlsId}
+            className={cn("apple-panel p-4", !controlsOpen && "hidden", "lg:block")}
+          >
+            <div className="hidden items-start justify-between gap-3 lg:flex">
+              <div>
+                <h3 className="text-xl font-semibold tracking-normal">Hole controls</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Choose tee or green, click the satellite map, then save both points.
+                </p>
+              </div>
+              <MapPinned className="size-5 text-sky-600" aria-hidden />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 lg:mt-4">
+              <Button
+                type="button"
+                variant={placementTarget === "tee" ? "default" : "outline"}
+                aria-pressed={placementTarget === "tee"}
+                className={cn(
+                  "min-h-11",
+                  placementTarget === "tee" ? "bg-[#0B7A3B] text-white" : "bg-background",
+                )}
+                onClick={() => setPlacementTarget("tee")}
+              >
+                Tee point
+              </Button>
+              <Button
+                type="button"
+                variant={placementTarget === "green" ? "default" : "outline"}
+                aria-pressed={placementTarget === "green"}
+                className={cn(
+                  "min-h-11",
+                  placementTarget === "green" ? "bg-[#0B7A3B] text-white" : "bg-background",
+                )}
+                onClick={() => setPlacementTarget("green")}
+              >
+                Green point
+              </Button>
+            </div>
+
+            <form action={saveHoleAction} className="mt-4 grid gap-3">
+              <input type="hidden" name="courseId" value={courseId} />
+              <input type="hidden" name="teeSetId" value={teeSetId} />
+              <input type="hidden" name="holeNumber" value={selectedHoleNumber} />
+
+              <div className="grid grid-cols-3 gap-2">
+                <Field
+                  label="Par"
+                  name="par"
+                  value={draft.par}
+                  onChange={setDraftValue("par")}
+                  type="number"
+                  min={1}
+                  required
+                />
+                <Field
+                  label="Yards"
+                  name="yards"
+                  value={draft.yards}
+                  onChange={setDraftValue("yards")}
+                  type="number"
+                  min={1}
+                  required
+                />
+                <Field
+                  label="SI"
+                  name="strokeIndex"
+                  value={draft.strokeIndex}
+                  onChange={setDraftValue("strokeIndex")}
+                  type="number"
+                  min={1}
+                  max={18}
+                />
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field
+                  label="Tee latitude"
+                  name="teeLat"
+                  value={draft.teeLat}
+                  onChange={setDraftValue("teeLat")}
+                  type="number"
+                  step="0.000001"
+                  required
+                />
+                <Field
+                  label="Tee longitude"
+                  name="teeLng"
+                  value={draft.teeLng}
+                  onChange={setDraftValue("teeLng")}
+                  type="number"
+                  step="0.000001"
+                  required
+                />
+                <Field
+                  label="Green latitude"
+                  name="greenLat"
+                  value={draft.greenLat}
+                  onChange={setDraftValue("greenLat")}
+                  type="number"
+                  step="0.000001"
+                  required
+                />
+                <Field
+                  label="Green longitude"
+                  name="greenLng"
+                  value={draft.greenLng}
+                  onChange={setDraftValue("greenLng")}
+                  type="number"
+                  step="0.000001"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 flex-1 bg-background"
+                  onClick={focusSelectedHole}
+                >
+                  <Crosshair className="size-4" aria-hidden />
+                  Focus hole
+                </Button>
+                <Button
+                  type="submit"
+                  className="min-h-11 flex-1 bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                >
+                  <Save className="size-4" aria-hidden />
+                  Save geometry
+                </Button>
+              </div>
+            </form>
+
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Current draft: tee {formatCoordinatePair(draft.teeLat, draft.teeLng)} / green{" "}
+              {formatCoordinatePair(draft.greenLat, draft.greenLng)}.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -427,6 +481,13 @@ export function CourseHoleMapEditor({
     return (value: string) => {
       setDraft((current) => ({ ...current, [key]: value }));
     };
+  }
+
+  function selectHole(holeNumber: number) {
+    const nextHole = holes.find((hole) => hole.holeNumber === holeNumber) ?? null;
+    setSelectedHoleNumber(holeNumber);
+    setDraft(draftFromHole(holeNumber, nextHole));
+    setPlacementTarget("tee");
   }
 }
 
@@ -447,7 +508,7 @@ function Field({
         {...props}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-xl bg-white text-sm text-foreground"
+        className="min-h-11 rounded-xl bg-background text-sm text-foreground"
       />
     </label>
   );

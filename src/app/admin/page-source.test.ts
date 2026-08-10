@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(admin)/admin/page.tsx"), "utf8");
+const adminDataSource = readFileSync(join(process.cwd(), "src/lib/admin.ts"), "utf8");
 
 describe("admin overview desktop console", () => {
   it("uses the admin artwork variant in the protected console header", () => {
@@ -35,5 +36,16 @@ describe("admin overview desktop console", () => {
     expect(source).toContain('railBreakpoint="wide"');
     expect(source).not.toContain('railBreakpoint="2xl"');
     expect(source).toContain("rail={");
+  });
+
+  it("uses a real-status-first mobile operations queue without invented health rows", () => {
+    expect(source).toContain("AdminMobileShell");
+    expect(source).toContain("AdminMobileOverview");
+    expect(source).toContain("AdminOperationsQueue");
+    expect(source).toContain('<DesktopWorkbenchLayout\n        scope="admin"');
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain("Challenge attempts flagged");
+    expect(source).not.toContain('value="Runbook ready"');
+    expect(adminDataSource).not.toContain("sessionCount: 0,\n    feedCount: 0");
   });
 });

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
+import { SlidersHorizontal, X } from "lucide-react";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { SegmentedControl } from "@/components/app/segmented-control";
@@ -121,6 +122,9 @@ export function ShotPatternMap({
   const [mapMode, setMapMode] = useState<"course" | "satellite">("satellite");
   const [showDots, setShowDots] = useState(true);
   const [showEnvelope, setShowEnvelope] = useState(true);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const mobileControlsTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const mobileControlsCloseRef = useRef<HTMLButtonElement | null>(null);
   const [teeSetId, setTeeSetId] = useState(defaultControls.teeSetId ?? teeSets[0]?.id ?? "");
   const [holeNumber, setHoleNumber] = useState(
     defaultControls.holeNumber ?? holes[0]?.holeNumber ?? 1,
@@ -818,10 +822,72 @@ export function ShotPatternMap({
     mapMode === "course" || !tileReady || (mapMode === "satellite" && !staticSatelliteReady);
   const showSatelliteMap = mapMode === "satellite";
 
+  useEffect(() => {
+    if (!mobileControlsOpen) {
+      return;
+    }
+
+    mobileControlsCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileControlsOpen(false);
+        requestAnimationFrame(() => mobileControlsTriggerRef.current?.focus());
+      }
+    };
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileControlsOpen]);
+
+  const closeMobileControls = () => {
+    setMobileControlsOpen(false);
+    requestAnimationFrame(() => mobileControlsTriggerRef.current?.focus());
+  };
+
   return (
-    <div className="relative h-[100svh] min-h-[100svh] overflow-hidden bg-slate-950 sm:grid sm:h-auto sm:min-h-0 sm:gap-4 sm:overflow-visible sm:bg-transparent xl:grid-cols-[minmax(320px,0.42fr)_minmax(0,1fr)]">
-      <div className="apple-panel absolute inset-x-2 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[900] max-h-[38svh] space-y-2 overflow-y-auto rounded-xl bg-white p-2 shadow-lg sm:static sm:z-auto sm:max-h-none sm:space-y-4 sm:overflow-visible sm:rounded-lg sm:bg-[var(--surface-soft)] sm:p-4 sm:shadow-none">
-        <div className="hidden sm:block">
+    <div className="relative h-[100svh] min-h-[100svh] overflow-hidden bg-slate-950 lg:grid lg:h-auto lg:min-h-0 lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:bg-transparent">
+      {mobileControlsOpen ? (
+        <button
+          type="button"
+          aria-label="Close shot pattern setup"
+          className="absolute inset-0 z-[880] bg-black/45 lg:hidden"
+          onClick={closeMobileControls}
+        />
+      ) : null}
+      <div
+        id="shot-pattern-mobile-controls"
+        role={mobileControlsOpen ? "dialog" : undefined}
+        aria-modal={mobileControlsOpen ? true : undefined}
+        aria-label={mobileControlsOpen ? "Shot pattern setup" : undefined}
+        className={cn(
+          "apple-panel absolute inset-x-2 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[900] max-h-[72dvh] space-y-3 overflow-y-auto rounded-2xl bg-card p-3 text-foreground shadow-2xl lg:static lg:z-auto lg:block lg:max-h-none lg:space-y-4 lg:overflow-visible lg:rounded-lg lg:bg-[var(--surface-soft)] lg:p-4 lg:shadow-none",
+          mobileControlsOpen ? "block" : "hidden lg:block",
+        )}
+        data-mobile-shot-pattern-controls
+      >
+        <div className="flex min-h-11 items-center justify-between gap-3 lg:hidden">
+          <div>
+            <p className="text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
+              Pattern setup
+            </p>
+            <p className="text-[15px] font-medium text-foreground">
+              Hole {selectedHoleNumber} ·{" "}
+              {shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)}
+            </p>
+          </div>
+          <Button
+            ref={mobileControlsCloseRef}
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11 shrink-0 rounded-full"
+            aria-label="Close shot pattern setup"
+            onClick={closeMobileControls}
+          >
+            <X className="size-5" aria-hidden />
+          </Button>
+        </div>
+        <div className="hidden lg:block">
           <p className="text-sm font-semibold text-[#0B7A3B]">Shot Pattern Overlay</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-normal">{courseName}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -839,7 +905,7 @@ export function ShotPatternMap({
               setTeeSetId(nextTeeSetId);
               setHoleNumber(nextHoles[0]?.holeNumber ?? 1);
             }}
-            className="h-9 w-full min-w-0 rounded-lg border border-input bg-white px-2 text-xs sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm"
+            className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm text-foreground sm:rounded-xl"
           >
             {teeSets.map((teeSet) => (
               <option key={teeSet.id} value={teeSet.id}>
@@ -857,7 +923,7 @@ export function ShotPatternMap({
               variant={hole.holeNumber === selectedHoleNumber ? "default" : "outline"}
               size="sm"
               className={cn(
-                "h-9 rounded-lg text-sm font-semibold sm:h-11",
+                "min-h-11 rounded-lg text-sm font-semibold",
                 hole.holeNumber === selectedHoleNumber && "bg-[#0B7A3B] text-white",
               )}
               onClick={() => setHoleNumber(hole.holeNumber)}
@@ -877,13 +943,13 @@ export function ShotPatternMap({
               max={750}
               value={playingHoleYards}
               onChange={(event) => updateHoleLength(Number(event.target.value))}
-              className="h-9 min-w-0 rounded-lg border border-input bg-white px-2 text-right text-sm font-semibold sm:h-11 sm:rounded-xl sm:px-3"
+              className="h-11 min-w-0 rounded-lg border border-input bg-background px-3 text-right text-sm font-semibold text-foreground sm:rounded-xl"
             />
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="h-9 rounded-lg px-3 sm:h-11 sm:rounded-xl"
+              className="h-11 rounded-lg px-3 sm:rounded-xl"
               disabled={!isCustomPlayingLength}
               onClick={() => {
                 setHoleLengthOverride(null);
@@ -913,7 +979,7 @@ export function ShotPatternMap({
                 setClubSelection({ clubId: null, clubType: value.slice("type:".length) });
               }
             }}
-            className="h-9 w-full min-w-0 rounded-lg border border-input bg-white px-2 text-xs sm:h-11 sm:rounded-xl sm:px-3 sm:text-sm"
+            className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm text-foreground sm:rounded-xl"
           >
             {renderedClubOptions.map((option) => (
               <option
@@ -926,7 +992,7 @@ export function ShotPatternMap({
           </select>
         </label>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm sm:rounded-xl sm:p-3">
+        <div className="rounded-lg border border-border bg-card p-3 shadow-sm sm:rounded-xl">
           <div className="flex items-start justify-between gap-2 sm:gap-3">
             <div>
               <p className="text-sm font-semibold">Target line</p>
@@ -958,7 +1024,7 @@ export function ShotPatternMap({
                 onChange={(event) =>
                   updateTargetPlacement({ distanceYd: Number(event.target.value) })
                 }
-                className="min-w-0 flex-1 accent-[#0B7A3B]"
+                className="min-h-11 min-w-0 flex-1 accent-[#0B7A3B]"
               />
               <input
                 aria-label="Target distance yards"
@@ -969,7 +1035,7 @@ export function ShotPatternMap({
                 onChange={(event) =>
                   updateTargetPlacement({ distanceYd: Number(event.target.value) })
                 }
-                className="h-9 w-20 rounded-lg border border-input px-2 text-right text-sm font-semibold sm:h-10 sm:w-24"
+                className="h-11 w-20 rounded-lg border border-input bg-background px-2 text-right text-sm font-semibold text-foreground sm:w-24"
               />
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
@@ -982,7 +1048,7 @@ export function ShotPatternMap({
                 onChange={(event) =>
                   updateTargetPlacement({ aimOffsetYd: Number(event.target.value) })
                 }
-                className="min-w-0 flex-1 accent-[#0B7A3B]"
+                className="min-h-11 min-w-0 flex-1 accent-[#0B7A3B]"
               />
               <input
                 aria-label="Aim offset yards"
@@ -993,7 +1059,7 @@ export function ShotPatternMap({
                 onChange={(event) =>
                   updateTargetPlacement({ aimOffsetYd: Number(event.target.value) })
                 }
-                className="h-9 w-20 rounded-lg border border-input px-2 text-right text-sm font-semibold sm:h-10 sm:w-24"
+                className="h-11 w-20 rounded-lg border border-input bg-background px-2 text-right text-sm font-semibold text-foreground sm:w-24"
               />
             </div>
             <div className="hidden grid-cols-2 gap-2 text-sm sm:grid">
@@ -1019,7 +1085,7 @@ export function ShotPatternMap({
                 type="button"
                 size="sm"
                 variant={bestTargetClubSelected ? "secondary" : "outline"}
-                className="h-8 justify-between rounded-lg text-xs sm:h-9 sm:text-sm"
+                className="min-h-11 justify-between rounded-lg text-xs sm:text-sm"
                 onClick={() =>
                   setClubSelection({
                     clubId: bestTargetClub.clubId,
@@ -1081,8 +1147,29 @@ export function ShotPatternMap({
         ) : null}
       </div>
 
+      <Button
+        ref={mobileControlsTriggerRef}
+        type="button"
+        variant="secondary"
+        className="absolute inset-x-3 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[870] min-h-11 justify-between rounded-xl border border-white/20 bg-card/95 px-3 text-foreground shadow-xl backdrop-blur lg:hidden"
+        aria-expanded={mobileControlsOpen}
+        aria-controls="shot-pattern-mobile-controls"
+        onClick={() => setMobileControlsOpen(true)}
+        data-mobile-shot-pattern-trigger
+      >
+        <span className="min-w-0 truncate text-left">
+          Hole {selectedHoleNumber} ·{" "}
+          {shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)} ·{" "}
+          {targetLineStatusLabel}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1.5">
+          <SlidersHorizontal className="size-4" aria-hidden />
+          Setup
+        </span>
+      </Button>
+
       <div className="min-h-0 space-y-3">
-        <div className="map-frame shot-pattern-mobile-map relative h-[100svh] min-h-[100svh] overflow-hidden sm:h-[72vh] sm:min-h-[420px] lg:min-h-[620px]">
+        <div className="map-frame shot-pattern-mobile-map relative h-[100svh] min-h-[100svh] overflow-hidden lg:h-[72vh] lg:min-h-[620px]">
           {showStaticSatellite && satelliteImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -1121,7 +1208,7 @@ export function ShotPatternMap({
             )}
             style={{ backgroundColor: "transparent" }}
           />
-          <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 flex flex-wrap items-start justify-between gap-2 sm:top-3">
+          <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 flex flex-wrap items-start justify-between gap-2 lg:top-3">
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm">
               {selectedHole ? (
                 <span className="grid leading-tight">
@@ -1134,6 +1221,18 @@ export function ShotPatternMap({
                       Scorecard {numberFormatter.format(selectedHole.yards)} yd
                     </span>
                   ) : null}
+                  <span
+                    className={cn(
+                      "text-[11px] font-semibold",
+                      targetLine?.beyondCapability
+                        ? "text-slate-600"
+                        : targetLineIsPlayable
+                          ? "text-emerald-700"
+                          : "text-red-700",
+                    )}
+                  >
+                    {targetLineStatusLabel}
+                  </span>
                 </span>
               ) : (
                 "Hole map"
@@ -1145,7 +1244,7 @@ export function ShotPatternMap({
                 size="sm"
                 variant={mapMode === "course" ? "default" : "ghost"}
                 className={cn(
-                  "h-8 rounded-[6px]",
+                  "min-h-11 rounded-[6px] lg:min-h-8",
                   mapMode === "course" && "bg-[#0B7A3B] text-white",
                 )}
                 onClick={() => setMapMode("course")}
@@ -1157,7 +1256,7 @@ export function ShotPatternMap({
                 size="sm"
                 variant={mapMode === "satellite" ? "default" : "ghost"}
                 className={cn(
-                  "h-8 rounded-[6px]",
+                  "min-h-11 rounded-[6px] lg:min-h-8",
                   mapMode === "satellite" && "bg-[#0B7A3B] text-white",
                 )}
                 onClick={() => setMapMode("satellite")}

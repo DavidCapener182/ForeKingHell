@@ -13,6 +13,13 @@ import {
 import { and, asc, desc, eq, lt } from "drizzle-orm";
 
 import { DataWarning, RecommendedAction } from "@/components/app/evidence-status";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,166 +87,173 @@ export default async function CourseStrategyPage({
         }
       />
 
-      <section
-        className="grid gap-4 rounded-2xl border bg-card p-4"
-        aria-labelledby="hole-strategy-title"
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-primary">Hole-by-hole plan</p>
-            <h2 id="hole-strategy-title" className="mt-1 font-display text-2xl font-semibold">
-              {strategyData.selectedCourse?.name ?? "Choose a mapped course"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Bag ranges, measured miss direction and mapped course hazards. Recommendations are
-              historical guidance, not certainty.
-            </p>
-          </div>
-          <form action="/courses/strategy" className="flex flex-wrap gap-2">
-            <input type="hidden" name="mode" value={mode} />
-            <label className="grid gap-1 text-sm font-semibold">
-              Course
-              <select
-                name="courseId"
-                defaultValue={strategyData.selectedCourse?.id ?? ""}
-                className="min-h-11 min-w-64 rounded-xl border bg-background px-3"
-              >
-                {strategyData.courseOptions.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {course.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button type="submit" variant="outline" className="min-h-11 self-end">
-              Load strategy
-            </Button>
-          </form>
-        </div>
-        {strategyData.strategies.length ? (
-          <div className="grid gap-3 xl:grid-cols-2">
-            {strategyData.strategies.map((strategy) => (
-              <article key={strategy.holeNumber} className="rounded-2xl border bg-background p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      Hole {strategy.holeNumber} · Par {strategy.par} · {strategy.yards} yd
-                    </p>
-                    <h3 className="mt-2 text-xl font-semibold">{strategy.recommendedClub}</h3>
-                  </div>
-                  <StatusPill
-                    tone={
-                      strategy.confidence === "High"
-                        ? "green"
-                        : strategy.confidence === "Moderate"
-                          ? "sky"
-                          : "amber"
-                    }
-                  >
-                    {strategy.confidence} confidence
-                  </StatusPill>
-                </div>
-                <dl className="mt-4 grid gap-2 sm:grid-cols-2">
-                  <StrategyDetail label="Expected carry" value={strategy.expectedCarryRange} />
-                  <StrategyDetail label="Expected leave" value={strategy.expectedLeave} />
-                  <StrategyDetail label="Common miss" value={strategy.commonMiss} />
-                  <StrategyDetail label="Safe target" value={strategy.safeTarget} />
-                </dl>
-                <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                    Planned clubs
-                  </p>
-                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs text-muted-foreground">First shot</p>
-                      <p className="font-semibold">
-                        {strategy.recommendedClub}
-                        <span className="font-normal text-muted-foreground">
-                          {" "}
-                          · {strategy.expectedCarryRange}
-                        </span>
-                      </p>
-                    </div>
-                    {strategy.followUpClubs.length ? (
-                      <>
-                        <ArrowRight
-                          className="hidden size-4 shrink-0 text-primary sm:block"
-                          aria-hidden
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-muted-foreground">
-                            {strategy.followUpClubs.length > 1
-                              ? "Follow-up shots"
-                              : "Club for the leave"}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
-                            {strategy.followUpClubs.map((club, index) => (
-                              <span
-                                key={`${strategy.holeNumber}-${club.label}-${index}`}
-                                className="inline-flex items-center gap-2"
-                              >
-                                {index > 0 ? (
-                                  <ArrowRight className="size-3.5 text-primary" aria-hidden />
-                                ) : null}
-                                <span>
-                                  {club.label}
-                                  <span className="font-normal text-muted-foreground">
-                                    {" "}
-                                    · {club.expectedCarryRange}
-                                  </span>
-                                </span>
-                              </span>
-                            ))}
-                          </div>
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {strategy.followUpClubs.length > 1
-                              ? `Combined ${strategy.followUpTotalRange} · `
-                              : ""}
-                            {strategy.followUpFit}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-primary">
-                          {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0
-                            ? "Short-game finish"
-                            : "No next club needed"}
-                        </p>
-                        {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0 ? (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {strategy.expectedLeaveYd} yd remains — choose the club from the live
-                            lie.
-                          </p>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 grid gap-2 text-sm">
-                  <p className="rounded-xl bg-amber-50 p-3 text-amber-950">
-                    <span className="font-semibold">Hazard check: </span>
-                    {strategy.hazardWarning}
-                  </p>
-                  <p className="rounded-xl bg-secondary/55 p-3">
-                    <span className="font-semibold">Conservative alternative: </span>
-                    {strategy.conservativeAlternative}
-                  </p>
-                  <p className="text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
-            This course needs a tee set with mapped holes and trusted bag numbers before a hole plan
-            can be produced.
-          </div>
-        )}
-      </section>
+      {mode === "pre" ? <MobilePreRoundStrategy data={data} strategyData={strategyData} /> : null}
+      {mode === "post" ? (
+        <MobilePostRoundStrategy postRoundData={postRoundData} saved={params?.saved === "1"} />
+      ) : null}
 
       {mode === "pre" ? (
-        <>
+        <section
+          className="hidden gap-4 rounded-2xl border bg-card p-4 lg:grid"
+          aria-labelledby="hole-strategy-title"
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-primary">Hole-by-hole plan</p>
+              <h2 id="hole-strategy-title" className="mt-1 font-display text-2xl font-semibold">
+                {strategyData.selectedCourse?.name ?? "Choose a mapped course"}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Bag ranges, measured miss direction and mapped course hazards. Recommendations are
+                historical guidance, not certainty.
+              </p>
+            </div>
+            <form action="/courses/strategy" className="flex flex-wrap gap-2">
+              <input type="hidden" name="mode" value={mode} />
+              <label className="grid gap-1 text-sm font-semibold">
+                Course
+                <select
+                  name="courseId"
+                  defaultValue={strategyData.selectedCourse?.id ?? ""}
+                  className="min-h-11 min-w-64 rounded-xl border bg-background px-3"
+                >
+                  {strategyData.courseOptions.map((course) => (
+                    <option key={course.id} value={course.id}>
+                      {course.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" variant="outline" className="min-h-11 self-end">
+                Load strategy
+              </Button>
+            </form>
+          </div>
+          {strategyData.strategies.length ? (
+            <div className="grid gap-3 xl:grid-cols-2">
+              {strategyData.strategies.map((strategy) => (
+                <article key={strategy.holeNumber} className="rounded-2xl border bg-background p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        Hole {strategy.holeNumber} · Par {strategy.par} · {strategy.yards} yd
+                      </p>
+                      <h3 className="mt-2 text-xl font-semibold">{strategy.recommendedClub}</h3>
+                    </div>
+                    <StatusPill
+                      tone={
+                        strategy.confidence === "High"
+                          ? "green"
+                          : strategy.confidence === "Moderate"
+                            ? "sky"
+                            : "amber"
+                      }
+                    >
+                      {strategy.confidence} confidence
+                    </StatusPill>
+                  </div>
+                  <dl className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <StrategyDetail label="Expected carry" value={strategy.expectedCarryRange} />
+                    <StrategyDetail label="Expected leave" value={strategy.expectedLeave} />
+                    <StrategyDetail label="Common miss" value={strategy.commonMiss} />
+                    <StrategyDetail label="Safe target" value={strategy.safeTarget} />
+                  </dl>
+                  <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                      Planned clubs
+                    </p>
+                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-muted-foreground">First shot</p>
+                        <p className="font-semibold">
+                          {strategy.recommendedClub}
+                          <span className="font-normal text-muted-foreground">
+                            {" "}
+                            · {strategy.expectedCarryRange}
+                          </span>
+                        </p>
+                      </div>
+                      {strategy.followUpClubs.length ? (
+                        <>
+                          <ArrowRight
+                            className="hidden size-4 shrink-0 text-primary sm:block"
+                            aria-hidden
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">
+                              {strategy.followUpClubs.length > 1
+                                ? "Follow-up shots"
+                                : "Club for the leave"}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                              {strategy.followUpClubs.map((club, index) => (
+                                <span
+                                  key={`${strategy.holeNumber}-${club.label}-${index}`}
+                                  className="inline-flex items-center gap-2"
+                                >
+                                  {index > 0 ? (
+                                    <ArrowRight className="size-3.5 text-primary" aria-hidden />
+                                  ) : null}
+                                  <span>
+                                    {club.label}
+                                    <span className="font-normal text-muted-foreground">
+                                      {" "}
+                                      · {club.expectedCarryRange}
+                                    </span>
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {strategy.followUpClubs.length > 1
+                                ? `Combined ${strategy.followUpTotalRange} · `
+                                : ""}
+                              {strategy.followUpFit}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-primary">
+                            {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0
+                              ? "Short-game finish"
+                              : "No next club needed"}
+                          </p>
+                          {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0 ? (
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                              {strategy.expectedLeaveYd} yd remains — choose the club from the live
+                              lie.
+                            </p>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2 text-sm">
+                    <p className="rounded-xl bg-amber-50 p-3 text-amber-950">
+                      <span className="font-semibold">Hazard check: </span>
+                      {strategy.hazardWarning}
+                    </p>
+                    <p className="rounded-xl bg-secondary/55 p-3">
+                      <span className="font-semibold">Conservative alternative: </span>
+                      {strategy.conservativeAlternative}
+                    </p>
+                    <p className="text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
+              This course needs a tee set with mapped holes and trusted bag numbers before a hole
+              plan can be produced.
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {mode === "pre" ? (
+        <div className="hidden lg:contents">
           <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {data.courseAdvice.map((item) => (
               <Card key={item.key} className="premium-card">
@@ -312,9 +326,9 @@ export default async function CourseStrategyPage({
             href="/rounds/new"
             actionLabel="Prepare round"
           />
-        </>
+        </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="hidden gap-4 lg:grid">
           <section className="grid gap-4 rounded-2xl border bg-card p-4 lg:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
@@ -514,6 +528,473 @@ export default async function CourseStrategyPage({
         </div>
       )}
     </PageShell>
+  );
+}
+
+function MobilePreRoundStrategy({
+  data,
+  strategyData,
+}: {
+  data: Awaited<ReturnType<typeof getDashboardData>>;
+  strategyData: Awaited<ReturnType<typeof getCourseStrategyData>>;
+}) {
+  const primaryAdvice = data.courseAdvice[0] ?? null;
+  const strategies = strategyData.strategies;
+
+  return (
+    <div className="grid gap-4 lg:hidden" data-mobile-pre-round-strategy>
+      <section className="grid gap-2.5" aria-label="Overall course strategy">
+        <IOSSectionHeader
+          title="Overall strategy"
+          description="The decision to take onto the first tee."
+        />
+        <IOSGroupedList label="Overall course strategy">
+          <IOSListRow
+            icon={MapPinned}
+            label={strategyData.selectedCourse?.name ?? "Choose a mapped course"}
+            value={strategies.length > 0 ? `${strategies.length} holes` : "Not ready"}
+            detail={
+              strategies.length > 0
+                ? "Mapped hazards and trusted bag ranges are ready to review."
+                : "A mapped tee set and trusted bag numbers are required."
+            }
+            status={
+              <IOSInlineStatus
+                label={strategies.length > 0 ? "Plan ready" : "Evidence required"}
+                tone={strategies.length > 0 ? "positive" : "attention"}
+              />
+            }
+          />
+          <IOSListRow
+            icon={Target}
+            label={primaryAdvice?.label ?? "Pressure-club decision"}
+            value={primaryAdvice?.value ?? "Building"}
+            detail={
+              primaryAdvice?.detail ??
+              "Import clean stock shots before trusting a pressure recommendation."
+            }
+            href={primaryAdvice?.clubId ? `/bag/${primaryAdvice.clubId}` : undefined}
+          />
+        </IOSGroupedList>
+      </section>
+
+      <DataWarning
+        title="A plan is not a live caddie"
+        detail="Confirm the actual lie, wind, elevation, hazards and pin on the course. Low-confidence stock numbers stay excluded from pressure recommendations."
+        className="dark:border-amber-700/70 dark:bg-amber-950/45 dark:text-amber-100"
+      />
+
+      <Button asChild className="min-h-11 w-full rounded-xl">
+        <Link href="/rounds/new" prefetch={false}>
+          <Flag className="size-4" aria-hidden />
+          Prepare round
+        </Link>
+      </Button>
+
+      <IOSDisclosureGroup
+        label="Course selection"
+        items={[
+          {
+            value: "course",
+            title: "Change course",
+            summary: strategyData.selectedCourse?.name ?? "Choose",
+            description: "Load another mapped tee set",
+            content: (
+              <form action="/courses/strategy" className="grid gap-3">
+                <label className="grid gap-2 text-sm font-semibold text-foreground">
+                  Course
+                  <select
+                    name="courseId"
+                    defaultValue={strategyData.selectedCourse?.id ?? ""}
+                    className="min-h-11 w-full rounded-xl border bg-background px-3"
+                  >
+                    {strategyData.courseOptions.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
+                  Load strategy
+                </Button>
+              </form>
+            ),
+          },
+        ]}
+      />
+
+      <section className="grid gap-2.5" aria-label="Hole-by-hole plan">
+        <IOSSectionHeader
+          title="Hole-by-hole plan"
+          description="Open one hole for its target, sequence and hazard detail."
+        />
+        {strategies.length > 0 ? (
+          <IOSDisclosureGroup
+            label="Hole-by-hole strategy"
+            items={strategies.map((strategy) => ({
+              value: `hole-${strategy.holeNumber}`,
+              title: `Hole ${strategy.holeNumber} · Par ${strategy.par}`,
+              summary: strategy.recommendedClub,
+              description: `${strategy.yards} yd · ${strategy.confidence} confidence`,
+              content: <MobileHoleStrategyDetail strategy={strategy} />,
+            }))}
+          />
+        ) : (
+          <IOSGroupedList label="Hole strategy unavailable">
+            <IOSListRow
+              icon={MapPinned}
+              label="Hole plan unavailable"
+              detail="Map the course holes and build trusted club numbers before preparing decisions."
+              href="/courses"
+              status={<IOSInlineStatus label="Setup required" tone="attention" />}
+            />
+          </IOSGroupedList>
+        )}
+      </section>
+
+      <IOSDisclosureGroup
+        label="Supporting course evidence"
+        items={[
+          {
+            value: "evidence",
+            title: "Supporting course evidence",
+            summary: `${data.courseAdvice.length} signals`,
+            description: "Club reminders and plays-like context",
+            content: (
+              <div className="grid gap-5">
+                <IOSGroupedList label="Course club reminders">
+                  {data.courseAdvice.map((item) => (
+                    <IOSListRow
+                      key={item.key}
+                      label={item.label}
+                      value={item.value}
+                      detail={item.detail}
+                      href={item.clubId ? `/bag/${item.clubId}` : undefined}
+                      status={
+                        <IOSInlineStatus
+                          label={
+                            item.playNumberYd
+                              ? `${Math.round(item.playNumberYd)} yd`
+                              : "Build evidence"
+                          }
+                          tone={mobileStrategyStatusTone(item.tone as Tone)}
+                        />
+                      }
+                    />
+                  ))}
+                </IOSGroupedList>
+                <section className="grid gap-2.5" aria-label="Plays-like conditions">
+                  <IOSSectionHeader
+                    title="Plays-like conditions"
+                    description={data.playsLike.summary}
+                  />
+                  <IOSGroupedList label="Plays-like club distances">
+                    {data.playsLike.rows.slice(0, 3).map((row) => (
+                      <IOSListRow
+                        key={`${row.clubId}-${row.baseYards}`}
+                        label={row.label}
+                        value={`${Math.round(row.playsLikeYards)} yd`}
+                        detail={`Stock ${Math.round(row.baseYards)} yd`}
+                        href={`/bag/${row.clubId}`}
+                      />
+                    ))}
+                  </IOSGroupedList>
+                </section>
+              </div>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function MobilePostRoundStrategy({
+  postRoundData,
+  saved,
+}: {
+  postRoundData: Awaited<ReturnType<typeof getPostRoundReviewData>>;
+  saved: boolean;
+}) {
+  const selectedRound = postRoundData.selectedRound;
+
+  if (!selectedRound) {
+    return (
+      <div className="grid gap-4 lg:hidden" data-mobile-post-round-strategy>
+        <section className="grid gap-2.5" aria-label="Post-round review status">
+          <IOSSectionHeader
+            title="No completed round yet"
+            description="Add the scorecard first, then return for an evidence-backed review."
+          />
+          <IOSGroupedList label="Post-round review unavailable">
+            <IOSListRow
+              icon={Flag}
+              label="Add a completed round"
+              detail="Record the course, score and conditions without changing imported shot evidence."
+              href="/rounds/new"
+              status={<IOSInlineStatus label="Required" tone="attention" />}
+            />
+          </IOSGroupedList>
+        </section>
+        <Button asChild className="min-h-11 w-full rounded-xl">
+          <Link href="/rounds/new" prefetch={false}>
+            Add round
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const review = postRoundData.review;
+
+  return (
+    <div className="grid gap-4 lg:hidden" data-mobile-post-round-strategy>
+      <section className="grid gap-2.5" aria-label="Post-round answer">
+        <IOSSectionHeader
+          title="What the round changed"
+          description={`${postRoundData.scoreLabel} · ${review.evidence}`}
+        />
+        {saved ? (
+          <IOSInlineStatus label="Review context saved to this round" tone="positive" />
+        ) : null}
+        <IOSGroupedList label="Post-round answer">
+          <IOSListRow
+            icon={Flag}
+            label={selectedRound.courseName ?? "Recorded round"}
+            value={shortDate(selectedRound.date)}
+            detail={postRoundData.scoreLabel}
+            status={
+              <IOSInlineStatus
+                label={`${review.confidence} confidence`}
+                tone={mobileReviewConfidenceTone(review.confidence)}
+              />
+            }
+          />
+          <IOSListRow
+            icon={Sparkles}
+            label="Strongest club"
+            value={review.strongest.value}
+            detail={review.strongest.detail}
+          />
+          <IOSListRow
+            icon={Target}
+            label="Most costly club"
+            value={review.mostCostly.value}
+            detail={review.mostCostly.detail}
+            status={<IOSInlineStatus label="Watch" tone="attention" />}
+          />
+          <IOSListRow
+            icon={GitCompareArrows}
+            label="Biggest difference"
+            value={review.biggestDifference.value}
+            detail={review.biggestDifference.detail}
+          />
+        </IOSGroupedList>
+      </section>
+
+      <section className="grid gap-2.5" aria-label="Recommended practice">
+        <IOSSectionHeader
+          title="Practise this next"
+          description="The strongest current recommendation from measured shots."
+        />
+        <IOSGroupedList label="Recommended practice action">
+          <IOSListRow
+            icon={Target}
+            label={review.practiceRecommendation.value}
+            detail={review.practiceRecommendation.detail}
+            href="/practice"
+            status={<IOSInlineStatus label="Recommended" tone="positive" />}
+          />
+        </IOSGroupedList>
+        <Button asChild className="min-h-11 w-full rounded-xl">
+          <Link href="/practice" prefetch={false}>
+            <Target className="size-4" aria-hidden />
+            Build recommended practice
+          </Link>
+        </Button>
+      </section>
+
+      {review.confidence === "Low" ? (
+        <DataWarning
+          title="Treat this as a provisional read"
+          detail="Fewer than ten measured shots met the club-sample rule. Your context can still be saved, but the app will not pretend it has a dependable performance verdict yet."
+          className="dark:border-amber-700/70 dark:bg-amber-950/45 dark:text-amber-100"
+        />
+      ) : null}
+
+      <IOSDisclosureGroup
+        label="Post-round review controls and evidence"
+        items={[
+          {
+            value: "round",
+            title: "Change round",
+            summary: shortDate(selectedRound.date),
+            description: selectedRound.courseName ?? "Recorded round",
+            content: (
+              <form action="/courses/strategy" className="grid gap-3">
+                <input type="hidden" name="mode" value="post" />
+                <label className="grid gap-2 text-sm font-semibold text-foreground">
+                  Round to review
+                  <select
+                    name="roundId"
+                    defaultValue={selectedRound.id}
+                    className="min-h-11 w-full min-w-0 rounded-xl border bg-background px-3"
+                  >
+                    {postRoundData.rounds.map((round) => (
+                      <option key={round.id} value={round.id}>
+                        {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
+                  Load round
+                </Button>
+              </form>
+            ),
+          },
+          {
+            value: "context",
+            title: "Add review context",
+            summary: reviewContextSummary(postRoundData.answers),
+            description: "Feel, trouble club, conditions and shots to revisit",
+            content: (
+              <form action={savePostRoundReviewAction} className="grid gap-4">
+                <input type="hidden" name="sessionId" value={selectedRound.id} />
+                <ReviewQuestion
+                  label="What felt different?"
+                  name="feltDifferent"
+                  defaultValue={postRoundData.answers.feltDifferent}
+                  placeholder="Tempo, strike, start line or confidence…"
+                />
+                <ReviewQuestion
+                  label="Which club caused trouble?"
+                  name="troubleClub"
+                  defaultValue={postRoundData.answers.troubleClub}
+                  placeholder="Club and the decision or miss you noticed…"
+                />
+                <ReviewQuestion
+                  label="Did equipment or weather change?"
+                  name="contextChange"
+                  defaultValue={postRoundData.answers.contextChange}
+                  placeholder="Ball, club setting, wind, rain, surface or temperature…"
+                />
+                <ReviewQuestion
+                  label="Which shots should be reviewed?"
+                  name="shotsToReview"
+                  defaultValue={postRoundData.answers.shotsToReview}
+                  placeholder="Hole and shot numbers, or the decision to revisit…"
+                />
+                <p className="text-[13px] leading-5 text-muted-foreground">
+                  Context explains the round; it never changes the measured performance score.
+                </p>
+                <Button type="submit" className="min-h-11 w-full rounded-xl">
+                  Save review context
+                </Button>
+              </form>
+            ),
+          },
+          {
+            value: "next",
+            title: "Supporting actions",
+            summary: "3 options",
+            description: "Compare, inspect the round or continue the improvement loop",
+            content: (
+              <IOSGroupedList label="Post-round supporting actions" className="bg-card">
+                <IOSListRow
+                  icon={GitCompareArrows}
+                  label="Compare with another session"
+                  detail="Check whether the measured difference repeats."
+                  href={`/analyse/compare?sessionId=${selectedRound.id}`}
+                />
+                <IOSListRow
+                  icon={Flag}
+                  label="Review scorecard and shots"
+                  detail="Open the saved round and its linked evidence."
+                  href={`/rounds/${selectedRound.id}`}
+                />
+                <IOSListRow
+                  icon={Sparkles}
+                  label="Open Progress"
+                  detail="Track whether practice changes the next comparable session."
+                  href="/progress"
+                />
+              </IOSGroupedList>
+            ),
+          },
+        ]}
+      />
+    </div>
+  );
+}
+
+function mobileReviewConfidenceTone(confidence: string) {
+  if (confidence === "High") return "positive" as const;
+  if (confidence === "Moderate") return "info" as const;
+  return "attention" as const;
+}
+
+function reviewContextSummary(answers: ReturnType<typeof readStoredPostRoundReview>) {
+  return Object.values(answers).some((answer) => answer.trim()) ? "Saved" : "Optional";
+}
+
+function MobileHoleStrategyDetail({
+  strategy,
+}: {
+  strategy: Awaited<ReturnType<typeof getCourseStrategyData>>["strategies"][number];
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="grid divide-y divide-border/70">
+        <MobileStrategyDetail label="Expected carry" value={strategy.expectedCarryRange} />
+        <MobileStrategyDetail label="Expected leave" value={strategy.expectedLeave} />
+        <MobileStrategyDetail label="Common miss" value={strategy.commonMiss} />
+        <MobileStrategyDetail label="Safe target" value={strategy.safeTarget} />
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          Planned sequence
+        </p>
+        <p className="mt-1 text-[15px] font-semibold leading-6 text-foreground">
+          {strategy.recommendedClub} · {strategy.expectedCarryRange}
+          {strategy.followUpClubs.map((club) => ` → ${club.label} · ${club.expectedCarryRange}`)}
+        </p>
+        {strategy.followUpFit ? (
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{strategy.followUpFit}</p>
+        ) : null}
+      </div>
+      <div className="grid gap-2 text-[13px] leading-5">
+        <p className="rounded-lg bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">
+          <span className="font-semibold">Hazard check: </span>
+          {strategy.hazardWarning}
+        </p>
+        <p className="rounded-lg bg-secondary/60 p-3 text-foreground">
+          <span className="font-semibold">Conservative alternative: </span>
+          {strategy.conservativeAlternative}
+        </p>
+        <p className="text-muted-foreground">{strategy.caveat}</p>
+      </div>
+    </div>
+  );
+}
+
+function mobileStrategyStatusTone(tone: Tone) {
+  if (tone === "green") return "positive" as const;
+  if (tone === "amber") return "attention" as const;
+  if (tone === "pink") return "critical" as const;
+  if (tone === "sky") return "info" as const;
+  return "neutral" as const;
+}
+
+function MobileStrategyDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
+      <span className="text-[13px] text-muted-foreground">{label}</span>
+      <span className="max-w-[62%] text-right text-[15px] font-medium leading-5 text-foreground">
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -750,8 +1231,8 @@ function ModeLink({
       href={href}
       className={
         active
-          ? "rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-          : "rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
+          ? "inline-flex min-h-11 items-center rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+          : "inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
       }
     >
       {children}

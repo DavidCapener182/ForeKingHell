@@ -25,6 +25,14 @@ import {
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
 import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
@@ -42,6 +50,7 @@ import { TrainingSessionForm } from "@/components/training/TrainingSessionForm";
 import { TrainingSourceSuggestions } from "@/components/training/TrainingSourceSuggestions";
 import { TrainingStatusCard } from "@/components/training/TrainingStatusCard";
 import { TrainingSummaryCards } from "@/components/training/TrainingSummaryCards";
+import { BottomSheet } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
@@ -78,6 +87,12 @@ const TrainingLoadBars = dynamic(
 type TrainingLoadRangeViewProps = {
   data: TrainingOverTimeData;
   initialRangeKey: TrainingRangeKey;
+};
+
+type MobilePracticeSummary = {
+  completedCount: number;
+  averageScore: number | null;
+  latestCompleted: { title: string; score: number | null } | null;
 };
 
 const integerFormatter = new Intl.NumberFormat("en-GB", {
@@ -262,17 +277,337 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
   );
 }
 
+export function MobileTrainingLoadRangeView({
+  data,
+  initialRangeKey,
+  practiceSummary,
+}: TrainingLoadRangeViewProps & { practiceSummary: MobilePracticeSummary }) {
+  const [activeRangeKey, setActiveRangeKey] = useState(initialRangeKey);
+  const displayData = useMemo(
+    () => selectTrainingRangeData(data, activeRangeKey),
+    [activeRangeKey, data],
+  );
+  const recovery = buildRecoveryRecommendation(displayData);
+  const next48 = buildNext48Plan(displayData);
+  const weekly = buildWeeklyTrainingScore(displayData);
+  const streak = buildTrainingStreak(displayData);
+  const trainingStatusSummary = buildTrainingStatusChartSummary(displayData.series);
+  const dailyLoadSummary = buildDailyLoadChartSummary(displayData.series);
+  const trainingStatusRows = buildTrainingStatusChartRows(displayData.series);
+  const dailyLoadRows = buildDailyLoadChartRows(displayData.series);
+  const loadHigh = (displayData.latest?.fatigue ?? 0) >= 120;
+  const practiceFit = loadHigh ? "Technical plan" : "Load appropriate";
+
+  function handleRangeChange(rangeKey: TrainingRangeKey) {
+    setActiveRangeKey(rangeKey);
+    replaceBrowserRange(rangeKey);
+  }
+
+  return (
+    <div className="grid min-w-0 gap-4" data-mobile-training-load>
+      <RangeControls activeKey={activeRangeKey} onRangeChange={handleRangeChange} mobile />
+
+      <section className="premium-command-surface grid min-w-0 gap-4 rounded-lg p-4">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Current golf form
+            </p>
+            <p className="mt-1 text-5xl font-semibold tracking-normal">
+              {displayData.hasTrainingData ? formatMetric(displayData.summary.form.value) : "--"}
+            </p>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">
+              {displayData.hasTrainingData
+                ? `${displayData.status.detail} ${displayData.trend.detail}`
+                : "Log a round or practice block to establish a golf-specific workload baseline."}
+            </p>
+          </div>
+          <IOSInlineStatus
+            label={displayData.hasTrainingData ? displayData.status.label : "Building baseline"}
+            tone={iosTrainingTone(displayData.status.tone)}
+            className="shrink-0"
+          />
+        </div>
+        <IOSGroupedList label="Current training load summary">
+          <IOSMetricRow
+            label="Training fitness"
+            value={formatMetric(displayData.summary.fitness.value)}
+            detail={`${displayData.conditioningDays}-day capacity · ${displayData.confidence.score}% evidence`}
+            tone="positive"
+          />
+          <IOSMetricRow
+            label="Recent load"
+            value={formatMetric(displayData.summary.fatigue.value)}
+            detail={`${recentLoadLabel(displayData.summary.fatigue.value)} · rolling seven days`}
+            tone={loadHigh ? "attention" : "info"}
+          />
+        </IOSGroupedList>
+      </section>
+
+      <section className="grid gap-2" aria-labelledby="mobile-training-action-title">
+        <IOSSectionHeader
+          title={<span id="mobile-training-action-title">Next action</span>}
+          description="What the current workload can sensibly handle."
+        />
+        <div className="ios-grouped-list p-4">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold">{recovery.title}</h2>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">{recovery.summary}</p>
+            </div>
+            <IOSInlineStatus
+              label={recovery.label}
+              tone={
+                recovery.tone === "green"
+                  ? "positive"
+                  : recovery.tone === "amber"
+                    ? "attention"
+                    : "info"
+              }
+              className="shrink-0"
+            />
+          </div>
+          <div className="mt-3 ios-grouped-list overflow-hidden">
+            <IOSListRow label="Best next session" value={recovery.best} />
+            <IOSListRow label="Avoid" value={recovery.avoid} />
+            <IOSListRow
+              label="Practice Planner fit"
+              value={practiceFit}
+              detail={
+                practiceSummary.latestCompleted
+                  ? `${practiceSummary.latestCompleted.title} · score ${practiceSummary.latestCompleted.score ?? "--"}`
+                  : "No completed structured plan yet"
+              }
+            />
+          </div>
+          <div className="mt-3">
+            <BottomSheet
+              label={
+                <>
+                  <Plus className="size-4" aria-hidden />
+                  Log training
+                </>
+              }
+              title="Log golf training"
+              triggerClassName="w-full"
+            >
+              <TrainingSessionForm
+                rangeKey={activeRangeKey}
+                today={displayData.today}
+                idPrefix="mobile-training-load"
+              />
+            </BottomSheet>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-2" aria-labelledby="mobile-training-evidence-title">
+        <IOSSectionHeader
+          title={<span id="mobile-training-evidence-title">Evidence and history</span>}
+          description="Open the chart or history needed for the current decision."
+        />
+        <IOSDisclosureGroup
+          label="Training load evidence and history"
+          items={[
+            {
+              value: "training-trend",
+              title: "Golf form trend",
+              summary: displayData.trend.label,
+              description: "Golf Form, session quality, fitness and recent load",
+              content: (
+                <div className="grid gap-3">
+                  <TrainingOverTimeChart
+                    data={displayData.series}
+                    sessionMarkers={displayData.sessionMarkers}
+                  />
+                  <ChartAccessibleFallback
+                    title="Training Status"
+                    summary={trainingStatusSummary}
+                    columns={trainingStatusChartColumns}
+                    rows={trainingStatusRows}
+                  />
+                </div>
+              ),
+            },
+            {
+              value: "next-48",
+              title: "Recovery detail",
+              summary: recovery.label,
+              description: "Tomorrow, the following day and the reason",
+              content: (
+                <div className="grid gap-3">
+                  <IOSGroupedList label="Next 48 hours">
+                    {next48.items.map((item) => (
+                      <IOSListRow
+                        key={item.label}
+                        label={item.label}
+                        value={item.activity}
+                        detail={item.reason}
+                      />
+                    ))}
+                  </IOSGroupedList>
+                  <div className="ios-grouped-list p-3 text-sm leading-6 text-muted-foreground">
+                    {recovery.reasonLines.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              value: "weekly-rhythm",
+              title: "Weekly rhythm",
+              summary: weekly.grade,
+              description: `${weekly.sessions} sessions · ${formatMetric(weekly.load)} load`,
+              contentClassName: "px-0 pb-0 pt-0",
+              content: (
+                <MobileWeeklyTrainingRows data={displayData} weekly={weekly} streak={streak} />
+              ),
+            },
+            {
+              value: "daily-load",
+              title: "Daily swing load",
+              summary: recentLoadLabel(displayData.latest?.fatigue ?? 0),
+              description: "Daily workload bars and load bands",
+              content: (
+                <div className="grid gap-3">
+                  <LoadLegend />
+                  <TrainingLoadBars data={displayData.series} />
+                  <ChartAccessibleFallback
+                    title="Daily swing load"
+                    summary={dailyLoadSummary}
+                    columns={dailyLoadChartColumns}
+                    rows={dailyLoadRows}
+                  />
+                </div>
+              ),
+            },
+            {
+              value: "training-ledger",
+              title: "Training ledger",
+              summary: displayData.sessions.length,
+              description: "Rounds, range work, speed sessions and manual load",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: <MobileTrainingSessionRows sessions={displayData.sessions} />,
+            },
+            {
+              value: "training-response",
+              title: "Training response",
+              summary: `${displayData.efficiencyCards.length} signals`,
+              description: "Model status, response and confidence explanation",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: <MobileTrainingResponseRows data={displayData} />,
+            },
+            {
+              value: "source-suggestions",
+              title: "Sessions ready to link",
+              summary: displayData.suggestions.length,
+              description: "Use existing golf evidence without changing the source record",
+              content: (
+                <TrainingSourceSuggestions
+                  suggestions={displayData.suggestions}
+                  rangeKey={activeRangeKey}
+                  idPrefix="mobile-suggested-rpe"
+                />
+              ),
+            },
+          ]}
+        />
+      </section>
+    </div>
+  );
+}
+
+function MobileWeeklyTrainingRows({
+  data,
+  weekly,
+  streak,
+}: {
+  data: TrainingOverTimeData;
+  weekly: ReturnType<typeof buildWeeklyTrainingScore>;
+  streak: ReturnType<typeof buildTrainingStreak>;
+}) {
+  return (
+    <IOSGroupedList label="Weekly training rhythm" className="rounded-none">
+      <IOSListRow
+        label="Training quality"
+        value={weekly.grade}
+        detail={`${weekly.sessions} sessions · Golf Form ${formatSigned(weekly.formChange)}`}
+      />
+      <IOSListRow
+        label="Consistency"
+        value={`${streak.consistency}%`}
+        detail={`${streak.currentStreak} current · ${streak.bestStreak} best streak`}
+      />
+      {data.trainingBalance.segments.map((segment) => (
+        <IOSListRow
+          key={segment.key}
+          label={segment.label}
+          value={`${segment.percent}%`}
+          detail={`${segment.sessions} sessions · ${formatMetric(segment.load)} load`}
+        />
+      ))}
+    </IOSGroupedList>
+  );
+}
+
+function MobileTrainingSessionRows({ sessions }: { sessions: TrainingSessionListItem[] }) {
+  if (sessions.length === 0) {
+    return (
+      <p className="p-4 text-sm leading-6 text-muted-foreground">
+        No training load sessions are logged in this range.
+      </p>
+    );
+  }
+
+  return (
+    <IOSGroupedList label="Training sessions in selected range" className="rounded-none">
+      {sessions.map((session) => (
+        <IOSListRow
+          key={session.id}
+          label={session.title}
+          value={formatMetric(session.sessionLoad)}
+          detail={`${formatLedgerDate(session.sessionDate)} · ${formatTrainingSource(session.sourceType)} · RPE ${session.rpe}`}
+          href={mobileTrainingSessionHref(session)}
+          status={<IOSInlineStatus label={formatTrainingVolume(session)} tone="info" />}
+        />
+      ))}
+    </IOSGroupedList>
+  );
+}
+
+function MobileTrainingResponseRows({ data }: { data: TrainingOverTimeData }) {
+  return (
+    <IOSGroupedList label="Training response signals" className="rounded-none">
+      <IOSListRow label="Current status" value={data.status.label} detail={data.status.advice} />
+      <IOSListRow
+        label="Evidence confidence"
+        value={`${data.confidence.score}%`}
+        detail={data.confidence.detail}
+      />
+      {data.efficiencyCards.map((card) => (
+        <IOSListRow key={card.title} label={card.title} value={card.metric} detail={card.detail} />
+      ))}
+    </IOSGroupedList>
+  );
+}
+
 function RangeControls({
   activeKey,
   onRangeChange,
+  mobile = false,
 }: {
   activeKey: TrainingRangeKey;
   onRangeChange: (rangeKey: TrainingRangeKey) => void;
+  mobile?: boolean;
 }) {
   return (
     <nav
       aria-label="Training range"
-      className="premium-command-surface flex w-full gap-1 overflow-x-auto rounded-lg p-1 sm:w-fit"
+      className={cn(
+        "premium-command-surface flex w-full gap-1 overflow-x-auto rounded-lg p-1",
+        !mobile && "sm:w-fit",
+      )}
     >
       {TRAINING_RANGE_OPTIONS.map((option) => (
         <button
@@ -281,7 +616,8 @@ function RangeControls({
           aria-pressed={option.key === activeKey}
           onClick={() => onRangeChange(option.key)}
           className={cn(
-            "min-h-9 min-w-12 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors",
+            "min-w-12 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors motion-reduce:transition-none",
+            mobile ? "min-h-11 flex-1" : "min-h-9",
             option.key === activeKey
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
@@ -1471,6 +1807,45 @@ function loadBand(load: number) {
 
 function formatChartDate(dateKey: string) {
   return chartDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
+}
+
+function recentLoadLabel(value: number) {
+  if (value >= 120) {
+    return "Heavy week";
+  }
+
+  if (value >= 70) {
+    return "Above normal";
+  }
+
+  return "Normal week";
+}
+
+function iosTrainingTone(
+  tone: TrainingOverTimeData["status"]["tone"],
+): "positive" | "attention" | "info" | "neutral" {
+  switch (tone) {
+    case "green":
+      return "positive";
+    case "amber":
+      return "attention";
+    case "sky":
+      return "info";
+    case "slate":
+      return "neutral";
+  }
+}
+
+function mobileTrainingSessionHref(session: TrainingSessionListItem) {
+  if (session.sourceType === "round" && session.sourceId) {
+    return `/rounds/${session.sourceId}`;
+  }
+
+  if (session.sourceType === "launch_monitor" || session.sourceType === "imported") {
+    return "/today";
+  }
+
+  return undefined;
 }
 
 function formatMetric(value: number) {

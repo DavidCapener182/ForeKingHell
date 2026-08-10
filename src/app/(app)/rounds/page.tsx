@@ -25,6 +25,14 @@ import { RoundOpportunityFeaturePanel } from "@/components/features/feature-pane
 import { Button } from "@/components/ui/button";
 import { MobileSectionChips, PageShell, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -38,7 +46,11 @@ import {
   formatHandicapValue,
   type HandicapSummary,
 } from "@/lib/round-handicap";
-import { RoundsWorkspace, type RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
+import {
+  RoundsMobileList,
+  RoundsWorkspace,
+  type RoundsWorkspaceRound,
+} from "@/app/rounds/rounds-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -98,8 +110,18 @@ export default async function RoundsPage() {
   return (
     <PageShell>
       <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
+      <RoundsMobileOverview
+        rounds={roundsForWorkspace}
+        latestRound={latestRound}
+        combinedHandicap={combinedHandicap}
+        realRounds={realRounds.length}
+        simulatorRounds={simulatorRounds.length}
+        scorecardOnlyRounds={scorecardOnlyRounds}
+        shotLinkedRounds={shotLinkedRounds.length}
+        shotCountTotal={shotCountTotal}
+      />
 
-      <div className="hidden flex-col items-start gap-3 sm:flex sm:flex-row sm:items-center sm:justify-between">
+      <div className="hidden flex-col items-start gap-3 lg:flex lg:flex-row lg:items-center lg:justify-between">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard">
             <ArrowLeft className="size-4" />
@@ -110,6 +132,7 @@ export default async function RoundsPage() {
 
       <DesktopWorkbenchLayout
         scope="rounds"
+        className="hidden lg:grid"
         rail={
           <DesktopInsightRail
             title="AI round rail"
@@ -198,6 +221,171 @@ export default async function RoundsPage() {
         </RoundsWorkspace>
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function RoundsMobileOverview({
+  rounds,
+  latestRound,
+  combinedHandicap,
+  realRounds,
+  simulatorRounds,
+  scorecardOnlyRounds,
+  shotLinkedRounds,
+  shotCountTotal,
+}: {
+  rounds: RoundsWorkspaceRound[];
+  latestRound: Awaited<ReturnType<typeof getRounds>>[number] | null;
+  combinedHandicap: HandicapSummary;
+  realRounds: number;
+  simulatorRounds: number;
+  scorecardOnlyRounds: Awaited<ReturnType<typeof getRounds>>;
+  shotLinkedRounds: number;
+  shotCountTotal: number;
+}) {
+  const firstScorecardOnlyRound = scorecardOnlyRounds[0] ?? null;
+
+  return (
+    <section className="grid gap-4 lg:hidden" aria-label="Rounds mobile overview">
+      <section className="grid gap-3" aria-labelledby="latest-round-mobile">
+        <IOSSectionHeader
+          title={<span id="latest-round-mobile">Latest round</span>}
+          description="The newest result and anything that needs attention."
+        />
+        <IOSGroupedList label="Latest round summary">
+          {latestRound ? (
+            <IOSListRow
+              label={roundTitle(latestRound)}
+              value={formatScoreSummary(latestRound)}
+              detail={`${formatDate(latestRound.date)} · ${formatSessionType(latestRound.type)}`}
+              href={`/rounds/${latestRound.id}`}
+              icon={Flag}
+              status={
+                <IOSInlineStatus
+                  label={latestRound.shotCount > 0 ? "Shot-linked review ready" : "Scorecard only"}
+                  tone={latestRound.shotCount > 0 ? "positive" : "attention"}
+                />
+              }
+            />
+          ) : (
+            <IOSListRow
+              label="No saved rounds yet"
+              detail="Add a scorecard or import a measured round to begin."
+              href="/rounds/new"
+              icon={Flag}
+            />
+          )}
+          <IOSMetricRow
+            label="Playing estimate"
+            value={formatHandicapValue(combinedHandicap.value)}
+            detail={handicapTrendText(combinedHandicap)}
+            href="/handicap"
+          />
+          {firstScorecardOnlyRound ? (
+            <IOSListRow
+              label="Round needs shot data"
+              value={`${scorecardOnlyRounds.length}`}
+              detail={`${roundTitle(firstScorecardOnlyRound)} is limited to scorecard analysis.`}
+              href={`/rounds/${firstScorecardOnlyRound.id}`}
+              icon={Database}
+              status={<IOSInlineStatus label="Add evidence" tone="attention" />}
+            />
+          ) : null}
+        </IOSGroupedList>
+        <Button asChild className="min-h-12 w-full rounded-xl" data-primary-action>
+          <Link href="/rounds/new">
+            <Plus className="size-4" />
+            Add a real round
+          </Link>
+        </Button>
+      </section>
+
+      <RoundsMobileList rounds={rounds} />
+
+      <section className="grid gap-3" aria-labelledby="round-depth-mobile">
+        <IOSSectionHeader
+          title={<span id="round-depth-mobile">Round detail</span>}
+          description="Evidence mix and secondary actions stay out of the recent-round scan."
+        />
+        <IOSDisclosureGroup
+          label="Round supporting detail"
+          items={[
+            {
+              value: "mix",
+              title: "Round types and data",
+              summary: `${rounds.length} saved`,
+              description: "Real, simulator and shot-linked evidence",
+              content: (
+                <IOSGroupedList label="Round type metrics" className="bg-card">
+                  <IOSMetricRow
+                    label="Real rounds"
+                    value={integerFormatter.format(realRounds)}
+                    detail="Real-course scorecards and handicap context"
+                  />
+                  <IOSMetricRow
+                    label="Simulator rounds"
+                    value={integerFormatter.format(simulatorRounds)}
+                    detail="Form and shot-linked practice evidence"
+                  />
+                  <IOSMetricRow
+                    label="Shot-linked"
+                    value={integerFormatter.format(shotLinkedRounds)}
+                    detail={`${integerFormatter.format(shotCountTotal)} shots support deeper review`}
+                  />
+                  <IOSMetricRow
+                    label="Scorecard only"
+                    value={integerFormatter.format(scorecardOnlyRounds.length)}
+                    detail="Scoring history without shot-level evidence"
+                  />
+                </IOSGroupedList>
+              ),
+            },
+            {
+              value: "actions",
+              title: "Round actions",
+              summary: latestRound ? "3 available" : "Add first",
+              description: "Recap, records and import",
+              content: (
+                <div className="grid gap-3">
+                  {latestRound ? (
+                    <form action={createLatestRoundRecapAction}>
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        className="min-h-11 w-full rounded-xl"
+                      >
+                        <ClipboardCheck className="size-4" />
+                        Create latest-round recap
+                      </Button>
+                    </form>
+                  ) : null}
+                  <IOSGroupedList label="Round action links" className="bg-card">
+                    <IOSListRow
+                      label="Check course records"
+                      detail="See whether a saved result qualifies for a board."
+                      href="/course-records"
+                      icon={Trophy}
+                    />
+                    <IOSListRow
+                      label="Import round data"
+                      detail="Add shot-level evidence from a launch monitor."
+                      href="/import"
+                      icon={Upload}
+                    />
+                    <IOSListRow
+                      label="Coach review"
+                      detail="Turn the latest result into the next practice action."
+                      href="/coach"
+                      icon={Brain}
+                    />
+                  </IOSGroupedList>
+                </div>
+              ),
+            },
+          ]}
+        />
+      </section>
+    </section>
   );
 }
 

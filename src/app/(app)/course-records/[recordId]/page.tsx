@@ -96,17 +96,6 @@ export default async function CourseRecordDetailPage({
       <MobileAppShell>
         <MobileTopBar
           title={data.category.name}
-          leading={
-            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
-              <Link
-                href={`/courses/${data.course.id}/records`}
-                prefetch={false}
-                aria-label={data.course.name}
-              >
-                <ArrowLeft className="size-5" />
-              </Link>
-            </Button>
-          }
           actions={<ProofBadge tier={leader?.result.verificationTier ?? "silver"} />}
         />
         <MobileStatusAction
@@ -268,7 +257,7 @@ export default async function CourseRecordDetailPage({
         )}
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="course-record-detail" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="course-record-detail" className="hidden lg:grid">
         <div className="flex items-center justify-between gap-3">
           <Button asChild variant="ghost" className="px-0">
             <Link href={`/courses/${data.course.id}/records`} prefetch={false}>

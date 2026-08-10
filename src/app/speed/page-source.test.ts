@@ -52,3 +52,82 @@ describe("speed centre desktop evidence ledger", () => {
     expect(source).not.toContain("rail={");
   });
 });
+
+describe("speed centre mobile information architecture", () => {
+  it("puts the answer and next action before the deeper evidence", () => {
+    expect(source.indexOf("<MobileSpeedAnswer")).toBeGreaterThan(-1);
+    expect(source.indexOf("<MobileSpeedDisclosures")).toBeGreaterThan(
+      source.indexOf("<MobileSpeedAnswer"),
+    );
+    expect(source.indexOf('<DesktopWorkbenchLayout scope="speed">')).toBeGreaterThan(
+      source.indexOf("<MobileSpeedDisclosures"),
+    );
+    expect(source).toContain("data-mobile-speed-answer");
+    expect(source).toContain('aria-labelledby="mobile-speed-title"');
+    expect(source).toContain("data-primary-action");
+    expect(source).toContain("Log session");
+
+    const answer = source.slice(
+      source.indexOf("function MobileSpeedAnswer"),
+      source.indexOf("function MobileSpeedDisclosures"),
+    );
+    expect(answer.indexOf("Next action")).toBeLessThan(
+      answer.indexOf('label="Current speed summary"'),
+    );
+  });
+
+  it("uses one-level disclosure for secondary speed work", () => {
+    const disclosures = source.slice(
+      source.indexOf("function MobileSpeedDisclosures"),
+      source.indexOf("function MobileSpeedTrendEvidence"),
+    );
+
+    expect(disclosures).toContain("IOSDisclosureGroup");
+    expect(disclosures).toContain('key={openLogByDefault ? "log-open" : "collapsed"}');
+    expect(disclosures).toContain('defaultValue={openLogByDefault ? "log-session" : undefined}');
+
+    for (const section of [
+      "Trend & transfer",
+      "Club evidence",
+      "Recent sessions",
+      "Goals",
+      "Speed potential",
+      "Athletic development",
+      "Log speed",
+    ]) {
+      expect(disclosures).toContain(section);
+    }
+
+    expect(disclosures).not.toContain("<details");
+  });
+
+  it("replaces the wide all-club card grid with linked native rows on mobile", () => {
+    const clubEvidence = source.slice(
+      source.indexOf("function MobileClubSpeedEvidence"),
+      source.indexOf("function MobileRecentSpeedEvidence"),
+    );
+
+    expect(clubEvidence).toContain("IOSGroupedList");
+    expect(clubEvidence).toContain("IOSListRow");
+    expect(clubEvidence).toContain("/speed?club=");
+    expect(clubEvidence).toContain("transferStatusLabel(row)");
+    expect(clubEvidence).not.toContain("ClubSpeedRowCard");
+    expect(clubEvidence).not.toContain("<Table");
+  });
+
+  it("uses native rows for the mobile trend baseline while retaining the real chart", () => {
+    expect(source).toContain("<MobileSpeedTrendStarter");
+    expect(source).toContain("function MobileSpeedTrendStarter");
+    expect(source).toContain('label="Speed trend baseline"');
+    expect(source).toContain("<SpeedTrendChart");
+  });
+
+  it("keeps real goal and session actions available in focused mobile forms", () => {
+    expect(source).toContain("<form action={updateSpeedGoalsAction}");
+    expect(source).toContain("<form action={createManualSpeedSessionAction}");
+    expect(source).toContain('name="speedReadings"');
+    expect(source).toContain('name="driverGlobalTarget"');
+    expect(source).toContain("name={`clubTarget:${club.id}`}");
+    expect(source).toContain('inputMode="decimal"');
+  });
+});

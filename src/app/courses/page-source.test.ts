@@ -5,6 +5,30 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/courses/page.tsx"), "utf8");
 
 describe("courses desktop workspace source", () => {
+  it("keeps the desktop loading skeleton out of the mobile and small-tablet composition", () => {
+    expect(source).toContain('<div className="hidden gap-4 lg:grid">');
+  });
+
+  it("renders the phone catalogue as concise native rows with secondary depth disclosed", () => {
+    const directory = source.indexOf('label="Course directory"');
+    const supportingDetail = source.indexOf('label="Course directory supporting detail"');
+    const mobileHeader = source.match(/<MobileTopBar[\s\S]*?\/>/)?.[0] ?? "";
+
+    expect(source).toContain("<IOSGroupedList");
+    expect(source).toContain("<IOSListRow");
+    expect(source).toContain("mobileCourseHref");
+    expect(source).toContain("mobileCourseValue");
+    expect(source).toContain('title: "Course data readiness"');
+    expect(source).toContain('title: "Course alerts and following"');
+    expect(source).not.toContain("<CourseCard");
+    expect(source).not.toContain('key: "favourites", label: "Favourites"');
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(mobileHeader).toContain('title="Courses"');
+    expect(mobileHeader).not.toContain("leading=");
+    expect(directory).toBeGreaterThan(-1);
+    expect(supportingDetail).toBeGreaterThan(directory);
+  });
+
   it("keeps the course directory as a desktop workbench with shared wide-monitor rail", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";

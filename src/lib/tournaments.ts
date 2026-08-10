@@ -54,6 +54,30 @@ export const tournamentFormats = [
 
 export type TournamentFormat = (typeof tournamentFormats)[number];
 
+type TournamentViewerEvidenceRow = {
+  verificationStatus: string;
+  rapsodoSyncSessionId: string | null;
+  scorecardScreenshotPath: string | null;
+};
+
+export function summarizeTournamentViewerEvidence(
+  roundCount: number,
+  submissions: TournamentViewerEvidenceRow[],
+) {
+  const submissionCount = submissions.length;
+
+  return {
+    submissionCount,
+    verifiedSubmissionCount: submissions.filter(
+      (submission) => submission.verificationStatus === "verified",
+    ).length,
+    rapsodoProofCount: submissions.filter((submission) => submission.rapsodoSyncSessionId).length,
+    scorecardProofCount: submissions.filter((submission) => submission.scorecardScreenshotPath)
+      .length,
+    roundsDue: Math.max(0, roundCount - submissionCount),
+  };
+}
+
 export type RankableTournamentStanding = {
   entryId: string;
   userId: string;
@@ -155,7 +179,7 @@ export async function getTournamentsPageData() {
   const teeSetIds = tournamentRows
     .map((tournament) => tournament.teeSetId)
     .filter((id): id is string => Boolean(id));
-  const [entryRows, standingsRows, courseRows, teeRows] = await Promise.all([
+  const [entryRows, standingsRows, viewerSubmissionRows, courseRows, teeRows] = await Promise.all([
     db
       .select()
       .from(tournamentEntries)
@@ -164,6 +188,15 @@ export async function getTournamentsPageData() {
       .select()
       .from(tournamentStandings)
       .where(inArray(tournamentStandings.tournamentId, tournamentIds)),
+    db
+      .select()
+      .from(tournamentSubmissions)
+      .where(
+        and(
+          inArray(tournamentSubmissions.tournamentId, tournamentIds),
+          eq(tournamentSubmissions.userId, viewerUserId),
+        ),
+      ),
     courseIds.length > 0
       ? db.select().from(courses).where(inArray(courses.id, courseIds))
       : Promise.resolve([]),
@@ -181,6 +214,9 @@ export async function getTournamentsPageData() {
       tournament,
       entries: entryRows.filter((entry) => entry.tournamentId === tournament.id),
       standings: standingsRows.filter((standing) => standing.tournamentId === tournament.id),
+      submissions: viewerSubmissionRows.filter(
+        (submission) => submission.tournamentId === tournament.id,
+      ),
       course: tournament.courseId ? (courseById.get(tournament.courseId) ?? null) : null,
       teeSet: tournament.teeSetId ? (teeById.get(tournament.teeSetId) ?? null) : null,
       profiles,
@@ -1392,6 +1428,7 @@ function hydrateTournamentListItem(input: {
   tournament: typeof tournaments.$inferSelect;
   entries: Array<typeof tournamentEntries.$inferSelect>;
   standings: Array<typeof tournamentStandings.$inferSelect>;
+  submissions: Array<typeof tournamentSubmissions.$inferSelect>;
   course: typeof courses.$inferSelect | null;
   teeSet: typeof teeSets.$inferSelect | null;
   profiles: Map<string, typeof userProfiles.$inferSelect>;
@@ -1414,9 +1451,14 @@ function hydrateTournamentListItem(input: {
       ? input.tournament.metadataJson.scheduleEyebrow
       : null;
   const actualTourEvent = input.tournament.metadataJson.actualTourEvent === true;
+  const viewerEvidence = summarizeTournamentViewerEvidence(
+    input.tournament.roundCount,
+    input.submissions,
+  );
 
   return {
     id: input.tournament.id,
+    courseId: input.tournament.courseId,
     title: input.tournament.title,
     description: input.tournament.description,
     format: input.tournament.format,
@@ -1436,6 +1478,11 @@ function hydrateTournamentListItem(input: {
     entryCount: input.entries.length,
     viewerEntered: input.entries.some((entry) => entry.userId === input.viewerUserId),
     viewerRank: viewerStanding?.rank ?? null,
+    viewerSubmissionCount: viewerEvidence.submissionCount,
+    viewerVerifiedSubmissionCount: viewerEvidence.verifiedSubmissionCount,
+    viewerRapsodoProofCount: viewerEvidence.rapsodoProofCount,
+    viewerScorecardProofCount: viewerEvidence.scorecardProofCount,
+    viewerRoundsDue: viewerEvidence.roundsDue,
     leader:
       leader && leaderProfile
         ? {

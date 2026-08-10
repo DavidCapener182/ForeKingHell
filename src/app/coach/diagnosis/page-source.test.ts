@@ -7,7 +7,7 @@ const source = readFileSync(join(process.cwd(), "src/app/(app)/coach/diagnosis/p
 describe("coach diagnosis desktop workbench", () => {
   it("turns the deep diagnosis page into an exportable evidence workbench", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="coach-diagnosis">');
+    expect(source).toMatch(/<DesktopWorkbenchLayout\s+scope="coach-diagnosis"/);
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="coach-diagnosis-evidence"');
     expect(source).toContain('scope="coach-diagnosis-evidence"');

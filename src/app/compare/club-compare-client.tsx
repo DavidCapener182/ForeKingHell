@@ -566,7 +566,13 @@ function MetricValueBar({
   );
 }
 
-function CompareRadarChart({ clubA, clubB }: { clubA: ClubCompareSide; clubB: ClubCompareSide }) {
+export function CompareRadarChart({
+  clubA,
+  clubB,
+}: {
+  clubA: ClubCompareSide;
+  clubB: ClubCompareSide;
+}) {
   const metrics = radarMetrics(clubA, clubB);
   const centre = 150;
   const radius = 108;
@@ -689,7 +695,13 @@ function CompareRadarChart({ clubA, clubB }: { clubA: ClubCompareSide; clubB: Cl
   );
 }
 
-function ClubDispersionPlot({ clubA, clubB }: { clubA: ClubCompareSide; clubB: ClubCompareSide }) {
+export function ClubDispersionPlot({
+  clubA,
+  clubB,
+}: {
+  clubA: ClubCompareSide;
+  clubB: ClubCompareSide;
+}) {
   const points = [...clubA.dispersion, ...clubB.dispersion];
 
   if (points.length === 0) {

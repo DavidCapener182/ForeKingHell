@@ -21,7 +21,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { MobileCompactPageHeader } from "@/components/premium";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import {
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import {
   clubAccent,
   formatClubModelName,
@@ -159,10 +164,6 @@ export function ClubDetailClient({
     ["pw", "gw", "aw", "sw", "lw"].includes(club.type.toLowerCase()) &&
     stock.shotRoleSummaries.length > 0;
   const latestShotDate = selectedShots[0]?.shotAt ? formatDate(selectedShots[0].shotAt) : "--";
-  const shotCount =
-    shotRange !== "all"
-      ? `${selectedShots.length}/${orderedShots.length}`
-      : selectedShots.length.toString();
   const recommendedCarry =
     isShortGameTouch && !isSandWedge ? null : displayRecommendedCarry(stock, isShortGameTouch);
   const recommendedDetail =
@@ -219,48 +220,24 @@ export function ClubDetailClient({
         }
       />
 
-      <div className="sm:hidden">
-        <RangeToggle value={shotRange} onChange={setShotRange} />
+      <div className="lg:hidden">
+        <MobileRangePicker value={shotRange} onChange={setShotRange} />
       </div>
 
-      <MobileMetricStrip
-        items={[
-          {
-            label: isShortGameTouch ? "Touch" : "Recommended",
-            value: formatMetric(isShortGameTouch ? touch.carryMedianYd : recommendedCarry, " yd"),
-            detail: isShortGameTouch ? "Median" : "Play number",
-            tone: "green",
-          },
-          {
-            label: isShortGameTouch ? "Full" : "Best",
-            value: formatMetric(
-              isShortGameTouch
-                ? isSandWedge
-                  ? stock.bestStockCarryYd
-                  : null
-                : stock.bestStockCarryYd,
-              " yd",
-            ),
-            detail: isShortGameTouch ? "Stock" : "Stock",
-            tone: "sky",
-          },
-          {
-            label: "PB",
-            value: formatMetric(stock.personalBestCarryYd, " yd"),
-            detail: "Personal best",
-            tone: "sky",
-          },
-          { label: "Shots", value: shotCount, detail: "Range", tone: "amber" },
-          {
-            label: isShortGameTouch ? "Under 30" : "Health",
-            value: isShortGameTouch ? touch.under30YdCount.toString() : `${stock.confidenceScore}%`,
-            detail: health.label,
-            tone: "pink",
-          },
-        ]}
+      <MobileClubDecision
+        clubId={club.id}
+        clubRole={clubRole}
+        recommendedCarry={recommendedCarry}
+        typicalMiss={typicalMiss}
+        health={health}
+        stock={stock}
+        isShortGameTouch={isShortGameTouch}
+        selectedShotCount={selectedShots.length}
+        totalShotCount={orderedShots.length}
+        rangeLabel={selectedRange.compactLabel}
       />
 
-      <header className="premium-hero hidden p-6 sm:block lg:p-8">
+      <header className="premium-hero hidden p-6 lg:block lg:p-8">
         <div className="space-y-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
@@ -384,6 +361,22 @@ export function ClubDetailClient({
           clubModelName={clubModelName}
           clubTypeLabel={clubTypeLabel}
           shots={selectedShots}
+          mobileSupport={
+            <MobileClubSupport
+              clubType={club.type}
+              selectedRange={selectedRange.description}
+              stock={stock}
+              touch={touch}
+              health={health}
+              evolution={evolution}
+              monthChange={monthChange}
+              hasWedgeRoles={hasWedgeRoles}
+              isShortGameTouch={isShortGameTouch}
+              isSandWedge={isSandWedge}
+            >
+              {children}
+            </MobileClubSupport>
+          }
           afterDispersion={
             <>
               {children}
@@ -420,6 +413,206 @@ export function ClubDetailClient({
         </Card>
       )}
     </>
+  );
+}
+
+function MobileRangePicker({
+  value,
+  onChange,
+}: {
+  value: ShotRange;
+  onChange: (value: ShotRange) => void;
+}) {
+  return (
+    <label className="ios-grouped-list focus-within:ring-2 focus-within:ring-ring flex min-h-14 items-center gap-3 px-4 py-2.5">
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-medium text-foreground">Evidence window</span>
+        <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
+          Changes every number and visual below
+        </span>
+      </span>
+      <select
+        aria-label="Shot date range"
+        value={value}
+        onChange={(event) => onChange(event.target.value as ShotRange)}
+        className="min-h-11 max-w-[44%] rounded-lg border bg-background px-2 text-right text-sm font-semibold text-foreground"
+      >
+        {RANGE_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function MobileClubDecision({
+  clubId,
+  clubRole,
+  recommendedCarry,
+  typicalMiss,
+  health,
+  stock,
+  isShortGameTouch,
+  selectedShotCount,
+  totalShotCount,
+  rangeLabel,
+}: {
+  clubId: string;
+  clubRole: string;
+  recommendedCarry: number | null;
+  typicalMiss: ReturnType<typeof typicalMissLabel>;
+  health: ClubHealth;
+  stock: StockYardage;
+  isShortGameTouch: boolean;
+  selectedShotCount: number;
+  totalShotCount: number;
+  rangeLabel: string;
+}) {
+  return (
+    <section
+      className="grid gap-2.5 lg:hidden"
+      aria-label="Club recommendation"
+      data-mobile-club-decision
+    >
+      <IOSSectionHeader
+        title="Play this club"
+        description="Course-useful recommendation before the deeper evidence"
+      />
+      <IOSGroupedList label="Club recommendation and status">
+        <IOSListRow
+          icon={Target}
+          label={clubRole}
+          value={formatMetric(recommendedCarry, " yd")}
+          detail={isShortGameTouch ? "Touch-control role" : "Recommended play number"}
+          status={
+            <IOSInlineStatus
+              label={health.label}
+              tone={health.label === "Healthy" ? "positive" : "attention"}
+            />
+          }
+        />
+        <IOSListRow
+          icon={ShieldCheck}
+          label="Typical miss"
+          value={typicalMiss.label}
+          detail={typicalMiss.detail}
+        />
+        <IOSListRow
+          icon={BarChart3}
+          label="Personal best"
+          value={formatMetric(stock.personalBestCarryYd, " yd")}
+          detail={`${selectedShotCount} of ${totalShotCount} shots in ${rangeLabel}`}
+        />
+        <IOSListRow
+          icon={Brain}
+          label="Advanced analytics"
+          value={`${stock.confidenceScore}% trust`}
+          detail="Open the diagnosis and practice recommendation"
+          href={`/bag/${clubId}/analytics`}
+        />
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileClubSupport({
+  clubType,
+  selectedRange,
+  stock,
+  touch,
+  health,
+  evolution,
+  monthChange,
+  hasWedgeRoles,
+  isShortGameTouch,
+  isSandWedge,
+  children,
+}: {
+  clubType: string;
+  selectedRange: string;
+  stock: StockYardage;
+  touch: ShortGameTouchSummary;
+  health: ClubHealth;
+  evolution: ClubEvolutionPoint[];
+  monthChange: MonthChange;
+  hasWedgeRoles: boolean;
+  isShortGameTouch: boolean;
+  isSandWedge: boolean;
+  children?: ReactNode;
+}) {
+  const cleanShots = isShortGameTouch && !isSandWedge ? touch.sampleSize : stock.sampleSize;
+  const latestEvolution = evolution.at(-1);
+
+  return (
+    <div className="grid gap-4">
+      <IOSGroupedList label="Club intelligence details">
+        <IOSListRow
+          label="Evidence window"
+          value={selectedRange}
+          detail={`${cleanShots} clean shots shape this recommendation`}
+        />
+        <IOSListRow
+          label="Data quality"
+          value={health.dataQuality}
+          detail={health.confidenceDetail}
+          status={
+            <IOSInlineStatus
+              label={health.statusDetail}
+              tone={health.label === "Healthy" ? "positive" : "attention"}
+            />
+          }
+        />
+        <IOSListRow label="Gapping" value={health.gapping} detail="Position in the current bag" />
+        <IOSListRow
+          label="Dispersion"
+          value={health.dispersion}
+          detail="Current stock-shot pattern"
+        />
+        <IOSListRow
+          label="Latest monthly stock"
+          value={latestEvolution ? formatWholeYards(latestEvolution.value) : "--"}
+          detail={
+            monthChange.currentLabel && monthChange.previousLabel
+              ? `${monthChange.currentLabel} vs ${monthChange.previousLabel}: ${formatDelta(monthChange.carryDeltaYd, " yd")}`
+              : "Another month is needed for comparison"
+          }
+        />
+      </IOSGroupedList>
+
+      {hasWedgeRoles ? (
+        <div className="grid gap-2">
+          <p className="px-1 text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
+            Wedge roles
+          </p>
+          <IOSGroupedList label="Wedge role distances">
+            {WEDGE_ROLE_ORDER.map((role) => {
+              const summary = roleSummaryFor(stock.shotRoleSummaries, role);
+              return (
+                <IOSListRow
+                  key={role}
+                  label={wedgeRoleLabel(role)}
+                  value={
+                    summary?.carryMedianYd === null || summary === null
+                      ? "--"
+                      : formatMetric(summary.carryMedianYd, " yd")
+                  }
+                  detail={summary ? `${summary.sampleSize} shots` : "No evidence"}
+                />
+              );
+            })}
+          </IOSGroupedList>
+        </div>
+      ) : null}
+
+      {children ? <div>{children}</div> : null}
+      <p className="text-[13px] leading-5 text-muted-foreground">
+        {isShortGameTouch
+          ? shortGameStockNote(clubType)
+          : formatStockExclusionReasons(stock.stockExclusionReasons)}
+      </p>
+    </div>
   );
 }
 

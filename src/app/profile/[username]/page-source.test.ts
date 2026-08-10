@@ -10,7 +10,9 @@ const source = readFileSync(
 describe("public profile desktop route", () => {
   it("keeps public profiles as privacy-aware desktop tables without an AI rail", () => {
     expect(source).toContain("<PageShell>");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="public-profile">');
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="public-profile" className="hidden lg:grid">',
+    );
     expect(source).toContain('aria-label="Public profile summary"');
     expect(source).toContain('aria-label="Public profile stats rail"');
     expect(source).toContain('data-workbench-scope="profile-activity"');
@@ -27,5 +29,14 @@ describe("public profile desktop route", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
+  });
+
+  it("uses a native mobile profile summary with activity first and bag detail disclosed", () => {
+    expect(source).toContain("<MobileAppShell>");
+    expect(source).toContain("MobilePublicProfileSummary");
+    expect(source).toContain("MobileProfileActivity");
+    expect(source).toContain("MobileProfileDetails");
+    expect(source).toContain("data.recentFeed.slice(0, mobileProfileActivityLimit)");
+    expect(source).toContain("IOSDisclosureGroup");
   });
 });

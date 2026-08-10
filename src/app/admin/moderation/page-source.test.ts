@@ -14,7 +14,9 @@ const bulkSubmitSource = readFileSync(
 describe("admin moderation desktop console source", () => {
   it("uses a shared admin moderation workbench without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-moderation">');
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="admin-moderation" className="hidden lg:grid">',
+    );
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -57,5 +59,14 @@ describe("admin moderation desktop console source", () => {
     expect(bulkSubmitSource).toContain('aria-live="polite"');
     expect(bulkSubmitSource).toContain("disabled={selectedCount === 0}");
     expect(bulkSubmitSource).toContain("Resolve ${selectedCount} selected");
+  });
+
+  it("puts unresolved records first with focused mobile resolution sheets", () => {
+    expect(source).toContain("AdminMobileShell");
+    expect(source).toContain("AdminMobileModeration");
+    expect(source).toContain("MobileModerationRecordSheet");
+    expect(source).toContain("MobileModerationRows");
+    expect(source).toContain("MobileTabBar");
+    expect(source).toContain("<BottomSheet");
   });
 });

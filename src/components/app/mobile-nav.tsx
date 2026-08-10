@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Menu, Search, Settings, ShieldCheck, Upload, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  Menu,
+  MoreHorizontal,
+  Search,
+  Settings,
+  ShieldCheck,
+  Upload,
+  UserRound,
+} from "lucide-react";
 
 import {
   adminNavGroup,
@@ -26,6 +35,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { openGlobalCommandCentre } from "@/components/app/global-command-centre";
+import { mobileBackNavigation } from "@/components/app/route-metadata";
 
 export type MobileNavProfile = {
   displayName: string;
@@ -47,16 +57,20 @@ const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
 export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: MobileNavProps) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
   const pageTitle = mobilePageTitle(pathname);
+  const backNavigation = useMemo(() => mobileBackNavigation(pathname), [pathname]);
   const groups = useMemo(
     () => (isAdmin ? [...mobileMoreGroups, adminNavGroup] : mobileMoreGroups),
     [isAdmin],
   );
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
+  const [compactTitleVisible, setCompactTitleVisible] = useState(false);
   const scrollFrameRef = useRef<number | null>(null);
   const activePrimaryHref =
     mobilePrimaryItems.find((item) => item.isActive(pathname))?.href ?? pathname;
-  const tabScrollStorageKey = `${mobileScrollStoragePrefix}${activePrimaryHref}`;
+  const tabScrollStorageKey = `${mobileScrollStoragePrefix}${
+    backNavigation ? `detail:${pathname}` : activePrimaryHref
+  }`;
   const normalizedQuery = query.trim().toLowerCase();
   const filteredGroups = useMemo(() => {
     if (!normalizedQuery) {
@@ -88,6 +102,8 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
 
     const rememberCurrentScroll = () => {
       const scrollY = Math.max(0, window.scrollY);
+
+      setCompactTitleVisible(scrollY >= 44);
 
       try {
         window.sessionStorage.setItem(tabScrollStorageKey, String(scrollY));
@@ -127,7 +143,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
         scrollFrameRef.current = null;
       }
     };
-  }, [tabScrollStorageKey]);
+  }, [backNavigation, tabScrollStorageKey]);
 
   return (
     <>
@@ -137,17 +153,30 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
       >
         <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-            <SheetTrigger asChild>
+            {backNavigation ? (
               <Button
-                type="button"
+                asChild
                 variant="ghost"
                 size="icon"
                 className="ios-nav-button focus-aaa relative z-10 size-11"
-                aria-label="Open navigation"
               >
-                <Menu className="size-5" />
+                <Link href={backNavigation.href} aria-label={`Back to ${backNavigation.label}`}>
+                  <ArrowLeft className="size-5" aria-hidden />
+                </Link>
               </Button>
-            </SheetTrigger>
+            ) : (
+              <SheetTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="ios-nav-button focus-aaa relative z-10 size-11"
+                  aria-label="Open navigation"
+                >
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+            )}
             <SheetContent side="bottom" className="ios-navigation-sheet z-[70] gap-0 p-0">
               <span className="ios-sheet-handle" aria-hidden />
               <SheetHeader className="ios-sheet-header border-b px-4 pb-3 pt-2 text-left">
@@ -249,21 +278,42 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
             </SheetContent>
           </Sheet>
 
-          <p className="ios-inline-title min-w-0 truncate text-center" data-mobile-route-label>
+          <p
+            className={cn(
+              "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
+              compactTitleVisible ? "opacity-100" : "opacity-0",
+            )}
+            data-mobile-route-label
+            data-compact-title-visible={compactTitleVisible ? "true" : "false"}
+          >
             {pageTitle}
           </p>
 
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className="ios-nav-button focus-aaa size-11 justify-self-end"
-          >
-            <Link href="/import" aria-label="Import launch-monitor data">
-              <Upload className="size-5" />
-              <span className="sr-only">Import</span>
-            </Link>
-          </Button>
+          {backNavigation ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="ios-nav-button focus-aaa size-11 justify-self-end"
+              aria-label="Open more navigation"
+              aria-haspopup="dialog"
+              onClick={() => setMoreOpen(true)}
+            >
+              <MoreHorizontal className="size-5" aria-hidden />
+            </Button>
+          ) : (
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="ios-nav-button focus-aaa size-11 justify-self-end"
+            >
+              <Link href="/import" aria-label="Import launch-monitor data">
+                <Upload className="size-5" />
+                <span className="sr-only">Import</span>
+              </Link>
+            </Button>
+          )}
         </div>
       </header>
 

@@ -5,6 +5,15 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/import/page.tsx"), "utf8");
 
 describe("import desktop file library", () => {
+  it("keeps the source decision and first-run guidance native on phones", () => {
+    expect(source).toContain("MobileImportSourceChooser");
+    expect(source).toContain("MobileImportFirstRun");
+    expect(source).toContain("IOSGroupedList");
+    expect(source).toContain("IOSListRow");
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden sm:contents"');
+  });
+
   it("uses the desktop workflow template for the import centre", () => {
     expect(source).toContain("DesktopWorkflowLayout");
     expect(source).toContain("importWorkflowHelpItems");

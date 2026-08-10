@@ -8,6 +8,14 @@ const source = readFileSync(
 );
 
 describe("course shot-pattern desktop setup board", () => {
+  it("keeps the specialist map full-screen below lg and moves desktop setup to lg", () => {
+    expect(source).toContain('className="hidden lg:block"');
+    expect(source).toContain('className="hidden scroll-mt-28 gap-4 lg:grid"');
+    expect(source).toContain("h-[100svh] min-h-[100svh]");
+    expect(source).toContain("lg:h-[72vh] lg:min-h-[620px]");
+    expect(source).toContain("motion-reduce:animate-none");
+  });
+
   it("keeps mapped holes and club evidence in desktop tables", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('<DesktopWorkbenchLayout scope="course-shot-pattern">');

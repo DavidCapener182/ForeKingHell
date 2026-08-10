@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Cloud, Loader2, ShieldCheck } from "lucide-react";
+import { Cloud, Loader2 } from "lucide-react";
 
 import { loginRapsodoAction } from "@/app/rapsodo/actions";
+import { IOSGroupedList, IOSInlineStatus, IOSListRow } from "@/components/app/ios-mobile";
+import { BottomSheet } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -42,75 +43,82 @@ export function MobileRapsodoConnect({ initialStatus }: { initialStatus: Connect
   }
 
   return (
-    <section id="rapsodo-connect" className="premium-hero rounded-lg p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[#0B7A3B]">Rapsodo sync · Live</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
-            {status.connected ? "Provider connected" : "Connect Rapsodo"}
-          </h2>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            Pull live R-Cloud sessions, preview shots, confirm clubs, then import verified data into
-            the shared LM World Tour history.
-          </p>
-        </div>
-        <span className="grid size-11 place-items-center rounded-lg bg-[#F5F6F4] text-[#0B7A3B]">
-          {status.connected ? <ShieldCheck className="size-5" /> : <Cloud className="size-5" />}
-        </span>
-      </div>
-
-      <div className="trust-indicator mt-4 rounded-lg p-3 text-sm leading-5">
-        We do not store your Rapsodo password. It is exchanged for a short-lived encrypted token.
-        You can disconnect at any time.
-      </div>
-
-      {status.connected ? (
-        <div className="mt-4 grid gap-3">
-          <div className="rounded-lg bg-[#F5F6F4] p-3 text-sm text-[#050505]">
-            <p className="font-semibold">Token saved</p>
-            <p className="mt-1 text-[#6B7280]">
-              {status.expiresAt
-                ? `Expires ${new Date(status.expiresAt).toLocaleString("en-GB")}.`
-                : "Ready to load R-Cloud sessions."}
-            </p>
-          </div>
-          <Button asChild className="premium-action rounded-lg">
-            <Link href="/rapsodo" prefetch={false}>
-              Open Rapsodo sessions
-            </Link>
-          </Button>
-        </div>
-      ) : (
-        <form
-          className="mt-4 grid gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            login();
-          }}
-        >
-          <Input
-            type="email"
-            autoComplete="email"
-            placeholder="Rapsodo email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className="h-11 rounded-lg bg-white"
-          />
-          <Input
-            type="password"
-            autoComplete="current-password"
-            placeholder="Rapsodo password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            className="h-11 rounded-lg bg-white"
-          />
-          {message ? <p className="text-sm text-[#DC2626]">{message}</p> : null}
-          <Button type="submit" disabled={isPending} className="premium-action rounded-lg">
-            {isPending ? <Loader2 className="size-4 animate-spin" /> : <Cloud className="size-4" />}
-            Sign in to Rapsodo
-          </Button>
-        </form>
-      )}
+    <section id="rapsodo-connect" className="grid scroll-mt-24 gap-2">
+      <IOSGroupedList label="Rapsodo connection">
+        <IOSListRow
+          icon={Cloud}
+          label={status.connected ? "Rapsodo connected" : "Rapsodo R-Cloud"}
+          value={status.connected ? "Ready" : undefined}
+          detail={
+            status.connected
+              ? status.expiresAt
+                ? `Token expires ${new Date(status.expiresAt).toLocaleString("en-GB")}.`
+                : (message ?? "Choose a measured R-Cloud session to review before import.")
+              : "Your password is exchanged for a short-lived encrypted token and is not stored."
+          }
+          status={
+            <IOSInlineStatus
+              label={status.connected ? "Session inbox available" : "Connection required"}
+              tone={status.connected ? "positive" : "attention"}
+            />
+          }
+          href={status.connected ? "/rapsodo" : undefined}
+          trailing={
+            status.connected ? undefined : (
+              <BottomSheet label="Connect" title="Connect Rapsodo">
+                <form
+                  className="grid gap-4"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    login();
+                  }}
+                >
+                  <p className="text-sm leading-5 text-muted-foreground">
+                    R-Cloud credentials are used only to exchange for a short-lived encrypted token.
+                    ForeKingHell does not store your Rapsodo password.
+                  </p>
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Rapsodo email
+                    <Input
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="h-11"
+                      required
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Password
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="h-11"
+                      required
+                    />
+                  </label>
+                  {message ? (
+                    <p role="alert" className="text-sm font-medium text-destructive">
+                      {message}
+                    </p>
+                  ) : null}
+                  <Button type="submit" disabled={isPending} className="min-h-11">
+                    {isPending ? (
+                      <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                    ) : (
+                      <Cloud className="size-4" />
+                    )}
+                    Sign in to Rapsodo
+                  </Button>
+                </form>
+              </BottomSheet>
+            )
+          }
+        />
+      </IOSGroupedList>
     </section>
   );
 }

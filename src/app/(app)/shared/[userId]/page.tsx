@@ -4,13 +4,17 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { ArrowLeft, Database, Flag, Target, Trophy } from "lucide-react";
 
 import {
-  DataPair,
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import { MobileAppShell, MobileStatusAction, MobileTopBar } from "@/components/mobile-sports";
+import {
   DataPanel,
   DataTableFrame,
   MetricCard,
-  MobileBentoSummary,
-  MobileDataCard,
-  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -43,6 +47,7 @@ export const dynamic = "force-dynamic";
 type PageProps = {
   params: Promise<{ userId: string }>;
 };
+type SharedAccountData = NonNullable<Awaited<ReturnType<typeof getSharedAccountData>>>;
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
@@ -78,7 +83,8 @@ export default async function SharedAccountPage({ params }: PageProps) {
 
   return (
     <PageShell>
-      <DesktopWorkbenchLayout scope="shared-account">
+      <MobileSharedAccount data={data} />
+      <DesktopWorkbenchLayout scope="shared-account" className="hidden lg:grid">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/settings" prefetch={false}>
@@ -113,39 +119,6 @@ export default async function SharedAccountPage({ params }: PageProps) {
               label: "30 day shots",
               value: integerFormatter.format(data.recentShotCount),
               detail: "Recent practice volume.",
-            },
-          ]}
-        />
-
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Best recent",
-              value: data.longestDriveYd
-                ? `${numberFormatter.format(data.longestDriveYd)} yd`
-                : "--",
-              detail: "Longest driver total",
-              tone: "amber",
-            },
-            {
-              label: "Top club",
-              value: data.topClub?.clubType ?? "--",
-              detail: data.topClub
-                ? `${integerFormatter.format(data.topClub.count)} shots`
-                : "No shots yet",
-              tone: "green",
-            },
-            {
-              label: "Recent rounds",
-              value: integerFormatter.format(data.recentRounds.length),
-              detail: "Shared sessions",
-              tone: "sky",
-            },
-            {
-              label: "30 day shots",
-              value: integerFormatter.format(data.recentShotCount),
-              detail: "Practice volume",
-              tone: "slate",
             },
           ]}
         />
@@ -201,21 +174,6 @@ export default async function SharedAccountPage({ params }: PageProps) {
                 mainTable
                 mainTableLabel="Shared account recent sessions table"
                 stickyFirstColumn
-                mobile={
-                  <MobileDataList>
-                    {data.recentRounds.map((round) => (
-                      <MobileDataCard
-                        key={round.id}
-                        title={round.courseName ?? round.fileName ?? "Shared session"}
-                        subtitle={`${formatDate(round.date)} · ${round.type}`}
-                        action={<Badge variant="outline">{round.totalScore ?? "--"}</Badge>}
-                      >
-                        <DataPair label="Holes" value={round.holesPlayed} />
-                        <DataPair label="Score" value={round.totalScore ?? "--"} />
-                      </MobileDataCard>
-                    ))}
-                  </MobileDataList>
-                }
               >
                 <Table
                   data-workbench-export-table="shared-sessions"
@@ -281,6 +239,127 @@ export default async function SharedAccountPage({ params }: PageProps) {
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function MobileSharedAccount({ data }: { data: SharedAccountData }) {
+  const primaryRounds = data.recentRounds.slice(0, 8);
+  const olderRounds = data.recentRounds.slice(8);
+  const profileName = data.profile.name ?? data.profile.email ?? "ForeKingHell player";
+
+  return (
+    <MobileAppShell>
+      <MobileTopBar title="Shared account" />
+      <MobileStatusAction
+        label={`${data.accessRole} access`}
+        value={profileName}
+        detail={`${integerFormatter.format(data.sessionCount)} sessions · ${integerFormatter.format(data.shotCount)} measured shots`}
+        action={<IOSInlineStatus label="Read only" tone="info" />}
+      />
+
+      <section className="grid gap-2" aria-label="Shared player summary">
+        <IOSSectionHeader title="Player summary" description="Visible account evidence" />
+        <IOSGroupedList label="Shared player metrics">
+          <IOSListRow
+            icon={Trophy}
+            label="Longest driver total"
+            value={
+              data.longestDriveYd ? `${numberFormatter.format(data.longestDriveYd)} yd` : "No data"
+            }
+            detail="Best visible driver total distance."
+          />
+          <IOSListRow
+            icon={Target}
+            label="Most-used club"
+            value={data.topClub?.clubType ?? "No data"}
+            detail={
+              data.topClub
+                ? `${integerFormatter.format(data.topClub.count)} measured shots`
+                : "No visible club evidence yet."
+            }
+          />
+          <IOSListRow
+            icon={Flag}
+            label="30-day practice volume"
+            value={integerFormatter.format(data.recentShotCount)}
+            detail={`${integerFormatter.format(data.activeClubCount)} active clubs visible`}
+          />
+        </IOSGroupedList>
+      </section>
+
+      <section className="grid gap-2" aria-label="Shared recent sessions">
+        <IOSSectionHeader
+          title="Recent sessions"
+          description={`${data.recentRounds.length} shared session${data.recentRounds.length === 1 ? "" : "s"}`}
+        />
+        <MobileSharedSessionRows rounds={primaryRounds} />
+        {olderRounds.length > 0 ? (
+          <IOSDisclosureGroup
+            label="Older shared sessions"
+            items={[
+              {
+                value: "older-shared-sessions",
+                title: "Older sessions",
+                summary: olderRounds.length,
+                description: "Earlier rows in the shared account",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileSharedSessionRows rounds={olderRounds} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      <IOSDisclosureGroup
+        label="Shared access explanation"
+        items={[
+          {
+            value: "shared-access",
+            title: "Access and privacy",
+            summary: data.accessRole,
+            description: "What this shared view permits",
+            contentClassName: "px-0 pb-0 pt-0",
+            content: (
+              <IOSGroupedList label="Shared access detail" className="border-0">
+                <IOSListRow
+                  label="Visible data"
+                  detail="Sessions, measured-shot totals and bag summary are scoped to the access granted by the account owner."
+                />
+                <IOSListRow
+                  label="Changes"
+                  detail="This overview does not expose mutation controls. Owner or editor checks still apply to any separate action."
+                  status={<IOSInlineStatus label="Read only here" tone="info" />}
+                />
+              </IOSGroupedList>
+            ),
+          },
+        ]}
+      />
+    </MobileAppShell>
+  );
+}
+
+function MobileSharedSessionRows({ rounds }: { rounds: SharedAccountData["recentRounds"] }) {
+  return (
+    <IOSGroupedList label="Shared recent session rows">
+      {rounds.length > 0 ? (
+        rounds.map((round) => (
+          <IOSListRow
+            key={round.id}
+            icon={Flag}
+            label={round.courseName ?? round.fileName ?? "Shared session"}
+            value={round.totalScore ?? "--"}
+            detail={`${formatDate(round.date)} · ${round.type} · ${round.holesPlayed} scored holes`}
+            status={<IOSInlineStatus label="Shared evidence" tone="neutral" />}
+          />
+        ))
+      ) : (
+        <IOSListRow
+          label="No shared sessions"
+          detail="The account owner has not shared a visible session yet."
+        />
+      )}
+    </IOSGroupedList>
   );
 }
 

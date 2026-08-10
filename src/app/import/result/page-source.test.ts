@@ -5,6 +5,14 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/import/result/page.tsx"), "utf8");
 
 describe("import result desktop workflow receipt", () => {
+  it("renders an answer-first mobile receipt without duplicating the desktop workflow", () => {
+    expect(source).toContain("MobileImportResult");
+    expect(source).toContain("MobileAppShell");
+    expect(source).toContain("MobileStatusAction");
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain('className="hidden lg:grid"');
+  });
+
   it("uses the shared desktop workflow layout for post-import review", () => {
     expect(source).toContain("DesktopWorkflowLayout");
     expect(source).toContain("steps={workflowSteps}");

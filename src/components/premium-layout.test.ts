@@ -34,6 +34,17 @@ describe("PageShell layout contract", () => {
     expect(appMetricSource).toContain('stretch ? "h-full self-stretch" : "self-start"');
   });
 
+  it("allows important mobile summary values to wrap instead of ellipsising them", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
+    const summaryBlock =
+      source.match(
+        /export function MobileBentoSummary[\s\S]*?export function MobileDataCard/,
+      )?.[0] ?? "";
+
+    expect(summaryBlock).toContain("[overflow-wrap:anywhere]");
+    expect(summaryBlock).not.toContain('className="max-w-36 truncate text-right');
+  });
+
   it("lets desktop table frames expose labelled regions", () => {
     const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
     const frameBlock =

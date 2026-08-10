@@ -97,15 +97,8 @@ export default async function CourseRecordsForCoursePage({
       <MobileAppShell>
         <MobileTopBar
           title={data.course.name}
-          leading={
-            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
-              <Link href="/course-records" prefetch={false} aria-label="Records">
-                <ArrowLeft className="size-5" />
-              </Link>
-            </Button>
-          }
           actions={
-            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
+            <Button asChild variant="ghost" size="icon" className="size-11 rounded-full">
               <Link
                 href={`/courses/${data.course.id}/tournaments`}
                 prefetch={false}
@@ -185,7 +178,7 @@ export default async function CourseRecordsForCoursePage({
                         key={suggestion.recordId}
                         asChild
                         variant="outline"
-                        className="justify-between rounded-full"
+                        className="min-h-11 justify-between rounded-full"
                       >
                         <Link
                           href={`/course-records/${suggestion.recordId}?sessionId=${round.id}#submit-record`}
@@ -222,7 +215,7 @@ export default async function CourseRecordsForCoursePage({
         </NativeListSection>
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="course-records-course" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="course-records-course" className="hidden lg:grid">
         <div className="flex items-center justify-between gap-3">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/course-records" prefetch={false}>

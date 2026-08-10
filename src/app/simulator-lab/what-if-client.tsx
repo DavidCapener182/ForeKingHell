@@ -38,10 +38,10 @@ export function WhatIfClient({
   if (groups.length === 0) return null;
 
   return (
-    <div className="rounded-lg border bg-white p-4">
+    <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900 dark:text-emerald-300">
             What if?
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -76,21 +76,26 @@ export function WhatIfClient({
         ))}
       </div>
       <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-        <div className="rounded-lg bg-slate-50 p-3">
+        <div className="rounded-lg bg-muted/55 p-3">
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Current</p>
           <p className="mt-1 text-2xl font-semibold">
             {estimate === null ? "--" : estimate.toFixed(1)}
           </p>
         </div>
-        <div className={cn("rounded-lg p-3", predicted !== null ? "bg-emerald-50" : "bg-slate-50")}>
+        <div
+          className={cn(
+            "rounded-lg p-3",
+            predicted !== null ? "bg-emerald-50 dark:bg-emerald-950/35" : "bg-muted/55",
+          )}
+        >
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Projected</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-800 transition-colors duration-300">
+          <p className="mt-1 text-2xl font-semibold text-emerald-800 transition-colors duration-300 motion-reduce:transition-none dark:text-emerald-200">
             {displayPredicted === null ? "--" : displayPredicted.toFixed(1)}
           </p>
         </div>
-        <div className="rounded-lg bg-white p-3 ring-1 ring-emerald-100">
+        <div className="rounded-lg bg-background p-3 ring-1 ring-border">
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Four rounds</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-800">
+          <p className="mt-1 text-2xl font-semibold text-emerald-800 dark:text-emerald-200">
             {shotsSaved === null ? "--" : `${Math.round(shotsSaved)} shots`}
           </p>
         </div>
@@ -100,9 +105,9 @@ export function WhatIfClient({
           <span>Confidence</span>
           <span>{confidenceScore}%</span>
         </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-200">
+        <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-[#0B7A3B] transition-[width] duration-300"
+            className="h-full rounded-full bg-[#0B7A3B] transition-[width] duration-300 motion-reduce:transition-none"
             style={{ width: `${confidenceScore}%` }}
           />
         </div>
@@ -114,6 +119,8 @@ export function WhatIfClient({
 function useAnimatedNumber(value: number | null) {
   const [displayValue, setDisplayValue] = useState(value);
   const displayRef = useRef(value);
+  const reducedMotion =
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
     displayRef.current = displayValue;
@@ -121,6 +128,10 @@ function useAnimatedNumber(value: number | null) {
 
   useEffect(() => {
     if (value === null) {
+      return;
+    }
+
+    if (reducedMotion) {
       return;
     }
 
@@ -138,7 +149,7 @@ function useAnimatedNumber(value: number | null) {
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [value]);
+  }, [reducedMotion, value]);
 
-  return value === null ? null : displayValue;
+  return value === null ? null : reducedMotion ? value : displayValue;
 }

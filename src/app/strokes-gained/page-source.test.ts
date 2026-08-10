@@ -5,6 +5,19 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/strokes-gained/page.tsx"), "utf8");
 
 describe("strokes gained desktop workbench", () => {
+  it("keeps one answer-first mobile title while retaining the dashboard route rail", () => {
+    expect(source).toContain(
+      '<MobileRouteTabs group="dashboard" activeKey="strokes" sticky={false} />',
+    );
+    expect(source).not.toContain("<MobileRouteHeader");
+    expect(source).toContain(
+      'title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}',
+    );
+    expect(source).toContain("mobileHeroDescription(analysis, activeCategory)");
+    expect(source).toContain("hidden lg:inline");
+    expect(source).not.toContain("Tee is the main scoring leak");
+  });
+
   it("keeps the AI strokes-gained rail as shared wide-monitor context", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
@@ -59,9 +72,10 @@ describe("strokes gained desktop workbench", () => {
     expect(waterfallBlock).toContain('{ key: "category", label: "Category" }');
     expect(waterfallBlock).toContain('{ key: "pendingEvents", label: "Pending events" }');
     expect(waterfallBlock).toContain('viewBox="0 0 760 150"');
-    expect(waterfallBlock).toContain('className="h-32 w-full self-center"');
+    expect(waterfallBlock).toContain("max-w-full");
     expect(waterfallBlock).toContain("md:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)]");
-    expect(waterfallBlock).toContain('className="h-full"');
+    expect(waterfallBlock).toContain("compactMobile");
+    expect(waterfallBlock).toContain("[&>details]:hidden");
   });
 
   it("keeps the scoring diagnosis and round history compact", () => {
@@ -98,12 +112,22 @@ describe("strokes gained desktop workbench", () => {
       source.match(/function CategoryBreakdown[\s\S]*?function CategorySummaryTile/)?.[0] ?? "";
 
     expect(breakdownBlock).toContain('className="grid gap-2.5 md:grid-cols-2"');
-    expect(breakdownBlock).toContain(
-      'className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"',
-    );
+    expect(breakdownBlock).toContain("border-border bg-card");
     expect(breakdownBlock).toContain(
       'className="mt-2 grid h-2.5 grid-cols-2 overflow-hidden rounded-full',
     );
     expect(breakdownBlock).not.toContain("sm:grid-cols-[3rem_11rem_minmax(0,1fr)_5rem]");
+  });
+
+  it("uses one-level mobile disclosures without duplicating the event filter form or ids", () => {
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain('title: "Phase detail"');
+    expect(source).toContain('title: "Shot evidence"');
+    expect(source).toContain('title: "Round trend"');
+    expect(source).toContain('title: "Hole impact"');
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(source.match(/<StrokesGainedFilterForm/g)).toHaveLength(1);
+    expect(source.match(/id="events"/g)).toHaveLength(1);
+    expect(source.match(/id="strokes-gained-events-summary"/g)).toHaveLength(1);
   });
 });

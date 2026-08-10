@@ -96,7 +96,8 @@ describe("Phase 5 product-page contract", () => {
 
     expect(feed).toContain('{ id: "proof", label: "Proof" }');
     expect(feed).toContain('{ id: "privacy", label: "Privacy" }');
-    expect(feed).toContain("Post after proof and privacy look right.");
+    expect(feed).toContain("Your feed is automatic right now.");
+    expect(feed).toContain("data.profile.feedVisibilityDefault");
     expect(feed).toContain("item.verificationLabel");
     expect(today).toContain("Social comparison is on demand");
   });

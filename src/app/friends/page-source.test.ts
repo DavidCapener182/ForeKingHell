@@ -36,4 +36,15 @@ describe("friends desktop manager", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("uses a purpose-built mobile relationship inbox with secondary management", () => {
+    expect(source).toContain("<MobileAppShell>");
+    expect(source).toContain("MobileFriendRequests");
+    expect(source).toContain("MobileFriendList");
+    expect(source).toContain("MobileFriendSearch");
+    expect(source).toContain("MobileFriendDetails");
+    expect(source).toContain("rows.slice(0, 3)");
+    expect(source).toContain('<DesktopWorkbenchLayout scope="friends" className="hidden lg:grid">');
+    expect(source).not.toContain('<MobileRouteHeader title="Social"');
+  });
 });

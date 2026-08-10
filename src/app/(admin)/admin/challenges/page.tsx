@@ -9,6 +9,7 @@ import {
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
+  AdminMobileShell,
   AdminNav,
   AdminPageHeader,
   AdminSection,
@@ -16,7 +17,14 @@ import {
   label,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +63,7 @@ type AdminChallengesPageProps = {
   searchParams?: Promise<{
     sort?: string;
     dir?: string;
+    view?: string;
   }>;
 };
 
@@ -94,13 +103,31 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
   const openChallenges = data.challenges.filter((challenge) => challenge.status === "open");
   const totalEntries = data.challenges.reduce((sum, challenge) => sum + challenge.entryCount, 0);
   const totalAttempts = data.challenges.reduce((sum, challenge) => sum + challenge.attemptCount, 0);
+  const mobileView = parseAdminChallengeMobileView(params?.view);
+  const mobileChallenges = sortedChallenges.filter((challenge) => {
+    if (mobileView === "open") return challenge.status === "open";
+    if (mobileView === "scheduled") return challenge.status === "scheduled";
+    return true;
+  });
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="admin" />
-      <AdminNav active="/admin/challenges" />
+      <AdminMobileShell title="Challenges" active="/admin/challenges">
+        <AdminMobileChallenges
+          data={data}
+          challenges={mobileChallenges}
+          mobileView={mobileView}
+          openCount={openChallenges.length}
+          totalEntries={totalEntries}
+          totalAttempts={totalAttempts}
+        />
+      </AdminMobileShell>
 
-      <DesktopWorkbenchLayout scope="admin-challenges">
+      <div className="hidden lg:block">
+        <AdminNav active="/admin/challenges" />
+      </div>
+
+      <DesktopWorkbenchLayout scope="admin-challenges" className="hidden lg:grid">
         <AdminPageHeader
           eyebrow="Admin challenges"
           title="Challenges and tournaments"
@@ -275,6 +302,143 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type AdminChallengeMobileView = "open" | "scheduled" | "all";
+
+function AdminMobileChallenges({
+  data,
+  challenges,
+  mobileView,
+  openCount,
+  totalEntries,
+  totalAttempts,
+}: {
+  data: AdminChallengesData;
+  challenges: AdminChallengeBoard[];
+  mobileView: AdminChallengeMobileView;
+  openCount: number;
+  totalEntries: number;
+  totalAttempts: number;
+}) {
+  const primaryChallenges = challenges.slice(0, 12);
+  const olderChallenges = challenges.slice(12);
+
+  return (
+    <>
+      <MobileStatusAction
+        label="Open boards"
+        value={openCount}
+        detail={`${totalEntries} entries · ${totalAttempts} submitted attempts`}
+        action={
+          <Button asChild className="min-h-11">
+            <Link href="/challenges">Public view</Link>
+          </Button>
+        }
+      />
+
+      <MobileTabBar
+        activeKey={mobileView}
+        ariaLabel="Filter admin challenges"
+        tabs={[
+          { key: "open", label: "Open", href: "/admin/challenges?view=open" },
+          { key: "scheduled", label: "Scheduled", href: "/admin/challenges?view=scheduled" },
+          { key: "all", label: "All", href: "/admin/challenges?view=all" },
+        ]}
+      />
+
+      <section className="grid gap-2" aria-label="Admin challenge boards">
+        <IOSSectionHeader
+          title="Challenge boards"
+          description={`${challenges.length} ${mobileView} ${challenges.length === 1 ? "board" : "boards"}`}
+        />
+        <MobileAdminChallengeRows challenges={primaryChallenges} />
+        {olderChallenges.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More challenge boards"
+            items={[
+              {
+                value: "more-challenge-boards",
+                title: "More challenge boards",
+                summary: olderChallenges.length,
+                description: "Additional boards in this filter",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileAdminChallengeRows challenges={olderChallenges} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      <IOSDisclosureGroup
+        label="Challenge templates"
+        items={[
+          {
+            value: "challenge-templates",
+            title: "Templates",
+            summary: data.templates.length,
+            description: "Seeded formats available for new boards",
+            contentClassName: "px-0 pb-0 pt-0",
+            content: (
+              <IOSGroupedList label="Challenge template rows" className="border-0">
+                {data.templates.length > 0 ? (
+                  data.templates.map((template) => (
+                    <IOSListRow
+                      key={template.id}
+                      label={template.name}
+                      value={label(template.challengeType)}
+                      detail={template.description ?? "No description supplied"}
+                    />
+                  ))
+                ) : (
+                  <IOSListRow
+                    label="No templates"
+                    detail="Challenge formats will appear after they are configured."
+                  />
+                )}
+              </IOSGroupedList>
+            ),
+          },
+        ]}
+      />
+    </>
+  );
+}
+
+function MobileAdminChallengeRows({ challenges }: { challenges: AdminChallengeBoard[] }) {
+  return (
+    <IOSGroupedList label="Admin challenge board rows">
+      {challenges.length > 0 ? (
+        challenges.map((challenge) => (
+          <IOSListRow
+            key={challenge.id}
+            label={challenge.title}
+            value={challenge.entryCount}
+            detail={`${challenge.templateName} · ${challenge.creatorDisplayName} · ends ${formatDateTime(challenge.endsAt)}`}
+            href={`/challenges/${challenge.id}`}
+            status={
+              <IOSInlineStatus
+                label={`${label(challenge.status)} · ${challenge.attemptCount} attempts · ${challenge.resultCount} results`}
+                tone={
+                  challenge.status === "open"
+                    ? "positive"
+                    : challenge.status === "scheduled"
+                      ? "info"
+                      : "neutral"
+                }
+              />
+            }
+          />
+        ))
+      ) : (
+        <IOSListRow label="No challenge boards" detail="No boards match this status filter." />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function parseAdminChallengeMobileView(value: string | undefined): AdminChallengeMobileView {
+  return value === "scheduled" || value === "all" ? value : "open";
 }
 
 function SortableAdminChallengeHead({

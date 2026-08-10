@@ -48,4 +48,55 @@ describe("round detail desktop workspace source", () => {
     expect(source).toContain("createCourseTwinReplayShareLinkAction");
     expect(source).toContain("Share 3D replay");
   });
+
+  it("uses real mobile disclosures while leaving desktop review content expanded", () => {
+    const mobileDisclosure =
+      source.match(/function MobileCollapsible[\s\S]*?function ReviewAccordion/)?.[0] ?? "";
+
+    expect(mobileDisclosure).toContain('<details className="group lg:contents">');
+    expect(mobileDisclosure).toContain("<summary");
+    expect(mobileDisclosure).toContain("group-open:block lg:contents");
+    expect(mobileDisclosure).toContain("group-open:rotate-180");
+    expect(mobileDisclosure).not.toContain('<section className="contents">');
+  });
+
+  it("renders a purpose-built mobile round review before the preserved desktop workbench", () => {
+    expect(source).toContain("<MobileRoundDetail");
+    expect(source).toContain("<MobileAppShell");
+    expect(source).toContain("<MobileTopBar title={courseName} />");
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source.indexOf("<MobileRoundDetail")).toBeLessThan(
+      source.indexOf('className="hidden lg:grid"'),
+    );
+    expect(source).toContain("<IOSDisclosureGroup");
+    expect(source).toContain('value: "performance"');
+    expect(source).toContain('value: "scorecard"');
+    expect(source).toContain('value: "map"');
+    expect(source).toContain('value: "proof"');
+    expect(source).toContain('value: "corrections"');
+  });
+
+  it("uses hole values in the current-hole summary rather than cumulative round totals", () => {
+    const firstCard =
+      source.match(/function MobileRoundFirstCard[\s\S]*?function MobileCurrentHoleEditor/)?.[0] ??
+      "";
+
+    expect(firstCard).toContain("formatNullableInteger(hole.score)");
+    expect(firstCard).toContain("formatNullableInteger(hole.putts)");
+    expect(firstCard).not.toContain("totalScore");
+    expect(firstCard).not.toContain("totalPutts");
+    expect(firstCard).toContain('href="#mobile-current-hole"');
+  });
+
+  it("keeps specialist maps and dense corrections behind one accessible disclosure level", () => {
+    const mobileDetail =
+      source.match(/function MobileRoundDetail[\s\S]*?function MobileRoundResultCard/)?.[0] ?? "";
+
+    expect(mobileDetail.match(/<IOSDisclosureGroup/g)).toHaveLength(1);
+    expect(mobileDetail).toContain("<MobileRoundMap");
+    expect(mobileDetail).toContain("<MobileRoundCorrections");
+    expect(source).toContain("<RoundShotMap");
+    expect(source).toContain('id="mobile-round-review"');
+    expect(source).toContain('href="#mobile-round-review"');
+  });
 });

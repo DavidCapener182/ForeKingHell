@@ -38,4 +38,17 @@ describe("social intelligence desktop safety console", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
+
+  it("uses a conclusion-first mobile safety queue with forms in sheets", () => {
+    expect(source).toContain("<MobileAppShell>");
+    expect(source).toContain("MobileSocialSafetyQueue");
+    expect(source).toContain("MobileSocialRecaps");
+    expect(source).toContain("MobileSafetyTechnicalDetails");
+    expect(source).toContain("SocialReportForm");
+    expect(source).toContain("GenerateSummaryForm");
+    expect(source).toContain("<BottomSheet");
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="social-intelligence" className="hidden lg:grid">',
+    );
+  });
 });

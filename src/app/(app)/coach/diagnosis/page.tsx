@@ -8,6 +8,15 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import {
   DataPanel,
   DataTableFrame,
   PageShell,
@@ -76,7 +85,9 @@ export default async function CoachDiagnosisPage() {
 
   return (
     <PageShell>
-      <DesktopWorkbenchLayout scope="coach-diagnosis">
+      <MobileCoachDiagnosis cards={coach.clubCards} />
+
+      <DesktopWorkbenchLayout scope="coach-diagnosis" className="hidden lg:grid">
         <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/coach" prefetch={false}>
@@ -164,6 +175,136 @@ export default async function CoachDiagnosisPage() {
         )}
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function MobileCoachDiagnosis({ cards }: { cards: CoachClubCard[] }) {
+  const priority = cards[0] ?? null;
+  const priorityCards = cards.slice(0, 3);
+  const remainingCards = cards.slice(3);
+
+  return (
+    <MobileAppShell className="gap-4">
+      <MobileTopBar title="Diagnosis" />
+
+      {priority ? (
+        <>
+          <section className="premium-command-surface grid min-w-0 gap-3 rounded-lg p-4">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Fix this first
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-normal">
+                {priority.clubName}: {priority.issueLabel}
+              </h2>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">{priority.reason}</p>
+            </div>
+            <Button asChild size="sm" className="min-h-11 w-full rounded-lg">
+              <Link href={`/bag/${priority.clubId}/analytics`} prefetch={false}>
+                Open club
+              </Link>
+            </Button>
+          </section>
+
+          <section className="grid gap-2" aria-labelledby="mobile-retest-title">
+            <IOSSectionHeader
+              title={<span id="mobile-retest-title">Retest decision</span>}
+              description="Do not change the diagnosis from one good or bad swing."
+            />
+            <IOSGroupedList label="Priority diagnosis and retest">
+              <IOSMetricRow
+                label="Current trust"
+                value={`${priority.trustIndex}%`}
+                detail={`${priority.sampleSize} clean shots support this read`}
+                tone={priority.trustIndex >= 70 ? "positive" : "attention"}
+              />
+              <IOSListRow
+                label="Retest after"
+                value="2 sessions"
+                detail="Use two comparable measured sessions before changing the priority."
+                icon={Gauge}
+              />
+              <IOSListRow
+                label="Practice cue"
+                detail={priority.drill}
+                href={`/bag/${priority.clubId}/analytics`}
+              />
+            </IOSGroupedList>
+          </section>
+        </>
+      ) : (
+        <section className="ios-grouped-list grid justify-items-center gap-4 px-5 py-8 text-center">
+          <Brain className="size-9 text-primary" aria-hidden />
+          <div>
+            <h2 className="text-xl font-semibold">Diagnosis is waiting for data</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Import launch-monitor shots to separate distance, strike, launch, direction, delivery
+              and data quality for each club.
+            </p>
+          </div>
+          <Button asChild className="min-h-11 rounded-lg">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" aria-hidden />
+              Import data
+            </Link>
+          </Button>
+        </section>
+      )}
+
+      {priorityCards.length > 0 ? (
+        <section className="grid gap-2" aria-labelledby="mobile-club-issues-title">
+          <IOSSectionHeader
+            title={<span id="mobile-club-issues-title">Issues by club</span>}
+            description="Lowest-trust decisions are first. Open a row for the full analysis."
+            action={<IOSInlineStatus label={`${cards.length} clubs`} tone="info" />}
+          />
+          <IOSGroupedList label="Highest priority club issues">
+            {priorityCards.map((card) => (
+              <MobileDiagnosisIssueRow key={card.clubId} card={card} />
+            ))}
+          </IOSGroupedList>
+          {remainingCards.length > 0 ? (
+            <IOSDisclosureGroup
+              label="Remaining club issues"
+              items={[
+                {
+                  value: "remaining-clubs",
+                  title: "More club issues",
+                  summary: remainingCards.length,
+                  description: "Lower-priority diagnoses and retest cues",
+                  contentClassName: "px-0 pb-0 pt-0",
+                  content: (
+                    <IOSGroupedList label="Remaining club issues" className="rounded-none">
+                      {remainingCards.map((card) => (
+                        <MobileDiagnosisIssueRow key={card.clubId} card={card} />
+                      ))}
+                    </IOSGroupedList>
+                  ),
+                },
+              ]}
+            />
+          ) : null}
+        </section>
+      ) : null}
+    </MobileAppShell>
+  );
+}
+
+function MobileDiagnosisIssueRow({ card }: { card: CoachClubCard }) {
+  return (
+    <IOSListRow
+      label={card.clubName}
+      value={`${card.trustIndex}%`}
+      detail={`${card.issueLabel} · ${card.sampleSize} clean shots`}
+      href={`/bag/${card.clubId}/analytics`}
+      status={
+        <IOSInlineStatus
+          label={card.trustIndex >= 70 ? "Supported diagnosis" : "Needs retest"}
+          tone={card.trustIndex >= 70 ? "positive" : "attention"}
+        />
+      }
+      ariaLabel={`${card.clubName}, ${card.issueLabel}, ${card.trustIndex}% trust. Open club analytics`}
+    />
   );
 }
 

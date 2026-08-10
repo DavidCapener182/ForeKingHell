@@ -8,6 +8,20 @@ const source = readFileSync(
 );
 
 describe("course-specific records desktop board", () => {
+  it("keeps the native course board through tablet widths and uses 44px actions", () => {
+    const mobileSource = source.slice(
+      source.indexOf("<MobileAppShell>"),
+      source.indexOf("</MobileAppShell>"),
+    );
+
+    expect(source.match(/className="size-11 rounded-full"/g)).toHaveLength(1);
+    expect(mobileSource).not.toContain("<ArrowLeft");
+    expect(mobileSource).not.toContain("leading=");
+    expect(source).toContain('className="min-h-11 justify-between rounded-full"');
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain('scope="course-records-course" className="hidden sm:grid"');
+  });
+
   it("keeps course boards table-first with saved views, column control and export", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');

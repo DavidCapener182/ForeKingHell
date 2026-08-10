@@ -1,13 +1,17 @@
-import Link from "next/link";
-import { Activity, Gauge, Radar, Target, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { and, desc, eq } from "drizzle-orm";
 
 import { PracticePlannerClient } from "@/app/practice/practice-planner-client";
 import { MobileRouteHeader } from "@/components/mobile-sports";
-import { Button } from "@/components/ui/button";
 import { sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { DataPair, PageShell, StatusPill, StickyMobileAction } from "@/components/premium";
+import { PageShell, StatusPill } from "@/components/premium";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSListRow,
+  IOSMetricRow,
+} from "@/components/app/ios-mobile";
 import {
   DesktopWorkflowLayout,
   type DesktopWorkflowHelpItem,
@@ -95,16 +99,6 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
   return (
     <PageShell size="full">
       <MobileRouteHeader title="Practice Planner" group="improve" activeKey="practice" />
-      <PracticeSessionCockpit
-        metrics={cockpit}
-        plan={initialPlan}
-        latestSessionReview={latestSessionReview}
-        trainingLoad={{
-          statusLabel: data.context.trainingLoad.statusLabel,
-          highRecentLoad: data.context.trainingLoad.highRecentLoad,
-          recommendation: data.context.trainingLoad.recommendation,
-        }}
-      />
       <DesktopWorkflowLayout
         steps={workflowSteps}
         helpTitle="Practice workflow help"
@@ -112,7 +106,7 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
         helpItems={practiceWorkflowHelpItems}
         workflowRailBreakpoint="2xl"
       >
-        <header className="rounded-xl border border-border bg-card p-3 shadow-sm ring-1 ring-primary/10">
+        <header className="hidden rounded-xl border border-border bg-card p-3 shadow-sm ring-1 ring-primary/10 lg:block">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
@@ -154,14 +148,16 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
           initialOptions={initialOptions}
         />
       </DesktopWorkflowLayout>
-      <StickyMobileAction>
-        <Button asChild className="premium-action min-h-12 w-full rounded-lg">
-          <a href="#practice-plan">
-            <Target className="size-4" />
-            Start today&apos;s drill
-          </a>
-        </Button>
-      </StickyMobileAction>
+      <PracticeSessionCockpit
+        metrics={cockpit}
+        plan={initialPlan}
+        latestSessionReview={latestSessionReview}
+        trainingLoad={{
+          statusLabel: data.context.trainingLoad.statusLabel,
+          highRecentLoad: data.context.trainingLoad.highRecentLoad,
+          recommendation: data.context.trainingLoad.recommendation,
+        }}
+      />
     </PageShell>
   );
 }
@@ -411,120 +407,60 @@ function PracticeSessionCockpit({
     : trainingLoad.recommendation;
 
   return (
-    <section className="apple-panel-strong grid gap-4 rounded-lg p-4 sm:hidden">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Active session mode
-          </p>
-          <h2 className="mt-1 text-3xl font-semibold leading-tight tracking-normal text-foreground">
-            {plan.title}
-          </h2>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-            {metrics.sourceLabel}. Practice scoring is driven by imported launch-monitor shots.
-          </p>
-        </div>
-        <StatusPill tone={trainingLoad.highRecentLoad ? "amber" : "green"}>
-          {trainingLoad.statusLabel}
-        </StatusPill>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <PracticeCockpitMetric
-          icon={Target}
-          label="Carry"
-          value={formatPracticeYards(metrics.carryAverageYd)}
-          detail={`${metrics.shotCount} shots`}
-          emphasis
-        />
-        <PracticeCockpitMetric
-          icon={Radar}
-          label="Spin"
-          value={formatPracticeSpin(metrics.spinAverageRpm)}
-          detail="Session avg"
-        />
-        <PracticeCockpitMetric
-          icon={Gauge}
-          label="Smash"
-          value={formatPracticeDecimal(metrics.smashAverage)}
-          detail="Efficiency"
-        />
-        <PracticeCockpitMetric
-          icon={Activity}
-          label="Readiness"
-          value={readiness}
-          detail={readinessDetail}
-        />
-      </div>
-      <div className="grid gap-2 rounded-lg border border-border bg-card p-3 text-sm">
-        <DataPair
-          label="Playable rate"
-          value={metrics.playableRate === null ? "--" : `${metrics.playableRate}%`}
-        />
-        <DataPair
-          label="Next drill"
-          value={plan.blocks[0]?.title ?? latestSessionReview?.score.nextAction ?? "Import session"}
-        />
-      </div>
-      {metrics.sessionId ? (
-        <Button asChild variant="outline" className="min-h-11 rounded-lg">
-          <Link href={`/shots?sessionId=${encodeURIComponent(metrics.sessionId)}`}>
-            <Upload className="size-4" />
-            Review session shots
-          </Link>
-        </Button>
-      ) : (
-        <Button asChild className="premium-action min-h-11 rounded-lg">
-          <Link href="/import">
-            <Upload className="size-4" />
-            Import session
-          </Link>
-        </Button>
-      )}
-    </section>
-  );
-}
-
-function PracticeCockpitMetric({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  emphasis = false,
-}: {
-  icon: typeof Target;
-  label: string;
-  value: string;
-  detail: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <div
-      className={`grid min-h-[7.25rem] content-between rounded-lg border p-3 ${
-        emphasis
-          ? "border-primary/30 bg-primary text-primary-foreground"
-          : "border-border bg-card text-foreground"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p
-          className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
-            emphasis ? "text-primary-foreground/78" : "text-muted-foreground"
-          }`}
-        >
-          {label}
-        </p>
-        <Icon className={`size-4 ${emphasis ? "text-primary-foreground" : "text-primary"}`} />
-      </div>
-      <div>
-        <p className="text-4xl font-semibold leading-none tracking-normal">{value}</p>
-        <p
-          className={`mt-1 line-clamp-1 text-xs leading-4 ${
-            emphasis ? "text-primary-foreground/78" : "text-muted-foreground"
-          }`}
-        >
-          {detail}
-        </p>
-      </div>
+    <div className="lg:hidden">
+      <IOSDisclosureGroup
+        label="Latest practice evidence"
+        items={[
+          {
+            value: "active-session-evidence",
+            title: "Active session mode",
+            summary: readiness,
+            description: `${metrics.sourceLabel}. Practice scoring is driven by imported launch-monitor shots.`,
+            content: (
+              <IOSGroupedList label="Latest measured practice metrics" className="bg-card">
+                <IOSMetricRow
+                  label="Carry"
+                  value={formatPracticeYards(metrics.carryAverageYd)}
+                  detail={`${metrics.shotCount} shots`}
+                />
+                <IOSMetricRow
+                  label="Spin"
+                  value={formatPracticeSpin(metrics.spinAverageRpm)}
+                  detail="Session average"
+                />
+                <IOSMetricRow
+                  label="Smash"
+                  value={formatPracticeDecimal(metrics.smashAverage)}
+                  detail="Efficiency"
+                />
+                <IOSMetricRow label="Readiness" value={readiness} detail={readinessDetail} />
+                <IOSMetricRow
+                  label="Playable rate"
+                  value={metrics.playableRate === null ? "--" : `${metrics.playableRate}%`}
+                />
+                <IOSListRow
+                  label="Next drill"
+                  detail={
+                    plan.blocks[0]?.title ??
+                    latestSessionReview?.score.nextAction ??
+                    "Import session"
+                  }
+                />
+                <IOSListRow
+                  label={metrics.sessionId ? "Review session shots" : "Import session"}
+                  detail={trainingLoad.recommendation}
+                  href={
+                    metrics.sessionId
+                      ? `/shots?sessionId=${encodeURIComponent(metrics.sessionId)}`
+                      : "/import"
+                  }
+                  icon={Upload}
+                />
+              </IOSGroupedList>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

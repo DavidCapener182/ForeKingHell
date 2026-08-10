@@ -3,6 +3,7 @@ import { ArrowLeft, CalendarDays } from "lucide-react";
 import { and, asc, desc, eq } from "drizzle-orm";
 
 import { SessionImpactClient } from "@/app/analyse/session-impact/session-impact-client";
+import { IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
 import { Button } from "@/components/ui/button";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { sessions, shots } from "@/db/schema";
@@ -21,33 +22,53 @@ export default async function SessionImpactPage({ searchParams }: { searchParams
 
   return (
     <PageShell>
-      <Button asChild variant="ghost" className="w-fit px-0">
-        <Link href="/analyse">
-          <ArrowLeft className="size-4" aria-hidden />
-          Analyse
-        </Link>
-      </Button>
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Reversible analysis</StatusPill>}
-        title="Session impact"
-        description="See exactly how selected shots and robust filters change the story without deleting or rewriting the source session."
-        metrics={
-          data.session
-            ? [
-                { label: "Session", value: data.session.label, detail: data.session.dateLabel },
-                { label: "Raw shots", value: data.shots.length, detail: data.session.sourceLabel },
-              ]
-            : undefined
-        }
-        actions={
-          <Button asChild variant="outline" className="min-h-11 rounded-xl">
-            <Link href="/sessions">
-              <CalendarDays className="size-4" aria-hidden />
-              Choose session
-            </Link>
-          </Button>
-        }
-      />
+      <div className="lg:hidden">
+        {data.session ? (
+          <IOSGroupedList>
+            <IOSListRow
+              label={data.session.label}
+              value={`${data.shots.length} shots`}
+              detail={`${data.session.dateLabel} · ${data.session.sourceLabel}`}
+              href="/sessions"
+              ariaLabel="Choose another session"
+            />
+          </IOSGroupedList>
+        ) : null}
+      </div>
+
+      <div className="hidden lg:contents">
+        <Button asChild variant="ghost" className="w-fit px-0">
+          <Link href="/analyse">
+            <ArrowLeft className="size-4" aria-hidden />
+            Analyse
+          </Link>
+        </Button>
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Reversible analysis</StatusPill>}
+          title="Session impact"
+          description="See exactly how selected shots and robust filters change the story without deleting or rewriting the source session."
+          metrics={
+            data.session
+              ? [
+                  { label: "Session", value: data.session.label, detail: data.session.dateLabel },
+                  {
+                    label: "Raw shots",
+                    value: data.shots.length,
+                    detail: data.session.sourceLabel,
+                  },
+                ]
+              : undefined
+          }
+          actions={
+            <Button asChild variant="outline" className="min-h-11 rounded-xl">
+              <Link href="/sessions">
+                <CalendarDays className="size-4" aria-hidden />
+                Choose session
+              </Link>
+            </Button>
+          }
+        />
+      </div>
       <SessionImpactClient shots={data.shots} />
     </PageShell>
   );

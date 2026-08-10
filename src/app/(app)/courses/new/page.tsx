@@ -4,16 +4,10 @@ import { ArrowLeft, Flag, MapPinned, Save, Search } from "lucide-react";
 
 import { createCourseAction } from "@/app/courses/actions";
 import { GoogleCourseImporter } from "@/app/courses/google-course-importer";
+import { MobileCourseSourceChooser } from "@/app/courses/new/mobile-course-source-chooser";
 import { OsmCourseImporter } from "@/app/courses/osm-course-importer";
 import { DesktopWorkflowLayout } from "@/components/app/desktop-workbench";
-import {
-  DataPanel,
-  MobileAccordionSection,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -64,7 +58,7 @@ const courseWorkflowHelpItems = [
 export default function NewCoursePage() {
   return (
     <PageShell>
-      <div className="flex items-center justify-between gap-4">
+      <div className="hidden items-center justify-between gap-4 lg:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/courses" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -119,6 +113,7 @@ export default function NewCoursePage() {
       />
 
       <DesktopWorkflowLayout
+        className="hidden lg:grid"
         steps={courseWorkflowSteps}
         helpTitle="Course setup help"
         helpDescription="Build trustworthy course data"
@@ -234,40 +229,7 @@ export default function NewCoursePage() {
           </CardContent>
         </DataPanel>
       </DesktopWorkflowLayout>
-
-      <MobileAccordionSection
-        title="OpenStreetMap import"
-        description="Search and pull tagged golf-hole geometry."
-      >
-        <OsmCourseImporter />
-      </MobileAccordionSection>
-
-      <MobileAccordionSection
-        title="Google import"
-        description="Search Google Places and create a canonical course shell."
-      >
-        <GoogleCourseImporter />
-      </MobileAccordionSection>
-
-      <MobileAccordionSection
-        title="Overlay notes"
-        description="How course maps power round overlays."
-      >
-        <div className="grid gap-3">
-          <Alert className="border-emerald-200 bg-emerald-50/70">
-            <MapPinned className="size-4" />
-            <AlertTitle>Hole geometry drives the map</AlertTitle>
-            <AlertDescription>
-              Round pages project launch-monitor shots from saved tee points toward saved green
-              points.
-            </AlertDescription>
-          </Alert>
-          <p className="rounded-xl border bg-white/80 p-3 text-sm leading-6 text-muted-foreground">
-            Tee and green coordinates are enough for useful overlays. Centreline refinement can
-            happen later.
-          </p>
-        </div>
-      </MobileAccordionSection>
+      <MobileCourseSourceChooser />
     </PageShell>
   );
 }

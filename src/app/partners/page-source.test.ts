@@ -42,4 +42,15 @@ describe("partners desktop operations board", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
+
+  it("uses native mobile sponsor and offer lists with focused creation sheets", () => {
+    expect(source).toContain("MobilePartnersOperations");
+    expect(source).toContain("MobilePartnerOfferRows");
+    expect(source).toContain("MobileSponsorRows");
+    expect(source).toContain("<BottomSheet");
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="partners" className="hidden lg:grid">',
+    );
+  });
 });

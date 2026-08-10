@@ -15,7 +15,7 @@ describe("feed desktop activity ledger", () => {
     expect(source).toContain('<PageShell className="bg-slate-50/20">');
     expect(source).not.toContain('<PageShell size="7xl"');
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="feed" className="hidden sm:grid">');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="feed" className="hidden lg:grid">');
     expect(source).toContain("</DesktopWorkbenchLayout>");
     expect(source).toContain('aria-label="Feed profile shortcuts"');
     expect(source).toContain('aria-label="Feed social insight rail"');
@@ -45,6 +45,23 @@ describe("feed desktop activity ledger", () => {
     ]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("puts real filtered activity ahead of disclosed mobile highlights", () => {
+    expect(source).toContain("MobileFeedRows");
+    expect(source).toContain("items={mobilePrimaryItems}");
+    expect(source).toContain("MobileFeedHighlights");
+    expect(source.indexOf("items={mobilePrimaryItems}")).toBeLessThan(
+      source.indexOf("<MobileFeedHighlights"),
+    );
+    expect(source).toContain(
+      "const mobileOlderItems = filteredItems.slice(mobileFeedPrimaryLimit)",
+    );
+    expect(source).not.toContain("PW Launch Window");
+    expect(source).not.toContain("Rapsodo proof accepted");
+    expect(source).not.toContain('label="Search feed"');
+    expect(source).not.toContain('label="Messages"');
+    expect(source).not.toContain('label="Notifications"');
   });
 
   it("keeps compact feed engagement metadata above the contrast threshold", () => {

@@ -9,6 +9,24 @@ const chartsSource = readFileSync(
 );
 
 describe("latest practice desktop dashboard", () => {
+  it("uses an answer-first mobile composition with one level of progressive disclosure", () => {
+    expect(source).toContain("<TodayMobileIntent");
+    expect(source).toContain("<TodayMobileScopeSheet");
+    expect(source).toContain("<TodayMobileEvidence");
+    expect(source).toContain('label="Today evidence sections"');
+    expect(source).toContain('value: "numbers"');
+    expect(source).toContain('value: "clubs"');
+    expect(source).toContain('value: "charts"');
+    expect(source).toContain('value: "highlights"');
+    expect(source).toContain('value: "shots"');
+    expect(source).toContain('label="Review scope"');
+    expect(source).toContain("data.rawShots.slice(0, 10)");
+    expect(source).toContain('label="Club performance rows"');
+    expect(source).toContain('href={data.shots.length > 0 ? "/practice" : "/import"}');
+    expect(source).toContain("Open practice");
+    expect(source).not.toContain("<MobileSectionChips");
+  });
+
   it("uses the optional desktop AI rail for latest practice evidence", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('scope="today"');

@@ -8,6 +8,20 @@ const source = readFileSync(
 );
 
 describe("practice planner desktop ledger", () => {
+  it("uses a focused mobile task flow instead of stacking the desktop planner", () => {
+    expect(source).toContain("data-practice-mobile-task");
+    expect(source).toContain("<PracticeMobileBlockPicker");
+    expect(source).toContain('label="Plan setup"');
+    expect(source).toContain('label="Match upload"');
+    expect(source).toContain('label="Practice plan detail"');
+    expect(source).toContain('value: "why"');
+    expect(source).toContain('value: "detail"');
+    expect(source).toContain('value: "result"');
+    expect(source).toContain('value: "ledger"');
+    expect(source).toContain("<PracticeMobileLedger");
+    expect(source).toContain('className="hidden min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid"');
+  });
+
   it("keeps practice blocks as an exportable desktop table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="practice-blocks"');
@@ -68,8 +82,10 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("pngPreviewUrl");
     expect(source).toContain("grid-rows-[auto_minmax(0,1fr)_auto]");
     expect(source).toContain("lg:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.1fr)]");
-    expect(source).toContain("min-h-0 overflow-y-auto bg-[#f8f7ed] p-3");
-    expect(source).toContain("min-h-0 overflow-y-auto border-t bg-[#f6f4e7] p-3");
+    expect(source).toContain("min-h-0 overflow-y-auto bg-muted p-3 lg:bg-[#f8f7ed]");
+    expect(source).toContain(
+      "min-h-0 overflow-y-auto border-t bg-muted p-3 lg:border-l lg:border-t-0 lg:bg-[#f6f4e7]",
+    );
     expect(source).toContain("practicePlanImageDataUrl(plan)");
     expect(source).toContain("downloadPracticePlanImage");
     expect(source).toContain("Saved practice reference PNG preview");
@@ -80,5 +96,18 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("setComparison(null)");
     expect(source).toContain("setPracticeScore(null)");
     expect(source).toContain("Practice drill swapped. Save the edited plan before upload.");
+  });
+
+  it("keeps the saved-reference dialog keyboard, dynamic-viewport and dark-mode safe", () => {
+    const dialogSource = source.slice(
+      source.indexOf("function PracticePlanImageDialog"),
+      source.indexOf("function PracticeBlockLedger"),
+    );
+
+    expect(dialogSource).toContain("100dvh");
+    expect(dialogSource).toContain("env(safe-area-inset-bottom)");
+    expect(dialogSource).toContain("bg-card");
+    expect(dialogSource).not.toContain("100vh");
+    expect(dialogSource).not.toContain("max-lg:bg-white");
   });
 });

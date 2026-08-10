@@ -19,6 +19,12 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import {
   BottomSheet,
@@ -128,8 +134,8 @@ export default async function TournamentDetailPage({
     : data.standings;
   const hiddenTourStandingCount = hideTourPlayers ? tourStandingCount : 0;
   const leaderboardToggleHref = hideTourPlayers
-    ? `/tournaments/${data.tournament.id}#standings`
-    : `/tournaments/${data.tournament.id}?hideTour=1#standings`;
+    ? `/tournaments/${data.tournament.id}?tab=board`
+    : `/tournaments/${data.tournament.id}?tab=board&hideTour=1`;
   const podium = visibleStandings.slice(0, 3);
   const viewerStanding =
     data.standings.find((row) => row.standing.userId === data.viewerUserId) ?? null;
@@ -143,13 +149,6 @@ export default async function TournamentDetailPage({
       <MobileAppShell>
         <MobileTopBar
           title={data.tournament.title}
-          leading={
-            <Button asChild variant="ghost" size="icon" className="size-10 rounded-full">
-              <Link href="/tournaments" prefetch={false} aria-label="Tournaments">
-                <ArrowLeft className="size-5" />
-              </Link>
-            </Button>
-          }
           actions={<ProofBadge tier={data.tournament.directRapsodoRequired ? "gold" : "silver"} />}
         />
         <MobileStatusAction
@@ -291,7 +290,11 @@ export default async function TournamentDetailPage({
         <MobileTabBar
           activeKey={activeTab}
           tabs={[
-            { key: "board", label: "Board", href: `/tournaments/${data.tournament.id}` },
+            {
+              key: "board",
+              label: "Board",
+              href: `/tournaments/${data.tournament.id}?tab=board`,
+            },
             {
               key: "submit",
               label: "Submit",
@@ -367,13 +370,17 @@ export default async function TournamentDetailPage({
                 value: standing.grossTotal,
                 detail: `${standing.roundsCompleted}/${data.tournament.roundCount} rounds`,
               }))}
-              viewAllHref={`/tournaments/${data.tournament.id}#standings`}
+            />
+            <MobileTournamentStandings
+              visibleStandings={visibleStandings}
+              roundCount={data.tournament.roundCount}
+              viewerUserId={data.viewerUserId}
             />
           </NativeListSection>
         )}
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="tournament-detail" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="tournament-detail" className="hidden lg:grid">
         <div className="flex items-center justify-between gap-3">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/tournaments" prefetch={false}>
@@ -742,6 +749,63 @@ export default async function TournamentDetailPage({
 }
 
 type TournamentStandingRow = TournamentDetailData["standings"][number];
+
+function MobileTournamentStandings({
+  visibleStandings,
+  roundCount,
+  viewerUserId,
+}: {
+  visibleStandings: TournamentStandingRow[];
+  roundCount: number;
+  viewerUserId: string;
+}) {
+  return (
+    <IOSDisclosureGroup
+      label="Complete tournament standings"
+      items={[
+        {
+          value: "complete-standings",
+          title: "Complete standings",
+          summary: `${visibleStandings.length} ${visibleStandings.length === 1 ? "player" : "players"}`,
+          description: "Gross, net, rounds and proof state",
+          contentClassName: "px-0 pb-0 pt-0",
+          content: (
+            <IOSGroupedList label="All visible tournament standings" className="border-0">
+              {visibleStandings.length > 0 ? (
+                visibleStandings.map(({ standing, profile }) => {
+                  const isViewer = standing.userId === viewerUserId;
+                  const isTourPlayer = isTourPlayerProfile(profile);
+
+                  return (
+                    <IOSListRow
+                      key={standing.id}
+                      label={`#${standing.rank ?? "--"} · ${profile?.displayName ?? "Player"}`}
+                      value={standing.grossTotal}
+                      detail={`${standing.roundsCompleted}/${roundCount} rounds · Net ${standing.netTotal ?? "--"} · ${standing.status.replaceAll("_", " ")}`}
+                      href={profileHref(profile)}
+                      status={
+                        isViewer ? (
+                          <IOSInlineStatus label="You" tone="positive" />
+                        ) : isTourPlayer ? (
+                          <IOSInlineStatus label="Tour player" tone="info" />
+                        ) : undefined
+                      }
+                    />
+                  );
+                })
+              ) : (
+                <IOSListRow
+                  label="No standings yet"
+                  detail="Accepted round submissions will appear here."
+                />
+              )}
+            </IOSGroupedList>
+          ),
+        },
+      ]}
+    />
+  );
+}
 
 function TournamentStandingsTable({
   rows,

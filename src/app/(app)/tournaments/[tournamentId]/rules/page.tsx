@@ -6,5 +6,5 @@ type TournamentRulesRouteProps = {
 
 export default async function TournamentRulesRoute({ params }: TournamentRulesRouteProps) {
   const { tournamentId } = await params;
-  redirect(`/tournaments/${tournamentId}#rules`);
+  redirect(`/tournaments/${tournamentId}?tab=rules`);
 }

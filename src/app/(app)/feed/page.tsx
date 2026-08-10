@@ -3,13 +3,11 @@ import type { ReactNode } from "react";
 import {
   Award,
   BarChart3,
-  Bell,
   Filter,
   Lock,
   MessageCircle,
   Plus,
   Radio,
-  Search,
   Trophy,
   Upload,
   Users,
@@ -17,23 +15,25 @@ import {
 } from "lucide-react";
 
 import { FeedCardList } from "@/components/social/feed-card-list";
-import { ReelExportButton } from "@/components/social/reel-export-button";
 import { SocialFeaturePanel } from "@/components/features/feature-panels";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import {
-  ActivityCard,
-  EventHeroCard,
+  BottomSheet,
   MobileAppShell,
-  MobileIconButton,
   MobileRouteTabs,
   MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
-  NativeListSection,
 } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { DataFirstFlowPanel } from "@/components/product-polish";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import {
   DesktopWorkbenchLayout,
@@ -56,6 +56,7 @@ import { getFeedPageData } from "@/lib/social";
 export const dynamic = "force-dynamic";
 
 const TOUR_COVER_COUNT = 10;
+const mobileFeedPrimaryLimit = 8;
 
 type FeedPageProps = {
   searchParams?: Promise<{
@@ -124,6 +125,10 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const comments = data.items.reduce((total, item) => total + item.commentCount, 0);
   const feedXp = data.items.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0);
   const filteredItems = filterFeedItems(data.items, activeFilter, data.viewerUserId);
+  const mobilePrimaryItems = filteredItems.slice(0, mobileFeedPrimaryLimit);
+  const mobileOlderItems = filteredItems.slice(mobileFeedPrimaryLimit);
+  const filteredKudos = filteredItems.reduce((total, item) => total + item.reactionCount, 0);
+  const filteredComments = filteredItems.reduce((total, item) => total + item.commentCount, 0);
   const pbCount = data.items.filter((item) => isPbFeedType(item.itemType)).length;
   const challengeCount = data.items.filter(
     (item) => item.itemType.startsWith("challenge_") || item.itemType === "rivalry_win",
@@ -133,55 +138,43 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
     item.itemType.startsWith("tournament"),
   ).length;
   const roundCount = data.items.filter((item) => item.itemType.includes("round")).length;
-  const highlightSteps = [
+  const feedHighlights = [
     {
-      title: "Best PB",
-      detail: pbCount > 0 ? `${pbCount} PB moments ready.` : "Waiting for a PB import.",
+      title: "Personal bests",
+      detail: `${pbCount} visible PB ${pbCount === 1 ? "update" : "updates"}.`,
       href: "/feed?filter=pbs",
-      status: pbCount > 0 ? ("ready" as const) : ("needed" as const),
+      status: pbCount > 0 ? ("ready" as const) : ("optional" as const),
     },
     {
-      title: "Best round",
-      detail:
-        roundCount > 0 ? `${roundCount} round updates in the feed.` : "Log a round to rank it.",
+      title: "Rounds",
+      detail: `${roundCount} visible round ${roundCount === 1 ? "update" : "updates"}.`,
       href: "/feed?filter=rounds",
-      status: roundCount > 0 ? ("ready" as const) : ("needed" as const),
+      status: roundCount > 0 ? ("ready" as const) : ("optional" as const),
     },
     {
-      title: "Challenge result",
-      detail:
-        challengeCount > 0 ? `${challengeCount} challenge updates.` : "Join a micro challenge.",
-      href: "/challenges",
-      status: challengeCount > 0 ? ("ready" as const) : ("needed" as const),
+      title: "Challenges",
+      detail: `${challengeCount} visible challenge ${challengeCount === 1 ? "update" : "updates"}.`,
+      href: "/feed?filter=challenges",
+      status: challengeCount > 0 ? ("ready" as const) : ("optional" as const),
     },
     {
-      title: "Most improved club",
-      detail:
-        feedXp > 0 ? `${numberFormatter.format(feedXp)} XP from activity.` : "Needs more data.",
-      href: "/progress",
-      status: feedXp > 0 ? ("ready" as const) : ("needed" as const),
+      title: "Course records",
+      detail: `${recordCount} visible record ${recordCount === 1 ? "update" : "updates"}.`,
+      href: "/feed?filter=records",
+      status: recordCount > 0 ? ("ready" as const) : ("optional" as const),
     },
     {
-      title: "Share optional",
-      detail: "Post after proof and privacy look right.",
-      href: "/profile",
-      status: "optional" as const,
+      title: "Tournaments",
+      detail: `${tournamentCount} visible tournament ${tournamentCount === 1 ? "update" : "updates"}.`,
+      href: "/feed?filter=tournaments",
+      status: tournamentCount > 0 ? ("ready" as const) : ("optional" as const),
     },
   ];
 
   return (
     <PageShell className="bg-slate-50/20">
       <MobileAppShell>
-        <MobileTopBar
-          title="Social"
-          actions={
-            <>
-              <MobileIconButton href="/feed?filter=all" label="Search feed" icon={Search} />
-              <MobileIconButton href="/friends" label="Messages" icon={MessageCircle} />
-              <MobileIconButton href="/achievements" label="Notifications" icon={Bell} />
-            </>
-          }
-        />
+        <MobileTopBar title="Feed" />
         <MobileRouteTabs group="social" activeKey="feed" />
         <MobileTabBar
           activeKey={mobileFeedTab(activeFilter)}
@@ -189,98 +182,86 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           tabs={[
             { key: "all", label: "All", href: "/feed" },
             { key: "friends", label: "Friends", href: "/feed?filter=friends" },
+            { key: "pbs", label: "PBs", href: "/feed?filter=pbs" },
             { key: "records", label: "Records", href: "/feed?filter=records" },
             { key: "events", label: "Events", href: "/feed?filter=tournaments" },
             { key: "me", label: "Me", href: "/feed?filter=me" },
           ]}
         />
         <MobileStatusAction
-          label="Today’s golf goal"
-          value="PW Launch Window"
-          detail="12 shots · 24-34° launch window · Rapsodo proof accepted"
+          label={`${feedFilterLabel(activeFilter)} activity`}
+          value={`${filteredItems.length} ${filteredItems.length === 1 ? "update" : "updates"}`}
+          detail={`${filteredKudos} kudos · ${filteredComments} comments`}
           action={
-            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <Link href="/challenges" prefetch={false}>
-                Start
-              </Link>
-            </Button>
+            <BottomSheet
+              label={
+                <>
+                  <Filter className="size-4" /> Filter
+                </>
+              }
+              title="Filter feed"
+            >
+              <IOSGroupedList label="Feed filters">
+                {feedFilters.map((filter) => (
+                  <IOSListRow
+                    key={filter.key}
+                    label={filter.label}
+                    value={filter.key === activeFilter ? "Selected" : undefined}
+                    href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`}
+                    status={
+                      filter.key === activeFilter ? (
+                        <IOSInlineStatus label="Current filter" tone="positive" />
+                      ) : undefined
+                    }
+                  />
+                ))}
+              </IOSGroupedList>
+            </BottomSheet>
           }
         />
-        <DataFirstFlowPanel
-          title="Highlight of the week"
-          description="A compact readout of the best shareable golf moments before the social stream."
-          steps={highlightSteps}
-          actionHref="/profile"
-          actionLabel="Preview sharing"
-        />
-        {filteredItems[0] ? (
-          <NativeListSection title="Latest activity">
-            {filteredItems.slice(0, 8).map((item) => {
-              const artworkVariant = artworkForFeedType(item.itemType);
-
-              return (
-                <ActivityCard
-                  key={item.id}
-                  avatar={
-                    <SocialAvatar
-                      displayName={item.profile.displayName}
-                      username={item.profile.username}
-                      avatarUrl={feedItemAvatarUrl(item, data)}
-                      href={`/profile/${item.profile.username}`}
-                      size="sm"
-                    />
-                  }
-                  actor={item.profile.displayName}
-                  meta={`${dateFormatter.format(item.createdAt)} · ${item.verificationLabel}`}
-                  title={item.headline}
-                  description={item.context}
-                  metric={
-                    item.metricValue
-                      ? `${item.metricLabel ?? "Metric"} · ${item.metricValue}`
-                      : feedTypeLabel(item.itemType)
-                  }
-                  reactionCount={item.reactionCount}
-                  commentCount={item.commentCount}
-                  action={
-                    item.viewerCanManage ? (
-                      <ReelExportButton feedItemId={item.id} compact />
-                    ) : undefined
-                  }
-                  media={
-                    <PageArtwork
-                      variant={artworkVariant}
-                      alt=""
-                      crop={artworkVariant === "feedPb" ? undefined : "random"}
-                      cropKey={item.id}
-                      className="block h-40 min-h-0"
-                      sizes="calc(100vw - 2rem)"
-                    />
-                  }
-                />
-              );
-            })}
-          </NativeListSection>
-        ) : (
-          <EventHeroCard
-            eyebrow="No activity yet"
-            title="Import a Rapsodo session"
-            description="PBs, records, achievements and event eligibility will appear here first."
-            href="/import"
-            actionLabel="Import"
-            media={
-              <PageArtwork
-                variant="feedEmpty"
-                alt=""
-                className="h-full min-h-0"
-                sizes="calc(100vw - 2rem)"
-              />
-            }
+        <section className="grid gap-2" aria-label="Latest feed activity">
+          <IOSSectionHeader
+            title="Latest activity"
+            description={`Showing ${feedFilterLabel(activeFilter).toLowerCase()} updates`}
           />
-        )}
+          <MobileFeedRows
+            items={mobilePrimaryItems}
+            data={data}
+            emptyLabel={
+              data.items.length === 0
+                ? "No feed activity yet"
+                : `No ${feedFilterLabel(activeFilter).toLowerCase()} updates yet`
+            }
+            emptyDetail={
+              data.items.length === 0
+                ? "Import a session or complete a round to create your first verified update."
+                : "Choose another feed filter to see your latest visible activity."
+            }
+            emptyHref={data.items.length === 0 ? "/import" : "/feed"}
+          />
+        </section>
+
+        {mobileOlderItems.length > 0 ? (
+          <IOSDisclosureGroup
+            label="Older feed activity"
+            items={[
+              {
+                value: "older-feed-activity",
+                title: "Older activity",
+                summary: `${mobileOlderItems.length} updates`,
+                description: "Continue through the selected feed",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileFeedRows items={mobileOlderItems} data={data} />,
+              },
+            ]}
+          />
+        ) : null}
+
+        <MobileFeedHighlights highlights={feedHighlights} />
         <SocialFeaturePanel data={featureData} />
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="feed" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="feed" className="hidden lg:grid">
         <section className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_300px] lg:items-start">
           <aside
             aria-label="Feed profile shortcuts"
@@ -416,9 +397,9 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </section>
 
             <DataFirstFlowPanel
-              title="Highlight of the week"
-              description="A compact readout of the best shareable golf moments before filters and the full stream."
-              steps={highlightSteps}
+              title="Activity highlights"
+              description="Counts from the visible feed before filters and the full stream."
+              steps={feedHighlights}
               actionHref="/profile"
               actionLabel="Preview sharing"
             />
@@ -592,6 +573,122 @@ const feedFilters: Array<{ key: FeedFilter; label: string }> = [
   { key: "rounds", label: "Rounds" },
   { key: "me", label: "Me" },
 ];
+
+type FeedPageData = Awaited<ReturnType<typeof getFeedPageData>>;
+
+type FeedHighlight = {
+  title: string;
+  detail: string;
+  href: string;
+  status: "ready" | "needed" | "optional";
+};
+
+function MobileFeedRows({
+  items,
+  data,
+  emptyLabel,
+  emptyDetail,
+  emptyHref,
+}: {
+  items: FeedActivityRow[];
+  data: FeedPageData;
+  emptyLabel?: string;
+  emptyDetail?: string;
+  emptyHref?: string;
+}) {
+  return (
+    <IOSGroupedList label="Feed activity">
+      {items.length > 0 ? (
+        items.map((item) => {
+          const engagementCount = item.reactionCount + item.commentCount;
+
+          return (
+            <IOSListRow
+              key={item.id}
+              label={item.headline}
+              value={item.metricValue ?? undefined}
+              detail={
+                <>
+                  <span>
+                    {item.profile.displayName} · {dateFormatter.format(item.createdAt)} ·{" "}
+                    {item.verificationLabel}
+                  </span>
+                  {item.context ? (
+                    <span className="mt-0.5 line-clamp-2 block">{item.context}</span>
+                  ) : null}
+                </>
+              }
+              href={item.proofUrl ?? `/profile/${item.profile.username}`}
+              leading={
+                <SocialAvatar
+                  displayName={item.profile.displayName}
+                  username={item.profile.username}
+                  avatarUrl={feedItemAvatarUrl(item, data)}
+                  size="sm"
+                />
+              }
+              status={
+                <IOSInlineStatus
+                  label={
+                    engagementCount > 0
+                      ? `${item.reactionCount} kudos · ${item.commentCount} comments`
+                      : "No reactions yet"
+                  }
+                  tone={engagementCount > 0 ? "positive" : "neutral"}
+                />
+              }
+            />
+          );
+        })
+      ) : (
+        <IOSListRow
+          label={emptyLabel ?? "No activity in this section"}
+          detail={emptyDetail ?? "New visible updates will appear here."}
+          href={emptyHref}
+        />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function MobileFeedHighlights({ highlights }: { highlights: FeedHighlight[] }) {
+  const activeCount = highlights.filter((highlight) => highlight.status === "ready").length;
+
+  return (
+    <IOSDisclosureGroup
+      label="Feed activity highlights"
+      items={[
+        {
+          value: "feed-highlights",
+          title: "Activity highlights",
+          summary: `${activeCount} active`,
+          description: "PB, round, challenge, record and tournament counts",
+          contentClassName: "px-0 pb-0 pt-0",
+          content: (
+            <IOSGroupedList label="Feed highlight counts" className="border-0">
+              {highlights.map((highlight) => (
+                <IOSListRow
+                  key={highlight.title}
+                  label={highlight.title}
+                  detail={highlight.detail}
+                  href={highlight.href}
+                  status={
+                    <IOSInlineStatus
+                      label={
+                        highlight.status === "ready" ? "Activity available" : "No activity yet"
+                      }
+                      tone={highlight.status === "ready" ? "positive" : "neutral"}
+                    />
+                  }
+                />
+              ))}
+            </IOSGroupedList>
+          ),
+        },
+      ]}
+    />
+  );
+}
 
 function MiniStat({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -796,30 +893,15 @@ function tourCoverForKey(key: string) {
 
 function mobileFeedTab(filter: FeedFilter) {
   if (filter === "friends") return "friends";
+  if (filter === "pbs") return "pbs";
   if (filter === "records") return "records";
   if (filter === "tournaments" || filter === "challenges") return "events";
   if (filter === "me") return "me";
   return "all";
 }
 
-function artworkForFeedType(type: string) {
-  if (type.includes("tournament") || type.includes("round")) {
-    return "scorecard" as const;
-  }
-
-  if (type.includes("challenge")) {
-    return "range" as const;
-  }
-
-  if (type.includes("achievement")) {
-    return "achievements" as const;
-  }
-
-  if (type.includes("pb") || type.includes("drive")) {
-    return "feedPb" as const;
-  }
-
-  return "fairway" as const;
+function feedFilterLabel(filter: FeedFilter) {
+  return feedFilters.find((item) => item.key === filter)?.label ?? "All";
 }
 
 function feedTypeLabel(value: string) {

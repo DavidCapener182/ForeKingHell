@@ -2,9 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Plus, TrendingUp } from "lucide-react";
 
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { DataPair, DataPanel, PageHeader, PageShell, StatusPill } from "@/components/premium";
-import { TrainingLoadRangeView } from "@/components/training/TrainingLoadRangeView";
+import {
+  MobileTrainingLoadRangeView,
+  TrainingLoadRangeView,
+} from "@/components/training/TrainingLoadRangeView";
 import { Button } from "@/components/ui/button";
 import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -39,9 +42,35 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Analyse" group="analyse" activeKey="training" />
+      <MobileAppShell className="gap-4">
+        <MobileRouteHeader title="Training Load" group="analyse" activeKey="training" />
 
-      <DesktopWorkbenchLayout scope="training-load">
+        {saved ? (
+          <div
+            role="status"
+            className="ios-grouped-list border-emerald-300/60 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-100"
+          >
+            Golf load saved. Golf Form, Training Fitness and Recent Load have been recalculated.
+          </div>
+        ) : null}
+
+        <MobileTrainingLoadRangeView
+          data={data}
+          initialRangeKey={rangeKey}
+          practiceSummary={{
+            completedCount: practiceSummary.completedCount,
+            averageScore: practiceSummary.averageScore,
+            latestCompleted: practiceSummary.latestCompleted
+              ? {
+                  title: practiceSummary.latestCompleted.title,
+                  score: practiceSummary.latestCompleted.score,
+                }
+              : null,
+          }}
+        />
+      </MobileAppShell>
+
+      <DesktopWorkbenchLayout scope="training-load" className="hidden lg:grid">
         <PageHeader
           eyebrow={<StatusPill tone="green">Training management</StatusPill>}
           title="Training Load"

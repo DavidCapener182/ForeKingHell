@@ -20,15 +20,19 @@ import { ImportForm } from "@/app/import/import-form";
 import { MobileRapsodoConnect } from "@/app/import/mobile-rapsodo-connect";
 import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { ImportQualityFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
-  EventHeroCard,
   MobileAppShell,
   MobileStatusAction,
   MobileTopBar,
-  NativeListSection,
-  ProofBadge,
 } from "@/components/mobile-sports";
 import {
   DataPanel,
@@ -180,7 +184,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
             <MobileTopBar title="Import" />
             <MobileStatusAction
               label="Four-step import"
-              value="Choose a source"
+              value={<span className="block whitespace-normal text-balance">Choose a source</span>}
               detail="Preview data, confirm club mapping, then review and import."
               action={
                 <StatusPill tone={duplicateFiles > 0 ? "amber" : "green"}>
@@ -188,8 +192,8 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
                 </StatusPill>
               }
             />
-            <ImportSourceChooser connected={connectionStatus.connected} />
-            <FirstRunRapsodoOnboarding
+            <MobileImportSourceChooser connected={connectionStatus.connected} />
+            <MobileImportFirstRun
               connected={connectionStatus.connected}
               fileCount={visibleFiles.length}
             />
@@ -206,109 +210,83 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
               description="CSV, scorecard proof and manual round entry."
               count="4 options"
             >
-              <NativeListSection id="import-sources" title="Other sources">
-                <div className="grid gap-2">
-                  <Link
-                    href="/rapsodo"
-                    prefetch={false}
-                    className="premium-rail-card grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
-                  >
-                    <Upload className="size-5 text-[#0B7A3B]" />
-                    <span className="min-w-0">
-                      <span className="block font-semibold">Rapsodo R-Cloud sessions</span>
-                      <span className="block text-sm text-[#6B7280]">
-                        Load session list, preview shots and import verified data
-                      </span>
-                    </span>
-                    <ProofBadge tier="gold" />
-                  </Link>
-                  <Link
-                    id="csv-import"
-                    href="/import?source=csv#csv-import"
-                    prefetch={false}
-                    className="premium-rail-card grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3 text-left"
-                  >
-                    <Upload className="size-5 text-[#0B7A3B]" />
-                    <span className="min-w-0">
-                      <span className="block font-semibold">CSV files</span>
-                      <span className="block text-sm font-normal text-[#6B7280]">
-                        Open the full import wizard for exported Rapsodo CSVs
-                      </span>
-                    </span>
-                    <ProofBadge tier="silver" />
-                  </Link>
-                  <BottomSheet
-                    label={
-                      <>
-                        <ShieldCheck className="size-4" /> Upload scorecard proof
-                      </>
-                    }
-                    title="Scorecard proof"
-                    triggerClassName="w-full rounded-lg bg-white/80 text-[#050505] ring-1 ring-[#E5E7EB]"
-                  >
-                    <div className="grid gap-3 text-sm text-[#6B7280]">
-                      <p>
-                        Use proof upload after selecting an eligible record, tournament or
-                        challenge. Strong proof combines direct Rapsodo import, scorecard
-                        screenshot, course/date/tee match and duplicate checks.
-                      </p>
-                      <Button asChild className="premium-action rounded-lg">
-                        <a href="#rapsodo-connect">Continue to Rapsodo</a>
-                      </Button>
-                    </div>
-                  </BottomSheet>
-                  <Button asChild variant="outline" className="justify-start rounded-lg">
-                    <Link href="/rounds/new" prefetch={false}>
-                      <Award className="size-4" />
-                      Manual round
-                    </Link>
-                  </Button>
-                </div>
-              </NativeListSection>
+              <IOSGroupedList label="Other import sources">
+                <IOSListRow
+                  icon={Cloud}
+                  label="Rapsodo session inbox"
+                  detail="Load, preview and confirm measured R-Cloud sessions."
+                  href="/rapsodo"
+                  status={<IOSInlineStatus label="Measured source" tone="positive" />}
+                />
+                <IOSListRow
+                  icon={FileUp}
+                  label="CSV file"
+                  detail="Open the four-step import wizard for a launch-monitor export."
+                  href="/import?source=csv#csv-import"
+                  status={<IOSInlineStatus label="Measured source" tone="info" />}
+                />
+                <IOSListRow
+                  icon={ShieldCheck}
+                  label="Scorecard proof"
+                  detail="Attach proof after choosing an eligible record, event or challenge."
+                  trailing={
+                    <BottomSheet label="Guide" title="Scorecard proof">
+                      <div className="grid gap-4 text-sm leading-6 text-muted-foreground">
+                        <p>
+                          Strong proof combines measured import data, a scorecard image and a
+                          matching course, date and tee. Choose the destination before uploading so
+                          the proof remains scoped to the right record.
+                        </p>
+                        <Button asChild className="min-h-11">
+                          <Link href="/course-records" prefetch={false}>
+                            Choose a record
+                          </Link>
+                        </Button>
+                      </div>
+                    </BottomSheet>
+                  }
+                />
+                <IOSListRow
+                  icon={Award}
+                  label="Manual round"
+                  detail="Record a score when measured shot data is not available."
+                  href="/rounds/new"
+                />
+              </IOSGroupedList>
             </MobileAccordionSection>
             <MobileAccordionSection
               title="Eligible submissions"
               description="Record, tournament and challenge suggestions."
               count={`${eligibleSubmissionCards.length} items`}
             >
-              <NativeListSection
-                title="Eligible submissions"
-                description="Secondary suggestions after import quality checks pass."
-              >
+              <IOSGroupedList label="Eligible submissions after import">
                 {eligibleSubmissionCards.map((item) => (
-                  <div
+                  <IOSListRow
                     key={item.title}
-                    className="premium-rail-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">{item.title}</p>
-                      <p className="mt-1 text-sm text-[#6B7280]">{item.detail}</p>
-                    </div>
-                    <Button asChild variant="outline" className="rounded-full">
-                      <Link href={item.href} prefetch={false}>
-                        {item.actionLabel}
-                      </Link>
-                    </Button>
-                  </div>
+                    label={item.title}
+                    detail={item.detail}
+                    value={item.actionLabel}
+                    href={item.href}
+                  />
                 ))}
-              </NativeListSection>
+              </IOSGroupedList>
             </MobileAccordionSection>
             <MobileAccordionSection
               title="Full import context"
               description="Why Rapsodo data unlocks the app."
               count="Guide"
             >
-              <EventHeroCard
-                eyebrow="Empty upload state"
-                title="Rapsodo CSVs unlock the app"
-                description="Use direct Rapsodo data first; proof and competition prompts stay secondary until the import is reviewed."
-                href="#rapsodo-connect"
-                actionLabel="Connect Rapsodo"
-              />
+              <IOSGroupedList label="Import context">
+                <IOSListRow
+                  label="Measured data unlocks analysis"
+                  detail="Bag trust, coaching and competition suggestions stay secondary until the import and club mapping have been reviewed."
+                  status={<IOSInlineStatus label="Private by default" tone="info" />}
+                />
+              </IOSGroupedList>
             </MobileAccordionSection>
           </MobileAppShell>
         )}
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <DesktopWorkflowLayout
             steps={importWorkflowSteps}
             helpTitle="Import centre help"
@@ -320,7 +298,7 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
               connected={connectionStatus.connected}
               fileCount={visibleFiles.length}
             />
-            <div id="rapsodo-import" className="hidden min-w-0 scroll-mt-28 sm:block">
+            <div id="rapsodo-import" className="hidden min-w-0 scroll-mt-28 lg:block">
               <ImportForm
                 defaultDistanceUnit={library.preferredDistanceUnit}
                 startWithSampleData={startWithSampleData}
@@ -336,6 +314,99 @@ export default async function ImportPage({ searchParams }: ImportPageProps) {
         </div>
       </PageShell>
     </>
+  );
+}
+
+function MobileImportSourceChooser({ connected }: { connected: boolean }) {
+  return (
+    <section className="grid gap-2" aria-label="Choose an import source">
+      <IOSSectionHeader
+        title="Choose a source"
+        description="Step 1 of 4 · measured session data gives the strongest analysis"
+      />
+      <IOSGroupedList label="Import sources">
+        <IOSListRow
+          icon={Cloud}
+          label={connected ? "Rapsodo connected" : "Connect Rapsodo"}
+          detail={
+            connected
+              ? "Open the connection row below or go straight to the R-Cloud inbox."
+              : "Connect R-Cloud, then choose a measured session."
+          }
+          href="#rapsodo-connect"
+          status={
+            <IOSInlineStatus
+              label={connected ? "Ready" : "Recommended source"}
+              tone={connected ? "positive" : "attention"}
+            />
+          }
+        />
+        <IOSListRow
+          icon={FileUp}
+          label="Upload CSV"
+          detail="Preview rows and confirm club mapping before anything is saved."
+          href="/import?source=csv#csv-import"
+          status={<IOSInlineStatus label="Measured source" tone="info" />}
+        />
+        <IOSListRow
+          icon={FlaskConical}
+          label="Try the demo workflow"
+          detail="Use the existing clearly labelled sample session without adding personal data."
+          href="/import?source=sample#csv-import"
+          status={<IOSInlineStatus label="Demo data" tone="neutral" />}
+        />
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileImportFirstRun({ connected, fileCount }: { connected: boolean; fileCount: number }) {
+  if (fileCount > 0) {
+    return null;
+  }
+
+  return (
+    <IOSDisclosureGroup
+      label="First import guidance"
+      items={[
+        {
+          value: "first-import-guide",
+          title: "First import guide",
+          summary: connected ? "2 of 4 ready" : "1 of 4 ready",
+          description: "Preview, map, review, then save",
+          contentClassName: "px-0 pb-0 pt-0",
+          content: (
+            <IOSGroupedList label="First import steps" className="border-0">
+              <IOSListRow
+                label="1. Choose source"
+                detail="Rapsodo, a measured CSV or the labelled demo workflow."
+                status={<IOSInlineStatus label="Ready" tone="positive" />}
+              />
+              <IOSListRow
+                label="2. Preview data"
+                detail="Check the shot count and excluded rows before saving."
+                status={
+                  <IOSInlineStatus
+                    label={connected ? "Ready" : "Choose a source first"}
+                    tone={connected ? "positive" : "neutral"}
+                  />
+                }
+              />
+              <IOSListRow
+                label="3. Confirm clubs"
+                detail="Resolve unknown or retired club mappings."
+                status={<IOSInlineStatus label="After preview" tone="neutral" />}
+              />
+              <IOSListRow
+                label="4. Review and import"
+                detail="Check duplicates and warnings, then save trusted rows."
+                status={<IOSInlineStatus label="Final step" tone="neutral" />}
+              />
+            </IOSGroupedList>
+          ),
+        },
+      ]}
+    />
   );
 }
 

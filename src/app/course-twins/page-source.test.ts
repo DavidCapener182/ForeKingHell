@@ -14,4 +14,20 @@ describe("Course Twin catalogue page", () => {
     expect(source).toContain("Open Course Twin");
     expect(source).toContain("Grade {twin.grade}");
   });
+
+  it("uses a scan-first native mobile catalogue with secondary package detail disclosed", () => {
+    const mobileSource = source.slice(
+      source.indexOf("data-course-twin-mobile-catalogue"),
+      source.indexOf("data-course-twin-desktop-catalogue"),
+    );
+
+    expect(mobileSource).toContain("<IOSGroupedList");
+    expect(mobileSource).toContain("<IOSListRow");
+    expect(mobileSource).toContain("ariaLabel={`Open ${twin.name} Course Twin`}");
+    expect(mobileSource).toContain("<IOSDisclosureGroup");
+    expect(mobileSource).toContain('title: "Terrain and accuracy"');
+    expect(mobileSource).toContain("{twin.warning}");
+    expect(mobileSource.match(/href=\{`\/play\/\$\{twin\.courseId\}`\}/g)).toHaveLength(1);
+    expect(source).toContain('className="hidden lg:contents" data-course-twin-desktop-catalogue');
+  });
 });

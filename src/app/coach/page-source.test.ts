@@ -63,6 +63,11 @@ describe("coach desktop evidence workbench", () => {
     );
   });
 
+  it("does not show desktop actions beside the tablet mobile composition", () => {
+    expect(source).toContain('className="hidden items-center justify-between gap-4 lg:flex"');
+    expect(source).not.toContain('className="hidden items-center justify-between gap-4 sm:flex"');
+  });
+
   it("shows deterministic recommendation evidence and measurable reassessment criteria", () => {
     expect(source).toContain("MobileCoachRecommendationEvidence");
     expect(source).toContain('label: "Observation"');

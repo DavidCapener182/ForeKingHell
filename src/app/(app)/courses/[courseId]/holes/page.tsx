@@ -9,8 +9,6 @@ import {
   DataTableFrame,
   DataPanel,
   MetricCard,
-  MobileAccordionSection,
-  MobileCurrentItemCard,
   PageHeader,
   PageShell,
   SectionHeader,
@@ -23,7 +21,7 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import { IOSDisclosureGroup, IOSInlineStatus, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -129,7 +127,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   return (
     <PageShell>
       <DesktopWorkbenchLayout scope="course-holes">
-        <div className="flex items-center justify-between gap-4">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/courses" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -162,91 +160,89 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           </div>
         </div>
 
-        <PageHeader
-          eyebrow={
+        <div className="hidden lg:block">
+          <PageHeader
+            eyebrow={
+              <StatusPill tone={data.isEditable ? "green" : "sky"}>
+                {data.isEditable ? "Course editor" : "Course reference"}
+              </StatusPill>
+            }
+            title={data.course.name}
+            description={
+              data.isEditable
+                ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
+                : "Use this course for scoring and overlays. Editing is limited to courses you imported or created."
+            }
+            visual={
+              <PageArtwork
+                variant="fairway"
+                alt=""
+                crop="random"
+                cropKey={courseId}
+                className="h-full min-h-44"
+                priority
+              />
+            }
+            metrics={[
+              {
+                label: "Provider",
+                value: data.course.provider,
+                detail: data.course.country ?? "Country not set",
+              },
+              {
+                label: "Tee sets",
+                value: integerFormatter.format(data.teeSets.length),
+                detail: "Current editor uses the first tee set.",
+              },
+              {
+                label: "Mapped holes",
+                value: integerFormatter.format(mappedHoleCount),
+                detail: "Saved tee and green points.",
+              },
+              {
+                label: "Map status",
+                value: mapStatus,
+                detail: "Round overlays use these coordinates.",
+              },
+            ]}
+          />
+        </div>
+
+        <section className="grid gap-2 px-1 lg:hidden" aria-labelledby="mobile-course-title">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <StatusPill tone={data.isEditable ? "green" : "sky"}>
               {data.isEditable ? "Course editor" : "Course reference"}
             </StatusPill>
-          }
-          title={data.course.name}
-          description={
-            data.isEditable
-              ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
-              : "Use this course for scoring and overlays. Editing is limited to courses you imported or created."
-          }
-          visual={
-            <PageArtwork
-              variant="fairway"
-              alt=""
-              crop="random"
-              cropKey={courseId}
-              className="h-full min-h-44"
-              priority
+            <IOSInlineStatus
+              label={`${mappedHoleCount}/${holeSlots.length} holes mapped`}
+              tone={mappedHoleCount === holeSlots.length ? "positive" : "attention"}
             />
-          }
-          metrics={[
-            {
-              label: "Provider",
-              value: data.course.provider,
-              detail: data.course.country ?? "Country not set",
-            },
-            {
-              label: "Tee sets",
-              value: integerFormatter.format(data.teeSets.length),
-              detail: "Current editor uses the first tee set.",
-            },
-            {
-              label: "Mapped holes",
-              value: integerFormatter.format(mappedHoleCount),
-              detail: "Saved tee and green points.",
-            },
-            {
-              label: "Map status",
-              value: mapStatus,
-              detail: "Round overlays use these coordinates.",
-            },
-          ]}
-        />
-
-        <MobileMetricStrip
-          items={[
-            {
-              label: "Provider",
-              value: data.course.provider,
-              detail: data.course.country ?? "Country not set",
-              tone: "green",
-            },
-            {
-              label: "Tee sets",
-              value: integerFormatter.format(data.teeSets.length),
-              detail: "Available",
-              tone: "sky",
-            },
-            {
-              label: "Mapped",
-              value: integerFormatter.format(mappedHoleCount),
-              detail: "Saved holes",
-              tone: "amber",
-            },
-            {
-              label: "Status",
-              value: mapStatus,
-              detail: "Overlay geometry",
-              tone: mappedHoleCount >= 18 ? "green" : "slate",
-            },
-          ]}
-        />
+          </div>
+          <h1
+            id="mobile-course-title"
+            className="text-[2rem] font-semibold leading-9 tracking-tight"
+          >
+            {data.course.name}
+          </h1>
+          <p className="text-[15px] leading-5 text-muted-foreground">
+            {data.isEditable
+              ? "Place tee and green points for the selected hole."
+              : "Review the saved course geometry used by rounds and overlays."}
+          </p>
+        </section>
 
         {data.course.latitude !== null && data.course.longitude !== null ? (
-          <GoogleCourseContextPanel
-            address={data.course.address}
-            googleRating={data.course.googleRating}
-            latitude={data.course.latitude}
-            longitude={data.course.longitude}
-            name={data.course.name}
-            reviewCount={data.course.googleUserRatingsTotal}
-            websiteUrl={data.course.websiteUrl}
-          />
+          <div className="hidden lg:block">
+            <GoogleCourseContextPanel
+              address={data.course.address}
+              googleRating={data.course.googleRating}
+              latitude={data.course.latitude}
+              longitude={data.course.longitude}
+              name={data.course.name}
+              reviewCount={data.course.googleUserRatingsTotal}
+              websiteUrl={data.course.websiteUrl}
+            />
+          </div>
         ) : null}
 
         {!primaryTeeSet ? (
@@ -269,11 +265,13 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           </DataPanel>
         ) : allowManualHoleEditing ? (
           <DataPanel>
-            <SectionHeader
-              title="Visual hole editor"
-              description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
-              action={<MapPinned className="size-5 text-sky-600" />}
-            />
+            <div className="hidden lg:block">
+              <SectionHeader
+                title="Visual hole editor"
+                description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
+                action={<MapPinned className="size-5 text-sky-600" />}
+              />
+            </div>
             <CardContent>
               <CourseHoleMapEditor
                 courseId={data.course.id}
@@ -321,6 +319,74 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             </CardContent>
           </DataPanel>
         )}
+
+        <section className="grid gap-2 lg:hidden">
+          <IOSSectionHeader
+            title="Course options"
+            description="Reference details and secondary destinations"
+          />
+          <IOSDisclosureGroup
+            label="Course details and tools"
+            items={[
+              {
+                value: "course-details",
+                title: "Course details",
+                summary: data.course.country ?? data.course.provider,
+                description: data.course.address ?? "Provider and map reference",
+                content: (
+                  <dl className="grid gap-3 text-sm">
+                    <MobileDetailRow label="Provider" value={data.course.provider} />
+                    <MobileDetailRow label="Country" value={data.course.country ?? "Not set"} />
+                    {data.course.googleRating !== null ? (
+                      <MobileDetailRow
+                        label="Google rating"
+                        value={`${data.course.googleRating.toFixed(1)} · ${integerFormatter.format(data.course.googleUserRatingsTotal ?? 0)} reviews`}
+                      />
+                    ) : null}
+                    {data.course.latitude !== null && data.course.longitude !== null ? (
+                      <MobileDetailRow
+                        label="Map centre"
+                        value={`${coordinateFormatter.format(data.course.latitude)}, ${coordinateFormatter.format(data.course.longitude)}`}
+                      />
+                    ) : null}
+                  </dl>
+                ),
+              },
+              {
+                value: "course-tools",
+                title: "Related tools",
+                summary: "Rounds & overlays",
+                description: "Open another course task",
+                content: (
+                  <div className="grid gap-2">
+                    <Button asChild variant="outline" className="min-h-11 justify-start">
+                      <Link href="/rounds" prefetch={false}>
+                        <Flag className="size-4" aria-hidden />
+                        Rounds
+                      </Link>
+                    </Button>
+                    {hasCourseTwinPilot ? (
+                      <Button asChild variant="outline" className="min-h-11 justify-start">
+                        <Link href={`/play/${courseId}`} prefetch={false}>
+                          <Cuboid className="size-4" aria-hidden />
+                          Open Course Twin
+                        </Link>
+                      </Button>
+                    ) : null}
+                    {shotPatternEnabled ? (
+                      <Button asChild variant="outline" className="min-h-11 justify-start">
+                        <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
+                          <MapPinned className="size-4" aria-hidden />
+                          Shot pattern
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </section>
 
         {primaryTeeSet && showTeeSetTools ? (
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -445,46 +511,13 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
         ) : null}
 
         {primaryTeeSet && allowManualHoleEditing ? (
-          <>
-            <MobileCurrentItemCard
-              title="Hole editor"
-              subtitle="Edit one hole at a time on mobile."
-              selector={
-                <div className="flex gap-2">
-                  {holeSlots.map((holeNumber) => (
-                    <a
-                      key={holeNumber}
-                      href={`#mobile-hole-${holeNumber}`}
-                      className="grid min-h-10 min-w-10 place-items-center rounded-full border border-slate-200 bg-white text-sm font-semibold"
-                    >
-                      {holeNumber}
-                    </a>
-                  ))}
-                </div>
-              }
-              action={
-                <Badge variant="outline">
-                  {holesForPrimaryTeeSet.length}/{holeSlots.length}
-                </Badge>
-              }
-            >
-              <div id="mobile-hole-1">
-                <HoleForm
-                  courseId={data.course.id}
-                  teeSetId={primaryTeeSet.id}
-                  holeNumber={holeSlots[0] ?? 1}
-                  hole={holeByNumber.get(holeSlots[0] ?? 1) ?? null}
-                  formId={`mobile-current-hole-form-${holeSlots[0] ?? 1}`}
-                />
-              </div>
-            </MobileCurrentItemCard>
-
-            <MobileAccordionSection
-              title="All hole forms"
-              count={holeSlots.length}
-              description="Open only when you need batch edits."
-              contentClassName="grid gap-3"
-            >
+          <DataPanel className="hidden lg:block">
+            <SectionHeader
+              title="Hole geometry"
+              description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
+              action={<Badge variant="outline">{holeSlots.length} holes</Badge>}
+            />
+            <CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
               {holeSlots.map((holeNumber) => (
                 <HoleForm
                   key={holeNumber}
@@ -492,31 +525,11 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                   teeSetId={primaryTeeSet.id}
                   holeNumber={holeNumber}
                   hole={holeByNumber.get(holeNumber) ?? null}
-                  formId={`mobile-hole-form-${holeNumber}`}
+                  formId={`desktop-hole-form-${holeNumber}`}
                 />
               ))}
-            </MobileAccordionSection>
-
-            <DataPanel className="hidden sm:block">
-              <SectionHeader
-                title="Hole geometry"
-                description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
-                action={<Badge variant="outline">{holeSlots.length} holes</Badge>}
-              />
-              <CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-                {holeSlots.map((holeNumber) => (
-                  <HoleForm
-                    key={holeNumber}
-                    courseId={data.course.id}
-                    teeSetId={primaryTeeSet.id}
-                    holeNumber={holeNumber}
-                    hole={holeByNumber.get(holeNumber) ?? null}
-                    formId={`desktop-hole-form-${holeNumber}`}
-                  />
-                ))}
-              </CardContent>
-            </DataPanel>
-          </>
+            </CardContent>
+          </DataPanel>
         ) : null}
       </DesktopWorkbenchLayout>
     </PageShell>
@@ -730,7 +743,7 @@ function HoleGeometryTable({
   const mappedCount = holeRows.filter((row) => row.hole).length;
 
   return (
-    <section id="hole-geometry-table" className="hidden sm:block" data-workbench-scope="courses">
+    <section id="hole-geometry-table" className="hidden lg:block" data-workbench-scope="courses">
       <DataPanel>
         <SectionHeader
           title="Hole geometry table"
@@ -852,6 +865,15 @@ function FormField({
       <span>{label}</span>
       <Input name={name} className="h-10 rounded-xl bg-white" {...props} />
     </label>
+  );
+}
+
+function MobileDetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-start justify-between gap-4 border-b border-border/70 pb-3 last:border-0 last:pb-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-right font-medium text-foreground">{value}</dd>
+    </div>
   );
 }
 

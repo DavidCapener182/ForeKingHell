@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
@@ -104,12 +105,14 @@ export function ClubAnalysisTabs({
   clubTypeLabel,
   shots,
   afterDispersion,
+  mobileSupport,
 }: {
   clubType: string;
   clubModelName: string;
   clubTypeLabel: string;
   shots: AnalysisShot[];
   afterDispersion?: ReactNode;
+  mobileSupport?: ReactNode;
 }) {
   const accent = clubAccent(clubType);
   const [distanceView, setDistanceView] = useState<DistanceView>("carry");
@@ -189,7 +192,7 @@ export function ClubAnalysisTabs({
               size="sm"
               variant={distanceView === "carry" ? "default" : "ghost"}
               onClick={() => setDistanceView("carry")}
-              className={distanceView === "carry" ? "bg-[#0B7A3B] text-white" : ""}
+              className={cn("min-h-11", distanceView === "carry" ? "bg-[#0B7A3B] text-white" : "")}
             >
               Carry
             </Button>
@@ -198,7 +201,7 @@ export function ClubAnalysisTabs({
               size="sm"
               variant={distanceView === "total" ? "default" : "ghost"}
               onClick={() => setDistanceView("total")}
-              className={distanceView === "total" ? "bg-[#0B7A3B] text-white" : ""}
+              className={cn("min-h-11", distanceView === "total" ? "bg-[#0B7A3B] text-white" : "")}
             >
               Total
             </Button>
@@ -214,51 +217,194 @@ export function ClubAnalysisTabs({
         />
       </section>
 
-      {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
-
-      <ShotEvidenceWorkbench
-        shots={sortedShots}
-        selectedShotId={selectedShot?.id ?? ""}
-        clubModelName={clubModelName}
-        clubTypeLabel={clubTypeLabel}
-        onSelect={selectShot}
-      />
-
-      <section className="premium-card p-3 sm:p-4">
-        <SectionTitle
-          icon={Activity}
-          title="Trajectory"
-          detail="Flight window and apex pattern for the selected club."
-          accent={accent}
+      <div className="lg:hidden">
+        <IOSDisclosureGroup
+          label="Club analysis detail"
+          items={[
+            ...(mobileSupport
+              ? [
+                  {
+                    value: "club-intelligence",
+                    title: "Club intelligence",
+                    summary: `${shots.length} shots`,
+                    description: "Health, gapping, development and supporting context",
+                    content: mobileSupport,
+                  },
+                ]
+              : []),
+            {
+              value: "trajectory",
+              title: "Trajectory",
+              summary: selectedShot ? `Shot #${selectedShot.shotNumber ?? "-"}` : "No shot",
+              description: "Flight window and apex pattern",
+              content: (
+                <TrajectoryPanel
+                  shots={sortedShots}
+                  selectedShotId={selectedShot?.id ?? ""}
+                  accent={accent}
+                />
+              ),
+              contentClassName: "px-2",
+            },
+            {
+              value: "selected-shot",
+              title: "Selected shot metrics",
+              summary: formatMetric(selectedShot?.carryYd ?? null, " yd"),
+              description: "Delivery, strike, launch and spin",
+              content: <MobileSelectedShotMetrics shot={selectedShot} />,
+            },
+            {
+              value: "shot-evidence",
+              title: "Measured shot evidence",
+              summary: `${sortedShots.length} rows`,
+              description: "A mobile list of every shot in this evidence window",
+              content: (
+                <MobileShotEvidenceRows
+                  shots={sortedShots}
+                  selectedShotId={selectedShot?.id ?? ""}
+                  onSelect={selectShot}
+                />
+              ),
+              contentClassName: "px-0",
+            },
+          ]}
         />
-        <TrajectoryPanel
+      </div>
+
+      <div className="hidden space-y-5 lg:block">
+        {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
+
+        <ShotEvidenceWorkbench
           shots={sortedShots}
           selectedShotId={selectedShot?.id ?? ""}
-          accent={accent}
+          clubModelName={clubModelName}
+          clubTypeLabel={clubTypeLabel}
+          onSelect={selectShot}
         />
-      </section>
 
-      <section className="premium-card p-3 sm:p-4">
-        <SectionTitle
-          icon={Gauge}
-          title="Club Metrics"
-          detail={`Selected shot #${selectedShot?.shotNumber ?? "-"} delivery and impact numbers.`}
+        <section className="premium-card p-4">
+          <SectionTitle
+            icon={Activity}
+            title="Trajectory"
+            detail="Flight window and apex pattern for the selected club."
+            accent={accent}
+          />
+          <TrajectoryPanel
+            shots={sortedShots}
+            selectedShotId={selectedShot?.id ?? ""}
+            accent={accent}
+          />
+        </section>
+
+        <section className="premium-card p-4">
+          <SectionTitle
+            icon={Gauge}
+            title="Club Metrics"
+            detail={`Selected shot #${selectedShot?.shotNumber ?? "-"} delivery and impact numbers.`}
+            accent={accent}
+          />
+          <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
+          <ShotMetricStrip shot={selectedShot} accent={accent} />
+        </section>
+
+        <ShotHistory
+          groups={shotDateGroups}
+          activeOpenDateKeys={activeOpenDateKeys}
+          selectedShotId={selectedShot?.id ?? ""}
+          clubModelName={clubModelName}
+          clubTypeLabel={clubTypeLabel}
           accent={accent}
+          onToggleGroup={toggleDateGroup}
+          onSelect={selectShot}
         />
-        <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
-        <ShotMetricStrip shot={selectedShot} accent={accent} />
-      </section>
+      </div>
+    </div>
+  );
+}
 
-      <ShotHistory
-        groups={shotDateGroups}
-        activeOpenDateKeys={activeOpenDateKeys}
-        selectedShotId={selectedShot?.id ?? ""}
-        clubModelName={clubModelName}
-        clubTypeLabel={clubTypeLabel}
-        accent={accent}
-        onToggleGroup={toggleDateGroup}
-        onSelect={selectShot}
-      />
+function MobileSelectedShotMetrics({ shot }: { shot: AnalysisShot | null }) {
+  if (!shot) {
+    return <p className="text-sm text-muted-foreground">No measured shot is selected.</p>;
+  }
+
+  const metrics = [
+    ["Carry", formatMetric(shot.carryYd, " yd")],
+    ["Total", formatMetric(shot.totalYd, " yd")],
+    ["Offline", formatSide(shot.sideCarryYd)],
+    ["Ball speed", formatMetric(shot.ballSpeedMph, " mph")],
+    ["Club speed", formatMetric(shot.clubSpeedMph, " mph")],
+    ["Launch", formatMetric(shot.launchAngleDeg, " deg")],
+    ["Apex", formatMetric(shot.apexFt, " ft")],
+    ["Path", formatMetric(shot.clubPathDeg, " deg")],
+    ["Face", formatMetric(resolveClubFaceAngleDeg(shot), " deg")],
+    ["Smash", formatMetric(shot.smashFactor)],
+    ["Spin", formatMetric(shot.spinRate, " rpm")],
+    ["Spin axis", formatMetric(shot.spinAxis, " deg")],
+  ];
+
+  return (
+    <dl className="grid divide-y divide-border/70">
+      {metrics.map(([label, value]) => (
+        <div key={label} className="flex min-h-11 items-center justify-between gap-3 py-2">
+          <dt className="text-sm text-muted-foreground">{label}</dt>
+          <dd className="text-right text-sm font-semibold text-foreground tabular-nums">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function MobileShotEvidenceRows({
+  shots,
+  selectedShotId,
+  onSelect,
+}: {
+  shots: AnalysisShot[];
+  selectedShotId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div
+      className="ios-grouped-list overflow-hidden"
+      aria-label="Measured shot evidence rows"
+      data-mobile-shot-evidence
+    >
+      {shots.map((shot) => {
+        const selected = shot.id === selectedShotId;
+        return (
+          <button
+            key={shot.id}
+            type="button"
+            aria-pressed={selected}
+            onClick={() => onSelect(shot.id)}
+            className={cn(
+              "ios-grouped-row focus-aaa flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left outline-none",
+              selected && "bg-primary/8",
+            )}
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+              {shot.shotNumber ?? "-"}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium text-foreground">
+                {formatDate(shot.shotAt)}
+              </span>
+              <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
+                {shot.qualityTag ?? shot.shotCategory ?? "Measured shot"} ·{" "}
+                {formatSide(shot.sideCarryYd)}
+              </span>
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="block text-[15px] font-semibold text-foreground tabular-nums">
+                {formatMetric(shot.carryYd, " yd")}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {selected ? "Selected" : "Select"}
+              </span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -279,7 +425,7 @@ function ShotEvidenceWorkbench({
   return (
     <section
       id="club-shot-evidence-table"
-      className="hidden scroll-mt-28 gap-3 sm:grid"
+      className="hidden scroll-mt-28 gap-3 lg:grid"
       data-workbench-scope="club-shot-evidence"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

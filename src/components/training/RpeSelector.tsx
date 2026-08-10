@@ -60,8 +60,8 @@ export function RpeSelector({
               key={value}
               htmlFor={id}
               className={cn(
-                "group relative grid cursor-pointer content-start gap-1 rounded-lg border border-emerald-950/10 bg-white/80 p-2 text-left shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50",
-                "has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 has-[:checked]:ring-2 has-[:checked]:ring-emerald-700/15",
+                "group relative grid cursor-pointer content-start gap-1 rounded-lg border border-border bg-card p-2 text-left shadow-sm transition-colors motion-reduce:transition-none hover:border-emerald-300 hover:bg-emerald-50 dark:hover:border-emerald-700 dark:hover:bg-emerald-950/30",
+                "has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50 has-[:checked]:ring-2 has-[:checked]:ring-emerald-700/15 dark:has-[:checked]:border-emerald-500 dark:has-[:checked]:bg-emerald-950/40 dark:has-[:checked]:ring-emerald-400/20",
                 compact ? "min-h-12 place-items-center text-center" : "min-h-24",
               )}
             >

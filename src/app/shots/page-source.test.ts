@@ -11,6 +11,10 @@ const interactiveMapSource = readFileSync(
   join(process.cwd(), "src/app/shots/interactive-shot-shape-map.tsx"),
   "utf8",
 );
+const patternExplorerSource = readFileSync(
+  join(process.cwd(), "src/app/shots/shot-pattern-explorer.tsx"),
+  "utf8",
+);
 
 describe("shots desktop workbench page", () => {
   it("keeps the shot explorer table-first until the shared wide-monitor rail appears", () => {
@@ -88,5 +92,45 @@ describe("shots desktop workbench page", () => {
     expect(source).toContain("<SelectedShotDetail shot={selectedShot} />");
     expect(masterDetailSource).toContain("ShotDeleteButton");
     expect(interactiveMapSource).toContain("data-shot-map-point={shot.id}");
+  });
+});
+
+describe("shots mobile information architecture", () => {
+  it("renders a purpose-built answer-first archive before specialist evidence", () => {
+    const mobileBlock =
+      source.match(/function ShotsMobileOverview[\s\S]*?function MobileShotRows/)?.[0] ?? "";
+
+    expect(mobileBlock).toContain("data-shots-mobile-overview");
+    expect(mobileBlock).toContain('title="Shots"');
+    expect(mobileBlock).toContain('title={<span id="shots-mobile-heading">Shot archive</span>}');
+    expect(mobileBlock).toContain('label="Filter and sort"');
+    expect(mobileBlock).toContain('<IOSGroupedList label="Latest matching shots">');
+    expect(mobileBlock.indexOf('label="Latest matching shots"')).toBeLessThan(
+      mobileBlock.indexOf('title={<span id="shots-evidence-heading">Evidence and tools</span>}'),
+    );
+    expect(mobileBlock).toContain('id="selected-shot-mobile"');
+    expect(mobileBlock).toContain("<SelectedShotDetail shot={selectedShot} compact />");
+  });
+
+  it("keeps secondary maps, patterns, saved views and import audit in one-level disclosures", () => {
+    const mobileBlock =
+      source.match(/function ShotsMobileOverview[\s\S]*?function MobileShotRows/)?.[0] ?? "";
+
+    expect(mobileBlock).toContain("<IOSDisclosureGroup");
+    for (const value of ["dispersion", "patterns", "views", "imports"]) {
+      expect(mobileBlock).toContain(`value: "${value}"`);
+    }
+    expect(mobileBlock).toContain("<MobileShotDispersionMap");
+    expect(mobileBlock).toContain("<ShotPatternExplorer groups={patternGroups} />");
+    expect(source).toContain('className="hidden lg:contents" data-shots-desktop-workbench');
+  });
+
+  it("replaces the advanced pattern table with native rows on phones", () => {
+    expect(patternExplorerSource).toContain('aria-label="Shot clusters"');
+    expect(patternExplorerSource).toContain("<IOSGroupedList");
+    expect(patternExplorerSource).toContain(
+      'className="mt-3 hidden max-h-80 overflow-auto lg:block"',
+    );
+    expect(patternExplorerSource).toContain('className="w-full min-w-[42rem]');
   });
 });

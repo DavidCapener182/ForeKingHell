@@ -12,10 +12,10 @@ describe("admin system checks desktop console source", () => {
     expect(source).toContain("getAdminOperationsSnapshot");
     expect(source).toContain('<AdminNav active="/admin/system-checks" />');
     expect(source).toContain('scope="admin-system-checks"');
-    expect(source).toContain("Provider health and platform checks");
+    expect(source).toContain("Provider status and platform checks");
     expect(source).toContain("Provider failures");
     expect(source).toContain("Billing failures");
-    expect(source).toContain("RLS/test status");
+    expect(source).toContain("Verification evidence");
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("adminSystemCheckColumns");
     expect(source).toContain("adminSystemCheckViews");
@@ -45,5 +45,15 @@ describe("admin system checks desktop console source", () => {
     expect(source).toContain("Do not infer a provider outage from missing data alone");
     expect(source).toContain("only active owner or operator");
     expect(source).not.toContain("DesktopInsightRail");
+  });
+
+  it("uses an urgent-first native mobile register and honest absent-state copy", () => {
+    expect(source).toContain("AdminMobileShell");
+    expect(source).toContain("AdminMobileSystemChecks");
+    expect(source).toContain("MobileSystemCheckRows");
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).toContain("No live verification result");
+    expect(source).not.toContain('"Healthy"');
+    expect(source).not.toContain("Runbook ready");
   });
 });

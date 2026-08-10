@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Crosshair, Filter, Layers3 } from "lucide-react";
+import { ChevronDown, Crosshair, Filter, Layers3 } from "lucide-react";
 
+import { IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
 import { StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 
@@ -34,10 +35,10 @@ export function ShotPatternExplorer({
 
   return (
     <section
-      className="grid gap-4 rounded-2xl border bg-card p-4"
+      className="grid gap-4 lg:rounded-2xl lg:border lg:bg-card lg:p-4"
       aria-labelledby="pattern-explorer-title"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold text-primary">
             <Layers3 className="size-4" aria-hidden />
@@ -73,7 +74,46 @@ export function ShotPatternExplorer({
         </label>
       </div>
       {clusters.length ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="ios-grouped-list overflow-hidden lg:hidden" aria-label="Shot clusters">
+          {clusters.map((cluster) => {
+            const expanded = cluster.key === selected;
+
+            return (
+              <button
+                key={cluster.key}
+                type="button"
+                onClick={() => setSelected(expanded ? null : cluster.key)}
+                aria-expanded={expanded}
+                aria-controls="mobile-pattern-cluster-detail"
+                className="ios-grouped-row focus-aaa flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left outline-none"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-medium leading-5 text-foreground">
+                    {cluster.label}
+                  </span>
+                  <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
+                    {cluster.patternLabel}
+                  </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block text-[15px] tabular-nums text-muted-foreground">
+                    {cluster.averageCarry === null ? "—" : `${cluster.averageCarry} yd`}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{cluster.count} shots</span>
+                </span>
+                <ChevronDown
+                  className={`size-4 shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none ${
+                    expanded ? "rotate-180" : ""
+                  }`}
+                  aria-hidden
+                />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {clusters.length ? (
+        <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-4">
           {clusters.map((cluster) => (
             <button
               key={cluster.key}
@@ -101,7 +141,10 @@ export function ShotPatternExplorer({
         </p>
       )}
       {active ? (
-        <div className="rounded-xl border bg-background p-4">
+        <div
+          id="mobile-pattern-cluster-detail"
+          className="rounded-xl border bg-background p-3 lg:p-4"
+        >
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-primary">Contributing shots</p>
@@ -111,7 +154,18 @@ export function ShotPatternExplorer({
               Close
             </Button>
           </div>
-          <div className="mt-3 max-h-80 overflow-auto">
+          <IOSGroupedList label={`${active.label} contributing shots`} className="mt-3 lg:hidden">
+            {active.shots.map((shot) => (
+              <IOSListRow
+                key={shot.id}
+                label={`${shot.club} · ${shot.date}`}
+                value={shot.carry}
+                detail={`${shot.finish} · ${shot.start}`}
+                status={<span className="text-xs text-muted-foreground">{shot.evidence}</span>}
+              />
+            ))}
+          </IOSGroupedList>
+          <div className="mt-3 hidden max-h-80 overflow-auto lg:block">
             <table className="w-full min-w-[42rem] text-left text-sm">
               <thead className="text-muted-foreground">
                 <tr>

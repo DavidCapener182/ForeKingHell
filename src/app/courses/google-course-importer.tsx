@@ -121,7 +121,7 @@ export function GoogleCourseImporter() {
               type="button"
               onClick={() => setSelected(course)}
               className={cn(
-                "grid gap-2 rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400",
+                "grid min-h-11 gap-2 rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 motion-reduce:transition-none",
                 selected?.placeId === course.placeId && "border-emerald-500 bg-emerald-50/60",
               )}
             >
@@ -156,7 +156,10 @@ export function GoogleCourseImporter() {
                 {selected.address ?? "Google Places match selected"}
               </p>
             </div>
-            <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              type="submit"
+              className="min-h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               Import Google course
             </Button>
           </div>

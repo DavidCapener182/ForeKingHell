@@ -30,6 +30,7 @@ export type RoundCourseOption = {
 };
 
 type NewRoundFormProps = {
+  instanceId?: string;
   courses: RoundCourseOption[];
   createRoundAction: (formData: FormData) => void | Promise<void>;
 };
@@ -45,7 +46,11 @@ const mobileRoundSteps: Array<{ id: MobileRoundStep; label: string }> = [
 
 const todayIso = new Date().toISOString().slice(0, 10);
 
-export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) {
+export function NewRoundForm({
+  instanceId = "round",
+  courses,
+  createRoundAction,
+}: NewRoundFormProps) {
   const allTeeSets = useMemo(
     () =>
       courses.flatMap((course) =>
@@ -61,11 +66,17 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
   const [selectedTeeSetId, setSelectedTeeSetId] = useState(allTeeSets[0]?.id ?? "");
   const [mobileStep, setMobileStep] = useState<MobileRoundStep>("setup");
   const [activeHoleIndex, setActiveHoleIndex] = useState(0);
+  const [roundStatus, setRoundStatus] = useState("complete");
+  const [scoreValues, setScoreValues] = useState<Record<number, string>>({});
   const selectedTeeSet =
     allTeeSets.find((teeSet) => teeSet.id === selectedTeeSetId) ?? allTeeSets[0] ?? null;
   const holes = useMemo(() => buildRoundHoles(selectedTeeSet), [selectedTeeSet]);
   const activeStepIndex = mobileRoundSteps.findIndex((step) => step.id === mobileStep);
-  const activeHole = holes[activeHoleIndex] ?? holes[0] ?? null;
+  const completedScoreCount = holes.filter((_, index) => scoreValues[index]?.trim()).length;
+  const missingScoreCount = Math.max(0, holes.length - completedScoreCount);
+  const completeRoundNeedsScores = roundStatus === "complete" && missingScoreCount > 0;
+  const scorecardGridId = `${instanceId}-scorecard-entry-grid`;
+  const reviewCompletenessId = `${instanceId}-review-completeness`;
 
   if (!selectedTeeSet) {
     return (
@@ -104,8 +115,12 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <select
             name="teeSetId"
             value={selectedTeeSet.id}
-            onChange={(event) => setSelectedTeeSetId(event.target.value)}
-            className="h-11 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            onChange={(event) => {
+              setSelectedTeeSetId(event.target.value);
+              setActiveHoleIndex(0);
+              setScoreValues({});
+            }}
+            className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {courses.map((course) => (
               <optgroup key={course.id} label={course.name}>
@@ -129,7 +144,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             name="date"
             type="date"
             defaultValue={todayIso}
-            className="h-11 rounded-xl bg-white"
+            className="h-11 min-w-0 rounded-xl bg-background"
             required
           />
         </label>
@@ -142,8 +157,9 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <span>Status</span>
           <select
             name="roundStatus"
-            defaultValue="complete"
-            className="h-11 rounded-xl border border-input bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            value={roundStatus}
+            onChange={(event) => setRoundStatus(event.target.value)}
+            className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="complete">Complete</option>
             <option value="in_progress">In progress</option>
@@ -159,7 +175,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <Input
             name="notes"
             placeholder="Weather, tees, match notes…"
-            className="h-11 rounded-xl bg-white"
+            className="h-11 min-w-0 rounded-xl bg-background"
           />
         </label>
         <div
@@ -173,7 +189,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             <Input
               name="weatherConditions"
               placeholder="Dry, soft, rain…"
-              className="h-11 rounded-xl bg-white"
+              className="h-11 min-w-0 rounded-xl bg-background"
             />
           </label>
           <label className="grid gap-2 text-sm font-medium">
@@ -181,12 +197,16 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             <Input
               name="wind"
               placeholder="10 mph into / cross"
-              className="h-11 rounded-xl bg-white"
+              className="h-11 min-w-0 rounded-xl bg-background"
             />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             <span>Temperature</span>
-            <Input name="temperature" placeholder="14C" className="h-11 rounded-xl bg-white" />
+            <Input
+              name="temperature"
+              placeholder="14C"
+              className="h-11 min-w-0 rounded-xl bg-background"
+            />
           </label>
         </div>
         <label
@@ -199,14 +219,14 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <Input
             name="equipmentNotes"
             placeholder="Ball, shaft setting, new club, grip changes…"
-            className="h-11 rounded-xl bg-white"
+            className="h-11 min-w-0 rounded-xl bg-background"
           />
         </label>
       </div>
 
       <div
         className={cn(
-          "rounded-2xl border bg-white p-4",
+          "rounded-2xl border bg-card p-4",
           mobileStep === "score" ? "block" : "hidden sm:block",
         )}
       >
@@ -258,7 +278,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
         </div>
 
         <div
-          id="scorecard-entry-grid"
+          id={scorecardGridId}
           data-scorecard-entry-grid
           role="group"
           aria-label="Keyboard-friendly scorecard hole entry grid"
@@ -289,7 +309,15 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
                 </div>
               </div>
 
-              <RoundNumberField label="Score" name={`score-${index}`} min={1} />
+              <RoundNumberField
+                label="Score"
+                name={`score-${index}`}
+                min={1}
+                required={roundStatus === "complete"}
+                onValueChange={(value) =>
+                  setScoreValues((current) => ({ ...current, [index]: value }))
+                }
+              />
               <RoundNumberField label="Putts" name={`putts-${index}`} min={0} />
               <RoundNumberField label="Pens" name={`penalties-${index}`} min={0} />
               <RoundNumberField label="Chips" name={`chipShots-${index}`} min={0} />
@@ -307,15 +335,33 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
 
       <div
         className={cn(
-          "premium-card grid gap-3 p-4 sm:hidden",
+          "premium-card gap-3 p-4 sm:hidden",
           mobileStep === "review" ? "grid" : "hidden",
         )}
       >
         <div>
-          <p className="text-lg font-semibold tracking-normal">Ready to save</p>
+          <p className="text-lg font-semibold tracking-normal">
+            {completeRoundNeedsScores ? "Finish the scorecard" : "Ready to save"}
+          </p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             {selectedTeeSet.courseName} / {selectedTeeSet.name} tees, {holes.length} holes.
           </p>
+        </div>
+        <div
+          id={reviewCompletenessId}
+          role={completeRoundNeedsScores ? "alert" : "status"}
+          className={cn(
+            "rounded-xl border px-3 py-2 text-sm leading-5",
+            completeRoundNeedsScores
+              ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/45 dark:bg-amber-500/10 dark:text-amber-100"
+              : "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-500/45 dark:bg-emerald-500/10 dark:text-emerald-100",
+          )}
+        >
+          {completeRoundNeedsScores
+            ? `${missingScoreCount} hole${missingScoreCount === 1 ? " is" : "s are"} missing a score. Enter every score or change the round status to In progress.`
+            : roundStatus === "in_progress"
+              ? `${completedScoreCount} of ${holes.length} hole scores entered. The round will remain in progress.`
+              : `All ${holes.length} hole scores are entered.`}
         </div>
         <div className="grid grid-cols-3 gap-2">
           <ReviewMetric label="Par" value={selectedTeeSet.par.toString()} />
@@ -323,7 +369,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             label="Yards"
             value={selectedTeeSet.yards ? selectedTeeSet.yards.toLocaleString("en-GB") : "--"}
           />
-          <ReviewMetric label="Hole" value={activeHole ? activeHole.holeNumber.toString() : "--"} />
+          <ReviewMetric label="Scores" value={`${completedScoreCount}/${holes.length}`} />
         </div>
       </div>
 
@@ -331,6 +377,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
         type="submit"
         size="lg"
         className="hidden w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:flex sm:w-fit"
+        disabled={completeRoundNeedsScores}
       >
         <Save className="size-4" />
         Save real round
@@ -341,7 +388,7 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
           <Button
             type="button"
             variant="outline"
-            className="rounded-xl"
+            className="min-h-11 rounded-xl"
             disabled={activeStepIndex <= 0}
             onClick={() => setMobileStep(mobileRoundSteps[Math.max(0, activeStepIndex - 1)].id)}
           >
@@ -349,14 +396,19 @@ export function NewRoundForm({ courses, createRoundAction }: NewRoundFormProps) 
             Back
           </Button>
           {mobileStep === "review" ? (
-            <Button type="submit" className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              type="submit"
+              className="min-h-11 rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              disabled={completeRoundNeedsScores}
+              aria-describedby={completeRoundNeedsScores ? reviewCompletenessId : undefined}
+            >
               <Save className="size-4" />
               Save round
             </Button>
           ) : (
             <Button
               type="button"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="min-h-11 rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
               onClick={() =>
                 setMobileStep(
                   mobileRoundSteps[Math.min(mobileRoundSteps.length - 1, activeStepIndex + 1)].id,
@@ -389,9 +441,10 @@ function MobileRoundStepper({
         <button
           key={item.id}
           type="button"
+          aria-current={item.id === step ? "step" : undefined}
           onClick={() => onStepChange(item.id)}
           className={cn(
-            "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
+            "min-h-11 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
             item.id === step
               ? "border-slate-950 bg-slate-950 text-white"
               : "border-slate-200 bg-white/90 text-slate-700",
@@ -406,14 +459,26 @@ function MobileRoundStepper({
 
 function ReviewMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/85 px-3 py-2 ring-1 ring-slate-200/80">
+    <div className="rounded-lg bg-background px-3 py-2 ring-1 ring-border">
       <p className="text-[11px] text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm font-semibold">{value}</p>
     </div>
   );
 }
 
-function RoundNumberField({ label, name, min }: { label: string; name: string; min: number }) {
+function RoundNumberField({
+  label,
+  name,
+  min,
+  required,
+  onValueChange,
+}: {
+  label: string;
+  name: string;
+  min: number;
+  required?: boolean;
+  onValueChange?: (value: string) => void;
+}) {
   return (
     <label className="grid gap-1 text-xs font-medium text-muted-foreground sm:min-w-0">
       <span>{label}</span>
@@ -421,9 +486,11 @@ function RoundNumberField({ label, name, min }: { label: string; name: string; m
         name={name}
         type="number"
         min={min}
+        required={required}
         inputMode="numeric"
         autoComplete="off"
-        className="h-9 rounded-lg bg-white text-sm text-foreground"
+        className="h-11 min-w-0 rounded-xl bg-background text-base text-foreground sm:h-9 sm:rounded-lg sm:text-sm"
+        onChange={onValueChange ? (event) => onValueChange(event.target.value) : undefined}
       />
     </label>
   );
@@ -445,7 +512,7 @@ function BooleanSelect({
         name={name}
         defaultValue={disabled ? "null" : "null"}
         disabled={disabled}
-        className="h-9 min-w-0 rounded-lg border border-input bg-white px-2 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-slate-100 disabled:text-muted-foreground"
+        className="h-11 min-w-0 rounded-xl border border-input bg-background px-2 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-muted-foreground sm:h-9 sm:rounded-lg sm:text-sm"
       >
         <option value="null">-</option>
         <option value="true">Hit</option>

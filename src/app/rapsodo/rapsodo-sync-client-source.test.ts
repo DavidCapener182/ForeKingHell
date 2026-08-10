@@ -5,6 +5,19 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/rapsodo/rapsodo-sync-client.tsx"), "utf8");
 
 describe("rapsodo desktop provider console", () => {
+  it("keeps the specialist import flow mobile-native through the lg breakpoint", () => {
+    expect(source).toContain("IOSGroupedList");
+    expect(source).toContain("MobileRapsodoSessionRows");
+    expect(source).toContain("lg:hidden");
+    expect(source).toContain("hidden lg:block");
+    expect(source).not.toContain('className="hidden sm:block"');
+    expect(source).not.toContain('className="sm:hidden"');
+    expect(source).toContain(
+      '<h2 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">',
+    );
+    expect(source).not.toContain(">\n            Rapsodo Inbox\n          </h1>");
+  });
+
   it("uses the desktop workflow template for provider connection and import review", () => {
     expect(source).toContain("DesktopWorkflowLayout");
     expect(source).toContain("rapsodoWorkflowHelpItems");

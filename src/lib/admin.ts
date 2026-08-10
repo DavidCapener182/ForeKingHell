@@ -934,6 +934,8 @@ async function getRecentAdminOverviewUsers(limit: number): Promise<AdminUserList
     .limit(limit);
 
   const ids = rows.map((row) => row.id);
+  const sessionCounts = await countByUser(sessions.userId, sessions, ids);
+  const feedCounts = await countByUser(feedItems.userId, feedItems, ids);
   const activeSubscriptions = ids.length
     ? await db
         .select({
@@ -964,6 +966,8 @@ async function getRecentAdminOverviewUsers(limit: number): Promise<AdminUserList
         )
     : [];
   const subscriptionMap = new Map<string, string>();
+  const sessionMap = new Map(sessionCounts.map((row) => [row.userId, row.count]));
+  const feedMap = new Map(feedCounts.map((row) => [row.userId, row.count]));
 
   for (const subscription of activeSubscriptions) {
     if (!subscriptionMap.has(subscription.userId)) {
@@ -984,8 +988,8 @@ async function getRecentAdminOverviewUsers(limit: number): Promise<AdminUserList
     adminRole: row.adminStatus === "active" ? row.adminRole : null,
     adminStatus: row.adminStatus,
     activePlan: fullGrantIds.has(row.id) ? "full" : (subscriptionMap.get(row.id) ?? "free"),
-    sessionCount: 0,
-    feedCount: 0,
+    sessionCount: sessionMap.get(row.id) ?? 0,
+    feedCount: feedMap.get(row.id) ?? 0,
     createdAt: row.createdAt,
   }));
 }

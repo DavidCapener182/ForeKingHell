@@ -70,6 +70,7 @@ export async function getProviderIntegrationsPageData() {
         accountCount: providerAccountsForKind.length,
         sessionCount: providerSessionsForKind.length,
         jobCount: providerJobsForKind.length,
+        fileCount: providerFilesForKind.length,
         mappingCount: mappings.filter((mapping) => mapping.providerKind === provider.providerKind)
           .length,
         lastSyncAt: latestDate([

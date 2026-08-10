@@ -8,6 +8,19 @@ const source = readFileSync(
 );
 
 describe("course record detail desktop board", () => {
+  it("keeps the native detail active through tablet widths with global back navigation", () => {
+    const mobileSource = source.slice(
+      source.indexOf("<MobileAppShell>"),
+      source.indexOf("</MobileAppShell>"),
+    );
+
+    expect(mobileSource).toContain("<MobileTopBar");
+    expect(mobileSource).not.toContain("<ArrowLeft");
+    expect(mobileSource).not.toContain("leading=");
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain('scope="course-record-detail" className="hidden sm:grid"');
+  });
+
   it("keeps the verified leaderboard table exportable, captioned and keyboard-focusable", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="6xl"');

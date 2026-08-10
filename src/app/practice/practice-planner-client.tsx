@@ -30,7 +30,14 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { DataTableFrame } from "@/components/premium";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import { DataTableFrame, MobileFilterSheet } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -452,78 +459,219 @@ export function PracticePlannerClient({
       id="practice-plan"
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 scroll-mt-28 lg:gap-4"
     >
-      <PracticeSetupBar
-        options={options}
-        updateOptions={updateOptions}
-        updateFacility={updateFacility}
-        generatePlan={generatePlan}
-        isPending={isPending}
-        trainingBlocked={context.trainingLoad.highRecentLoad}
-      />
+      <div className="grid gap-3 lg:hidden">
+        <PracticeMobileTask
+          plan={plan}
+          block={selectedBlock}
+          comparison={comparison}
+          score={practiceScore}
+          savedPlanId={savedPlanId}
+          message={message}
+          isPending={isPending}
+          onSave={savePlan}
+          onStart={startPractice}
+          onGenerate={generatePlan}
+        />
 
-      <PracticeSessionImportBar
-        importOptions={importOptions}
-        selectedImportId={selectedImportId}
-        onSelect={setSelectedImportId}
-        onLink={linkSelectedSession}
-        savedPlanId={savedPlanId}
-        hasImport={Boolean(comparison?.sourceSessionId || practiceScore)}
-        isPending={isPending}
-      />
+        <PracticeMobileBlockPicker
+          blocks={plan.blocks}
+          selectedBlockId={selectedBlock?.id ?? null}
+          comparison={comparison}
+          onSelect={setSelectedBlockId}
+        />
 
-      <PracticeTodayCard plan={plan} focusSummary={focusSummary} message={message} />
-      <PracticeResultsOverview
-        comparison={comparison}
-        score={practiceScore}
-        summary={sessionSummary}
-      />
+        <div className="grid grid-cols-2 gap-2">
+          <MobileFilterSheet label="Plan setup">
+            <div className="pb-3 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
+              <PracticeSetupBar
+                options={options}
+                updateOptions={updateOptions}
+                updateFacility={updateFacility}
+                generatePlan={generatePlan}
+                isPending={isPending}
+                trainingBlocked={context.trainingLoad.highRecentLoad}
+              />
+            </div>
+          </MobileFilterSheet>
+          <MobileFilterSheet label="Match upload">
+            <div className="pb-3 [&_button]:min-h-11 [&_select]:min-h-11">
+              <PracticeSessionImportBar
+                importOptions={importOptions}
+                selectedImportId={selectedImportId}
+                onSelect={setSelectedImportId}
+                onLink={linkSelectedSession}
+                savedPlanId={savedPlanId}
+                hasImport={Boolean(comparison?.sourceSessionId || practiceScore)}
+                isPending={isPending}
+              />
+            </div>
+          </MobileFilterSheet>
+        </div>
 
-      <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
-        <div className="min-w-0 lg:col-span-5 xl:col-span-4">
-          <PracticeAgenda
-            blocks={plan.blocks}
-            comparison={comparison}
-            selectedBlockId={selectedBlock?.id ?? null}
-            onSelect={setSelectedBlockId}
-          />
-        </div>
-        <div className="min-w-0 lg:sticky lg:top-4 lg:col-span-5 lg:self-start xl:col-span-5">
-          <SelectedBlockDetail
-            block={selectedBlock}
-            comparison={comparison}
-            drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
-            onBallCountChange={updateSelectedBlockBalls}
-            onSwapDrill={swapSelectedBlockDrill}
-            onSuggestDrill={suggestSelectedBlockDrill}
-            isPending={isPending}
-          />
-        </div>
-        <div className="min-w-0 lg:col-span-2 xl:col-span-3">
-          <SessionControlPanel
-            context={context}
-            plan={plan}
-            savedPlanId={savedPlanId}
-            summary={sessionSummary}
-            score={practiceScore}
-            comparison={comparison}
-            onSave={savePlan}
-            onStart={startPractice}
-            onAbandon={abandonPlan}
-            onShowPracticeImage={() => openSavedImageDialog(true)}
-            isPending={isPending}
-          />
-        </div>
+        <IOSSectionHeader
+          title="Plan depth"
+          description="The current task stays visible above. Open one supporting section at a time."
+        />
+        <IOSDisclosureGroup
+          label="Practice plan detail"
+          items={[
+            {
+              value: "why",
+              title: "Why this drill",
+              summary: `${plan.why.length} signals`,
+              description: "Selection evidence and practice intent",
+              content: <PracticeMobileWhy plan={plan} context={context} />,
+            },
+            {
+              value: "detail",
+              title: "Drill detail and target",
+              summary: selectedBlock
+                ? compactPracticeBlockRow(selectedBlock, comparison).volumeLabel
+                : "--",
+              description: "Technique, scoring rule and editable volume",
+              content: (
+                <PracticeMobileBlockDetail
+                  block={selectedBlock}
+                  comparison={comparison}
+                  drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
+                  onBallCountChange={updateSelectedBlockBalls}
+                  onSwapDrill={swapSelectedBlockDrill}
+                  onSuggestDrill={suggestSelectedBlockDrill}
+                  isPending={isPending}
+                />
+              ),
+            },
+            {
+              value: "result",
+              title: "Plan versus actual",
+              summary: practiceScore ? `${practiceScore.score}/100` : "Waiting",
+              description: "Imported evidence and the next recommendation",
+              content: (
+                <PracticeMobileResult
+                  comparison={comparison}
+                  score={practiceScore}
+                  summary={sessionSummary}
+                />
+              ),
+            },
+            {
+              value: "control",
+              title: "Session controls",
+              summary: practiceMobileStatusLabel(plan, savedPlanId, practiceScore, comparison),
+              description: "Import, image, coach context and plan lifecycle",
+              content: (
+                <PracticeMobileControlDetails
+                  context={context}
+                  plan={plan}
+                  savedPlanId={savedPlanId}
+                  summary={sessionSummary}
+                  score={practiceScore}
+                  comparison={comparison}
+                  onAbandon={abandonPlan}
+                  onShowPracticeImage={() => openSavedImageDialog(true)}
+                  isPending={isPending}
+                />
+              ),
+            },
+            {
+              value: "ledger",
+              title: "Block ledger",
+              summary: `${plan.blocks.length} blocks`,
+              description: "Compact planned-versus-upload evidence rows",
+              content: <PracticeMobileLedger blocks={plan.blocks} comparison={comparison} />,
+            },
+            {
+              value: "library",
+              title: "Templates and saved plans",
+              summary: `${templates.length + localSavedPlans.length}`,
+              description: "Reuse a previous structure only when it fits today",
+              content: (
+                <PracticeMobileLibrary
+                  templates={templates}
+                  savedPlans={localSavedPlans}
+                  onUseTemplate={useTemplate}
+                  onLoadSavedPlan={loadSavedPlan}
+                />
+              ),
+            },
+          ]}
+        />
       </div>
 
-      {comparison?.decisions.length ? <PlanVsActual comparison={comparison} /> : null}
-      <PracticeBlockLedger blocks={plan.blocks} comparison={comparison} />
+      <div className="hidden min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid">
+        <PracticeSetupBar
+          options={options}
+          updateOptions={updateOptions}
+          updateFacility={updateFacility}
+          generatePlan={generatePlan}
+          isPending={isPending}
+          trainingBlocked={context.trainingLoad.highRecentLoad}
+        />
 
-      <PracticeLibrary
-        templates={templates}
-        savedPlans={localSavedPlans}
-        onUseTemplate={useTemplate}
-        onLoadSavedPlan={loadSavedPlan}
-      />
+        <PracticeSessionImportBar
+          importOptions={importOptions}
+          selectedImportId={selectedImportId}
+          onSelect={setSelectedImportId}
+          onLink={linkSelectedSession}
+          savedPlanId={savedPlanId}
+          hasImport={Boolean(comparison?.sourceSessionId || practiceScore)}
+          isPending={isPending}
+        />
+
+        <PracticeTodayCard plan={plan} focusSummary={focusSummary} message={message} />
+        <PracticeResultsOverview
+          comparison={comparison}
+          score={practiceScore}
+          summary={sessionSummary}
+        />
+
+        <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
+          <div className="min-w-0 lg:col-span-5 xl:col-span-4">
+            <PracticeAgenda
+              blocks={plan.blocks}
+              comparison={comparison}
+              selectedBlockId={selectedBlock?.id ?? null}
+              onSelect={setSelectedBlockId}
+            />
+          </div>
+          <div className="min-w-0 lg:sticky lg:top-4 lg:col-span-5 lg:self-start xl:col-span-5">
+            <SelectedBlockDetail
+              block={selectedBlock}
+              comparison={comparison}
+              drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
+              onBallCountChange={updateSelectedBlockBalls}
+              onSwapDrill={swapSelectedBlockDrill}
+              onSuggestDrill={suggestSelectedBlockDrill}
+              isPending={isPending}
+            />
+          </div>
+          <div className="min-w-0 lg:col-span-2 xl:col-span-3">
+            <SessionControlPanel
+              context={context}
+              plan={plan}
+              savedPlanId={savedPlanId}
+              summary={sessionSummary}
+              score={practiceScore}
+              comparison={comparison}
+              onSave={savePlan}
+              onStart={startPractice}
+              onAbandon={abandonPlan}
+              onShowPracticeImage={() => openSavedImageDialog(true)}
+              isPending={isPending}
+            />
+          </div>
+        </div>
+
+        {comparison?.decisions.length ? <PlanVsActual comparison={comparison} /> : null}
+        <PracticeBlockLedger blocks={plan.blocks} comparison={comparison} />
+
+        <PracticeLibrary
+          templates={templates}
+          savedPlans={localSavedPlans}
+          onUseTemplate={useTemplate}
+          onLoadSavedPlan={loadSavedPlan}
+        />
+      </div>
 
       <PracticePlanImageDialog
         open={savedImageDialogOpen}
@@ -535,6 +683,532 @@ export function PracticePlannerClient({
       />
     </div>
   );
+}
+
+function PracticeMobileTask({
+  plan,
+  block,
+  comparison,
+  score,
+  savedPlanId,
+  message,
+  isPending,
+  onSave,
+  onStart,
+  onGenerate,
+}: {
+  plan: PracticePlan;
+  block: PracticeBlock | null;
+  comparison: PracticeComparison | null;
+  score: PracticeScore | null;
+  savedPlanId: string | null;
+  message: string | null;
+  isPending: boolean;
+  onSave: () => void;
+  onStart: () => void;
+  onGenerate: () => void;
+}) {
+  const status = plan.status ?? (savedPlanId ? "planned" : "draft");
+  const hasImport = Boolean(score || comparison?.sourceSessionId);
+  const row = block ? compactPracticeBlockRow(block, comparison) : null;
+  const decision = block
+    ? (comparison?.decisions.find((item) => item.blockId === block.id) ?? null)
+    : null;
+
+  return (
+    <section
+      className="overflow-hidden rounded-[1rem] border border-border bg-card shadow-sm"
+      aria-labelledby="practice-current-task"
+      data-practice-mobile-task
+    >
+      <div className="grid gap-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.035em] text-primary">
+              {block ? `Block ${block.order} · ${row?.typeLabel}` : "Today's practice"}
+            </p>
+            <h2
+              id="practice-current-task"
+              className="mt-1 text-[26px] font-bold leading-8 tracking-[-0.025em]"
+            >
+              {block?.title ?? plan.title}
+            </h2>
+            <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
+              {row ? `${row.clubLabel || "Mixed"} · ${row.volumeLabel}` : plan.summary}
+            </p>
+          </div>
+          <IOSInlineStatus
+            label={practiceMobileStatusLabel(plan, savedPlanId, score, comparison)}
+            tone={hasImport ? "positive" : status === "abandoned" ? "attention" : "info"}
+          />
+        </div>
+
+        {block ? (
+          <div className="grid gap-2 rounded-xl bg-secondary/60 px-3 py-3">
+            <div>
+              <p className="text-[13px] text-muted-foreground">Target</p>
+              <p className="mt-0.5 text-[16px] font-semibold leading-5">{block.successTarget}</p>
+            </div>
+            <div className="border-t border-border/70 pt-2">
+              <p className="text-[13px] text-muted-foreground">Do this now</p>
+              <p className="mt-0.5 text-[15px] leading-5">{block.drill}</p>
+            </div>
+            {decision ? (
+              <IOSInlineStatus
+                label={`${practiceComparisonResultLabel(decision)} · ${decision.actualBalls} shots`}
+                tone={decision.result === "passed" ? "positive" : "attention"}
+              />
+            ) : null}
+          </div>
+        ) : null}
+
+        <div data-primary-action>
+          {hasImport ? (
+            <Button asChild className="min-h-12 w-full rounded-xl">
+              <Link href="/today" prefetch={false}>
+                <Target className="size-4" />
+                Review measured result
+              </Link>
+            </Button>
+          ) : status === "draft" ? (
+            <Button
+              type="button"
+              onClick={onSave}
+              disabled={isPending || Boolean(savedPlanId)}
+              className="min-h-12 w-full rounded-xl"
+            >
+              <Save className="size-4" />
+              Save this practice
+            </Button>
+          ) : status === "planned" ? (
+            <Button
+              type="button"
+              onClick={onStart}
+              disabled={isPending || !savedPlanId}
+              className="min-h-12 w-full rounded-xl"
+            >
+              <ClipboardCheck className="size-4" />
+              Start this block
+            </Button>
+          ) : status === "awaiting_import" || status === "match_found" ? (
+            <Button asChild className="min-h-12 w-full rounded-xl">
+              <Link href="/import" prefetch={false}>
+                <Upload className="size-4" />
+                Import practice evidence
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={onGenerate}
+              disabled={isPending}
+              className="min-h-12 w-full rounded-xl"
+            >
+              <WandSparkles className="size-4" />
+              Generate a fresh plan
+            </Button>
+          )}
+        </div>
+      </div>
+      {message ? (
+        <p
+          aria-live="polite"
+          className="border-t border-border/70 bg-secondary/45 px-4 py-3 text-[13px] leading-5"
+        >
+          {message}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function PracticeMobileBlockPicker({
+  blocks,
+  selectedBlockId,
+  comparison,
+  onSelect,
+}: {
+  blocks: PracticeBlock[];
+  selectedBlockId: string | null;
+  comparison: PracticeComparison | null;
+  onSelect: (blockId: string) => void;
+}) {
+  return (
+    <section className="grid gap-2" aria-labelledby="practice-block-picker">
+      <IOSSectionHeader
+        title={<span id="practice-block-picker">Practice blocks</span>}
+        description="Switch the active task without scrolling through every drill."
+      />
+      <div
+        className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1"
+        role="toolbar"
+        aria-label="Choose a practice block"
+      >
+        {blocks.map((block) => {
+          const selected = block.id === selectedBlockId;
+          const row = compactPracticeBlockRow(block, comparison);
+
+          return (
+            <button
+              key={block.id}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onSelect(block.id)}
+              className={cn(
+                "focus-aaa min-h-11 min-w-[8.5rem] snap-start rounded-xl border px-3 py-2 text-left outline-none",
+                selected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground",
+              )}
+            >
+              <span className="block text-xs font-medium opacity-75">Block {block.order}</span>
+              <span className="mt-0.5 block line-clamp-1 text-sm font-semibold">{block.title}</span>
+              <span className="mt-0.5 block text-xs opacity-75">{row.volumeLabel}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PracticeMobileWhy({
+  plan,
+  context,
+}: {
+  plan: PracticePlan;
+  context: PracticePlannerContext;
+}) {
+  return (
+    <IOSGroupedList label="Practice selection evidence" className="bg-card">
+      {plan.why.map((line, index) => (
+        <IOSListRow key={`${index}-${line}`} label={line} icon={CheckCircle2} />
+      ))}
+      <IOSListRow
+        label="Training load"
+        value={context.trainingLoad.statusLabel}
+        detail={context.trainingLoad.recommendation}
+        status={
+          <IOSInlineStatus
+            label={
+              context.trainingLoad.highRecentLoad ? "Protect recovery" : "Load supports practice"
+            }
+            tone={context.trainingLoad.highRecentLoad ? "attention" : "positive"}
+          />
+        }
+      />
+    </IOSGroupedList>
+  );
+}
+
+function PracticeMobileBlockDetail({
+  block,
+  comparison,
+  drillOptions,
+  onBallCountChange,
+  onSwapDrill,
+  onSuggestDrill,
+  isPending,
+}: {
+  block: PracticeBlock | null;
+  comparison: PracticeComparison | null;
+  drillOptions: PracticeDrillSuggestion[];
+  onBallCountChange: (ballCount: number) => void;
+  onSwapDrill: (suggestionId: string) => void;
+  onSuggestDrill: () => void;
+  isPending: boolean;
+}) {
+  if (!block) {
+    return <p className="text-sm text-muted-foreground">Generate a plan to see drill detail.</p>;
+  }
+
+  const row = compactPracticeBlockRow(block, comparison);
+  const decision = comparison?.decisions.find((item) => item.blockId === block.id) ?? null;
+  const options = drillOptions.length > 0 ? drillOptions : buildPracticeDrillOptions(block);
+
+  return (
+    <div className="grid gap-3">
+      <IOSGroupedList label="Selected drill detail" className="bg-card">
+        <IOSListRow label="Purpose" detail={block.purpose} />
+        <IOSListRow label="How to practise" detail={block.drill} />
+        <IOSListRow label="Success" detail={block.successTarget} />
+        <IOSListRow label="Record" detail={block.recordPrompt} />
+        <IOSListRow label="Scored from" detail={scoredFromLabel(block)} />
+        {decision ? (
+          <IOSListRow
+            label="Uploaded result"
+            value={practiceComparisonResultLabel(decision)}
+            detail={`${row.resultNote} ${decision.summary}`}
+          />
+        ) : null}
+      </IOSGroupedList>
+      <div className="[&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
+        <PracticeBlockEditControls
+          block={block}
+          options={options}
+          onBallCountChange={onBallCountChange}
+          onSwapDrill={onSwapDrill}
+          onSuggestDrill={onSuggestDrill}
+          disabled={isPending}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PracticeMobileResult({
+  comparison,
+  score,
+  summary,
+}: {
+  comparison: PracticeComparison | null;
+  score: PracticeScore | null;
+  summary: ReturnType<typeof summarizePracticeImportControl>;
+}) {
+  if (!comparison?.decisions.length) {
+    return (
+      <IOSGroupedList label="Practice result state" className="bg-card">
+        <IOSListRow
+          label="Waiting for measured evidence"
+          detail="Save and complete the practice, then link the matching launch-monitor session."
+          href="/import"
+          icon={Upload}
+        />
+      </IOSGroupedList>
+    );
+  }
+
+  return (
+    <IOSGroupedList label="Plan versus actual result" className="bg-card">
+      <IOSListRow
+        label="Planned drill score"
+        value={score ? `${score.score}/100` : "--"}
+        detail={score?.nextAction ?? comparison.nextRecommendation}
+        status={
+          <IOSInlineStatus
+            label={`${summary.matchedBlocks}/${summary.totalBlocks} blocks met planned volume`}
+            tone={summary.matchedBlocks === summary.totalBlocks ? "positive" : "attention"}
+          />
+        }
+      />
+      {comparison.decisions.map((decision) => (
+        <IOSListRow
+          key={decision.blockId}
+          label={decision.title}
+          value={practiceComparisonResultLabel(decision)}
+          detail={`${decision.actual} · ${decision.summary}`}
+          status={
+            <IOSInlineStatus
+              label={`${decision.actualBalls}/${decision.plannedBalls ?? "--"} planned shots`}
+              tone={decision.result === "passed" ? "positive" : "attention"}
+            />
+          }
+        />
+      ))}
+    </IOSGroupedList>
+  );
+}
+
+function PracticeMobileControlDetails({
+  context,
+  plan,
+  savedPlanId,
+  summary,
+  score,
+  comparison,
+  onAbandon,
+  onShowPracticeImage,
+  isPending,
+}: {
+  context: PracticePlannerContext;
+  plan: PracticePlan;
+  savedPlanId: string | null;
+  summary: ReturnType<typeof summarizePracticeImportControl>;
+  score: PracticeScore | null;
+  comparison: PracticeComparison | null;
+  onAbandon: () => void;
+  onShowPracticeImage: () => void;
+  isPending: boolean;
+}) {
+  const hasImport = Boolean(score || comparison?.sourceSessionId);
+  const plannedVolume =
+    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plan.totalBalls} balls`;
+
+  return (
+    <div className="grid gap-3">
+      <IOSGroupedList label="Practice session controls" className="bg-card">
+        <IOSListRow label="Planned" value={plannedVolume} detail={plan.title} />
+        <IOSListRow
+          label="Imported"
+          value={hasImport ? `${summary.importedBalls}/${summary.totalBalls}` : "0"}
+          detail={
+            hasImport
+              ? (comparison?.nextRecommendation ?? score?.nextAction)
+              : "Only a matching upload scores completion and effectiveness."
+          }
+        />
+        <IOSListRow
+          label="Coach note"
+          detail={
+            score
+              ? score.nextAction
+              : context.trainingLoad.highRecentLoad
+                ? "Technical practice only. Avoid speed chasing."
+                : plan.postSessionRules[0]
+          }
+        />
+        <IOSListRow label="Training load" detail={context.trainingLoad.recommendation} />
+        {hasImport ? (
+          <IOSListRow
+            label="Review latest session"
+            detail="Open the complete measured result and current recommendation."
+            href="/today"
+            icon={Target}
+          />
+        ) : savedPlanId ? (
+          <IOSListRow
+            label="Import after practice"
+            detail="Upload CSV or sync Rapsodo when this practice is finished."
+            href="/import"
+            icon={Upload}
+          />
+        ) : null}
+      </IOSGroupedList>
+      {savedPlanId ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onShowPracticeImage}
+          disabled={isPending}
+          className="min-h-11 rounded-xl"
+        >
+          <Eye className="size-4" />
+          Save practice reference
+        </Button>
+      ) : null}
+      {savedPlanId && !hasImport ? (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onAbandon}
+          disabled={isPending}
+          className="min-h-11 rounded-xl text-destructive hover:text-destructive"
+        >
+          Mark plan abandoned
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function PracticeMobileLedger({
+  blocks,
+  comparison,
+}: {
+  blocks: PracticeBlock[];
+  comparison: PracticeComparison | null;
+}) {
+  return (
+    <IOSGroupedList label="Practice block ledger rows" className="bg-card">
+      {blocks.map((block) => {
+        const row = compactPracticeBlockRow(block, comparison);
+
+        return (
+          <IOSListRow
+            key={block.id}
+            label={`${row.blockLabel} · ${row.title}`}
+            value={row.volumeLabel}
+            detail={`${row.clubLabel || "Mixed"} · ${row.successTarget}`}
+            status={
+              <IOSInlineStatus
+                label={`${row.statusLabel} · ${row.resultNote}`}
+                tone={row.importStatus === "matched_from_upload" ? "positive" : "neutral"}
+              />
+            }
+          />
+        );
+      })}
+    </IOSGroupedList>
+  );
+}
+
+function PracticeMobileLibrary({
+  templates,
+  savedPlans,
+  onUseTemplate,
+  onLoadSavedPlan,
+}: {
+  templates: PracticeTemplateView[];
+  savedPlans: SavedPracticePlan[];
+  onUseTemplate: (template: PracticeTemplateView) => void;
+  onLoadSavedPlan: (plan: SavedPracticePlan) => void;
+}) {
+  return (
+    <div className="grid gap-3">
+      <IOSSectionHeader title="Templates" description="Use only when it fits today's evidence." />
+      <IOSGroupedList label="Practice templates" className="bg-card">
+        {templates.slice(0, 5).map((template) => (
+          <button
+            key={template.id}
+            type="button"
+            onClick={() => onUseTemplate(template)}
+            className="ios-grouped-row focus-aaa min-h-14 w-full px-4 py-2.5 text-left outline-none active:bg-secondary"
+          >
+            <span className="block text-[15px] font-medium">{template.title}</span>
+            <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
+              {template.description}
+            </span>
+          </button>
+        ))}
+      </IOSGroupedList>
+      <IOSSectionHeader title="Saved plans" description={`${savedPlans.length} available`} />
+      <IOSGroupedList label="Saved practice plans" className="bg-card">
+        {savedPlans.length > 0 ? (
+          savedPlans.slice(0, 8).map((saved) => (
+            <button
+              key={saved.id}
+              type="button"
+              onClick={() => onLoadSavedPlan(saved)}
+              className="ios-grouped-row focus-aaa flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left outline-none active:bg-secondary"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-medium">{saved.title}</span>
+                <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                  {saved.totalBalls ? `${saved.totalBalls} balls · ` : ""}
+                  {saved.timeMinutes} min · {saved.focusClubs.join(", ") || "Baseline"}
+                </span>
+              </span>
+              <span className="shrink-0 text-[13px] capitalize text-muted-foreground">
+                {saved.status}
+              </span>
+            </button>
+          ))
+        ) : (
+          <IOSListRow
+            label="No saved user plans yet"
+            detail="Save today's plan to make it available here."
+          />
+        )}
+      </IOSGroupedList>
+    </div>
+  );
+}
+
+function practiceMobileStatusLabel(
+  plan: PracticePlan,
+  savedPlanId: string | null,
+  score: PracticeScore | null,
+  comparison: PracticeComparison | null,
+) {
+  if (score || comparison?.sourceSessionId) return "Measured";
+
+  const status = plan.status ?? (savedPlanId ? "planned" : "draft");
+
+  if (status === "awaiting_import" || status === "match_found") return "Awaiting upload";
+  if (status === "planned") return "Ready to start";
+  if (status === "abandoned") return "Abandoned";
+  if (status === "completed" || status === "analysed") return "Complete";
+  return "Draft";
 }
 
 function PracticePlanImageDialog({
@@ -577,8 +1251,8 @@ function PracticePlanImageDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="grid h-[calc(100vh-1rem)] max-h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)]">
-        <DialogHeader className="border-b bg-white p-4">
+      <DialogContent className="grid h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-[calc(100vw-2rem)]">
+        <DialogHeader className="border-b bg-card p-4 text-foreground">
           <DialogTitle>Saved practice reference</DialogTitle>
           <DialogDescription>
             Save this image to your phone so the range blocks are easy to follow.
@@ -586,21 +1260,21 @@ function PracticePlanImageDialog({
         </DialogHeader>
 
         <div className="grid min-h-0 overflow-hidden lg:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.1fr)]">
-          <div className="min-h-0 overflow-y-auto bg-[#f8f7ed] p-3 max-lg:bg-[#F2F2F7]">
-            <div className="overflow-hidden rounded-lg border bg-white shadow-inner">
-              <div className="rounded-t-lg bg-[#0b5130] p-4 text-white max-lg:border-b max-lg:border-slate-200 max-lg:bg-white max-lg:text-slate-950">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-100 max-lg:text-slate-500">
+          <div className="min-h-0 overflow-y-auto bg-muted p-3 lg:bg-[#f8f7ed]">
+            <div className="overflow-hidden rounded-lg border bg-card shadow-inner">
+              <div className="rounded-t-lg border-b border-border bg-card p-4 text-foreground lg:border-transparent lg:bg-[#0b5130] lg:text-white">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:text-emerald-100">
                   LM World Tour
                 </p>
                 <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-2xl font-semibold tracking-normal">{plan.title}</h3>
-                    <p className="mt-1 text-sm text-emerald-50 max-lg:text-slate-600">
+                    <p className="mt-1 text-sm text-muted-foreground lg:text-emerald-50">
                       {plan.summary}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-right max-lg:border-slate-200 max-lg:bg-[#F2F2F7]">
-                    <p className="text-xs uppercase tracking-wide text-emerald-100 max-lg:text-slate-500">
+                  <div className="rounded-lg border border-border bg-muted px-3 py-2 text-right lg:border-white/20 lg:bg-white/10">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground lg:text-emerald-100">
                       Reference
                     </p>
                     <p className="text-sm font-semibold">{plannedVolume}</p>
@@ -608,13 +1282,13 @@ function PracticePlanImageDialog({
                 </div>
               </div>
 
-              <div className="grid gap-2 bg-white p-3 sm:grid-cols-3">
+              <div className="grid gap-2 bg-card p-3 sm:grid-cols-3">
                 <MiniMetric label="Planned" value={plannedVolume} />
                 <MiniMetric label="Time" value={`${plan.estimatedTimeMinutes} min`} />
                 <MiniMetric label="Focus" value={focus} />
               </div>
 
-              <div className="grid gap-2 bg-white px-3 pb-3">
+              <div className="grid gap-2 bg-card px-3 pb-3">
                 {plan.blocks.map((block) => (
                   <div key={block.id} className="rounded-lg border bg-emerald-50/30 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -631,7 +1305,7 @@ function PracticePlanImageDialog({
                           {block.ballCount === null ? "min" : "balls"}
                         </p>
                       </div>
-                      <span className="rounded-md border bg-white px-2 py-1 text-xs font-semibold">
+                      <span className="rounded-md border bg-background px-2 py-1 text-xs font-semibold">
                         Target: {shortTarget(block.successTarget)}
                       </span>
                     </div>
@@ -642,14 +1316,14 @@ function PracticePlanImageDialog({
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto border-t bg-[#f6f4e7] p-3 max-lg:bg-[#F2F2F7] lg:border-l lg:border-t-0">
+          <div className="min-h-0 overflow-y-auto border-t bg-muted p-3 lg:border-l lg:border-t-0 lg:bg-[#f6f4e7]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">PNG preview</p>
               <Badge variant="outline">{pngPreviewUrl ? "Generated" : "Not generated"}</Badge>
             </div>
 
             {pngPreviewUrl ? (
-              <div className="mt-3 overflow-auto rounded-lg border bg-white p-2">
+              <div className="mt-3 overflow-auto rounded-lg border bg-card p-2">
                 <Image
                   src={pngPreviewUrl}
                   alt="Saved practice reference PNG preview"
@@ -660,7 +1334,7 @@ function PracticePlanImageDialog({
                 />
               </div>
             ) : (
-              <div className="mt-3 grid min-h-80 place-items-center rounded-lg border border-dashed bg-white p-6 text-center">
+              <div className="mt-3 grid min-h-80 place-items-center rounded-lg border border-dashed bg-card p-6 text-center">
                 <div className="max-w-sm">
                   <Eye className="mx-auto size-8 text-emerald-700" />
                   <p className="mt-3 text-sm font-semibold">Generate the practice PNG</p>
@@ -677,7 +1351,7 @@ function PracticePlanImageDialog({
           </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t bg-white p-3 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-2 border-t bg-card p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>

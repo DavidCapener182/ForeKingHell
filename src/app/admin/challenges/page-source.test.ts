@@ -10,7 +10,9 @@ const source = readFileSync(
 describe("admin challenges desktop console source", () => {
   it("uses the shared challenge operations workbench without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-challenges">');
+    expect(source).toContain(
+      '<DesktopWorkbenchLayout scope="admin-challenges" className="hidden lg:grid">',
+    );
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -34,5 +36,13 @@ describe("admin challenges desktop console source", () => {
     for (const column of ["challenge", "owner", "status", "participation", "ends", "action"]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("uses a status-filtered mobile challenge queue with templates disclosed", () => {
+    expect(source).toContain("AdminMobileShell");
+    expect(source).toContain("AdminMobileChallenges");
+    expect(source).toContain("MobileAdminChallengeRows");
+    expect(source).toContain("MobileTabBar");
+    expect(source).toContain("IOSDisclosureGroup");
   });
 });

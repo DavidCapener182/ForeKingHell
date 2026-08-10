@@ -26,15 +26,13 @@ import {
   DataPanel,
   DataPair,
   DataTableFrame,
-  MobileBentoSummary,
-  MobileDataCard,
   MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileRouteTabs } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +53,13 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { sessions, strokesGainedShotEvents } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -231,7 +236,9 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Home" group="dashboard" activeKey="strokes" />
+      <div className="lg:hidden">
+        <MobileRouteTabs group="dashboard" activeKey="strokes" sticky={false} />
+      </div>
 
       <DesktopWorkbenchLayout
         scope="strokes-gained"
@@ -303,7 +310,7 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           />
         }
       >
-        <div className="hidden items-center justify-between gap-4 sm:flex">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -321,7 +328,12 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
         <PageHeader
           eyebrow={<StatusPill tone="sky">Expected-strokes baseline</StatusPill>}
           title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}
-          description={heroDescription(analysis, activeCategory)}
+          description={
+            <>
+              <span className="lg:hidden">{mobileHeroDescription(analysis, activeCategory)}</span>
+              <span className="hidden lg:inline">{heroDescription(analysis, activeCategory)}</span>
+            </>
+          }
           metrics={heroMetrics(analysis, data.events.length, activeCategory)}
           visual={
             <PageArtwork
@@ -334,55 +346,83 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           }
         />
 
-        <MobileBentoSummary
-          items={mobileHeroMetrics(analysis, data.events.length, activeCategory)}
-        />
+        <div className="grid min-w-0 gap-4 lg:hidden">
+          <MobileScoringDiagnosis
+            analysis={analysis}
+            activeCategory={activeCategory}
+            totalEvents={data.events.length}
+          />
 
-        <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
+          <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
 
-        <CategoryNavTabs categories={analysis.categories} activeCategory={activeCategory} />
+          <CategoryNavTabs categories={analysis.categories} activeCategory={activeCategory} />
 
-        <CategoryCards
-          categories={analysis.categories}
-          activeCategory={activeCategory}
-          bestCategory={analysis.bestCategory}
-          weakestCategory={analysis.weakestCategory}
-        />
+          <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
 
-        <CategoryBreakdown
-          categories={analysis.categories}
-          total={analysis.totals.total}
-          categoryTotal={analysis.categoryTotal}
-          pendingCount={analysis.pendingCount}
-        />
+          <MobileCategorySummary
+            categories={analysis.categories}
+            activeCategory={activeCategory}
+            bestCategory={analysis.bestCategory}
+            weakestCategory={analysis.weakestCategory}
+          />
 
-        <GainLossWaterfall categories={analysis.categories} />
+          <MobileStrokesGainedDisclosures
+            analysis={analysis}
+            activeCategory={activeCategory}
+            gains={activeCategory ? scopedGains : analysis.biggestGains}
+            losses={activeCategory ? scopedLosses : analysis.biggestLosses}
+            rounds={activeCategory ? scopedRounds : analysis.rounds}
+            holes={activeCategory ? scopedHoles : analysis.holes}
+          />
+        </div>
 
-        <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
+        <div className="hidden lg:contents">
+          <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
 
-        <MainScoringLeak
-          summary={activeCategory ?? analysis.weakestCategory}
-          events={data.events}
-          focusCategory={activeCategory}
-        />
+          <CategoryNavTabs categories={analysis.categories} activeCategory={activeCategory} />
 
-        <ShotHighlights
-          gains={activeCategory ? scopedGains : analysis.biggestGains}
-          losses={activeCategory ? scopedLosses : analysis.biggestLosses}
-          focusCategory={activeCategory}
-        />
+          <CategoryCards
+            categories={analysis.categories}
+            activeCategory={activeCategory}
+            bestCategory={analysis.bestCategory}
+            weakestCategory={analysis.weakestCategory}
+          />
 
-        <RoundTrendPanel
-          rounds={activeCategory ? scopedRounds : analysis.rounds}
-          bestCategory={analysis.bestCategory}
-          weakestCategory={analysis.weakestCategory}
-          focusCategory={activeCategory}
-        />
+          <CategoryBreakdown
+            categories={analysis.categories}
+            total={analysis.totals.total}
+            categoryTotal={analysis.categoryTotal}
+            pendingCount={analysis.pendingCount}
+          />
 
-        <HoleImpactPanel
-          holes={activeCategory ? scopedHoles : analysis.holes}
-          focusCategory={activeCategory}
-        />
+          <GainLossWaterfall categories={analysis.categories} />
+
+          <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
+
+          <MainScoringLeak
+            summary={activeCategory ?? analysis.weakestCategory}
+            events={data.events}
+            focusCategory={activeCategory}
+          />
+
+          <ShotHighlights
+            gains={activeCategory ? scopedGains : analysis.biggestGains}
+            losses={activeCategory ? scopedLosses : analysis.biggestLosses}
+            focusCategory={activeCategory}
+          />
+
+          <RoundTrendPanel
+            rounds={activeCategory ? scopedRounds : analysis.rounds}
+            bestCategory={analysis.bestCategory}
+            weakestCategory={analysis.weakestCategory}
+            focusCategory={activeCategory}
+          />
+
+          <HoleImpactPanel
+            holes={activeCategory ? scopedHoles : analysis.holes}
+            focusCategory={activeCategory}
+          />
+        </div>
 
         <RecentShotEventsPanel
           events={filteredEvents}
@@ -573,6 +613,218 @@ function buildHoleSummaries(events: StrokesGainedEvent[]) {
     .filter((summary) => summary.sampleSize > 0);
 }
 
+function MobileScoringDiagnosis({
+  analysis,
+  activeCategory,
+  totalEvents,
+}: {
+  analysis: ReturnType<typeof buildStrokesGainedAnalysis>;
+  activeCategory: CategorySummary | null;
+  totalEvents: number;
+}) {
+  const mainLeak = analysis.weakestCategory;
+  const hasNegativeLeak = (mainLeak?.total ?? 0) < 0;
+
+  return (
+    <section className="grid min-w-0 gap-2" aria-labelledby="mobile-sg-diagnosis-title">
+      <IOSSectionHeader
+        title={<span id="mobile-sg-diagnosis-title">Scoring diagnosis</span>}
+        description="The answer first; supporting evidence stays available below."
+      />
+      <IOSGroupedList label="Strokes gained diagnosis">
+        {activeCategory ? (
+          <>
+            <IOSListRow
+              label={activeCategory.label}
+              value={<SgValue value={activeCategory.total} />}
+              detail={`${integerFormatter.format(activeCategory.sampleSize)} calculated from ${integerFormatter.format(activeCategory.eventCount)} mapped events`}
+              status={
+                <IOSInlineStatus
+                  label={
+                    activeCategory.total === null
+                      ? "Building baseline"
+                      : scoringSignalLabel(activeCategory.total)
+                  }
+                  tone={scoringSignalTone(activeCategory.total)}
+                />
+              }
+            />
+            <IOSListRow
+              label="Category role"
+              value={categoryStatus(activeCategory, analysis.bestCategory, mainLeak)}
+              detail={categoryRoleDetail(activeCategory)}
+            />
+          </>
+        ) : (
+          <>
+            <IOSListRow
+              label={hasNegativeLeak ? "Main scoring leak" : "Current focus"}
+              value={mainLeak?.label ?? "No data"}
+              detail={
+                mainLeak
+                  ? `${formatSg(mainLeak.total, "No data")} across ${integerFormatter.format(mainLeak.sampleSize)} calculated events`
+                  : `${integerFormatter.format(totalEvents)} mapped events; complete shot-to-hole data to identify the first leak.`
+              }
+              status={
+                <IOSInlineStatus
+                  label={
+                    mainLeak?.total === null || mainLeak?.total === undefined
+                      ? "Building baseline"
+                      : scoringSignalLabel(mainLeak.total)
+                  }
+                  tone={scoringSignalTone(mainLeak?.total ?? null)}
+                />
+              }
+            />
+            <IOSListRow
+              label="Strongest phase"
+              value={analysis.bestCategory?.label ?? "No data"}
+              detail={
+                analysis.bestCategory
+                  ? `${formatSg(analysis.bestCategory.total, "No data")} across ${integerFormatter.format(analysis.bestCategory.sampleSize)} calculated events`
+                  : "No calculated phase is available yet."
+              }
+            />
+          </>
+        )}
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileCategorySummary({
+  categories,
+  activeCategory,
+  bestCategory,
+  weakestCategory,
+}: {
+  categories: CategorySummary[];
+  activeCategory: CategorySummary | null;
+  bestCategory: CategorySummary | null;
+  weakestCategory: CategorySummary | null;
+}) {
+  return (
+    <section className="grid min-w-0 gap-2" aria-labelledby="mobile-sg-phases-title">
+      <IOSSectionHeader
+        title={<span id="mobile-sg-phases-title">Scoring phases</span>}
+        description="Open a phase-specific view without loading every chart."
+      />
+      <IOSGroupedList label="Strokes gained scoring phases">
+        {categories.map((category) => {
+          const status = categoryStatus(category, bestCategory, weakestCategory);
+          const active = activeCategory?.category === category.category;
+
+          return (
+            <IOSListRow
+              key={category.category}
+              label={category.label}
+              value={<SgValue value={category.total} />}
+              detail={`${integerFormatter.format(category.sampleSize)} calculated · ${integerFormatter.format(category.pendingCount)} pending`}
+              href={`/strokes-gained?category=${category.category}`}
+              ariaLabel={`${category.label}: ${formatSg(category.total, "No data")}. ${status}.`}
+              status={
+                <IOSInlineStatus
+                  label={active ? `Current · ${status}` : status}
+                  tone={categorySignalTone(category, bestCategory)}
+                />
+              }
+            />
+          );
+        })}
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileStrokesGainedDisclosures({
+  analysis,
+  activeCategory,
+  gains,
+  losses,
+  rounds,
+  holes,
+}: {
+  analysis: ReturnType<typeof buildStrokesGainedAnalysis>;
+  activeCategory: CategorySummary | null;
+  gains: StrokesGainedEvent[];
+  losses: StrokesGainedEvent[];
+  rounds: RoundSummary[];
+  holes: HoleSummary[];
+}) {
+  const calculatedPhaseCount = analysis.categories.filter(
+    (category) => category.sampleSize > 0,
+  ).length;
+
+  return (
+    <section className="grid min-w-0 gap-2" aria-labelledby="mobile-sg-evidence-title">
+      <IOSSectionHeader
+        title={<span id="mobile-sg-evidence-title">Supporting evidence</span>}
+        description="Open one section at a time when you need the detail."
+      />
+      <IOSDisclosureGroup
+        label="Strokes gained supporting evidence"
+        items={[
+          {
+            value: "phase-detail",
+            title: "Phase detail",
+            summary: `${integerFormatter.format(calculatedPhaseCount)}/${integerFormatter.format(analysis.categories.length)} · ${formatSg(analysis.categoryTotal)}`,
+            description: "Category bars and the gain/loss waterfall",
+            contentClassName:
+              "grid min-w-0 gap-3 px-2 [&_.premium-card]:min-w-0 [&_.premium-card]:shadow-none [&_a]:min-h-11",
+            content: (
+              <>
+                <CategoryBreakdown
+                  categories={analysis.categories}
+                  total={analysis.totals.total}
+                  categoryTotal={analysis.categoryTotal}
+                  pendingCount={analysis.pendingCount}
+                />
+                <GainLossWaterfall categories={analysis.categories} compactMobile />
+              </>
+            ),
+          },
+          {
+            value: "shot-evidence",
+            title: "Shot evidence",
+            summary: `${integerFormatter.format(gains.length)} gains · ${integerFormatter.format(losses.length)} losses`,
+            description: "The shots creating and costing the most value",
+            contentClassName:
+              "grid min-w-0 gap-3 px-2 [&_.premium-card]:min-w-0 [&_.premium-card]:shadow-none",
+            content: (
+              <ShotHighlights gains={gains} losses={losses} focusCategory={activeCategory} />
+            ),
+          },
+          {
+            value: "round-trend",
+            title: "Round trend",
+            summary: pluralise(rounds.length, "round"),
+            description: "How the current signal changes by round",
+            contentClassName:
+              "grid min-w-0 gap-3 px-2 [&_.premium-card]:min-w-0 [&_.premium-card]:shadow-none",
+            content: (
+              <RoundTrendPanel
+                rounds={rounds}
+                bestCategory={analysis.bestCategory}
+                weakestCategory={analysis.weakestCategory}
+                focusCategory={activeCategory}
+              />
+            ),
+          },
+          {
+            value: "hole-impact",
+            title: "Hole impact",
+            summary: pluralise(holes.length, "hole"),
+            description: "Best, costliest and most volatile holes",
+            contentClassName:
+              "grid min-w-0 gap-3 px-2 [&_.premium-card]:min-w-0 [&_.premium-card]:shadow-none",
+            content: <HoleImpactPanel holes={holes} focusCategory={activeCategory} />,
+          },
+        ]}
+      />
+    </section>
+  );
+}
+
 function CategoryCards({
   categories,
   activeCategory,
@@ -690,10 +942,10 @@ function CalculationCoverageStrip({
   const puttingMissing = !putting || putting.sampleSize === 0;
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Calculation coverage</p>
+          <p className="text-sm font-semibold text-foreground">Calculation coverage</p>
           <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
             {integerFormatter.format(analysis.totals.sampleSize)} /{" "}
             {integerFormatter.format(totalEvents)} events calculated ·{" "}
@@ -739,7 +991,7 @@ function CategoryNavTabs({
     <nav
       aria-label="Strokes gained views"
       tabIndex={0}
-      className="flex max-w-full gap-1 overflow-x-auto border-b border-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex max-w-full gap-1 overflow-x-auto border-b border-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {items.map((item) => (
         <Link
@@ -748,9 +1000,9 @@ function CategoryNavTabs({
           prefetch={false}
           aria-current={item.active ? "page" : undefined}
           className={cn(
-            "relative min-h-9 shrink-0 px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-950",
+            "relative flex min-h-11 shrink-0 items-center px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none lg:min-h-9",
             item.active
-              ? "text-slate-950 after:absolute after:inset-x-2 after:bottom-[-1px] after:h-0.5 after:bg-slate-950"
+              ? "text-foreground after:absolute after:inset-x-2 after:bottom-[-1px] after:h-0.5 after:bg-foreground"
               : "",
           )}
         >
@@ -789,9 +1041,9 @@ function CategoryBreakdown({
         action={<BarChart3 className="size-5 text-emerald-700" />}
       />
       <CardContent className="grid gap-3 p-4">
-        <div className="flex items-center justify-between gap-3 text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">
+        <div className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.08em] text-muted-foreground sm:text-xs sm:tracking-[0.14em]">
           <span>← Losing strokes</span>
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[#475467] shadow-sm">
+          <span className="rounded-full border border-border bg-card px-2 py-1 text-muted-foreground shadow-sm sm:px-3">
             0 baseline
           </span>
           <span>Gaining strokes →</span>
@@ -801,7 +1053,7 @@ function CategoryBreakdown({
             <CategoryBarRow key={category.category} category={category} maxAbsTotal={maxAbsTotal} />
           ))}
         </div>
-        <div className="grid gap-2.5 border-t border-slate-200 pt-3 sm:grid-cols-3">
+        <div className="grid gap-2.5 border-t border-border pt-3 sm:grid-cols-3">
           <CategorySummaryTile
             icon={CheckCircle2}
             tone="green"
@@ -840,7 +1092,7 @@ function CategoryBarRow({
   const visual = categoryVisual(category.category);
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <span
@@ -852,8 +1104,8 @@ function CategoryBarRow({
             <Target className="size-4" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-[#111827]">{category.label}</p>
-            <p className="truncate text-xs leading-4 text-[#667085]">
+            <p className="truncate text-sm font-bold text-foreground">{category.label}</p>
+            <p className="truncate text-xs leading-4 text-muted-foreground">
               {category.sampleSize > 0
                 ? `${integerFormatter.format(category.sampleSize)} calculated · ${integerFormatter.format(category.pendingCount)} pending`
                 : "No calculated events"}
@@ -864,8 +1116,8 @@ function CategoryBarRow({
           {formatSg(total, "No data")}
         </p>
       </div>
-      <div className="mt-2 grid h-2.5 grid-cols-2 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-inner">
-        <div className="flex items-center justify-end border-r border-[#667085]">
+      <div className="mt-2 grid h-2.5 grid-cols-2 overflow-hidden rounded-full border border-border bg-secondary shadow-inner">
+        <div className="flex items-center justify-end border-r border-muted-foreground">
           {total !== null && total < 0 ? (
             <span
               className="h-full rounded-l-full bg-[linear-gradient(90deg,#E5483F,#B42318)]"
@@ -904,39 +1156,56 @@ function CategorySummaryTile({
 }) {
   const toneClassName =
     tone === "green"
-      ? "bg-emerald-50 text-emerald-700"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/55 dark:text-emerald-300"
       : tone === "amber"
-        ? "bg-amber-50 text-amber-700"
-        : "bg-slate-100 text-slate-600";
+        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/55 dark:text-amber-300"
+        : "bg-secondary text-muted-foreground";
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
       <span className={cn("grid size-8 place-items-center rounded-full", toneClassName)}>
         <Icon className="size-4" />
       </span>
-      <p className="truncate text-sm font-medium text-[#344054]">{label}</p>
-      <p className={cn("text-lg font-bold tabular-nums text-[#111827]", valueClassName)}>{value}</p>
+      <p className="truncate text-sm font-medium text-muted-foreground">{label}</p>
+      <p className={cn("text-lg font-bold tabular-nums text-foreground", valueClassName)}>
+        {value}
+      </p>
     </div>
   );
 }
 
 function categoryVisual(category: string) {
   if (category === "tee") {
-    return { iconTileClassName: "border-red-100 bg-red-50 text-[#B42318]" };
+    return {
+      iconTileClassName:
+        "border-red-100 bg-red-50 text-[#B42318] dark:border-red-900/60 dark:bg-red-950/45 dark:text-red-300",
+    };
   }
 
   if (category === "approach") {
-    return { iconTileClassName: "border-emerald-100 bg-emerald-50 text-emerald-700" };
+    return {
+      iconTileClassName:
+        "border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/45 dark:text-emerald-300",
+    };
   }
 
   if (category === "short_game") {
-    return { iconTileClassName: "border-amber-100 bg-amber-50 text-amber-700" };
+    return {
+      iconTileClassName:
+        "border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/45 dark:text-amber-300",
+    };
   }
 
-  return { iconTileClassName: "border-slate-200 bg-slate-100 text-slate-600" };
+  return { iconTileClassName: "border-border bg-secondary text-muted-foreground" };
 }
 
-function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
+function GainLossWaterfall({
+  categories,
+  compactMobile = false,
+}: {
+  categories: CategorySummary[];
+  compactMobile?: boolean;
+}) {
   const calculated = categories.filter((category) => typeof category.total === "number");
   const values = calculated.map((category) => category.total ?? 0);
   const maxAbs = Math.max(1, ...values.map((value) => Math.abs(value)));
@@ -978,14 +1247,17 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
       />
       <CardContent>
         {calculated.length > 0 ? (
-          <div className="grid gap-3 overflow-hidden rounded-lg border border-[#DDE8DE] bg-[#F8FAF8] p-3 md:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)] md:items-stretch">
+          <div className="grid min-w-0 gap-3 overflow-hidden rounded-lg border border-border bg-secondary/35 p-3 md:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)] md:items-stretch">
             <svg
               viewBox="0 0 760 150"
               role="img"
               aria-label="Strokes gained waterfall"
-              className="h-32 w-full self-center"
+              className={cn(
+                "w-full self-center text-foreground",
+                compactMobile ? "h-auto min-h-28 max-w-full" : "h-32",
+              )}
             >
-              <line x1="40" x2="720" y1="68" y2="68" stroke="#B8C8B7" strokeWidth="2" />
+              <line x1="40" x2="720" y1="68" y2="68" className="stroke-border" strokeWidth="2" />
               {calculated.map((category, index) => {
                 const value = category.total ?? 0;
                 const height = Math.max(8, (Math.abs(value) / maxAbs) * 38);
@@ -1008,7 +1280,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                       x={x + Math.max(48, barWidth - 28) / 2}
                       y={value >= 0 ? y - 10 : y + height + 22}
                       textAnchor="middle"
-                      fill="#111827"
+                      className="fill-foreground"
                       fontSize="22"
                       fontWeight="800"
                     >
@@ -1018,7 +1290,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                       x={x + Math.max(48, barWidth - 28) / 2}
                       y="132"
                       textAnchor="middle"
-                      fill="#667085"
+                      className="fill-muted-foreground"
                       fontSize="18"
                       fontWeight="700"
                     >
@@ -1039,11 +1311,11 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                 { key: "pendingEvents", label: "Pending events" },
               ]}
               rows={waterfallRows}
-              className="h-full"
+              className={cn("h-full", compactMobile && "[&>details]:hidden")}
             />
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-[#DDE8DE] bg-[#F8FAF8] p-6 text-center text-sm leading-6 text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border bg-secondary/35 p-6 text-center text-sm leading-6 text-muted-foreground">
             Add calculated strokes-gained events to draw the gain/loss waterfall.
           </div>
         )}
@@ -1064,10 +1336,10 @@ function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null })
           <StatusPill tone={total !== null && total < 0 ? "pink" : "amber"}>
             Scoring priority
           </StatusPill>
-          <h2 className="mt-2 text-xl font-bold leading-7 tracking-normal text-[#111827]">
+          <h2 className="mt-2 text-xl font-bold leading-7 tracking-normal text-foreground">
             {title}
           </h2>
-          <p className="mt-1 text-sm leading-5 text-[#667085]">
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
             {practiceRecommendation(summary?.category)}
           </p>
         </div>
@@ -1079,7 +1351,7 @@ function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null })
           />
           <DataPair label="Confidence" value={hasCalculatedSignal ? "Actionable" : "Building"} />
         </div>
-        <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+        <Button asChild className="min-h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
           <Link href="/coach#more-drills" prefetch={false}>
             <Target className="size-4" />
             Start drill
@@ -1373,10 +1645,10 @@ function ShotHighlightPanel({
               href={`/rounds/${event.sessionId}`}
               prefetch={false}
               className={cn(
-                "block rounded-md border bg-white p-3 transition-colors",
+                "block rounded-md border bg-card p-3 transition-colors motion-reduce:transition-none",
                 tone === "gain"
-                  ? "border-emerald-100 hover:border-emerald-300"
-                  : "border-red-100 hover:border-red-300",
+                  ? "border-emerald-200 hover:border-emerald-400 dark:border-emerald-900/70"
+                  : "border-red-200 hover:border-red-400 dark:border-red-900/70",
               )}
             >
               <div className="flex items-start justify-between gap-3">
@@ -1385,7 +1657,7 @@ function ShotHighlightPanel({
                     <StatusPill tone={toneForSg(event.strokesGained)}>
                       {titleCase(event.category)}
                     </StatusPill>
-                    <span className="text-sm font-semibold text-slate-950">
+                    <span className="text-sm font-semibold text-foreground">
                       Hole {event.holeNumber ?? "?"}
                     </span>
                   </div>
@@ -1438,7 +1710,7 @@ function RoundTrendPanel({
         action={<Flag className="size-5 text-emerald-700" />}
       />
       <CardContent className="grid gap-4">
-        <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm leading-6 text-muted-foreground">
+        <p className="rounded-md border border-border bg-secondary/55 px-3 py-2 text-sm leading-6 text-muted-foreground">
           {roundSignal(rounds, bestCategory, weakestCategory, focusCategory)}
         </p>
         <div className="grid gap-3 md:grid-cols-2">
@@ -1447,11 +1719,11 @@ function RoundTrendPanel({
               key={round.sessionId}
               href={`/rounds/${round.sessionId}`}
               prefetch={false}
-              className="grid gap-2 rounded-md border border-slate-200 bg-white p-3 transition-colors hover:border-sky-300"
+              className="grid gap-2 rounded-md border border-border bg-card p-3 transition-colors hover:border-sky-400 motion-reduce:transition-none"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">
+                  <p className="truncate text-sm font-semibold text-foreground">
                     {round.courseName ?? "Mapped round"}
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
@@ -1535,8 +1807,8 @@ function HoleImpactList({ title, holes }: { title: string; holes: HoleSummary[] 
   const maxAbsTotal = Math.max(1, ...holes.map((hole) => Math.abs(hole.total ?? 0)));
 
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-3">
-      <p className="text-sm font-semibold text-slate-950">{title}</p>
+    <div className="rounded-md border border-border bg-card p-3">
+      <p className="text-sm font-semibold text-foreground">{title}</p>
       <div className="mt-2 grid gap-2">
         {holes.length > 0 ? (
           holes.map((hole) => (
@@ -1569,8 +1841,8 @@ function HoleImpactSingle({
   action?: string;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-3">
-      <p className="text-sm font-semibold text-slate-950">{title}</p>
+    <div className="rounded-md border border-border bg-card p-3">
+      <p className="text-sm font-semibold text-foreground">{title}</p>
       {hole ? (
         <div className="mt-2 grid gap-2">
           <div className="flex items-center justify-between gap-3">
@@ -1586,7 +1858,7 @@ function HoleImpactSingle({
             <Link
               href="/coach#more-drills"
               prefetch={false}
-              className="text-xs font-semibold text-emerald-700 hover:underline"
+              className="inline-flex min-h-11 items-center text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
             >
               {action}
             </Link>
@@ -1615,36 +1887,42 @@ function RecentShotEventsPanel({
   return (
     <DataPanel id="events">
       <details open={activeFilterChips.length > 0} className="group">
-        <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <summary className="ios-grouped-row flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-16 lg:gap-4 lg:py-3 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
-            <span className="block text-base font-semibold tracking-normal sm:text-lg">
+            <span className="block text-[15px] font-medium leading-5 text-foreground lg:text-lg lg:font-semibold">
               Recent shot events
             </span>
-            <span className="mt-0.5 block text-sm text-muted-foreground">
+            <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground lg:text-sm">
               {integerFormatter.format(events.length)} matching rows from{" "}
               {integerFormatter.format(totalEvents)} mapped events.
             </span>
           </span>
-          <span className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-            <ListFilter className="size-4" />
-            Expand table
-            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+          <span className="inline-flex min-h-11 shrink-0 items-center gap-2 text-sm font-medium text-muted-foreground lg:rounded-lg lg:border lg:border-border lg:bg-card lg:px-3 lg:font-semibold">
+            <ListFilter className="hidden size-4 lg:block" aria-hidden />
+            <span className="lg:hidden">{integerFormatter.format(events.length)}</span>
+            <span className="hidden lg:inline">Expand table</span>
+            <ChevronDown
+              className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+              aria-hidden
+            />
           </span>
         </summary>
-        <CardContent className="grid gap-4 border-t border-slate-200">
+        <CardContent className="grid min-w-0 gap-4 border-t border-border p-3 lg:p-6">
           <QuickFilters filters={filters} />
           <StrokesGainedFilterForm filters={filters} options={filterOptions} />
           {activeFilterChips.length > 0 ? <ActiveFilterChips items={activeFilterChips} /> : null}
-          <DesktopTableWorkbenchControls
-            viewKey="strokes-gained-events"
-            scope="strokes-gained"
-            currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
-            resultLabel={`${integerFormatter.format(events.length)} rows`}
-            columns={strokesGainedEventColumns}
-            suggestedViews={strokesGainedSuggestedViews}
-            exportTableId="strokes-gained-events"
-            exportFileName="forekinghell-strokes-gained-events.csv"
-          />
+          <div className="hidden lg:block">
+            <DesktopTableWorkbenchControls
+              viewKey="strokes-gained-events"
+              scope="strokes-gained"
+              currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
+              resultLabel={`${integerFormatter.format(events.length)} rows`}
+              columns={strokesGainedEventColumns}
+              suggestedViews={strokesGainedSuggestedViews}
+              exportTableId="strokes-gained-events"
+              exportFileName="forekinghell-strokes-gained-events.csv"
+            />
+          </div>
           <StrokesGainedEventTable events={events} />
         </CardContent>
       </details>
@@ -1696,9 +1974,15 @@ function QuickFilters({ filters }: { filters: StrokesGainedFilters }) {
   ];
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
       {shortcuts.map((shortcut) => (
-        <Button key={shortcut.label} asChild variant="outline" size="sm">
+        <Button
+          key={shortcut.label}
+          asChild
+          variant="outline"
+          size="sm"
+          className="min-h-11 shrink-0 lg:min-h-9"
+        >
           <Link href={shortcut.href} prefetch={false}>
             {shortcut.label}
           </Link>
@@ -1723,11 +2007,15 @@ function StrokesGainedFilterForm({
   filters: StrokesGainedFilters;
   options: FilterOptions;
 }) {
-  const inputClassName = "rounded-lg border bg-white/90 px-3 py-2 text-sm";
+  const inputClassName =
+    "min-h-11 w-full min-w-0 max-w-full rounded-lg border border-input bg-background px-3 py-2 text-base sm:text-sm lg:min-h-0";
 
   return (
-    <form method="get" className="apple-panel grid gap-3 p-3 md:grid-cols-3 xl:grid-cols-6">
-      <label className="grid gap-1 text-sm font-medium">
+    <form
+      method="get"
+      className="apple-panel grid min-w-0 grid-cols-2 gap-3 overflow-hidden p-3 md:grid-cols-3 xl:grid-cols-6"
+    >
+      <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Round
         <select name="sessionId" defaultValue={filters.sessionId} className={inputClassName}>
           <option value="">All rounds</option>
@@ -1738,7 +2026,7 @@ function StrokesGainedFilterForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Category
         <select name="category" defaultValue={filters.category} className={inputClassName}>
           <option value="">All categories</option>
@@ -1749,7 +2037,7 @@ function StrokesGainedFilterForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         Hole
         <select name="hole" defaultValue={filters.hole} className={inputClassName}>
           <option value="">All holes</option>
@@ -1760,7 +2048,7 @@ function StrokesGainedFilterForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         Start lie
         <select name="startLie" defaultValue={filters.startLie} className={inputClassName}>
           <option value="">Any start lie</option>
@@ -1771,7 +2059,7 @@ function StrokesGainedFilterForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         End lie
         <select name="endLie" defaultValue={filters.endLie} className={inputClassName}>
           <option value="">Any end lie</option>
@@ -1782,7 +2070,7 @@ function StrokesGainedFilterForm({
           ))}
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         SG result
         <select name="sg" defaultValue={filters.sg} className={inputClassName}>
           <option value="">All SG results</option>
@@ -1791,15 +2079,15 @@ function StrokesGainedFilterForm({
           <option value="pending">Not calculated</option>
         </select>
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         From
         <input type="date" name="from" defaultValue={filters.from} className={inputClassName} />
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
         To
         <input type="date" name="to" defaultValue={filters.to} className={inputClassName} />
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Sort
         <select name="sort" defaultValue={filters.sort} className={inputClassName}>
           <option value="recent">Most recent</option>
@@ -1809,9 +2097,11 @@ function StrokesGainedFilterForm({
           <option value="category">By category</option>
         </select>
       </label>
-      <div className="flex items-end gap-2 md:col-span-3 xl:col-span-6">
-        <Button type="submit">Apply filters</Button>
-        <Button asChild variant="outline">
+      <div className="col-span-2 grid grid-cols-2 items-end gap-2 md:col-span-3 md:flex xl:col-span-6">
+        <Button type="submit" className="min-h-11">
+          Apply filters
+        </Button>
+        <Button asChild variant="outline" className="min-h-11">
           <Link href="/strokes-gained#events" prefetch={false}>
             Reset
           </Link>
@@ -1828,42 +2118,38 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
       mainTableLabel="Strokes gained event table"
       stickyFirstColumn
       mobile={
-        <MobileDataList
-          empty={
-            <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-              No event rows match these filters.
-            </p>
-          }
-        >
-          {events.map((event) => (
-            <MobileDataCard
-              key={event.id}
-              title={`${titleCase(event.category)} - ${holeShotLabel(event)}`}
-              subtitle={`${event.courseName ?? "Round"} - ${formatDate(event.sessionDate)}`}
-              href={`/rounds/${event.sessionId}`}
-              action={<SgValue value={event.strokesGained} />}
-            >
-              <DataPair
-                label="Start"
-                value={formatPosition(event.startDistanceYd, event.startLie)}
+        <IOSGroupedList label="Recent strokes gained events">
+          {events.length > 0 ? (
+            events.map((event) => (
+              <IOSListRow
+                key={event.id}
+                label={`${holeShotLabel(event)} · ${titleCase(event.category)}`}
+                value={<SgValue value={event.strokesGained} />}
+                detail={
+                  <>
+                    {event.courseName ?? "Round"} · {formatDate(event.sessionDate)}
+                    <br />
+                    {formatPosition(event.startDistanceYd, event.startLie)} →{" "}
+                    {formatPosition(event.endDistanceYd, event.endLie)}
+                  </>
+                }
+                status={
+                  <IOSInlineStatus
+                    label={event.strokesGained === null ? "Pending" : "Calculated"}
+                    tone={event.strokesGained === null ? "attention" : "neutral"}
+                  />
+                }
+                href={`/rounds/${event.sessionId}`}
+                ariaLabel={`${titleCase(event.category)}, ${holeShotLabel(event)}, ${formatSg(event.strokesGained)}, ${event.courseName ?? "Round"}`}
               />
-              <DataPair label="End" value={formatPosition(event.endDistanceYd, event.endLie)} />
-              <DataPair label="Distance change" value={formatDistanceChange(event)} />
-              <DataPair
-                label="Expected before"
-                value={formatExpectedStrokes(expectedStrokesForEvent(event, "start"))}
-              />
-              <DataPair
-                label="Expected after"
-                value={formatExpectedStrokes(expectedStrokesForEvent(event, "end"))}
-              />
-              <DataPair
-                label="Status"
-                value={event.strokesGained === null ? "Pending" : "Calculated"}
-              />
-            </MobileDataCard>
-          ))}
-        </MobileDataList>
+            ))
+          ) : (
+            <IOSListRow
+              label="No matching events"
+              detail="Adjust or reset the current filters to see shot evidence."
+            />
+          )}
+        </IOSGroupedList>
       }
     >
       <div className="max-h-[560px] overflow-auto">
@@ -1880,41 +2166,41 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
             <TableRow>
               <TableHead
                 data-column="round"
-                className="sticky left-0 top-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 top-0 z-20 bg-card shadow-[1px_0_0_rgba(15,23,42,0.08)]"
               >
                 Round
               </TableHead>
-              <TableHead data-column="hole" className="sticky top-0 z-10 bg-white">
+              <TableHead data-column="hole" className="sticky top-0 z-10 bg-card">
                 Hole
               </TableHead>
-              <TableHead data-column="category" className="sticky top-0 z-10 bg-white">
+              <TableHead data-column="category" className="sticky top-0 z-10 bg-card">
                 Category
               </TableHead>
-              <TableHead data-column="from" className="sticky top-0 z-10 bg-white">
+              <TableHead data-column="from" className="sticky top-0 z-10 bg-card">
                 From
               </TableHead>
-              <TableHead data-column="to" className="sticky top-0 z-10 bg-white">
+              <TableHead data-column="to" className="sticky top-0 z-10 bg-card">
                 To
               </TableHead>
-              <TableHead data-column="distance" className="sticky top-0 z-10 bg-white">
+              <TableHead data-column="distance" className="sticky top-0 z-10 bg-card">
                 Distance
               </TableHead>
               <TableHead
                 data-column="expected-before"
-                className="sticky top-0 z-10 bg-white text-right"
+                className="sticky top-0 z-10 bg-card text-right"
               >
                 Expected before
               </TableHead>
               <TableHead
                 data-column="expected-after"
-                className="sticky top-0 z-10 bg-white text-right"
+                className="sticky top-0 z-10 bg-card text-right"
               >
                 Expected after
               </TableHead>
-              <TableHead data-column="sg" className="sticky top-0 z-10 bg-white text-right">
+              <TableHead data-column="sg" className="sticky top-0 z-10 bg-card text-right">
                 SG
               </TableHead>
-              <TableHead data-column="status" className="sticky top-0 z-10 bg-white">
+              <TableHead data-column="status" className="sticky top-0 z-10 bg-card">
                 Status
               </TableHead>
             </TableRow>
@@ -1925,7 +2211,7 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
                 <TableRow key={event.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="round"
-                    className="sticky left-0 z-10 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-48 bg-card shadow-[1px_0_0_rgba(15,23,42,0.08)]"
                   >
                     <Link
                       href={`/rounds/${event.sessionId}`}
@@ -2019,6 +2305,31 @@ function heroDescription(
   return `${analysis.bestCategory.label} is the clearest strength so far. No negative category has separated across ${eventText} and ${roundText}. Positive numbers gained value; negative numbers lost value.`;
 }
 
+function mobileHeroDescription(
+  analysis: ReturnType<typeof buildStrokesGainedAnalysis>,
+  activeCategory: CategorySummary | null,
+) {
+  if (activeCategory) {
+    if (activeCategory.sampleSize === 0) {
+      return `${activeCategory.label} does not yet have calculated events.`;
+    }
+
+    return activeCategory.total !== null && activeCategory.total < 0
+      ? `${activeCategory.label} is costing ${formatSg(activeCategory.total)} strokes across ${integerFormatter.format(activeCategory.sampleSize)} calculated events.`
+      : `${activeCategory.label} is gaining ${formatSg(activeCategory.total, "0.0")} strokes across ${integerFormatter.format(activeCategory.sampleSize)} calculated events.`;
+  }
+
+  if (!analysis.bestCategory) {
+    return "Map shot-to-hole rounds to build this scoring review.";
+  }
+
+  if (analysis.weakestCategory?.total !== null && analysis.weakestCategory.total < 0) {
+    return `${analysis.weakestCategory.label} is the main scoring leak; ${analysis.bestCategory.label} is the strongest phase.`;
+  }
+
+  return `${analysis.bestCategory.label} is the clearest strength; no negative phase has separated.`;
+}
+
 function heroMetrics(
   analysis: ReturnType<typeof buildStrokesGainedAnalysis>,
   totalEvents: number,
@@ -2077,20 +2388,33 @@ function heroMetrics(
   ];
 }
 
-function mobileHeroMetrics(
-  analysis: ReturnType<typeof buildStrokesGainedAnalysis>,
-  totalEvents: number,
-  activeCategory: CategorySummary | null,
-) {
-  const metrics = heroMetrics(analysis, totalEvents, activeCategory);
-  const filteredMetrics = !activeCategory && metrics.length > 1 ? metrics.slice(1) : metrics;
+function scoringSignalLabel(value: number) {
+  if (value < 0) return "Losing strokes";
+  if (value > 0) return "Gaining strokes";
+  return "Neutral";
+}
 
-  return filteredMetrics.map((metric) => ({
-    label: metric.label,
-    value: metric.value,
-    detail: metric.detail,
-    tone: toneForMetricLabel(metric.label, metric.value),
-  }));
+function scoringSignalTone(value: number | null) {
+  if (value === null) return "attention" as const;
+  if (value < 0) return "critical" as const;
+  if (value > 0) return "positive" as const;
+  return "neutral" as const;
+}
+
+function categorySignalTone(category: CategorySummary, bestCategory: CategorySummary | null) {
+  if (category.sampleSize === 0 || hasHighPendingCount(category)) {
+    return "attention" as const;
+  }
+
+  if ((category.total ?? 0) < 0) {
+    return "critical" as const;
+  }
+
+  if (bestCategory?.category === category.category || (category.total ?? 0) > 0) {
+    return "positive" as const;
+  }
+
+  return "neutral" as const;
 }
 
 function categoryStatus(
@@ -2242,7 +2566,7 @@ function SgHorizontalBar({ value, maxAbs }: { value: number | null; maxAbs: numb
   const width = value === null ? 0 : Math.max(6, Math.min(100, (Math.abs(value) / maxAbs) * 100));
 
   return (
-    <div className="grid h-3 grid-cols-2 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
+    <div className="grid h-3 grid-cols-2 overflow-hidden rounded-full border border-border bg-secondary">
       <div className="flex items-center justify-end border-r border-slate-500">
         {value !== null && value < 0 ? (
           <span className="h-full rounded-l-full bg-[#B42318]" style={{ width: `${width}%` }} />
@@ -2316,18 +2640,6 @@ function coveragePercentLabel(sampleSize: number, eventCount: number) {
   }
 
   return `${integerFormatter.format(Math.round((sampleSize / eventCount) * 100))}%`;
-}
-
-function toneForMetricLabel(label: string, value: React.ReactNode) {
-  const text = typeof value === "string" ? value : "";
-
-  if (text.startsWith("-")) return "pink" as const;
-  if (text.startsWith("+")) return "green" as const;
-  if (label === "Coverage" && text !== "100%") return "amber" as const;
-  if (label === "Main leak") return "pink" as const;
-  if (label === "Best category" || label === "Category role") return "sky" as const;
-
-  return "slate" as const;
 }
 
 function buildFilterOptions(events: StrokesGainedEvent[]): FilterOptions {
@@ -2628,10 +2940,10 @@ function toneForSg(value: number | null) {
 }
 
 function sgTextClassName(value: number | null) {
-  if (value === null) return "text-[#667085]";
-  if (value < 0) return "text-[#B42318]";
-  if (value > 0) return "text-[#087A3D]";
-  return "text-[#667085]";
+  if (value === null) return "text-muted-foreground";
+  if (value < 0) return "text-[#B42318] dark:text-red-300";
+  if (value > 0) return "text-[#087A3D] dark:text-emerald-300";
+  return "text-muted-foreground";
 }
 
 function categoryCardClassName(category: CategorySummary) {

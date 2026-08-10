@@ -14,6 +14,7 @@ import {
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
+  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -22,7 +23,14 @@ import {
   label,
   PlanBadge,
 } from "@/app/admin/admin-components";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { BottomSheet, MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +46,7 @@ type AdminUsersPageProps = {
     adminError?: string;
     sort?: string;
     dir?: string;
+    view?: string;
   }>;
 };
 
@@ -100,14 +109,38 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const sortedUsers = sortAdminUsers(users, sortState);
   const adminCount = users.filter((user) => user.adminRole).length;
   const lifetimeCount = users.filter((user) => user.activePlan === "full").length;
+  const mobileView = parseAdminUserMobileView(params?.view);
+  const mobileUsers = sortedUsers.filter((user) => {
+    if (mobileView === "admins") return Boolean(user.adminRole);
+    if (mobileView === "paid") return user.activePlan !== "free";
+    return true;
+  });
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="admin" />
-      <AdminNav active="/admin/users" />
-      <AdminNotice status={params?.adminStatus} error={params?.adminError} />
+      <AdminMobileShell
+        title="Users"
+        active="/admin/users"
+        status={params?.adminStatus}
+        error={params?.adminError}
+      >
+        <AdminMobileUsers
+          users={mobileUsers}
+          allUsers={users}
+          actorUserId={actor.userId}
+          canManageOwners={canManageOwners}
+          query={params?.q ?? ""}
+          mobileView={mobileView}
+          sortState={sortState}
+        />
+      </AdminMobileShell>
 
-      <DesktopWorkbenchLayout scope="admin-users">
+      <div className="hidden gap-3 lg:grid">
+        <AdminNav active="/admin/users" />
+        <AdminNotice status={params?.adminStatus} error={params?.adminError} />
+      </div>
+
+      <DesktopWorkbenchLayout scope="admin-users" className="hidden lg:grid">
         <AdminPageHeader
           eyebrow="Admin users"
           title="Users and access"
@@ -350,6 +383,239 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type AdminUserMobileView = "all" | "admins" | "paid";
+
+function AdminMobileUsers({
+  users,
+  allUsers,
+  actorUserId,
+  canManageOwners,
+  query,
+  mobileView,
+  sortState,
+}: {
+  users: AdminUserListItem[];
+  allUsers: AdminUserListItem[];
+  actorUserId: string;
+  canManageOwners: boolean;
+  query: string;
+  mobileView: AdminUserMobileView;
+  sortState: AdminUserSortState;
+}) {
+  const primaryUsers = users.slice(0, 12);
+  const olderUsers = users.slice(12);
+  const adminUsers = allUsers.filter((user) => user.adminRole && user.id !== actorUserId);
+  const paidCount = allUsers.filter((user) => user.activePlan !== "free").length;
+
+  return (
+    <>
+      <MobileStatusAction
+        label={query ? "Search results" : "Accounts in view"}
+        value={users.length}
+        detail={`${adminUsers.length} manageable admins · ${paidCount} paid/full accounts`}
+        action={
+          <BottomSheet label="Search" title="Find user">
+            <MobileAdminUserSearchForm query={query} sortState={sortState} />
+          </BottomSheet>
+        }
+      />
+
+      <MobileTabBar
+        activeKey={mobileView}
+        ariaLabel="Filter admin users"
+        tabs={[
+          { key: "all", label: "All", href: adminUserMobileHref("all", query) },
+          { key: "admins", label: "Admins", href: adminUserMobileHref("admins", query) },
+          { key: "paid", label: "Paid", href: adminUserMobileHref("paid", query) },
+        ]}
+      />
+
+      <section className="grid gap-2" aria-label="Admin user directory">
+        <IOSSectionHeader
+          title="User directory"
+          description={query ? `Filtered by “${query}”` : "Latest accounts first"}
+          action={<MobileUserTools canManageOwners={canManageOwners} />}
+        />
+        <MobileAdminUserRows users={primaryUsers} />
+        {olderUsers.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More admin users"
+            items={[
+              {
+                value: "more-admin-users",
+                title: "More accounts",
+                summary: olderUsers.length,
+                description: "Additional users in this view",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileAdminUserRows users={olderUsers} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      {adminUsers.length > 0 && canManageOwners ? (
+        <IOSDisclosureGroup
+          label="Admin access management"
+          items={[
+            {
+              value: "admin-access-management",
+              title: "Manage admin access",
+              summary: adminUsers.length,
+              description: "Deactivate an owner or operator role",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: (
+                <IOSGroupedList label="Manage admin access rows" className="border-0">
+                  {adminUsers.map((user) => (
+                    <IOSListRow
+                      key={user.id}
+                      label={user.displayName}
+                      detail={`${user.email ?? "No email"} · ${label(user.adminRole ?? "admin")}`}
+                      trailing={
+                        <form action={deactivateAdminAccessAction}>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <AdminConfirmSubmitButton
+                            confirmMessage={`Deactivate admin access for ${user.displayName}? This removes their active admin role and writes an audit entry.`}
+                            variant="outline"
+                            className="min-h-11"
+                          >
+                            Deactivate
+                          </AdminConfirmSubmitButton>
+                        </form>
+                      }
+                    />
+                  ))}
+                </IOSGroupedList>
+              ),
+            },
+          ]}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function MobileAdminUserRows({ users }: { users: AdminUserListItem[] }) {
+  return (
+    <IOSGroupedList label="Admin user account rows">
+      {users.length > 0 ? (
+        users.map((user) => (
+          <IOSListRow
+            key={user.id}
+            label={user.displayName}
+            value={label(user.activePlan)}
+            detail={`${user.email ?? "No email"} · ${user.sessionCount} sessions · ${user.feedCount} cards`}
+            href={`/admin/users?q=${encodeURIComponent(user.email ?? user.displayName)}`}
+            status={
+              user.adminRole ? (
+                <IOSInlineStatus label={label(user.adminRole)} tone="info" />
+              ) : undefined
+            }
+          />
+        ))
+      ) : (
+        <IOSListRow label="No accounts found" detail="Try a different search or account filter." />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function MobileAdminUserSearchForm({
+  query,
+  sortState,
+}: {
+  query: string;
+  sortState: AdminUserSortState;
+}) {
+  return (
+    <form action="/admin/users" className="grid gap-3">
+      <input type="hidden" name="sort" value={sortState.metric} />
+      <input type="hidden" name="dir" value={sortState.dir} />
+      <label className="grid gap-1 text-sm font-medium">
+        Email, name or username
+        <Input
+          type="search"
+          name="q"
+          defaultValue={query}
+          placeholder="Search accounts"
+          autoCapitalize="none"
+          autoCorrect="off"
+          className="h-11"
+        />
+      </label>
+      <Button type="submit" className="min-h-11">
+        <Search className="size-4" />
+        Search
+      </Button>
+    </form>
+  );
+}
+
+function MobileUserTools({ canManageOwners }: { canManageOwners: boolean }) {
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      {canManageOwners ? (
+        <BottomSheet label="Full" title="Grant lifetime full">
+          <form action={grantLifetimeFullAction} className="grid gap-3">
+            <input type="hidden" name="returnTo" value="/admin/users" />
+            <label className="grid gap-1 text-sm font-medium">
+              User email
+              <Input name="email" type="email" className="h-11" required />
+            </label>
+            <AdminConfirmSubmitButton
+              type="submit"
+              className="min-h-11"
+              confirmTitle="Grant lifetime full access"
+              confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
+              confirmActionLabel="Grant full access"
+            >
+              <Zap className="size-4" />
+              Grant full access
+            </AdminConfirmSubmitButton>
+          </form>
+        </BottomSheet>
+      ) : null}
+      <BottomSheet label="Admin" title="Grant admin access">
+        <form action={grantAdminAccessAction} className="grid gap-3">
+          <input type="hidden" name="returnTo" value="/admin/users" />
+          <label className="grid gap-1 text-sm font-medium">
+            User email
+            <Input name="email" type="email" className="h-11" required />
+          </label>
+          <label className="grid gap-1 text-sm font-medium">
+            Admin role
+            <select name="role" defaultValue="operator" className="min-h-11 rounded-lg border px-3">
+              <option value="operator">Operator</option>
+              {canManageOwners ? <option value="owner">Owner</option> : null}
+            </select>
+          </label>
+          <AdminConfirmSubmitButton
+            type="submit"
+            className="min-h-11"
+            confirmTitle="Grant admin access"
+            confirmMessage="Grant admin access to this email? Owner and operator roles can change platform operations."
+            confirmActionLabel="Grant admin"
+          >
+            <UserPlus className="size-4" />
+            Grant admin
+          </AdminConfirmSubmitButton>
+        </form>
+      </BottomSheet>
+    </div>
+  );
+}
+
+function parseAdminUserMobileView(value: string | undefined): AdminUserMobileView {
+  return value === "admins" || value === "paid" ? value : "all";
+}
+
+function adminUserMobileHref(view: AdminUserMobileView, query: string) {
+  const params = new URLSearchParams();
+  params.set("view", view);
+  if (query.trim()) params.set("q", query.trim());
+  return `/admin/users?${params.toString()}`;
 }
 
 function SortableAdminUserHead({

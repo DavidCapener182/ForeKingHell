@@ -35,15 +35,19 @@ import {
 } from "@/components/premium";
 import {
   BottomSheet,
-  CourseCard,
   MobileAppShell,
-  MobileIconButton,
   MobileRouteTabs,
   MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
 import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -246,15 +250,12 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
     .filter(Boolean)
     .join(" · ");
   const mobileCourses = sortedDisplayedCourses;
-  const mobileCourseLimit =
-    activeTab === "patterns" ? patternCourses.length : activeTab === "records" ? 12 : 8;
 
   return (
     <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title="Courses"
-          leading={<MobileIconButton href="/courses" label="Search courses" icon={Search} />}
           actions={
             <BottomSheet
               label={
@@ -263,7 +264,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                 </>
               }
               title="Course filters"
-              triggerClassName="bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+              triggerClassName="bg-card text-foreground ring-1 ring-border"
             >
               <form className="grid gap-3">
                 <input type="hidden" name="tab" value={activeTab} />
@@ -273,14 +274,14 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                     name="q"
                     defaultValue={query}
                     placeholder="Search course, country, or provider"
-                    className="h-11 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+                    className="h-11 rounded-lg border border-border bg-background px-3 text-sm text-foreground"
                   />
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                  <Button type="submit" className="min-h-11 rounded-full bg-[#0B7A3B] text-white">
                     Search
                   </Button>
-                  <Button asChild variant="outline" className="rounded-full">
+                  <Button asChild variant="outline" className="min-h-11 rounded-full">
                     <Link href="/courses" prefetch={false}>
                       Reset
                     </Link>
@@ -298,7 +299,6 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
             { key: "records", label: "Records", href: "/courses" },
             { key: "patterns", label: "Patterns", href: "/courses?tab=patterns" },
             { key: "played", label: "Played", href: "/courses?tab=played" },
-            { key: "favourites", label: "Favourites", href: "/courses?tab=favourites" },
             { key: "manage", label: "Manage", href: "/courses?tab=manage" },
           ]}
         />
@@ -315,7 +315,10 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
               : `${integerFormatter.format(data.championCount)} verified champions · ${integerFormatter.format(roundLinkedCourses.length)} played courses`
           }
           action={
-            <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+            <Button
+              asChild
+              className="min-h-11 rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            >
               <Link
                 href={
                   activeTab === "patterns" && patternCourses[0]
@@ -334,36 +337,38 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
             title="Course management"
             description="Search, seed, create and edit course data from here."
             action={
-              <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Button asChild variant="outline" size="sm" className="min-h-11 rounded-full">
                 <Link href="/courses/new" prefetch={false}>
                   New
                 </Link>
               </Button>
             }
           >
-            <div className="grid gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3">
+            <div className="grid gap-3">
               <form action={seedKnownCoursesAction}>
-                <Button type="submit" variant="outline" className="w-full rounded-full">
+                <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
                   <RefreshCw className="size-4" />
                   Seed known courses
                 </Button>
               </form>
-              {sortedDisplayedCourses.slice(0, 8).map((course) => (
-                <Link
-                  key={course.id}
-                  href={`/courses/${course.id}/holes`}
-                  prefetch={false}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-[#E5E7EB] py-3 text-sm first:border-t-0"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold">{course.name}</span>
-                    <span className="block truncate text-[#6B7280]">
-                      {course.teeSetCount} tee sets · {course.holeCount} mapped holes
-                    </span>
-                  </span>
-                  <Settings className="size-4 text-[#6B7280]" />
-                </Link>
-              ))}
+              <IOSGroupedList label="Courses to manage">
+                {sortedDisplayedCourses.map((course) => (
+                  <IOSListRow
+                    key={course.id}
+                    icon={Settings}
+                    label={course.name}
+                    value={`${course.holeCount} holes`}
+                    detail={`${course.teeSetCount} tee sets · ${course.sourceLabel}`}
+                    href={`/courses/${course.id}/holes`}
+                    status={
+                      <IOSInlineStatus
+                        label={courseQualitySummary(course)}
+                        tone={courseQualityTone(course) === "green" ? "positive" : "attention"}
+                      />
+                    }
+                  />
+                ))}
+              </IOSGroupedList>
             </div>
           </NativeListSection>
         ) : (
@@ -385,87 +390,26 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                   : undefined
             }
           >
-            {mobileCourses.slice(0, mobileCourseLimit).map((course, index) => (
-              <CourseCard
-                key={course.id}
-                href={
-                  activeTab === "patterns"
-                    ? `/courses/${course.id}/shot-pattern`
-                    : `/courses/${course.id}/records`
-                }
-                title={course.name}
-                subtitle={course.country ?? "Course board"}
-                media={
-                  <PageArtwork
-                    variant={courseArtworkVariant(course)}
-                    alt=""
-                    crop={courseArtworkCrop(course)}
-                    cropKey={course.id}
-                    className="block h-36 min-h-0 rounded-lg"
-                    sizes="calc(100vw - 2rem)"
-                    priority={index === 0}
-                  />
-                }
-                champion={
-                  course.champion ? (
-                    <span>
-                      Champion: <span className="font-semibold">{course.champion.displayName}</span>
-                    </span>
-                  ) : (
-                    <span>No verified champion yet</span>
-                  )
-                }
-                stats={
-                  <>
-                    <span>{course.sourceLabel}</span>
-                    <span>{course.recordCount} record boards</span>
-                    <span>{course.roundCount} played rounds</span>
-                    <span>{course.teeSetCount} tee sets</span>
-                    <span>{course.holeCount} mapped holes</span>
-                  </>
-                }
-                actions={
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
-                    >
-                      <Link href={`/courses/${course.id}/records`} prefetch={false}>
-                        <Trophy className="size-4" />
-                        Records
-                      </Link>
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="min-h-10 rounded-full border-[#D7DEE2] bg-white px-3 text-[#050505]"
-                    >
-                      <Link href={`/courses/${course.id}/holes`} prefetch={false}>
-                        <Settings className="size-4" />
-                        Map
-                      </Link>
-                    </Button>
-                    {shotPatternEnabled && course.holeCount > 0 ? (
-                      <Button
-                        asChild
-                        size="sm"
-                        className="col-span-2 min-h-10 rounded-full bg-[#0B7A3B] px-3 text-white hover:bg-[#064E3B]"
-                      >
-                        <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
-                          <MapPinned className="size-4" />
-                          Shot pattern
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                }
-              />
-            ))}
+            <IOSGroupedList label="Course directory">
+              {mobileCourses.map((course) => (
+                <IOSListRow
+                  key={course.id}
+                  icon={activeTab === "patterns" ? MapPinned : Trophy}
+                  label={course.name}
+                  value={mobileCourseValue(course, activeTab)}
+                  detail={mobileCourseDetail(course, activeTab)}
+                  href={mobileCourseHref(course, activeTab)}
+                  status={
+                    <IOSInlineStatus
+                      label={mobileCourseStatus(course, activeTab)}
+                      tone={mobileCourseStatusTone(course, activeTab)}
+                    />
+                  }
+                />
+              ))}
+            </IOSGroupedList>
             {mobileCourses.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[#D7DEE2] bg-white p-4 text-sm leading-5 text-[#6B7280]">
+              <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm leading-5 text-muted-foreground">
                 {activeTab === "patterns"
                   ? "No mapped course patterns yet. Open Manage to map course holes first."
                   : "No courses match this view yet."}
@@ -473,8 +417,41 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
             ) : null}
           </NativeListSection>
         )}
-        <CourseDataQualityPanel courses={displayedCourses} />
-        <CourseFollowFeaturePanel data={featureData} courseId={focusCourse?.id ?? null} />
+        <IOSDisclosureGroup
+          label="Course directory supporting detail"
+          items={[
+            {
+              value: "readiness",
+              title: "Course data readiness",
+              summary: `${mappedCourses.length}/${data.courses.length} mapped`,
+              description: "Mapping, ratings, providers and linked rounds",
+              content: (
+                <IOSGroupedList label="Course data readiness metrics">
+                  <IOSListRow label="Mapped courses" value={String(mappedCourses.length)} />
+                  <IOSListRow label="Rated tee sets" value={String(data.ratedTeeSetCount)} />
+                  <IOSListRow label="Linked rounds" value={String(data.roundCount)} />
+                  <IOSListRow label="Record boards" value={String(data.recordCount)} />
+                  <IOSListRow
+                    label="Manage course data"
+                    detail="Edit tee sets, mapping and provider details"
+                    href="/courses?tab=manage"
+                  />
+                </IOSGroupedList>
+              ),
+              contentClassName: "px-0",
+            },
+            {
+              value: "alerts",
+              title: "Course alerts and following",
+              summary: "Optional",
+              description: "Keep course updates without crowding the directory",
+              content: (
+                <CourseFollowFeaturePanel data={featureData} courseId={focusCourse?.id ?? null} />
+              ),
+              contentClassName: "px-2",
+            },
+          ]}
+        />
       </MobileAppShell>
 
       <DesktopWorkbenchLayout
@@ -543,7 +520,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
           />
         }
       >
-        <div className="hidden items-center justify-between gap-4 sm:flex">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -566,7 +543,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
           </div>
         </div>
 
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <PageHeader
             eyebrow={<StatusPill tone="green">Course hub</StatusPill>}
             title="Courses"
@@ -1052,6 +1029,67 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
   );
 }
 
+function mobileCourseHref(
+  course: CourseDirectoryCourse,
+  activeTab: ReturnType<typeof parseCourseTab>,
+) {
+  if (activeTab === "patterns") {
+    return `/courses/${course.id}/shot-pattern`;
+  }
+
+  if (activeTab === "manage") {
+    return `/courses/${course.id}/holes`;
+  }
+
+  return `/courses/${course.id}/records`;
+}
+
+function mobileCourseValue(
+  course: CourseDirectoryCourse,
+  activeTab: ReturnType<typeof parseCourseTab>,
+) {
+  if (activeTab === "patterns") return `${course.holeCount} holes`;
+  if (activeTab === "played") return `${course.roundCount} rounds`;
+  return `${course.recordCount} boards`;
+}
+
+function mobileCourseDetail(
+  course: CourseDirectoryCourse,
+  activeTab: ReturnType<typeof parseCourseTab>,
+) {
+  const location = course.country ?? "Course";
+
+  if (activeTab === "patterns") {
+    return `${location} · ${course.teeSetCount} tee sets · ${course.sourceLabel}`;
+  }
+
+  if (activeTab === "played") {
+    return `${location} · ${course.recordCount} record boards`;
+  }
+
+  return course.champion
+    ? `${location} · champion ${course.champion.displayName}`
+    : `${location} · no verified champion yet`;
+}
+
+function mobileCourseStatus(
+  course: CourseDirectoryCourse,
+  activeTab: ReturnType<typeof parseCourseTab>,
+) {
+  if (activeTab === "patterns") return "Overlay ready";
+  if (activeTab === "played") return "Played course";
+  if (course.championVerificationStatus === "verified") return "Verified champion";
+  return "Open board";
+}
+
+function mobileCourseStatusTone(
+  course: CourseDirectoryCourse,
+  activeTab: ReturnType<typeof parseCourseTab>,
+): Parameters<typeof IOSInlineStatus>[0]["tone"] {
+  if (activeTab === "patterns" || activeTab === "played") return "info";
+  return course.championVerificationStatus === "verified" ? "positive" : "attention";
+}
+
 function CoursesPageLoading() {
   return (
     <PageShell>
@@ -1064,7 +1102,7 @@ function CoursesPageLoading() {
           <div className="h-48 animate-pulse rounded-lg bg-[#E5E7EB]" />
         </div>
       </MobileAppShell>
-      <div className="hidden gap-4 sm:grid">
+      <div className="hidden gap-4 lg:grid">
         <div className="h-48 animate-pulse rounded-lg bg-muted" />
         <div className="grid gap-3 md:grid-cols-3">
           <div className="h-32 animate-pulse rounded-lg bg-muted" />

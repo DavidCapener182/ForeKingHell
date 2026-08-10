@@ -1,16 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  Award,
-  Copy,
-  Globe2,
-  Lock,
-  MessageCircle,
-  Plus,
-  Settings,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { Copy, Globe2, Lock, MessageCircle, Plus, Trophy, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { createGroupPostAction } from "@/app/groups/actions";
@@ -20,6 +10,15 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+  type IOSDisclosureItem,
+} from "@/components/app/ios-mobile";
+import { BottomSheet, MobileAppShell, MobileStatusAction } from "@/components/mobile-sports";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -63,12 +62,9 @@ const groupTabs = [
   { label: "Feed", href: "#feed" },
   { label: "Leaderboard", href: "#leaderboard" },
   { label: "Operations", href: "#group-operations" },
-  { label: "Records", href: "#records" },
-  { label: "Tournaments", href: "#tournaments" },
   { label: "Challenges", href: "#challenges" },
   { label: "Members", href: "#members" },
-  { label: "Invite", href: "#invite" },
-  { label: "Settings", href: "#settings" },
+  { label: "Access", href: "#access" },
 ];
 
 const groupMemberColumns: DesktopWorkbenchColumn[] = [
@@ -99,7 +95,68 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
 
   return (
     <PageShell>
-      <DesktopWorkbenchLayout scope="group-detail">
+      <MobileAppShell>
+        <header className="ios-large-title min-w-0">
+          <h1 className="min-w-0 [overflow-wrap:anywhere]">{data.group.name}</h1>
+        </header>
+        <MobileStatusAction
+          label={`${label(data.group.groupType)} · ${data.group.memberCount === 1 ? "Member" : "Members"}`}
+          value={data.group.memberCount}
+          detail={`${data.group.postCount} posts · ${data.group.challengeCount} linked challenges`}
+          action={
+            data.canPost ? (
+              <BottomSheet
+                label={
+                  <>
+                    <Plus className="size-4" /> Post
+                  </>
+                }
+                title={`Post to ${data.group.name}`}
+              >
+                <GroupPostForm data={data} mobile />
+              </BottomSheet>
+            ) : undefined
+          }
+        />
+
+        {flags?.created || flags?.posted ? (
+          <IOSGroupedList label="Group update status">
+            <IOSListRow
+              label="Group updated"
+              detail={flags.posted ? "Your group post was saved." : "The group was created."}
+              status={<IOSInlineStatus label="Saved" tone="positive" />}
+            />
+          </IOSGroupedList>
+        ) : null}
+
+        <IOSGroupedList label="Group summary">
+          <IOSListRow
+            label="Visibility"
+            value={label(data.group.visibility)}
+            icon={data.group.visibility === "public" ? Globe2 : Lock}
+          />
+          <IOSListRow
+            label="Your role"
+            value={data.canAdmin ? "Admin" : label(data.group.viewerRole ?? "viewer")}
+            status={
+              <IOSInlineStatus
+                label={data.canPost ? "Can post" : "Read only"}
+                tone={data.canPost ? "positive" : "neutral"}
+              />
+            }
+          />
+          <IOSListRow
+            label="Weekly rivalry"
+            value={`${data.rivalry.standings.length} ranked`}
+            detail={data.rivalry.sourceLabel}
+          />
+        </IOSGroupedList>
+
+        <MobileGroupFeed data={data} />
+        <MobileGroupDetails data={data} />
+      </MobileAppShell>
+
+      <DesktopWorkbenchLayout scope="group-detail" className="hidden lg:grid">
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <section className="grid gap-4">
             <header className="premium-hero overflow-hidden">
@@ -128,9 +185,8 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                       <Trophy className="size-3" />
                       {data.group.challengeCount} challenges
                     </Badge>
-                    <Badge variant="outline" className="gap-1">
-                      <Award className="size-3" />
-                      records ready
+                    <Badge variant="outline">
+                      {data.canAdmin ? "Admin" : label(data.group.viewerRole ?? "Viewer")}
                     </Badge>
                   </div>
                 </div>
@@ -168,29 +224,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
 
             {data.canPost ? (
               <section id="feed" className="premium-card p-4">
-                <form action={createGroupPostAction} className="grid gap-3">
-                  <input type="hidden" name="groupId" value={data.group.id} />
-                  <input type="hidden" name="slug" value={data.group.slug} />
-                  <Input
-                    name="title"
-                    placeholder="Post title"
-                    className="h-9 rounded-lg bg-white"
-                  />
-                  <textarea
-                    name="body"
-                    rows={3}
-                    placeholder="Share a league update, challenge note or session recap"
-                    className="rounded-lg border bg-white px-3 py-2 text-sm"
-                    required
-                  />
-                  <Button
-                    type="submit"
-                    className="w-fit rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                  >
-                    <Plus className="size-4" />
-                    Post to group
-                  </Button>
-                </form>
+                <GroupPostForm data={data} />
               </section>
             ) : null}
 
@@ -232,40 +266,6 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                   </article>
                 ))
               )}
-            </section>
-
-            <section id="records" className="premium-card p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Group records</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Friend and group scopes keep course champions separate from public boards.
-                  </p>
-                </div>
-                <Button asChild variant="outline">
-                  <Link href="/course-records" prefetch={false}>
-                    <Award className="size-4" />
-                    Open records
-                  </Link>
-                </Button>
-              </div>
-            </section>
-
-            <section id="tournaments" className="premium-card p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Group tournaments</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Run society opens, order-of-merit seasons and major-style events with proof.
-                  </p>
-                </div>
-                <Button asChild variant="outline">
-                  <Link href="/tournaments" prefetch={false}>
-                    <Trophy className="size-4" />
-                    Open events
-                  </Link>
-                </Button>
-              </div>
             </section>
 
             <section id="members" className="premium-card p-4">
@@ -324,20 +324,6 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                   value={data.group.challengeCount}
                 />
               </div>
-              <div className="mt-3 grid gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/course-records" prefetch={false}>
-                    <Award className="size-4" />
-                    Records
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                  <Link href="/tournaments" prefetch={false}>
-                    <Trophy className="size-4" />
-                    Tournaments
-                  </Link>
-                </Button>
-              </div>
             </section>
 
             <section id="challenges" className="premium-card p-4">
@@ -374,7 +360,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               </section>
             ) : null}
 
-            {data.group.inviteCode ? (
+            {data.canAdmin && data.group.inviteCode ? (
               <section id="invite" className="premium-card p-4">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <Copy className="size-4 text-emerald-600" />
@@ -394,18 +380,19 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               </section>
             ) : null}
 
-            <section id="settings" className="premium-card p-4">
+            <section id="access" className="premium-card p-4">
               <p className="flex items-center gap-2 text-sm font-semibold">
-                <Settings className="size-4 text-slate-700" />
-                Settings
+                <Lock className="size-4 text-slate-700" />
+                Access
               </p>
               <div className="mt-3 grid gap-2 text-sm text-muted-foreground">
                 <p>
-                  Groups are private by default. Admin controls can manage rules, invites and linked
-                  challenges.
+                  {data.canAdmin
+                    ? "Your current group role has admin authority. Invite and rule information is available above."
+                    : "Only a group admin can manage invite and rule settings. Your current view remains read-only for those controls."}
                 </p>
                 <Badge variant="outline" className="w-fit">
-                  {data.group.ownerUserId ? "Admin controls ready" : "Member view"}
+                  {data.canAdmin ? "Admin" : label(data.group.viewerRole ?? "Viewer")}
                 </Badge>
               </div>
             </section>
@@ -414,6 +401,253 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+function GroupPostForm({ data, mobile = false }: { data: GroupDetailData; mobile?: boolean }) {
+  return (
+    <form action={createGroupPostAction} className="grid gap-3">
+      <input type="hidden" name="groupId" value={data.group.id} />
+      <input type="hidden" name="slug" value={data.group.slug} />
+      <label className="grid gap-1 text-sm font-medium">
+        <span>
+          Title <span className="font-normal text-muted-foreground">(optional)</span>
+        </span>
+        <Input
+          name="title"
+          placeholder="Group update"
+          className={mobile ? "h-11 rounded-lg bg-white" : "h-9 rounded-lg bg-white"}
+        />
+      </label>
+      <label className="grid gap-1 text-sm font-medium">
+        <span>Update</span>
+        <textarea
+          name="body"
+          rows={mobile ? 5 : 3}
+          placeholder="Share a league update, challenge note or session recap"
+          className="rounded-lg border bg-white px-3 py-2 text-sm"
+          required
+        />
+      </label>
+      <Button
+        type="submit"
+        className={
+          mobile
+            ? "w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+            : "w-fit rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+        }
+      >
+        <Plus className="size-4" />
+        Post to group
+      </Button>
+    </form>
+  );
+}
+
+function MobileGroupFeed({ data }: { data: GroupDetailData }) {
+  return (
+    <section className="grid gap-2" aria-label="Group feed">
+      <IOSSectionHeader
+        title="Group feed"
+        description={`${data.posts.length} ${data.posts.length === 1 ? "post" : "posts"}`}
+      />
+      <IOSGroupedList label="Group posts">
+        {data.posts.length > 0 ? (
+          data.posts.map((post) => (
+            <IOSListRow
+              key={post.id}
+              label={post.title ?? `${post.profile.displayName}'s update`}
+              value={post.pinned ? "Pinned" : undefined}
+              detail={`${post.profile.displayName} · ${dateFormatter.format(post.createdAt)} · ${summarizeGroupPost(post.body)}`}
+              href={`/profile/${post.profile.username}`}
+              leading={
+                <SocialAvatar
+                  displayName={post.profile.displayName}
+                  username={post.profile.username}
+                  avatarUrl={post.profile.avatarUrl}
+                  size="sm"
+                />
+              }
+              status={
+                post.pinned ? <IOSInlineStatus label="Pinned update" tone="info" /> : undefined
+              }
+            />
+          ))
+        ) : (
+          <IOSListRow
+            label="No group posts yet"
+            detail={
+              data.canPost
+                ? "Use Post above to share the first group update."
+                : "A group member can add the first update."
+            }
+          />
+        )}
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileGroupDetails({ data }: { data: GroupDetailData }) {
+  const detailItems: IOSDisclosureItem[] = [
+    {
+      value: "rivalry-standings",
+      title: "Weekly rivalry",
+      summary: `${data.rivalry.standings.length} ranked`,
+      description: `${weekDateFormatter.format(data.rivalry.startsAt)} - ${weekDateFormatter.format(data.rivalry.endsAt)} · ${data.rivalry.sourceLabel}`,
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Weekly rivalry standings" className="border-0">
+          {data.rivalry.standings.length > 0 ? (
+            data.rivalry.standings.map((standing, index) => (
+              <IOSListRow
+                key={standing.userId}
+                label={`#${index + 1} · ${standing.displayName}`}
+                value={`${standing.points} pts`}
+                detail={standing.summary}
+                href={standing.username ? `/profile/${standing.username}` : undefined}
+              />
+            ))
+          ) : (
+            <IOSListRow
+              label="No rivalry standings yet"
+              detail="Scored rounds from active members will build this week’s board."
+            />
+          )}
+        </IOSGroupedList>
+      ),
+    },
+    {
+      value: "rivalry-pairings",
+      title: "Head-to-head pairings",
+      summary: `${data.rivalry.pairings.length}`,
+      description: "Pairings calculated from the current weekly standings",
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Weekly rivalry pairings" className="border-0">
+          {data.rivalry.pairings.length > 0 ? (
+            data.rivalry.pairings.map((pairing) => (
+              <IOSListRow
+                key={`${pairing.userAId}:${pairing.userBId ?? "bye"}`}
+                label={`${pairing.userALabel} vs ${pairing.userBLabel}`}
+                value={`${pairing.userAScore}-${pairing.userBScore ?? "--"}`}
+                detail={pairing.summary}
+              />
+            ))
+          ) : (
+            <IOSListRow
+              label="No pairings yet"
+              detail="Add members and scored rounds to generate pairings."
+            />
+          )}
+        </IOSGroupedList>
+      ),
+    },
+    {
+      value: "linked-challenges",
+      title: "Linked challenges",
+      summary: `${data.challenges.length}`,
+      description: "Challenge boards attached to this group",
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Linked group challenges" className="border-0">
+          {data.challenges.length > 0 ? (
+            data.challenges.map((challenge) => (
+              <IOSListRow
+                key={challenge.id}
+                label={challenge.title}
+                value={label(challenge.status)}
+                detail={challenge.templateName}
+                href={`/challenges/${challenge.id}`}
+                status={<IOSInlineStatus label="Linked board" tone="info" />}
+              />
+            ))
+          ) : (
+            <IOSListRow
+              label="No linked challenges"
+              detail="This group does not have a linked challenge board yet."
+            />
+          )}
+        </IOSGroupedList>
+      ),
+    },
+    {
+      value: "members",
+      title: "Members",
+      summary: `${data.members.length}`,
+      description: "Active roster and current roles",
+      contentClassName: "px-0 pb-0 pt-0",
+      content: (
+        <IOSGroupedList label="Group members" className="border-0">
+          {data.members.length > 0 ? (
+            data.members.map((member) => (
+              <IOSListRow
+                key={member.userId}
+                label={member.displayName}
+                value={label(member.role)}
+                detail={`@${member.username}`}
+                href={`/profile/${member.username}`}
+                leading={
+                  <SocialAvatar
+                    displayName={member.displayName}
+                    username={member.username}
+                    avatarUrl={member.avatarUrl}
+                    size="sm"
+                  />
+                }
+              />
+            ))
+          ) : (
+            <IOSListRow label="No active members" detail="The active roster is empty." />
+          )}
+        </IOSGroupedList>
+      ),
+    },
+  ];
+
+  if (data.group.rules) {
+    detailItems.push({
+      value: "rules",
+      title: "Group rules",
+      summary: "Read",
+      description: "Rules stored for this group",
+      content: (
+        <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+          {data.group.rules}
+        </p>
+      ),
+    });
+  }
+
+  if (data.canAdmin && data.group.inviteCode) {
+    detailItems.push({
+      value: "invite",
+      title: "Invite",
+      summary: "Admin",
+      description: "QR code and invite code for this group",
+      content: (
+        <div className="grid gap-3">
+          <div className="rounded-xl border bg-white p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/groups/qr/${data.group.inviteCode}`}
+              alt={`QR invite for ${data.group.name}`}
+              className="mx-auto aspect-square w-full max-w-40"
+            />
+          </div>
+          <p className="break-all rounded-lg bg-secondary px-3 py-2 font-mono text-xs">
+            {data.group.inviteCode}
+          </p>
+        </div>
+      ),
+    });
+  }
+
+  return <IOSDisclosureGroup label="Group details" items={detailItems} />;
+}
+
+function summarizeGroupPost(value: string) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  return normalized.length > 140 ? `${normalized.slice(0, 137)}…` : normalized;
 }
 
 function SideMetric({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
@@ -440,8 +674,7 @@ function GroupOperationsBoard({ data }: { data: GroupDetailData }) {
         <div>
           <h2 className="text-xl font-semibold tracking-normal">Group operations board</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Desktop roster, rivalry and linked challenge controls for running the group without
-            scanning every card.
+            Desktop roster, rivalry and linked challenge review without scanning every card.
           </p>
         </div>
         <StatusPill tone={data.members.length > 0 ? "green" : "slate"}>
@@ -601,9 +834,9 @@ function GroupChallengeTable({
     <section className="grid gap-3" data-workbench-scope="group-challenges">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold">Linked challenge control</p>
+          <p className="text-sm font-semibold">Linked challenge review</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Challenge boards connected to this group, ready for review or tournament conversion.
+            Challenge boards that are genuinely connected to this group.
           </p>
         </div>
         <StatusPill tone={challenges.length > 0 ? "amber" : "slate"}>
@@ -829,9 +1062,9 @@ function groupChallengeSuggestedViews(slug: string): DesktopSavedViewSuggestion[
       detail: "Open active, invited and recommended challenge boards.",
     },
     {
-      title: "Tournaments",
-      href: "/tournaments",
-      detail: "Convert suitable group events into tournament workflows.",
+      title: "Group overview",
+      href: `/groups/${slug}`,
+      detail: "Return to the current group feed and weekly summary.",
     },
   ];
 }

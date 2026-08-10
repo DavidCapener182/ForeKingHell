@@ -17,6 +17,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
 import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
+import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { DataHealthFeaturePanel, ProfileFeaturePanel } from "@/components/features/feature-panels";
 import {
   MobileAppShell,
@@ -148,6 +149,15 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     ...profile.visibilitySettingsJson,
   };
   const completion = profileCompletion(profile);
+  const cleanShotPercentage =
+    progressSummary.totals.shots > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (progressSummary.totals.trackedCleanShots / progressSummary.totals.shots) * 100,
+          ),
+        )
+      : 0;
   const pbShowcase = profile.pbShowcaseJson.slice(0, 3);
   const achievementShowcase = profile.achievementShowcaseJson.slice(0, 4);
   const profileFormId = "profile-settings-form";
@@ -207,8 +217,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             { key: "activity", label: "Activity", href: "/profile?tab=activity" },
           ]}
         />
-        <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
-        <DataHealthFeaturePanel data={featureData} />
         {activeTab === "records" ? (
           <NativeListSection title="Records">
             <div className="grid grid-cols-2 gap-2">
@@ -319,11 +327,23 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         {activeTab === "progress" ? (
           <NativeListSection title="This week">
             <ProgressCard
-              title="Sessions"
-              value={Math.max(0, Math.ceil(progressSummary.totals.trackedCleanShots / 120))}
-              detail={`${progressSummary.totals.shots} total shots · best club ${progressSummary.rankings.mostTrusted?.clubType ?? "--"}`}
+              title="Clean shots"
+              value={progressSummary.totals.trackedCleanShots}
+              detail={`${cleanShotPercentage}% of ${progressSummary.totals.shots} tracked shots · best club ${progressSummary.rankings.mostTrusted?.clubType ?? "--"}`}
             >
-              <div className="h-16 rounded-lg bg-[linear-gradient(90deg,#0B7A3B_0_18%,#16A34A_18%_42%,#E5E7EB_42%_100%)]" />
+              <div
+                className="h-2 overflow-hidden rounded-full bg-secondary"
+                role="progressbar"
+                aria-label="Clean shot coverage"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={cleanShotPercentage}
+              >
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${cleanShotPercentage}%` }}
+                />
+              </div>
             </ProgressCard>
             <div className="grid grid-cols-2 gap-2">
               <PBCard
@@ -341,7 +361,36 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </div>
           </NativeListSection>
         ) : null}
-        <ProfileFeaturePanel data={featureData} />
+        <NativeListSection title="Profile controls">
+          <IOSDisclosureGroup
+            label="Profile controls and evidence"
+            items={[
+              {
+                value: "sharing",
+                title: "Sharing preview",
+                summary: profile.publicProfile ? "Public" : "Private",
+                description: "What public visitors, friends and coaches can see",
+                content: (
+                  <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
+                ),
+              },
+              {
+                value: "data-health",
+                title: "Data health",
+                summary: `${progressSummary.totals.trackedCleanShots} clean`,
+                description: "Coverage and quality behind this profile",
+                content: <DataHealthFeaturePanel data={featureData} />,
+              },
+              {
+                value: "profile-features",
+                title: "Profile features",
+                summary: "Status",
+                description: "Public identity and showcase availability",
+                content: <ProfileFeaturePanel data={featureData} />,
+              },
+            ]}
+          />
+        </NativeListSection>
       </MobileAppShell>
 
       <DesktopWorkbenchLayout scope="profile">

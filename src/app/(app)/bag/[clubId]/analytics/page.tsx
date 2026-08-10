@@ -22,6 +22,14 @@ import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
+import { DataWarning } from "@/components/app/evidence-status";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -78,6 +86,7 @@ type PageProps = {
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
+const MOBILE_EVIDENCE_LIMIT = 12;
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
 const clubAnalyticsPrompts = [
@@ -142,7 +151,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
 
   return (
     <PageShell>
-      <div className="flex items-center justify-between gap-4">
+      <div className="hidden items-center justify-between gap-4 lg:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href={`/bag/${club.id}`} prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -207,366 +216,803 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           />
         }
       >
-        <PageHeader
-          eyebrow={<StatusPill tone="sky">Advanced club analytics</StatusPill>}
-          title={`${clubName} analytics`}
-          description={`${brandModel}. Distance, direction, launch, strike, delivery, trust, gapping, and coach-style recommendations from saved launch-monitor data.`}
-          actions={
-            <Button
-              asChild
-              size="lg"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href={`/bag/${club.id}`} prefetch={false}>
-                <Target className="size-4" />
-                Standard club view
-              </Link>
-            </Button>
-          }
-          metrics={[
-            {
-              label: "Best stock",
-              value: formatYards(analytics.distance.stockCarryYd),
-              detail: `${integerFormatter.format(analytics.sample.stockShots)} clean stock shots`,
-            },
-            {
-              label: "Trust index",
-              value: `${analytics.consistency.clubTrustIndex}%`,
-              detail: analytics.consistency.confidenceLabel,
-            },
-            {
-              label: "Playable rate",
-              value: formatRate(analytics.accuracy.playableShotRate),
-              detail: `Recommended ${formatYards(analytics.distance.stockPlayNumberYd)}`,
-            },
-            {
-              label: "Launch window",
-              value: formatRate(analytics.launch.launchWindowScore),
-              detail: `${analytics.launch.launchWindow.low}-${analytics.launch.launchWindow.high} deg target`,
-            },
-          ]}
-        />
-
-        <section className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Coach readout"
-              description="What this club is doing, why it matters, and what to practise next."
-              action={<Brain className="size-5 text-emerald-500" />}
-            />
-            <CardContent className="space-y-4">
-              <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-950 shadow-none lg:border-transparent lg:bg-[#0B7A3B] lg:text-white lg:shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 lg:text-white/60">Recommended practice</p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-normal">
-                      {analytics.practice.title}
-                    </h2>
-                  </div>
-                  <Badge className="border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100 lg:border-transparent lg:bg-white/12 lg:text-white lg:hover:bg-white/12">
-                    {clubName}
-                  </Badge>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-slate-600 lg:text-white/78">
-                  {analytics.practice.drill}
-                </p>
-                <div className="mt-4 rounded-xl border border-slate-200 bg-[#F2F2F7] p-3 text-sm lg:border-white/12 lg:bg-white/8">
-                  <span className="text-slate-500 lg:text-white/56">Goal: </span>
-                  {analytics.practice.goal}
-                </div>
-              </div>
-
-              <CompactReadoutGrid
-                columnsClassName="md:grid-cols-2"
-                items={analytics.insights.slice(0, 4).map((insight) => ({
-                  label: insight.title,
-                  value: insight.body,
-                  tone: insight.tone,
-                }))}
-              />
-            </CardContent>
-          </DataPanel>
-
-          <DataPanel>
-            <SectionHeader
-              title="Trust breakdown"
-              description="The overall trust score is built from distance, direction, strike, flight, and sample depth."
-              action={<Gauge className="size-5" style={{ color: accent }} />}
-            />
-            <CardContent className="space-y-4">
-              <ScoreBar
-                label="Distance reliability"
-                value={analytics.consistency.carryConsistencyScore}
-              />
-              <ScoreBar
-                label="Direction stability"
-                value={analytics.consistency.directionConsistencyScore}
-              />
-              <ScoreBar
-                label="Strike stability"
-                value={analytics.consistency.strikeConsistencyScore}
-              />
-              <ScoreBar
-                label="Flight stability"
-                value={analytics.consistency.flightConsistencyScore}
-              />
-              <div className="apple-panel-strong p-4">
-                <p className="text-sm text-muted-foreground">Confidence label</p>
-                <p className="mt-1 text-3xl font-semibold tracking-normal">
-                  {analytics.consistency.confidenceLabel}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  {analytics.sample.stockShots < 10
-                    ? "This club needs more clean full shots before strong conclusions."
-                    : "This combines stock-yardage confidence with derived reliability scores."}
-                </p>
-              </div>
-            </CardContent>
-          </DataPanel>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <MetricCard
-            label="Primary shape"
-            value={shapeLabel(analytics.accuracy.primaryShape)}
-            detail={`${formatRate(analytics.accuracy.leftMissRate)} left / ${formatRate(analytics.accuracy.rightMissRate)} right`}
-            icon={Compass}
-            tone="pink"
-          />
-          <MetricCard
-            label="Strike"
-            value={formatOptional(analytics.strike.smashAverage)}
-            detail={`${formatRate(analytics.strike.lowSmashRate)} low-smash rate`}
-            icon={Zap}
-            tone="amber"
-          />
-          <MetricCard
-            label="Delivery"
-            value={formatDegrees(analytics.delivery.clubPathAverageDeg)}
-            detail={`Face ${formatDegrees(analytics.delivery.faceAngleAverageDeg)}`}
-            icon={Radar}
-            tone="sky"
-          />
-          <MetricCard
-            label="Stopping"
-            value={formatRate(analytics.launch.stoppingPowerScore)}
-            detail={`Descent ${formatDegrees(analytics.launch.descentAverageDeg)}`}
-            icon={TrendingUp}
-            tone="green"
-          />
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-          <DecisionSupportPanel analytics={analytics} accent={accent} />
-          <div className="grid gap-4">
-            <DiagnosisPanel analytics={analytics} />
-            <ShapeMixPanel analytics={analytics} accent={accent} />
-          </div>
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Shot cloud"
-              description="Side carry by distance. Selected clubs should trend tighter and higher trust over time."
-              action={<StatusPill tone="green">Yards</StatusPill>}
-            />
-            <CardContent>
-              <ShotCloud shots={clubShots} analytics={analytics} accent={accent} />
-            </CardContent>
-          </DataPanel>
-
-          <div className="grid gap-4">
-            <DataPanel>
-              <SectionHeader
-                title="Distance profile"
-                description="Best stock, personal best, latest reliable, recommended number, and mishit floor."
-              />
-              <CardContent>
-                <DistanceDistribution analytics={analytics} accent={accent} />
-              </CardContent>
-            </DataPanel>
-
-            <DataPanel>
-              <SectionHeader
-                title="Launch window"
-                description="How often clean shots launch inside the club target."
-              />
-              <CardContent>
-                <LaunchWindowChart analytics={analytics} accent={accent} />
-              </CardContent>
-            </DataPanel>
-          </div>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-3">
-          <ProfileCard
-            title="Distance"
-            icon={BarChart3}
-            metrics={[
-              ["Best stock", formatYards(analytics.distance.stockCarryYd)],
-              ["Personal best", formatYards(analytics.distance.personalBestCarryYd)],
-              ["Latest reliable", formatYards(analytics.distance.latestReliableCarryYd)],
-              [
-                "Latest range",
-                formatRange(
-                  analytics.distance.latestReliableCarryP25Yd,
-                  analytics.distance.latestReliableCarryP75Yd,
-                ),
-              ],
-              ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
-              ["Safe carry", formatYards(analytics.distance.safeCarryYd)],
-              ["Aggressive", formatYards(analytics.distance.aggressiveCarryYd)],
-              ["Mishit floor", formatYards(analytics.distance.mishitFloorYd)],
-            ]}
-          />
-          <ProfileCard
-            title="Accuracy"
-            icon={Target}
-            metrics={[
-              ["Avg side", formatSide(analytics.accuracy.averageSideCarryYd)],
-              ["Abs offline", formatYards(analytics.accuracy.absoluteOfflineAverageYd)],
-              ["Big miss", formatRate(analytics.accuracy.bigMissRate)],
-              ["Playable", formatRate(analytics.accuracy.playableShotRate)],
-              ["Cone width", formatYards(analytics.accuracy.shotConeWidthYd)],
-              ["Start line", formatDegrees(analytics.accuracy.startLineAverageDeg)],
-            ]}
-          />
-          <ProfileCard
-            title="Launch"
-            icon={TrendingUp}
-            metrics={[
-              ["Launch avg", formatDegrees(analytics.launch.launchAverageDeg)],
-              ["Launch spread", formatDegrees(analytics.launch.launchSpreadDeg)],
-              ["Window score", formatRate(analytics.launch.launchWindowScore)],
-              ["Apex avg", formatFeet(analytics.launch.apexAverageFt)],
-              ["Apex spread", formatFeet(analytics.launch.apexSpreadFt)],
-              ["Low flight", formatRate(analytics.launch.lowFlightRate)],
-            ]}
-          />
-          <ProfileCard
-            title="Strike"
-            icon={Zap}
-            metrics={[
-              ["Ball speed", formatMph(analytics.strike.ballSpeedAverageMph)],
-              ["Ball speed spread", formatMph(analytics.strike.ballSpeedSpreadMph)],
-              ["Club speed", formatMph(analytics.strike.clubSpeedAverageMph)],
-              ["Smash", formatOptional(analytics.strike.smashAverage)],
-              ["High smash", formatRate(analytics.strike.highSmashRate)],
-              ["Speed leakage", formatRate(analytics.strike.speedLeakageRate)],
-            ]}
-          />
-          <ProfileCard
-            title="Delivery"
-            icon={Compass}
-            metrics={[
-              ["Path avg", formatDegrees(analytics.delivery.clubPathAverageDeg)],
-              ["Path spread", formatDegrees(analytics.delivery.clubPathSpreadDeg)],
-              ["Attack avg", formatDegrees(analytics.delivery.attackAngleAverageDeg)],
-              ["Face angle", formatDegrees(analytics.delivery.faceAngleAverageDeg)],
-              ["Face-to-path", formatDegrees(analytics.delivery.facePathAverageDeg)],
-              ["Hook risk", formatRate(analytics.delivery.hookRiskScore)],
-              ["Block risk", formatRate(analytics.delivery.blockRiskScore)],
-            ]}
-          />
-          <ProfileCard
-            title="Gapping"
-            icon={Gauge}
-            metrics={[
-              ["Status", analytics.gapping.status],
-              [
-                "Prev club",
-                analytics.gapping.previousClubType
-                  ? formatClubType(analytics.gapping.previousClubType)
-                  : "--",
-              ],
-              ["Prev gap", formatYards(analytics.gapping.previousGapYd)],
-              [
-                "Next club",
-                analytics.gapping.nextClubType
-                  ? formatClubType(analytics.gapping.nextClubType)
-                  : "--",
-              ],
-              ["Next gap", formatYards(analytics.gapping.nextGapYd)],
-              ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
-            ]}
-          />
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-          <DataPanel>
-            <SectionHeader
-              title="What changed?"
-              description="Personal baseline and recent-session comparisons."
-            />
-            <CardContent className="space-y-3">
-              <DeltaPanel title="Latest 30 vs first 30" delta={analytics.progress.baselineDelta} />
-              <DeltaPanel
-                title="Last session vs previous"
-                delta={analytics.progress.lastSessionDelta}
-              />
-              <DeltaPanel
-                title="This month vs last month"
-                delta={analytics.progress.monthlyDelta}
-              />
-            </CardContent>
-          </DataPanel>
-
-          <DataPanel>
-            <SectionHeader
-              title="Latest shot tags"
-              description="Automatic mishit and shape classification for the newest saved shots."
-            />
-            <CardContent className="space-y-2">
-              {latestShots.map((shot) => {
-                const tags = likelyMishitTags({
-                  clubType: club.type,
-                  shot,
-                  stockCarryYd: analytics.distance.stockCarryYd,
-                });
-                const shape = classifyShotShape(shot);
-
-                return (
-                  <div key={shot.id} className="apple-panel-strong p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">Shot #{shot.shotNumber ?? "--"}</p>
-                      <p className="text-sm text-muted-foreground">{formatDate(shot.shotAt)}</p>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="outline">{shapeLabel(shape)}</Badge>
-                      {tags.length > 0 ? (
-                        tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))
-                      ) : (
-                        <Badge variant="secondary">normal</Badge>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </DataPanel>
-        </section>
-
-        <ClubShotEvidenceLedger
-          clubName={clubName}
+        <MobileClubAnalytics
+          club={club}
+          analytics={analytics}
           shots={clubShots}
-          stockCarryYd={analytics.distance.stockCarryYd}
+          latestShots={latestShots}
+          accent={accent}
+          clubName={clubName}
+          brandModel={brandModel}
         />
 
-        {analytics.delivery.dataWarning ? (
-          <DataPanel className="border-amber-300 bg-amber-50">
-            <CardContent className="py-4 text-sm text-amber-950">
-              <strong>Data confidence:</strong> {analytics.delivery.dataWarning}
-            </CardContent>
-          </DataPanel>
-        ) : null}
+        <div className="hidden gap-4 lg:grid" data-desktop-club-analytics>
+          <PageHeader
+            eyebrow={<StatusPill tone="sky">Advanced club analytics</StatusPill>}
+            title={`${clubName} analytics`}
+            description={`${brandModel}. Distance, direction, launch, strike, delivery, trust, gapping, and coach-style recommendations from saved launch-monitor data.`}
+            actions={
+              <Button
+                asChild
+                size="lg"
+                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
+                <Link href={`/bag/${club.id}`} prefetch={false}>
+                  <Target className="size-4" />
+                  Standard club view
+                </Link>
+              </Button>
+            }
+            metrics={[
+              {
+                label: "Best stock",
+                value: formatYards(analytics.distance.stockCarryYd),
+                detail: `${integerFormatter.format(analytics.sample.stockShots)} clean stock shots`,
+              },
+              {
+                label: "Trust index",
+                value: `${analytics.consistency.clubTrustIndex}%`,
+                detail: analytics.consistency.confidenceLabel,
+              },
+              {
+                label: "Playable rate",
+                value: formatRate(analytics.accuracy.playableShotRate),
+                detail: `Recommended ${formatYards(analytics.distance.stockPlayNumberYd)}`,
+              },
+              {
+                label: "Launch window",
+                value: formatRate(analytics.launch.launchWindowScore),
+                detail: `${analytics.launch.launchWindow.low}-${analytics.launch.launchWindow.high} deg target`,
+              },
+            ]}
+          />
+
+          <section className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+            <DataPanel>
+              <SectionHeader
+                title="Coach readout"
+                description="What this club is doing, why it matters, and what to practise next."
+                action={<Brain className="size-5 text-emerald-500" />}
+              />
+              <CardContent className="space-y-4">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-950 shadow-none lg:border-transparent lg:bg-[#0B7A3B] lg:text-white lg:shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500 lg:text-white/60">
+                        Recommended practice
+                      </p>
+                      <h2 className="mt-1 text-2xl font-semibold tracking-normal">
+                        {analytics.practice.title}
+                      </h2>
+                    </div>
+                    <Badge className="border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100 lg:border-transparent lg:bg-white/12 lg:text-white lg:hover:bg-white/12">
+                      {clubName}
+                    </Badge>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600 lg:text-white/78">
+                    {analytics.practice.drill}
+                  </p>
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-[#F2F2F7] p-3 text-sm lg:border-white/12 lg:bg-white/8">
+                    <span className="text-slate-500 lg:text-white/56">Goal: </span>
+                    {analytics.practice.goal}
+                  </div>
+                </div>
+
+                <CompactReadoutGrid
+                  columnsClassName="md:grid-cols-2"
+                  items={analytics.insights.slice(0, 4).map((insight) => ({
+                    label: insight.title,
+                    value: insight.body,
+                    tone: insight.tone,
+                  }))}
+                />
+              </CardContent>
+            </DataPanel>
+
+            <DataPanel>
+              <SectionHeader
+                title="Trust breakdown"
+                description="The overall trust score is built from distance, direction, strike, flight, and sample depth."
+                action={<Gauge className="size-5" style={{ color: accent }} />}
+              />
+              <CardContent className="space-y-4">
+                <ScoreBar
+                  label="Distance reliability"
+                  value={analytics.consistency.carryConsistencyScore}
+                />
+                <ScoreBar
+                  label="Direction stability"
+                  value={analytics.consistency.directionConsistencyScore}
+                />
+                <ScoreBar
+                  label="Strike stability"
+                  value={analytics.consistency.strikeConsistencyScore}
+                />
+                <ScoreBar
+                  label="Flight stability"
+                  value={analytics.consistency.flightConsistencyScore}
+                />
+                <div className="apple-panel-strong p-4">
+                  <p className="text-sm text-muted-foreground">Confidence label</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-normal">
+                    {analytics.consistency.confidenceLabel}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {analytics.sample.stockShots < 10
+                      ? "This club needs more clean full shots before strong conclusions."
+                      : "This combines stock-yardage confidence with derived reliability scores."}
+                  </p>
+                </div>
+              </CardContent>
+            </DataPanel>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Primary shape"
+              value={shapeLabel(analytics.accuracy.primaryShape)}
+              detail={`${formatRate(analytics.accuracy.leftMissRate)} left / ${formatRate(analytics.accuracy.rightMissRate)} right`}
+              icon={Compass}
+              tone="pink"
+            />
+            <MetricCard
+              label="Strike"
+              value={formatOptional(analytics.strike.smashAverage)}
+              detail={`${formatRate(analytics.strike.lowSmashRate)} low-smash rate`}
+              icon={Zap}
+              tone="amber"
+            />
+            <MetricCard
+              label="Delivery"
+              value={formatDegrees(analytics.delivery.clubPathAverageDeg)}
+              detail={`Face ${formatDegrees(analytics.delivery.faceAngleAverageDeg)}`}
+              icon={Radar}
+              tone="sky"
+            />
+            <MetricCard
+              label="Stopping"
+              value={formatRate(analytics.launch.stoppingPowerScore)}
+              detail={`Descent ${formatDegrees(analytics.launch.descentAverageDeg)}`}
+              icon={TrendingUp}
+              tone="green"
+            />
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <DecisionSupportPanel analytics={analytics} accent={accent} />
+            <div className="grid gap-4">
+              <DiagnosisPanel analytics={analytics} />
+              <ShapeMixPanel analytics={analytics} accent={accent} />
+            </div>
+          </section>
+
+          <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+            <DataPanel>
+              <SectionHeader
+                title="Shot cloud"
+                description="Side carry by distance. Selected clubs should trend tighter and higher trust over time."
+                action={<StatusPill tone="green">Yards</StatusPill>}
+              />
+              <CardContent>
+                <ShotCloud shots={clubShots} analytics={analytics} accent={accent} />
+              </CardContent>
+            </DataPanel>
+
+            <div className="grid gap-4">
+              <DataPanel>
+                <SectionHeader
+                  title="Distance profile"
+                  description="Best stock, personal best, latest reliable, recommended number, and mishit floor."
+                />
+                <CardContent>
+                  <DistanceDistribution analytics={analytics} accent={accent} />
+                </CardContent>
+              </DataPanel>
+
+              <DataPanel>
+                <SectionHeader
+                  title="Launch window"
+                  description="How often clean shots launch inside the club target."
+                />
+                <CardContent>
+                  <LaunchWindowChart analytics={analytics} accent={accent} />
+                </CardContent>
+              </DataPanel>
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-3">
+            <ProfileCard
+              title="Distance"
+              icon={BarChart3}
+              metrics={[
+                ["Best stock", formatYards(analytics.distance.stockCarryYd)],
+                ["Personal best", formatYards(analytics.distance.personalBestCarryYd)],
+                ["Latest reliable", formatYards(analytics.distance.latestReliableCarryYd)],
+                [
+                  "Latest range",
+                  formatRange(
+                    analytics.distance.latestReliableCarryP25Yd,
+                    analytics.distance.latestReliableCarryP75Yd,
+                  ),
+                ],
+                ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
+                ["Safe carry", formatYards(analytics.distance.safeCarryYd)],
+                ["Aggressive", formatYards(analytics.distance.aggressiveCarryYd)],
+                ["Mishit floor", formatYards(analytics.distance.mishitFloorYd)],
+              ]}
+            />
+            <ProfileCard
+              title="Accuracy"
+              icon={Target}
+              metrics={[
+                ["Avg side", formatSide(analytics.accuracy.averageSideCarryYd)],
+                ["Abs offline", formatYards(analytics.accuracy.absoluteOfflineAverageYd)],
+                ["Big miss", formatRate(analytics.accuracy.bigMissRate)],
+                ["Playable", formatRate(analytics.accuracy.playableShotRate)],
+                ["Cone width", formatYards(analytics.accuracy.shotConeWidthYd)],
+                ["Start line", formatDegrees(analytics.accuracy.startLineAverageDeg)],
+              ]}
+            />
+            <ProfileCard
+              title="Launch"
+              icon={TrendingUp}
+              metrics={[
+                ["Launch avg", formatDegrees(analytics.launch.launchAverageDeg)],
+                ["Launch spread", formatDegrees(analytics.launch.launchSpreadDeg)],
+                ["Window score", formatRate(analytics.launch.launchWindowScore)],
+                ["Apex avg", formatFeet(analytics.launch.apexAverageFt)],
+                ["Apex spread", formatFeet(analytics.launch.apexSpreadFt)],
+                ["Low flight", formatRate(analytics.launch.lowFlightRate)],
+              ]}
+            />
+            <ProfileCard
+              title="Strike"
+              icon={Zap}
+              metrics={[
+                ["Ball speed", formatMph(analytics.strike.ballSpeedAverageMph)],
+                ["Ball speed spread", formatMph(analytics.strike.ballSpeedSpreadMph)],
+                ["Club speed", formatMph(analytics.strike.clubSpeedAverageMph)],
+                ["Smash", formatOptional(analytics.strike.smashAverage)],
+                ["High smash", formatRate(analytics.strike.highSmashRate)],
+                ["Speed leakage", formatRate(analytics.strike.speedLeakageRate)],
+              ]}
+            />
+            <ProfileCard
+              title="Delivery"
+              icon={Compass}
+              metrics={[
+                ["Path avg", formatDegrees(analytics.delivery.clubPathAverageDeg)],
+                ["Path spread", formatDegrees(analytics.delivery.clubPathSpreadDeg)],
+                ["Attack avg", formatDegrees(analytics.delivery.attackAngleAverageDeg)],
+                ["Face angle", formatDegrees(analytics.delivery.faceAngleAverageDeg)],
+                ["Face-to-path", formatDegrees(analytics.delivery.facePathAverageDeg)],
+                ["Hook risk", formatRate(analytics.delivery.hookRiskScore)],
+                ["Block risk", formatRate(analytics.delivery.blockRiskScore)],
+              ]}
+            />
+            <ProfileCard
+              title="Gapping"
+              icon={Gauge}
+              metrics={[
+                ["Status", analytics.gapping.status],
+                [
+                  "Prev club",
+                  analytics.gapping.previousClubType
+                    ? formatClubType(analytics.gapping.previousClubType)
+                    : "--",
+                ],
+                ["Prev gap", formatYards(analytics.gapping.previousGapYd)],
+                [
+                  "Next club",
+                  analytics.gapping.nextClubType
+                    ? formatClubType(analytics.gapping.nextClubType)
+                    : "--",
+                ],
+                ["Next gap", formatYards(analytics.gapping.nextGapYd)],
+                ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
+              ]}
+            />
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <DataPanel>
+              <SectionHeader
+                title="What changed?"
+                description="Personal baseline and recent-session comparisons."
+              />
+              <CardContent className="space-y-3">
+                <DeltaPanel
+                  title="Latest 30 vs first 30"
+                  delta={analytics.progress.baselineDelta}
+                />
+                <DeltaPanel
+                  title="Last session vs previous"
+                  delta={analytics.progress.lastSessionDelta}
+                />
+                <DeltaPanel
+                  title="This month vs last month"
+                  delta={analytics.progress.monthlyDelta}
+                />
+              </CardContent>
+            </DataPanel>
+
+            <DataPanel>
+              <SectionHeader
+                title="Latest shot tags"
+                description="Automatic mishit and shape classification for the newest saved shots."
+              />
+              <CardContent className="space-y-2">
+                {latestShots.map((shot) => {
+                  const tags = likelyMishitTags({
+                    clubType: club.type,
+                    shot,
+                    stockCarryYd: analytics.distance.stockCarryYd,
+                  });
+                  const shape = classifyShotShape(shot);
+
+                  return (
+                    <div key={shot.id} className="apple-panel-strong p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-medium">Shot #{shot.shotNumber ?? "--"}</p>
+                        <p className="text-sm text-muted-foreground">{formatDate(shot.shotAt)}</p>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge variant="outline">{shapeLabel(shape)}</Badge>
+                        {tags.length > 0 ? (
+                          tags.map((tag) => (
+                            <Badge key={tag} variant="secondary">
+                              {tag}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge variant="secondary">normal</Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </DataPanel>
+          </section>
+
+          <ClubShotEvidenceLedger
+            clubName={clubName}
+            shots={clubShots}
+            stockCarryYd={analytics.distance.stockCarryYd}
+          />
+
+          {analytics.delivery.dataWarning ? (
+            <DataPanel className="border-amber-300 bg-amber-50">
+              <CardContent className="py-4 text-sm text-amber-950">
+                <strong>Data confidence:</strong> {analytics.delivery.dataWarning}
+              </CardContent>
+            </DataPanel>
+          ) : null}
+        </div>
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+function MobileClubAnalytics({
+  club,
+  analytics,
+  shots,
+  latestShots,
+  accent,
+  clubName,
+  brandModel,
+}: {
+  club: { id: string; type: string; brand: string | null; model: string | null };
+  analytics: ClubAnalytics;
+  shots: ClubAnalyticsShot[];
+  latestShots: ClubAnalyticsShot[];
+  accent: string;
+  clubName: string;
+  brandModel: string;
+}) {
+  const diagnosisNeedsAttention = analytics.diagnosis.severity !== "low";
+
+  return (
+    <div className="grid gap-4 lg:hidden" data-mobile-club-analytics>
+      <header className="grid gap-2 px-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill tone="sky">Club analytics</StatusPill>
+          <IOSInlineStatus
+            label={analytics.decision.trustVerdict}
+            tone={
+              analytics.decision.trustVerdict === "Trusted" ||
+              analytics.decision.trustVerdict === "Playable"
+                ? "positive"
+                : "attention"
+            }
+          />
+        </div>
+        <h1 className="text-[2rem] font-semibold leading-9 tracking-tight">{clubName}</h1>
+        <p className="text-[15px] leading-5 text-muted-foreground">{brandModel}</p>
+      </header>
+
+      <section className="grid gap-2.5" aria-label="Club recommendation and key numbers">
+        <IOSSectionHeader
+          title="Recommendation"
+          description="The action and numbers to take onto the course"
+        />
+        <IOSGroupedList label="Club recommendation">
+          <IOSListRow
+            icon={Brain}
+            label={analytics.practice.title}
+            detail={analytics.practice.drill}
+            status={<IOSInlineStatus label={analytics.practice.goal} tone="info" />}
+          />
+          <IOSListRow
+            icon={Target}
+            label="Play number"
+            value={formatYards(analytics.decision.playNumberYd)}
+            detail={analytics.decision.role}
+          />
+          <IOSListRow
+            icon={ShieldCheck}
+            label="Trust index"
+            value={`${analytics.consistency.clubTrustIndex}%`}
+            detail={analytics.consistency.confidenceLabel}
+          />
+          <IOSListRow
+            icon={Compass}
+            label="Playable rate"
+            value={formatRate(analytics.accuracy.playableShotRate)}
+            detail={`${shapeLabel(analytics.accuracy.primaryShape)} · ${formatSide(analytics.accuracy.averageSideCarryYd)} average side`}
+          />
+          <IOSListRow
+            icon={Gauge}
+            label="Gapping"
+            value={analytics.gapping.status}
+            detail={analytics.gapping.note}
+            status={
+              <IOSInlineStatus
+                label={
+                  analytics.gapping.status === "Healthy" ? "Bag fit is healthy" : "Review bag fit"
+                }
+                tone={analytics.gapping.status === "Healthy" ? "positive" : "attention"}
+              />
+            }
+          />
+        </IOSGroupedList>
+      </section>
+
+      {diagnosisNeedsAttention ? (
+        <DataWarning
+          title={analytics.diagnosis.title}
+          detail={`${analytics.diagnosis.likelyCause} ${analytics.diagnosis.practiceFocus}`}
+          className="dark:border-amber-700/70 dark:bg-amber-950/45 dark:text-amber-100"
+        />
+      ) : null}
+
+      {analytics.delivery.dataWarning ? (
+        <DataWarning
+          title="Data confidence"
+          detail={analytics.delivery.dataWarning}
+          className="dark:border-amber-700/70 dark:bg-amber-950/45 dark:text-amber-100"
+        />
+      ) : null}
+
+      <Button asChild className="min-h-11 w-full rounded-xl">
+        <Link href="/coach" prefetch={false}>
+          <Brain className="size-4" aria-hidden />
+          Build this practice plan
+        </Link>
+      </Button>
+
+      <section className="grid gap-2.5" aria-label="Shot cloud">
+        <IOSSectionHeader
+          title="Shot cloud"
+          description="Distance and side pattern for the measured sample"
+          action={<IOSInlineStatus label={`${shots.length} shots`} tone="info" />}
+        />
+        <ShotCloud shots={shots} analytics={analytics} accent={accent} />
+      </section>
+
+      <IOSDisclosureGroup
+        label="Club analytics supporting detail"
+        items={[
+          {
+            value: "why",
+            title: "Why this recommendation",
+            summary: analytics.diagnosis.severity,
+            description: "Trust verdict, diagnosis and pressure rule",
+            content: (
+              <IOSGroupedList label="Recommendation evidence">
+                <IOSListRow
+                  label="Recommended use"
+                  value={analytics.decision.trustVerdict}
+                  detail={analytics.decision.recommendedUse}
+                />
+                <IOSListRow
+                  label="Likely cause"
+                  value={analytics.diagnosis.severity}
+                  detail={analytics.diagnosis.likelyCause}
+                />
+                <IOSListRow label="Evidence" detail={analytics.diagnosis.evidence} />
+                <IOSListRow
+                  label="Pressure rule"
+                  value={formatYards(analytics.decision.doNotForceOverYd)}
+                  detail={analytics.decision.pressureUse}
+                />
+              </IOSGroupedList>
+            ),
+            contentClassName: "px-0",
+          },
+          {
+            value: "distance-flight",
+            title: "Distance and launch",
+            summary: formatYards(analytics.distance.stockPlayNumberYd),
+            description: "Play-number profile and launch-window canvas",
+            content: (
+              <div className="grid gap-5">
+                <section className="grid gap-2">
+                  <IOSSectionHeader title="Distance profile" />
+                  <DistanceDistribution analytics={analytics} accent={accent} />
+                </section>
+                <section className="grid gap-2">
+                  <IOSSectionHeader title="Launch window" />
+                  <LaunchWindowChart analytics={analytics} accent={accent} />
+                </section>
+              </div>
+            ),
+            contentClassName: "px-2",
+          },
+          {
+            value: "all-metrics",
+            title: "All club metrics",
+            summary: "6 groups",
+            description: "Distance, accuracy, launch, strike, delivery and gapping",
+            content: <MobileAnalyticsMetricGroups analytics={analytics} />,
+          },
+          {
+            value: "progress-tags",
+            title: "Trend and recent examples",
+            summary: `${latestShots.length} recent`,
+            description: "Comparable changes and newest shot classification",
+            content: <MobileAnalyticsProgress analytics={analytics} latestShots={latestShots} />,
+          },
+          {
+            value: "evidence",
+            title: "Measured shot evidence",
+            summary: `${shots.length} measured`,
+            description: `Newest ${Math.min(shots.length, MOBILE_EVIDENCE_LIMIT)} rows; full set in Shot Explorer`,
+            content: (
+              <MobileAnalyticsEvidenceRows
+                clubType={club.type}
+                shots={shots}
+                stockCarryYd={analytics.distance.stockCarryYd}
+              />
+            ),
+            contentClassName: "px-0",
+          },
+        ]}
+      />
+
+      <IOSGroupedList label="Club analytics navigation">
+        <IOSListRow
+          icon={Target}
+          label="Standard club view"
+          detail="Return to dispersion and selected-shot replay"
+          href={`/bag/${club.id}`}
+        />
+        <IOSListRow
+          icon={Upload}
+          label="Import more evidence"
+          detail="Add launch-monitor shots for this club"
+          href="/import"
+        />
+      </IOSGroupedList>
+    </div>
+  );
+}
+
+function MobileAnalyticsMetricGroups({ analytics }: { analytics: ClubAnalytics }) {
+  return (
+    <div className="grid gap-5">
+      <MobileAnalyticsMetricGroup
+        title="Distance"
+        metrics={[
+          ["Stock", formatYards(analytics.distance.stockCarryYd)],
+          ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
+          ["Safe carry", formatYards(analytics.distance.safeCarryYd)],
+          ["Personal best", formatYards(analytics.distance.personalBestCarryYd)],
+          ["Mishit floor", formatYards(analytics.distance.mishitFloorYd)],
+        ]}
+      />
+      <MobileAnalyticsMetricGroup
+        title="Accuracy"
+        metrics={[
+          ["Average side", formatSide(analytics.accuracy.averageSideCarryYd)],
+          ["Playable", formatRate(analytics.accuracy.playableShotRate)],
+          ["Big miss", formatRate(analytics.accuracy.bigMissRate)],
+          ["Cone width", formatYards(analytics.accuracy.shotConeWidthYd)],
+        ]}
+      />
+      <MobileAnalyticsMetricGroup
+        title="Launch"
+        metrics={[
+          ["Launch average", formatDegrees(analytics.launch.launchAverageDeg)],
+          ["Window score", formatRate(analytics.launch.launchWindowScore)],
+          ["Apex average", formatFeet(analytics.launch.apexAverageFt)],
+          ["Stopping", formatRate(analytics.launch.stoppingPowerScore)],
+        ]}
+      />
+      <MobileAnalyticsMetricGroup
+        title="Strike"
+        metrics={[
+          ["Ball speed", formatMph(analytics.strike.ballSpeedAverageMph)],
+          ["Club speed", formatMph(analytics.strike.clubSpeedAverageMph)],
+          ["Smash", formatOptional(analytics.strike.smashAverage)],
+          ["Speed leakage", formatRate(analytics.strike.speedLeakageRate)],
+        ]}
+      />
+      <MobileAnalyticsMetricGroup
+        title="Delivery"
+        metrics={[
+          ["Path", formatDegrees(analytics.delivery.clubPathAverageDeg)],
+          ["Attack", formatDegrees(analytics.delivery.attackAngleAverageDeg)],
+          ["Face", formatDegrees(analytics.delivery.faceAngleAverageDeg)],
+          ["Face to path", formatDegrees(analytics.delivery.facePathAverageDeg)],
+        ]}
+      />
+      <MobileAnalyticsMetricGroup
+        title="Gapping"
+        metrics={[
+          ["Status", analytics.gapping.status],
+          ["Previous gap", formatYards(analytics.gapping.previousGapYd)],
+          ["Next gap", formatYards(analytics.gapping.nextGapYd)],
+          ["Play number", formatYards(analytics.distance.stockPlayNumberYd)],
+        ]}
+      />
+    </div>
+  );
+}
+
+function MobileAnalyticsMetricGroup({
+  title,
+  metrics,
+}: {
+  title: string;
+  metrics: Array<[string, string]>;
+}) {
+  return (
+    <section className="grid gap-2" aria-label={`${title} metrics`}>
+      <p className="px-1 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        {title}
+      </p>
+      <IOSGroupedList label={`${title} metrics`}>
+        {metrics.map(([label, value]) => (
+          <IOSListRow key={label} label={label} value={value} />
+        ))}
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileAnalyticsProgress({
+  analytics,
+  latestShots,
+}: {
+  analytics: ClubAnalytics;
+  latestShots: ClubAnalyticsShot[];
+}) {
+  const comparisons = [
+    ["Latest 30 vs first 30", analytics.progress.baselineDelta],
+    ["Last session vs previous", analytics.progress.lastSessionDelta],
+    ["This month vs last month", analytics.progress.monthlyDelta],
+  ] as const;
+
+  return (
+    <div className="grid gap-5">
+      <IOSGroupedList label="Club progress comparisons">
+        {comparisons.map(([label, delta]) => (
+          <IOSListRow
+            key={label}
+            label={label}
+            value={mobileDeltaValue(delta?.carryDeltaYd ?? null, "yd")}
+            detail={
+              delta
+                ? `Ball speed ${mobileDeltaValue(delta.ballSpeedDeltaMph, "mph")} · offline ${mobileDeltaValue(delta.offlineDeltaYd, "yd")}`
+                : "Needs two comparable clean samples"
+            }
+          />
+        ))}
+      </IOSGroupedList>
+
+      <section className="grid gap-2">
+        <p className="px-1 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+          Recent examples
+        </p>
+        <IOSGroupedList label="Recent shot examples">
+          {latestShots.map((shot) => {
+            const tags = likelyMishitTags({
+              clubType: shot.clubType,
+              shot,
+              stockCarryYd: analytics.distance.stockCarryYd,
+            });
+            return (
+              <IOSListRow
+                key={shot.id}
+                label={`Shot #${shot.shotNumber ?? "--"}`}
+                value={formatYards(shot.carryYd)}
+                detail={`${formatDate(shot.shotAt)} · ${shapeLabel(classifyShotShape(shot))} · ${tags.join(", ") || "normal"}`}
+              />
+            );
+          })}
+        </IOSGroupedList>
+      </section>
+    </div>
+  );
+}
+
+function MobileAnalyticsEvidenceRows({
+  clubType,
+  shots,
+  stockCarryYd,
+}: {
+  clubType: string;
+  shots: ClubAnalyticsShot[];
+  stockCarryYd: number | null;
+}) {
+  const visibleShots = [...shots]
+    .sort((left, right) => new Date(right.shotAt).getTime() - new Date(left.shotAt).getTime())
+    .slice(0, MOBILE_EVIDENCE_LIMIT);
+
+  return (
+    <div
+      className="ios-grouped-list overflow-hidden"
+      aria-label="Club analytics measured evidence rows"
+      data-mobile-club-evidence-rows
+    >
+      {visibleShots.map((shot) => {
+        const tags = likelyMishitTags({ clubType, shot, stockCarryYd });
+        const quality = tags.join(", ") || shot.qualityTag || "Normal";
+        return (
+          <div
+            key={shot.id}
+            className="ios-grouped-row flex min-h-14 items-center gap-3 px-4 py-2.5"
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+              {shot.shotNumber ?? "-"}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-medium text-foreground">
+                {formatDate(shot.shotAt)}
+              </span>
+              <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
+                {shapeLabel(classifyShotShape(shot))} · {quality} · {formatSide(shot.sideCarryYd)}
+              </span>
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="block text-[15px] font-semibold text-foreground tabular-nums">
+                {formatYards(shot.carryYd)}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {formatMph(shot.ballSpeedMph)}
+              </span>
+            </span>
+          </div>
+        );
+      })}
+      {shots.length > visibleShots.length ? (
+        <IOSListRow
+          label="Open every measured shot"
+          value={`${shots.length} total`}
+          detail="Continue in Shot Explorer with this club already selected"
+          href={`/shots?club=${encodeURIComponent(clubType)}`}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function mobileDeltaValue(value: number | null, unit: string) {
+  if (value === null) return "--";
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} ${unit}`;
 }
 
 function ClubShotEvidenceLedger({

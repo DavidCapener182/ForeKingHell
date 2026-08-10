@@ -23,6 +23,7 @@ import {
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
+  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -31,7 +32,14 @@ import {
   label,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { BottomSheet, MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { getAdminModerationData } from "@/lib/admin";
 
@@ -83,6 +91,7 @@ type AdminModerationPageProps = {
     reportDir?: string;
     eventSort?: string;
     eventDir?: string;
+    view?: string;
   }>;
 };
 
@@ -146,14 +155,31 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
   const sortedEvents = sortAdminEvents(data.events, eventSortState);
   const openReports = data.reports.filter((report) => report.status === "open");
   const openEvents = data.events.filter((event) => event.status === "open");
+  const mobileView = parseAdminModerationMobileView(params?.view);
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="admin" />
-      <AdminNav active="/admin/moderation" />
-      <AdminNotice status={params?.adminStatus} error={params?.adminError} />
+      <AdminMobileShell
+        title="Moderation"
+        active="/admin/moderation"
+        status={params?.adminStatus}
+        error={params?.adminError}
+      >
+        <AdminMobileModeration
+          reports={sortedReports}
+          events={sortedEvents}
+          openReportCount={openReports.length}
+          openEventCount={openEvents.length}
+          mobileView={mobileView}
+        />
+      </AdminMobileShell>
 
-      <DesktopWorkbenchLayout scope="admin-moderation">
+      <div className="hidden gap-3 lg:grid">
+        <AdminNav active="/admin/moderation" />
+        <AdminNotice status={params?.adminStatus} error={params?.adminError} />
+      </div>
+
+      <DesktopWorkbenchLayout scope="admin-moderation" className="hidden lg:grid">
         <AdminPageHeader
           eyebrow="Safety"
           title="Moderation queue"
@@ -538,6 +564,188 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type AdminModerationMobileView = "reports" | "events" | "resolved";
+type MobileModerationRecord =
+  | { kind: "report"; record: AdminModerationReport }
+  | { kind: "event"; record: AdminModerationEvent };
+
+function AdminMobileModeration({
+  reports,
+  events,
+  openReportCount,
+  openEventCount,
+  mobileView,
+}: {
+  reports: AdminModerationReport[];
+  events: AdminModerationEvent[];
+  openReportCount: number;
+  openEventCount: number;
+  mobileView: AdminModerationMobileView;
+}) {
+  const unresolvedCount = openReportCount + openEventCount;
+  const openReports: MobileModerationRecord[] = reports
+    .filter((report) => report.status === "open")
+    .map((record) => ({ kind: "report", record }));
+  const openEvents: MobileModerationRecord[] = events
+    .filter((event) => event.status === "open")
+    .map((record) => ({ kind: "event", record }));
+  const resolvedRecords: MobileModerationRecord[] = [
+    ...reports
+      .filter((report) => report.status !== "open")
+      .map((record) => ({ kind: "report" as const, record })),
+    ...events
+      .filter((event) => event.status !== "open")
+      .map((record) => ({ kind: "event" as const, record })),
+  ].sort((left, right) => right.record.createdAt.getTime() - left.record.createdAt.getTime());
+  const visibleRecords =
+    mobileView === "reports" ? openReports : mobileView === "events" ? openEvents : resolvedRecords;
+  const primaryRecords = visibleRecords.slice(0, 10);
+  const olderRecords = visibleRecords.slice(10);
+
+  return (
+    <>
+      <MobileStatusAction
+        label="Unresolved safety work"
+        value={unresolvedCount}
+        detail={`${openReportCount} open reports · ${openEventCount} open moderation events`}
+      />
+
+      <MobileTabBar
+        activeKey={mobileView}
+        ariaLabel="Filter moderation records"
+        tabs={[
+          {
+            key: "reports",
+            label: `Reports ${openReportCount}`,
+            href: "/admin/moderation?view=reports",
+          },
+          {
+            key: "events",
+            label: `Events ${openEventCount}`,
+            href: "/admin/moderation?view=events",
+          },
+          {
+            key: "resolved",
+            label: "Resolved",
+            href: "/admin/moderation?view=resolved",
+          },
+        ]}
+      />
+
+      <section className="grid gap-2" aria-label="Mobile moderation queue">
+        <IOSSectionHeader
+          title={mobileView === "resolved" ? "Resolved records" : "Priority queue"}
+          description={
+            mobileView === "resolved"
+              ? `${resolvedRecords.length} closed safety records`
+              : "Open records requiring an operator decision"
+          }
+        />
+        <MobileModerationRows records={primaryRecords} />
+        {olderRecords.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More moderation records"
+            items={[
+              {
+                value: "more-moderation-records",
+                title: "More records",
+                summary: olderRecords.length,
+                description: "Earlier records in this filter",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileModerationRows records={olderRecords} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+    </>
+  );
+}
+
+function MobileModerationRows({ records }: { records: MobileModerationRecord[] }) {
+  return (
+    <IOSGroupedList label="Moderation record rows">
+      {records.length > 0 ? (
+        records.map((item) => {
+          const isReport = item.kind === "report";
+          const title = isReport ? label(item.record.reason) : label(item.record.eventType);
+          const severity = isReport ? "User report" : label(item.record.severity);
+
+          return (
+            <IOSListRow
+              key={`${item.kind}-${item.record.id}`}
+              label={title}
+              detail={`${item.kind === "report" ? "Report" : "Event"} · ${formatDateTime(item.record.createdAt)} · ${label(item.record.targetType)}`}
+              status={
+                <IOSInlineStatus
+                  label={`${severity} · ${label(item.record.status)}`}
+                  tone={
+                    !isReport && item.record.severity === "high"
+                      ? "critical"
+                      : item.record.status === "open"
+                        ? "attention"
+                        : "neutral"
+                  }
+                />
+              }
+              trailing={<MobileModerationRecordSheet item={item} />}
+            />
+          );
+        })
+      ) : (
+        <IOSListRow
+          label="No records in this queue"
+          detail="Switch filters to inspect another moderation state."
+          status={<IOSInlineStatus label="No action required" tone="positive" />}
+        />
+      )}
+    </IOSGroupedList>
+  );
+}
+
+function MobileModerationRecordSheet({ item }: { item: MobileModerationRecord }) {
+  const isReport = item.kind === "report";
+  const title = isReport ? label(item.record.reason) : label(item.record.eventType);
+  const detail = isReport
+    ? (item.record.details ?? "No details supplied")
+    : (item.record.reason ?? "No reason supplied");
+
+  return (
+    <BottomSheet label="Review" title={isReport ? "Review report" : "Review event"}>
+      <div className="grid gap-4">
+        <IOSGroupedList label="Moderation record detail">
+          <IOSListRow label="Record" value={title} />
+          <IOSListRow label="Status" value={label(item.record.status)} />
+          <IOSListRow label="Created" value={formatDateTime(item.record.createdAt)} />
+          <IOSListRow label="Target type" value={label(item.record.targetType)} />
+          <IOSListRow
+            label="Target ID"
+            detail={<span className="[overflow-wrap:anywhere]">{item.record.targetId}</span>}
+          />
+          <IOSListRow label="Evidence" detail={detail} />
+        </IOSGroupedList>
+        {item.record.status === "open" ? (
+          <form action={isReport ? resolveSocialReportAction : resolveModerationEventAction}>
+            <input type="hidden" name={isReport ? "reportId" : "eventId"} value={item.record.id} />
+            <AdminConfirmSubmitButton
+              className="min-h-11 w-full"
+              confirmMessage={`Resolve ${isReport ? "report" : "moderation event"} ${title}? This closes the record and writes an admin audit entry.`}
+            >
+              Resolve record
+            </AdminConfirmSubmitButton>
+          </form>
+        ) : (
+          <IOSInlineStatus label="This record is already closed" tone="positive" />
+        )}
+      </div>
+    </BottomSheet>
+  );
+}
+
+function parseAdminModerationMobileView(value: string | undefined): AdminModerationMobileView {
+  return value === "events" || value === "resolved" ? value : "reports";
 }
 
 function SortableAdminReportHead({

@@ -1,5 +1,16 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Flag, Info, Radar, Trophy, Upload } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calculator,
+  ChartNoAxesCombined,
+  Database,
+  Flag,
+  Info,
+  Radar,
+  Trophy,
+  Upload,
+} from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import {
@@ -18,8 +29,16 @@ import {
   StatusPill,
   StickyMobileAction,
 } from "@/components/premium";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { HandicapConfidenceFeaturePanel } from "@/components/features/feature-panels";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   DesktopTableWorkbenchControls,
@@ -133,9 +152,19 @@ export default async function HandicapPage() {
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
-      <MobileRouteHeader title="Play" group="play" activeKey="handicap" />
+      <HandicapMobileOverview
+        rounds={rounds}
+        missingRatingRounds={missingRatingRounds}
+        realHandicap={realHandicap}
+        simulatorHandicap={simulatorHandicap}
+        combinedHandicap={combinedHandicap}
+        playingHandicap={playingHandicap}
+        rangeReality={rangeReality}
+        latestRound={latestRound}
+        topCoachCard={topCoachCard}
+      />
 
-      <DesktopWorkbenchLayout scope="handicap">
+      <DesktopWorkbenchLayout scope="handicap" className="hidden lg:grid">
         <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
@@ -617,6 +646,311 @@ export default async function HandicapPage() {
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type HandicapRound = Awaited<ReturnType<typeof getHandicapRounds>>[number];
+type HandicapCoachCard = ReturnType<typeof buildCoachSummary>["clubCards"][number];
+
+function HandicapMobileOverview({
+  rounds,
+  missingRatingRounds,
+  realHandicap,
+  simulatorHandicap,
+  combinedHandicap,
+  playingHandicap,
+  rangeReality,
+  latestRound,
+  topCoachCard,
+}: {
+  rounds: HandicapRound[];
+  missingRatingRounds: HandicapRound[];
+  realHandicap: HandicapSummary;
+  simulatorHandicap: HandicapSummary;
+  combinedHandicap: HandicapSummary;
+  playingHandicap: PlayingHandicapSummary;
+  rangeReality: RangeRealityHandicapData;
+  latestRound: HandicapRound | null;
+  topCoachCard: HandicapCoachCard | null;
+}) {
+  const topCost = rangeReality.costlyShots[0] ?? null;
+  const topPractice = rangeReality.prescriptions[0] ?? null;
+  const firstMissingRating = missingRatingRounds[0] ?? null;
+  const estimateAvailable = playingHandicap.value !== null;
+
+  return (
+    <MobileAppShell className="gap-4" data-handicap-mobile-overview>
+      <MobileRouteHeader title="Handicap" group="play" activeKey="handicap" />
+
+      <section className="grid gap-3" aria-labelledby="handicap-current-mobile">
+        <IOSSectionHeader
+          title={<span id="handicap-current-mobile">Current playing level</span>}
+          description="A conservative playing estimate first; best-form ceilings remain supporting evidence."
+        />
+        <IOSGroupedList label="Current handicap summary">
+          <IOSListRow
+            label="Playing estimate"
+            value={formatHandicapValue(playingHandicap.value)}
+            detail={playingHandicap.warning}
+            icon={Flag}
+            status={
+              <IOSInlineStatus
+                label={estimateAvailable ? playingHandicap.methodLabel : "More scorecards needed"}
+                tone={estimateAvailable ? "info" : "attention"}
+              />
+            }
+          />
+          <IOSMetricRow
+            label="Movement"
+            value={trendSentence(combinedHandicap)}
+            detail={`${combinedHandicap.sampleSize} eligible round${
+              combinedHandicap.sampleSize === 1 ? "" : "s"
+            } across real and simulator play`}
+          />
+          {latestRound ? (
+            <IOSListRow
+              label={latestRound.courseName ?? latestRound.fileName ?? "Latest round"}
+              value={latestRound.totalScore ?? "--"}
+              detail={`${formatDate(latestRound.date)} · differential ${formatHandicapValue(
+                latestRound.handicapDifferential,
+              )}`}
+              href={`/rounds/${latestRound.id}`}
+              icon={Trophy}
+              status={
+                <IOSInlineStatus
+                  label={latestRound.eligibility.label}
+                  tone={latestRound.eligibility.eligible ? "positive" : "attention"}
+                />
+              }
+            />
+          ) : (
+            <IOSListRow
+              label="No eligible rounds yet"
+              detail="Add a complete scorecard to establish a playing estimate."
+              href="/rounds/new"
+              icon={Flag}
+            />
+          )}
+          {firstMissingRating ? (
+            <IOSListRow
+              label="Rating or slope needed"
+              value={`${missingRatingRounds.length}`}
+              detail={`${firstMissingRating.courseName ?? firstMissingRating.fileName ?? "A saved round"} uses fallback assumptions.`}
+              href={`/rounds/${firstMissingRating.id}`}
+              icon={AlertTriangle}
+              status={<IOSInlineStatus label="Improve data confidence" tone="attention" />}
+            />
+          ) : null}
+        </IOSGroupedList>
+        <Button asChild className="min-h-12 w-full rounded-xl" data-primary-action>
+          <Link href="/import" prefetch={false}>
+            <Upload className="size-4" />
+            Import scorecard
+          </Link>
+        </Button>
+      </section>
+
+      <section className="grid gap-3" aria-labelledby="handicap-signal-mobile">
+        <IOSSectionHeader
+          title={<span id="handicap-signal-mobile">Supporting signals</span>}
+          description="Ceilings and range evidence help explain the estimate without competing with it."
+        />
+        <IOSGroupedList label="Handicap supporting signals">
+          <IOSMetricRow
+            label="Real-course best form"
+            value={formatHandicapValue(realHandicap.value)}
+            detail={handicapMethodDetail(realHandicap)}
+          />
+          <IOSMetricRow
+            label="Simulator best form"
+            value={formatHandicapValue(simulatorHandicap.value)}
+            detail={handicapMethodDetail(simulatorHandicap)}
+          />
+          <IOSListRow
+            label="Range reality"
+            value={rangeReality.estimate.label}
+            detail={`${rangeReality.estimate.expectedRangeLabel} expected · ${rangeReality.estimate.confidenceLabel}`}
+            href="/simulator-lab#range-reality"
+            icon={Radar}
+            status={
+              <IOSInlineStatus
+                label={rangeReality.estimate.trend.label}
+                tone={rangeRealityMobileTone(rangeReality.estimate.confidence)}
+              />
+            }
+          />
+          <IOSListRow
+            label="Next useful practice"
+            value={topCoachCard?.clubName ?? "Build signal"}
+            detail={
+              topCoachCard?.drill ??
+              topPractice?.detail ??
+              "Import another measured session to create a stronger recommendation."
+            }
+            href={topCoachCard ? `/bag/${topCoachCard.clubId}/analytics` : "/coach"}
+            icon={ChartNoAxesCombined}
+          />
+        </IOSGroupedList>
+      </section>
+
+      <section className="grid gap-3" aria-labelledby="handicap-depth-mobile">
+        <IOSSectionHeader
+          title={<span id="handicap-depth-mobile">Evidence</span>}
+          description="Trend, calculations and historical scorecards are available on demand."
+        />
+        <IOSDisclosureGroup
+          label="Handicap evidence"
+          items={[
+            {
+              value: "method",
+              title: "How this estimate works",
+              summary: `${playingHandicap.usedDifferentialCount}/${playingHandicap.sampleSize} rounds`,
+              description: playingHandicap.methodLabel,
+              content: (
+                <IOSGroupedList label="Handicap calculation detail" className="bg-card">
+                  <IOSMetricRow
+                    label="Real evidence"
+                    value={integerFormatter.format(playingHandicap.realDifferentialCount)}
+                    detail="Real-course score differentials"
+                  />
+                  <IOSMetricRow
+                    label="Simulator evidence"
+                    value={integerFormatter.format(playingHandicap.simulatorDifferentialCount)}
+                    detail={`Adjusted by ${formatHandicapDelta(
+                      playingHandicap.simulatorAdjustment,
+                    )} before blending`}
+                  />
+                  <IOSListRow
+                    label="Interpretation"
+                    detail="Judge the movement and confidence, not only the lowest best-form number. This is not an official Handicap Index."
+                    icon={Calculator}
+                  />
+                </IOSGroupedList>
+              ),
+            },
+            {
+              value: "trend",
+              title: "Trend chart",
+              summary: `${rounds.length} rounds`,
+              description: "Running best-form estimate, oldest to newest",
+              content: <HandicapTrendChart rounds={[...rounds].reverse()} />,
+              contentClassName: "px-3",
+            },
+            {
+              value: "range",
+              title: "Range evidence",
+              summary: rangeReality.estimate.confidenceLabel,
+              description: rangeReality.estimate.disclaimer,
+              content: (
+                <div className="grid gap-4">
+                  <IOSGroupedList label="Range handicap evidence" className="bg-card">
+                    <IOSMetricRow
+                      label="Usable sample"
+                      value={`${integerFormatter.format(rangeReality.estimate.usableShotCount)} shots`}
+                      detail={`${rangeReality.estimate.clubCount} clubs · ${rangeReality.estimate.sessionCount} sessions`}
+                    />
+                    <IOSListRow
+                      label="Costliest miss"
+                      value={topCost?.clubLabel ?? "Building"}
+                      detail={topCost?.reason ?? "More carry and side data is needed."}
+                    />
+                    <IOSListRow
+                      label="Recommended practice"
+                      value={topPractice?.title ?? "Build signal"}
+                      detail={
+                        topPractice?.detail ?? "Import another range session for a prescription."
+                      }
+                      href="/practice"
+                    />
+                  </IOSGroupedList>
+                  {rangeReality.estimate.caveats.length > 0 ? (
+                    <ul className="grid gap-2 text-[13px] leading-5 text-muted-foreground">
+                      {rangeReality.estimate.caveats.slice(0, 3).map((caveat) => (
+                        <li key={caveat} className="flex gap-2">
+                          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                          <span>{caveat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              value: "rounds",
+              title: "Score differentials",
+              summary: `${rounds.length} rounds`,
+              description: "Eligibility, scores and 18-hole equivalent inputs",
+              content: (
+                <IOSGroupedList label="Score differential history" className="bg-card">
+                  {rounds.length > 0 ? (
+                    rounds.map((round) => (
+                      <IOSListRow
+                        key={round.id}
+                        label={round.courseName ?? round.fileName ?? "Untitled round"}
+                        value={formatHandicapValue(round.handicapDifferential)}
+                        detail={`${formatDate(round.date)} · score ${round.totalScore ?? "--"} · ${formatSessionType(round.type)}`}
+                        href={`/rounds/${round.id}`}
+                        status={
+                          <IOSInlineStatus
+                            label={`${round.eligibility.label} · ${formatHolesPlayed(round)}`}
+                            tone={round.eligibility.eligible ? "positive" : "attention"}
+                          />
+                        }
+                      />
+                    ))
+                  ) : (
+                    <IOSListRow
+                      label="No scorecards yet"
+                      detail="Import a simulator scorecard or add a real round."
+                      href="/import"
+                      icon={Upload}
+                    />
+                  )}
+                </IOSGroupedList>
+              ),
+            },
+            ...(missingRatingRounds.length > 0
+              ? [
+                  {
+                    value: "quality",
+                    title: "Data confidence tasks",
+                    summary: `${missingRatingRounds.length} rounds`,
+                    description: "Rating and slope fields that still need attention",
+                    content: (
+                      <IOSGroupedList label="Handicap data confidence tasks" className="bg-card">
+                        {missingRatingRounds.map((round) => (
+                          <IOSListRow
+                            key={round.id}
+                            label={round.courseName ?? round.fileName ?? "Untitled round"}
+                            detail={`Missing ${round.courseRating === null ? "course rating" : ""}${
+                              round.courseRating === null && round.slopeRating === null
+                                ? " and "
+                                : ""
+                            }${round.slopeRating === null ? "slope rating" : ""}.`}
+                            href={`/rounds/${round.id}`}
+                            icon={Database}
+                            status={<IOSInlineStatus label="Fallback in use" tone="attention" />}
+                          />
+                        ))}
+                      </IOSGroupedList>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+        />
+      </section>
+    </MobileAppShell>
+  );
+}
+
+function rangeRealityMobileTone(
+  confidence: RangeRealityHandicapData["estimate"]["confidence"],
+): "positive" | "info" | "attention" | "neutral" {
+  if (confidence === "high") return "positive";
+  if (confidence === "medium") return "info";
+  if (confidence === "low") return "attention";
+  return "neutral";
 }
 
 async function getHandicapRounds() {

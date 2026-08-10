@@ -22,6 +22,30 @@ describe("compare desktop workbench", () => {
     expect(pageSource).toContain("comparisonBenefitTone");
   });
 
+  it("uses one answer-first comparison mode on mobile while preserving the desktop workbench", () => {
+    expect(pageSource).toContain("MobileCompareWorkspace");
+    expect(pageSource).toContain("parseMobileView");
+    expect(pageSource).toContain("data-compare-desktop-workbench");
+    expect(pageSource).toContain('className="hidden lg:block"');
+
+    const mobileSource = readFileSync(
+      join(process.cwd(), "src/app/compare/mobile-compare-workspace.tsx"),
+      "utf8",
+    );
+
+    expect(mobileSource).toContain('aria-label="Comparison type"');
+    expect(mobileSource).toContain('view === "progress"');
+    expect(mobileSource).toContain('view === "clubs"');
+    expect(mobileSource).toContain('view === "players"');
+    expect(mobileSource).toContain("IOSDisclosureGroup");
+    expect(mobileSource).toContain("CompareRadarChart");
+    expect(mobileSource).toContain("ClubDispersionPlot");
+    expect(mobileSource).toContain('method="get"');
+    expect(mobileSource).toContain("min-h-11");
+    expect(mobileSource).not.toContain("min-w-[920px]");
+    expect(mobileSource).not.toContain("min-w-[980px]");
+  });
+
   it("keeps club comparison metrics as an exportable desktop table", () => {
     expect(clubClientSource).toContain("DesktopTableWorkbenchControls");
     expect(clubClientSource).toContain('viewKey="club-comparison-metrics"');

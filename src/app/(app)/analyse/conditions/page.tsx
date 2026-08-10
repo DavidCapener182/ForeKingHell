@@ -4,7 +4,16 @@ import { ArrowLeft, ArrowRight, CloudSun, Database, ShieldAlert } from "lucide-r
 
 import { AnalysisPageTemplate } from "@/components/app/analysis-page-template";
 import { DataWarning, RecommendedAction } from "@/components/app/evidence-status";
-import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import { MobileTopBar } from "@/components/mobile-sports";
+import { MobileFilterSheet, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -38,172 +47,185 @@ export default async function ConditionsAnalysisPage({
 
   return (
     <PageShell>
-      <Button asChild variant="ghost" className="w-fit px-0">
+      <MobileTopBar title="Conditions" className="lg:hidden" />
+      <Button asChild variant="ghost" className="hidden min-h-11 w-fit px-0 lg:inline-flex">
         <Link href="/analyse">
           <ArrowLeft className="size-4" aria-hidden />
           Analyse
         </Link>
       </Button>
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Conditions analysis</StatusPill>}
-        title="See when the same club behaves differently"
-        description="Compare recorded indoor, outdoor, weather, elevation, surface and ball conditions without silently mixing missing context into the result."
-        actions={
-          <form action="/analyse/conditions" className="flex flex-wrap items-end gap-2">
-            <label className="grid gap-1 text-sm font-semibold">
-              Club
-              <select
-                name="clubId"
-                defaultValue={data.selectedClub?.id ?? ""}
-                className="min-h-11 min-w-52 rounded-xl border bg-background px-3"
-              >
-                {data.clubOptions.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.label} · {club.shotCount} shots
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button type="submit" variant="outline" className="min-h-11">
-              Compare
-            </Button>
-          </form>
-        }
-      />
+      <div className="hidden lg:block">
+        <PageHeader
+          eyebrow={<StatusPill tone="sky">Conditions analysis</StatusPill>}
+          title="See when the same club behaves differently"
+          description="Compare recorded indoor, outdoor, weather, elevation, surface and ball conditions without silently mixing missing context into the result."
+          actions={
+            <form action="/analyse/conditions" className="flex flex-wrap items-end gap-2">
+              <label className="grid gap-1 text-sm font-semibold">
+                Club
+                <select
+                  name="clubId"
+                  defaultValue={data.selectedClub?.id ?? ""}
+                  className="min-h-11 min-w-52 rounded-xl border bg-background px-3"
+                >
+                  {data.clubOptions.map((club) => (
+                    <option key={club.id} value={club.id}>
+                      {club.label} · {club.shotCount} shots
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" variant="outline" className="min-h-11">
+                Compare
+              </Button>
+            </form>
+          }
+        />
+      </div>
 
       {data.selectedClub ? (
-        <AnalysisPageTemplate
-          answer={
-            <Card className="premium-card">
-              <CardHeader>
-                <p className="text-sm font-semibold text-primary">Answer</p>
-                <CardTitle className="mt-1 text-2xl">
-                  {strongest
-                    ? `${strongest.high.label} is associated with ${round(strongest.deltaYd)} yd more carry than ${strongest.low.label}`
-                    : `There is not yet a repeatable conditions comparison for ${data.selectedClub.label}`}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-3">
-                <EvidenceMetric label="Club" value={data.selectedClub.label} />
-                <EvidenceMetric label="Measured shots" value={String(data.shotCount)} />
-                <EvidenceMetric label="Sessions" value={String(data.sessionCount)} />
-              </CardContent>
-            </Card>
-          }
-          dataWarning={
-            <DataWarning
-              title="Conditions are associations, not causes"
-              detail="Venue, strike, target and session intent may move with the recorded condition. Missing metadata stays outside each comparison instead of being guessed."
-              action={
-                <Button asChild variant="outline" className="mt-3 min-h-11 w-full rounded-xl">
-                  <Link href="/analyse/workspace">Open Data Quality Inbox</Link>
-                </Button>
+        <>
+          <MobileConditionsAnalysis data={data} />
+          <div className="hidden lg:block">
+            <AnalysisPageTemplate
+              answer={
+                <Card className="premium-card">
+                  <CardHeader>
+                    <p className="text-sm font-semibold text-primary">Answer</p>
+                    <CardTitle className="mt-1 text-2xl">
+                      {strongest
+                        ? `${strongest.high.label} is associated with ${round(strongest.deltaYd)} yd more carry than ${strongest.low.label}`
+                        : `There is not yet a repeatable conditions comparison for ${data.selectedClub.label}`}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid gap-3 sm:grid-cols-3">
+                    <EvidenceMetric label="Club" value={data.selectedClub.label} />
+                    <EvidenceMetric label="Measured shots" value={String(data.shotCount)} />
+                    <EvidenceMetric label="Sessions" value={String(data.sessionCount)} />
+                  </CardContent>
+                </Card>
               }
-            />
-          }
-          recommendation={
-            <RecommendedAction
-              title={strongest ? "Retest the largest difference" : "Record a controlled comparison"}
-              detail={
-                strongest
-                  ? `Use the same ${data.selectedClub.label}, ball, target and warm-up in both conditions before changing the stock number.`
-                  : "Import two sessions for the same club with condition metadata and at least six measured shots in each group."
+              dataWarning={
+                <DataWarning
+                  title="Conditions are associations, not causes"
+                  detail="Venue, strike, target and session intent may move with the recorded condition. Missing metadata stays outside each comparison instead of being guessed."
+                  action={
+                    <Button asChild variant="outline" className="mt-3 min-h-11 w-full rounded-xl">
+                      <Link href="/analyse/workspace">Open Data Quality Inbox</Link>
+                    </Button>
+                  }
+                />
               }
-              href="/practice/quick-range"
-              actionLabel="Start Quick Range"
-            />
-          }
-        >
-          <section className="grid gap-4 xl:grid-cols-2" aria-labelledby="condition-breakdowns">
-            <div className="xl:col-span-2">
-              <h2 id="condition-breakdowns" className="text-2xl font-semibold tracking-tight">
-                Recorded condition breakdowns
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Confidence requires repeated evidence: high is 30+ shots across 3+ sessions;
-                moderate is 12+ across 2+ sessions.
-              </p>
-            </div>
-            {data.breakdowns.map((breakdown) => (
-              <article key={breakdown.dimension} className="rounded-2xl border bg-card p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-semibold">{breakdown.label}</h3>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      {breakdown.description}
-                    </p>
-                  </div>
-                  <StatusPill tone={breakdown.groups.length >= 2 ? "green" : "amber"}>
-                    {breakdown.recordedShots} recorded
-                  </StatusPill>
-                </div>
-                {breakdown.groups.length ? (
-                  <div
-                    className="mt-4 overflow-hidden rounded-xl border"
-                    role="region"
-                    aria-label={`${breakdown.label} evidence table`}
-                  >
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Condition</TableHead>
-                          <TableHead className="text-right">Carry</TableHead>
-                          <TableHead className="text-right">Side</TableHead>
-                          <TableHead className="text-right">Evidence</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {breakdown.groups.map((group) => (
-                          <TableRow key={group.label}>
-                            <TableCell className="font-medium">{group.label}</TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatYards(group.meanCarryYd)}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatYards(group.meanAbsoluteSideYd)}
-                            </TableCell>
-                            <TableCell className="text-right text-xs">
-                              {group.confidence} · {group.shotCount} shots / {group.sessionCount}{" "}
-                              sessions
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="mt-4 flex gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    <Database className="mt-0.5 size-5 shrink-0" aria-hidden />
-                    No recorded metadata for this condition.
-                  </div>
-                )}
-                <div className="mt-3 flex gap-2 text-xs leading-5 text-muted-foreground">
-                  <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <p>
-                    {breakdown.caveat} {breakdown.unclassifiedShots} shot
-                    {breakdown.unclassifiedShots === 1 ? "" : "s"} excluded as unclassified.
+              recommendation={
+                <RecommendedAction
+                  title={
+                    strongest ? "Retest the largest difference" : "Record a controlled comparison"
+                  }
+                  detail={
+                    strongest
+                      ? `Use the same ${data.selectedClub.label}, ball, target and warm-up in both conditions before changing the stock number.`
+                      : "Import two sessions for the same club with condition metadata and at least six measured shots in each group."
+                  }
+                  href="/practice/quick-range"
+                  actionLabel="Start Quick Range"
+                />
+              }
+            >
+              <section className="grid gap-4 xl:grid-cols-2" aria-labelledby="condition-breakdowns">
+                <div className="xl:col-span-2">
+                  <h2 id="condition-breakdowns" className="text-2xl font-semibold tracking-tight">
+                    Recorded condition breakdowns
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Confidence requires repeated evidence: high is 30+ shots across 3+ sessions;
+                    moderate is 12+ across 2+ sessions.
                   </p>
                 </div>
-              </article>
-            ))}
-          </section>
+                {data.breakdowns.map((breakdown) => (
+                  <article
+                    key={breakdown.dimension}
+                    className="rounded-2xl border bg-card p-4 sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-semibold">{breakdown.label}</h3>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {breakdown.description}
+                        </p>
+                      </div>
+                      <StatusPill tone={breakdown.groups.length >= 2 ? "green" : "amber"}>
+                        {breakdown.recordedShots} recorded
+                      </StatusPill>
+                    </div>
+                    {breakdown.groups.length ? (
+                      <div
+                        className="mt-4 overflow-hidden rounded-xl border"
+                        role="region"
+                        aria-label={`${breakdown.label} evidence table`}
+                      >
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Condition</TableHead>
+                              <TableHead className="text-right">Carry</TableHead>
+                              <TableHead className="text-right">Side</TableHead>
+                              <TableHead className="text-right">Evidence</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {breakdown.groups.map((group) => (
+                              <TableRow key={group.label}>
+                                <TableCell className="font-medium">{group.label}</TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {formatYards(group.meanCarryYd)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {formatYards(group.meanAbsoluteSideYd)}
+                                </TableCell>
+                                <TableCell className="text-right text-xs">
+                                  {group.confidence} · {group.shotCount} shots /{" "}
+                                  {group.sessionCount} sessions
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="mt-4 flex gap-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                        <Database className="mt-0.5 size-5 shrink-0" aria-hidden />
+                        No recorded metadata for this condition.
+                      </div>
+                    )}
+                    <div className="mt-3 flex gap-2 text-xs leading-5 text-muted-foreground">
+                      <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                      <p>
+                        {breakdown.caveat} {breakdown.unclassifiedShots} shot
+                        {breakdown.unclassifiedShots === 1 ? "" : "s"} excluded as unclassified.
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </section>
 
-          <section className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div>
-              <h2 className="font-semibold">Need the row-level proof?</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Open Shots with the same club and inspect the preserved source fields before
-                accepting a condition claim.
-              </p>
-            </div>
-            <Button asChild variant="outline" className="min-h-11 shrink-0">
-              <Link href={`/shots?clubId=${data.selectedClub.id}`}>
-                Inspect raw shots
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
-          </section>
-        </AnalysisPageTemplate>
+              <section className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div>
+                  <h2 className="font-semibold">Need the row-level proof?</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Open Shots with the same club and inspect the preserved source fields before
+                    accepting a condition claim.
+                  </p>
+                </div>
+                <Button asChild variant="outline" className="min-h-11 shrink-0">
+                  <Link href={`/shots?clubId=${data.selectedClub.id}`}>
+                    Inspect raw shots
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                </Button>
+              </section>
+            </AnalysisPageTemplate>
+          </div>
+        </>
       ) : (
         <div className="rounded-2xl border border-dashed bg-card p-8 text-center">
           <CloudSun className="mx-auto size-8 text-muted-foreground" aria-hidden />
@@ -218,6 +240,146 @@ export default async function ConditionsAnalysisPage({
         </div>
       )}
     </PageShell>
+  );
+}
+
+function MobileConditionsAnalysis({
+  data,
+}: {
+  data: Awaited<ReturnType<typeof getConditionsData>>;
+}) {
+  if (!data.selectedClub) return null;
+
+  const strongest = strongestConditionDifference(data.breakdowns);
+
+  return (
+    <div className="grid min-w-0 gap-4 lg:hidden">
+      <section className="ios-grouped-list min-w-0 overflow-hidden px-4 py-4">
+        <IOSInlineStatus
+          label={strongest ? "Largest recorded difference" : "More evidence needed"}
+          tone={strongest ? "info" : "attention"}
+        />
+        <h2 className="mt-2 text-balance text-xl font-semibold tracking-tight">
+          {strongest
+            ? `${strongest.high.label} is associated with ${round(strongest.deltaYd)} yd more carry than ${strongest.low.label}`
+            : `There is not yet a repeatable conditions comparison for ${data.selectedClub.label}`}
+        </h2>
+        <p className="mt-2 text-sm leading-5 text-muted-foreground">
+          {strongest
+            ? `Retest with the same ${data.selectedClub.label}, ball, target and warm-up before changing the stock number.`
+            : "Record two controlled sessions for the same club before treating a condition as the cause."}
+        </p>
+        <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
+          <Link href="/practice/quick-range">
+            {strongest ? "Retest in Quick Range" : "Start a controlled comparison"}
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </Button>
+      </section>
+
+      <section className="grid gap-2" aria-labelledby="mobile-condition-scope">
+        <IOSSectionHeader title={<span id="mobile-condition-scope">Evidence scope</span>} />
+        <IOSGroupedList>
+          <IOSMetricRow label="Club" value={data.selectedClub.label} />
+          <IOSMetricRow label="Measured shots" value={data.shotCount} />
+          <IOSMetricRow label="Sessions" value={data.sessionCount} />
+        </IOSGroupedList>
+        <MobileFilterSheet label="Choose club">
+          <form action="/analyse/conditions" className="grid gap-4 pb-2">
+            <label className="grid gap-1 text-sm font-semibold">
+              Club
+              <select
+                name="clubId"
+                defaultValue={data.selectedClub.id}
+                className="min-h-11 w-full rounded-xl border bg-background px-3"
+              >
+                {data.clubOptions.map((club) => (
+                  <option key={club.id} value={club.id}>
+                    {club.label} · {club.shotCount} shots
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" className="min-h-11 rounded-xl">
+              Compare this club
+            </Button>
+          </form>
+        </MobileFilterSheet>
+      </section>
+
+      <aside className="ios-grouped-list grid gap-2 overflow-hidden px-4 py-3 text-sm">
+        <IOSInlineStatus label="Association only" tone="attention" />
+        <p className="leading-5 text-muted-foreground">
+          Venue, strike, target and session intent may move with a condition. Missing metadata is
+          not guessed.
+        </p>
+      </aside>
+
+      <section className="grid gap-2" aria-labelledby="mobile-condition-breakdowns">
+        <IOSSectionHeader
+          title={<span id="mobile-condition-breakdowns">Recorded conditions</span>}
+          description="Open one dimension at a time for its measured groups."
+        />
+        <IOSDisclosureGroup
+          label="Recorded condition breakdowns"
+          items={data.breakdowns.map((breakdown) => ({
+            value: breakdown.dimension,
+            title: breakdown.label,
+            summary: `${breakdown.recordedShots} recorded`,
+            description:
+              breakdown.groups.length >= 2
+                ? `${breakdown.groups.length} comparable groups`
+                : "No repeatable comparison yet",
+            content: (
+              <div className="grid gap-3">
+                <p className="text-sm leading-5 text-muted-foreground">{breakdown.description}</p>
+                {breakdown.groups.length ? (
+                  <IOSGroupedList>
+                    {breakdown.groups.map((group) => (
+                      <IOSListRow
+                        key={group.label}
+                        label={group.label}
+                        value={formatYards(group.meanCarryYd)}
+                        detail={`${formatYards(group.meanAbsoluteSideYd)} mean absolute side · ${group.shotCount} shots / ${group.sessionCount} sessions`}
+                        status={
+                          <IOSInlineStatus
+                            label={`${group.confidence} confidence`}
+                            tone={group.confidence === "High" ? "positive" : "neutral"}
+                          />
+                        }
+                      />
+                    ))}
+                  </IOSGroupedList>
+                ) : (
+                  <p className="text-sm leading-5 text-muted-foreground">
+                    No recorded metadata for this condition.
+                  </p>
+                )}
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {breakdown.caveat} {breakdown.unclassifiedShots} shot
+                  {breakdown.unclassifiedShots === 1 ? "" : "s"} excluded as unclassified.
+                </p>
+              </div>
+            ),
+          }))}
+        />
+      </section>
+
+      <IOSGroupedList>
+        <IOSListRow
+          icon={Database}
+          label="Inspect row-level proof"
+          detail="Review the preserved source fields before accepting a condition claim"
+          href={`/shots?clubId=${data.selectedClub.id}`}
+        />
+        <IOSListRow
+          icon={ShieldAlert}
+          label="Data Quality Inbox"
+          detail="Find missing condition metadata and repair paths"
+          href="/analyse/workspace"
+        />
+      </IOSGroupedList>
+    </div>
   );
 }
 

@@ -24,4 +24,14 @@ describe("new round desktop workflow", () => {
     expect(source).toContain("keyboard-friendly on desktop");
     expect(source).toContain("review the scorecard");
   });
+
+  it("starts the phone composition with the scorecard task and isolates the desktop hero", () => {
+    expect(source).toContain("MobileAppShell");
+    expect(source).toContain('<MobileTopBar title="Add Round"');
+    expect(source).toContain('instanceId="mobile-round"');
+    expect(source).toContain("data-new-round-desktop-workflow");
+    expect(source).toContain('className="hidden gap-4 lg:grid"');
+    expect(source).toContain('instanceId="desktop-round"');
+    expect(source).not.toContain("MobileRouteHeader");
+  });
 });

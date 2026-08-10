@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, Check, Database, Flag, GitCompareArrows } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Database, Flag, GitCompareArrows } from "lucide-react";
 
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import { SegmentedControl } from "@/components/app/segmented-control";
 import { StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,6 +50,8 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
     selected.length === 2
       ? `/analyse/compare?sessionId=${encodeURIComponent(selected[0])}&baselineSessionId=${encodeURIComponent(selected[1])}`
       : null;
+  const recentVisible = visible.slice(0, 10);
+  const olderVisible = visible.slice(10);
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -51,9 +60,158 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
     });
   }
 
+  function mobileRows(items: SessionTimelineItem[], startIndex = 0) {
+    return items.map((session, index) => {
+      const chosen = selected.includes(session.id);
+      const href = session.isRound ? `/rounds/${session.id}` : `/today?session=${session.id}`;
+      const Icon = session.isRound ? Flag : Database;
+
+      return (
+        <article
+          key={session.id}
+          className="ios-grouped-row grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_2.75rem] items-stretch"
+        >
+          <Link
+            href={href}
+            className="focus-aaa flex min-w-0 touch-manipulation items-center gap-3 px-4 py-2.5 outline-none active:bg-secondary"
+            aria-label={`Open ${session.title}, ${session.dateLabel}`}
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-[0.55rem] bg-primary/10 text-primary">
+              <Icon className="size-[1.125rem]" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 items-start gap-2">
+                <span className="line-clamp-2 text-[15px] font-medium leading-5">
+                  {session.title}
+                </span>
+                {startIndex + index === 0 ? (
+                  <span className="mt-0.5 shrink-0 text-xs font-medium text-primary">Latest</span>
+                ) : null}
+              </span>
+              <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
+                {session.dateLabel} · {session.typeLabel} · {session.shotCount} shot
+                {session.shotCount === 1 ? "" : "s"}
+              </span>
+              {session.equipmentNotes ? (
+                <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
+                  Equipment change
+                </span>
+              ) : null}
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
+          </Link>
+          <button
+            type="button"
+            aria-pressed={chosen}
+            aria-label={`${chosen ? "Remove" : "Select"} ${session.title} for comparison`}
+            onClick={() => toggle(session.id)}
+            className="focus-aaa grid min-h-11 min-w-11 touch-manipulation place-items-center border-l border-border/70 text-muted-foreground outline-none active:bg-secondary"
+          >
+            <span
+              className={cn(
+                "grid size-5 place-items-center rounded-md border",
+                chosen
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card",
+              )}
+              aria-hidden
+            >
+              {chosen ? <Check className="size-3.5" /> : null}
+            </span>
+          </button>
+        </article>
+      );
+    });
+  }
+
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border bg-card p-3">
+      <div className="grid gap-3 lg:hidden">
+        <SegmentedControl
+          label="Session type"
+          value={filter}
+          options={[
+            { label: "All", value: "all" },
+            { label: "Practice", value: "practice" },
+            { label: "Rounds", value: "round" },
+          ]}
+          onChange={(value) => setFilter(value as TimelineFilter)}
+        />
+
+        <IOSSectionHeader
+          title="Recent sessions"
+          description={`${visible.length} ${filter === "all" ? "sessions and rounds" : filter}`}
+        />
+        <IOSGroupedList label="Session timeline">
+          {recentVisible.length > 0 ? (
+            mobileRows(recentVisible)
+          ) : (
+            <IOSListRow
+              label="No sessions in this view"
+              detail="Choose another session type or import new measured data."
+            />
+          )}
+        </IOSGroupedList>
+
+        {olderVisible.length > 0 ? (
+          <IOSDisclosureGroup
+            label="Older session history"
+            items={[
+              {
+                value: "older-sessions",
+                title: "Older sessions",
+                summary: `${olderVisible.length}`,
+                description: "Continue through the archive",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: (
+                  <IOSGroupedList label="Older session rows" className="border-0">
+                    {mobileRows(olderVisible, recentVisible.length)}
+                  </IOSGroupedList>
+                ),
+              },
+            ]}
+          />
+        ) : null}
+
+        {selected.length === 0 ? (
+          <p className="px-1 text-[13px] leading-[1.15rem] text-muted-foreground">
+            Use the trailing checkboxes to compare two measured sessions.
+          </p>
+        ) : null}
+
+        {selected.length > 0 ? (
+          <aside
+            aria-live="polite"
+            className="premium-mobile-action-bar sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 grid gap-2 rounded-xl p-3"
+          >
+            <div className="min-w-0">
+              <p className="font-semibold">Compare · {selected.length}/2</p>
+              <p className="line-clamp-1 text-sm text-muted-foreground">
+                {selectedSessions.map((session) => session.title).join(" versus ")}
+              </p>
+            </div>
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
+              <Button type="button" variant="ghost" onClick={() => setSelected([])}>
+                Clear
+              </Button>
+              {compareHref ? (
+                <Button asChild className="min-h-11 rounded-xl">
+                  <Link href={compareHref}>
+                    <GitCompareArrows className="size-4" aria-hidden />
+                    Compare
+                  </Link>
+                </Button>
+              ) : (
+                <Button type="button" disabled className="min-h-11 rounded-xl">
+                  Select one more
+                </Button>
+              )}
+            </div>
+          </aside>
+        ) : null}
+      </div>
+
+      <div className="hidden flex-wrap items-center justify-between gap-2 rounded-2xl border bg-card p-3 lg:flex">
         <div className="flex flex-wrap gap-2" aria-label="Session timeline filters">
           {(["all", "practice", "round"] as const).map((value) => (
             <button
@@ -79,7 +237,7 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
 
       <section
         aria-label="Session timeline"
-        className="overflow-hidden rounded-2xl border border-border bg-card"
+        className="hidden overflow-hidden rounded-2xl border border-border bg-card lg:block"
       >
         {visible.map((session, index) => {
           const chosen = selected.includes(session.id);
@@ -165,7 +323,7 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
 
       <aside
         aria-live="polite"
-        className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 flex flex-col gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-lg backdrop-blur lg:bottom-4 lg:flex-row lg:items-center lg:justify-between"
+        className="sticky bottom-4 z-20 hidden flex-row items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-lg backdrop-blur lg:flex"
       >
         <div className="min-w-0">
           <p className="font-semibold">Compare tray · {selected.length}/2 selected</p>

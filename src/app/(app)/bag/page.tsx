@@ -28,6 +28,13 @@ import {
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
 import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -48,7 +55,6 @@ import {
   DataTableFrame,
   MobileAccordionSection,
   MobileBentoSummary,
-  MobileCompanionAccordion,
   MobileDataCard,
   MobileDataList,
   MobileSectionChips,
@@ -62,8 +68,6 @@ import {
   MobileTabBar,
   MobileTopBar,
   NativeListSection,
-  PBCard,
-  ProgressCard,
 } from "@/components/mobile-sports";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -401,105 +405,116 @@ export default async function BagPage({ searchParams }: PageProps) {
               tone: averageConfidence >= 75 ? "green" : "sky",
             },
             {
-              label: "Opportunity",
+              label: "Next move",
               value: biggestOpportunity?.title ?? "Clean",
               detail: biggestOpportunity?.detail ?? "No urgent move",
               tone: biggestOpportunity ? "amber" : "green",
             },
             {
-              label: "Gap risk",
+              label: "Weakest gap",
               value: currentGapRisk.value,
               detail: currentGapRisk.detail,
               tone: currentGapRisk.tone,
             },
           ]}
         />
-        <MobileCompanionAccordion
+        <section className="grid gap-2.5" aria-label="Clubs in your bag">
+          <IOSSectionHeader
+            title="Your clubs"
+            description={
+              bag.length > 0
+                ? `${bag.length} active ${bag.length === 1 ? "club" : "clubs"}. Open a club for its full analysis.`
+                : "Import launch-monitor shots to build your first bag."
+            }
+          />
+          <IOSGroupedList label="Active clubs">
+            {bag.length > 0 ? (
+              bag.map((club) => (
+                <IOSListRow
+                  key={club.id}
+                  label={formatClubType(club.type)}
+                  detail={club.brandModel}
+                  value={mobileClubSignal(club)}
+                  href={`/bag/${club.id}`}
+                  ariaLabel={`Open ${formatClubType(club.type)} analysis`}
+                />
+              ))
+            ) : (
+              <IOSListRow
+                icon={Upload}
+                label="No clubs imported"
+                detail="A Rapsodo or supported CSV will create the bag from your real shots."
+                status={<IOSInlineStatus label="First setup" tone="info" />}
+              />
+            )}
+          </IOSGroupedList>
+          {bag.length === 0 ? (
+            <Button asChild className="min-h-11 w-full rounded-lg">
+              <Link href="/import" prefetch={false}>
+                <Upload className="size-4" aria-hidden />
+                Import your first shots
+              </Link>
+            </Button>
+          ) : null}
+        </section>
+        <section className="grid gap-2.5" aria-label="Featured bag action">
+          <IOSSectionHeader title="Next bag action" description="The first issue worth checking." />
+          <IOSGroupedList label="Featured bag action">
+            <IOSListRow
+              icon={bagDoctorFindings[0]?.tone === "green" ? ShieldCheck : AlertTriangle}
+              label={bagDoctorFindings[0]?.title ?? "Build your bag evidence"}
+              detail={
+                bagDoctorFindings[0]?.detail ??
+                "Import clean stock shots to unlock a useful bag recommendation."
+              }
+              value={bagDoctorFindings[0]?.label ?? "Import"}
+              href={bagDoctorFindings[0]?.href ?? "/import"}
+              status={
+                bagDoctorFindings[0] ? (
+                  <IOSInlineStatus
+                    label={mobileBagStatusLabel(bagDoctorFindings[0].tone)}
+                    tone={mobileBagStatusTone(bagDoctorFindings[0].tone)}
+                  />
+                ) : undefined
+              }
+            />
+          </IOSGroupedList>
+        </section>
+        <IOSDisclosureGroup
+          label="Bag detail and evidence"
           items={[
             {
-              value: "performance",
-              title: "Performance",
-              description: "Personal bests, gapping ladder and doctor.",
-              summary: `${gappingRows.length} clubs`,
-              children: (
-                <div className="grid gap-4">
-                  <NativeListSection title="Personal bests">
-                    <div className="grid gap-3">
-                      <PersonalBestCard
-                        clubs={bag}
-                        initialMetric={personalBestMetric}
-                        variant="inline"
-                      />
-                    </div>
-                  </NativeListSection>
-                  <NativeListSection title="Full gapping ladder">
-                    <ProgressCard
-                      title="Bag trust"
-                      value={`${averageConfidence}%`}
-                      detail={`${bag.length} active clubs · ${totalShots} tracked shots`}
-                    >
-                      <div className="grid gap-2">
-                        {gappingRows.slice(0, 8).map((row) => {
-                          const visualCarry = visualCarryYd(row);
-
-                          return (
-                            <Link
-                              key={row.id}
-                              href={`/bag/${row.id}`}
-                              prefetch={false}
-                              className="trust-indicator grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2 text-sm"
-                            >
-                              <span className="font-semibold">{formatClubType(row.clubType)}</span>
-                              <span className="h-2 rounded-full bg-[#E5E7EB]">
-                                <span
-                                  className="block h-2 rounded-full bg-[#0B7A3B]"
-                                  style={{
-                                    width: `${carryWidthPercent(visualCarry, maxDisplayCarry)}%`,
-                                  }}
-                                />
-                              </span>
-                              <span className="font-semibold">{formatCarryYards(visualCarry)}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </ProgressCard>
-                    <div className="grid grid-cols-2 gap-2">
-                      <PBCard
-                        title="Best club"
-                        value={bestClub ? formatClubType(bestClub.type) : "--"}
-                        detail="Highest trust"
-                      />
-                      <PBCard
-                        title="Weakest gap"
-                        value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
-                        detail={weakestGap ? workOnText(weakestGap) : "Need samples"}
-                      />
-                    </div>
-                  </NativeListSection>
-                  <NativeListSection title="Gapping doctor">
-                    <div className="grid gap-2">
-                      {bagDoctorFindings.slice(0, 3).map((finding) => (
-                        <Link
-                          key={`${finding.title}-${finding.detail}`}
-                          href={finding.href ?? "/import"}
-                          prefetch={false}
-                          className="premium-rail-card rounded-lg p-3"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold">{finding.title}</p>
-                              <p className="mt-1 text-xs leading-5 text-[#6B7280]">
-                                {finding.detail}
-                              </p>
-                            </div>
-                            <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </NativeListSection>
-                </div>
+              value: "personal-bests",
+              title: "Personal bests",
+              description: "Clean carry and total records by club.",
+              summary: bag.length > 0 ? `${bag.length} clubs` : "No records",
+              content:
+                bag.length > 0 ? (
+                  <PersonalBestCard
+                    clubs={bag}
+                    initialMetric={personalBestMetric}
+                    variant="inline"
+                  />
+                ) : (
+                  <p className="text-[13px] leading-5 text-muted-foreground">
+                    Import clean stock shots to create carry and total personal bests.
+                  </p>
+                ),
+            },
+            {
+              value: "gapping",
+              title: "Gapping evidence",
+              description: "Carry ladder, trust and supporting findings.",
+              summary: currentGapRisk.value,
+              content: (
+                <MobileBagGappingDetails
+                  rows={gappingRows}
+                  averageConfidence={averageConfidence}
+                  totalShots={totalShots}
+                  bestClub={bestClub}
+                  weakestGap={weakestGap}
+                  findings={bagDoctorFindings.slice(1)}
+                />
               ),
             },
             {
@@ -507,19 +522,17 @@ export default async function BagPage({ searchParams }: PageProps) {
               title: "Distance benchmarks",
               description: "Carry, speed, smash, height, land angle and peers.",
               summary: benchmarkRows.length > 0 ? `${benchmarkRows.length} clubs` : "Building",
-              children:
+              content:
                 benchmarkRows.length > 0 ? (
-                  <DistanceBenchmarkPanel
+                  <MobileBagBenchmarkDetails
                     rows={benchmarkRows}
                     peerSummary={peerBenchmarkSummary}
                     peerBenchmarksLoaded={peerBenchmarksLoaded}
                   />
                 ) : (
-                  <NativeListSection title="Distance benchmarks">
-                    <p className="rounded-lg border border-[#E5E7EB] bg-white p-3 text-sm leading-5 text-[#6B7280]">
-                      Import more stock shots to unlock club speed, smash and peer benchmarks.
-                    </p>
-                  </NativeListSection>
+                  <p className="text-[13px] leading-5 text-muted-foreground">
+                    Import more stock shots to unlock club speed, smash and peer benchmarks.
+                  </p>
                 ),
             },
             {
@@ -527,7 +540,7 @@ export default async function BagPage({ searchParams }: PageProps) {
               title: "Lower scores",
               description: "Strategy, wedges, heat maps and caddie.",
               summary: `${smartBagBuilder.currentScore}% bag`,
-              children: (
+              content: (
                 <LowerScoresFeatureStack
                   smartBagBuilder={smartBagBuilder}
                   wedgeMatrix={wedgeMatrix}
@@ -544,9 +557,9 @@ export default async function BagPage({ searchParams }: PageProps) {
             {
               value: "bag-setup",
               title: "Bag setup",
-              description: "Wedge roles, stock filters and club rail.",
+              description: "Target lookup, wedge roles and club identities.",
               summary: `${bag.length} clubs`,
-              children: (
+              content: (
                 <div className="grid gap-4">
                   <NativeListSection title="Target lookup">
                     <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
@@ -556,40 +569,42 @@ export default async function BagPage({ searchParams }: PageProps) {
                       <WedgeRoleCards clubs={wedgeRoleClubs} compact />
                     </NativeListSection>
                   ) : null}
-                  {stockFilterClubs.length > 0 ? (
-                    <NativeListSection title="Best-stock filters">
-                      <StockFilterCards clubs={stockFilterClubs} compact />
-                    </NativeListSection>
-                  ) : null}
                   <MobileClubArtworkCarousel clubs={bag} />
                 </div>
               ),
             },
             {
               value: "fitting",
-              title: "Fitting",
-              description: "Feature checks, target links and club identities.",
-              summary: "Full analysis",
-              children: <BagFeaturePanel data={featureData} compactMobile />,
+              title: "Fitting and methodology",
+              description: "Setup checks and how the bag readout is built.",
+              summary: `${totalShots} shots`,
+              content: <MobileBagMethodology clubs={stockFilterClubs} featureData={featureData} />,
             },
           ]}
         />
         <StickyMobileAction>
-          <Button asChild className="premium-action w-full rounded-lg">
+          <Button asChild className="premium-action min-h-11 w-full rounded-lg">
             <Link
               href={
-                currentGapRisk.href ?? "/practice?source=bag&intent=latest_weakness#practice-plan"
+                bag.length === 0
+                  ? "/import"
+                  : (currentGapRisk.href ??
+                    "/practice?source=bag&intent=latest_weakness#practice-plan")
               }
               prefetch={false}
             >
-              <Target className="size-4" aria-hidden />
-              Review next bag move
+              {bag.length === 0 ? (
+                <Upload className="size-4" aria-hidden />
+              ) : (
+                <Target className="size-4" aria-hidden />
+              )}
+              {bag.length === 0 ? "Import shot data" : "Review next bag move"}
             </Link>
           </Button>
         </StickyMobileAction>
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
+      <div className="hidden items-center justify-between gap-4 lg:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard">
             <ArrowLeft className="size-4" />
@@ -816,6 +831,278 @@ export default async function BagPage({ searchParams }: PageProps) {
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+function MobileBagGappingDetails({
+  rows,
+  averageConfidence,
+  totalShots,
+  bestClub,
+  weakestGap,
+  findings,
+}: {
+  rows: GappingRow[];
+  averageConfidence: number;
+  totalShots: number;
+  bestClub: BagClub | null;
+  weakestGap: GappingRow | null;
+  findings: BagDoctorFinding[];
+}) {
+  return (
+    <div className="grid gap-5">
+      <section className="grid gap-2.5" aria-label="Bag trust summary">
+        <IOSSectionHeader title="Trust summary" />
+        <IOSGroupedList label="Bag trust summary">
+          <IOSListRow
+            label="Bag trust"
+            value={`${averageConfidence}%`}
+            detail={`${rows.length} mapped clubs · ${totalShots.toLocaleString("en-GB")} tracked shots`}
+          />
+          <IOSListRow
+            label="Most trusted"
+            value={bestClub ? formatClubType(bestClub.type) : "--"}
+            detail={bestClub?.brandModel ?? "Import more clean stock shots"}
+            href={bestClub ? `/bag/${bestClub.id}` : undefined}
+          />
+          <IOSListRow
+            label="Weakest gap"
+            value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
+            detail={weakestGap ? workOnText(weakestGap) : "No decision-ready gap yet"}
+            href={weakestGap ? `/bag/${weakestGap.id}` : undefined}
+          />
+        </IOSGroupedList>
+      </section>
+
+      <section className="grid gap-2.5" aria-label="Full gapping ladder">
+        <IOSSectionHeader title="Full gapping ladder" />
+        {rows.length > 0 ? (
+          <IOSGroupedList label="Full gapping ladder">
+            {rows.map((row) => (
+              <IOSListRow
+                key={row.id}
+                label={formatClubType(row.clubType)}
+                value={formatCarryYards(visualCarryYd(row))}
+                detail={`${row.brandModel} · ${row.confidenceScore}% trust`}
+                href={`/bag/${row.id}`}
+              />
+            ))}
+          </IOSGroupedList>
+        ) : (
+          <p className="text-[13px] leading-5 text-muted-foreground">
+            Import several clubs to create a reliable carry ladder.
+          </p>
+        )}
+      </section>
+
+      {findings.length > 0 ? (
+        <section className="grid gap-2.5" aria-label="Supporting bag findings">
+          <IOSSectionHeader title="Supporting findings" />
+          <IOSGroupedList label="Supporting bag findings">
+            {findings.map((finding) => (
+              <IOSListRow
+                key={`${finding.title}-${finding.detail}`}
+                label={finding.title}
+                detail={finding.detail}
+                value={finding.label}
+                href={finding.href ?? "/import"}
+                status={
+                  <IOSInlineStatus
+                    label={mobileBagStatusLabel(finding.tone)}
+                    tone={mobileBagStatusTone(finding.tone)}
+                  />
+                }
+              />
+            ))}
+          </IOSGroupedList>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileBagBenchmarkDetails({
+  rows,
+  peerSummary,
+  peerBenchmarksLoaded,
+}: {
+  rows: ClubBenchmarkRow[];
+  peerSummary: ClubBenchmarkPeerSummary;
+  peerBenchmarksLoaded: boolean;
+}) {
+  return (
+    <div className="grid gap-5">
+      <section className="grid gap-2.5" aria-label="Club distance benchmarks">
+        <IOSSectionHeader
+          title="Club benchmarks"
+          description="Carry level first; launch metrics remain available for each club."
+        />
+        <IOSGroupedList label="Club distance benchmarks">
+          {rows.map((row) => (
+            <IOSListRow
+              key={row.clubId}
+              label={formatClubType(row.clubType)}
+              detail={`${row.brandModel} · ${mobileBenchmarkMetricSummary(row)}`}
+              value={row.comparison.levelLabel}
+              href={`/bag/${row.clubId}`}
+              status={
+                <IOSInlineStatus
+                  label={`${formatCarryYards(row.carryYd)} · ${row.sampleSize} stock shots`}
+                  tone={row.confidenceScore >= 75 ? "positive" : "attention"}
+                />
+              }
+            />
+          ))}
+        </IOSGroupedList>
+      </section>
+
+      <section className="grid gap-2.5" aria-label="Peer benchmark context">
+        <IOSSectionHeader title="Peer context" />
+        {peerBenchmarksLoaded ? (
+          <IOSGroupedList label="Peer benchmark context">
+            <IOSListRow
+              icon={Users}
+              label="Visible peer pool"
+              value={`${peerSummary.peerUserCount} ${peerSummary.peerUserCount === 1 ? "golfer" : "golfers"}`}
+              detail={`${peerSummary.cohortLabel} · ${peerSummary.peerShotCount.toLocaleString("en-GB")} shots`}
+            />
+            {peerSummary.comparisons.map((comparison) => {
+              const matchingClub = rows.find((row) => row.clubType === comparison.clubType);
+
+              return (
+                <IOSListRow
+                  key={`${comparison.clubType}-${comparison.metricKey}`}
+                  label={`${formatClubType(comparison.clubType)} · ${mobileBenchmarkMetricLabel(comparison.metricKey)}`}
+                  value={
+                    comparison.percentile === null ? "--" : mobilePercentile(comparison.percentile)
+                  }
+                  detail={`${comparison.sampleSize.toLocaleString("en-GB")} peer shots`}
+                  href={matchingClub ? `/bag/${matchingClub.clubId}` : undefined}
+                />
+              );
+            })}
+          </IOSGroupedList>
+        ) : (
+          <Button asChild variant="outline" className="min-h-11 w-full rounded-lg">
+            <Link href="/bag?peers=1#distance-benchmarks" prefetch={false}>
+              <Users className="size-4" aria-hidden />
+              Load peer benchmarks
+            </Link>
+          </Button>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MobileBagMethodology({
+  clubs,
+  featureData,
+}: {
+  clubs: BagClub[];
+  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
+}) {
+  return (
+    <div className="grid gap-5">
+      <BagFeaturePanel data={featureData} compactMobile />
+      <section className="grid gap-2.5" aria-label="Bag calculation method">
+        <IOSSectionHeader title="How this readout works" />
+        <IOSGroupedList label="Bag calculation method">
+          <IOSListRow
+            label="Recommended carry"
+            detail="The course number comes from usable stock-shot evidence; Best Stock remains supporting potential."
+          />
+          <IOSListRow
+            label="Trust"
+            detail="Sample size and consistency determine whether a club is decision-ready. Low-shot clubs stay visibly provisional."
+          />
+          <IOSListRow
+            label="Gap flags"
+            detail="Recommended carries are checked for overlaps and missing scoring or long-game windows."
+          />
+        </IOSGroupedList>
+      </section>
+      {clubs.length > 0 ? (
+        <NativeListSection title="Best-stock filters">
+          <StockFilterCards clubs={clubs} compact />
+        </NativeListSection>
+      ) : null}
+    </div>
+  );
+}
+
+function mobileClubSignal(club: BagClub) {
+  const carryYd = clubPrimaryCarryYd(club);
+
+  return carryYd === null ? `${club.stock.confidenceScore}% trust` : formatCarryYards(carryYd);
+}
+
+function mobileBenchmarkMetricSummary(row: ClubBenchmarkRow) {
+  const metrics = [
+    mobileBenchmarkMetricValue("Club", row.metrics?.clubSpeedMph, " mph"),
+    mobileBenchmarkMetricValue("Ball", row.metrics?.ballSpeedMph, " mph"),
+    mobileBenchmarkMetricValue("Smash", row.metrics?.smashFactor),
+    mobileBenchmarkMetricValue("Height", row.metrics?.maxHeightYd, " yd"),
+    mobileBenchmarkMetricValue("Land", row.metrics?.landAngleDeg, "°"),
+  ].filter((value): value is string => value !== null);
+
+  return metrics.length > 0 ? metrics.join(" · ") : "Launch metrics building";
+}
+
+function mobileBenchmarkMetricValue(label: string, value: number | null | undefined, unit = "") {
+  return value === null || value === undefined
+    ? null
+    : `${label} ${numberFormatter.format(value)}${unit}`;
+}
+
+function mobileBenchmarkMetricLabel(metric: ClubBenchmarkMetricKey) {
+  const labels: Record<ClubBenchmarkMetricKey, string> = {
+    carryYd: "Carry",
+    clubSpeedMph: "Club speed",
+    attackAngleDeg: "Attack angle",
+    ballSpeedMph: "Ball speed",
+    smashFactor: "Smash",
+    launchAngleDeg: "Launch",
+    spinRate: "Spin",
+    maxHeightYd: "Height",
+    landAngleDeg: "Land angle",
+  };
+
+  return labels[metric];
+}
+
+function mobilePercentile(value: number) {
+  const rounded = Math.round(value);
+  const remainder100 = rounded % 100;
+  const suffix =
+    remainder100 >= 11 && remainder100 <= 13
+      ? "th"
+      : rounded % 10 === 1
+        ? "st"
+        : rounded % 10 === 2
+          ? "nd"
+          : rounded % 10 === 3
+            ? "rd"
+            : "th";
+
+  return `${integerFormatter.format(rounded)}${suffix}`;
+}
+
+function mobileBagStatusTone(
+  tone: BagDoctorFinding["tone"],
+): "positive" | "attention" | "critical" | "info" | "neutral" {
+  if (tone === "green") return "positive";
+  if (tone === "amber") return "attention";
+  if (tone === "pink") return "critical";
+  if (tone === "sky") return "info";
+  return "neutral";
+}
+
+function mobileBagStatusLabel(tone: BagDoctorFinding["tone"]) {
+  if (tone === "green") return "On track";
+  if (tone === "amber") return "Review";
+  if (tone === "pink") return "Action required";
+  if (tone === "sky") return "Monitor";
+  return "Building";
 }
 
 async function getBagChallengeData(): Promise<{ active: ChallengeListItem[] }> {

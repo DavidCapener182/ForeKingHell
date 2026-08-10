@@ -1,17 +1,12 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import { ArrowRight, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { ArrowRight, ChevronRight, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
+import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   Card,
   CardAction,
@@ -437,7 +432,7 @@ export function MobileFilterSheet({
             </Badge>
           ) : null}
         </DrawerTrigger>
-        <DrawerContent className="max-h-[86vh]">
+        <DrawerContent className="max-h-[86dvh]">
           <DrawerHeader className="text-left">
             <DrawerTitle>{label}</DrawerTitle>
             <DrawerDescription>Refine the current view without leaving the page.</DrawerDescription>
@@ -570,8 +565,8 @@ export function MobileBentoSummary({
                 </p>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <p className="max-w-36 truncate text-right text-[17px] font-semibold tabular-nums">
+            <div className="flex min-w-28 max-w-[52%] shrink-0 items-center justify-end gap-2">
+              <p className="min-w-0 text-balance text-right text-[17px] leading-5 font-semibold tabular-nums [overflow-wrap:anywhere]">
                 {item.value}
               </p>
               {item.action ? (
@@ -754,39 +749,17 @@ export function MobileCompanionAccordion({
   }
 
   return (
-    <Accordion
-      type="single"
-      collapsible
+    <IOSDisclosureGroup
       defaultValue={resolvedDefaultValue}
-      className={cn("ios-grouped-list lg:hidden", className)}
-    >
-      {items.map((item) => (
-        <AccordionItem
-          key={item.value}
-          value={item.value}
-          className="ios-grouped-row overflow-hidden border-0"
-        >
-          <AccordionTrigger className="min-h-14 px-4 py-2.5 text-left no-underline hover:no-underline">
-            <span className="grid min-w-0 gap-0.5">
-              <span className="truncate text-sm font-semibold tracking-normal">{item.title}</span>
-              {item.description ? (
-                <span className="truncate text-xs font-normal text-muted-foreground">
-                  {item.description}
-                </span>
-              ) : null}
-            </span>
-            {item.summary ? (
-              <span className="ml-auto max-w-36 shrink-0 truncate text-xs font-medium text-muted-foreground">
-                {item.summary}
-              </span>
-            ) : null}
-          </AccordionTrigger>
-          <AccordionContent className="border-t border-border/70 bg-secondary/35 p-4">
-            {item.children}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
+      className={cn("lg:hidden", className)}
+      items={items.map((item) => ({
+        value: item.value,
+        title: item.title,
+        summary: item.summary,
+        description: item.description,
+        content: item.children,
+      }))}
+    />
   );
 }
 
@@ -810,36 +783,20 @@ export function MobileAccordionSection({
   contentClassName?: string;
 }) {
   return (
-    <Accordion
-      type="single"
-      collapsible
-      defaultValue={defaultOpen ? "mobile-section" : undefined}
+    <IOSDisclosureGroup
       className={cn("lg:hidden", className)}
-    >
-      <AccordionItem
-        value="mobile-section"
-        className="premium-card overflow-hidden rounded-lg border border-border/70"
-      >
-        <AccordionTrigger className="min-h-12 px-3 py-2 no-underline hover:no-underline">
-          <span className="grid min-w-0 gap-0.5">
-            <span className="truncate text-sm font-semibold tracking-normal">{title}</span>
-            {description ? (
-              <span className="truncate text-xs font-normal text-muted-foreground">
-                {description}
-              </span>
-            ) : null}
-          </span>
-          {count || summary ? (
-            <span className="ml-auto max-w-36 shrink-0 truncate text-xs font-medium text-muted-foreground">
-              {count ?? summary}
-            </span>
-          ) : null}
-        </AccordionTrigger>
-        <AccordionContent className={cn("border-t border-border/70 p-3", contentClassName)}>
-          {children}
-        </AccordionContent>
-      </AccordionItem>
-    </Accordion>
+      items={[
+        {
+          value: "mobile-section",
+          title,
+          description,
+          summary: count ?? summary,
+          content: children,
+          defaultOpen,
+          contentClassName,
+        },
+      ]}
+    />
   );
 }
 
@@ -1349,7 +1306,12 @@ export function MobileDataList({
   const hasChildren = Children.count(children) > 0;
 
   return (
-    <div className={cn("grid min-w-0 gap-3", className)}>{hasChildren ? children : empty}</div>
+    <div
+      data-ios-grouped-list
+      className={cn("ios-grouped-list grid min-w-0 gap-0 overflow-hidden", className)}
+    >
+      {hasChildren ? children : empty}
+    </div>
   );
 }
 
@@ -1378,13 +1340,16 @@ export function MobileDataCard({
           ) : null}
         </div>
         {action ? <div className="max-w-[42%] shrink-0 overflow-hidden">{action}</div> : null}
+        {href ? (
+          <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground/70" aria-hidden />
+        ) : null}
       </div>
       {children ? <div className="mt-3 grid min-w-0 gap-2">{children}</div> : null}
     </>
   );
 
   const cardClassName = cn(
-    "apple-panel-strong block w-full min-w-0 overflow-hidden p-3 text-left transition-colors hover:border-primary/40",
+    "ios-grouped-row focus-aaa block w-full min-w-0 overflow-hidden rounded-none px-4 py-3 text-left outline-none transition-colors duration-100 active:bg-secondary motion-reduce:transition-none",
     className,
   );
 

@@ -63,6 +63,16 @@ export type GroupListItem = {
   inviteCode: string | null;
 };
 
+export type GroupLinkedChallengeItem = {
+  id: string;
+  title: string;
+  templateName: string;
+  status: string;
+  groupId: string;
+  groupName: string;
+  groupSlug: string;
+};
+
 export type GroupDetailData = {
   group: GroupListItem & {
     ownerUserId: string;
@@ -104,6 +114,7 @@ export type GroupDetailData = {
     pairings: RivalryPairingSummary[];
   };
   canPost: boolean;
+  canAdmin: boolean;
 };
 
 export type GroupInvitePreview = {
@@ -139,7 +150,10 @@ export async function getGroupsPageData(inviteCode?: string | null) {
     )
     .orderBy(desc(groups.createdAt))
     .limit(80);
-  const hydrated = await hydrateGroupList(rows, memberships);
+  const [hydrated, linkedChallenges] = await Promise.all([
+    hydrateGroupList(rows, memberships),
+    getLinkedGroupChallenges(rows),
+  ]);
   const invitePreview = inviteCode
     ? await getGroupInvitePreview(inviteCode, userId, memberships)
     : null;
@@ -153,6 +167,7 @@ export async function getGroupsPageData(inviteCode?: string | null) {
     groups: hydrated,
     mine: hydrated.filter((group) => group.viewerRole),
     discoverable: hydrated.filter((group) => !group.viewerRole && group.visibility === "public"),
+    linkedChallenges,
     groupTypes,
     invitePreview,
   };
@@ -202,6 +217,7 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
   const viewerMembership = memberships.find(
     (membership) => membership.userId === userId && membership.status === "active",
   );
+  const canAdmin = group.ownerUserId === userId || viewerMembership?.role === "admin";
   const members = memberships
     .map((membership) => {
       const profile = memberProfileMap.get(membership.userId);
@@ -249,6 +265,7 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     members,
     rivalry,
     canPost: group.ownerUserId === userId || Boolean(viewerMembership),
+    canAdmin,
   };
 }
 
@@ -430,6 +447,53 @@ async function hydrateGroupList(
     viewerRole: membershipMap.get(group.id)?.role ?? null,
     inviteCode: group.inviteCode,
   }));
+}
+
+async function getLinkedGroupChallenges(
+  groupRows: GroupRow[],
+): Promise<GroupLinkedChallengeItem[]> {
+  if (groupRows.length === 0) {
+    return [];
+  }
+
+  const groupsById = new Map(groupRows.map((group) => [group.id, group]));
+  const rows = await getDb()
+    .select({
+      groupId: groupChallengeLinks.groupId,
+      id: challenges.id,
+      title: challenges.title,
+      status: challenges.status,
+      templateName: challengeTemplates.name,
+    })
+    .from(groupChallengeLinks)
+    .innerJoin(challenges, eq(groupChallengeLinks.challengeId, challenges.id))
+    .leftJoin(challengeTemplates, eq(challenges.templateId, challengeTemplates.id))
+    .where(
+      inArray(
+        groupChallengeLinks.groupId,
+        groupRows.map((group) => group.id),
+      ),
+    )
+    .orderBy(desc(groupChallengeLinks.createdAt))
+    .limit(60);
+
+  return rows.flatMap((row) => {
+    const group = groupsById.get(row.groupId);
+
+    return group
+      ? [
+          {
+            id: row.id,
+            title: row.title,
+            templateName: row.templateName ?? "Challenge",
+            status: row.status,
+            groupId: row.groupId,
+            groupName: group.name,
+            groupSlug: group.slug,
+          },
+        ]
+      : [];
+  });
 }
 
 async function getCurrentGroupRivalry(

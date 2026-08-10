@@ -41,3 +41,12 @@ describe("tournament detail desktop standings", () => {
     expect(source).not.toContain("rail={");
   });
 });
+
+describe("tournament detail mobile standings", () => {
+  it("keeps the complete board available from the board tab", () => {
+    expect(source).toContain("MobileTournamentStandings");
+    expect(source).toContain("visibleStandings={visibleStandings}");
+    expect(source).not.toContain("viewAllHref={`/tournaments/${data.tournament.id}#standings`}");
+    expect(source).toContain('className="hidden lg:grid"');
+  });
+});

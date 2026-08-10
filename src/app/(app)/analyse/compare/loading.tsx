@@ -1,14 +1,11 @@
-import { PageShell } from "@/components/premium";
+import { GolfRouteLoading } from "@/components/golf-loading";
 
 export default function Loading() {
   return (
-    <PageShell>
-      <div className="h-36 animate-pulse rounded-lg bg-muted" />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {Array.from({ length: 4 }, (_, index) => (
-          <div key={index} className="h-44 animate-pulse rounded-lg bg-muted" />
-        ))}
-      </div>
-    </PageShell>
+    <GolfRouteLoading
+      title="Comparing saved evidence"
+      subtitle="Working out the verdict, meaningful differences and confidence in the result."
+      variant="compare"
+    />
   );
 }

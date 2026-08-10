@@ -5,6 +5,16 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/providers/page.tsx"), "utf8");
 
 describe("providers desktop workbench", () => {
+  it("uses real provider evidence in a dedicated native mobile console", () => {
+    expect(source).toContain("MobileProviderConsole");
+    expect(source).toContain("MobileProviderRows");
+    expect(source).toContain("MobileProviderSessionRows");
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain("0 blocking failures");
+    expect(source).toContain("No import jobs observed");
+  });
+
   it("keeps provider sessions as an exportable desktop table", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');

@@ -17,6 +17,12 @@ import {
 import { and, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 
 import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
+import {
   DataPanel,
   DataTableFrame,
   MetricCard,
@@ -264,10 +270,12 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     getLeaderboardData(activeTab, filters),
     getFeatureIdeasData(),
   ]);
+  const showMobilePlayerFilters = isPlayerLeaderboardTab(activeTab);
+  const mobileStatus = mobileLeaderboardStatus(data, activeTab, filters);
   const leaderboardOrderSteps = [
     {
-      title: "Your rank",
-      detail: mobileYourRankLabel(data.players, activeTab),
+      title: mobileStatus.label,
+      detail: `${mobileStatus.value}. ${mobileStatus.detail}`,
       status: "ready" as const,
       href: "/profile",
     },
@@ -304,6 +312,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           className="-mt-4"
           tabs={[
             { key: "friends", label: "Friends", href: "/leaderboard?tab=friends" },
+            { key: "monthly", label: "Monthly", href: "/leaderboard?tab=monthly" },
             { key: "courses", label: "Courses", href: "/leaderboard?tab=courses" },
             { key: "challenges", label: "Challenges", href: "/leaderboard?tab=challenges" },
             { key: "tournaments", label: "Tournaments", href: "/leaderboard?tab=tournaments" },
@@ -311,63 +320,57 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           ]}
         />
         <MobileStatusAction
-          label="Your rank"
-          value={mobileYourRankLabel(data.players, activeTab)}
-          detail="Best way to climb: Wedge Window or a verified course-record attempt."
+          label={mobileStatus.label}
+          value={mobileStatus.value}
+          detail={mobileStatus.detail}
           action={
-            <BottomSheet
-              label={
-                <>
-                  <Target className="size-4" /> Filters
-                </>
-              }
-              title="Leaderboard filters"
-              triggerClassName="ios-secondary-action bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
-            >
-              <form className="grid gap-3" action="/leaderboard">
-                <input type="hidden" name="tab" value={activeTab} />
-                <input type="hidden" name="sort" value={playerSort.metric} />
-                <input type="hidden" name="dir" value={playerSort.dir} />
-                <label className="grid gap-1 text-sm font-medium">
-                  Source
-                  <select
-                    name="provider"
-                    defaultValue={filters.provider}
-                    className="h-11 rounded-lg border bg-white px-3 text-sm"
-                  >
-                    <option value="all">All</option>
-                    <option value="espn">ESPN</option>
-                    <option value="rapsodo">Rapsodo file</option>
-                    <option value="rapsodo_cloud">Rapsodo Cloud</option>
-                    <option value="manual">Manual</option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  Verification
-                  <select
-                    name="verification"
-                    defaultValue={filters.verification}
-                    className="h-11 rounded-lg border bg-white px-3 text-sm"
-                  >
-                    <option value="all">All</option>
-                    <option value="verified">Verified only</option>
-                    <option value="mixed">Mixed</option>
-                    <option value="manual">Manual only</option>
-                  </select>
-                </label>
-                <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
-                  Apply filters
-                </Button>
-              </form>
-            </BottomSheet>
+            showMobilePlayerFilters ? (
+              <BottomSheet
+                label={
+                  <>
+                    <Target className="size-4" /> Filters
+                  </>
+                }
+                title="Leaderboard filters"
+                triggerClassName="ios-secondary-action bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
+              >
+                <form className="grid gap-3" action="/leaderboard">
+                  <input type="hidden" name="tab" value={activeTab} />
+                  <input type="hidden" name="sort" value={playerSort.metric} />
+                  <input type="hidden" name="dir" value={playerSort.dir} />
+                  <label className="grid gap-1 text-sm font-medium">
+                    Shot source
+                    <select
+                      name="provider"
+                      defaultValue={filters.provider}
+                      className="h-11 rounded-lg border bg-white px-3 text-sm"
+                    >
+                      <option value="all">All sources</option>
+                      <option value="espn">ESPN</option>
+                      <option value="rapsodo">Rapsodo file</option>
+                      <option value="rapsodo_cloud">Rapsodo Cloud</option>
+                      <option value="manual">Manual</option>
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-sm font-medium">
+                    Shot verification
+                    <select
+                      name="verification"
+                      defaultValue={filters.verification}
+                      className="h-11 rounded-lg border bg-white px-3 text-sm"
+                    >
+                      <option value="all">All proof states</option>
+                      <option value="verified">Verified only</option>
+                      <option value="manual">Manual only</option>
+                    </select>
+                  </label>
+                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
+                    Apply filters
+                  </Button>
+                </form>
+              </BottomSheet>
+            ) : undefined
           }
-        />
-        <DataFirstFlowPanel
-          title="Leaderboard order"
-          description="Keep the mobile hierarchy predictable: your rank first, then the podium and the fuller table."
-          steps={leaderboardOrderSteps}
-          actionHref="/challenges"
-          actionLabel="Ways to climb"
         />
         {activeTab === "courses" ? (
           <NativeListSection title="Course champions">
@@ -426,15 +429,15 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 value: integerFormatter.format(scoreForTab(player, activeTab)),
                 detail: activeTab === "monthly" ? "monthly XP" : player.relationship,
               }))}
-              viewAllHref="#full-leaderboard"
             />
+            <MobilePlayerLeaderboardDisclosure players={data.players} activeTab={activeTab} />
           </NativeListSection>
         )}
         <LeaderboardClimbPanel data={featureData} />
       </MobileAppShell>
 
       <DesktopWorkbenchLayout scope="leaderboard">
-        <div className="hidden items-center justify-between gap-4 sm:flex">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -449,7 +452,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           </Button>
         </div>
 
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <PageHeader
             eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
             title="Leaderboards"
@@ -635,7 +638,6 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                   >
                     <option value="all">All</option>
                     <option value="verified">Verified only</option>
-                    <option value="mixed">Mixed</option>
                     <option value="manual">Manual only</option>
                   </select>
                 </label>
@@ -679,7 +681,7 @@ type LeaderboardProvider = "all" | "espn" | "rapsodo" | "rapsodo_cloud" | "manua
 
 type LeaderboardFilters = {
   provider: LeaderboardProvider;
-  verification: "all" | "verified" | "mixed" | "manual";
+  verification: "all" | "verified" | "manual";
 };
 
 async function getLeaderboardData(activeTab: LeaderboardTab, filters: LeaderboardFilters) {
@@ -1588,6 +1590,127 @@ function mobileCurrentUserSummary(players: PlayerRow[], activeTab: LeaderboardTa
   return `You are #${index + 1} · ${integerFormatter.format(scoreForTab(player, activeTab))} XP`;
 }
 
+type LeaderboardData = Awaited<ReturnType<typeof getLeaderboardData>>;
+
+function isPlayerLeaderboardTab(activeTab: LeaderboardTab) {
+  return activeTab === "friends" || activeTab === "monthly" || activeTab === "public";
+}
+
+function mobileLeaderboardStatus(
+  data: LeaderboardData,
+  activeTab: LeaderboardTab,
+  filters: LeaderboardFilters,
+) {
+  if (activeTab === "courses") {
+    const leader = data.courseChampionBoards[0] ?? null;
+
+    return {
+      label: "Course champion boards",
+      value: `${data.courseChampionBoards.length} visible`,
+      detail: leader
+        ? `${leader.courseName} · ${leader.champion.displayName} · ${leader.scoreLabel}`
+        : "No visible course champion result yet.",
+    };
+  }
+
+  if (activeTab === "challenges") {
+    const board = data.challengeBoards[0] ?? null;
+
+    return {
+      label: "Challenge leaderboards",
+      value: `${data.challengeBoards.length} scored`,
+      detail: board?.leader
+        ? `${board.title} · ${board.leader.displayName} · ${board.leader.scoreLabel}`
+        : "No visible challenge result yet.",
+    };
+  }
+
+  if (activeTab === "tournaments") {
+    const board = data.tournamentBoards[0] ?? null;
+
+    return {
+      label: "Tournament leaderboards",
+      value: `${data.tournamentBoards.length} visible`,
+      detail: board
+        ? `${board.title} · ${board.champion.displayName} · ${board.grossTotal} gross`
+        : "No visible tournament standing yet.",
+    };
+  }
+
+  const current = data.players.find((player) => player.isCurrentUser) ?? null;
+  const scope = activeTab === "monthly" ? "monthly" : activeTab === "public" ? "public" : "friends";
+  const filterSummary = mobileLeaderboardFilterSummary(filters);
+
+  return {
+    label: `Your ${scope} rank`,
+    value: mobileYourRankLabel(data.players, activeTab),
+    detail:
+      activeTab === "monthly" && current
+        ? `${movementLabel(current)} ${filterSummary}`
+        : `${data.players.length} visible players. ${filterSummary}`,
+  };
+}
+
+function mobileLeaderboardFilterSummary(filters: LeaderboardFilters) {
+  if (filters.provider === "all" && filters.verification === "all") {
+    return "All shot sources and proof states are included.";
+  }
+
+  return `Shot filters: ${label(filters.provider)} · ${label(filters.verification)}.`;
+}
+
+function MobilePlayerLeaderboardDisclosure({
+  players,
+  activeTab,
+}: {
+  players: PlayerRow[];
+  activeTab: LeaderboardTab;
+}) {
+  return (
+    <IOSDisclosureGroup
+      label="Full player leaderboard"
+      items={[
+        {
+          value: "full-player-leaderboard",
+          title: "Full leaderboard",
+          summary: `${players.length} players`,
+          description: "Rank, score and current proof context",
+          contentClassName: "px-0 pb-0 pt-0",
+          content: (
+            <IOSGroupedList label="All ranked players" className="rounded-none border-0">
+              {players.length > 0 ? (
+                players.map((player, index) => (
+                  <IOSListRow
+                    key={player.userId}
+                    label={`#${index + 1} · ${player.displayName}`}
+                    value={`${integerFormatter.format(scoreForTab(player, activeTab))} XP`}
+                    detail={
+                      activeTab === "monthly"
+                        ? `${integerFormatter.format(player.monthlyShots)} monthly shots · ${player.verificationLabel}`
+                        : `${player.relationship} · ${player.verificationLabel}`
+                    }
+                    href={player.isCurrentUser ? "/profile" : `/profile/${player.username}`}
+                    status={
+                      player.isCurrentUser ? (
+                        <IOSInlineStatus label="You" tone="positive" />
+                      ) : undefined
+                    }
+                  />
+                ))
+              ) : (
+                <IOSListRow
+                  label="No visible players"
+                  detail="Leaderboard visibility controls which golfers can appear here."
+                />
+              )}
+            </IOSGroupedList>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
 function LeaderboardPodiumCard({
   player,
   rank,
@@ -2190,9 +2313,7 @@ function parseLeaderboardFilters(
         ? params.provider
         : "all",
     verification:
-      params?.verification === "verified" ||
-      params?.verification === "mixed" ||
-      params?.verification === "manual"
+      params?.verification === "verified" || params?.verification === "manual"
         ? params.verification
         : "all",
   };

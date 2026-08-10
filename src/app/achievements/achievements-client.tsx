@@ -222,7 +222,9 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
   const [tierFilter, setTierFilter] = useState("all");
   const [hideCompleted, setHideCompleted] = useState(defaultHideCompleted);
   const [query, setQuery] = useState("");
-  const [mobileTab, setMobileTab] = useState<MobileAchievementTab>("next");
+  const [mobileTab, setMobileTab] = useState<MobileAchievementTab>(() =>
+    focusAchievementId ? "catalogue" : "next",
+  );
   const [catalogueLimit, setCatalogueLimit] = useState(defaultCatalogueLimit);
   const [dismissedFocusId, setDismissedFocusId] = useState<string | null>(null);
   const focusedAchievementId =
@@ -459,7 +461,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
     <div className="space-y-5">
       <MobileAchievementTabs tab={mobileTab} onTabChange={setMobileTab} />
 
-      <section className={mobileTab === "next" ? "space-y-4" : "hidden sm:block"}>
+      <section className={mobileTab === "next" ? "space-y-4" : "hidden lg:block"}>
         <NextUnlockCard
           achievement={nextUnlock}
           totalXp={data.totalXp}
@@ -468,7 +470,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         />
       </section>
 
-      <Card className={cn("premium-card", mobileTab === "cabinet" ? "flex" : "hidden sm:flex")}>
+      <Card className={cn("premium-card", mobileTab === "cabinet" ? "flex" : "hidden lg:flex")}>
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -516,7 +518,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
       <section
         className={cn(
           "grid gap-4 lg:grid-cols-[0.85fr_1.15fr]",
-          mobileTab === "next" ? "grid" : "hidden sm:grid",
+          mobileTab === "next" ? "grid" : "hidden lg:grid",
         )}
       >
         <Card
@@ -577,9 +579,24 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             <CardDescription>Last 10 unlocks with source evidence where available.</CardDescription>
           </CardHeader>
           <CardContent>
+            <div aria-label="Latest achievements gained list" className="space-y-3 lg:hidden">
+              {data.recentUnlocks.slice(0, 3).map((achievement) => (
+                <RecentUnlock key={achievement.id} achievement={achievement} />
+              ))}
+            </div>
+            {data.recentUnlocks.length > 3 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3 w-full lg:hidden"
+                onClick={() => setMobileTab("calendar")}
+              >
+                Open achievement history
+              </Button>
+            ) : null}
             <div
-              aria-label="Latest achievements gained list"
-              className="max-h-[22rem] space-y-3 overflow-y-auto pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Latest achievements gained desktop list"
+              className="hidden max-h-[22rem] space-y-3 overflow-y-auto pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:block"
               tabIndex={0}
             >
               {data.recentUnlocks.map((achievement) => (
@@ -595,16 +612,11 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         </Card>
       </section>
 
-      <section className="hidden sm:block">
+      <section className="hidden lg:block">
         <AchievementUnlockLedger achievements={unlockLedger} />
       </section>
 
-      <section
-        className={cn(
-          "grid gap-3 md:grid-cols-4",
-          mobileTab === "next" ? "grid" : "hidden sm:grid",
-        )}
-      >
+      <section className="hidden gap-3 md:grid-cols-4 lg:grid">
         <Metric label="Catalog" value={data.totalCount.toLocaleString("en-GB")} />
         <Metric label="Provider + round" value="Enabled" />
         <Metric
@@ -619,7 +631,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         />
       </section>
 
-      <div className={mobileTab === "calendar" ? "block" : "hidden sm:block"}>
+      <div className={mobileTab === "calendar" ? "block" : "hidden lg:block"}>
         <AchievementUnlockCalendar
           calendar={unlockCalendar}
           monthKey={calendarMonth}
@@ -629,7 +641,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
         />
       </div>
 
-      <Card className={cn("premium-card", mobileTab === "catalogue" ? "flex" : "hidden sm:flex")}>
+      <Card className={cn("premium-card", mobileTab === "catalogue" ? "flex" : "hidden lg:flex")}>
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -639,7 +651,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               </CardDescription>
             </div>
           </div>
-          <div className="sm:hidden">
+          <div className="lg:hidden">
             <MobileFilterSheet label="Filter catalogue" activeCount={isFiltered ? 1 : 0}>
               <div className="grid gap-3">
                 <div className="relative">
@@ -684,7 +696,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               </div>
             </MobileFilterSheet>
           </div>
-          <div className="hidden gap-3 sm:grid lg:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(145px,190px)_minmax(145px,190px)_minmax(145px,190px)_auto]">
+          <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(145px,190px)_minmax(145px,190px)_minmax(145px,190px)_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -791,7 +803,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
             </div>
           ) : null}
 
-          <div className="grid gap-3 sm:hidden">
+          <div className="grid gap-3 lg:hidden">
             {mobileShownAchievements.map((achievement) => (
               <AchievementCard
                 key={achievement.id}
@@ -800,7 +812,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
               />
             ))}
           </div>
-          <div className="hidden gap-3 sm:grid md:grid-cols-2 xl:grid-cols-3">
+          <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-3">
             {shownAchievements.map((achievement) => (
               <AchievementCard
                 key={achievement.id}
@@ -811,7 +823,7 @@ export function AchievementsClient({ data, focusAchievementId }: Props) {
           </div>
 
           {shownAchievements.length > mobileShownAchievements.length ? (
-            <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground sm:hidden">
+            <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground lg:hidden">
               Showing 12 first. Use filters to narrow the catalogue.
             </p>
           ) : null}
@@ -1178,13 +1190,14 @@ function MobileAchievementTabs({
   return (
     <nav
       aria-label="Achievement views"
-      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
       tabIndex={0}
     >
       {mobileAchievementTabs.map((item) => (
         <button
           key={item.id}
           type="button"
+          aria-pressed={item.id === tab}
           onClick={() => onTabChange(item.id)}
           className={cn(
             "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
@@ -1212,7 +1225,7 @@ function NextUnlockCard({
   totalCount: number;
 }) {
   return (
-    <Card className="premium-card sm:hidden">
+    <Card className="premium-card lg:hidden">
       <CardHeader>
         <CardDescription>Next unlock</CardDescription>
         <CardTitle className="text-2xl tracking-normal">
@@ -1356,47 +1369,79 @@ function RecentUnlock({ achievement }: { achievement: AchievementView }) {
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg bg-white/90 px-3 py-2 ring-1 ring-slate-200/80">
-        {source ? (
-          <div className="space-y-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
-                  {sourceLabel(source.kind)}
-                </p>
-                <p className="mt-0.5 truncate text-sm font-medium">{source.title}</p>
-                <p className="text-xs leading-5 text-muted-foreground">{source.detail}</p>
-              </div>
-              {source.href ? (
-                <Link
-                  href={source.href}
-                  className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-medium text-foreground hover:bg-[#f3f4f6]"
-                >
-                  Open source
-                  <ExternalLink className="size-3.5" />
-                </Link>
-              ) : null}
-            </div>
-            {source.stats.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {source.stats.map((stat) => (
-                  <span
-                    key={`${achievement.id}-${stat.label}`}
-                    className="inline-flex min-h-7 items-center gap-1 rounded-lg bg-slate-50/90 px-2 text-xs ring-1 ring-slate-200/80"
-                  >
-                    <span className="text-muted-foreground">{stat.label}</span>
-                    <span className="font-medium">{stat.value}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Source evidence was not recorded for this older unlock.
-          </p>
-        )}
+      <Accordion type="single" collapsible className="mt-3 lg:hidden">
+        <AccordionItem
+          value={`recent-unlock-evidence-${achievement.id}`}
+          className="overflow-hidden rounded-lg border bg-background/80 px-3"
+        >
+          <AccordionTrigger className="min-h-11 py-2 text-left hover:no-underline">
+            <span className="grid min-w-0 gap-0.5 text-left">
+              <span className="text-sm font-medium">Evidence</span>
+              <span className="text-xs font-normal leading-4 text-muted-foreground [overflow-wrap:anywhere]">
+                {source ? sourceLabel(source.kind) : "No source evidence stored"}
+              </span>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="pb-3 pt-1">
+            <RecentUnlockEvidence achievement={achievement} source={source} />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+      <div className="mt-3 hidden rounded-lg bg-background/80 px-3 py-2 ring-1 ring-border lg:block">
+        <RecentUnlockEvidence achievement={achievement} source={source} />
       </div>
+    </div>
+  );
+}
+
+function RecentUnlockEvidence({
+  achievement,
+  source,
+}: {
+  achievement: AchievementView;
+  source: AchievementView["source"];
+}) {
+  if (!source) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Source evidence was not recorded for this older unlock.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
+            {sourceLabel(source.kind)}
+          </p>
+          <p className="mt-0.5 text-sm font-medium [overflow-wrap:anywhere]">{source.title}</p>
+          <p className="text-xs leading-5 text-muted-foreground">{source.detail}</p>
+        </div>
+        {source.href ? (
+          <Link
+            href={source.href}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-medium text-foreground hover:bg-muted lg:h-8 lg:min-h-0"
+          >
+            Open source
+            <ExternalLink className="size-3.5" />
+          </Link>
+        ) : null}
+      </div>
+      {source.stats.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {source.stats.map((stat) => (
+            <span
+              key={`${achievement.id}-${stat.label}`}
+              className="inline-flex min-h-7 items-center gap-1 rounded-lg bg-muted/70 px-2 text-xs ring-1 ring-border"
+            >
+              <span className="text-muted-foreground">{stat.label}</span>
+              <span className="font-medium">{stat.value}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1569,15 +1614,15 @@ function Metric({ label, value, dark = false }: { label: string; value: string; 
     >
       <p
         className={cn(
-          "truncate text-xs font-medium",
+          "text-xs font-medium leading-4",
           dark ? "text-zinc-300" : "text-muted-foreground",
         )}
       >
         {label}
       </p>
-      <p className="mt-1 flex min-w-0 items-center gap-2 text-xl font-semibold tracking-normal sm:text-2xl">
+      <p className="mt-1 flex min-w-0 items-center gap-2 text-base font-semibold tracking-normal sm:text-2xl">
         {label === "Catalog" ? <Trophy className="size-5 text-amber-500" /> : null}
-        <span className="min-w-0 truncate">{value}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
       </p>
     </div>
   );

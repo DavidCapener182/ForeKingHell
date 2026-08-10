@@ -5,6 +5,15 @@ import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { CalendarDays, CheckCircle2, FileLock2, LockKeyhole, ShieldCheck } from "lucide-react";
 
 import { unlockCoachReportAction } from "@/app/share/report/[token]/actions";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+  type IOSDisclosureItem,
+} from "@/components/app/ios-mobile";
+import { MobileStatusAction, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getDb } from "@/db/client";
@@ -88,63 +97,439 @@ export default async function SharedCoachReportPage({
     .where(eq(contentExports.id, row.exportId));
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8 sm:px-6 lg:py-12">
-        <header className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
-                Frozen coach evidence
-              </p>
-              <h1 className="mt-3 font-display text-3xl font-semibold sm:text-4xl">
-                {row.title ?? report.title}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {report.disclosure.statement}
-              </p>
-            </div>
-            <FileLock2 className="size-8 shrink-0 text-primary" aria-hidden />
-          </div>
-          <div className="mt-5 flex flex-wrap gap-3 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-2">
-              <CalendarDays className="size-4" aria-hidden />
-              Generated {formatDateTime(report.generatedAt)}
-            </span>
-            {row.expiresAt ? <span>Expires {formatDateTime(row.expiresAt)}</span> : null}
-            <span>
-              {access.disableDownload ? "View-only · download disabled" : "Download permitted"}
-            </span>
-            <span>{access.passwordHash ? "Password protected" : "Private token"}</span>
-          </div>
-        </header>
+    <main className="ios-public-auth min-h-dvh bg-background text-foreground">
+      <div className="mx-auto grid w-full max-w-5xl gap-4 px-4 py-3 sm:px-6 lg:gap-6 lg:py-12">
+        <MobileCoachReport
+          report={report}
+          title={row.title ?? report.title}
+          expiresAt={row.expiresAt}
+          passwordProtected={Boolean(access.passwordHash)}
+          disableDownload={access.disableDownload}
+        />
+        <div className="hidden lg:grid">
+          <div className="grid gap-6">
+            <header className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
+                    Frozen coach evidence
+                  </p>
+                  <h1 className="mt-3 font-display text-3xl font-semibold sm:text-4xl">
+                    {row.title ?? report.title}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {report.disclosure.statement}
+                  </p>
+                </div>
+                <FileLock2 className="size-8 shrink-0 text-primary" aria-hidden />
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-2">
+                  <CalendarDays className="size-4" aria-hidden />
+                  Generated {formatDateTime(report.generatedAt)}
+                </span>
+                {row.expiresAt ? <span>Expires {formatDateTime(row.expiresAt)}</span> : null}
+                <span>
+                  {access.disableDownload ? "View-only · download disabled" : "Download permitted"}
+                </span>
+                <span>{access.passwordHash ? "Password protected" : "Private token"}</span>
+              </div>
+            </header>
 
-        <ReportSections report={report} />
+            <ReportSections report={report} />
 
-        <footer className="rounded-2xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground">
-          <p className="flex items-start gap-2 font-semibold text-foreground">
-            <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-            This link grants access only to this frozen report.
-          </p>
-          <p className="mt-2">
-            It does not provide account membership or access to any section the golfer omitted. The
-            golfer can revoke the link at any time.
-          </p>
-        </footer>
+            <footer className="rounded-2xl border border-border bg-card p-5 text-sm leading-6 text-muted-foreground">
+              <p className="flex items-start gap-2 font-semibold text-foreground">
+                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+                This link grants access only to this frozen report.
+              </p>
+              <p className="mt-2">
+                It does not provide account membership or access to any section the golfer omitted.
+                The golfer can revoke the link at any time.
+              </p>
+            </footer>
+          </div>
+        </div>
       </div>
     </main>
+  );
+}
+
+function MobileCoachReport({
+  report,
+  title,
+  expiresAt,
+  passwordProtected,
+  disableDownload,
+}: {
+  report: CoachReportSnapshot;
+  title: string;
+  expiresAt: Date | null;
+  passwordProtected: boolean;
+  disableDownload: boolean;
+}) {
+  return (
+    <section className="grid gap-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden">
+      <MobileTopBar title="Coach report" />
+      <MobileStatusAction
+        label="Frozen coach evidence"
+        value={title}
+        detail={`Generated ${formatDateTime(report.generatedAt)}`}
+        action={
+          <IOSInlineStatus
+            label={passwordProtected ? "Password protected" : "Private token"}
+            tone="info"
+          />
+        }
+      />
+
+      <IOSSectionHeader title="Report privacy" />
+      <IOSGroupedList label="Report privacy">
+        <IOSListRow
+          label="Selected evidence only"
+          detail={report.disclosure.statement}
+          status={
+            <IOSInlineStatus
+              label={disableDownload ? "View only" : "Download permitted"}
+              tone="positive"
+            />
+          }
+        />
+        <IOSListRow label="Expiry" value={expiresAt ? formatDateTime(expiresAt) : "No expiry"} />
+      </IOSGroupedList>
+
+      <MobileCoachReportSections report={report} />
+
+      <IOSSectionHeader title="Access boundary" />
+      <IOSGroupedList label="Share access boundary">
+        <IOSListRow
+          label="This link grants access only to this frozen report."
+          detail="It does not provide account membership or access to evidence the golfer omitted. The golfer can revoke the link at any time."
+          status={<IOSInlineStatus label="Private share" tone="info" />}
+        />
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileCoachReportSections({ report }: { report: CoachReportSnapshot }) {
+  const { sections } = report;
+  const disclosureItems: IOSDisclosureItem[] = [];
+
+  if (sections.profileSummary) {
+    disclosureItems.push({
+      value: "profile-summary",
+      title: "Profile summary",
+      summary: sections.profileSummary.displayName,
+      content: (
+        <IOSGroupedList label="Profile summary">
+          <IOSListRow label="Golfer" value={sections.profileSummary.displayName} />
+          <IOSListRow
+            label="Home course"
+            value={sections.profileSummary.homeCourse ?? "Not shared"}
+          />
+          <IOSListRow
+            label="Handicap band"
+            value={sections.profileSummary.handicapBand ?? "Not shared"}
+          />
+          <IOSListRow
+            label="Launch monitor"
+            value={sections.profileSummary.primaryLaunchMonitor ?? "Not shared"}
+          />
+        </IOSGroupedList>
+      ),
+    });
+  }
+
+  if (sections.bagNumbers) {
+    disclosureItems.push({
+      value: "bag-numbers",
+      title: "Bag numbers",
+      summary: `${sections.bagNumbers.length} clubs`,
+      content: (
+        <MobileEvidenceList empty={sections.bagNumbers.length === 0} label="Bag numbers">
+          {sections.bagNumbers.map((club) => (
+            <IOSListRow
+              key={club.club}
+              label={club.club}
+              value={numberMetric(club.stockCarryYd, " yd")}
+              detail={`${club.playableRate === null ? "No playable rate" : `${Math.round(club.playableRate)}% playable`} · ${club.sampleSize} shots`}
+              status={<IOSInlineStatus label={club.confidence} tone="neutral" />}
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.recentSessions) {
+    disclosureItems.push({
+      value: "recent-sessions",
+      title: "Recent sessions",
+      summary: `${sections.recentSessions.length}`,
+      content: (
+        <MobileEvidenceList empty={sections.recentSessions.length === 0} label="Recent sessions">
+          {sections.recentSessions.map((session) => (
+            <IOSListRow
+              key={session.id}
+              label={session.label}
+              value={`${session.shotCount} shots`}
+              detail={`${formatDateTime(session.date)} · ${formatLabel(session.source)}`}
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.bagGaps) {
+    disclosureItems.push({
+      value: "bag-gaps",
+      title: "Bag gaps",
+      summary: `${sections.bagGaps.length}`,
+      content: (
+        <MobileEvidenceList empty={sections.bagGaps.length === 0} label="Bag gaps">
+          {sections.bagGaps.map((gap) => (
+            <IOSListRow
+              key={`${gap.longerClub}-${gap.shorterClub}`}
+              label={`${gap.longerClub} to ${gap.shorterClub}`}
+              value={`${gap.gapYd} yd`}
+              detail={`${gap.sampleSize}+ shots per club`}
+              status={<IOSInlineStatus label={gap.confidence} tone="neutral" />}
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.practiceAdherence) {
+    const adherence = sections.practiceAdherence;
+    disclosureItems.push({
+      value: "practice-adherence",
+      title: "Practice adherence",
+      summary: adherence.completionRate === null ? "No plans" : `${adherence.completionRate}%`,
+      content: (
+        <IOSGroupedList label="Practice adherence">
+          <IOSListRow
+            label={`Completed in ${adherence.lookbackDays} days`}
+            value={`${adherence.completedSessions} / ${adherence.plannedSessions}`}
+          />
+          <IOSListRow label="Measured sessions" value={String(adherence.measuredSessions)} />
+          <IOSListRow label="Four-week target" value={String(adherence.targetSessions)} />
+        </IOSGroupedList>
+      ),
+    });
+  }
+
+  if (sections.savedComparisons) {
+    disclosureItems.push({
+      value: "saved-comparisons",
+      title: "Saved comparisons",
+      summary: `${sections.savedComparisons.length}`,
+      content: (
+        <MobileEvidenceList
+          empty={sections.savedComparisons.length === 0}
+          label="Saved comparisons"
+        >
+          {sections.savedComparisons.map((comparison) => (
+            <IOSListRow
+              key={comparison.id}
+              label={comparison.name}
+              value={comparison.verdict}
+              detail={`${comparison.focusLabel} (${comparison.focusShots}) vs ${comparison.baselineLabel} (${comparison.baselineShots}). ${comparison.summary}`}
+              status={
+                <IOSInlineStatus
+                  label={`Saved ${formatDateTime(comparison.capturedAt)} · association only`}
+                  tone="neutral"
+                />
+              }
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.coursePerformance) {
+    disclosureItems.push({
+      value: "course-performance",
+      title: "Course performance",
+      summary: `${sections.coursePerformance.length} rounds`,
+      content: (
+        <MobileEvidenceList
+          empty={sections.coursePerformance.length === 0}
+          label="Course performance"
+        >
+          {sections.coursePerformance.map((round) => (
+            <IOSListRow
+              key={`${round.date}-${round.course}`}
+              label={round.course}
+              value={round.grossScore === null ? "Incomplete" : `${round.grossScore} gross`}
+              detail={`${formatDateTime(round.date)} · ${round.holesRecorded} scored holes`}
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.personalBests) {
+    disclosureItems.push({
+      value: "personal-bests",
+      title: "Personal bests",
+      summary: `${sections.personalBests.length}`,
+      content: (
+        <MobileEvidenceList empty={sections.personalBests.length === 0} label="Personal bests">
+          {sections.personalBests.map((best) => (
+            <IOSListRow
+              key={best.club}
+              label={best.club}
+              value={`${Math.round(best.carryYd * 10) / 10} yd`}
+              detail={`${best.evidenceShots} clean supporting shots`}
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.notes) {
+    disclosureItems.push({
+      value: "golfer-notes",
+      title: "Golfer notes",
+      summary: `${sections.notes.length}`,
+      content: (
+        <MobileEvidenceList empty={sections.notes.length === 0} label="Golfer notes">
+          {sections.notes.map((note, index) => (
+            <IOSListRow
+              key={`${note.date}-${index}`}
+              label={note.text}
+              detail={`${formatLabel(note.source)} · ${formatDateTime(note.date)}`}
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  if (sections.rawEvidence) {
+    disclosureItems.push({
+      value: "raw-evidence",
+      title: "Selected raw evidence",
+      summary: `${sections.rawEvidence.length} shots`,
+      content: (
+        <MobileEvidenceList empty={sections.rawEvidence.length === 0} label="Raw evidence">
+          {sections.rawEvidence.map((shot, index) => (
+            <IOSListRow
+              key={`${shot.sessionId}-${shot.shotNumber}-${index}`}
+              label={`${formatLabel(shot.club)} · shot ${shot.shotNumber ?? "—"}`}
+              value={numberMetric(shot.carryYd, " yd")}
+              detail={`${formatDateTime(shot.sessionDate)} · offline ${numberMetric(shot.sideCarryYd, " yd")} · ball speed ${numberMetric(shot.ballSpeedMph, " mph")} · launch ${numberMetric(shot.launchAngleDeg, "°")}`}
+              status={
+                shot.quality ? (
+                  <IOSInlineStatus label={formatLabel(shot.quality)} tone="neutral" />
+                ) : undefined
+              }
+            />
+          ))}
+        </MobileEvidenceList>
+      ),
+    });
+  }
+
+  return (
+    <div className="grid gap-4">
+      {sections.goals ? (
+        <>
+          <IOSSectionHeader title="Current goals" />
+          <IOSGroupedList label="Current goals">
+            <IOSListRow label="Season outcome" detail={sections.goals.outcome} />
+            <IOSListRow label="Current focus" detail={sections.goals.focus} />
+            <IOSListRow label="Weekly rhythm" value={`${sections.goals.weeklySessions} sessions`} />
+            <IOSListRow label="Success measure" detail={sections.goals.successMeasure} />
+            {sections.seasonGoals?.map((goal) => (
+              <IOSListRow
+                key={goal.id}
+                label={goal.title}
+                value={`${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
+                detail={`Next: ${goal.nextAction}`}
+                status={<IOSInlineStatus label={goal.evidenceSource} tone="info" />}
+              />
+            ))}
+          </IOSGroupedList>
+        </>
+      ) : null}
+
+      {sections.keyTrends ? (
+        <>
+          <IOSSectionHeader title="Key trends" />
+          <MobileEvidenceList empty={sections.keyTrends.length === 0} label="Key trends">
+            {sections.keyTrends.map((trend) => (
+              <IOSListRow
+                key={`${trend.label}-${trend.value}`}
+                label={trend.label}
+                value={trend.value}
+                detail={trend.detail}
+                status={<IOSInlineStatus label={trend.confidence} tone="neutral" />}
+              />
+            ))}
+          </MobileEvidenceList>
+        </>
+      ) : null}
+
+      {disclosureItems.length > 0 ? (
+        <>
+          <IOSSectionHeader
+            title="Supporting evidence"
+            description="Open one section at a time for the selected detail."
+          />
+          <IOSDisclosureGroup items={disclosureItems} label="Supporting report evidence" />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileEvidenceList({
+  children,
+  empty,
+  label,
+}: {
+  children: React.ReactNode;
+  empty: boolean;
+  label: string;
+}) {
+  return (
+    <IOSGroupedList label={label}>
+      {empty ? (
+        <IOSListRow
+          label="No qualifying evidence"
+          detail="This frozen report did not include a supporting item for this section."
+        />
+      ) : (
+        children
+      )}
+    </IOSGroupedList>
   );
 }
 
 function PasswordGate({ token, invalid }: { token: string; invalid: boolean }) {
   const action = unlockCoachReportAction.bind(null, token);
   return (
-    <main className="grid min-h-dvh place-items-center bg-background p-4 text-foreground">
-      <section className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-sm">
-        <LockKeyhole className="size-8 text-primary" aria-hidden />
+    <main className="ios-public-auth grid min-h-dvh place-items-center bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground">
+      <section className="w-full max-w-md lg:rounded-3xl lg:border lg:bg-card lg:p-6 lg:shadow-sm">
+        <MobileTopBar title="Protected report" className="lg:hidden" />
+        <LockKeyhole className="size-8 text-primary max-lg:hidden" aria-hidden />
         <p className="mt-5 text-sm font-semibold uppercase tracking-[0.14em] text-primary">
           Protected performance report
         </p>
-        <h1 className="mt-2 font-display text-3xl font-semibold">Enter the report password</h1>
+        <h2 className="mt-2 font-display text-3xl font-semibold lg:hidden">
+          Enter the report password
+        </h2>
+        <h1 className="mt-2 hidden font-display text-3xl font-semibold lg:block">
+          Enter the report password
+        </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           The golfer protected this frozen report. The share token alone does not unlock it.
         </p>
@@ -154,9 +539,11 @@ function PasswordGate({ token, invalid }: { token: string; invalid: boolean }) {
             <Input
               name="password"
               type="password"
+              autoComplete="current-password"
               minLength={8}
               maxLength={128}
               autoFocus
+              className="min-h-11"
               required
             />
           </label>

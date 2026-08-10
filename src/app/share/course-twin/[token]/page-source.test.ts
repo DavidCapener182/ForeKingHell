@@ -20,4 +20,16 @@ describe("public Course Twin replay sharing", () => {
     expect(page).toContain("Read-only replay");
     expect(page).toContain("replay={shared.replay} readOnly");
   });
+
+  it("uses the immersive viewport contract with a safe mobile exit", () => {
+    expect(page).toContain("course-twin-mobile.module.css");
+    expect(page).toContain("data-shared-course-twin-viewport");
+    expect(page).toContain("mobileStyles.viewport");
+    expect(page).toContain('className="relative h-full min-h-0 lg:h-auto lg:flex-1"');
+    expect(page).toContain("data-shared-course-twin-exit");
+    expect(page).toContain("mobileStyles.exitButton");
+    expect(page).toContain('href="/login"');
+    expect(page).toContain("Leave shared replay and open");
+    expect(page).toContain('className="hidden flex-wrap');
+  });
 });

@@ -116,3 +116,48 @@ describe("bag desktop workbench source", () => {
     expect(healthBlock).not.toContain('label: "Needs attention"');
   });
 });
+
+describe("bag mobile information architecture", () => {
+  const mobileBlock = source.slice(
+    source.indexOf("<MobileAppShell>"),
+    source.indexOf("<DesktopWorkbenchLayout"),
+  );
+
+  it("puts the scannable owned-club list directly after the answer-first summary", () => {
+    expect(mobileBlock.indexOf("<MobileBentoSummary")).toBeLessThan(
+      mobileBlock.indexOf('title="Your clubs"'),
+    );
+    expect(mobileBlock).toContain('label: "Bag score"');
+    expect(mobileBlock).toContain('label: "Next move"');
+    expect(mobileBlock).toContain('label: "Weakest gap"');
+    expect(mobileBlock).toContain("bag.map((club)");
+    expect(mobileBlock).toContain("detail={club.brandModel}");
+    expect(mobileBlock).toContain("value={mobileClubSignal(club)}");
+    expect(mobileBlock).toContain("href={`/bag/${club.id}`}");
+  });
+
+  it("provides a first-use import action and keeps one recommendation visible", () => {
+    expect(mobileBlock).toContain('label="No clubs imported"');
+    expect(mobileBlock).toContain('href="/import"');
+    expect(mobileBlock).toContain("Import your first shots");
+    expect(mobileBlock).toContain('bag.length === 0 ? "Import shot data" : "Review next bag move"');
+    expect(mobileBlock).toContain('label="Featured bag action"');
+    expect(mobileBlock).toContain("bagDoctorFindings[0]");
+  });
+
+  it("moves supporting analysis into one native disclosure level", () => {
+    expect(mobileBlock).toContain("<IOSDisclosureGroup");
+    expect(mobileBlock).toContain('value: "personal-bests"');
+    expect(mobileBlock).toContain('value: "gapping"');
+    expect(mobileBlock).toContain('value: "benchmarks"');
+    expect(mobileBlock).toContain('value: "lower-scores"');
+    expect(mobileBlock).toContain('value: "bag-setup"');
+    expect(mobileBlock).toContain('title: "Fitting and methodology"');
+    expect(mobileBlock).not.toContain("MobileCompanionAccordion");
+  });
+
+  it("does not reintroduce desktop actions beside the tablet mobile shell", () => {
+    expect(source).toContain('className="hidden items-center justify-between gap-4 lg:flex"');
+    expect(source).not.toContain('className="hidden items-center justify-between gap-4 sm:flex"');
+  });
+});

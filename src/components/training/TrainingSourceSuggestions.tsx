@@ -11,6 +11,7 @@ import { calculateSessionLoad } from "@/lib/training/trainingLoad";
 type TrainingSourceSuggestionsProps = {
   suggestions: TrainingSourceSuggestion[];
   rangeKey: string;
+  idPrefix?: string;
 };
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
@@ -18,6 +19,7 @@ const integerFormatter = new Intl.NumberFormat("en-GB");
 export function TrainingSourceSuggestions({
   suggestions,
   rangeKey,
+  idPrefix = "suggested-rpe",
 }: TrainingSourceSuggestionsProps) {
   return (
     <DataPanel>
@@ -32,8 +34,11 @@ export function TrainingSourceSuggestions({
       />
       <CardContent>
         {suggestions.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm font-semibold text-emerald-950">
-            <CheckCircle2 className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm font-semibold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-100">
+            <CheckCircle2
+              className="size-4 shrink-0 text-emerald-700 dark:text-emerald-300"
+              aria-hidden="true"
+            />
             No sessions waiting
           </div>
         ) : (
@@ -42,7 +47,7 @@ export function TrainingSourceSuggestions({
               <form
                 key={suggestion.key}
                 action={createGolfTrainingSessionAction}
-                className="grid gap-3 rounded-lg border border-slate-200 bg-white/80 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,440px)_auto] xl:items-center"
+                className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground xl:grid-cols-[minmax(0,1fr)_minmax(280px,440px)_auto] xl:items-center"
               >
                 <HiddenSuggestionFields suggestion={suggestion} rangeKey={rangeKey} />
                 <div className="min-w-0">
@@ -58,7 +63,7 @@ export function TrainingSourceSuggestions({
                 <RpeSelector
                   compact
                   defaultValue={suggestion.suggestedRpe}
-                  idPrefix={`suggested-rpe-${safeId(suggestion.key)}`}
+                  idPrefix={`${idPrefix}-${safeId(suggestion.key)}`}
                 />
                 <Button type="submit" className="premium-action w-full xl:w-auto">
                   <Save className="size-4" />

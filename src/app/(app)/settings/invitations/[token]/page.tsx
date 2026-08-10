@@ -73,14 +73,14 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
               <Button
                 type="submit"
                 disabled={!emailMatches}
-                className="w-full rounded-xl bg-[#111827] text-white sm:w-fit"
+                className="min-h-11 w-full rounded-xl bg-primary text-primary-foreground sm:w-fit"
               >
                 <Check className="size-4" />
                 Accept invite
               </Button>
             </form>
           ) : (
-            <Button asChild className="rounded-xl bg-[#111827] text-white">
+            <Button asChild className="min-h-11 rounded-xl bg-primary text-primary-foreground">
               <Link href={`/login?next=/settings/invitations/${encodeURIComponent(token)}`}>
                 Sign in to accept
               </Link>

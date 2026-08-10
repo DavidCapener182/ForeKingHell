@@ -4,6 +4,14 @@ import { notFound } from "next/navigation";
 import { and, count, eq, sql } from "drizzle-orm";
 import { CheckCircle2, Crosshair, Database, ShieldCheck, Target, Upload } from "lucide-react";
 
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import { MobileAppShell, MobileStatusAction, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
@@ -59,7 +67,9 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
 
   return (
     <PageShell>
+      <MobileImportResult result={result} featureData={featureData} />
       <DesktopWorkflowLayout
+        className="hidden lg:grid"
         steps={workflowSteps}
         helpTitle="Import audit"
         helpDescription="Receipt checks for the saved session"
@@ -171,6 +181,156 @@ export default async function ImportResultPage({ searchParams }: ImportResultPag
         </section>
       </DesktopWorkflowLayout>
     </PageShell>
+  );
+}
+
+function MobileImportResult({
+  result,
+  featureData,
+}: {
+  result: ImportResultData;
+  featureData: FeatureIdeasData;
+}) {
+  const plan = featureData.practicePlan[0];
+
+  return (
+    <MobileAppShell>
+      <MobileTopBar title="Import complete" />
+      <MobileStatusAction
+        label="Import saved"
+        value={`${integerFormatter.format(result.shotCount)} shots`}
+        detail={`Saved ${dateFormatter.format(result.date)} · review the receipt below`}
+        action={
+          <Button asChild className="min-h-11">
+            <Link href={`/rounds/${result.id}`} prefetch={false}>
+              Review
+            </Link>
+          </Button>
+        }
+      />
+
+      {result.practiceReview ? (
+        <section className="grid gap-2" aria-label="Practice decision from this import">
+          <IOSSectionHeader title="What to do next" description="Matched Practice Planner result" />
+          <IOSGroupedList label="Matched practice plan">
+            <IOSListRow
+              icon={Target}
+              label={result.practiceReview.nextAction}
+              value={`${result.practiceReview.score}/100`}
+              detail={`${result.practiceReview.title} · ${result.practiceReview.verdict}`}
+              href="/practice"
+              status={<IOSInlineStatus label="Shot-derived review" tone="positive" />}
+            />
+          </IOSGroupedList>
+        </section>
+      ) : plan ? (
+        <section className="grid gap-2" aria-label="Next practice from this import">
+          <IOSSectionHeader title="What to do next" description="One measurable practice job" />
+          <IOSGroupedList label="Next practice">
+            <IOSListRow
+              icon={Crosshair}
+              label={plan.title}
+              value={`${plan.targetShots} balls`}
+              detail={plan.detail}
+              href={plan.clubId ? `/bag/${plan.clubId}/analytics` : "/coach"}
+              status={<IOSInlineStatus label="Next action" tone="attention" />}
+            />
+          </IOSGroupedList>
+        </section>
+      ) : null}
+
+      <section className="grid gap-2" aria-label="Import audit summary">
+        <IOSSectionHeader title="Import audit" description="What was saved and what needs review" />
+        <IOSGroupedList label="Import audit rows">
+          <IOSListRow
+            label="Source file"
+            detail={result.fileName ?? "CSV import"}
+            status={<IOSInlineStatus label="Receipt source" tone="info" />}
+          />
+          <IOSListRow
+            label="Accepted shots"
+            value={integerFormatter.format(result.shotCount)}
+            detail="Normalized shot rows saved to this session."
+            status={<IOSInlineStatus label="Saved" tone="positive" />}
+          />
+          <IOSListRow
+            label="Raw rows preserved"
+            value={integerFormatter.format(result.rawRowCount)}
+            detail="Original rows retained for audit."
+          />
+          <IOSListRow
+            label="Clubs updated"
+            value={integerFormatter.format(result.clubCount)}
+            detail="Bag mappings linked by this import."
+          />
+          <IOSListRow
+            label="Questionable rows"
+            value={integerFormatter.format(result.questionableRowCount)}
+            detail={
+              result.questionableRowCount > 0
+                ? "Unknown rows remain stored but should be reviewed before every recommendation is trusted."
+                : "No unknown rows were flagged in this receipt."
+            }
+            status={
+              <IOSInlineStatus
+                label={result.questionableRowCount > 0 ? "Review required" : "None flagged"}
+                tone={result.questionableRowCount > 0 ? "attention" : "positive"}
+              />
+            }
+          />
+        </IOSGroupedList>
+      </section>
+
+      <IOSDisclosureGroup
+        label="Data trust detail"
+        items={[
+          {
+            value: "data-trust",
+            title: "Data trust",
+            summary: `${featureData.dataHealth.score}/100`,
+            description: featureData.dataHealth.status,
+            contentClassName: "px-0 pb-0 pt-0",
+            content: (
+              <IOSGroupedList label="Data trust checks" className="border-0">
+                {featureData.dataHealth.checks.slice(0, 4).map((check) => (
+                  <IOSListRow
+                    key={check.title}
+                    label={check.title}
+                    value={check.metric}
+                    detail={check.detail}
+                    href={check.href ?? "/settings"}
+                  />
+                ))}
+              </IOSGroupedList>
+            ),
+          },
+        ]}
+      />
+
+      <section className="grid gap-2" aria-label="Import result actions">
+        <IOSSectionHeader title="Review your data" />
+        <IOSGroupedList label="Import result destinations">
+          <IOSListRow
+            icon={Target}
+            label="Bag confidence"
+            detail="Review carry numbers, trust and gaps after this import."
+            href="/bag"
+          />
+          <IOSListRow
+            icon={Database}
+            label="Shot rows"
+            detail="Inspect normalized shots and preserved evidence."
+            href="/shots"
+          />
+          <IOSListRow
+            icon={Upload}
+            label="Import another"
+            detail="Return to the source chooser."
+            href="/import"
+          />
+        </IOSGroupedList>
+      </section>
+    </MobileAppShell>
   );
 }
 

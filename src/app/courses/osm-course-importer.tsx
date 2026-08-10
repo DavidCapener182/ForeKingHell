@@ -133,7 +133,7 @@ export function OsmCourseImporter() {
                 key={`${course.osmType}-${course.osmId}`}
                 type="button"
                 onClick={() => void selectCourse(course)}
-                className="rounded-xl border bg-white px-3 py-2 text-left text-sm transition hover:bg-muted"
+                className="min-h-11 rounded-xl border bg-white px-3 py-2 text-left text-sm transition hover:bg-muted motion-reduce:transition-none"
               >
                 <span className="flex items-start justify-between gap-3">
                   <span>
@@ -201,13 +201,13 @@ export function OsmCourseImporter() {
               <Input
                 name="teeName"
                 defaultValue="OpenStreetMap"
-                className="h-10 rounded-xl bg-white"
+                className="min-h-11 rounded-xl bg-white"
               />
             </label>
             <Button
               type="submit"
               disabled={holeState.status === "loading"}
-              className="rounded-xl bg-[#111827] text-white"
+              className="min-h-11 rounded-xl bg-[#111827] text-white"
             >
               <MapPinned className="size-4" />
               Import course

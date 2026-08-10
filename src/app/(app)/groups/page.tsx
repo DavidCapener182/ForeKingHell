@@ -1,16 +1,5 @@
 import Link from "next/link";
-import {
-  Award,
-  Globe2,
-  Lock,
-  MessageCircle,
-  Plus,
-  Radio,
-  Search,
-  Settings,
-  Trophy,
-  Users,
-} from "lucide-react";
+import { Globe2, Lock, Plus, Radio, Search, Settings, Trophy, Users } from "lucide-react";
 
 import {
   createGroupAction,
@@ -20,15 +9,20 @@ import {
 import { GroupDigestFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
-  ChallengeCard,
   MobileAppShell,
   MobileIconButton,
   MobileRouteTabs,
   MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
-  NativeListSection,
 } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -50,8 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getGroupsPageData, type GroupListItem } from "@/lib/groups";
-import { getChallengesPageData } from "@/lib/challenges";
+import { getGroupsPageData, type GroupLinkedChallengeItem, type GroupListItem } from "@/lib/groups";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { socialVisibilityOptions } from "@/lib/social";
 
@@ -104,27 +97,24 @@ const groupBoardSuggestedViews: DesktopSavedViewSuggestion[] = [
 
 export default async function GroupsPage({ searchParams }: GroupsPageProps) {
   const params = await searchParams;
-  const [data, challengeData, featureData] = await Promise.all([
+  const [data, featureData] = await Promise.all([
     getGroupsPageData(params?.invite),
-    getChallengesPageData(),
     getFeatureIdeasData(),
   ]);
   const activeTab = parseGroupsTab(params?.tab);
-  const featuredChallenge = challengeData.active[0] ?? challengeData.challenges[0] ?? null;
   const groupBoardRows = filterGroupBoardRows(data.groups, activeTab);
+  const mobileGroupIds = new Set(groupBoardRows.map((group) => group.id));
+  const mobileLinkedChallenges = data.linkedChallenges.filter((challenge) =>
+    mobileGroupIds.has(challenge.groupId),
+  );
+  const mobileStatus = mobileGroupStatus(activeTab, groupBoardRows);
 
   return (
     <PageShell>
       <MobileAppShell>
         <MobileTopBar
           title="Groups"
-          leading={<MobileIconButton href="/groups" label="Search groups" icon={Search} />}
-          actions={
-            <>
-              <MobileIconButton href="/friends" label="Messages" icon={MessageCircle} />
-              <MobileIconButton href="/settings" label="Settings" icon={Settings} />
-            </>
-          }
+          actions={<MobileIconButton href="/settings" label="Settings" icon={Settings} />}
         />
         <MobileRouteTabs group="social" activeKey="groups" />
         <MobileTabBar
@@ -137,9 +127,9 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
           ]}
         />
         <MobileStatusAction
-          label="Competition network"
-          value={`${data.mine.length} active groups`}
-          detail={`${challengeData.active.length} live challenges · ${data.discoverable.length} discoverable clubs`}
+          label={mobileStatus.label}
+          value={mobileStatus.value}
+          detail={mobileStatus.detail}
           action={
             <BottomSheet
               label={
@@ -230,70 +220,12 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
             )}
           </section>
         ) : null}
-        {activeTab === "challenges" ? (
-          <NativeListSection title="Challenges">
-            {featuredChallenge ? (
-              <ChallengeCard
-                title={featuredChallenge.title}
-                description={featuredChallenge.description ?? featuredChallenge.templateName}
-                href={`/challenges/${featuredChallenge.id}`}
-                cta={featuredChallenge.viewerJoined ? "Open" : "Join"}
-                leader={
-                  featuredChallenge.leader
-                    ? `Leader: ${featuredChallenge.leader.displayName} · ${featuredChallenge.leader.scoreLabel}`
-                    : "No attempts yet"
-                }
-                meta={
-                  <>
-                    <span>{featuredChallenge.participantCount} players</span>
-                    <span>{featuredChallenge.viewerJoined ? "Joined" : "Not entered"}</span>
-                  </>
-                }
-              />
-            ) : null}
-            {challengeData.challenges.slice(1, 8).map((challenge) => (
-              <ChallengeCard
-                key={challenge.id}
-                title={challenge.title}
-                description={challenge.templateName}
-                href={`/challenges/${challenge.id}`}
-                cta={challenge.viewerJoined ? "Open" : "Join"}
-                leader={challenge.leader ? `Leader: ${challenge.leader.displayName}` : undefined}
-                meta={<span>{challenge.participantCount} players</span>}
-              />
-            ))}
-          </NativeListSection>
-        ) : activeTab === "clubs" ? (
-          <NativeListSection title="Clubs and societies">
-            {[...data.mine, ...data.discoverable].slice(0, 12).map((group) => (
-              <MobileGroupCard key={group.id} group={group} />
-            ))}
-          </NativeListSection>
-        ) : (
-          <NativeListSection title="Active now">
-            {data.mine.slice(0, 8).map((group) => (
-              <MobileGroupCard key={group.id} group={group} />
-            ))}
-            {data.mine.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
-                Join a public league or create a private friend group.
-              </p>
-            ) : null}
-            {challengeData.active.slice(0, 3).map((challenge) => (
-              <ChallengeCard
-                key={challenge.id}
-                title={challenge.title}
-                description="Live group challenge"
-                href={`/challenges/${challenge.id}`}
-                meta={<span>{challenge.participantCount} players</span>}
-              />
-            ))}
-          </NativeListSection>
-        )}
+        <MobileGroupList activeTab={activeTab} groups={groupBoardRows} />
+        <MobileLinkedGroupChallenges challenges={mobileLinkedChallenges} />
         <GroupDigestFeaturePanel data={featureData} />
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="groups" className="hidden sm:grid">
+      <DesktopWorkbenchLayout scope="groups" className="hidden lg:grid">
         <section className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
           <aside
             aria-label="Group operations rail"
@@ -383,7 +315,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                   </h1>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
                     Build launch-monitor leagues, golf societies, coach stables and simulator venue
-                    communities with their own feed, records, events and leaderboards.
+                    communities with their own feed, linked challenges and weekly rivalry.
                   </p>
                 </div>
                 <PageArtwork
@@ -398,12 +330,6 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                     <Link href="/challenges?tab=seasons" prefetch={false}>
                       <Trophy className="size-4" />
                       Season leagues
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href="/course-records" prefetch={false}>
-                      <Award className="size-4" />
-                      Records
                     </Link>
                   </Button>
                   <Button asChild variant="outline">
@@ -724,28 +650,12 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
               <Trophy className="size-3" />
               {group.challengeCount}
             </Badge>
-            <Badge variant="outline" className="gap-1">
-              <Award className="size-3" />
-              Records
-            </Badge>
             <Badge variant="outline">{label(group.groupType)}</Badge>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
               <Link href={`/groups/${group.slug}`} prefetch={false}>
                 Open
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/course-records" prefetch={false}>
-                <Award className="size-4" />
-                Records
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/tournaments" prefetch={false}>
-                <Trophy className="size-4" />
-                Events
               </Link>
             </Button>
             {!group.viewerRole && group.visibility === "public" ? (
@@ -774,37 +684,99 @@ function MiniStat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function MobileGroupCard({ group }: { group: GroupListItem }) {
+function MobileGroupList({ activeTab, groups }: { activeTab: GroupsTab; groups: GroupListItem[] }) {
   return (
-    <Link
-      href={`/groups/${group.slug}`}
-      prefetch={false}
-      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold tracking-normal">{group.name}</p>
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">
-            {group.description ?? label(group.groupType)}
-          </p>
-        </div>
-        <Badge variant="outline" className="gap-1">
-          {group.visibility === "public" ? (
-            <Globe2 className="size-3" />
-          ) : (
-            <Lock className="size-3" />
-          )}
-          {label(group.visibility)}
-        </Badge>
-      </div>
-      <div className="flex flex-wrap gap-2 text-xs font-medium text-[#6B7280]">
-        <span>{group.memberCount} members</span>
-        <span>{group.challengeCount} live events</span>
-        <span>{group.postCount} posts</span>
-      </div>
-      <span className="text-sm font-semibold text-[#0B7A3B]">Open</span>
-    </Link>
+    <section className="grid gap-2" aria-label={groupBoardViewLabel(activeTab)}>
+      <IOSSectionHeader
+        title={groupBoardViewLabel(activeTab)}
+        description={`${groups.length} ${groups.length === 1 ? "group" : "groups"} in this view`}
+      />
+      <IOSGroupedList label={groupBoardViewLabel(activeTab)}>
+        {groups.length > 0 ? (
+          groups.map((group) => (
+            <IOSListRow
+              key={group.id}
+              label={group.name}
+              value={group.viewerRole ? label(group.viewerRole) : "Discover"}
+              detail={`${label(group.groupType)} · ${group.memberCount} members · ${group.postCount} posts · ${group.challengeCount} linked challenges`}
+              href={`/groups/${group.slug}`}
+              icon={group.visibility === "public" ? Globe2 : Lock}
+              status={
+                <IOSInlineStatus
+                  label={group.visibility === "public" ? "Public" : "Private"}
+                  tone={group.viewerRole ? "positive" : "neutral"}
+                />
+              }
+            />
+          ))
+        ) : (
+          <IOSListRow label="No groups in this view" detail={groupMobileEmptyDetail(activeTab)} />
+        )}
+      </IOSGroupedList>
+    </section>
   );
+}
+
+function MobileLinkedGroupChallenges({ challenges }: { challenges: GroupLinkedChallengeItem[] }) {
+  return (
+    <IOSDisclosureGroup
+      label="Linked group challenges"
+      items={[
+        {
+          value: "linked-group-challenges",
+          title: "Linked challenges",
+          summary: `${challenges.length}`,
+          description: "Challenge boards attached to groups in this view",
+          contentClassName: "px-0 pb-0 pt-0",
+          content: (
+            <IOSGroupedList label="Linked challenges" className="border-0">
+              {challenges.length > 0 ? (
+                challenges.map((challenge) => (
+                  <IOSListRow
+                    key={`${challenge.groupId}:${challenge.id}`}
+                    label={challenge.title}
+                    value={label(challenge.status)}
+                    detail={`${challenge.groupName} · ${challenge.templateName}`}
+                    href={`/challenges/${challenge.id}`}
+                    status={<IOSInlineStatus label="Linked board" tone="info" />}
+                  />
+                ))
+              ) : (
+                <IOSListRow
+                  label="No linked challenges"
+                  detail="Groups in this view do not have a linked challenge board yet."
+                />
+              )}
+            </IOSGroupedList>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+function mobileGroupStatus(activeTab: GroupsTab, groups: GroupListItem[]) {
+  const firstGroup = groups[0] ?? null;
+
+  return {
+    label: groupBoardViewLabel(activeTab),
+    value: `${groups.length} ${groups.length === 1 ? "group" : "groups"}`,
+    detail: firstGroup
+      ? `${firstGroup.memberCount} members · ${firstGroup.challengeCount} linked`
+      : groupMobileEmptyDetail(activeTab),
+  };
+}
+
+function groupMobileEmptyDetail(activeTab: GroupsTab) {
+  if (activeTab === "challenges") {
+    return "No visible group has a linked challenge board yet.";
+  }
+
+  if (activeTab === "clubs") {
+    return "No discoverable club, society or simulator league is visible yet.";
+  }
+
+  return "Join a public group or create a private group to get started.";
 }
 
 function filterGroupBoardRows(groups: GroupListItem[], activeTab: GroupsTab) {

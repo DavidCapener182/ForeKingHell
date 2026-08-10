@@ -331,7 +331,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
         />
       </MobileAppShell>
 
-      <div className="hidden items-center justify-between gap-4 sm:flex">
+      <div className="hidden items-center justify-between gap-4 lg:flex">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="size-4" />

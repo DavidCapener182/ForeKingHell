@@ -10,9 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 type TrainingSessionFormProps = {
   rangeKey: string;
   today: string;
+  idPrefix?: string;
 };
 
-export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProps) {
+export function TrainingSessionForm({
+  rangeKey,
+  today,
+  idPrefix = "training-load",
+}: TrainingSessionFormProps) {
   return (
     <form action={createGolfTrainingSessionAction} className="grid gap-4 p-4">
       <input type="hidden" name="range" value={rangeKey} />
@@ -21,7 +26,7 @@ export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProp
           <select
             name="activityType"
             defaultValue="range"
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="round">Round</option>
             <option value="range">Range</option>
@@ -32,37 +37,52 @@ export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProp
           </select>
         </Field>
         <Field label="Date">
-          <Input name="sessionDate" type="date" defaultValue={today} required />
+          <Input
+            name="sessionDate"
+            type="date"
+            defaultValue={today}
+            required
+            className="min-h-11"
+          />
         </Field>
         <Field label="Title">
-          <Input name="title" placeholder="Range block, walking round, speed session..." />
+          <Input
+            name="title"
+            placeholder="Range block, walking round, speed session..."
+            className="min-h-11"
+          />
         </Field>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Field label="Duration minutes">
-          <Input name="durationMinutes" inputMode="numeric" placeholder="60" />
+          <Input name="durationMinutes" inputMode="numeric" placeholder="60" className="min-h-11" />
         </Field>
         <Field label="Holes played">
-          <Input name="holesPlayed" inputMode="numeric" placeholder="9 or 18" />
+          <Input
+            name="holesPlayed"
+            inputMode="numeric"
+            placeholder="9 or 18"
+            className="min-h-11"
+          />
         </Field>
         <Field label="Total swings">
-          <Input name="totalSwings" inputMode="numeric" placeholder="80" />
+          <Input name="totalSwings" inputMode="numeric" placeholder="80" className="min-h-11" />
         </Field>
         <Field label="Full swings">
-          <Input name="fullSwings" inputMode="numeric" placeholder="45" />
+          <Input name="fullSwings" inputMode="numeric" placeholder="45" className="min-h-11" />
         </Field>
         <Field label="Short-game swings">
-          <Input name="shortGameSwings" inputMode="numeric" placeholder="25" />
+          <Input name="shortGameSwings" inputMode="numeric" placeholder="25" className="min-h-11" />
         </Field>
         <Field label="Putting strokes">
-          <Input name="puttingSwings" inputMode="numeric" placeholder="30" />
+          <Input name="puttingSwings" inputMode="numeric" placeholder="30" className="min-h-11" />
         </Field>
         <Field label="Round movement">
           <select
             name="movement"
             defaultValue=""
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="">Not relevant</option>
             <option value="walked">Walked</option>
@@ -73,7 +93,7 @@ export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProp
           <select
             name="mentalPressure"
             defaultValue=""
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="">Optional</option>
             {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
@@ -86,17 +106,17 @@ export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProp
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
-        <RpeSelector idPrefix="training-load-rpe" defaultValue={5} />
-        <div className="grid content-start gap-3 rounded-lg border border-emerald-950/10 bg-white/70 p-3">
-          <label className="flex items-start gap-2 text-sm font-medium">
-            <input type="checkbox" name="competition" className="mt-1 size-4" />
+        <RpeSelector idPrefix={`${idPrefix}-rpe`} defaultValue={5} />
+        <div className="grid content-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground">
+          <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
+            <input type="checkbox" name="competition" className="size-4" />
             Competition or high-consequence practice
           </label>
           <Field label="Physical demand">
             <select
               name="physicalDemand"
               defaultValue=""
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               <option value="">Optional</option>
               {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
@@ -121,8 +141,8 @@ export function TrainingSessionForm({ rangeKey, today }: TrainingSessionFormProp
         />
       </Field>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-        <Button type="submit" className="premium-action">
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-background/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:static sm:mx-0 sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+        <Button type="submit" className="premium-action min-h-11 w-full sm:w-auto">
           <Save className="size-4" />
           Save Training Load
         </Button>

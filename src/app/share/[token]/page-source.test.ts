@@ -5,8 +5,18 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/share/[token]/page.tsx"), "utf8");
 
 describe("shared round page source", () => {
+  it("provides a public iOS scorecard composition without exposing private shot data", () => {
+    expect(source).toContain("ios-public-auth");
+    expect(source).toContain("MobileSharedRound");
+    expect(source).toContain("MobileSharedHoleRows");
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain("data-desktop-shared-round");
+    expect(source).toContain('className="hidden gap-6 lg:grid"');
+    expect(source).toContain("Shot data and private account details are not exposed");
+  });
+
   it("keeps the public scorecard table captioned and keyboardable", () => {
-    expect(source).toContain("<PageShell>");
+    expect(source).toContain("<PageShell");
     expect(source).not.toContain('<PageShell size="6xl">');
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("sharedScorecardColumns");

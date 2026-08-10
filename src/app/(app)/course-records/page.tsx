@@ -2,16 +2,19 @@ import Link from "next/link";
 import { ArrowLeft, Medal, Search, ShieldCheck, Trophy } from "lucide-react";
 
 import {
-  CourseRecordCard,
-  EventHeroCard,
   MobileAppShell,
-  MobileIconButton,
   MobileRouteTabs,
   MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
 import { CourseRecordFeaturePanel } from "@/components/features/feature-panels";
 import { DataFirstFlowPanel, ProofChecklistPanel } from "@/components/product-polish";
 import { CourseLogoArtwork } from "@/components/visuals/course-logo-artwork";
@@ -122,11 +125,7 @@ export default async function CourseRecordsPage() {
   return (
     <PageShell>
       <MobileAppShell>
-        <MobileTopBar
-          title="Course Records"
-          leading={<MobileIconButton href="/courses" label="Courses" icon={ArrowLeft} />}
-          actions={<MobileIconButton href="/courses" label="Search records" icon={Search} />}
-        />
+        <MobileTopBar title="Course Records" />
         <MobileRouteTabs group="play" activeKey="records" />
         <MobileTabBar
           activeKey="all"
@@ -144,7 +143,10 @@ export default async function CourseRecordsPage() {
           detail={`${integerFormatter.format(data.totalRecords)} record boards across visible courses`}
           action={
             featured ? (
-              <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Button
+                asChild
+                className="min-h-11 rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              >
                 <Link href={`/courses/${featured.id}/records`} prefetch={false}>
                   Open
                 </Link>
@@ -152,98 +154,120 @@ export default async function CourseRecordsPage() {
             ) : null
           }
         />
-        {featured ? (
-          <EventHeroCard
-            eyebrow="Featured champion"
-            title={featured.name}
-            description={
-              featured.champion
-                ? `${featured.champion.displayName} leads with ${featured.champion.scoreLabel}`
-                : "No champion yet. Set the first verified mark."
-            }
-            href={`/courses/${featured.id}/records`}
-            actionLabel="Challenge"
-            meta={
-              <span>
-                {featured.recordCount} boards · {featured.liveAttemptCount} live attempts
-              </span>
-            }
-            media={
-              <CourseLogoArtwork
-                courseName={featured.name}
-                country={featured.country}
-                alt=""
-                logoLookupEnabled={logoLookupEnabled}
-                className="block h-full min-h-0 rounded-none"
-                sizes="calc(100vw - 2rem)"
-                priority
-              />
-            }
-          />
-        ) : null}
-        <ProofChecklistPanel
-          title="Record proof tiers"
-          description="Gold, Silver, Bronze and Manual proof stay visible before any course-record attempt."
-          items={proofItems}
-          actionHref="/rounds"
-          actionLabel="Review proof"
-        />
-        <DataFirstFlowPanel
-          title="Set record goal"
-          description="Turn the honours board into a target, notification and friend benchmark."
-          actionHref={featured ? `/courses/${featured.id}/records` : "/courses"}
-          actionLabel="Set goal"
-          steps={[
-            {
-              title: "Goal score",
-              detail: featured?.champion
-                ? `Beat ${featured.champion.scoreLabel}.`
-                : "Set the first score.",
-              status: "ready",
-            },
-            {
-              title: "Notify me",
-              detail: "Alert when the board is beaten.",
-              status: "optional",
-            },
-            {
-              title: "Friend target",
-              detail: "Pick a friend score to chase.",
-              status: "optional",
-            },
-            {
-              title: "Submit attempt",
-              detail: "Use proof before the score counts.",
-              href: "/rounds",
-              status: "ready",
-            },
-            {
-              title: "Review board",
-              detail: "Keep manual and verified scores separate.",
-              href: featured ? `/courses/${featured.id}/records` : "/course-records",
-              status: "ready",
-            },
-          ]}
-        />
         <NativeListSection title="Honours boards">
-          {data.courses.map((course) => (
-            <CourseRecordCard
-              key={course.id}
-              href={`/courses/${course.id}/records`}
-              title={course.name}
-              champion={course.champion?.displayName}
-              score={course.champion?.scoreLabel}
-              proof={course.champion?.verificationTier}
-              cta="Open"
-            />
-          ))}
+          <IOSGroupedList label="Course record boards">
+            {data.courses.map((course) => (
+              <IOSListRow
+                key={course.id}
+                icon={Trophy}
+                label={course.name}
+                value={course.champion?.scoreLabel ?? `${course.recordCount} boards`}
+                detail={
+                  course.champion
+                    ? `${course.champion.displayName} · ${course.liveAttemptCount} live attempts`
+                    : `No verified champion · ${course.liveAttemptCount} live attempts`
+                }
+                href={`/courses/${course.id}/records`}
+                status={
+                  <IOSInlineStatus
+                    label={
+                      course.champion
+                        ? verificationTierLabel(course.champion.verificationTier)
+                        : "Open board"
+                    }
+                    tone={course.champion ? "positive" : "attention"}
+                  />
+                }
+              />
+            ))}
+          </IOSGroupedList>
           {data.courses.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-sm text-[#6B7280]">
+            <p className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
               No courses are available yet. Seed known courses from Courses.
             </p>
           ) : null}
         </NativeListSection>
-        <CourseRecordFeaturePanel data={featureData} />
+        <IOSDisclosureGroup
+          label="Course record supporting detail"
+          items={[
+            {
+              value: "proof",
+              title: "Proof requirements",
+              summary: "4 tiers",
+              description: "What makes a course record trusted",
+              content: (
+                <IOSGroupedList label="Course record proof requirements">
+                  {proofItems.map((item) => (
+                    <IOSListRow
+                      key={item.label}
+                      label={item.label}
+                      detail={item.detail}
+                      href={item.href}
+                      status={
+                        <IOSInlineStatus
+                          label={
+                            item.status === "ready"
+                              ? "Ready"
+                              : item.status === "needed"
+                                ? "Needed"
+                                : "Optional"
+                          }
+                          tone={
+                            item.status === "ready"
+                              ? "positive"
+                              : item.status === "needed"
+                                ? "attention"
+                                : "neutral"
+                          }
+                        />
+                      }
+                    />
+                  ))}
+                </IOSGroupedList>
+              ),
+              contentClassName: "px-0",
+            },
+            {
+              value: "goal",
+              title: "Plan a record attempt",
+              summary: featured?.champion?.scoreLabel ?? "Open",
+              description: "Target, friend benchmark and saved-round proof",
+              content: (
+                <IOSGroupedList label="Course record goal steps">
+                  <IOSListRow
+                    label="Goal score"
+                    value={featured?.champion?.scoreLabel ?? "First mark"}
+                    detail={
+                      featured?.champion
+                        ? `Beat ${featured.champion.displayName}`
+                        : "Set the first verified score"
+                    }
+                    href={featured ? `/courses/${featured.id}/records` : "/courses"}
+                  />
+                  <IOSListRow
+                    label="Submit saved round"
+                    detail="Use scorecard proof before the score counts"
+                    href="/rounds"
+                  />
+                  <IOSListRow
+                    label="Friend benchmark"
+                    detail="Compare against friends on the leaderboard"
+                    href="/leaderboard?tab=courses"
+                  />
+                </IOSGroupedList>
+              ),
+              contentClassName: "px-0",
+            },
+            {
+              value: "alerts",
+              title: "Record alerts",
+              summary: "Optional",
+              description: "Follow boards without crowding the honours list",
+              content: <CourseRecordFeaturePanel data={featureData} />,
+              contentClassName: "px-2",
+            },
+          ]}
+        />
       </MobileAppShell>
 
       <DesktopWorkbenchLayout
@@ -318,7 +342,7 @@ export default async function CourseRecordsPage() {
           />
         }
       >
-        <div className="hidden items-center justify-between gap-3 sm:flex">
+        <div className="hidden items-center justify-between gap-3 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/courses" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -333,7 +357,7 @@ export default async function CourseRecordsPage() {
           </Button>
         </div>
 
-        <div className="hidden sm:contents">
+        <div className="hidden lg:contents">
           <header className="premium-hero overflow-hidden">
             <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
               <div>

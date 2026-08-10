@@ -9,8 +9,20 @@ import {
   Upload,
 } from "lucide-react";
 
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { ProviderHealthFeaturePanel } from "@/components/features/feature-panels";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import {
+  MobileAppShell,
+  MobileRouteTabs,
+  MobileStatusAction,
+  MobileTopBar,
+} from "@/components/mobile-sports";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { PageArtwork, type PageArtworkVariant } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
@@ -80,9 +92,13 @@ export default async function ProvidersPage() {
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Platform" group="platform" activeKey="providers" />
+      <MobileAppShell>
+        <MobileTopBar title="Providers" />
+        <MobileRouteTabs group="platform" activeKey="providers" />
+        <MobileProviderConsole data={data} featureData={featureData} />
+      </MobileAppShell>
 
-      <DesktopWorkbenchLayout scope="providers">
+      <DesktopWorkbenchLayout scope="providers" className="hidden lg:grid">
         <header className="premium-hero p-3 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -153,14 +169,16 @@ export default async function ProvidersPage() {
                   value={
                     provider.failureCount > 0
                       ? `${provider.failureCount} ${provider.latestFailureMessage ?? "needs review"}`
-                      : "0 blocking failures"
+                      : provider.jobCount > 0
+                        ? `${provider.jobCount} jobs checked · none flagged`
+                        : "No import jobs observed"
                   }
-                  tone={provider.failureCount > 0 ? "amber" : "green"}
+                  tone={provider.failureCount > 0 || provider.jobCount === 0 ? "amber" : "green"}
                 />
               </div>
               <div className="mt-4 grid gap-2 text-sm">
-                <ProviderStep done={provider.status === "live"} label="Connect" />
-                <ProviderStep done={provider.status === "live"} label="Import file" />
+                <ProviderStep done={provider.accountCount > 0} label="Connect" />
+                <ProviderStep done={provider.fileCount > 0} label="Import file" />
                 <ProviderStep done={provider.mappingCount > 0} label="Map fields" />
                 <ProviderStep done={provider.sessionCount > 0} label="Review sessions" />
                 <ProviderStep done={provider.sessionCount > 0} label="Normalise metrics" />
@@ -170,13 +188,17 @@ export default async function ProvidersPage() {
                 variant={provider.status === "live" ? "default" : "outline"}
                 className="mt-4 w-full"
               >
-                <Link href={provider.status === "live" ? "/import" : "/billing"} prefetch={false}>
+                <Link href={provider.status === "live" ? "/rapsodo" : "/billing"} prefetch={false}>
                   {provider.status === "live" ? (
                     <Upload className="size-4" />
                   ) : (
                     <GitCompareArrows className="size-4" />
                   )}
-                  {provider.status === "live" ? "Import from provider" : "View adapter access"}
+                  {provider.status === "live"
+                    ? provider.accountCount > 0
+                      ? "Open provider inbox"
+                      : "Connect provider"
+                    : "View adapter access"}
                 </Link>
               </Button>
             </article>
@@ -252,6 +274,240 @@ export default async function ProvidersPage() {
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function MobileProviderConsole({
+  data,
+  featureData,
+}: {
+  data: ProviderIntegrationsPageData;
+  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
+}) {
+  const failureCount = data.providers.reduce((total, provider) => total + provider.failureCount, 0);
+  const pendingSessions = data.sessions.filter((session) => !session.importedAt);
+  const connectedProviderCount = data.providers.filter(
+    (provider) => provider.accountCount > 0,
+  ).length;
+  const orderedProviders = [...data.providers].sort(
+    (left, right) =>
+      right.failureCount - left.failureCount ||
+      right.accountCount - left.accountCount ||
+      Number(right.status === "live") - Number(left.status === "live"),
+  );
+  const orderedSessions = [...data.sessions].sort(
+    (left, right) =>
+      Number(Boolean(left.importedAt)) - Number(Boolean(right.importedAt)) ||
+      (right.lastSeenAt?.getTime() ?? 0) - (left.lastSeenAt?.getTime() ?? 0),
+  );
+  const primarySessions = orderedSessions.slice(0, 8);
+  const olderSessions = orderedSessions.slice(8);
+
+  return (
+    <>
+      <MobileStatusAction
+        label={failureCount > 0 ? "Provider failures" : "Provider inbox"}
+        value={failureCount > 0 ? failureCount : `${pendingSessions.length} pending`}
+        detail={`${connectedProviderCount} connected · ${data.sessions.length} observed sessions`}
+        action={
+          <Button asChild className="min-h-11">
+            <Link
+              href={failureCount > 0 ? "#mobile-provider-operations" : "/rapsodo"}
+              prefetch={false}
+            >
+              {failureCount > 0 ? "Review" : connectedProviderCount > 0 ? "Open" : "Connect"}
+            </Link>
+          </Button>
+        }
+      />
+
+      <section className="grid gap-2" aria-label="Provider adapters">
+        <IOSSectionHeader
+          title="Provider connections"
+          description="Adapter status and evidence from this account"
+        />
+        <MobileProviderRows providers={orderedProviders} />
+      </section>
+
+      <section className="grid gap-2" aria-label="Provider session inbox">
+        <IOSSectionHeader
+          title="Recent sessions"
+          description={`${pendingSessions.length} waiting for import review`}
+        />
+        <MobileProviderSessionRows sessions={primarySessions} />
+        {olderSessions.length > 0 ? (
+          <IOSDisclosureGroup
+            label="More provider sessions"
+            items={[
+              {
+                value: "more-provider-sessions",
+                title: "More sessions",
+                summary: olderSessions.length,
+                description: "Older imported and provider-only rows",
+                contentClassName: "px-0 pb-0 pt-0",
+                content: <MobileProviderSessionRows sessions={olderSessions} />,
+              },
+            ]}
+          />
+        ) : null}
+      </section>
+
+      <div id="mobile-provider-operations" className="scroll-mt-24">
+        <IOSDisclosureGroup
+          label="Provider operations detail"
+          items={[
+            {
+              value: "provider-jobs",
+              title: "Import jobs",
+              summary: data.jobs.length,
+              description:
+                failureCount > 0
+                  ? `${failureCount} failed job${failureCount === 1 ? "" : "s"} need review`
+                  : data.jobs.length > 0
+                    ? "No failures flagged in the observed jobs"
+                    : "No import jobs observed",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: (
+                <IOSGroupedList label="Provider import job rows" className="border-0">
+                  {data.jobs.length > 0 ? (
+                    data.jobs.map((job) => (
+                      <IOSListRow
+                        key={job.id}
+                        label={`${providerKindLabel(job.providerKind)} · ${providerStatusLabel(job.status)}`}
+                        detail={
+                          job.errorMessage ??
+                          (job.detectedProviderKind
+                            ? `Detected ${providerKindLabel(job.detectedProviderKind)}`
+                            : "No detected provider recorded")
+                        }
+                        status={
+                          <IOSInlineStatus
+                            label={
+                              job.status === "failed" || job.errorMessage
+                                ? "Review required"
+                                : "Observed job"
+                            }
+                            tone={
+                              job.status === "failed" || job.errorMessage ? "critical" : "neutral"
+                            }
+                          />
+                        }
+                      />
+                    ))
+                  ) : (
+                    <IOSListRow
+                      label="No import jobs"
+                      detail="Health cannot be inferred until a provider job has run."
+                    />
+                  )}
+                </IOSGroupedList>
+              ),
+            },
+            {
+              value: "provider-files",
+              title: "Source files",
+              summary: data.files.length,
+              description: "Recent provider file evidence",
+              contentClassName: "px-0 pb-0 pt-0",
+              content: (
+                <IOSGroupedList label="Provider source file rows" className="border-0">
+                  {data.files.length > 0 ? (
+                    data.files.map((file) => (
+                      <IOSListRow
+                        key={file.id}
+                        label={file.fileName}
+                        value={providerStatusLabel(file.status)}
+                        detail={providerKindLabel(file.providerKind)}
+                      />
+                    ))
+                  ) : (
+                    <IOSListRow
+                      label="No source files"
+                      detail="Connect a provider or import a file to create evidence."
+                    />
+                  )}
+                </IOSGroupedList>
+              ),
+            },
+            {
+              value: "provider-health-detail",
+              title: "Provider health detail",
+              summary: featureData.providerHealth.length,
+              description: "Mapping, sync and adapter context",
+              content: <ProviderHealthFeaturePanel data={featureData} />,
+            },
+          ]}
+        />
+      </div>
+    </>
+  );
+}
+
+function MobileProviderRows({
+  providers,
+}: {
+  providers: ProviderIntegrationsPageData["providers"];
+}) {
+  return (
+    <IOSGroupedList label="Provider connection rows">
+      {providers.map((provider) => {
+        const connected = provider.accountCount > 0;
+        const hasFailure = provider.failureCount > 0;
+
+        return (
+          <IOSListRow
+            key={provider.providerKind}
+            icon={provider.status === "live" ? Cable : FlaskConical}
+            label={provider.label}
+            detail={`${providerStatusLabel(provider.status)} · ${provider.accountCount} accounts · ${provider.sessionCount} sessions · ${provider.jobCount} jobs · ${formatProviderDate(provider.lastSyncAt)}`}
+            href={provider.status === "live" ? "/rapsodo" : "/billing"}
+            status={
+              <IOSInlineStatus
+                label={
+                  hasFailure
+                    ? `${provider.failureCount} failed job${provider.failureCount === 1 ? "" : "s"}`
+                    : connected
+                      ? "Connected"
+                      : provider.jobCount > 0
+                        ? "Job evidence, no account"
+                        : "No account evidence"
+                }
+                tone={hasFailure ? "critical" : connected ? "positive" : "attention"}
+              />
+            }
+          />
+        );
+      })}
+    </IOSGroupedList>
+  );
+}
+
+function MobileProviderSessionRows({ sessions }: { sessions: ProviderSession[] }) {
+  return (
+    <IOSGroupedList label="Recent provider session rows">
+      {sessions.length > 0 ? (
+        sessions.map((session) => (
+          <IOSListRow
+            key={session.id}
+            label={providerSessionTitle(session)}
+            value={session.importedAt ? "Imported" : "Pending"}
+            detail={`${providerKindLabel(session.providerKind)} · ${formatProviderSessionDate(session.sessionDate)} · last seen ${formatProviderSessionDate(session.lastSeenAt)}`}
+            href={session.importedSessionId ? `/rounds/${session.importedSessionId}` : "/rapsodo"}
+            status={
+              <IOSInlineStatus
+                label={session.importedAt ? "Linked session" : "Import review"}
+                tone={session.importedAt ? "positive" : "attention"}
+              />
+            }
+          />
+        ))
+      ) : (
+        <IOSListRow
+          label="No provider sessions"
+          detail="Connect a provider or import a measured file to begin."
+        />
+      )}
+    </IOSGroupedList>
   );
 }
 
@@ -378,7 +634,7 @@ function ProviderStep({ done, label }: { done: boolean; label: string }) {
     <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
       <span className="text-muted-foreground">{label}</span>
       <span className={done ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
-        {done ? "Ready" : "Queued"}
+        {done ? "Observed" : "No evidence"}
       </span>
     </div>
   );

@@ -27,4 +27,15 @@ describe("challenge detail desktop route", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
+
+  it("keeps a complete mobile board and invite flow without linking to desktop anchors", () => {
+    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain('label="Full challenge leaderboard"');
+    expect(source).toContain("data.results.map");
+    expect(source).toContain("ChallengeInviteSheet");
+    expect(source).toContain('title="Invite to this challenge"');
+    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain('className="hidden sm:grid"');
+    expect(source).not.toContain("viewAllHref={`/challenges/${data.challenge.id}#board`}");
+  });
 });

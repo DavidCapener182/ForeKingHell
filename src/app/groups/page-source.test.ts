@@ -17,7 +17,7 @@ describe("groups desktop board", () => {
     expect(source).toContain("GroupBoardFilterTabs");
     expect(source).toContain("filterGroupBoardRows");
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="groups" className="hidden sm:grid">');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="groups" className="hidden lg:grid">');
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('data-workbench-scope="group-board"');
     expect(source).toContain('exportTableId="group-board"');
@@ -44,5 +44,14 @@ describe("groups desktop board", () => {
     ]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("uses the filtered group board as the mobile source and discloses linked challenges", () => {
+    expect(source).toContain("groups={groupBoardRows}");
+    expect(source).toContain("MobileLinkedGroupChallenges");
+    expect(source).toContain("data.linkedChallenges.filter");
+    expect(source).not.toContain("getChallengesPageData");
+    expect(source).not.toContain('description="Live group challenge"');
+    expect(source).toContain("linked challenges");
   });
 });

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
-import { Cuboid, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Cuboid, LockKeyhole } from "lucide-react";
 
+import mobileStyles from "@/app/play/[courseId]/course-twin-mobile.module.css";
 import { CourseTwinRuntime } from "@/app/play/[courseId]/course-twin-runtime";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +25,30 @@ export default async function SharedCourseTwinPage({
   if (!shared) notFound();
 
   return (
-    <main className="min-h-screen bg-[#07150e] text-white">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
+    <main
+      id="main-content"
+      data-course-twin-viewport
+      data-shared-course-twin-viewport
+      className={`${mobileStyles.viewport} relative min-h-screen w-full overflow-x-hidden bg-[#07150e] text-white lg:flex lg:flex-col`}
+    >
+      <Link
+        href="/login"
+        prefetch={false}
+        data-course-twin-exit
+        data-shared-course-twin-exit
+        className={mobileStyles.exitButton}
+        aria-label={`Leave shared replay and open ${BRAND_NAME}`}
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+        <span className="sr-only">Open {BRAND_NAME}</span>
+      </Link>
+
+      <h1 className="sr-only lg:hidden">{shared.title}</h1>
+      <p id="shared-course-twin-context" className="sr-only">
+        Private, read-only Course Twin replay. Use the back control to open {BRAND_NAME}.
+      </p>
+
+      <header className="hidden flex-wrap items-center justify-between gap-3 border-b border-white/10 px-6 py-3 lg:flex">
         <div>
           <div className="flex items-center gap-2 text-sm text-emerald-200">
             <Cuboid className="size-4" />
@@ -43,10 +66,14 @@ export default async function SharedCourseTwinPage({
           </Button>
         </div>
       </header>
-      <section aria-label="Shared 3D round replay">
+      <section
+        aria-label="Shared 3D round replay"
+        aria-describedby="shared-course-twin-context"
+        className="relative h-full min-h-0 lg:h-auto lg:flex-1"
+      >
         <CourseTwinRuntime manifest={shared.manifest} replay={shared.replay} readOnly />
       </section>
-      <footer className="border-t border-white/10 px-4 py-3 text-xs text-emerald-100/70 sm:px-6">
+      <footer className="hidden border-t border-white/10 px-6 py-3 text-xs text-emerald-100/70 lg:block">
         This private link exposes the reconstructed shot path and course package only. It does not
         expose account details or the source upload.
       </footer>

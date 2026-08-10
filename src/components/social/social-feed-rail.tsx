@@ -437,7 +437,7 @@ function SocialFeedRailContent() {
 
       {isMobile ? (
         <Drawer open={expanded} onOpenChange={setRailOpen}>
-          <DrawerContent id="social-feed-preview" className="max-h-[86vh]">
+          <DrawerContent id="social-feed-preview" className="max-h-[86dvh]">
             <DrawerHeader className="text-left">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -655,7 +655,7 @@ function RailDayDigest({
   }
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-2.5 text-sm shadow-sm">
+    <article className="rounded-xl border border-border bg-card p-2.5 text-sm text-card-foreground shadow-sm">
       <header>
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -741,7 +741,7 @@ function RailActivityItem({
   const isStatusUpdate = item.itemType === "status_update";
 
   return (
-    <div className="rounded-xl border bg-slate-50/70 p-2">
+    <div className="rounded-xl border border-border bg-secondary/70 p-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="line-clamp-2 text-sm font-medium leading-5">
@@ -792,7 +792,7 @@ function RailActivityItem({
           {item.comments.length > 0 ? (
             <div className="grid gap-1.5">
               {item.comments.map((comment) => (
-                <div key={comment.id} className="rounded-lg bg-white px-2 py-1.5 text-xs">
+                <div key={comment.id} className="rounded-lg bg-card px-2 py-1.5 text-xs">
                   <Link
                     href={`/profile/${comment.profile.username}`}
                     prefetch={false}
@@ -835,7 +835,7 @@ function RailActivityItem({
               value={commentDraft}
               onChange={(event) => onCommentDraftChange(event.target.value)}
               placeholder="Write a comment"
-              className="h-8 rounded-lg bg-white text-xs"
+              className="h-8 rounded-lg bg-background text-xs"
             />
             <Button
               type="submit"

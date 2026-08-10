@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
-import { rankTournamentStandings } from "@/lib/tournaments";
+import { rankTournamentStandings, summarizeTournamentViewerEvidence } from "@/lib/tournaments";
 import {
   isMajorTourEvent,
   normalizeTourPlayerName,
@@ -42,6 +42,31 @@ describe("tournament standings", () => {
       ["user-b", 2],
       ["user-a", 3],
     ]);
+  });
+});
+
+describe("tournament viewer evidence", () => {
+  it("summarizes only stored viewer submission proof", () => {
+    expect(
+      summarizeTournamentViewerEvidence(4, [
+        {
+          verificationStatus: "verified",
+          rapsodoSyncSessionId: "sync-1",
+          scorecardScreenshotPath: "proof/round-1.png",
+        },
+        {
+          verificationStatus: "pending_evidence",
+          rapsodoSyncSessionId: null,
+          scorecardScreenshotPath: "proof/round-2.png",
+        },
+      ]),
+    ).toEqual({
+      submissionCount: 2,
+      verifiedSubmissionCount: 1,
+      rapsodoProofCount: 1,
+      scorecardProofCount: 2,
+      roundsDue: 2,
+    });
   });
 });
 

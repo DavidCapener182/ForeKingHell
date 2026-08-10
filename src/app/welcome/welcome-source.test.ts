@@ -19,4 +19,13 @@ describe("first-use journey", () => {
     expect(activation).toContain("practicePlans");
     expect(activation).not.toContain("marketingDemo");
   });
+
+  it("uses a native mobile setup checklist and keeps desktop composition separate", () => {
+    expect(welcome).toContain("<MobileAppShell>");
+    expect(welcome).toContain("MobileWelcomeJourney");
+    expect(welcome).toContain("IOSGroupedList");
+    expect(welcome).toContain("IOSInlineStatus");
+    expect(welcome).toContain('next?.href ?? "/today"');
+    expect(welcome).toContain('className="hidden gap-6 py-6 lg:grid"');
+  });
 });

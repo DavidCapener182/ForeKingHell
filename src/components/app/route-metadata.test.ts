@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   findRouteMetadata,
   isMobileImmersiveRoute,
+  mobileBackNavigation,
   routesAvailableTo,
 } from "@/components/app/route-metadata";
 
@@ -32,5 +33,28 @@ describe("central route metadata", () => {
     expect(isMobileImmersiveRoute("/play/")).toBe(false);
     expect(isMobileImmersiveRoute("/play/aintree/extra")).toBe(false);
     expect(isMobileImmersiveRoute("/course-twins")).toBe(false);
+  });
+
+  it("keeps pushed mobile detail screens on a single logical back hierarchy", () => {
+    expect(mobileBackNavigation("/challenges/challenge-1")).toEqual({
+      href: "/challenges",
+      label: "Challenges",
+    });
+    expect(mobileBackNavigation("/tournaments/tournament-1")).toEqual({
+      href: "/tournaments",
+      label: "Tournaments",
+    });
+    expect(mobileBackNavigation("/course-records/record-1")).toEqual({
+      href: "/course-records",
+      label: "Records",
+    });
+    expect(mobileBackNavigation("/courses/course-1/records")).toEqual({
+      href: "/course-records",
+      label: "Records",
+    });
+    expect(mobileBackNavigation("/import/result")).toEqual({
+      href: "/import",
+      label: "Import",
+    });
   });
 });

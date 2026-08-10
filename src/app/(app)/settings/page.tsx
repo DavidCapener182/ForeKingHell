@@ -1,9 +1,12 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import {
-  ChevronDown,
+  Bell,
+  CreditCard,
+  Database,
   Download,
   Link2,
+  Palette,
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
@@ -22,6 +25,7 @@ import {
   updateUserSettingsAction,
 } from "@/app/settings/actions";
 import { OfflineStoragePanel } from "@/app/settings/offline-storage-panel";
+import { SettingsMobileDisclosure } from "@/app/settings/settings-mobile-disclosure";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -29,6 +33,7 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { DataHealthFeaturePanel, SocialFeaturePanel } from "@/components/features/feature-panels";
+import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
 import {
   DataPanel,
   DataTableFrame,
@@ -37,7 +42,6 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileRouteHeader } from "@/components/mobile-sports";
 import { PlausibleEventOnMount } from "@/components/plausible-event-on-mount";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -203,23 +207,113 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <PageShell>
       {params?.inviteAccepted ? <PlausibleEventOnMount eventName="Invite Accepted" /> : null}
-      <MobileRouteHeader title="Platform" group="platform" activeKey="settings" />
 
       <DesktopWorkbenchLayout scope="settings">
-        <PageHeader
-          eyebrow={<StatusPill tone="sky">Account</StatusPill>}
-          title="Settings"
-          description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
-          visual={<PageArtwork variant="settings" alt="" className="h-full min-h-36" priority />}
-          actions={
-            <Button asChild size="sm" className="rounded-lg">
-              <a href="#profile-settings">
-                <UserCog className="size-4" />
-                Profile
-              </a>
-            </Button>
-          }
-        />
+        <div className="grid gap-5 lg:hidden">
+          <header className="px-1 pt-1">
+            <p className="text-sm font-medium text-primary">Your account</p>
+            <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-[-0.025em]">
+              Settings
+            </h1>
+            <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
+              Account, preferences, privacy and golf data.
+            </p>
+          </header>
+
+          <section className="grid gap-2" aria-label="Account settings">
+            <IOSSectionHeader title="Account" />
+            <IOSGroupedList label="Account">
+              <IOSListRow
+                label="Profile"
+                value={profile.name ?? profile.email ?? "Golfer"}
+                detail="Name and public golf identity"
+                href="/profile"
+                icon={UserCog}
+              />
+              <IOSListRow
+                label="Membership"
+                value="Account"
+                detail="Plan, subscription and billing"
+                href="/billing"
+                icon={CreditCard}
+              />
+            </IOSGroupedList>
+          </section>
+
+          <section className="grid gap-2" aria-label="Preferences">
+            <IOSSectionHeader title="Preferences" />
+            <IOSGroupedList label="Preferences">
+              <IOSListRow
+                label="Units"
+                value={titleCase(profile.preferredUnits)}
+                detail="Distance and speed display"
+                href="#profile-settings"
+                icon={SlidersHorizontal}
+              />
+              <IOSListRow
+                label="Appearance"
+                value={titleCase(profile.theme)}
+                detail="Follow system or choose a desktop theme"
+                href="#profile-settings"
+                icon={Palette}
+              />
+              <IOSListRow
+                label="Notifications"
+                detail="Email and in-app preferences"
+                href="/settings/notifications"
+                icon={Bell}
+              />
+            </IOSGroupedList>
+          </section>
+
+          <section className="grid gap-2" aria-label="Data settings">
+            <IOSSectionHeader title="Data" />
+            <IOSGroupedList label="Data">
+              <IOSListRow
+                label="Connected data"
+                value="Providers"
+                detail="Launch monitors and import sources"
+                href="/providers"
+                icon={Database}
+              />
+              <IOSListRow
+                label="Import history"
+                detail="Upload or reconnect measured sessions"
+                href="/import"
+                icon={Download}
+              />
+              <IOSListRow
+                label="Shared access"
+                value={accessRows.length > 0 ? String(accessRows.length) : "None"}
+                detail="Coaches, viewers and editors"
+                href="#sharing-settings"
+                icon={ShieldCheck}
+              />
+            </IOSGroupedList>
+          </section>
+
+          <IOSSectionHeader
+            title="Advanced settings"
+            description="Open only the section you need."
+          />
+        </div>
+
+        <div className="hidden lg:block">
+          <PageHeader
+            eyebrow={<StatusPill tone="sky">Account</StatusPill>}
+            title="Settings"
+            description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
+            visual={<PageArtwork variant="settings" alt="" className="h-full min-h-36" priority />}
+            actions={
+              <Button asChild size="sm" className="rounded-lg">
+                <a href="#profile-settings">
+                  <UserCog className="size-4" />
+                  Profile
+                </a>
+              </Button>
+            }
+          />
+        </div>
 
         {params?.saved ? (
           <Alert>
@@ -385,13 +479,25 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </section>
         </section>
 
-        <DataHealthFeaturePanel data={featureData} />
+        <SettingsMobileDisclosure
+          id="data-health"
+          title="Data health"
+          description="Coverage, quality and connection status."
+        >
+          <DataHealthFeaturePanel data={featureData} />
+        </SettingsMobileDisclosure>
         <VisibilitySimulatorPanel
           privacy={privacy}
           ownedMembershipCount={ownedMemberships.length}
           receivedMembershipCount={receivedMemberships.length}
         />
-        <OfflineStoragePanel />
+        <SettingsMobileDisclosure
+          id="offline-storage"
+          title="Offline storage"
+          description="Saved device data and queued imports."
+        >
+          <OfflineStoragePanel />
+        </SettingsMobileDisclosure>
         <DataControlStatusPanel
           profile={profile}
           ownedInvitationCount={ownedInvitations.length}
@@ -403,7 +509,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           id="profile-settings"
           title="Profile"
           description={`${profile.preferredUnits}, ${profile.tableDensity} tables`}
-          defaultOpen
         >
           <DataPanel>
             <SectionHeader
@@ -519,7 +624,13 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </DataPanel>
         </SettingsMobileDisclosure>
 
-        <SocialFeaturePanel data={featureData} />
+        <SettingsMobileDisclosure
+          id="social-settings"
+          title="Community and social"
+          description="Feed, friends and group feature status."
+        >
+          <SocialFeaturePanel data={featureData} />
+        </SettingsMobileDisclosure>
 
         <section className="grid gap-4 lg:grid-cols-2">
           <SettingsMobileDisclosure
@@ -772,78 +883,103 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
         </StatusPill>
       </div>
 
-      <DesktopTableWorkbenchControls
-        viewKey="settings-access"
-        scope="settings-access"
-        currentViewLabel="Account access"
-        resultLabel={`${rows.length} access rows`}
-        columns={settingsAccessColumns}
-        suggestedViews={settingsAccessSuggestedViews}
-        exportTableId="settings-access"
-        exportFileName="forekinghell-account-access.csv"
-      />
+      <div className="lg:hidden">
+        <IOSGroupedList label="Account access">
+          {rows.length > 0 ? (
+            rows.map((row) => (
+              <IOSListRow
+                key={row.id}
+                label={row.party}
+                value={row.role}
+                detail={`${row.scope} · ${row.status} · ${row.detail}`}
+                trailing={row.action}
+              />
+            ))
+          ) : (
+            <IOSListRow
+              label="No shared access"
+              detail="Create an invite when a coach, viewer or editor needs access."
+            />
+          )}
+        </IOSGroupedList>
+      </div>
 
-      <DataTableFrame mainTable mainTableLabel="Account access table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="settings-access"
-          aria-describedby="settings-access-summary"
-        >
-          <TableCaption id="settings-access-summary" className="sr-only">
-            Account access table showing invitation and membership scope, person or account, role,
-            status, detail and action.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-            <TableRow>
-              <TableHead
-                data-column="scope"
-                className="sticky left-0 z-20 min-w-48 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-              >
-                Scope
-              </TableHead>
-              <TableHead data-column="party">Person or account</TableHead>
-              <TableHead data-column="role">Role</TableHead>
-              <TableHead data-column="status">Status</TableHead>
-              <TableHead data-column="detail">Detail</TableHead>
-              <TableHead data-column="action" className="text-right">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length > 0 ? (
-              rows.map((row) => (
-                <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="scope"
-                    className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                  >
-                    {row.scope}
-                  </TableCell>
-                  <TableCell data-column="party">
-                    <span className="block max-w-72 truncate">{row.party}</span>
-                  </TableCell>
-                  <TableCell data-column="role">{row.role}</TableCell>
-                  <TableCell data-column="status">
-                    <StatusPill tone={row.status === "Pending" ? "amber" : "green"}>
-                      {row.status}
-                    </StatusPill>
-                  </TableCell>
-                  <TableCell data-column="detail">{row.detail}</TableCell>
-                  <TableCell data-column="action" className="text-right">
-                    {row.action}
+      <div className="hidden lg:block">
+        <DesktopTableWorkbenchControls
+          viewKey="settings-access"
+          scope="settings-access"
+          currentViewLabel="Account access"
+          resultLabel={`${rows.length} access rows`}
+          columns={settingsAccessColumns}
+          suggestedViews={settingsAccessSuggestedViews}
+          exportTableId="settings-access"
+          exportFileName="forekinghell-account-access.csv"
+        />
+      </div>
+
+      <div className="hidden lg:block">
+        <DataTableFrame mainTable mainTableLabel="Account access table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="settings-access"
+            aria-describedby="settings-access-summary"
+          >
+            <TableCaption id="settings-access-summary" className="sr-only">
+              Account access table showing invitation and membership scope, person or account, role,
+              status, detail and action.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+              <TableRow>
+                <TableHead
+                  data-column="scope"
+                  className="sticky left-0 z-20 min-w-48 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                >
+                  Scope
+                </TableHead>
+                <TableHead data-column="party">Person or account</TableHead>
+                <TableHead data-column="role">Role</TableHead>
+                <TableHead data-column="status">Status</TableHead>
+                <TableHead data-column="detail">Detail</TableHead>
+                <TableHead data-column="action" className="text-right">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.length > 0 ? (
+                rows.map((row) => (
+                  <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="scope"
+                      className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                    >
+                      {row.scope}
+                    </TableCell>
+                    <TableCell data-column="party">
+                      <span className="block max-w-72 truncate">{row.party}</span>
+                    </TableCell>
+                    <TableCell data-column="role">{row.role}</TableCell>
+                    <TableCell data-column="status">
+                      <StatusPill tone={row.status === "Pending" ? "amber" : "green"}>
+                        {row.status}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell data-column="detail">{row.detail}</TableCell>
+                    <TableCell data-column="action" className="text-right">
+                      {row.action}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    No invitations or shared account access yet.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  No invitations or shared account access yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </div>
     </section>
   );
 }
@@ -854,38 +990,6 @@ function SettingsPreviewRow({ label, value }: { label: string; value: ReactNode 
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 min-w-0 truncate text-sm font-semibold">{value}</p>
     </div>
-  );
-}
-
-function SettingsMobileDisclosure({
-  id,
-  title,
-  description,
-  children,
-  defaultOpen = false,
-}: {
-  id?: string;
-  title: ReactNode;
-  description?: ReactNode;
-  children: ReactNode;
-  defaultOpen?: boolean;
-}) {
-  return (
-    <details id={id} className="group scroll-mt-28 sm:contents" open={defaultOpen}>
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-border bg-card/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
-        <span className="min-w-0">
-          <span className="block truncate font-semibold tracking-normal">{title}</span>
-          {description ? (
-            <span className="block truncate text-xs text-muted-foreground">{description}</span>
-          ) : null}
-        </span>
-        <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-          aria-hidden
-        />
-      </summary>
-      <div className="hidden group-open:block sm:contents">{children}</div>
-    </details>
   );
 }
 

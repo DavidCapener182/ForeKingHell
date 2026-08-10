@@ -13,6 +13,13 @@ import {
 
 import { DataChatPanel } from "@/app/data-chat/data-chat-panel";
 import {
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
+import {
   DesktopInsightRail,
   DesktopWorkbenchLayout,
   commonAiPrompts,
@@ -22,7 +29,6 @@ import {
   MobileAppShell,
   MobileRouteTabs,
   MobileTopBar,
-  PBCard,
   ProgressCard,
 } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
@@ -71,32 +77,39 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
 
   return (
     <PageShell>
-      <MobileAppShell>
+      <MobileAppShell className="gap-4">
         <MobileTopBar title="Data Chat" />
         <MobileRouteTabs group="improve" activeKey="data-chat" />
-        <section className="premium-hero grid gap-3 rounded-lg p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <StatusPill tone={canUseDataChat ? "green" : "amber"}>
-                {canUseDataChat ? "Available" : "Pro"}
-              </StatusPill>
-              <h1 className="mt-3 text-2xl font-semibold tracking-normal">Data Chat</h1>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Ask about your LM World Tour activity, bag, rounds and practice history.
-              </p>
-            </div>
-            <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-1 ring-[var(--status-success-border)]">
-              <MessageCircle className="size-5" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <PBCard
-              title="Credits"
-              value={entitlement.monthlyRemaining.toLocaleString("en-GB")}
-              detail={`${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly`}
+        <section className="grid gap-3" aria-labelledby="data-chat-mobile-status">
+          <IOSSectionHeader
+            title={<span id="data-chat-mobile-status">Your golf assistant</span>}
+            description="Ask a question first; supporting tips, drills and citations stay available on demand."
+          />
+          <IOSGroupedList label="Data Chat access and scope">
+            <IOSListRow
+              label="Data Chat"
+              value={canUseDataChat ? "Available" : "Pro"}
+              detail="Rounds, shots, bag, speed and practice evidence"
+              icon={MessageCircle}
+              status={
+                <IOSInlineStatus
+                  label={canUseDataChat ? "Ready to answer" : "Upgrade required"}
+                  tone={canUseDataChat ? "positive" : "attention"}
+                />
+              }
             />
-            <PBCard title="Scope" value="Your data" detail="Read-only" />
-          </div>
+            <IOSMetricRow
+              label="Credits remaining"
+              value={entitlement.monthlyRemaining.toLocaleString("en-GB")}
+              detail={`${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly · 1 per answer`}
+            />
+            <IOSListRow
+              label="Read-only scope"
+              value="Your data"
+              detail="Advice cannot change yardages, records, handicap or billing."
+              icon={ShieldCheck}
+            />
+          </IOSGroupedList>
         </section>
         {canUseDataChat ? (
           <div data-data-chat-panel="mobile">

@@ -8,6 +8,25 @@ const source = readFileSync(
 );
 
 describe("club analytics desktop evidence ledger", () => {
+  it("gives phones an answer-first analytics composition without the desktop ledger", () => {
+    const mobileStart = source.indexOf("data-mobile-club-analytics");
+    const shotCloud = source.indexOf("<ShotCloud", mobileStart);
+    const disclosures = source.indexOf("<IOSDisclosureGroup", mobileStart);
+
+    expect(source).toContain("data-mobile-club-analytics");
+    expect(source).toContain("data-desktop-club-analytics");
+    expect(source).toContain("MobileAnalyticsEvidenceRows");
+    expect(source).toContain("data-mobile-club-evidence-rows");
+    expect(source).toContain('title: "Measured shot evidence"');
+    expect(source).toContain("MOBILE_EVIDENCE_LIMIT = 12");
+    expect(source).toContain("slice(0, MOBILE_EVIDENCE_LIMIT)");
+    expect(source).toContain("/shots?club=${encodeURIComponent(clubType)}");
+    expect(source).toContain('className="hidden gap-4 lg:grid"');
+    expect(mobileStart).toBeGreaterThan(-1);
+    expect(shotCloud).toBeGreaterThan(mobileStart);
+    expect(disclosures).toBeGreaterThan(shotCloud);
+  });
+
   it("keeps club shots in an exportable desktop workbench table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("clubShotEvidenceColumns");

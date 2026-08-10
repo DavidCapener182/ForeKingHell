@@ -105,20 +105,61 @@ describe("progress desktop workbench source", () => {
     expect(bentoCss).toContain(".progress-main-rail");
   });
 
-  it("separates mobile progress dimensions without rewarding volume as improvement", () => {
-    expect(source).toContain("MobileProgressDimensions");
-    for (const label of [
-      "Performance",
-      "Consistency",
-      "Strike quality",
-      "Direction control",
-      "Speed",
-      "Training volume",
-      "Confidence / sample",
+  it("gives mobile one answer-first progress readout before any supporting disclosure", () => {
+    const mobileComposition =
+      source.match(
+        /<div className="grid min-w-0 gap-4 lg:hidden">[\s\S]*?<div className="hidden lg:contents">/,
+      )?.[0] ?? "";
+
+    expect(mobileComposition).toContain("<MobileProgressAnswer");
+    expect(mobileComposition).toContain("<MobileProgressDisclosures");
+    expect(mobileComposition.indexOf("<MobileProgressAnswer")).toBeLessThan(
+      mobileComposition.indexOf("<MobileProgressDisclosures"),
+    );
+    expect(source).toContain("data-mobile-progress-answer");
+    expect(source).toContain('label="Strongest movement"');
+    expect(source).toContain('label="Weakest area"');
+    expect(source).toContain("review.nextAction.value");
+    expect(source).toContain("dataGap.detail");
+    expect(source).toContain('aria-label="Overall progress score"');
+    expect(source).not.toContain("<MobileTabBar");
+  });
+
+  it("uses one single-open iOS disclosure group for the six secondary progress areas", () => {
+    const disclosureBlock =
+      source.match(/function MobileProgressDisclosures[\s\S]*?function MobileWeeklyRecap/)?.[0] ??
+      "";
+
+    expect(disclosureBlock).toContain("<IOSDisclosureGroup");
+    for (const value of [
+      "this-week",
+      "trends",
+      "practice",
+      "coach-evidence",
+      "bag-movement",
+      "journey",
     ]) {
-      expect(source).toContain(`label: "${label}"`);
+      expect(disclosureBlock).toContain(`value: "${value}"`);
     }
-    expect(source).toContain("more shots is not automatic improvement");
+    expect(disclosureBlock).toContain(
+      'defaultValue={openBagByDefault ? "bag-movement" : undefined}',
+    );
+    expect(disclosureBlock).not.toContain("<details");
+  });
+
+  it("keeps the analytical desktop workbench while replacing its wide bag table on mobile", () => {
+    const mobileBagBlock =
+      source.match(/function MobileBagMovement[\s\S]*?function MobileProgressJourney/)?.[0] ?? "";
+
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).toContain('data-workbench-export-table="progress-bag-movement"');
+    expect(source).toContain('className="min-w-[1120px]"');
+    expect(mobileBagBlock).toContain("<IOSGroupedList");
+    expect(mobileBagBlock).toContain("<IOSListRow");
+    expect(mobileBagBlock).toContain("mobileBagMovementFilterHref");
+    expect(mobileBagBlock).toContain('aria-current={isActive ? "page" : undefined}');
+    expect(mobileBagBlock).not.toContain("<Table");
+    expect(mobileBagBlock).not.toContain("min-w-[1120px]");
   });
 
   it("keeps technical readiness separate from real-round scoring confidence", () => {

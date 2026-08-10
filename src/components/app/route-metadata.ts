@@ -536,6 +536,114 @@ export function isMobileImmersiveRoute(pathname: string) {
   return /^\/play\/[^/]+\/?$/.test(pathname);
 }
 
+export type MobileBackNavigation = {
+  href: string;
+  label: string;
+};
+
+/**
+ * Detail routes use a pushed-screen mobile header instead of pretending every
+ * screen is another root destination. Keep this list explicit: the parent is
+ * part of the information architecture, not something that can be inferred
+ * safely from the final URL segment.
+ */
+export function mobileBackNavigation(pathname: string): MobileBackNavigation | null {
+  const exactParents: Record<string, MobileBackNavigation> = {
+    "/analyse/compare": { href: "/analyse", label: "Analyse" },
+    "/analyse/conditions": { href: "/analyse", label: "Analyse" },
+    "/analyse/session-impact": { href: "/analyse", label: "Analyse" },
+    "/analyse/workspace": { href: "/analyse", label: "Analyse" },
+    "/bag/longest": { href: "/bag", label: "Bag" },
+    "/coach/diagnosis": { href: "/coach", label: "Coach" },
+    "/coach/reports": { href: "/coach", label: "Coach" },
+    "/coach/workspace": { href: "/coach", label: "Coach" },
+    "/courses/new": { href: "/courses", label: "Courses" },
+    "/courses/strategy": { href: "/courses", label: "Courses" },
+    "/equipment/experiments": { href: "/equipment", label: "Equipment" },
+    "/import/result": { href: "/import", label: "Import" },
+    "/practice/quick-range": { href: "/practice", label: "Practice" },
+    "/rounds/new": { href: "/rounds", label: "Rounds" },
+    "/settings/notifications": { href: "/settings", label: "Settings" },
+  };
+
+  if (exactParents[pathname]) {
+    return exactParents[pathname];
+  }
+
+  const clubAnalytics = pathname.match(/^\/bag\/([^/]+)\/analytics\/?$/);
+  if (clubAnalytics) {
+    return { href: `/bag/${clubAnalytics[1]}`, label: "Club" };
+  }
+
+  if (/^\/bag\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/bag", label: "Bag" };
+  }
+
+  if (/^\/rounds\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/rounds", label: "Rounds" };
+  }
+
+  if (/^\/speed\/sessions\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/speed", label: "Speed" };
+  }
+
+  if (/^\/course-records\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/course-records", label: "Records" };
+  }
+
+  if (/^\/challenges\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/challenges", label: "Challenges" };
+  }
+
+  if (/^\/groups\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/groups", label: "Groups" };
+  }
+
+  if (/^\/profile\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/friends", label: "Friends" };
+  }
+
+  if (/^\/shared\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/settings", label: "Settings" };
+  }
+
+  const courseRecord = pathname.match(/^\/courses\/([^/]+)\/records\/([^/]+)\/?$/);
+  if (courseRecord) {
+    return {
+      href: `/courses/${courseRecord[1]}/records`,
+      label: "Course records",
+    };
+  }
+
+  if (/^\/courses\/[^/]+\/records\/?$/.test(pathname)) {
+    return { href: "/course-records", label: "Records" };
+  }
+
+  const courseSection = pathname.match(
+    /^\/courses\/([^/]+)\/(holes|records|shot-pattern|tournaments)\/?$/,
+  );
+  if (courseSection) {
+    return { href: "/courses", label: "Courses" };
+  }
+
+  const tournamentSection = pathname.match(
+    /^\/tournaments\/([^/]+)\/(leaderboard|rounds|rules|submit)\/?$/,
+  );
+  if (tournamentSection) {
+    return { href: `/tournaments/${tournamentSection[1]}`, label: "Tournament" };
+  }
+
+  if (/^\/tournaments\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/tournaments", label: "Tournaments" };
+  }
+
+  if (/^\/settings\/invitations\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/settings", label: "Settings" };
+  }
+
+  return null;
+}
+
 export function routesAvailableTo(isAdmin: boolean) {
   return appRouteMetadata.filter((item) => !item.adminOnly || isAdmin);
 }

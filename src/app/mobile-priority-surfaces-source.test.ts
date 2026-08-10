@@ -36,8 +36,10 @@ describe("priority authenticated mobile surfaces", () => {
 
   it("neutralises large mobile practice fills but preserves their desktop styling", () => {
     expect(practiceSource).toContain("max-lg:border-slate-200 max-lg:bg-white");
-    expect(practiceSource).toContain("max-lg:bg-[#F2F2F7]");
-    expect(practiceSource).toContain("max-lg:bg-white max-lg:text-slate-950");
+    expect(practiceSource).toContain("bg-muted p-3 lg:bg-[#f8f7ed]");
+    expect(practiceSource).toContain("bg-card p-4 text-foreground");
+    expect(practiceSource).toContain("100dvh");
+    expect(practiceSource).not.toContain("max-lg:bg-white max-lg:text-slate-950");
   });
 
   it("retains dark backgrounds only for genuine data visualisations", () => {

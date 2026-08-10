@@ -6,5 +6,5 @@ type TournamentRoundsRouteProps = {
 
 export default async function TournamentRoundsRoute({ params }: TournamentRoundsRouteProps) {
   const { tournamentId } = await params;
-  redirect(`/tournaments/${tournamentId}#submit-round`);
+  redirect(`/tournaments/${tournamentId}?tab=submit`);
 }

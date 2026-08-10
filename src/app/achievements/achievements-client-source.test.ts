@@ -67,6 +67,34 @@ describe("achievements desktop unlock ledger", () => {
     expect(pageSource).not.toContain("rail={");
   });
 
+  it("opens focused achievement deep links in the mobile Catalogue tab", () => {
+    expect(clientSource).toContain(
+      "const [mobileTab, setMobileTab] = useState<MobileAchievementTab>(() =>",
+    );
+    expect(clientSource).toContain('focusAchievementId ? "catalogue" : "next"');
+    expect(pageSource).toContain('key={focusAchievementId || "achievement-hub"}');
+  });
+
+  it("keeps the dedicated mobile composition active until lg", () => {
+    expect(pageSource).toContain(
+      '<MobileRouteHeader title="Achievements" group="improve" activeKey="achievements" />',
+    );
+    expect(pageSource).toContain('className="premium-card p-3 lg:hidden"');
+    expect(pageSource).toContain('className="hidden lg:block"');
+    expect(clientSource).toContain('className="lg:hidden"');
+    expect(clientSource).not.toContain('className="sm:hidden"');
+  });
+
+  it("keeps recent mobile unlocks concise and discloses their evidence", () => {
+    expect(clientSource).toContain("data.recentUnlocks.slice(0, 3).map");
+    expect(clientSource).toContain('onClick={() => setMobileTab("calendar")}');
+    expect(clientSource).toContain("aria-pressed={item.id === tab}");
+    expect(clientSource).toContain("RecentUnlockEvidence");
+    expect(clientSource).toContain("No source evidence stored");
+    expect(clientSource).toContain('className="hidden gap-3 md:grid-cols-4 lg:grid"');
+    expect(clientSource).not.toContain('<span className="min-w-0 truncate">{value}</span>');
+  });
+
   it("preserves translucent overlays inside intentional dark surfaces", () => {
     expect(clientSource).toContain("data-mobile-preserve-dark");
     expect(notificationSource).toContain("data-mobile-preserve-dark");

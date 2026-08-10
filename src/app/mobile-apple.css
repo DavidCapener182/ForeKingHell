@@ -185,6 +185,39 @@
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
     background: var(--ios-background);
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+  }
+
+  [data-mobile-platform="apple"] main#main-content .ios-grouped-list {
+    overflow: hidden;
+    border: 0 !important;
+    border-radius: var(--ios-radius) !important;
+    background: var(--ios-grouped-surface) !important;
+    box-shadow: none !important;
+  }
+
+  [data-mobile-platform="apple"] main#main-content .ios-grouped-row {
+    border: 0 !important;
+    border-bottom: 0.5px solid var(--ios-separator) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  [data-mobile-platform="apple"] main#main-content .ios-grouped-row:last-child {
+    border-bottom: 0 !important;
+  }
+
+  [data-mobile-platform="apple"] main#main-content .ios-grouped-row:active {
+    background: var(--ios-fill) !important;
+  }
+
+  [data-mobile-platform="apple"]
+    main#main-content
+    [data-ios-disclosure-group]
+    [data-slot="accordion-content"] {
+    background: var(--ios-secondary-surface) !important;
   }
 
   html[data-mobile-immersive="course-twin"],
@@ -570,8 +603,9 @@
   }
 
   .ios-route-tab {
+    min-width: 2.75rem !important;
     min-height: 2.75rem !important;
-    padding: 0.35rem 0.75rem !important;
+    padding: 0.35rem 0.625rem !important;
     border: 0 !important;
     border-radius: 0.5rem !important;
     background: transparent !important;
@@ -736,7 +770,8 @@
   body[data-mobile-platform="apple"] [class~="hidden"][class~="sm:grid"],
   body[data-mobile-platform="apple"] [class~="hidden"][class~="sm:inline"],
   body[data-mobile-platform="apple"] [class~="hidden"][class~="sm:inline-flex"],
-  body[data-mobile-platform="apple"] [class~="hidden"][class~="sm:table"] {
+  body[data-mobile-platform="apple"] [class~="hidden"][class~="sm:table"],
+  body[data-mobile-platform="apple"] [class~="hidden"][class~="sm:contents"] {
     display: none !important;
   }
 
@@ -754,6 +789,100 @@
     main#main-content
     :where(button, [role="button"], summary, input, select, textarea) {
     min-height: 2.75rem;
+  }
+
+  [data-mobile-platform="apple"] main#main-content :where(button, [role="button"], a[aria-label]) {
+    min-width: 2.75rem;
+  }
+
+  /* Radix and Vaul mount sheets beside the app shell, so their descendants cannot rely on
+     .ios-mobile-screen or main#main-content for native materials and touch sizing. */
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where(input, select, textarea) {
+    min-height: 2.75rem;
+    border-color: var(--ios-separator) !important;
+    border-radius: 0.75rem !important;
+    background: var(--ios-grouped-surface) !important;
+    color: var(--ios-label) !important;
+    box-shadow: none !important;
+    font-size: 1rem;
+  }
+
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where(button, [role="button"], summary, input, select, textarea) {
+    min-height: 2.75rem;
+  }
+
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where(button, [role="button"], a[aria-label]) {
+    min-width: 2.75rem;
+  }
+
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where(
+      [class*="bg-white"],
+      [class*="bg-[#F5F6F4]"],
+      [class*="bg-[#F8FAF8]"],
+      [class*="bg-slate-50"]
+    ) {
+    background-color: var(--ios-grouped-surface) !important;
+  }
+
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where([class*="text-[#050505]"], [class*="text-slate-950"], [class*="text-slate-900"]) {
+    color: var(--ios-label) !important;
+  }
+
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where([class*="text-[#6B7280]"], [class*="text-slate-500"], [class*="text-slate-600"]) {
+    color: var(--ios-secondary-label) !important;
+  }
+
+  :where(body[data-mobile-platform="apple"], body:has([data-mobile-platform="apple"]))
+    :where(
+      [data-slot="drawer-content"],
+      [data-slot="sheet-content"],
+      [data-slot="dialog-content"],
+      [data-slot="alert-dialog-content"]
+    )
+    :where([class*="border-[#E5E7EB]"], [class*="border-slate"], [class*="border-border"]) {
+    border-color: var(--ios-separator) !important;
   }
 
   [data-mobile-platform="apple"] :where(button, a, input, select, textarea, summary):focus-visible {

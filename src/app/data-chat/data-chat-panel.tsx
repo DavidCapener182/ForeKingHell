@@ -15,6 +15,12 @@ import {
   Trash2,
 } from "lucide-react";
 
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+} from "@/components/app/ios-mobile";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import {
   DesktopTableWorkbenchControls,
@@ -253,14 +259,17 @@ export function DataChatPanel({
     latestAssistant?.role === "assistant" ? latestAssistant.creditsRemaining : monthlyRemaining;
 
   return (
-    <div className="grid min-w-0 gap-4" data-data-chat-ready={isReady ? "true" : "false"}>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid min-w-0 gap-3 lg:gap-4" data-data-chat-ready={isReady ? "true" : "false"}>
+      <div
+        className="order-1 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0 xl:grid-cols-4"
+        aria-label="Suggested Data Chat questions"
+      >
         {starterQuestions.map((starter) => (
           <Button
             key={starter}
             type="button"
             variant="outline"
-            className="h-auto min-h-11 justify-start whitespace-normal px-3 py-2 text-left leading-5"
+            className="h-auto min-h-11 min-w-[13rem] shrink-0 justify-start whitespace-normal rounded-full px-4 py-2 text-left leading-5 lg:min-w-0 lg:rounded-md"
             disabled={!isReady || isPending}
             onClick={() => void submitQuestion(starter)}
           >
@@ -272,7 +281,7 @@ export function DataChatPanel({
 
       {loadedQuestion ? (
         <div
-          className="flex flex-col gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-3 text-sm leading-6 text-[var(--status-success-foreground)] sm:flex-row sm:items-center sm:justify-between"
+          className="order-2 flex flex-col gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-3 text-sm leading-6 text-[var(--status-success-foreground)] sm:flex-row sm:items-center sm:justify-between"
           data-initial-data-chat-prompt
           role="status"
         >
@@ -296,7 +305,11 @@ export function DataChatPanel({
         </div>
       ) : null}
 
-      <div className="grid min-h-[22rem] gap-3 rounded-lg border border-border bg-card p-3 sm:p-4">
+      <div
+        className="order-4 grid max-h-[46dvh] min-h-48 gap-3 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-3 lg:order-none lg:max-h-none lg:min-h-[22rem] lg:overflow-visible lg:rounded-lg lg:p-4"
+        aria-label="Data Chat conversation"
+        aria-live="polite"
+      >
         {turns.length > 0 ? (
           <div className="grid content-start gap-3">
             {turns.map((turn, index) => {
@@ -346,12 +359,16 @@ export function DataChatPanel({
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-sm text-[var(--status-warning-foreground)]">
+        <div className="order-3 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-sm text-[var(--status-warning-foreground)] lg:order-none">
           {error}
         </div>
       ) : null}
 
-      <form className="grid gap-3" onSubmit={onSubmit}>
+      <form
+        className="order-3 sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 grid gap-2 rounded-xl border border-border bg-background/95 p-2 shadow-sm backdrop-blur-lg lg:static lg:order-none lg:gap-3 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none"
+        onSubmit={onSubmit}
+        data-data-chat-composer
+      >
         <label className="grid gap-2 text-sm font-medium" htmlFor={inputId}>
           Question
           <Textarea
@@ -359,7 +376,7 @@ export function DataChatPanel({
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Which part of my game is costing me most right now?"
-            className="min-h-24 resize-y bg-card"
+            className="min-h-14 resize-y bg-card text-base lg:min-h-24"
             maxLength={800}
             disabled={!isReady}
             data-page-search
@@ -369,7 +386,11 @@ export function DataChatPanel({
           <p className="text-xs text-muted-foreground">
             {remainingCredits.toLocaleString("en-GB")} AI credits left this month
           </p>
-          <Button type="submit" disabled={!isReady || isPending || !question.trim()}>
+          <Button
+            type="submit"
+            className="min-h-11"
+            disabled={!isReady || isPending || !question.trim()}
+          >
             {isPending ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
@@ -395,11 +416,27 @@ export function DataChatPanel({
           onRemoveAnswer={removeSavedAnswer}
         />
       ) : (
-        <SavedAnswerCards
-          answers={savedAnswers}
-          onReuseQuestion={setQuestion}
-          onRemoveAnswer={removeSavedAnswer}
-        />
+        <div className="order-5 lg:order-none">
+          <IOSDisclosureGroup
+            label="Saved Data Chat answers"
+            items={[
+              {
+                value: "saved-answers",
+                title: "Saved answers",
+                summary: `${savedAnswers.length}/8`,
+                description: "Reuse useful explanations on this device",
+                content: (
+                  <SavedAnswerCards
+                    answers={savedAnswers}
+                    onReuseQuestion={setQuestion}
+                    onRemoveAnswer={removeSavedAnswer}
+                    embedded
+                  />
+                ),
+              },
+            ]}
+          />
+        </div>
       )}
     </div>
   );
@@ -756,15 +793,17 @@ function SavedAnswerCards({
   answers,
   onReuseQuestion,
   onRemoveAnswer,
+  embedded = false,
 }: {
   answers: SavedDataChatAnswer[];
   onReuseQuestion: (question: string) => void;
   onRemoveAnswer: (answerId: string) => void;
+  embedded?: boolean;
 }) {
   return (
     <section
       aria-label="Saved Data Chat answers"
-      className="rounded-lg border border-slate-200 bg-white/82 p-3"
+      className={embedded ? "min-w-0" : "rounded-lg border border-border bg-card p-3"}
     >
       <SavedAnswersHeader count={answers.length} />
 
@@ -773,11 +812,11 @@ function SavedAnswerCards({
           {answers.map((answer) => (
             <article
               key={answer.id}
-              className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/80 p-3"
+              className="grid gap-2 rounded-lg border border-border bg-secondary/45 p-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-medium text-slate-900">
+                  <p className="line-clamp-2 text-sm font-medium text-foreground">
                     {answer.question}
                   </p>
                   <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
@@ -786,7 +825,7 @@ function SavedAnswerCards({
                 </div>
                 <button
                   type="button"
-                  className="focus-aaa rounded-md p-1 text-muted-foreground outline-none hover:bg-white hover:text-red-700"
+                  className="focus-aaa grid size-11 shrink-0 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-card hover:text-destructive"
                   aria-label="Remove saved answer"
                   onClick={() => onRemoveAnswer(answer.id)}
                 >
@@ -794,13 +833,13 @@ function SavedAnswerCards({
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium capitalize text-slate-700 ring-1 ring-slate-200">
+                <span className="rounded-full bg-card px-2 py-0.5 text-xs font-medium capitalize text-foreground ring-1 ring-border">
                   {answer.confidence} confidence
                 </span>
                 <span className="text-xs text-muted-foreground">{citationSummary(answer)}</span>
                 <button
                   type="button"
-                  className="focus-aaa rounded-full bg-white px-2.5 py-1 text-xs font-medium text-emerald-800 outline-none ring-1 ring-emerald-200 hover:bg-emerald-50"
+                  className="focus-aaa min-h-11 rounded-full bg-card px-3 py-2 text-xs font-medium text-primary outline-none ring-1 ring-border hover:bg-secondary"
                   onClick={() => onReuseQuestion(answer.question)}
                 >
                   Reuse question
@@ -810,7 +849,7 @@ function SavedAnswerCards({
           ))}
         </div>
       ) : (
-        <div className="mt-3 rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-sm leading-6 text-muted-foreground">
+        <div className="mt-3 rounded-lg border border-dashed border-border bg-secondary/45 px-3 py-4 text-sm leading-6 text-muted-foreground">
           Save an answer after Data Chat responds. Saved items stay on this browser and are useful
           for report drafts, coach notes and follow-up practice plans.
         </div>
@@ -823,12 +862,12 @@ function SavedAnswersHeader({ count }: { count: number }) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <p className="text-sm font-semibold text-slate-900">Saved answers</p>
+        <p className="text-sm font-semibold text-foreground">Saved answers</p>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Keep useful explanations and reuse their questions from this desktop workspace.
+          Keep useful explanations and reuse their questions on this device.
         </p>
       </div>
-      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+      <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-foreground">
         {count}/8
       </span>
     </div>
@@ -851,16 +890,18 @@ function AssistantTurn({
   disabled: boolean;
 }) {
   return (
-    <div className="max-w-[min(46rem,94%)] rounded-lg border border-emerald-100 bg-emerald-50/60 p-3 text-sm leading-6 text-slate-800">
+    <div className="max-w-[min(46rem,96%)] rounded-xl border border-primary/15 bg-primary/5 p-3 text-sm leading-6 text-foreground lg:rounded-lg">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium capitalize text-emerald-900 ring-1 ring-emerald-200">
-          {turn.confidence} confidence
-        </span>
+        <IOSInlineStatus
+          label={`${turn.confidence} confidence`}
+          tone={assistantConfidenceTone(turn.confidence)}
+          className="capitalize"
+        />
         <span className="text-xs text-muted-foreground">{turn.creditsCharged} credit charged</span>
         <Button
           type="button"
           variant="outline"
-          className="ml-auto h-8 bg-white px-2.5 text-xs"
+          className="ml-auto min-h-11 bg-card px-3 text-xs"
           disabled={disabled && !saved}
           onClick={() => onSave(turn, sourceQuestion)}
         >
@@ -870,8 +911,10 @@ function AssistantTurn({
       </div>
       <p className="mt-3">{turn.content}</p>
 
+      <AssistantEvidenceDisclosures turn={turn} />
+
       {turn.tips.length > 0 || turn.drills.length > 0 ? (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 hidden gap-3 lg:grid lg:grid-cols-2">
           {turn.tips.length > 0 ? (
             <ResponseList title="Tips" items={turn.tips.slice(0, 4)} />
           ) : null}
@@ -882,7 +925,7 @@ function AssistantTurn({
       ) : null}
 
       {turn.citations.length > 0 ? (
-        <div className="mt-4 border-t border-emerald-100 pt-3">
+        <div className="mt-4 hidden border-t border-border pt-3 lg:block">
           <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             Cited data
           </p>
@@ -893,13 +936,13 @@ function AssistantTurn({
                   key={citation.id}
                   href={citation.href}
                   prefetch={false}
-                  className="rounded-lg bg-white px-3 py-2 hover:bg-emerald-50"
+                  className="rounded-lg bg-card px-3 py-2 hover:bg-secondary"
                 >
                   <span className="font-medium">{citation.label}</span>
                   <span className="block text-muted-foreground">{citation.detail}</span>
                 </Link>
               ) : (
-                <div key={citation.id} className="rounded-lg bg-white px-3 py-2">
+                <div key={citation.id} className="rounded-lg bg-card px-3 py-2">
                   <span className="font-medium">{citation.label}</span>
                   <span className="block text-muted-foreground">{citation.detail}</span>
                 </div>
@@ -917,7 +960,7 @@ function AssistantTurn({
               type="button"
               disabled={disabled}
               onClick={() => onAskFollowUp(followUp)}
-              className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
+              className="focus-aaa min-h-11 rounded-full bg-card px-3 py-2 text-xs font-medium text-foreground ring-1 ring-border outline-none"
             >
               {followUp}
             </button>
@@ -926,6 +969,74 @@ function AssistantTurn({
       ) : null}
     </div>
   );
+}
+
+function AssistantEvidenceDisclosures({
+  turn,
+}: {
+  turn: Extract<ChatTurn, { role: "assistant" }>;
+}) {
+  const items = [
+    ...(turn.tips.length > 0 || turn.drills.length > 0
+      ? [
+          {
+            value: "actions",
+            title: "Tips and drills",
+            summary: `${turn.tips.length + turn.drills.length}`,
+            description: "Practical actions from this answer",
+            content: (
+              <div className="grid gap-3">
+                {turn.tips.length > 0 ? (
+                  <ResponseList title="Tips" items={turn.tips.slice(0, 4)} />
+                ) : null}
+                {turn.drills.length > 0 ? (
+                  <ResponseList title="Drills" items={turn.drills.slice(0, 3)} />
+                ) : null}
+              </div>
+            ),
+          },
+        ]
+      : []),
+    ...(turn.citations.length > 0
+      ? [
+          {
+            value: "citations",
+            title: "Cited data",
+            summary: `${turn.citations.length}`,
+            description: "Records supporting the conclusion",
+            content: (
+              <IOSGroupedList label="Data Chat citations" className="bg-card">
+                {turn.citations.slice(0, 6).map((citation) => (
+                  <IOSListRow
+                    key={citation.id}
+                    label={citation.label}
+                    detail={citation.detail}
+                    href={citation.href ?? undefined}
+                    icon={FileText}
+                  />
+                ))}
+              </IOSGroupedList>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  return items.length > 0 ? (
+    <IOSDisclosureGroup
+      label="Supporting Data Chat evidence"
+      items={items}
+      className="mt-4 lg:hidden"
+    />
+  ) : null;
+}
+
+function assistantConfidenceTone(
+  confidence: DataChatResponse["confidence"],
+): "positive" | "info" | "attention" {
+  if (confidence === "high") return "positive";
+  if (confidence === "medium") return "info";
+  return "attention";
 }
 
 function readSavedAnswers() {
@@ -954,7 +1065,7 @@ function formatSavedAnswerDate(value: string) {
 
 function ResponseList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-lg bg-white p-3 ring-1 ring-emerald-100">
+    <div className="rounded-lg bg-card p-3 ring-1 ring-border">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {title}
       </p>

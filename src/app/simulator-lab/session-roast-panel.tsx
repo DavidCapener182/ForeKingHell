@@ -103,7 +103,7 @@ export function SessionRoastPanel({
       </div>
 
       {draft ? (
-        <div className="rounded-lg border border-emerald-950/10 bg-white/80 p-4">
+        <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">

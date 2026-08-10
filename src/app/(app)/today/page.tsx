@@ -22,18 +22,23 @@ import {
   DataPair,
   DataPanel,
   DataTableFrame,
-  MobileAccordionSection,
   MobileDataCard,
-  MobileDataList,
+  MobileFilterSheet,
   MobileHorizontalRail,
-  MobileSectionChips,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileAppShell, MobileTopBar, NativeListSection } from "@/components/mobile-sports";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
+import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSMetricRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -305,55 +310,33 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           linkedPracticePlan={linkedPracticePlan}
         />
         <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
-        <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-        <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} className="lg:hidden" />
-        <MobileMetricStrip
-          items={[
-            {
-              label: "Offline",
-              value: formatYards(selectedReviewOverall.today.offlineAverageYd),
-              detail: offlineDeltaText(selectedReviewOverall.offlineDeltaYd),
-              tone: deltaTone(selectedReviewOverall.offlineDeltaYd, "lower"),
-            },
-            {
-              label: "Straight",
-              value: formatRate(selectedReviewOverall.today.straightRate),
-              detail: deltaText(selectedReviewOverall.straightRateDelta, "pp", true),
-              tone: deltaTone(selectedReviewOverall.straightRateDelta, "higher"),
-            },
-            {
-              label: "Lateral window",
-              value: formatRate(selectedReviewOverall.today.playableRate),
-              detail: deltaText(selectedReviewOverall.playableRateDelta, "pp", true),
-              tone: deltaTone(selectedReviewOverall.playableRateDelta, "higher"),
-            },
-            {
-              label: "Carry",
-              value: formatYards(selectedReviewOverall.today.carryAverageYd),
-              detail: deltaText(selectedReviewOverall.carryDeltaYd, "yd", true),
-              tone: deltaTone(selectedReviewOverall.carryDeltaYd, "higher"),
-            },
-          ]}
+        <TodayMobileIntent
+          data={data}
+          linkedPracticePlan={linkedPracticePlan}
+          shotDatabaseHref={shotDatabaseHref}
         />
-        <MobileAccordionSection
-          title="Shot of the day"
-          count={data.bestStraightShots[0] ? "1 shot" : "Waiting"}
-          description="A compact visual check, kept below the prescription."
-        >
-          <HeroShotSpotlight shot={data.bestStraightShots[0]} />
-        </MobileAccordionSection>
-        <NativeListSection
-          title="Latest practice work"
-          description="Filtered shot rows, charts and club scope."
-        >
-          <MobilePlayRoute
-            href={shotDatabaseHref}
-            title="Latest review"
-            value={`${integerFormatter.format(data.shots.length)} clean selected`}
-            detail="Filtered shot rows, charts and club scope."
-            icon={<Database className="size-5" />}
+        <TodayMobileScopeSheet
+          data={data}
+          activeFilterChips={activeFilterChips}
+          reviewMode={reviewMode}
+          clubSort={clubSort}
+        />
+        {data.shots.length > 0 ? (
+          <TodayMobileEvidence
+            data={data}
+            reviewMode={reviewMode}
+            selectedReviewOverall={selectedReviewOverall}
+            comparisons={sortedClubComparisons}
+            clubSort={clubSort}
+            chartShots={chartShots}
+            chartClubStatuses={chartClubStatuses}
+            chartPatternInsight={chartPatternInsight}
+            shotDatabaseHref={shotDatabaseHref}
+            linkedPracticePlan={linkedPracticePlan}
           />
-        </NativeListSection>
+        ) : (
+          <TodayMobileEmpty />
+        )}
       </MobileAppShell>
 
       <TodayDesktopDashboard
@@ -368,115 +351,423 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         activeFilterChips={activeFilterChips}
         linkedPracticePlan={linkedPracticePlan}
       />
+    </PageShell>
+  );
+}
 
-      <MobileSectionChips
+function TodayMobileIntent({
+  data,
+  linkedPracticePlan,
+  shotDatabaseHref,
+}: {
+  data: TodayPracticeData;
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+  shotDatabaseHref: string;
+}) {
+  const focus = practiceFocus(data);
+  const planResult = buildPlanResultReadout(linkedPracticePlan);
+
+  return (
+    <section className="grid gap-3 lg:hidden" aria-labelledby="today-intent-heading">
+      <IOSSectionHeader
+        title={<span id="today-intent-heading">Today&apos;s plan</span>}
+        description="The next useful move, followed by the evidence only when you need it."
+      />
+      <IOSGroupedList label="Today plan">
+        <IOSListRow
+          label="Practice intent"
+          value={data.shots.length > 0 ? focus.clubText : "Set up"}
+          detail={
+            data.shots.length > 0
+              ? "Open the focused task flow for the first drill."
+              : "Import a measured session before choosing a drill."
+          }
+          href={data.shots.length > 0 ? "/practice" : "/import"}
+          icon={Dumbbell}
+          status={
+            <IOSInlineStatus
+              label={data.shots.length > 0 ? "Ready to practise" : "Evidence needed"}
+              tone={data.shots.length > 0 ? "positive" : "attention"}
+            />
+          }
+        />
+        {linkedPracticePlan ? (
+          <IOSListRow
+            label="Planned drill"
+            value={planResult?.label ?? "Linked"}
+            detail={linkedPracticePlan.title}
+            href={linkedPracticePlan.href}
+            icon={CalendarDays}
+          />
+        ) : null}
+        <IOSListRow
+          label="Latest review"
+          value={`${integerFormatter.format(data.shots.length)} clean`}
+          detail="Open the complete filtered shot explorer."
+          href={shotDatabaseHref}
+          icon={Database}
+        />
+        {data.dataCleaning.excludedShotCount > 0 ? (
+          <IOSListRow
+            label="Scoring sample"
+            value={`${integerFormatter.format(data.dataCleaning.excludedShotCount)} held out`}
+            detail={`${integerFormatter.format(data.dataCleaning.cleanShotCount)} of ${integerFormatter.format(
+              data.dataCleaning.importedShotCount,
+            )} imported shots drive this recommendation.`}
+            status={<IOSInlineStatus label={data.dataCleaning.reasonLabel} tone="attention" />}
+          />
+        ) : null}
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function TodayMobileScopeSheet({
+  data,
+  activeFilterChips,
+  reviewMode,
+  clubSort,
+}: {
+  data: TodayPracticeData;
+  activeFilterChips: { label: string; href: string }[];
+  reviewMode: PracticeReviewMode;
+  clubSort: ClubSort;
+}) {
+  return (
+    <section className="grid gap-2 lg:hidden" aria-label="Today review scope">
+      <MobileFilterSheet label="Review scope" activeCount={activeFilterChips.length}>
+        <form className="grid gap-4 pb-3 [&_input]:min-h-11 [&_select]:min-h-11">
+          <TodayScopeFields data={data} />
+          <input type="hidden" name="evidence" value={reviewMode} />
+          <input type="hidden" name="clubSort" value={clubSort} />
+          <div className="grid grid-cols-2 gap-2">
+            <Button type="submit" className="min-h-11 rounded-lg">
+              Apply scope
+            </Button>
+            <Button asChild variant="outline" className="min-h-11 rounded-lg">
+              <Link href="/today" prefetch={false}>
+                Reset
+              </Link>
+            </Button>
+          </div>
+        </form>
+        <TodayReviewControls data={data} mode={reviewMode} clubSort={clubSort} />
+      </MobileFilterSheet>
+      {activeFilterChips.length > 0 ? (
+        <p className="px-1 text-[13px] text-muted-foreground">
+          {activeFilterChips.map((chip) => chip.label).join(" · ")}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function TodayMobileEvidence({
+  data,
+  reviewMode,
+  selectedReviewOverall,
+  comparisons,
+  clubSort,
+  chartShots,
+  chartClubStatuses,
+  chartPatternInsight,
+  shotDatabaseHref,
+  linkedPracticePlan,
+}: {
+  data: TodayPracticeData;
+  reviewMode: PracticeReviewMode;
+  selectedReviewOverall: ReturnType<typeof reviewOverall>;
+  comparisons: ClubDayComparison[];
+  clubSort: ClubSort;
+  chartShots: TodayChartShot[];
+  chartClubStatuses: TodayChartClubStatus[];
+  chartPatternInsight: string;
+  shotDatabaseHref: string;
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+}) {
+  const highlights = buildClubHighlights(data.clubStats, buildClubEquipmentMap(data.shots));
+
+  return (
+    <section className="grid gap-3 lg:hidden" aria-labelledby="today-depth-heading">
+      <IOSSectionHeader
+        title={<span id="today-depth-heading">Evidence and detail</span>}
+        description="Open one section at a time. The recommendation above stays the main task."
+      />
+      <IOSDisclosureGroup
+        label="Today evidence sections"
         items={[
-          { label: "Scope", href: "#scope" },
-          { label: "Focus", href: "#focus" },
-          { label: "Charts", href: "#charts" },
-          { label: "Clubs", href: "#clubs" },
-          { label: "Shots", href: "#shots" },
+          {
+            value: "numbers",
+            title: "Current numbers",
+            summary: `${integerFormatter.format(data.shots.length)} shots`,
+            description:
+              reviewMode === "clean" ? "Trusted scoring sample" : "All imported evidence",
+            content: (
+              <TodayMobileMetricRows
+                data={data}
+                reviewMode={reviewMode}
+                selectedReviewOverall={selectedReviewOverall}
+                linkedPracticePlan={linkedPracticePlan}
+              />
+            ),
+          },
+          {
+            value: "clubs",
+            title: "Club performance",
+            summary: `${comparisons.length} clubs`,
+            description: "Scan the call first; open the full explorer only for deeper data.",
+            content: (
+              <TodayMobileClubRows data={data} comparisons={comparisons} clubSort={clubSort} />
+            ),
+          },
+          {
+            value: "charts",
+            title: "Dispersion and trajectory",
+            summary: `${integerFormatter.format(chartShots.length)} shots`,
+            description: "Specialist visual evidence for the current selection.",
+            content: (
+              <div className="-mx-2 min-w-0 overflow-x-clip">
+                <TodayShotCharts
+                  shots={chartShots}
+                  clubStatuses={chartClubStatuses}
+                  patternInsight={chartPatternInsight}
+                />
+              </div>
+            ),
+          },
+          {
+            value: "highlights",
+            title: "Highlights",
+            summary: `${highlights.length} signals`,
+            description: "Personal bests, close calls and the straightest shot.",
+            content: (
+              <TodayMobileHighlightRows
+                highlights={highlights}
+                bestShot={data.bestStraightShots[0] ?? null}
+              />
+            ),
+          },
+          {
+            value: "shots",
+            title: "Imported shot rows",
+            summary: integerFormatter.format(data.rawShots.length),
+            description: "A concise preview with clean-scoring exclusions labelled.",
+            content: <TodayMobileShotRows data={data} shotDatabaseHref={shotDatabaseHref} />,
+          },
         ]}
       />
+    </section>
+  );
+}
 
-      <div id="scope" className="grid scroll-mt-28 gap-3 lg:hidden">
-        <details className="group rounded-lg border border-[#E5E7EB] bg-white shadow-sm">
-          <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
-            <span>
-              <span className="block text-sm font-semibold text-[#050505]">Session scope</span>
-              <span className="mt-0.5 block text-xs text-[#6B7280]">
-                Refine the current review without leaving the page.
-              </span>
-            </span>
-            <span className="inline-flex items-center gap-2">
-              {activeFilterChips.length > 0 ? (
-                <Badge variant="secondary" className="rounded-full px-1.5 py-0 text-[11px]">
-                  {activeFilterChips.length}
-                </Badge>
-              ) : null}
-              <ChevronDown className="size-4 text-[#6B7280] transition-transform group-open:rotate-180" />
-            </span>
-          </summary>
-          <form className="grid gap-3 border-t border-[#E5E7EB] p-3">
-            <TodayScopeFields data={data} />
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="submit"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
-                Analyse
-              </Button>
-              <Button asChild variant="outline" className="rounded-lg">
-                <Link href="/today" prefetch={false}>
-                  Reset
-                </Link>
-              </Button>
-            </div>
-          </form>
-        </details>
-        <ActiveFilterChips items={activeFilterChips} />
-        <TodayReviewControls data={data} mode={reviewMode} clubSort={clubSort} />
-        <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
-      </div>
+function TodayMobileMetricRows({
+  data,
+  reviewMode,
+  selectedReviewOverall,
+  linkedPracticePlan,
+}: {
+  data: TodayPracticeData;
+  reviewMode: PracticeReviewMode;
+  selectedReviewOverall: ReturnType<typeof reviewOverall>;
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+}) {
+  const planResult = buildPlanResultReadout(linkedPracticePlan);
 
-      {data.shots.length === 0 ? (
-        <EmptyToday />
-      ) : (
-        <>
-          <section id="charts" className="scroll-mt-28 lg:hidden">
-            <MobileAccordionSection
-              title="Charts"
-              count={`${integerFormatter.format(chartShots.length)} shots`}
-              description="Dispersion now includes top-down shape lines, with trajectory beside it."
-            >
-              <TodayShotCharts
-                shots={chartShots}
-                clubStatuses={chartClubStatuses}
-                patternInsight={chartPatternInsight}
-              />
-            </MobileAccordionSection>
-          </section>
+  return (
+    <IOSGroupedList label="Current practice numbers" className="bg-card">
+      <IOSMetricRow
+        label="Offline"
+        value={formatYards(selectedReviewOverall.today.offlineAverageYd)}
+        detail={offlineDeltaText(selectedReviewOverall.offlineDeltaYd)}
+      />
+      <IOSMetricRow
+        label="Straight"
+        value={formatRate(selectedReviewOverall.today.straightRate)}
+        detail={deltaText(selectedReviewOverall.straightRateDelta, "pp", true)}
+      />
+      <IOSMetricRow
+        label="Lateral window"
+        value={formatRate(selectedReviewOverall.today.playableRate)}
+        detail={deltaText(selectedReviewOverall.playableRateDelta, "pp", true)}
+      />
+      <IOSMetricRow
+        label="Carry"
+        value={formatYards(selectedReviewOverall.today.carryAverageYd)}
+        detail={deltaText(selectedReviewOverall.carryDeltaYd, "yd", true)}
+      />
+      <IOSListRow
+        label="Evidence mode"
+        value={reviewMode === "clean" ? "Trusted shots" : "All imported"}
+        detail={`${integerFormatter.format(data.dataCleaning.cleanShotCount)} clean · ${integerFormatter.format(
+          data.dataCleaning.excludedShotCount,
+        )} held out`}
+      />
+      {planResult ? (
+        <IOSListRow
+          label="Plan versus actual"
+          value={planResult.label}
+          detail={planResult.detail}
+          href={linkedPracticePlan?.href}
+        />
+      ) : null}
+    </IOSGroupedList>
+  );
+}
 
-          <section id="clubs" className="scroll-mt-28 lg:hidden">
-            <ClubPerformancePanel data={data} comparisons={sortedClubComparisons} sort={clubSort} />
-          </section>
-
-          <section id="pbs" className="scroll-mt-28 lg:hidden">
-            <TodayHighlightsPanel
-              stats={data.clubStats}
-              shots={data.shots}
-              bestStraightShots={data.bestStraightShots}
-            />
-          </section>
-
-          <MobileAccordionSection
-            title="Latest practice shot list"
-            count={integerFormatter.format(data.rawShots.length)}
-            description="Raw imported rows with clean-scoring exclusions labelled."
-            className="scroll-mt-28"
+function TodayMobileClubRows({
+  data,
+  comparisons,
+  clubSort,
+}: {
+  data: TodayPracticeData;
+  comparisons: ClubDayComparison[];
+  clubSort: ClubSort;
+}) {
+  return (
+    <div className="grid gap-3">
+      <nav aria-label="Sort club performance" className="ios-route-tabs grid grid-cols-3">
+        {(
+          [
+            ["worst", "Needs work"],
+            ["best", "Best"],
+            ["bag", "Bag order"],
+          ] as const
+        ).map(([value, label]) => (
+          <Link
+            key={value}
+            href={todaySortHref(data, value)}
+            prefetch={false}
+            aria-current={clubSort === value ? "page" : undefined}
+            className="ios-route-tab focus-aaa inline-flex min-h-11 items-center justify-center px-2 text-center outline-none"
           >
-            <MobileDataList>
-              {data.rawShots.map((shot) => (
-                <MobileDataCard
-                  key={shot.id}
-                  title={`${formatClubType(shot.clubType)} ${formatYards(shot.carryYd)} carry`}
-                  subtitle={shot.fileName ?? shot.courseName ?? "Session"}
-                  action={
-                    <Badge variant="outline" className={shotQualityBadgeClass(shot)}>
-                      {formatShotQualityLabel(shot)}
-                    </Badge>
-                  }
-                >
-                  <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
-                  <DataPair label="Total" value={formatYards(shot.totalYd)} />
-                  <DataPair label="Side" value={formatSignedYards(shot.sideCarryYd)} />
-                </MobileDataCard>
-              ))}
-            </MobileDataList>
-          </MobileAccordionSection>
-        </>
-      )}
-    </PageShell>
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <IOSGroupedList label="Club performance rows" className="bg-card">
+        {comparisons.map((comparison) => (
+          <IOSListRow
+            key={comparison.clubType}
+            label={comparison.clubLabel}
+            value={clubComparisonCallLabel(comparison)}
+            detail={`${comparison.today.shotCount} shots · ${formatYards(
+              comparison.today.carryAverageYd,
+            )} carry · ${formatYards(comparison.today.offlineAverageYd)} offline`}
+            status={
+              <span className="text-[13px] leading-[1.15rem] text-muted-foreground">
+                {clubComparisonSignalText(comparison)}
+              </span>
+            }
+          />
+        ))}
+      </IOSGroupedList>
+    </div>
+  );
+}
+
+function TodayMobileHighlightRows({
+  highlights,
+  bestShot,
+}: {
+  highlights: ClubHighlight[];
+  bestShot: TodayPracticeShot | null;
+}) {
+  return (
+    <IOSGroupedList label="Latest practice highlights" className="bg-card">
+      {bestShot ? (
+        <IOSListRow
+          label="Shot of the day"
+          value={formatYards(bestShot.carryYd)}
+          detail={`${formatClubType(bestShot.clubType)} · ${formatSignedYards(
+            bestShot.sideCarryYd,
+          )} side`}
+          icon={Crosshair}
+          status={<IOSInlineStatus label="Straightest selected shot" tone="info" />}
+        />
+      ) : null}
+      {highlights.slice(0, 8).map((highlight) => (
+        <IOSListRow
+          key={highlight.id}
+          label={`${highlight.clubLabel} · ${highlight.metricLabel}`}
+          value={highlight.value}
+          detail={highlight.detail}
+          status={
+            <IOSInlineStatus
+              label={highlight.kind === "close" ? "Close to PB" : "Personal best"}
+              tone={highlight.kind === "close" ? "attention" : "positive"}
+            />
+          }
+        />
+      ))}
+      {highlights.length === 0 && !bestShot ? (
+        <IOSListRow
+          label="No highlight yet"
+          detail="The selected practice does not contain a PB or directional highlight."
+        />
+      ) : null}
+    </IOSGroupedList>
+  );
+}
+
+function TodayMobileShotRows({
+  data,
+  shotDatabaseHref,
+}: {
+  data: TodayPracticeData;
+  shotDatabaseHref: string;
+}) {
+  return (
+    <IOSGroupedList label="Imported shot preview" className="bg-card">
+      {data.rawShots.slice(0, 10).map((shot) => {
+        const heldOut = isExcludedPracticeQualityTag(shot.qualityTag);
+
+        return (
+          <IOSListRow
+            key={shot.id}
+            label={`${formatClubType(shot.clubType)} · shot ${shot.shotNumber ?? "--"}`}
+            value={formatYards(shot.carryYd)}
+            detail={`${formatSignedYards(shot.sideCarryYd)} side · ${formatYards(
+              shot.totalYd,
+            )} total`}
+            status={
+              <IOSInlineStatus
+                label={formatShotQualityLabel(shot)}
+                tone={heldOut ? "attention" : "positive"}
+              />
+            }
+          />
+        );
+      })}
+      <IOSListRow
+        label="Open every shot"
+        value={integerFormatter.format(data.rawShots.length)}
+        detail="Use the full explorer for filters, audit detail and export."
+        href={shotDatabaseHref}
+        icon={Database}
+      />
+    </IOSGroupedList>
+  );
+}
+
+function TodayMobileEmpty() {
+  return (
+    <section className="grid gap-3 lg:hidden" aria-labelledby="today-empty-heading">
+      <IOSSectionHeader title={<span id="today-empty-heading">Get a useful read today</span>} />
+      <IOSGroupedList label="Today first-use actions">
+        <IOSListRow
+          label="Import launch-monitor shots"
+          detail="Add a measured practice session to unlock the recommendation."
+          href="/import"
+          icon={Upload}
+        />
+        <IOSListRow
+          label="Connect Rapsodo"
+          detail="Bring the newest session in from R-Cloud."
+          href="/rapsodo"
+          icon={Database}
+        />
+      </IOSGroupedList>
+    </section>
   );
 }
 
@@ -550,18 +841,23 @@ function TodayMobileVerdictCard({
           <p className="text-xs text-muted-foreground">out of 100</p>
         </div>
       </div>
-      <TodayVerdictRow label="Usefulness" value={score.sessionQualityLabel} />
-      <TodayVerdictRow
-        label="Control"
-        value={`${score.scoringControlLabel} · strike ${score.strikeScore}/10`}
-      />
       <TodayVerdictRow label="Best current form" value={best?.clubLabel ?? score.strong} />
       <TodayVerdictRow label="Practise first" value={work?.clubLabel ?? score.weak} />
       {planResult ? <TodayVerdictRow label="Planned drill" value={planResult.label} /> : null}
-      <div className="bg-secondary/55 px-4 py-3">
-        <p className="text-[13px] text-muted-foreground">Recommendation</p>
-        <p className="mt-0.5 text-[15px] font-semibold leading-5">{score.recommendation}</p>
-      </div>
+      <Link
+        href={data.shots.length > 0 ? "/practice" : "/import"}
+        prefetch={false}
+        aria-label={`${score.recommendation}. ${data.shots.length > 0 ? "Open practice" : "Import a session"}`}
+        className="focus-aaa grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 bg-secondary/55 px-4 py-2.5 outline-none transition-colors active:bg-secondary motion-reduce:transition-none"
+      >
+        <span className="min-w-0">
+          <span className="block text-[13px] text-muted-foreground">Recommendation</span>
+          <span className="mt-0.5 block text-[15px] font-semibold leading-5">
+            {score.recommendation}
+          </span>
+        </span>
+        <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
     </section>
   );
 }
@@ -3009,38 +3305,6 @@ function ClubSummaryCard({
   );
 }
 
-function MobilePlayRoute({
-  href,
-  icon,
-  title,
-  value,
-  detail,
-}: {
-  href: string;
-  icon: ReactNode;
-  title: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-[#E5E7EB] bg-white py-3"
-    >
-      <span className="grid size-11 place-items-center rounded-full bg-[#F5F6F4] text-[#0B7A3B]">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-base font-semibold text-[#050505]">{title}</span>
-        <span className="mt-1 block text-sm font-medium text-[#050505]">{value}</span>
-        <span className="mt-0.5 block line-clamp-2 text-sm leading-5 text-[#6B7280]">{detail}</span>
-      </span>
-      <ArrowRight className="size-4 text-[#6B7280]" />
-    </Link>
-  );
-}
-
 function TodayScopeFields({ data }: { data: TodayPracticeData }) {
   return (
     <>
@@ -3084,28 +3348,6 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
         </select>
       </label>
     </>
-  );
-}
-
-function EmptyToday() {
-  return (
-    <DataPanel className="h-full">
-      <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-        <CalendarDays className="size-9 text-emerald-500" />
-        <div>
-          <p className="text-xl font-semibold">No shots for this selection</p>
-          <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-            Import a Rapsodo CSV for the practice date, or clear the session and club filters.
-          </p>
-        </div>
-        <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
-          <Link href="/import" prefetch={false}>
-            <Upload className="size-4" />
-            Import CSV
-          </Link>
-        </Button>
-      </CardContent>
-    </DataPanel>
   );
 }
 

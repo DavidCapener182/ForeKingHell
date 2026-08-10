@@ -6,6 +6,7 @@ const root = process.cwd();
 const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
 const mobileSportsSource = readFileSync(join(root, "src/components/mobile-sports.tsx"), "utf8");
 const premiumSource = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
+const drawerSource = readFileSync(join(root, "src/components/ui/drawer.tsx"), "utf8");
 const appleCssSource = readFileSync(join(root, "src/app/mobile-apple.css"), "utf8");
 const globalsCssSource = readFileSync(join(root, "src/app/globals.css"), "utf8");
 
@@ -36,7 +37,7 @@ function sourceAfterBalancedBlock(source: string, marker: string) {
 }
 
 describe("Apple mobile shell contract", () => {
-  it("restores scroll per primary tab and always exposes the route title in the app bar", () => {
+  it("restores route scroll, promotes large titles after scrolling and gives detail screens native back navigation", () => {
     expect(mobileNavSource).toContain('const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:"');
     expect(mobileNavSource).toContain("window.sessionStorage.getItem(tabScrollStorageKey)");
     expect(mobileNavSource).toContain("window.sessionStorage.setItem(tabScrollStorageKey");
@@ -45,9 +46,14 @@ describe("Apple mobile shell contract", () => {
     expect(mobileNavSource).toContain("ios-inline-title min-w-0 truncate text-center");
     expect(mobileNavSource).toContain("data-mobile-route-label");
     expect(mobileNavSource).toContain("{pageTitle}");
-    expect(mobileNavSource).not.toContain("compactTitleThreshold");
-    expect(mobileNavSource).not.toContain("compactTitleVisible");
-    expect(mobileNavSource).not.toContain("aria-hidden={!compactTitleVisible}");
+    expect(mobileNavSource).toContain("scrollY >= 44");
+    expect(mobileNavSource).toContain("const [compactTitleVisible, setCompactTitleVisible] =");
+    expect(mobileNavSource).toContain("useState(false)");
+    expect(mobileNavSource).toContain("setCompactTitleVisible(scrollY >= 44)");
+    expect(mobileNavSource).toContain("data-compact-title-visible");
+    expect(mobileNavSource).toContain("mobileBackNavigation(pathname)");
+    expect(mobileNavSource).toContain("Back to ${backNavigation.label}");
+    expect(mobileNavSource).toContain("detail:${pathname}");
   });
 
   it("lets PageShell own tab-bar clearance instead of padding every mobile page twice", () => {
@@ -59,12 +65,18 @@ describe("Apple mobile shell contract", () => {
     expect(premiumSource).not.toContain("sm:pb-8");
   });
 
+  it("uses semantic wrapping page titles inside mobile content", () => {
+    expect(mobileSportsSource.match(/<h1 className="min-w-0 break-words"/g)).toHaveLength(2);
+    expect(mobileSportsSource).not.toContain('className="truncate" data-mobile-route-label');
+  });
+
   it("keeps explicitly styled disclosure content out of closed details layouts", () => {
     expect(globalsCssSource).toContain("details:not([open]) > :not(summary)");
     expect(globalsCssSource).toContain("display: none !important;");
   });
 
   it("keeps mobile controls reachable and respects every safe-area edge", () => {
+    expect(appleCssSource).toContain("min-width: 2.75rem !important;");
     expect(appleCssSource).toContain("min-height: 2.75rem !important;");
     expect(appleCssSource).not.toContain("min-height: 2rem !important;");
     expect(appleCssSource).toContain("env(safe-area-inset-left)");
@@ -87,6 +99,10 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("@media (prefers-reduced-transparency: reduce)");
     expect(appleCssSource).toContain("@media (prefers-reduced-motion: reduce)");
     expect(appleCssSource).toContain("animation: none !important;");
+    expect(mobileSportsSource).toContain('className="max-h-[86dvh]"');
+    expect(premiumSource).toContain('className="max-h-[86dvh]"');
+    expect(drawerSource).toContain("max-h-[80dvh]");
+    expect(`${mobileSportsSource}${premiumSource}${drawerSource}`).not.toContain("max-h-[86vh]");
   });
 
   it("ignores saved product themes on mobile and follows the system appearance instead", () => {
@@ -152,7 +168,13 @@ describe("Apple mobile shell contract", () => {
   it("keeps mobile presentations active until the shared shell changes at the lg breakpoint", () => {
     expect(appleCssSource).toContain('[class~="sm:hidden"][class~="grid"]');
     expect(appleCssSource).toContain('[class~="hidden"][class~="sm:block"]');
+    expect(appleCssSource).toContain('[class~="hidden"][class~="sm:contents"]');
     expect(appleCssSource).toContain("display: none !important;");
+  });
+
+  it("gives semantic phone controls a practical minimum width as well as height", () => {
+    expect(appleCssSource).toContain(':where(button, [role="button"], a[aria-label])');
+    expect(appleCssSource).toContain("min-width: 2.75rem;");
   });
 
   it("gives portalled controls and data surfaces the same mobile material contract", () => {
@@ -162,6 +184,13 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain('[data-slot="dropdown-menu-content"]');
     expect(appleCssSource).toContain('[data-slot="select-content"]');
     expect(appleCssSource).toContain(":where(.data-table-scroll, .chart-frame)");
+    expect(appleCssSource).toContain('body:has([data-mobile-platform="apple"])');
+    expect(appleCssSource).toContain('[data-slot="drawer-content"]');
+    expect(appleCssSource).toContain('[data-slot="sheet-content"]');
+    expect(appleCssSource).toContain(":where(input, select, textarea)");
+    expect(appleCssSource).toContain('[class*="bg-white"]');
+    expect(appleCssSource).toContain('[class*="text-[#6B7280]"]');
+    expect(appleCssSource).toContain("background-color: var(--ios-grouped-surface) !important;");
   });
 
   it("locks immersive Course Twin to the safe mobile viewport without changing desktop", () => {

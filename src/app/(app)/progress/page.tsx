@@ -34,7 +34,6 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileRouteHeader, MobileTabBar } from "@/components/mobile-sports";
 import { DistanceLossDiagnosisPanel } from "@/components/progress/distance-loss-diagnosis-panel";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -59,6 +58,13 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import {
+  IOSDisclosureGroup,
+  IOSGroupedList,
+  IOSInlineStatus,
+  IOSListRow,
+  IOSSectionHeader,
+} from "@/components/app/ios-mobile";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -203,18 +209,6 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Home" group="dashboard" activeKey="progress" />
-      <MobileTabBar
-        activeKey="overview"
-        className="sm:hidden"
-        tabs={[
-          { key: "overview", label: "Overview", href: "/progress" },
-          { key: "trends", label: "Trends", href: "#trends" },
-          { key: "calendar", label: "Timeline", href: "#journey" },
-          { key: "pbs", label: "PBs", href: "/achievements" },
-        ]}
-      />
-
       <DesktopWorkbenchLayout
         scope="progress"
         railBreakpoint="wide"
@@ -242,7 +236,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
           />
         }
       >
-        <div className="hidden items-center justify-between gap-4 sm:flex">
+        <div className="hidden items-center justify-between gap-4 lg:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowRight className="size-4 rotate-180" />
@@ -265,139 +259,1065 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
           </div>
         </div>
 
-        <ProgressHeroPanel summary={summary} mostImproved={mostImproved} />
+        <div className="grid min-w-0 gap-4 lg:hidden">
+          {data.clubs.length === 0 ? (
+            <MobileProgressEmptyState />
+          ) : (
+            <>
+              <MobileProgressAnswer
+                summary={summary}
+                scoringEvidence={scoringEvidence}
+                review={weeklyChangeReview}
+              />
+              <MobileProgressDisclosures
+                summary={summary}
+                review={weeklyChangeReview}
+                diagnosis={distanceLossDiagnosis}
+                practicePlannerSummary={practicePlannerSummary}
+                practiceCalendar={featureData.practiceCalendar}
+                activeFilter={bagFilter}
+                openBagByDefault={params?.bag !== undefined}
+              />
+            </>
+          )}
+        </div>
 
-        {data.clubs.length === 0 ? (
-          <>
-            <DataPanel>
-              <CardContent className="flex flex-col items-center gap-3 py-7 text-center sm:gap-4 sm:py-14">
-                <Sparkles className="size-8 text-emerald-500 sm:size-9" />
-                <div>
-                  <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
-                  <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
-                    Import a Rapsodo CSV and LM World Tour will build first-vs-latest club
-                    comparisons automatically.
-                  </p>
-                </div>
-                <Button asChild>
-                  <Link href="/import" prefetch={false}>
-                    <Upload className="size-4" />
-                    Import CSV
-                  </Link>
-                </Button>
-              </CardContent>
-            </DataPanel>
-            <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
-              <p className="text-sm font-semibold">Next useful data</p>
-              <div className="grid gap-2">
-                <DataPair label="Best import" value="Rapsodo range CSV" />
-                <DataPair label="Minimum sample" value="8+ clean shots per club" />
-                <DataPair label="Then review" value="Trends, PBs and coach signal" />
-              </div>
-            </section>
-            <section className="grid gap-3 sm:grid-cols-3">
-              {[
-                {
-                  title: "Import data",
-                  description: "Start with the next range or course CSV.",
-                  href: "/import",
-                  icon: Upload,
-                },
-                {
-                  title: "Map clubs",
-                  description: "Confirm the bag so stock numbers compare cleanly.",
-                  href: "/bag",
-                  icon: Target,
-                },
-                {
-                  title: "Open coach",
-                  description: "Turn the first baseline into a practice plan.",
-                  href: "/coach",
-                  icon: Brain,
-                },
-              ].map((step) => {
-                const Icon = step.icon;
+        <div className="hidden lg:contents">
+          <ProgressHeroPanel summary={summary} mostImproved={mostImproved} />
 
-                return (
-                  <Link
-                    key={step.href}
-                    href={step.href}
-                    prefetch={false}
-                    className="grid min-h-24 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm transition-colors hover:border-emerald-300"
-                  >
-                    <Icon className="size-5 text-emerald-600" />
-                    <span className="text-sm font-semibold">{step.title}</span>
-                    <span className="text-sm leading-5 text-muted-foreground">
-                      {step.description}
-                    </span>
-                  </Link>
-                );
-              })}
-            </section>
-          </>
-        ) : (
-          <>
-            <ProgressScorePanel summary={summary} />
-            <GoalProgressPanel summary={summary} scoringEvidence={scoringEvidence} />
-            <MobileProgressFirstCard summary={summary} />
-            <MobileProgressDimensions summary={summary} clubs={data.clubs} />
-            <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
-              <ProgressBentoItem span={12}>
-                <WeeklyRecapPanel
-                  data={featureData}
-                  summary={summary}
-                  review={weeklyChangeReview}
-                />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <DistanceLossDiagnosisPanel diagnosis={distanceLossDiagnosis} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <ProgressRoadmapPanel summary={summary} />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <ProgressPracticePlannerPanel
-                  summary={practicePlannerSummary}
-                  priorities={summary.practicePlan}
-                />
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <div className="progress-analysis-grid grid min-w-0 items-stretch gap-4 lg:gap-5">
-                  <div className="grid h-full min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:gap-5">
-                    <ComparisonBar summary={summary} />
-                    <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
+          {data.clubs.length === 0 ? (
+            <>
+              <DataPanel>
+                <CardContent className="flex flex-col items-center gap-3 py-7 text-center sm:gap-4 sm:py-14">
+                  <Sparkles className="size-8 text-emerald-500 sm:size-9" />
+                  <div>
+                    <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
+                    <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
+                      Import a Rapsodo CSV and LM World Tour will build first-vs-latest club
+                      comparisons automatically.
+                    </p>
                   </div>
-                  <ProgressTrendsPanel summary={summary} />
+                  <Button asChild>
+                    <Link href="/import" prefetch={false}>
+                      <Upload className="size-4" />
+                      Import CSV
+                    </Link>
+                  </Button>
+                </CardContent>
+              </DataPanel>
+              <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
+                <p className="text-sm font-semibold">Next useful data</p>
+                <div className="grid gap-2">
+                  <DataPair label="Best import" value="Rapsodo range CSV" />
+                  <DataPair label="Minimum sample" value="8+ clean shots per club" />
+                  <DataPair label="Then review" value="Trends, PBs and coach signal" />
                 </div>
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <div className="progress-main-rail grid min-w-0 items-stretch gap-4 lg:gap-5">
-                  <div className="grid h-full min-w-0 content-start gap-4 lg:gap-5">
-                    <PracticePlanPanel priorities={summary.practicePlan} />
-                    <div id="journey" className="scroll-mt-28">
-                      <CoachTimelinePanel summary={summary} />
+              </section>
+              <section className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    title: "Import data",
+                    description: "Start with the next range or course CSV.",
+                    href: "/import",
+                    icon: Upload,
+                  },
+                  {
+                    title: "Map clubs",
+                    description: "Confirm the bag so stock numbers compare cleanly.",
+                    href: "/bag",
+                    icon: Target,
+                  },
+                  {
+                    title: "Open coach",
+                    description: "Turn the first baseline into a practice plan.",
+                    href: "/coach",
+                    icon: Brain,
+                  },
+                ].map((step) => {
+                  const Icon = step.icon;
+
+                  return (
+                    <Link
+                      key={step.href}
+                      href={step.href}
+                      prefetch={false}
+                      className="grid min-h-24 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm transition-colors hover:border-emerald-300"
+                    >
+                      <Icon className="size-5 text-emerald-600" />
+                      <span className="text-sm font-semibold">{step.title}</span>
+                      <span className="text-sm leading-5 text-muted-foreground">
+                        {step.description}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </section>
+            </>
+          ) : (
+            <>
+              <ProgressScorePanel summary={summary} />
+              <GoalProgressPanel summary={summary} scoringEvidence={scoringEvidence} />
+              <MobileProgressFirstCard summary={summary} />
+              <MobileProgressDimensions summary={summary} clubs={data.clubs} />
+              <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
+                <ProgressBentoItem span={12}>
+                  <WeeklyRecapPanel
+                    data={featureData}
+                    summary={summary}
+                    review={weeklyChangeReview}
+                  />
+                </ProgressBentoItem>
+                <ProgressBentoItem span={12}>
+                  <DistanceLossDiagnosisPanel diagnosis={distanceLossDiagnosis} />
+                </ProgressBentoItem>
+                <ProgressBentoItem span={12}>
+                  <ProgressRoadmapPanel summary={summary} />
+                </ProgressBentoItem>
+                <ProgressBentoItem span={12}>
+                  <ProgressPracticePlannerPanel
+                    summary={practicePlannerSummary}
+                    priorities={summary.practicePlan}
+                  />
+                </ProgressBentoItem>
+                <ProgressBentoItem span={12}>
+                  <div className="progress-analysis-grid grid min-w-0 items-stretch gap-4 lg:gap-5">
+                    <div className="grid h-full min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:gap-5">
+                      <ComparisonBar summary={summary} />
+                      <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
+                    </div>
+                    <ProgressTrendsPanel summary={summary} />
+                  </div>
+                </ProgressBentoItem>
+                <ProgressBentoItem span={12}>
+                  <div className="progress-main-rail grid min-w-0 items-stretch gap-4 lg:gap-5">
+                    <div className="grid h-full min-w-0 content-start gap-4 lg:gap-5">
+                      <PracticePlanPanel priorities={summary.practicePlan} />
+                      <div id="journey" className="scroll-mt-28">
+                        <CoachTimelinePanel summary={summary} />
+                      </div>
+                    </div>
+                    <div className="progress-supporting-rail grid h-full min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4 lg:gap-5">
+                      <CoachReadoutPanel
+                        signal={summary.bestSignal}
+                        groups={summary.coachSummary}
+                        gaps={summary.dataGaps}
+                      />
+                      <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
+                      <TrustLadderPanel items={summary.trustLadder} />
                     </div>
                   </div>
-                  <div className="progress-supporting-rail grid h-full min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4 lg:gap-5">
-                    <CoachReadoutPanel
-                      signal={summary.bestSignal}
-                      groups={summary.coachSummary}
-                      gaps={summary.dataGaps}
-                    />
-                    <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
-                    <TrustLadderPanel items={summary.trustLadder} />
-                  </div>
-                </div>
-              </ProgressBentoItem>
-              <ProgressBentoItem span={12}>
-                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
-              </ProgressBentoItem>
-            </div>
-          </>
-        )}
+                </ProgressBentoItem>
+                <ProgressBentoItem span={12}>
+                  <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
+                </ProgressBentoItem>
+              </div>
+            </>
+          )}
+        </div>
       </DesktopWorkbenchLayout>
     </PageShell>
   );
+}
+
+type MobileDistanceDiagnosis = Awaited<ReturnType<typeof getDistanceLossDiagnosisData>>;
+type MobilePracticePlannerSummary = Awaited<ReturnType<typeof getPracticePlannerProgressSummary>>;
+
+function MobileProgressEmptyState() {
+  return (
+    <section
+      data-mobile-progress-empty
+      className="min-w-0 overflow-hidden rounded-[1.15rem] border border-border bg-card"
+    >
+      <div className="px-5 pb-5 pt-6">
+        <IOSInlineStatus label="Baseline needed" tone="attention" />
+        <h1 className="mt-2 text-[30px] font-bold leading-9 tracking-tight text-foreground">
+          Build your first progress readout
+        </h1>
+        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+          Import a measured Rapsodo session and ForeKingHell will compare each club with your own
+          clean-shot baseline.
+        </p>
+        <Button asChild className="mt-5 min-h-11 w-full rounded-xl" data-primary-action>
+          <Link href="/import" prefetch={false}>
+            <Upload className="size-4" aria-hidden="true" />
+            Import first session
+          </Link>
+        </Button>
+      </div>
+      <IOSGroupedList label="What happens next" className="rounded-none border-x-0 border-b-0">
+        <IOSListRow
+          label="Import measured shots"
+          value="Rapsodo CSV"
+          detail="Start with one recent range or course session."
+        />
+        <IOSListRow
+          label="Build useful samples"
+          value="8+ clean shots"
+          detail="Enough comparable stock shots lets a club trend separate."
+        />
+        <IOSListRow
+          label="Review the first action"
+          value="Progress + Coach"
+          detail="The app will surface the strongest move, weakest area and next practice job."
+        />
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileProgressAnswer({
+  summary,
+  scoringEvidence,
+  review,
+}: {
+  summary: ProgressSummary;
+  scoringEvidence: ProgressScoringEvidence;
+  review: WeeklyChangeReview;
+}) {
+  const score = progressScore(summary);
+  const momentum = progressScoreMomentum(summary);
+  const readiness = technicalReadiness(summary);
+  const scoringConfidence = scoringConfidenceReadout(scoringEvidence);
+  const strongest = summary.rankings.mostImproved;
+  const weakest = summary.rankings.needsWork;
+  const dataGap = summary.dataGaps[0] ?? null;
+
+  return (
+    <section
+      data-mobile-progress-answer
+      aria-labelledby="mobile-progress-title"
+      className="min-w-0 overflow-hidden rounded-[1.15rem] border border-border bg-card"
+    >
+      <div className="px-5 pb-5 pt-6">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+          Development report
+        </p>
+        <h1
+          id="mobile-progress-title"
+          className="mt-1 text-[30px] font-bold leading-9 tracking-tight text-foreground"
+        >
+          Bag progress
+        </h1>
+        <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] text-muted-foreground">Current level</p>
+            <p className="mt-0.5 text-[40px] font-bold leading-none tracking-tight text-foreground tabular-nums">
+              {score}
+              <span className="ml-1 text-lg font-semibold text-muted-foreground">/ 100</span>
+            </p>
+          </div>
+          <IOSInlineStatus
+            label={`${momentum >= 0 ? "Up" : "Down"} ${numberFormatter.format(Math.abs(momentum))} vs baseline`}
+            tone={momentum >= 0 ? "positive" : "attention"}
+            className="mb-1 max-w-[54%] flex-wrap justify-end text-right leading-4"
+          />
+        </div>
+        <div
+          role="progressbar"
+          aria-label="Overall progress score"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={score}
+          className="mt-4 h-2 overflow-hidden rounded-full bg-secondary"
+        >
+          <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
+        </div>
+        <p className="mt-3 text-[14px] leading-5 text-muted-foreground">
+          {progressScoreReadout(summary, momentum)}
+        </p>
+        <div className="mt-3 flex min-w-0 flex-wrap gap-x-3 gap-y-1">
+          <IOSInlineStatus label={`${readiness}% technical readiness`} tone="info" />
+          <IOSInlineStatus
+            label={`${scoringConfidence.label} scoring confidence`}
+            tone={mobileProgressTone(scoringConfidence.tone)}
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-border px-5 py-5">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+          Next action
+        </p>
+        <h2 className="mt-1 text-[20px] font-semibold leading-6 text-foreground">
+          {review.nextAction.value}
+        </h2>
+        <p className="mt-1 text-[14px] leading-5 text-muted-foreground">
+          {review.nextAction.detail}
+        </p>
+        {dataGap ? (
+          <div className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5">
+            <IOSInlineStatus
+              label={`${formatClubType(dataGap.clubType)} data gap`}
+              tone="attention"
+            />
+            <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{dataGap.detail}</p>
+          </div>
+        ) : null}
+        <Button asChild className="mt-4 min-h-11 w-full rounded-xl" data-primary-action>
+          <Link href={review.nextAction.href} prefetch={false}>
+            <Target className="size-4" aria-hidden="true" />
+            Take next action
+          </Link>
+        </Button>
+      </div>
+
+      <IOSGroupedList
+        label="Strongest and weakest progress signals"
+        className="rounded-none border-x-0 border-b-0"
+      >
+        <IOSListRow
+          label="Strongest movement"
+          value={strongest ? formatClubType(strongest.clubType) : "Building"}
+          detail={strongest ? strongestImprovementDetail(strongest) : "No stable mover yet."}
+          href={strongest ? `/bag/${strongest.clubId}/analytics` : undefined}
+          status={
+            <IOSInlineStatus
+              label={strongest ? `${strongest.trustIndex}% trust` : "More evidence needed"}
+              tone={strongest ? "positive" : "neutral"}
+            />
+          }
+        />
+        <IOSListRow
+          label="Weakest area"
+          value={weakest ? formatClubType(weakest.clubType) : "No clear leak"}
+          detail={
+            weakest
+              ? `${weakest.primaryMiss} miss · ${weakest.sampleSize} clean shots.`
+              : "No sampled club has separated as the main concern."
+          }
+          href={weakest ? `/bag/${weakest.clubId}/analytics` : undefined}
+          status={
+            <IOSInlineStatus
+              label={weakest ? `${weakest.trustIndex}% trust` : "Stable for now"}
+              tone={weakest ? "attention" : "positive"}
+            />
+          }
+        />
+      </IOSGroupedList>
+    </section>
+  );
+}
+
+function MobileProgressDisclosures({
+  summary,
+  review,
+  diagnosis,
+  practicePlannerSummary,
+  practiceCalendar,
+  activeFilter,
+  openBagByDefault,
+}: {
+  summary: ProgressSummary;
+  review: WeeklyChangeReview;
+  diagnosis: MobileDistanceDiagnosis;
+  practicePlannerSummary: MobilePracticePlannerSummary;
+  practiceCalendar: FeatureIdeasData["practiceCalendar"];
+  activeFilter: BagMovementFilter;
+  openBagByDefault: boolean;
+}) {
+  const filteredClubCount = summary.clubRows.filter((row) =>
+    bagMovementFilterMatches(row, activeFilter),
+  ).length;
+  const nextPriority = summary.practicePlan[0] ?? null;
+  const timelineCount = coachTimelineItems(summary).length;
+
+  return (
+    <section id="mobile-progress-details" className="grid min-w-0 gap-2 scroll-mt-24">
+      <IOSSectionHeader
+        title="Progress detail"
+        description="Open one section when you need the evidence behind the current read."
+      />
+      <IOSDisclosureGroup
+        label="Progress detail sections"
+        defaultValue={openBagByDefault ? "bag-movement" : undefined}
+        items={[
+          {
+            value: "this-week",
+            title: "This week",
+            summary: review.dataFreshness.value,
+            description: "Recap, wins, blockers and completed work",
+            content: <MobileWeeklyRecap review={review} />,
+            contentClassName: "px-3 pb-3 pt-3",
+          },
+          {
+            value: "trends",
+            title: "Trends",
+            summary: `${summary.trends.length} signals`,
+            description: "Baseline movement and specialist trend charts",
+            content: <MobileProgressTrends summary={summary} />,
+            contentClassName: "px-3 pb-3 pt-3",
+          },
+          {
+            value: "practice",
+            title: "Practice",
+            summary: nextPriority ? formatClubType(nextPriority.clubType) : "Build baseline",
+            description: "The current plan, planner evidence and calendar",
+            content: (
+              <MobileProgressPractice
+                summary={summary}
+                planner={practicePlannerSummary}
+                calendar={practiceCalendar}
+              />
+            ),
+            contentClassName: "px-3 pb-3 pt-3",
+          },
+          {
+            value: "coach-evidence",
+            title: "Coach evidence",
+            summary: `${summary.dataGaps.length} data gap${summary.dataGaps.length === 1 ? "" : "s"}`,
+            description: "Why the recommendation exists and what limits it",
+            content: <MobileCoachEvidence summary={summary} diagnosis={diagnosis} />,
+            contentClassName: "px-3 pb-3 pt-3",
+          },
+          {
+            value: "bag-movement",
+            title: "Bag movement",
+            summary: `${filteredClubCount} club${filteredClubCount === 1 ? "" : "s"}`,
+            description: "Native club rows instead of the full workbench table",
+            content: <MobileBagMovement rows={summary.clubRows} activeFilter={activeFilter} />,
+            contentClassName: "px-3 pb-3 pt-3",
+          },
+          {
+            value: "journey",
+            title: "Journey",
+            summary: `${timelineCount} update${timelineCount === 1 ? "" : "s"}`,
+            description: "The coach narrative and recent milestones",
+            content: <MobileProgressJourney summary={summary} />,
+            contentClassName: "px-3 pb-3 pt-3",
+          },
+        ]}
+      />
+    </section>
+  );
+}
+
+function MobileWeeklyRecap({ review }: { review: WeeklyChangeReview }) {
+  const rows: Array<{
+    label: string;
+    value: string;
+    detail: string;
+    href?: string;
+    tone: Tone;
+  }> = [
+    { label: "Largest improvement", ...review.largestImprovement },
+    { label: "Largest decline", ...review.largestDecline },
+    { label: "Sessions and rounds", ...review.completedVolume, href: "/sessions" },
+    {
+      label: "Data-quality issues",
+      ...review.dataQuality,
+      href: "/analyse/workspace#data-quality",
+    },
+    { label: "New personal bests", ...review.personalBests, href: "/achievements" },
+    { label: "Data freshness", ...review.dataFreshness },
+    { label: "Practice completed", ...review.practiceCompleted, href: "/practice" },
+    {
+      label: "Bag-number change",
+      ...review.bagNumberChange,
+      href: "/progress?bag=all#mobile-bag-movement",
+    },
+  ];
+
+  return (
+    <div className="grid min-w-0 gap-4">
+      <IOSGroupedList label="This week's progress recap">
+        {rows.map((row) => (
+          <IOSListRow
+            key={row.label}
+            label={row.label}
+            value={row.value}
+            detail={row.detail}
+            href={row.href}
+            status={
+              <IOSInlineStatus
+                label={mobileProgressToneLabel(row.tone)}
+                tone={mobileProgressTone(row.tone)}
+              />
+            }
+          />
+        ))}
+      </IOSGroupedList>
+
+      <div className="grid grid-cols-2 gap-2">
+        <form action={saveCurrentWeeklyRecapAction} className="min-w-0">
+          <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl px-3">
+            <Bookmark className="size-4" aria-hidden="true" />
+            Save recap
+          </Button>
+        </form>
+        <Button asChild className="min-h-11 min-w-0 rounded-xl px-3">
+          <Link href={review.nextAction.href} prefetch={false}>
+            <Target className="size-4" aria-hidden="true" />
+            Next action
+          </Link>
+        </Button>
+      </div>
+
+      <IOSGroupedList label="Weekly recap actions">
+        <IOSListRow label="Build next practice" href="/practice" />
+        <IOSListRow label="Share with coach" href="/coach/workspace" />
+        <IOSListRow label="Export weekly report" href="/coach/reports?template=monthly" />
+      </IOSGroupedList>
+    </div>
+  );
+}
+
+function MobileProgressTrends({ summary }: { summary: ProgressSummary }) {
+  const usableTrendCount = summary.trends.filter((trend) => trend.points.length >= 2).length;
+
+  return (
+    <div className="grid min-w-0 gap-4">
+      <IOSGroupedList label="Trend comparison context">
+        <IOSListRow label="Baseline" value="Personal baseline" />
+        <IOSListRow label="Period" value="All saved data" />
+        <IOSListRow
+          label="Evidence"
+          value={`${integerFormatter.format(summary.totals.trackedCleanShots)} clean shots`}
+          detail={`${usableTrendCount} of ${summary.trends.length} trends have enough points for a chart.`}
+        />
+      </IOSGroupedList>
+
+      <IOSGroupedList label="Progress trend charts">
+        {summary.trends.length > 0 ? (
+          summary.trends.map((trend) => (
+            <article key={trend.label} className="ios-grouped-row min-w-0 px-4 py-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-[15px] font-medium leading-5 text-foreground">
+                    {trend.label}
+                  </h3>
+                  <p className="mt-1 text-[22px] font-semibold leading-7 text-foreground tabular-nums">
+                    {trend.value}
+                  </p>
+                </div>
+                <IOSInlineStatus
+                  label={mobileProgressToneLabel(trend.tone)}
+                  tone={mobileProgressTone(trend.tone)}
+                  className="shrink-0"
+                />
+              </div>
+              <Sparkline
+                points={trend.points}
+                tone={trend.tone}
+                ariaLabel={`${trend.label} trend: ${trend.value}`}
+              />
+              <p className="mt-3 text-[13px] leading-5 text-muted-foreground">
+                {trendVerdict(trend, summary)}
+              </p>
+              {trendFootnote(trend, summary) ? (
+                <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                  {trendFootnote(trend, summary)}
+                </p>
+              ) : null}
+            </article>
+          ))
+        ) : (
+          <IOSListRow
+            label="No stable trends yet"
+            detail="Import another comparable clean-shot session to establish movement."
+          />
+        )}
+      </IOSGroupedList>
+      <p className="px-1 text-[12px] leading-5 text-muted-foreground">
+        {progressTrendChartSummary(summary.trends)}
+      </p>
+    </div>
+  );
+}
+
+function MobileProgressPractice({
+  summary,
+  planner,
+  calendar,
+}: {
+  summary: ProgressSummary;
+  planner: MobilePracticePlannerSummary;
+  calendar: FeatureIdeasData["practiceCalendar"];
+}) {
+  const roadmap = buildRoadmapItems(summary);
+
+  return (
+    <div className="grid min-w-0 gap-4">
+      <IOSSectionHeader
+        title="Current plan"
+        description="Priority one stays first; deeper task detail lives on the club screen."
+      />
+      <IOSGroupedList label="Ranked practice priorities">
+        {summary.practicePlan.length > 0 ? (
+          summary.practicePlan.map((priority, index) => (
+            <IOSListRow
+              key={priority.clubId}
+              label={`${index + 1}. ${priority.title}`}
+              value={formatClubType(priority.clubType)}
+              detail={`${practiceReasonCopy(priority)} ${priority.drill}`}
+              href={`/bag/${priority.clubId}/analytics`}
+              status={
+                <IOSInlineStatus
+                  label={`${priority.priorityLabel} · coach score ${priority.score}`}
+                  tone={mobileProgressTone(priority.tone)}
+                />
+              }
+            />
+          ))
+        ) : (
+          <IOSListRow
+            label="No ranked practice plan yet"
+            detail="Import clean stock shots to unlock the next practice job."
+            href="/import"
+          />
+        )}
+      </IOSGroupedList>
+
+      <IOSSectionHeader title="This week's route" />
+      <IOSGroupedList label="This week's roadmap">
+        {roadmap.map((item, index) => (
+          <IOSListRow
+            key={`${item.title}-${index}`}
+            label={`${roadmapStepLabel(index)} · ${item.title}`}
+            value={item.label}
+            detail={item.detail}
+            href={item.href}
+            status={<IOSInlineStatus label={item.action} tone={mobileProgressTone(item.tone)} />}
+          />
+        ))}
+      </IOSGroupedList>
+
+      <IOSSectionHeader title="Planner evidence" />
+      <IOSGroupedList label="Practice planner evidence">
+        <IOSListRow
+          label="Planned sessions"
+          value={integerFormatter.format(planner.plannedCount)}
+        />
+        <IOSListRow
+          label="Completed sessions"
+          value={integerFormatter.format(planner.completedCount)}
+        />
+        <IOSListRow
+          label="Average score"
+          value={planner.averageScore === null ? "--" : `${planner.averageScore}`}
+        />
+        <IOSListRow
+          label="Top completed focus"
+          value={planner.topFocus?.label ?? "Waiting"}
+          detail={
+            planner.topFocus
+              ? `${planner.topFocus.completedCount} completed against this focus.`
+              : "Complete a measured plan to build effectiveness evidence."
+          }
+        />
+      </IOSGroupedList>
+
+      <IOSSectionHeader title="Calendar" />
+      <IOSGroupedList label="Practice calendar">
+        {calendar.length > 0 ? (
+          calendar
+            .slice(0, 4)
+            .map((item) => (
+              <IOSListRow
+                key={`${item.title}-${item.date.toISOString()}`}
+                label={compactPracticeTitle(item.title)}
+                value={shortDateFormatter.format(item.date)}
+              />
+            ))
+        ) : (
+          <IOSListRow
+            label="Nothing planned yet"
+            detail="Save a recap or practice plan to pin the next calendar block."
+          />
+        )}
+      </IOSGroupedList>
+
+      <Button asChild className="min-h-11 w-full rounded-xl">
+        <Link href="/practice" prefetch={false}>
+          <ClipboardCheck className="size-4" aria-hidden="true" />
+          Open Practice Planner
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function MobileCoachEvidence({
+  summary,
+  diagnosis,
+}: {
+  summary: ProgressSummary;
+  diagnosis: MobileDistanceDiagnosis;
+}) {
+  return (
+    <div className="grid min-w-0 gap-4">
+      <IOSSectionHeader title="Recommendation evidence" />
+      <IOSGroupedList label="Coach recommendation evidence">
+        {summary.bestSignal ? (
+          <IOSListRow
+            label={summary.bestSignal.title}
+            value="Best signal"
+            detail={`${summary.bestSignal.value} ${summary.bestSignal.why}`}
+            href={
+              summary.bestSignal.clubId ? `/bag/${summary.bestSignal.clubId}/analytics` : undefined
+            }
+            status={
+              <IOSInlineStatus
+                label={summary.bestSignal.detail}
+                tone={mobileProgressTone(summary.bestSignal.tone)}
+              />
+            }
+          />
+        ) : (
+          <IOSListRow
+            label="No best signal has separated"
+            detail="Keep importing comparable stock-shot sessions."
+          />
+        )}
+      </IOSGroupedList>
+
+      {summary.coachSummary.map((group) => (
+        <div key={group.title} className="grid min-w-0 gap-2">
+          <IOSSectionHeader title={group.title} />
+          <IOSGroupedList label={group.title}>
+            {group.title === "Data gaps" && summary.dataGaps.length > 0
+              ? summary.dataGaps.map((gap) => (
+                  <IOSListRow
+                    key={gap.clubId}
+                    label={`${formatClubType(gap.clubType)} needs more clean shots`}
+                    value={`${gap.cleanShots} / 10`}
+                    detail={`${gap.detail} ${gap.recommendation}`}
+                    href={`/bag/${gap.clubId}/analytics`}
+                    status={<IOSInlineStatus label="Evidence gap" tone="attention" />}
+                  />
+                ))
+              : group.items.map((item, index) => (
+                  <IOSListRow
+                    key={`${group.title}-${item.clubId ?? index}`}
+                    label={item.label}
+                    detail={item.detail}
+                    href={item.clubId ? `/bag/${item.clubId}/analytics` : undefined}
+                    status={
+                      <IOSInlineStatus
+                        label={mobileProgressToneLabel(group.tone)}
+                        tone={mobileProgressTone(group.tone)}
+                      />
+                    }
+                  />
+                ))}
+          </IOSGroupedList>
+        </div>
+      ))}
+
+      <IOSSectionHeader
+        title="Trust ladder"
+        description="Distance, direction, strike quality and sample depth remain separate evidence."
+      />
+      <IOSGroupedList label="Club trust ladder">
+        {summary.trustLadder.map((item) => (
+          <IOSListRow
+            key={item.clubId}
+            label={formatClubType(item.clubType)}
+            value={item.trustIndex === null ? "--" : `${item.trustIndex}%`}
+            detail={`${item.note} · ${item.sampleSize} clean shots.`}
+            href={`/bag/${item.clubId}/analytics`}
+            status={<IOSInlineStatus label={item.label} tone={mobileProgressTone(item.tone)} />}
+          />
+        ))}
+      </IOSGroupedList>
+
+      <MobileDistanceDiagnosis diagnosis={diagnosis} />
+    </div>
+  );
+}
+
+function MobileDistanceDiagnosis({ diagnosis }: { diagnosis: MobileDistanceDiagnosis }) {
+  const maxCarry = Math.max(1, ...diagnosis.monthly.map((month) => month.carryYd ?? 0));
+
+  return (
+    <section className="grid min-w-0 gap-3" aria-label="Distance diagnosis">
+      <IOSSectionHeader
+        title="Distance diagnosis"
+        description="Measured driver output and matched recent golf-exposure windows."
+      />
+      <IOSGroupedList label="Distance diagnosis summary">
+        <IOSListRow
+          label={diagnosis.headline}
+          detail={diagnosis.summary}
+          status={
+            <IOSInlineStatus
+              label={diagnosis.confidenceLabel}
+              tone={diagnosis.status === "ready" ? "info" : "attention"}
+            />
+          }
+        />
+        <IOSListRow
+          label="Carry"
+          value={formatMobileDiagnosisChange(diagnosis.carryChangeYd, "yd")}
+          detail={mobileDiagnosisComparison(diagnosis)}
+        />
+        <IOSListRow
+          label="Measured club speed"
+          value={formatMobileDiagnosisChange(diagnosis.clubSpeedChangeMph, "mph")}
+          detail={mobileDiagnosisComparison(diagnosis)}
+        />
+        <IOSListRow
+          label="Active golf days"
+          value={`${diagnosis.exposure.recentActiveDays} vs ${diagnosis.exposure.previousActiveDays}`}
+          detail="Latest 56 days vs previous 56 days."
+        />
+        <IOSListRow
+          label="Measured smash"
+          value={formatMobileDiagnosisChange(diagnosis.smashChange, "", 2)}
+          detail={mobileDiagnosisComparison(diagnosis)}
+        />
+      </IOSGroupedList>
+
+      {diagnosis.status === "ready" && diagnosis.monthly.length > 0 ? (
+        <div className="min-w-0 rounded-xl border border-border bg-card p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3
+                id="mobile-distance-diagnosis-title"
+                className="text-[15px] font-medium text-foreground"
+              >
+                Driver median carry
+              </h3>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Saved Rapsodo full shots · monthly medians
+              </p>
+            </div>
+            <BarChart3 className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          </div>
+          <div
+            role="img"
+            aria-label={diagnosis.monthly
+              .map(
+                (month) =>
+                  `${month.label} ${month.carryYd === null ? "no carry" : `${month.carryYd} yards`}`,
+              )
+              .join(", ")}
+            className="mt-4 grid h-40 min-w-0 items-end gap-2 border-b border-border"
+            style={{ gridTemplateColumns: `repeat(${diagnosis.monthly.length}, minmax(0, 1fr))` }}
+          >
+            {diagnosis.monthly.map((month) => (
+              <div key={month.key} className="grid h-full min-w-0 content-end gap-1.5 text-center">
+                <span className="text-[11px] font-semibold text-foreground tabular-nums">
+                  {month.carryYd === null ? "--" : numberFormatter.format(month.carryYd)}
+                </span>
+                <div className="flex h-24 items-end justify-center">
+                  <div
+                    className={cn(
+                      "w-full max-w-12 rounded-t-md",
+                      month.key === diagnosis.current?.key ? "bg-primary" : "bg-sky-400/70",
+                    )}
+                    style={{
+                      height: `${month.carryYd === null ? 0 : Math.max(6, (month.carryYd / maxCarry) * 100)}%`,
+                    }}
+                    aria-hidden="true"
+                  />
+                </div>
+                <span className="pb-1 text-[11px] text-muted-foreground">{month.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {diagnosis.factors.length > 0 ? (
+        <IOSGroupedList label="Distance diagnosis factors">
+          {diagnosis.factors.map((factor) => (
+            <IOSListRow
+              key={factor.key}
+              label={factor.label}
+              value={factor.status}
+              detail={factor.detail}
+              status={
+                <IOSInlineStatus
+                  label={mobileProgressToneLabel(factor.tone)}
+                  tone={mobileProgressTone(factor.tone)}
+                />
+              }
+            />
+          ))}
+        </IOSGroupedList>
+      ) : null}
+
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h3 className="text-[15px] font-medium text-foreground">Recommended next test</h3>
+        <ol className="mt-2 grid gap-2 text-[13px] leading-5 text-muted-foreground">
+          {diagnosis.nextSteps.map((step, index) => (
+            <li key={step} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2">
+              <span className="font-semibold text-primary tabular-nums">{index + 1}.</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+        {diagnosis.caveats.length > 0 ? (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-[13px] font-medium text-foreground">Evidence limits</p>
+            <ul className="mt-1.5 grid gap-1 text-[12px] leading-5 text-muted-foreground">
+              {diagnosis.caveats.map((caveat) => (
+                <li key={caveat}>• {caveat}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+
+      <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
+        <Link href="/stats/training-over-time" prefetch={false}>
+          <LineChart className="size-4" aria-hidden="true" />
+          View training load
+        </Link>
+      </Button>
+    </section>
+  );
+}
+
+function MobileBagMovement({
+  rows,
+  activeFilter,
+}: {
+  rows: ProgressClubRow[];
+  activeFilter: BagMovementFilter;
+}) {
+  const filters = buildBagMovementFilters(rows);
+  const filteredRows = rows.filter((row) => bagMovementFilterMatches(row, activeFilter));
+
+  return (
+    <div id="mobile-bag-movement" className="grid min-w-0 gap-3 scroll-mt-24">
+      <nav aria-label="Filter bag movement" className="max-w-full overflow-x-auto pb-1">
+        <div className="flex min-w-max gap-2">
+          {filters.map((filter) => {
+            const isActive = filter.key === activeFilter;
+
+            return (
+              <Link
+                key={filter.key}
+                href={mobileBagMovementFilterHref(filter.key)}
+                prefetch={false}
+                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "focus-aaa inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-xl border px-3 text-[13px] font-semibold outline-none transition-colors motion-reduce:transition-none",
+                  isActive
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card text-muted-foreground active:bg-secondary",
+                )}
+              >
+                {filter.label}
+                <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[11px] tabular-nums">
+                  {filter.count}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      <IOSGroupedList label="Club movement">
+        {filteredRows.length > 0 ? (
+          filteredRows.map((row) => {
+            const status = movementStatus(row);
+
+            return (
+              <IOSListRow
+                key={row.clubId}
+                label={formatClubType(row.clubType)}
+                value={formatYards(row.stockCarryYd)}
+                detail={`${row.brandModel} · ${row.sampleSize} clean shot${row.sampleSize === 1 ? "" : "s"}.`}
+                href={`/bag/${row.clubId}/analytics`}
+                status={
+                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <IOSInlineStatus
+                      label={`${row.trustIndex}% trust`}
+                      tone={row.trustIndex >= 68 ? "positive" : "attention"}
+                    />
+                    <span className="text-[12px] leading-5 text-muted-foreground">
+                      {status.label} · {mobileMovementDetail(row)}
+                    </span>
+                  </span>
+                }
+              />
+            );
+          })
+        ) : (
+          <IOSListRow
+            label="No clubs match this filter"
+            detail="Choose another club family or import more clean stock shots."
+          />
+        )}
+      </IOSGroupedList>
+    </div>
+  );
+}
+
+function MobileProgressJourney({ summary }: { summary: ProgressSummary }) {
+  const items = coachTimelineItems(summary);
+
+  return (
+    <div className="grid min-w-0 gap-4">
+      <IOSGroupedList label="Progress journey">
+        {items.map((item, index) => (
+          <IOSListRow
+            key={`${item.title}-${index}`}
+            label={item.title}
+            detail={`${item.dateLabel} · ${item.detail}`}
+            href={item.clubId ? `/bag/${item.clubId}/analytics` : undefined}
+            icon={item.icon}
+            status={
+              <IOSInlineStatus
+                label={`${item.label} · ${item.action}`}
+                tone={mobileProgressTone(item.tone)}
+              />
+            }
+          />
+        ))}
+      </IOSGroupedList>
+      <IOSGroupedList label="Progress milestones">
+        <IOSListRow
+          label="Personal bests and milestones"
+          detail="Review the achievements already earned from measured data."
+          href="/achievements"
+          icon={Trophy}
+        />
+      </IOSGroupedList>
+    </div>
+  );
+}
+
+function mobileProgressTone(
+  tone: Tone,
+): "positive" | "attention" | "critical" | "info" | "neutral" {
+  if (tone === "green") return "positive";
+  if (tone === "amber") return "attention";
+  if (tone === "pink") return "critical";
+  if (tone === "sky") return "info";
+  return "neutral";
+}
+
+function mobileProgressToneLabel(tone: Tone) {
+  if (tone === "green") return "Positive";
+  if (tone === "amber") return "Needs attention";
+  if (tone === "pink") return "Priority concern";
+  if (tone === "sky") return "Current evidence";
+  return "Building evidence";
+}
+
+function formatMobileDiagnosisChange(value: number | null, unit: string, precision = 1) {
+  if (value === null) return "--";
+  return `${value > 0 ? "+" : ""}${value.toFixed(precision)}${unit ? ` ${unit}` : ""}`;
+}
+
+function mobileDiagnosisComparison(diagnosis: MobileDistanceDiagnosis) {
+  return diagnosis.baseline && diagnosis.current
+    ? `${diagnosis.baseline.label} to ${diagnosis.current.label}`
+    : "Need comparable months";
+}
+
+function mobileBagMovementFilterHref(filter: BagMovementFilter) {
+  return `/progress?bag=${filter}#mobile-bag-movement`;
+}
+
+function mobileMovementDetail(row: ProgressClubRow) {
+  const items = movementItems(row).slice(0, 2);
+  return items.length > 0
+    ? items.map((item) => `${item.metric} ${item.value}`).join(" · ")
+    : "No meaningful movement yet";
 }
 
 function progressInsightMetrics(
@@ -1668,7 +2588,11 @@ function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: Progress
           <BarChart3 className="size-4" />
         </div>
       </div>
-      <Sparkline points={trend.points} tone={trend.tone} />
+      <Sparkline
+        points={trend.points}
+        tone={trend.tone}
+        ariaLabel={`${trend.label} trend: ${trend.value}`}
+      />
       <p className="mt-3 text-sm leading-5 text-[#475467]">{trendVerdict(trend, summary)}</p>
       {trendFootnote(trend, summary) ? (
         <p className="mt-1 text-xs leading-5 text-[#667085]">{trendFootnote(trend, summary)}</p>
@@ -1677,10 +2601,18 @@ function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: Progress
   );
 }
 
-function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
+function Sparkline({
+  points,
+  tone,
+  ariaLabel = "Trend line",
+}: {
+  points: number[];
+  tone: Tone;
+  ariaLabel?: string;
+}) {
   if (points.length < 2) {
     return (
-      <div className="mt-3 grid h-16 place-items-center rounded-lg bg-slate-50 text-xs text-muted-foreground">
+      <div className="mt-3 grid h-16 place-items-center rounded-lg bg-secondary/50 text-xs text-muted-foreground">
         More data needed
       </div>
     );
@@ -1708,7 +2640,7 @@ function Sparkline({ points, tone }: { points: number[]; tone: Tone }) {
         className="h-16 w-full overflow-visible"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Trend line"
+        aria-label={ariaLabel}
         preserveAspectRatio="none"
       >
         <line

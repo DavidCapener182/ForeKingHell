@@ -3,6 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/tournaments/page.tsx"), "utf8");
+const tournamentDataSource = readFileSync(join(process.cwd(), "src/lib/tournaments.ts"), "utf8");
+const courseAliasSource = readFileSync(
+  join(process.cwd(), "src/app/(app)/courses/[courseId]/tournaments/page.tsx"),
+  "utf8",
+);
 
 describe("tournaments desktop event board", () => {
   it("keeps the tournament hub table-first with saved views, filters and export", () => {
@@ -35,5 +40,30 @@ describe("tournaments desktop event board", () => {
     ]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+});
+
+describe("tournaments mobile event state", () => {
+  it("uses the selected tab's real event as the mobile headline and list source", () => {
+    expect(source).toContain("const mobileFeatured = tournamentBoardEvents[0] ?? null;");
+    expect(source).toContain("buildTournamentProofItems(mobileFeatured)");
+    expect(source).toContain("tournamentMobileStatus(activeTab, tournamentBoardEvents)");
+    expect(source).not.toContain("Spring Major Week");
+  });
+
+  it("keeps desktop composition behind lg and exposes real submission evidence", () => {
+    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden sm:contents"');
+    expect(source).toContain("viewerSubmissionCount");
+    expect(source).toContain("viewerVerifiedSubmissionCount");
+  });
+
+  it("applies and preserves the course filter supplied by a course tournament alias", () => {
+    expect(courseAliasSource).toContain("courseId=${encodeURIComponent(courseId)}");
+    expect(tournamentDataSource).toContain("courseId: input.tournament.courseId");
+    expect(source).toContain("tournament.courseId === courseId");
+    expect(source).toContain("tournamentHubHref");
+    expect(source).toContain('label="Applied tournament filters"');
+    expect(source).toContain('ariaLabel="Clear course tournament filter"');
   });
 });

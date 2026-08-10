@@ -206,10 +206,31 @@ function runOnceInBaseChromium(browserName: string, projectName: string) {
 }
 
 async function gotoAuthenticatedRoute(page: Page, path: string, expectedText: RegExp | string) {
-  await page.goto(path, { waitUntil: "commit" });
+  await gotoWithOneRetry(page, path);
   await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
   test.skip(/\/login(?:\?|$)/.test(page.url()), "Stored auth state redirected to login.");
   await expectPageReady(page, expectedText);
+}
+
+async function gotoWithOneRetry(page: Page, path: string) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto(path, { waitUntil: "commit" });
+      return;
+    } catch (error) {
+      const message = String(error);
+      const retryable =
+        message.includes("net::ERR_ABORTED") ||
+        message.includes("net::ERR_CONNECTION_RESET") ||
+        message.includes("frame was detached");
+
+      if (!retryable || attempt === 1) {
+        throw error;
+      }
+
+      await page.waitForTimeout(750);
+    }
+  }
 }
 
 async function expectAppleFont(locator: Locator) {
