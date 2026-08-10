@@ -108,6 +108,7 @@ export function AchievementNotificationProvider({ children, initialNotifications
     <>
       {children}
       <div
+        data-achievement-toast-viewport
         aria-live="polite"
         aria-atomic="true"
         className="pointer-events-none fixed right-4 top-24 z-50 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-3"

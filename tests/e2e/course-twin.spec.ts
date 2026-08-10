@@ -312,6 +312,167 @@ test.describe("Course Twin", () => {
     await expect(page.locator("canvas")).toBeVisible();
   });
 
+  test("keeps Course Twin full-screen with every mobile control inside the viewport", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(300_000);
+    test.skip(testInfo.project.name !== "chromium", "The viewport matrix runs once in Chromium.");
+    skipWhenNoAuth();
+
+    const courseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
+    const mobileViewports = [
+      { width: 320, height: 568 },
+      { width: 390, height: 844 },
+      { width: 430, height: 932 },
+      { width: 844, height: 390 },
+    ] as const;
+
+    await page.setViewportSize(mobileViewports[0]);
+    await page.goto(`/play/${courseId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await expectPageReady(page, /Aintree Golf Centre/i);
+
+    for (const viewport of mobileViewports) {
+      await page.setViewportSize(viewport);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          }),
+      );
+      await expect(page).toHaveURL(new RegExp(`/play/${courseId}$`));
+
+      const immersiveViewport = page.locator("[data-course-twin-viewport]");
+      const stage = page.locator("[data-course-twin-stage]");
+      const canvas = stage.locator("canvas");
+      const exit = page.getByRole("link", { name: "Exit Course Twin" });
+      const course = page.getByRole("button", { name: "Open course controls" });
+      const details = page.getByRole("button", { name: "Open shot details" });
+      const modeDock = page.locator("[data-course-twin-mode-dock]");
+      const actionTray = page.locator("[data-course-twin-action-tray]");
+
+      await expect(immersiveViewport).toBeVisible();
+      await expect(stage).toBeVisible();
+      await expect(canvas).toBeVisible({ timeout: 30_000 });
+      await expect(exit).toBeVisible();
+      await expect(course).toBeVisible();
+      await expect(details).toBeVisible();
+      await expect(modeDock).toBeVisible();
+      await expect(page.getByRole("navigation", { name: "Mobile primary" })).toHaveCount(0);
+      await expect(page.getByRole("banner", { name: "Mobile app bar" })).toHaveCount(0);
+
+      const layout = await readImmersiveCourseTwinLayout(page);
+      expect(layout.pageHeight).toBeLessThanOrEqual(viewport.height + 2);
+      expect(layout.pageWidth).toBeLessThanOrEqual(viewport.width + 2);
+      expect(layout.scrollX).toBe(0);
+      expect(layout.scrollY).toBe(0);
+      expectBoxFillsViewport(layout.viewport, viewport);
+      expectBoxFillsViewport(layout.stage, viewport);
+      expectBoxFillsViewport(layout.canvas, viewport);
+      expectBoxInsideViewport(layout.exit, viewport, 44);
+      expectBoxInsideViewport(layout.course, viewport, 44);
+      expectBoxInsideViewport(layout.details, viewport, 44);
+      expectBoxInsideViewport(layout.modeDock, viewport);
+      expect(layout.modeDockScrollWidth).toBeLessThanOrEqual(layout.modeDockClientWidth + 1);
+      expect(layout.modes.map((item) => item.label)).toEqual([
+        "Flyover",
+        "Replay",
+        "Strategy",
+        "Play",
+        "Live",
+        "Explore",
+      ]);
+      for (const modeControl of layout.modes) {
+        expectBoxInsideViewport(modeControl.box, viewport, 44);
+      }
+
+      for (const label of ["Flyover", "Replay", "Strategy", "Play", "Live", "Explore"]) {
+        const modeControl = modeDock.getByRole("button", { name: label, exact: true });
+        await expect(modeControl).toBeVisible();
+      }
+
+      const playMode = modeDock.getByRole("button", { name: "Play", exact: true });
+      await playMode.click();
+      await expect(playMode).toHaveAttribute("aria-pressed", "true");
+      await expect(actionTray).toBeVisible();
+      expectBoxInsideViewport(
+        await readElementBox(page, "[data-course-twin-action-tray]"),
+        viewport,
+      );
+
+      const compactActions = actionTray.locator("button:visible, select:visible, input:visible");
+      const compactActionBoxes = await compactActions.evaluateAll((controls) =>
+        controls.map((control) => {
+          const rectangle = control.getBoundingClientRect();
+          return {
+            x: rectangle.x,
+            y: rectangle.y,
+            width: rectangle.width,
+            height: rectangle.height,
+          };
+        }),
+      );
+      expect(compactActionBoxes.length).toBeGreaterThan(0);
+      for (const box of compactActionBoxes) {
+        expectBoxInsideViewport(box, viewport, 44);
+      }
+
+      if (viewport.width === 390) {
+        await details.click();
+        const shotControls = page.locator("[data-course-twin-shot-controls]");
+        await expect(shotControls).toBeVisible();
+        await expect(shotControls).toHaveAttribute("role", "dialog");
+        await expect(shotControls).toHaveAttribute("aria-modal", "true");
+        const closeDetails = page.getByRole("button", { name: "Close analysis controls" });
+        await expect(closeDetails).toBeFocused();
+        expectBoxInsideViewport(
+          await readElementBox(page, "[data-course-twin-shot-controls]"),
+          viewport,
+        );
+        await page.keyboard.press("Escape");
+        await expect(shotControls).toBeHidden();
+        await expect(details).toBeFocused();
+
+        await modeDock.getByRole("button", { name: "Explore", exact: true }).click();
+        const exploreMovement = page.getByRole("group", { name: "Explore movement" });
+        await expect(exploreMovement).toBeVisible();
+        await expect(exploreMovement.getByRole("button", { name: "Forward" })).toBeVisible();
+      }
+    }
+
+    await Promise.all([
+      page.waitForURL(/\/course-twins$/),
+      page.getByRole("link", { name: "Exit Course Twin" }).click({ noWaitAfter: true }),
+    ]);
+
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto(`/play/${courseId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await expectPageReady(page, /Aintree Golf Centre/i);
+    await expect(page.locator("[data-desktop-workbench-hydrated]")).toHaveAttribute(
+      "data-desktop-workbench-hydrated",
+      "true",
+    );
+    await expect(page.getByRole("link", { name: "Exit Course Twin" })).toBeHidden();
+    await expect(page.locator("[data-course-twin-mobile-chrome]")).toBeHidden();
+    await expect(page.locator("[data-course-twin-stage] canvas")).toBeVisible({ timeout: 30_000 });
+    const desktopMetrics = await page.evaluate(() => {
+      const root = document.documentElement;
+      const viewport = document.querySelector<HTMLElement>("[data-course-twin-viewport]");
+      return {
+        pageWidth: root.scrollWidth,
+        viewportWidth: window.innerWidth,
+        viewportPosition: viewport ? getComputedStyle(viewport).position : null,
+      };
+    });
+    expect(desktopMetrics.pageWidth).toBeLessThanOrEqual(desktopMetrics.viewportWidth + 2);
+    expect(desktopMetrics.viewportPosition).not.toBe("fixed");
+  });
+
   test("starts, resumes and safely abandons a persisted My Bag round", async ({ page }) => {
     test.setTimeout(120_000);
     skipWhenNoAuth();
@@ -584,4 +745,83 @@ async function readGroupSession(page: import("@playwright/test").Page) {
     );
     return state.exploration?.groupSession ?? null;
   });
+}
+
+type ElementBox = { x: number; y: number; width: number; height: number };
+type TestViewport = { width: number; height: number };
+
+async function readImmersiveCourseTwinLayout(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    window.scrollTo({ top: 500, left: 500, behavior: "instant" });
+    const root = document.documentElement;
+    const requiredElement = (selector: string) => {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (!element) throw new Error(`Missing immersive Course Twin element: ${selector}`);
+      return element;
+    };
+    const box = (element: Element) => {
+      const rectangle = element.getBoundingClientRect();
+      return {
+        x: rectangle.x,
+        y: rectangle.y,
+        width: rectangle.width,
+        height: rectangle.height,
+      };
+    };
+    const modeDock = requiredElement("[data-course-twin-mode-dock]");
+    return {
+      pageHeight: root.scrollHeight,
+      pageWidth: root.scrollWidth,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      viewport: box(requiredElement("[data-course-twin-viewport]")),
+      stage: box(requiredElement("[data-course-twin-stage]")),
+      canvas: box(requiredElement("[data-course-twin-stage] canvas")),
+      exit: box(requiredElement("[data-course-twin-exit]")),
+      course: box(
+        requiredElement(
+          '[data-course-twin-mobile-chrome] button[aria-label="Open course controls"]',
+        ),
+      ),
+      details: box(
+        requiredElement('[data-course-twin-mobile-chrome] button[aria-label="Open shot details"]'),
+      ),
+      modeDock: box(modeDock),
+      modeDockClientWidth: modeDock.clientWidth,
+      modeDockScrollWidth: modeDock.scrollWidth,
+      modes: Array.from(modeDock.querySelectorAll("button")).map((button) => ({
+        label: button.textContent?.trim() ?? "",
+        box: box(button),
+      })),
+    };
+  });
+}
+
+async function readElementBox(page: import("@playwright/test").Page, selector: string) {
+  return page.evaluate((targetSelector) => {
+    const element = document.querySelector<HTMLElement>(targetSelector);
+    if (!element) throw new Error(`Missing Course Twin element: ${targetSelector}`);
+    const rectangle = element.getBoundingClientRect();
+    return {
+      x: rectangle.x,
+      y: rectangle.y,
+      width: rectangle.width,
+      height: rectangle.height,
+    };
+  }, selector);
+}
+
+function expectBoxInsideViewport(box: ElementBox, viewport: TestViewport, minimumHeight = 0) {
+  expect(box.x).toBeGreaterThanOrEqual(-1);
+  expect(box.y).toBeGreaterThanOrEqual(-1);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+  expect(box.height).toBeGreaterThanOrEqual(minimumHeight);
+}
+
+function expectBoxFillsViewport(box: ElementBox, viewport: TestViewport) {
+  expect(Math.abs(box.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box.y)).toBeLessThanOrEqual(1);
+  expect(box.width).toBeGreaterThanOrEqual(viewport.width - 2);
+  expect(box.height).toBeGreaterThanOrEqual(viewport.height - 2);
 }

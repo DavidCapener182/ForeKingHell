@@ -163,4 +163,17 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain('[data-slot="select-content"]');
     expect(appleCssSource).toContain(":where(.data-table-scroll, .chart-frame)");
   });
+
+  it("locks immersive Course Twin to the safe mobile viewport without changing desktop", () => {
+    expect(appleCssSource).toContain('[data-mobile-immersive="course-twin"]');
+    expect(appleCssSource).toContain('[data-mobile-immersive-shell="course-twin"]');
+    expect(appleCssSource).toContain("[data-course-twin-viewport]");
+    expect(appleCssSource).toContain("[data-achievement-toast-viewport]");
+    expect(appleCssSource).toContain("height: 100dvh !important;");
+    expect(appleCssSource).toContain("overflow: hidden !important;");
+    expect(appleCssSource).toContain("overscroll-behavior: none;");
+    expect(appleCssSource).toContain("env(safe-area-inset-top)");
+    expect(appleCssSource).toContain("env(safe-area-inset-bottom)");
+    expect(sourceAfterBalancedBlock(appleCssSource, "@media (max-width: 1023px)").trim()).toBe("");
+  });
 });

@@ -1,0 +1,636 @@
+@media (max-width: 1023px) {
+  .viewport {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 45;
+    width: 100dvw !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    background: #07150e !important;
+  }
+
+  .stage {
+    position: relative;
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+
+  .canvas {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100%;
+    height: 100%;
+    min-height: 0 !important;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .canvas > div,
+  .canvas canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .exitButton {
+    position: absolute;
+    top: max(0.5rem, env(safe-area-inset-top));
+    left: max(0.5rem, env(safe-area-inset-left));
+    z-index: 90;
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 999px;
+    background: rgb(7 21 14 / 82%);
+    color: white;
+    box-shadow: 0 8px 26px rgb(0 0 0 / 24%);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    touch-action: manipulation;
+  }
+
+  .exitButton:active {
+    transform: scale(0.96);
+  }
+
+  .exitButton:focus-visible {
+    outline: 3px solid white;
+    outline-offset: 2px;
+  }
+
+  .hud {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 70 !important;
+    order: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    pointer-events: none;
+  }
+
+  .hudPanel {
+    position: absolute;
+    top: calc(max(0.5rem, env(safe-area-inset-top)) + 3.25rem);
+    right: max(0.5rem, env(safe-area-inset-right));
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    left: max(0.5rem, env(safe-area-inset-left));
+    max-height: none !important;
+    overflow: auto;
+    padding: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 1rem;
+    background: rgb(7 21 14 / 95%);
+    box-shadow: 0 22px 64px rgb(0 0 0 / 42%);
+    backdrop-filter: blur(24px) saturate(145%);
+    -webkit-backdrop-filter: blur(24px) saturate(145%);
+    pointer-events: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobileChrome {
+    --course-twin-safe-top: max(0.5rem, env(safe-area-inset-top));
+    --course-twin-safe-right: max(0.5rem, env(safe-area-inset-right));
+    --course-twin-safe-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    --course-twin-safe-left: max(0.5rem, env(safe-area-inset-left));
+    position: absolute;
+    inset: 0;
+    z-index: 45;
+    display: block;
+    pointer-events: none;
+  }
+
+  .topBar {
+    position: absolute;
+    top: var(--course-twin-safe-top);
+    right: var(--course-twin-safe-right);
+    left: calc(var(--course-twin-safe-left) + 3.25rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.75rem;
+    gap: 0.5rem;
+    height: 2.75rem;
+  }
+
+  .courseButton,
+  .detailsButton,
+  .holeButton,
+  .aimButton,
+  .modeButton,
+  .primaryAction,
+  .secondaryAction,
+  .select {
+    min-height: 2.75rem;
+    touch-action: manipulation;
+  }
+
+  .courseButton,
+  .detailsButton {
+    border: 1px solid rgb(255 255 255 / 16%);
+    background: rgb(7 21 14 / 82%);
+    color: white;
+    box-shadow: 0 8px 26px rgb(0 0 0 / 24%);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    pointer-events: auto;
+  }
+
+  .courseButton {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.7rem;
+    border-radius: 0.875rem;
+    text-align: left;
+  }
+
+  .courseMark {
+    display: grid;
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: none;
+    place-items: center;
+    border-radius: 999px;
+    background: #e7ff6a;
+    color: #102217;
+    font-size: 0.65rem;
+    font-weight: 800;
+  }
+
+  .courseCopy {
+    min-width: 0;
+  }
+
+  .courseEyebrow,
+  .courseName {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .courseEyebrow {
+    color: rgb(231 255 106 / 72%);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .courseName {
+    margin-top: 0.2rem;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 650;
+    line-height: 1;
+  }
+
+  .detailsButton {
+    display: grid;
+    width: 2.75rem;
+    place-items: center;
+    border-radius: 999px;
+  }
+
+  .courseButton:active,
+  .detailsButton:active,
+  .holeButton:active,
+  .aimButton:active,
+  .modeButton:active,
+  .primaryAction:active,
+  .secondaryAction:active {
+    transform: scale(0.97);
+  }
+
+  .courseButton:focus-visible,
+  .detailsButton:focus-visible,
+  .holeButton:focus-visible,
+  .aimButton:focus-visible,
+  .modeButton:focus-visible,
+  .primaryAction:focus-visible,
+  .secondaryAction:focus-visible,
+  .select:focus-visible,
+  .aimRange:focus-visible {
+    outline: 3px solid white;
+    outline-offset: 2px;
+  }
+
+  .actionTray,
+  .modeDock {
+    right: var(--course-twin-safe-right);
+    left: var(--course-twin-safe-left);
+    width: auto;
+    max-width: 42rem;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .actionTray {
+    position: absolute;
+    bottom: calc(var(--course-twin-safe-bottom) + 3.25rem);
+    overflow: hidden;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 1rem;
+    background: rgb(7 21 14 / 88%);
+    color: white;
+    box-shadow: 0 18px 46px rgb(0 0 0 / 34%);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    pointer-events: auto;
+  }
+
+  .holeBar {
+    display: grid;
+    min-height: 2.75rem;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    border-bottom: 1px solid rgb(255 255 255 / 10%);
+  }
+
+  .holeButton {
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: white;
+  }
+
+  .holeButton:disabled {
+    opacity: 0.28;
+  }
+
+  .holeCopy {
+    min-width: 0;
+    padding: 0 0.5rem;
+    text-align: center;
+  }
+
+  .holeTitle,
+  .holeMeta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .holeTitle {
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .holeMeta {
+    margin-top: 0.2rem;
+    color: rgb(255 255 255 / 58%);
+    font-size: 0.65rem;
+    line-height: 1;
+  }
+
+  .modeDock {
+    position: absolute;
+    bottom: var(--course-twin-safe-bottom);
+    display: grid;
+    min-height: 2.75rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.125rem;
+    padding: 0.1875rem;
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 0.875rem;
+    background: rgb(7 21 14 / 90%);
+    box-shadow: 0 12px 34px rgb(0 0 0 / 30%);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    pointer-events: auto;
+  }
+
+  .modeButton {
+    min-width: 0;
+    padding: 0 0.1rem;
+    border: 0;
+    border-radius: 0.7rem;
+    background: transparent;
+    color: rgb(255 255 255 / 64%);
+    font-size: clamp(0.58rem, 2.75vw, 0.7rem);
+    font-weight: 650;
+    line-height: 1;
+  }
+
+  .modeButtonActive {
+    background: #e7ff6a;
+    color: #102217;
+  }
+
+  .modeButton:disabled {
+    opacity: 0.3;
+  }
+
+  .playTray {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.625rem;
+  }
+
+  .playMeta {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .playMetaPrimary,
+  .playMetaSecondary {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .playMetaPrimary {
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .playMetaSecondary {
+    color: rgb(231 255 106 / 82%);
+    font-size: 0.72rem;
+    font-weight: 650;
+  }
+
+  .pairingInput {
+    padding-right: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.18em;
+    text-align: center;
+  }
+
+  .selectors {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .selectorsSingle {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compactSelect {
+    min-width: 0;
+  }
+
+  .shotActionRow {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(6.75rem, 0.8fr);
+    gap: 0.5rem;
+  }
+
+  .field {
+    display: grid;
+    min-width: 0;
+    gap: 0.2rem;
+  }
+
+  .fieldLabel {
+    color: rgb(255 255 255 / 55%);
+    font-size: 0.62rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .select {
+    width: 100%;
+    min-width: 0;
+    padding: 0 2rem 0 0.7rem;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 0.75rem;
+    background: rgb(255 255 255 / 9%);
+    color: white;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 650;
+  }
+
+  .aimControl {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .aimButton {
+    display: grid;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 0.75rem;
+    background: rgb(255 255 255 / 8%);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .aimRange {
+    width: 100%;
+    min-width: 0;
+    min-height: 2.75rem;
+    accent-color: #e7ff6a;
+  }
+
+  .primaryAction,
+  .secondaryAction {
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 750;
+    padding: 0 0.8rem;
+    white-space: nowrap;
+  }
+
+  .primaryAction {
+    border: 1px solid #e7ff6a;
+    background: #e7ff6a;
+    color: #102217;
+  }
+
+  .secondaryAction {
+    border: 1px solid rgb(255 255 255 / 15%);
+    background: rgb(255 255 255 / 8%);
+    color: white;
+  }
+
+  .primaryAction:disabled,
+  .secondaryAction:disabled {
+    opacity: 0.42;
+  }
+
+  .provenance {
+    overflow: hidden;
+    color: rgb(255 240 190 / 66%);
+    font-size: 0.65rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .summaryTray {
+    display: grid;
+    min-height: 3.75rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.625rem;
+  }
+
+  .summaryPrimary,
+  .summarySecondary,
+  .summaryEvidence {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .summaryPrimary {
+    font-size: 0.88rem;
+    font-weight: 750;
+  }
+
+  .summarySecondary {
+    margin-top: 0.15rem;
+    color: rgb(255 255 255 / 60%);
+    font-size: 0.7rem;
+  }
+
+  .summaryEvidence {
+    margin-top: 0.2rem;
+    color: rgb(255 240 190 / 60%);
+    font-size: 0.62rem;
+  }
+
+  .exploreControls {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.375rem;
+  }
+
+  .progressTrack {
+    height: 0.25rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 10%);
+  }
+
+  .progressFill {
+    height: 100%;
+    border-radius: inherit;
+    background: #e7ff6a;
+  }
+
+  @media (max-height: 620px) {
+    .playTray {
+      gap: 0.375rem;
+      padding: 0.5rem;
+    }
+
+    .provenance {
+      display: none;
+    }
+  }
+
+  @media (max-height: 500px) and (orientation: landscape) {
+    .actionTray,
+    .modeDock {
+      max-width: min(42rem, calc(100% - 1rem));
+    }
+
+    .landscapeControls {
+      grid-template-columns: minmax(14rem, 1fr) minmax(18rem, 1.4fr);
+      align-items: end;
+    }
+
+    .landscapeControls .playMeta,
+    .landscapeControls .provenance {
+      display: none;
+    }
+
+    .selectors {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .selectorsSingle {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aimControl {
+      align-self: end;
+    }
+
+    .primaryAction {
+      align-self: end;
+    }
+
+    .summaryTray {
+      min-height: 2.75rem;
+      padding-top: 0.3rem;
+      padding-bottom: 0.3rem;
+    }
+
+    .summaryEvidence {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .exitButton,
+    .courseButton,
+    .detailsButton,
+    .actionTray,
+    .modeDock,
+    .hudPanel {
+      background: #07150e;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exitButton,
+    .courseButton,
+    .detailsButton,
+    .holeButton,
+    .aimButton,
+    .modeButton,
+    .primaryAction,
+    .secondaryAction {
+      transition: none;
+    }
+
+    .exitButton:active,
+    .courseButton:active,
+    .detailsButton:active,
+    .holeButton:active,
+    .aimButton:active,
+    .modeButton:active,
+    .primaryAction:active,
+    .secondaryAction:active {
+      transform: none;
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .mobileChrome,
+  .exitButton {
+    display: none;
+  }
+}

@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import * as THREE from "three";
 import {
@@ -34,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 
+import mobileStyles from "@/app/play/[courseId]/course-twin-mobile.module.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CourseTwinComms } from "@/app/play/[courseId]/course-twin-comms";
@@ -328,6 +330,7 @@ export function CourseTwinScene({
   const [playback, setPlayback] = useState(0);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand>(null);
   const [hudPanel, setHudPanel] = useState<HudPanel>(null);
+  const [isCompactViewport, setIsCompactViewport] = useState(false);
   const [terrainSamples, setTerrainSamples] = useState<Float32Array | null>(null);
   const [terrainError, setTerrainError] = useState<string | null>(null);
   const [strategyState, setStrategyState] = useState<StrategyLoadState>({
@@ -402,6 +405,7 @@ export function CourseTwinScene({
     holeNumber,
   });
   const cameraCommandIdRef = useRef(0);
+  const hudReturnFocusRef = useRef<HTMLElement | null>(null);
   const strategyAbortRef = useRef<AbortController | null>(null);
   const bridgeClientRef = useRef<CourseTwinBridgeClient | null>(null);
   const activeRoundRef = useRef<CourseTwinRoundClientDocument | null>(null);
@@ -418,15 +422,97 @@ export function CourseTwinScene({
   });
   const terrainAsset = manifest.terrain.heightmap;
 
+  const closeHudPanel = useCallback(() => {
+    setHudPanel(null);
+    if (!isCompactViewport) return;
+    const returnFocus = hudReturnFocusRef.current;
+    window.requestAnimationFrame(() => returnFocus?.focus());
+  }, [isCompactViewport]);
+
+  const toggleHudPanel = useCallback(
+    (panel: Exclude<HudPanel, null>) => {
+      if (hudPanel === panel) {
+        closeHudPanel();
+        return;
+      }
+      if (isCompactViewport && document.activeElement instanceof HTMLElement) {
+        hudReturnFocusRef.current = document.activeElement;
+      }
+      setHudPanel(panel);
+    },
+    [closeHudPanel, hudPanel, isCompactViewport],
+  );
+
   const selectMode = (nextMode: RuntimeMode) => {
     modeRef.current = nextMode;
     setMode(nextMode);
-    setHudPanel(nextMode === "play" || nextMode === "live" ? "analysis" : null);
+    const usesDesktopPanels =
+      typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+    setHudPanel(
+      usesDesktopPanels && (nextMode === "play" || nextMode === "live") ? "analysis" : null,
+    );
   };
 
   useEffect(() => {
     modeRef.current = mode;
   }, [mode]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 1023px)");
+    const updateCompactViewport = () => setIsCompactViewport(media.matches);
+    updateCompactViewport();
+    media.addEventListener("change", updateCompactViewport);
+    return () => media.removeEventListener("change", updateCompactViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!hudPanel) return;
+    const panelSelector =
+      hudPanel === "course"
+        ? "[data-course-twin-primary-controls]"
+        : "[data-course-twin-shot-controls]";
+    const panel = document.querySelector<HTMLElement>(panelSelector);
+    const focusFrame = isCompactViewport
+      ? window.requestAnimationFrame(() => {
+          const firstControl = panel?.querySelector<HTMLElement>(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          );
+          (firstControl ?? panel)?.focus();
+        })
+      : null;
+    const handlePanelKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeHudPanel();
+        return;
+      }
+      if (!isCompactViewport || event.key !== "Tab" || !panel) return;
+      const controls = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((control) => control.offsetParent !== null);
+      if (controls.length === 0) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", handlePanelKeyDown);
+    return () => {
+      if (focusFrame !== null) window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", handlePanelKeyDown);
+    };
+  }, [closeHudPanel, hudPanel, isCompactViewport]);
 
   const selectedHole =
     manifest.holes.find((hole) => hole.holeNumber === holeNumber) ?? manifest.holes[0];
@@ -1895,15 +1981,220 @@ export function CourseTwinScene({
     setRoomInviteCode("");
   };
 
+  const playVirtualShot = () => {
+    if (!virtualStrategyClub || roundSync.status === "saving") return;
+    if (activeRound && selectedHole.holeNumber !== activeRoundPhysicalHoleNumber) {
+      restorePersistedRoundHole(activeRound);
+      return;
+    }
+    setVirtualRoundEventId(crypto.randomUUID());
+    setVirtualShot(
+      buildCourseTwinVirtualShot({
+        courseId: manifest.course.id,
+        hole: selectedHole,
+        start: virtualStart,
+        club: virtualStrategyClub,
+        aimOffsetYd: 0,
+        aimDirectionDeg: virtualAimDirectionDeg,
+        shotNumber: virtualShotNumber,
+        lieSurface: virtualLieSurface,
+        surfaceAt: classifySurface,
+        requestedShotKind: virtualShotKind,
+      }),
+    );
+    setVirtualStrokes((current) => current + 1);
+    setPlayback(0);
+    setPlaying(true);
+    setCameraCommand(null);
+  };
+
+  const continueVirtualShot = () => {
+    if (!virtualSimulation || roundSync.status !== "ready") return;
+    const next = virtualDropPoint(virtualSimulation);
+    setVirtualStart([next.x, 0, next.z]);
+    setVirtualShotNumber((current) => current + 1);
+    setVirtualShotKindChoice(null);
+    if (virtualSimulation.penalty) {
+      setVirtualStrokes((current) => current + 1);
+      setVirtualPenaltyStrokes((current) => current + 1);
+    }
+    setVirtualShot(null);
+    setVirtualRoundEventId(null);
+    setPlayback(0);
+    setPlaying(false);
+    setCameraCommand(null);
+  };
+
+  const playVirtualPutt = () => {
+    if (!virtualPuttStart || !sampleTerrain || roundSync.status === "saving") return;
+    const eventId = crypto.randomUUID();
+    const result = simulateCourseTwinPutt(
+      {
+        start: {
+          x: virtualPuttStart[0],
+          y: sampleTerrain(virtualPuttStart[0], virtualPuttStart[2]),
+          z: virtualPuttStart[2],
+        },
+        hole: {
+          x: selectedHole.green[0],
+          y: sampleTerrain(selectedHole.green[0], selectedHole.green[2]),
+          z: selectedHole.green[2],
+        },
+        aimOffsetDeg: virtualPuttAimDeg,
+        pacePercent: virtualPuttPacePercent,
+      },
+      { groundHeight: sampleTerrain, surfaceAt: classifySurface },
+    );
+    setVirtualPuttEventId(eventId);
+    setVirtualPuttResult(result);
+    setVirtualStrokes((current) => current + 1);
+    setPlayback(0);
+    setPlaying(true);
+    setCameraView("golfer");
+    setCameraCommand(null);
+  };
+
+  const continueVirtualPutt = () => {
+    if (!virtualPuttResult || roundSync.status !== "ready") return;
+    setVirtualPuttNumber((current) => current + 1);
+    setVirtualPuttResult(null);
+    setVirtualPuttEventId(null);
+    setPlayback(0);
+    setPlaying(false);
+    setCameraCommand(null);
+  };
+
+  const continueLiveShot = () => {
+    if (!liveSimulation || roundSync.status !== "ready") return;
+    const next = virtualDropPoint(liveSimulation);
+    setLiveStart([next.x, 0, next.z]);
+    setLiveShotNumber((current) => current + 1);
+    if (liveSimulation.penalty) {
+      setLiveStrokes((current) => current + 1);
+      setLivePenaltyStrokes((current) => current + 1);
+    }
+    setLiveShot(null);
+    setLiveRoundEventId(null);
+    setPlayback(0);
+    setPlaying(false);
+    setCameraCommand(null);
+  };
+
+  const mobileActionContent: ReactNode =
+    mode === "play" ? (
+      activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
+        manualPuttingVisible && !virtualShot && virtualPuttStart ? (
+          <MobilePuttingControls
+            hole={selectedHole}
+            start={virtualPuttStart}
+            puttNumber={virtualPuttNumber}
+            strokes={virtualStrokes}
+            aimOffsetDeg={virtualPuttAimDeg}
+            pacePercent={virtualPuttPacePercent}
+            result={virtualPuttResult}
+            playback={playback}
+            sync={roundSync.status}
+            verified={manifest.quality.grade === "A" && manifest.quality.verified}
+            onAimChange={setVirtualPuttAimDeg}
+            onPaceChange={setVirtualPuttPacePercent}
+            onPlay={playVirtualPutt}
+            onContinue={continueVirtualPutt}
+          />
+        ) : (
+          <MobileVirtualRoundControls
+            state={strategyState}
+            hole={selectedHole}
+            selectedClub={virtualStrategyClub}
+            availableClubs={virtualClubOptions}
+            shotKind={virtualShotKind}
+            shotKindOptions={virtualShotKindOptions}
+            onShotKindChange={(kind) => {
+              setVirtualShotKindChoice(kind);
+              setVirtualAimDirectionDeg(0);
+            }}
+            onSelectClub={setStrategyClubId}
+            aimDirectionDeg={virtualAimDirectionDeg}
+            onAimDirectionChange={setVirtualAimDirectionDeg}
+            shotNumber={virtualShotNumber}
+            strokes={virtualStrokes}
+            remainingYd={virtualRemainingYd}
+            shot={virtualShot}
+            simulation={virtualSimulation}
+            playback={playback}
+            sync={roundSync.status}
+            onPlay={playVirtualShot}
+            onContinue={continueVirtualShot}
+            onOpenDetails={() => toggleHudPanel("analysis")}
+          />
+        )
+      ) : (
+        <MobileSummaryTray
+          title={activeRound?.status === "complete" ? "Round complete" : "My Bag round"}
+          detail="Choose the round rules, then play every shot over the mapped course."
+          evidence="Shots are modelled from measured bag evidence, not guaranteed outcomes."
+          actionLabel="Set up round"
+          onAction={() => toggleHudPanel("analysis")}
+        />
+      )
+    ) : mode === "replay" ? (
+      <MobileReplayControls
+        shot={selectedShot}
+        playing={playing}
+        playback={playback}
+        onToggle={() => {
+          if (playback >= 1) setPlayback(0);
+          setPlaying((current) => !current);
+        }}
+        onOpenDetails={() => toggleHudPanel("analysis")}
+      />
+    ) : mode === "strategy" ? (
+      <MobileStrategyControls
+        state={strategyState}
+        selectedClub={strategyClub}
+        onSelectClub={setStrategyClubId}
+        onOpenDetails={() => toggleHudPanel("analysis")}
+      />
+    ) : mode === "live" ? (
+      <MobileLiveControls
+        bridge={bridgeState}
+        pairingCode={pairingCode}
+        strategy={strategyState}
+        selectedClub={strategyClub}
+        shot={liveShot}
+        simulation={liveSimulation}
+        playback={playback}
+        sync={roundSync.status}
+        roundActive={activeRound?.mode === "live" && activeRound.status === "in_progress"}
+        onPairingCodeChange={setPairingCode}
+        onDetect={detectBridge}
+        onPair={pairBridge}
+        onSelectClub={setStrategyClubId}
+        onContinue={continueLiveShot}
+        onOpenDetails={() => toggleHudPanel("analysis")}
+      />
+    ) : mode === "explore" ? (
+      <MobileExploreControls transport={exploreTransport} onTransportChange={setExploreTransport} />
+    ) : (
+      <MobileSummaryTray
+        title="Course flyover"
+        detail="Drag to orbit and pinch to inspect the mapped hole."
+        evidence="Terrain and hole geometry are mapped; screening foliage completes course context."
+      />
+    );
+
   return (
     <div
       data-mobile-preserve-dark
       data-course-twin-stage
-      className="relative grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:h-full xl:min-h-0 xl:overflow-hidden"
+      className={cn(
+        mobileStyles.stage,
+        "relative grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:h-full xl:min-h-0 xl:overflow-hidden",
+      )}
     >
       <aside
         data-course-twin-hud
         className={cn(
+          mobileStyles.hud,
           "order-2 border-t border-white/10 bg-[#0b1d13] p-4",
           hudPanel ? "block" : "hidden",
           "xl:pointer-events-none xl:absolute xl:inset-0 xl:z-20 xl:flex xl:items-start xl:justify-between xl:gap-4 xl:border-0 xl:bg-transparent xl:p-3",
@@ -1911,7 +2202,12 @@ export function CourseTwinScene({
       >
         <div
           data-course-twin-primary-controls
+          role={isCompactViewport ? "dialog" : undefined}
+          aria-modal={isCompactViewport ? "true" : undefined}
+          aria-label={isCompactViewport ? "Course controls" : undefined}
+          tabIndex={isCompactViewport ? -1 : undefined}
           className={cn(
+            mobileStyles.hudPanel,
             hudPanel === "course" ? "block" : "hidden",
             "xl:max-h-[calc(100%-5.5rem)] xl:w-[300px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
             hudPanel === "course"
@@ -1922,9 +2218,9 @@ export function CourseTwinScene({
           <div className="relative space-y-1 xl:pr-9">
             <button
               type="button"
-              className="absolute right-0 top-0 grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white"
+              className="absolute right-0 top-0 grid size-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white lg:size-8"
               aria-label="Close course controls"
-              onClick={() => setHudPanel(null)}
+              onClick={closeHudPanel}
             >
               <X className="size-4" />
             </button>
@@ -2406,7 +2702,12 @@ export function CourseTwinScene({
 
         <div
           data-course-twin-shot-controls
+          role={isCompactViewport ? "dialog" : undefined}
+          aria-modal={isCompactViewport ? "true" : undefined}
+          aria-label={isCompactViewport ? "Shot details" : undefined}
+          tabIndex={isCompactViewport ? -1 : undefined}
           className={cn(
+            mobileStyles.hudPanel,
             hudPanel === "analysis" ? "block" : "hidden",
             "xl:max-h-[calc(100%-5.5rem)] xl:w-[350px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
             hudPanel === "analysis"
@@ -2428,9 +2729,9 @@ export function CourseTwinScene({
             </p>
             <button
               type="button"
-              className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white"
+              className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white lg:size-8"
               aria-label="Close analysis controls"
-              onClick={() => setHudPanel(null)}
+              onClick={closeHudPanel}
             >
               <X className="size-4" />
             </button>
@@ -2500,43 +2801,8 @@ export function CourseTwinScene({
                     verified={manifest.quality.grade === "A" && manifest.quality.verified}
                     onAimChange={setVirtualPuttAimDeg}
                     onPaceChange={setVirtualPuttPacePercent}
-                    onPlay={() => {
-                      if (!sampleTerrain || roundSync.status === "saving") return;
-                      const eventId = crypto.randomUUID();
-                      const result = simulateCourseTwinPutt(
-                        {
-                          start: {
-                            x: virtualPuttStart[0],
-                            y: sampleTerrain(virtualPuttStart[0], virtualPuttStart[2]),
-                            z: virtualPuttStart[2],
-                          },
-                          hole: {
-                            x: selectedHole.green[0],
-                            y: sampleTerrain(selectedHole.green[0], selectedHole.green[2]),
-                            z: selectedHole.green[2],
-                          },
-                          aimOffsetDeg: virtualPuttAimDeg,
-                          pacePercent: virtualPuttPacePercent,
-                        },
-                        { groundHeight: sampleTerrain, surfaceAt: classifySurface },
-                      );
-                      setVirtualPuttEventId(eventId);
-                      setVirtualPuttResult(result);
-                      setVirtualStrokes((current) => current + 1);
-                      setPlayback(0);
-                      setPlaying(true);
-                      setCameraView("golfer");
-                      setCameraCommand(null);
-                    }}
-                    onContinue={() => {
-                      if (!virtualPuttResult || roundSync.status !== "ready") return;
-                      setVirtualPuttNumber((current) => current + 1);
-                      setVirtualPuttResult(null);
-                      setVirtualPuttEventId(null);
-                      setPlayback(0);
-                      setPlaying(false);
-                      setCameraCommand(null);
-                    }}
+                    onPlay={playVirtualPutt}
+                    onContinue={continueVirtualPutt}
                     onRetry={() => {
                       if (virtualPuttEventId) {
                         submittedRoundEventsRef.current.delete(virtualPuttEventId);
@@ -2569,48 +2835,8 @@ export function CourseTwinScene({
                     playback={playback}
                     sync={roundSync.status}
                     rules={activeRound.rulesJson}
-                    onPlay={() => {
-                      if (!virtualStrategyClub || roundSync.status === "saving") return;
-                      if (selectedHole.holeNumber !== activeRoundPhysicalHoleNumber) {
-                        restorePersistedRoundHole(activeRound);
-                        return;
-                      }
-                      setVirtualRoundEventId(crypto.randomUUID());
-                      setVirtualShot(
-                        buildCourseTwinVirtualShot({
-                          courseId: manifest.course.id,
-                          hole: selectedHole,
-                          start: virtualStart,
-                          club: virtualStrategyClub,
-                          aimOffsetYd: 0,
-                          aimDirectionDeg: virtualAimDirectionDeg,
-                          shotNumber: virtualShotNumber,
-                          lieSurface: virtualLieSurface,
-                          surfaceAt: classifySurface,
-                          requestedShotKind: virtualShotKind,
-                        }),
-                      );
-                      setVirtualStrokes((current) => current + 1);
-                      setPlayback(0);
-                      setPlaying(true);
-                      setCameraCommand(null);
-                    }}
-                    onContinue={() => {
-                      if (!virtualSimulation || roundSync.status !== "ready") return;
-                      const next = virtualDropPoint(virtualSimulation);
-                      setVirtualStart([next.x, 0, next.z]);
-                      setVirtualShotNumber((current) => current + 1);
-                      setVirtualShotKindChoice(null);
-                      if (virtualSimulation.penalty) {
-                        setVirtualStrokes((current) => current + 1);
-                        setVirtualPenaltyStrokes((current) => current + 1);
-                      }
-                      setVirtualShot(null);
-                      setVirtualRoundEventId(null);
-                      setPlayback(0);
-                      setPlaying(false);
-                      setCameraCommand(null);
-                    }}
+                    onPlay={playVirtualShot}
+                    onContinue={continueVirtualShot}
                     onMulligan={() => {
                       if (virtualRoundEventId) {
                         void takePersistedMulligan("play", virtualRoundEventId);
@@ -2667,21 +2893,7 @@ export function CourseTwinScene({
                   playback={playback}
                   sync={roundSync.status}
                   rules={activeRound.rulesJson}
-                  onContinue={() => {
-                    if (!liveSimulation || roundSync.status !== "ready") return;
-                    const next = virtualDropPoint(liveSimulation);
-                    setLiveStart([next.x, 0, next.z]);
-                    setLiveShotNumber((current) => current + 1);
-                    if (liveSimulation.penalty) {
-                      setLiveStrokes((current) => current + 1);
-                      setLivePenaltyStrokes((current) => current + 1);
-                    }
-                    setLiveShot(null);
-                    setLiveRoundEventId(null);
-                    setPlayback(0);
-                    setPlaying(false);
-                    setCameraCommand(null);
-                  }}
+                  onContinue={continueLiveShot}
                   onMulligan={() => {
                     if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
                   }}
@@ -2723,7 +2935,15 @@ export function CourseTwinScene({
         </div>
       </aside>
 
-      <section className="order-1 relative min-h-[62dvh] overflow-hidden xl:absolute xl:inset-0 xl:order-none xl:h-auto xl:min-h-0">
+      <section
+        data-course-twin-canvas
+        inert={isCompactViewport && Boolean(hudPanel) ? true : undefined}
+        aria-hidden={isCompactViewport && Boolean(hudPanel) ? true : undefined}
+        className={cn(
+          mobileStyles.canvas,
+          "order-1 relative min-h-[62dvh] overflow-hidden xl:absolute xl:inset-0 xl:order-none xl:h-auto xl:min-h-0",
+        )}
+      >
         <Canvas
           shadows="percentage"
           dpr={[1, 1.75]}
@@ -2738,7 +2958,7 @@ export function CourseTwinScene({
             toneMappingExposure: 1.14,
           }}
           fallback={
-            <div className="grid h-full min-h-[560px] place-items-center p-8 text-center">
+            <div className="grid h-full min-h-0 place-items-center p-8 text-center lg:min-h-[560px]">
               WebGL is unavailable. Use the hole table below for the accessible course view.
             </div>
           }
@@ -2857,52 +3077,73 @@ export function CourseTwinScene({
             </>
           ) : null}
         </Canvas>
-        <CinematicPerformanceHud
+        <MobileCourseTwinChrome
+          courseName={manifest.course.name}
           mode={mode}
-          replay={replay}
+          readOnly={readOnly}
+          replayAvailable={Boolean(replay?.shots.length)}
           selectedHole={selectedHole}
-          shots={holeShots}
-          selectedShot={selectedShot}
-          shotIndex={shotIndex}
-          playing={playing}
-          playback={playback}
-          simulation={
-            mode === "replay"
-              ? selectedSimulation
-              : mode === "play"
-                ? (virtualPuttReplay?.simulation ?? virtualSimulation)
+          selectedHoleIndex={selectedHoleIndex}
+          holeCount={manifest.holes.length}
+          roundLocksHole={roundLocksHole}
+          coursePanelOpen={hudPanel === "course"}
+          analysisPanelOpen={hudPanel === "analysis"}
+          onOpenCourse={() => toggleHudPanel("course")}
+          onOpenDetails={() => toggleHudPanel("analysis")}
+          onPreviousHole={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+          onNextHole={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+          onSelectMode={activateRuntimeMode}
+        >
+          {mobileActionContent}
+        </MobileCourseTwinChrome>
+        <div className="hidden lg:contents">
+          <CinematicPerformanceHud
+            mode={mode}
+            replay={replay}
+            selectedHole={selectedHole}
+            shots={holeShots}
+            selectedShot={selectedShot}
+            shotIndex={shotIndex}
+            playing={playing}
+            playback={playback}
+            simulation={
+              mode === "replay"
+                ? selectedSimulation
+                : mode === "play"
+                  ? (virtualPuttReplay?.simulation ?? virtualSimulation)
+                  : mode === "live"
+                    ? liveSimulation
+                    : null
+            }
+            strategy={strategyClub}
+            strategyStatus={strategyState.status}
+            remainingYd={
+              mode === "play"
+                ? virtualRemainingYd
                 : mode === "live"
                   ? liveSimulation
+                    ? courseTwinDistanceToPinYd(
+                        simulationDropPoint(liveSimulation),
+                        selectedHole.green,
+                      )
+                    : courseTwinDistanceToPinYd(liveStart, selectedHole.green)
                   : null
-          }
-          strategy={strategyClub}
-          strategyStatus={strategyState.status}
-          remainingYd={
-            mode === "play"
-              ? virtualRemainingYd
-              : mode === "live"
-                ? liveSimulation
-                  ? courseTwinDistanceToPinYd(
-                      simulationDropPoint(liveSimulation),
-                      selectedHole.green,
-                    )
-                  : courseTwinDistanceToPinYd(liveStart, selectedHole.green)
-                : null
-          }
-          strokes={mode === "play" ? virtualStrokes : mode === "live" ? liveStrokes : null}
-          onSelectShot={(index) => {
-            setShotIndex(index);
-            setPlayback(0);
-            setPlaying(false);
-            setCameraView("aerial");
-            setCameraCommand(null);
-          }}
-          onToggleReplay={() => {
-            if (playback >= 1) setPlayback(0);
-            setPlaying((current) => !current);
-          }}
-        />
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2 xl:hidden">
+            }
+            strokes={mode === "play" ? virtualStrokes : mode === "live" ? liveStrokes : null}
+            onSelectShot={(index) => {
+              setShotIndex(index);
+              setPlayback(0);
+              setPlaying(false);
+              setCameraView("aerial");
+              setCameraCommand(null);
+            }}
+            onToggleReplay={() => {
+              if (playback >= 1) setPlayback(0);
+              setPlaying((current) => !current);
+            }}
+          />
+        </div>
+        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 hidden items-center justify-between gap-2 lg:flex xl:hidden">
           <button
             type="button"
             className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-[#07150e]/80 px-2.5 py-2 text-left text-white shadow-xl backdrop-blur-2xl"
@@ -2938,7 +3179,7 @@ export function CourseTwinScene({
           </button>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-3 bottom-20 z-10 xl:hidden">
+        <div className="pointer-events-none absolute inset-x-3 bottom-20 z-10 hidden lg:block xl:hidden">
           <div className="mb-2 flex items-end justify-between">
             <div className="rounded-2xl border border-white/15 bg-[#07150e]/80 px-3 py-2 text-white shadow-xl backdrop-blur-2xl">
               <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#e7ff6a]/70">
@@ -3169,7 +3410,7 @@ export function CourseTwinScene({
             </CameraControlButton>
           </div>
         </div>
-        <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur xl:hidden">
+        <div className="pointer-events-none absolute bottom-4 left-4 hidden rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur lg:block xl:hidden">
           {terrainError
             ? `Terrain unavailable · ${terrainError}`
             : sampleTerrain
@@ -3203,6 +3444,818 @@ export function CourseTwinScene({
       </table>
     </div>
   );
+}
+
+function MobileCourseTwinChrome({
+  courseName,
+  mode,
+  readOnly,
+  replayAvailable,
+  selectedHole,
+  selectedHoleIndex,
+  holeCount,
+  roundLocksHole,
+  coursePanelOpen,
+  analysisPanelOpen,
+  onOpenCourse,
+  onOpenDetails,
+  onPreviousHole,
+  onNextHole,
+  onSelectMode,
+  children,
+}: {
+  courseName: string;
+  mode: RuntimeMode;
+  readOnly: boolean;
+  replayAvailable: boolean;
+  selectedHole: CourseTwinHole;
+  selectedHoleIndex: number;
+  holeCount: number;
+  roundLocksHole: boolean;
+  coursePanelOpen: boolean;
+  analysisPanelOpen: boolean;
+  onOpenCourse: () => void;
+  onOpenDetails: () => void;
+  onPreviousHole: () => void;
+  onNextHole: () => void;
+  onSelectMode: (mode: RuntimeMode) => void;
+  children: ReactNode;
+}) {
+  const modes: RuntimeMode[] = ["flyover", "replay", "strategy", "play", "live", "explore"];
+
+  return (
+    <div
+      data-course-twin-mobile-chrome
+      className={mobileStyles.mobileChrome}
+      aria-label="Course Twin mobile controls"
+      aria-hidden={coursePanelOpen || analysisPanelOpen ? true : undefined}
+      inert={coursePanelOpen || analysisPanelOpen ? true : undefined}
+    >
+      <div className={mobileStyles.topBar}>
+        <button
+          type="button"
+          className={mobileStyles.courseButton}
+          aria-label="Open course controls"
+          aria-expanded={coursePanelOpen}
+          onClick={onOpenCourse}
+        >
+          <span className={mobileStyles.courseMark} aria-hidden="true">
+            CT
+          </span>
+          <span className={mobileStyles.courseCopy}>
+            <span className={mobileStyles.courseEyebrow}>Course Twin</span>
+            <span className={mobileStyles.courseName}>{courseName}</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className={mobileStyles.detailsButton}
+          aria-label="Open shot details"
+          aria-expanded={analysisPanelOpen}
+          onClick={onOpenDetails}
+        >
+          <BarChart3 className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div data-course-twin-action-tray className={mobileStyles.actionTray}>
+        <div className={mobileStyles.holeBar}>
+          <button
+            type="button"
+            className={mobileStyles.holeButton}
+            disabled={roundLocksHole || selectedHoleIndex <= 0}
+            onClick={onPreviousHole}
+            aria-label="Previous hole"
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+          </button>
+          <div className={mobileStyles.holeCopy}>
+            <p className={mobileStyles.holeTitle}>Hole {selectedHole.holeNumber}</p>
+            <p className={mobileStyles.holeMeta}>
+              {selectedHole.yards} yd · Par {selectedHole.par}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={mobileStyles.holeButton}
+            disabled={roundLocksHole || selectedHoleIndex >= holeCount - 1}
+            onClick={onNextHole}
+            aria-label="Next hole"
+          >
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        {children}
+      </div>
+
+      <div
+        data-course-twin-mode-dock
+        className={mobileStyles.modeDock}
+        role="group"
+        aria-label="Course Twin mode"
+      >
+        {modes.map((item) => {
+          const unavailable =
+            (item === "replay" && !replayAvailable) ||
+            (readOnly && item !== "flyover" && item !== "replay");
+          return (
+            <button
+              key={item}
+              type="button"
+              className={cn(
+                mobileStyles.modeButton,
+                mode === item && mobileStyles.modeButtonActive,
+              )}
+              disabled={unavailable}
+              aria-pressed={mode === item}
+              onClick={() => onSelectMode(item)}
+            >
+              {runtimeModeLabel(item)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MobileSummaryTray({
+  title,
+  detail,
+  evidence,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  detail: string;
+  evidence: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className={mobileStyles.summaryTray}>
+      <div className="min-w-0">
+        <p className={mobileStyles.summaryPrimary}>{title}</p>
+        <p className={mobileStyles.summarySecondary}>{detail}</p>
+        <p className={mobileStyles.summaryEvidence}>{evidence}</p>
+      </div>
+      {actionLabel && onAction ? (
+        <button type="button" className={mobileStyles.secondaryAction} onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function MobileReplayControls({
+  shot,
+  playing,
+  playback,
+  onToggle,
+  onOpenDetails,
+}: {
+  shot: CourseTwinReplayShot | null;
+  playing: boolean;
+  playback: number;
+  onToggle: () => void;
+  onOpenDetails: () => void;
+}) {
+  if (!shot) {
+    return (
+      <MobileSummaryTray
+        title="No replay on this hole"
+        detail="Choose another hole or inspect the session details."
+        evidence="Replay is only shown when measured launch evidence is available."
+        actionLabel="Details"
+        onAction={onOpenDetails}
+      />
+    );
+  }
+
+  return (
+    <div className={mobileStyles.playTray}>
+      <div className={mobileStyles.playMeta}>
+        <p className={mobileStyles.playMetaPrimary}>
+          {shot.clubType} · {formatYards(shot.metrics.carryYd.value)} carry
+        </p>
+        <p className={mobileStyles.playMetaSecondary}>Measured launch</p>
+      </div>
+      <div className={mobileStyles.progressTrack} aria-hidden="true">
+        <div className={mobileStyles.progressFill} style={{ width: `${playback * 100}%` }} />
+      </div>
+      <button type="button" className={mobileStyles.primaryAction} onClick={onToggle}>
+        {playing ? "Pause replay" : playback >= 1 ? "Replay shot" : "Play replay"}
+      </button>
+      <p className={mobileStyles.provenance}>
+        Measured launch · derived placement · reconstructed flight and roll
+      </p>
+    </div>
+  );
+}
+
+function MobileStrategyControls({
+  state,
+  selectedClub,
+  onSelectClub,
+  onOpenDetails,
+}: {
+  state: StrategyLoadState;
+  selectedClub: CourseTwinStrategyClub | null;
+  onSelectClub: (clubId: string) => void;
+  onOpenDetails: () => void;
+}) {
+  if (state.status !== "ready" || !state.document || !selectedClub) {
+    return (
+      <MobileSummaryTray
+        title={state.status === "error" ? "Strategy unavailable" : "Building strategy"}
+        detail={state.error ?? "Reading measured bag distributions for this hole."}
+        evidence="Recommendations are modelled estimates, not measured outcomes."
+        actionLabel="Details"
+        onAction={onOpenDetails}
+      />
+    );
+  }
+
+  return (
+    <div className={mobileStyles.playTray}>
+      <div className={mobileStyles.playMeta}>
+        <p className={mobileStyles.playMetaPrimary}>Modelled hole plan</p>
+        <p className={mobileStyles.playMetaSecondary}>
+          {selectedClub.carryMedianYd.toFixed(0)} yd carry
+        </p>
+      </div>
+      <label className={mobileStyles.field}>
+        <span className={mobileStyles.fieldLabel}>Club plan</span>
+        <select
+          className={mobileStyles.select}
+          value={selectedClub.clubId}
+          onChange={(event) => onSelectClub(event.target.value)}
+        >
+          {state.document.clubs.map((club) => (
+            <option key={club.clubId} value={club.clubId}>
+              {club.clubType} · {club.carryMedianYd.toFixed(0)} yd
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className={mobileStyles.provenance}>
+        Modelled from measured shots · landing probabilities are not guarantees
+      </p>
+    </div>
+  );
+}
+
+function MobileVirtualRoundControls({
+  state,
+  hole,
+  selectedClub,
+  availableClubs,
+  shotKind,
+  shotKindOptions,
+  onShotKindChange,
+  onSelectClub,
+  aimDirectionDeg,
+  onAimDirectionChange,
+  shotNumber,
+  strokes,
+  remainingYd,
+  shot,
+  simulation,
+  playback,
+  sync,
+  onPlay,
+  onContinue,
+  onOpenDetails,
+}: {
+  state: StrategyLoadState;
+  hole: CourseTwinHole;
+  selectedClub: CourseTwinStrategyClub | null;
+  availableClubs: CourseTwinStrategyClub[];
+  shotKind: CourseTwinVirtualShotKind;
+  shotKindOptions: CourseTwinVirtualShotKind[];
+  onShotKindChange: (kind: CourseTwinVirtualShotKind) => void;
+  onSelectClub: (clubId: string) => void;
+  aimDirectionDeg: number;
+  onAimDirectionChange: (value: number) => void;
+  shotNumber: number;
+  strokes: number;
+  remainingYd: number;
+  shot: CourseTwinVirtualShot | null;
+  simulation: CourseTwinReplaySimulation | null;
+  playback: number;
+  sync: RoundSyncState["status"];
+  onPlay: () => void;
+  onContinue: () => void;
+  onOpenDetails: () => void;
+}) {
+  if (state.status !== "ready" || !state.document || !selectedClub) {
+    return (
+      <MobileSummaryTray
+        title={state.status === "error" ? "My Bag unavailable" : "Loading My Bag"}
+        detail={state.error ?? "Preparing measured club distributions."}
+        evidence="Virtual shots are modelled from measured bag evidence."
+        actionLabel="Details"
+        onAction={onOpenDetails}
+      />
+    );
+  }
+
+  if (shot && simulation) {
+    const resultRemainingYd =
+      Math.hypot(
+        hole.green[0] - simulation.finalPosition.x,
+        hole.green[2] - simulation.finalPosition.z,
+      ) / 0.9144;
+    return (
+      <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
+        <div className={mobileStyles.playMeta}>
+          <p className={mobileStyles.playMetaPrimary}>
+            {shot.shot.clubType} · {shot.sampled.carryYd.toFixed(0)} yd
+          </p>
+          <p className={mobileStyles.playMetaSecondary}>
+            {playback < 1 ? "Shot in flight" : `${resultRemainingYd.toFixed(0)} yd left`}
+          </p>
+        </div>
+        <div className={mobileStyles.progressTrack} aria-hidden="true">
+          <div className={mobileStyles.progressFill} style={{ width: `${playback * 100}%` }} />
+        </div>
+        <button
+          type="button"
+          className={mobileStyles.primaryAction}
+          disabled={playback < 1 || sync !== "ready"}
+          onClick={onContinue}
+        >
+          {sync === "saving"
+            ? "Saving shot…"
+            : simulation.penalty
+              ? "Take penalty drop"
+              : "Play next shot"}
+        </button>
+        <p className={mobileStyles.provenance}>
+          Modelled from recent measured shots · not a guaranteed result
+        </p>
+      </div>
+    );
+  }
+
+  const aimLimit = courseTwinAimLimitDeg(shotKind);
+  const effectiveAim = THREE.MathUtils.clamp(aimDirectionDeg, -aimLimit, aimLimit);
+  return (
+    <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
+      <div className={mobileStyles.playMeta}>
+        <p className={mobileStyles.playMetaPrimary}>
+          Shot {shotNumber} · {strokes} {strokes === 1 ? "stroke" : "strokes"}
+        </p>
+        <p className={mobileStyles.playMetaSecondary}>{remainingYd.toFixed(0)} yd to pin</p>
+      </div>
+      <div
+        className={cn(
+          mobileStyles.selectors,
+          shotKindOptions.length <= 1 && mobileStyles.selectorsSingle,
+        )}
+      >
+        <label className={mobileStyles.compactSelect}>
+          <span className="sr-only">Club</span>
+          <select
+            className={mobileStyles.select}
+            aria-label="Club"
+            value={selectedClub.clubId}
+            onChange={(event) => onSelectClub(event.target.value)}
+          >
+            {availableClubs.map((club) => (
+              <option key={club.clubId} value={club.clubId}>
+                {club.clubType} · {club.carryMedianYd.toFixed(0)} yd
+              </option>
+            ))}
+          </select>
+        </label>
+        {shotKindOptions.length > 1 ? (
+          <label className={mobileStyles.compactSelect}>
+            <span className="sr-only">Shot type</span>
+            <select
+              className={mobileStyles.select}
+              aria-label="Shot type"
+              value={shotKind}
+              onChange={(event) =>
+                onShotKindChange(event.target.value as CourseTwinVirtualShotKind)
+              }
+            >
+              {shotKindOptions.map((kind) => (
+                <option key={kind} value={kind}>
+                  {formatVirtualShotKind(kind)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+      <div className={mobileStyles.shotActionRow}>
+        <div className={mobileStyles.aimControl}>
+          <button
+            type="button"
+            className={mobileStyles.aimButton}
+            aria-label="Aim five degrees left"
+            onClick={() => onAimDirectionChange(Math.max(-aimLimit, effectiveAim - 5))}
+          >
+            −5°
+          </button>
+          <input
+            className={mobileStyles.aimRange}
+            type="range"
+            min={-aimLimit}
+            max={aimLimit}
+            step={0.5}
+            value={effectiveAim}
+            aria-label="Shot start direction"
+            onChange={(event) => onAimDirectionChange(Number(event.target.value))}
+          />
+          <button
+            type="button"
+            className={mobileStyles.aimButton}
+            aria-label="Aim five degrees right"
+            onClick={() => onAimDirectionChange(Math.min(aimLimit, effectiveAim + 5))}
+          >
+            +5°
+          </button>
+        </div>
+        <button
+          type="button"
+          className={mobileStyles.primaryAction}
+          disabled={sync === "saving"}
+          onClick={onPlay}
+          aria-label={`Play ${selectedClub.clubType}`}
+        >
+          Play {selectedClub.clubType}
+        </button>
+      </div>
+      <p className={mobileStyles.provenance}>
+        Modelled from recent measured shots · not a guaranteed result
+      </p>
+    </div>
+  );
+}
+
+function MobilePuttingControls({
+  hole,
+  start,
+  puttNumber,
+  strokes,
+  aimOffsetDeg,
+  pacePercent,
+  result,
+  playback,
+  sync,
+  verified,
+  onAimChange,
+  onPaceChange,
+  onPlay,
+  onContinue,
+}: {
+  hole: CourseTwinHole;
+  start: CourseTwinPoint;
+  puttNumber: number;
+  strokes: number;
+  aimOffsetDeg: number;
+  pacePercent: number;
+  result: CourseTwinPuttResult | null;
+  playback: number;
+  sync: RoundSyncState["status"];
+  verified: boolean;
+  onAimChange: (value: number) => void;
+  onPaceChange: (value: number) => void;
+  onPlay: () => void;
+  onContinue: () => void;
+}) {
+  const distanceFt = Math.hypot(hole.green[0] - start[0], hole.green[2] - start[2]) * 3.280_84;
+  if (result) {
+    return (
+      <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
+        <div className={mobileStyles.playMeta}>
+          <p className={mobileStyles.playMetaPrimary}>
+            {result.holed ? "Modelled putt holed" : "Modelled putt read"}
+          </p>
+          <p className={mobileStyles.playMetaSecondary}>
+            {result.holed
+              ? `${strokes} strokes`
+              : `${(result.remainingDistanceM * 3.280_84).toFixed(1)} ft left`}
+          </p>
+        </div>
+        <div className={mobileStyles.progressTrack} aria-hidden="true">
+          <div className={mobileStyles.progressFill} style={{ width: `${playback * 100}%` }} />
+        </div>
+        {!result.holed ? (
+          <button
+            type="button"
+            className={mobileStyles.primaryAction}
+            disabled={playback < 1 || sync !== "ready"}
+            onClick={onContinue}
+          >
+            Read next putt
+          </button>
+        ) : null}
+        <p className={mobileStyles.provenance}>
+          {verified
+            ? "Modelled break uses the reviewed survey · outcome is not measured"
+            : "Modelled from mapped terrain · approximate, not measured"}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
+      <div className={mobileStyles.playMeta}>
+        <p className={mobileStyles.playMetaPrimary}>Putt {puttNumber}</p>
+        <p className={mobileStyles.playMetaSecondary}>
+          {distanceFt < 10 ? distanceFt.toFixed(1) : distanceFt.toFixed(0)} ft to cup
+        </p>
+      </div>
+      <div className={mobileStyles.shotActionRow}>
+        <div className={mobileStyles.selectors}>
+          <label className={mobileStyles.compactSelect}>
+            <span className="sr-only">Putt aim</span>
+            <select
+              className={mobileStyles.select}
+              aria-label="Putt aim"
+              value={aimOffsetDeg}
+              onChange={(event) => onAimChange(Number(event.target.value))}
+            >
+              <option value={-6}>6° left</option>
+              <option value={-3}>3° left</option>
+              <option value={0}>At cup</option>
+              <option value={3}>3° right</option>
+              <option value={6}>6° right</option>
+            </select>
+          </label>
+          <label className={mobileStyles.compactSelect}>
+            <span className="sr-only">Putt pace</span>
+            <select
+              className={mobileStyles.select}
+              aria-label="Putt pace"
+              value={pacePercent}
+              onChange={(event) => onPaceChange(Number(event.target.value))}
+            >
+              <option value={88}>Die pace</option>
+              <option value={100}>Cup pace</option>
+              <option value={112}>Firm pace</option>
+            </select>
+          </label>
+        </div>
+        <button
+          type="button"
+          className={mobileStyles.primaryAction}
+          disabled={sync === "saving"}
+          onClick={onPlay}
+        >
+          Play putt
+        </button>
+      </div>
+      <p className={mobileStyles.provenance}>
+        {verified
+          ? "Modelled break uses the reviewed survey · outcome is not measured"
+          : "Modelled from mapped terrain · approximate, not measured"}
+      </p>
+    </div>
+  );
+}
+
+function MobileLiveControls({
+  bridge,
+  pairingCode,
+  strategy,
+  selectedClub,
+  shot,
+  simulation,
+  playback,
+  sync,
+  roundActive,
+  onPairingCodeChange,
+  onDetect,
+  onPair,
+  onSelectClub,
+  onContinue,
+  onOpenDetails,
+}: {
+  bridge: BridgeLoadState;
+  pairingCode: string;
+  strategy: StrategyLoadState;
+  selectedClub: CourseTwinStrategyClub | null;
+  shot: CourseTwinReplayShot | null;
+  simulation: CourseTwinReplaySimulation | null;
+  playback: number;
+  sync: RoundSyncState["status"];
+  roundActive: boolean;
+  onPairingCodeChange: (code: string) => void;
+  onDetect: () => void;
+  onPair: () => void;
+  onSelectClub: (clubId: string) => void;
+  onContinue: () => void;
+  onOpenDetails: () => void;
+}) {
+  const connected = bridge.status === "connected";
+
+  if (shot && simulation) {
+    return (
+      <div className={cn(mobileStyles.playTray, mobileStyles.landscapeControls)}>
+        <div className={mobileStyles.playMeta}>
+          <p className={mobileStyles.playMetaPrimary}>
+            {shot.clubType} · {formatYards(shot.metrics.carryYd.value)} carry
+          </p>
+          <p className={mobileStyles.playMetaSecondary}>
+            {playback < 1 ? "Measured shot in flight" : formatSurface(simulation.finalSurface)}
+          </p>
+        </div>
+        <div className={mobileStyles.progressTrack} aria-hidden="true">
+          <div className={mobileStyles.progressFill} style={{ width: `${playback * 100}%` }} />
+        </div>
+        <button
+          type="button"
+          className={mobileStyles.primaryAction}
+          disabled={playback < 1 || sync !== "ready"}
+          onClick={onContinue}
+        >
+          {sync === "saving"
+            ? "Saving shot…"
+            : simulation.penalty
+              ? "Take penalty drop"
+              : "Ready for next shot"}
+        </button>
+        <p className={mobileStyles.provenance}>
+          Measured launch · reconstructed flight and mapped placement
+        </p>
+      </div>
+    );
+  }
+
+  if (!connected) {
+    const pairing = bridge.status === "available" || bridge.status === "pairing";
+    return (
+      <div className={mobileStyles.playTray}>
+        <div className={mobileStyles.playMeta}>
+          <p className={mobileStyles.playMetaPrimary}>Local live bridge</p>
+          <p className={mobileStyles.playMetaSecondary}>
+            {bridge.status === "detecting"
+              ? "Finding bridge…"
+              : pairing
+                ? "Enter pairing code"
+                : "Not connected"}
+          </p>
+        </div>
+        {pairing ? (
+          <div className={mobileStyles.shotActionRow}>
+            <input
+              className={cn(mobileStyles.select, mobileStyles.pairingInput)}
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={pairingCode}
+              onChange={(event) =>
+                onPairingCodeChange(event.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              aria-label="Six-digit pairing code"
+              placeholder="000000"
+            />
+            <button
+              type="button"
+              className={mobileStyles.primaryAction}
+              disabled={bridge.status === "pairing" || pairingCode.length !== 6}
+              onClick={onPair}
+            >
+              {bridge.status === "pairing" ? "Pairing…" : "Pair"}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className={mobileStyles.primaryAction}
+            disabled={bridge.status === "detecting"}
+            onClick={onDetect}
+          >
+            {bridge.status === "detecting" ? "Finding bridge…" : "Find local bridge"}
+          </button>
+        )}
+        <p className={mobileStyles.provenance}>
+          {bridge.error ?? "Pairing stays on this device; no monitor data leaves the computer"}
+        </p>
+      </div>
+    );
+  }
+
+  if (!roundActive) {
+    return (
+      <MobileSummaryTray
+        title="Live bridge connected"
+        detail="Choose round rules before accepting a measured shot."
+        evidence="Launch is measured; flight and course placement are reconstructed."
+        actionLabel="Set up round"
+        onAction={onOpenDetails}
+      />
+    );
+  }
+
+  return (
+    <div className={mobileStyles.playTray}>
+      <div className={mobileStyles.playMeta}>
+        <p className={mobileStyles.playMetaPrimary}>
+          {bridge.launchMonitorConnected ? "Ready for measured shot" : "Bridge paired"}
+        </p>
+        <p className={mobileStyles.playMetaSecondary}>
+          {bridge.launchMonitorConnected ? "Monitor ready" : "Waiting for monitor"}
+        </p>
+      </div>
+      {strategy.status === "ready" && strategy.document && selectedClub ? (
+        <label className={mobileStyles.compactSelect}>
+          <span className="sr-only">Live club</span>
+          <select
+            className={mobileStyles.select}
+            aria-label="Live club"
+            value={selectedClub.clubId}
+            onChange={(event) => onSelectClub(event.target.value)}
+          >
+            {strategy.document.clubs.map((club) => (
+              <option key={club.clubId} value={club.clubId}>
+                {club.clubType}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <button type="button" className={mobileStyles.secondaryAction} onClick={onOpenDetails}>
+          Open live details
+        </button>
+      )}
+      <p className={mobileStyles.provenance}>
+        Next launch is measured · flight and course placement are reconstructed
+      </p>
+    </div>
+  );
+}
+
+function MobileExploreControls({
+  transport,
+  onTransportChange,
+}: {
+  transport: ExploreTransport;
+  onTransportChange: (value: ExploreTransport) => void;
+}) {
+  return (
+    <div className={mobileStyles.playTray}>
+      <div className={mobileStyles.playMeta}>
+        <p className={mobileStyles.playMetaPrimary}>Explore the mapped course</p>
+        <p className={mobileStyles.playMetaSecondary}>
+          {transport === "walk" ? "Walking" : "Cart"}
+        </p>
+      </div>
+      <div className={mobileStyles.selectors} role="group" aria-label="Explore transport">
+        {(["walk", "cart"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={cn(
+              mobileStyles.secondaryAction,
+              transport === item && mobileStyles.primaryAction,
+            )}
+            aria-pressed={transport === item}
+            onClick={() => onTransportChange(item)}
+          >
+            {item === "walk" ? "Walk" : "Cart"}
+          </button>
+        ))}
+      </div>
+      <div className={mobileStyles.exploreControls} role="group" aria-label="Explore movement">
+        {[
+          ["Left", { turn: 1 }],
+          ["Forward", { forward: 1 }],
+          ["Back", { forward: -1 }],
+          ["Right", { turn: -1 }],
+        ].map(([label, movement]) => (
+          <button
+            key={String(label)}
+            type="button"
+            className={mobileStyles.secondaryAction}
+            onClick={() => {
+              window.dispatchEvent(
+                new CustomEvent("course-twin-roam-step", {
+                  detail: movement,
+                }),
+              );
+            }}
+          >
+            {String(label)}
+          </button>
+        ))}
+      </div>
+      <p className={mobileStyles.provenance}>
+        Tap to move and turn · movement follows the mapped terrain
+      </p>
+    </div>
+  );
+}
+
+function runtimeModeLabel(mode: RuntimeMode) {
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
 function CinematicPerformanceHud({
@@ -5545,17 +6598,22 @@ function RoamController({
   }, [camera, onPosition, sampleTerrain, transport]);
 
   const advanceMovement = useCallback(
-    (rawDelta: number) => {
-      const delta = Math.min(0.05, rawDelta);
+    (rawDelta: number, directInput?: { forward?: number; lateral?: number; turn?: number }) => {
+      const delta = Math.min(directInput ? 0.16 : 0.05, rawDelta);
       const pressed = keys.current;
       const forwardInput =
         (pressed.has("KeyW") || pressed.has("ArrowUp") ? 1 : 0) -
-        (pressed.has("KeyS") || pressed.has("ArrowDown") ? 1 : 0);
+        (pressed.has("KeyS") || pressed.has("ArrowDown") ? 1 : 0) +
+        (directInput?.forward ?? 0);
       const lateralInput =
         (pressed.has("KeyD") || pressed.has("ArrowRight") ? 1 : 0) -
-        (pressed.has("KeyA") || pressed.has("ArrowLeft") ? 1 : 0);
+        (pressed.has("KeyA") || pressed.has("ArrowLeft") ? 1 : 0) +
+        (directInput?.lateral ?? 0);
+      const directTurnInput = directInput?.turn ?? 0;
       const isCart = transport === "cart";
-      if (isCart && lateralInput !== 0) {
+      if (directTurnInput !== 0) {
+        yaw.current += directTurnInput * delta * 1.65;
+      } else if (isCart && lateralInput !== 0) {
         const direction = forwardInput === 0 ? 1 : Math.sign(forwardInput);
         yaw.current -= lateralInput * direction * delta * 1.35;
       } else {
@@ -5602,8 +6660,27 @@ function RoamController({
       const milliseconds = (event as CustomEvent<number>).detail;
       if (Number.isFinite(milliseconds)) advanceMovement(milliseconds / 1000);
     };
+    const onRoamStep = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          forward?: number;
+          lateral?: number;
+          turn?: number;
+        }>
+      ).detail;
+      if (!detail || typeof detail !== "object") return;
+      advanceMovement(0.16, {
+        forward: THREE.MathUtils.clamp(Number(detail.forward) || 0, -1, 1),
+        lateral: THREE.MathUtils.clamp(Number(detail.lateral) || 0, -1, 1),
+        turn: THREE.MathUtils.clamp(Number(detail.turn) || 0, -1, 1),
+      });
+    };
     window.addEventListener("course-twin-advance-time", onAdvanceTime);
-    return () => window.removeEventListener("course-twin-advance-time", onAdvanceTime);
+    window.addEventListener("course-twin-roam-step", onRoamStep);
+    return () => {
+      window.removeEventListener("course-twin-advance-time", onAdvanceTime);
+      window.removeEventListener("course-twin-roam-step", onRoamStep);
+    };
   }, [advanceMovement]);
 
   useFrame((_, rawDelta) => advanceMovement(rawDelta));

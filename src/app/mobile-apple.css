@@ -187,6 +187,43 @@
     background: var(--ios-background);
   }
 
+  html[data-mobile-immersive="course-twin"],
+  body[data-mobile-immersive="course-twin"] {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body[data-mobile-immersive="course-twin"] {
+    position: fixed;
+    inset: 0;
+    background: #07150e !important;
+  }
+
+  body[data-mobile-immersive="course-twin"] [data-achievement-toast-viewport] {
+    display: none;
+  }
+
+  [data-mobile-platform="apple"][data-mobile-immersive-shell="course-twin"] {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    background: #07150e !important;
+  }
+
+  [data-mobile-platform="apple"] main#main-content[data-course-twin-viewport] {
+    width: 100%;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+    background: #07150e !important;
+  }
+
   @media (min-width: 640px) {
     [data-mobile-platform="apple"] main#main-content {
       padding-left: max(1.5rem, env(safe-area-inset-left));

@@ -19,6 +19,10 @@ const vegetationLedgerSource = readFileSync(
   "utf8",
 );
 const dataSource = readFileSync(resolve(process.cwd(), "src/lib/course-twin-data.ts"), "utf8");
+const mobileStylesSource = readFileSync(
+  resolve(process.cwd(), "src/app/play/[courseId]/course-twin-mobile.module.css"),
+  "utf8",
+);
 
 describe("Course Twin route boundaries", () => {
   it("authenticates and loads evidence on the server before crossing the client boundary", () => {
@@ -273,5 +277,81 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("const modeAtLoad = modeRef.current");
     expect(sceneSource).toContain("if (modeRef.current === modeAtLoad)");
     expect(sceneSource).toContain('selectMode("explore")');
+  });
+
+  it("uses the full R3F Course Twin as an immersive mobile viewport", () => {
+    expect(pageSource).toContain("course-twin-mobile.module.css");
+    expect(pageSource).toContain("data-course-twin-viewport");
+    expect(pageSource).toContain("mobileStyles.viewport");
+    expect(pageSource).toContain('aria-label="Exit Course Twin"');
+    expect(pageSource).toContain('href="/course-twins"');
+    expect(pageSource).toContain("mobileStyles.exitButton");
+
+    expect(sceneSource).toContain("<Canvas");
+    expect(sceneSource).toContain("mobileStyles.stage");
+    expect(sceneSource).toContain("mobileStyles.canvas");
+    expect(sceneSource).toContain("mobileStyles.hud");
+    expect(sceneSource).toContain("mobileStyles.hudPanel");
+
+    expect(mobileStylesSource).toContain("position: fixed !important;");
+    expect(mobileStylesSource).toContain("height: 100dvh !important;");
+    expect(mobileStylesSource).toContain("env(safe-area-inset-top)");
+    expect(mobileStylesSource).toContain("env(safe-area-inset-right)");
+    expect(mobileStylesSource).toContain("env(safe-area-inset-bottom)");
+    expect(mobileStylesSource).toContain("env(safe-area-inset-left)");
+    expect(mobileStylesSource).toContain(".canvas canvas");
+  });
+
+  it("keeps every mobile mode and shot action over the scene without a scrolling dock", () => {
+    expect(sceneSource).toContain("data-course-twin-mobile-chrome");
+    expect(sceneSource).toContain("data-course-twin-mode-dock");
+    expect(sceneSource).toContain("data-course-twin-action-tray");
+    expect(sceneSource).toContain("mobileStyles.mobileChrome");
+    expect(sceneSource).toContain("mobileStyles.modeDock");
+    expect(sceneSource).toContain("mobileStyles.actionTray");
+    expect(mobileStylesSource).toContain("grid-template-columns: repeat(6, minmax(0, 1fr));");
+    const mobileModeDockSource = mobileStylesSource.slice(
+      mobileStylesSource.indexOf(".modeDock {"),
+      mobileStylesSource.indexOf(".modeButton {"),
+    );
+    expect(mobileModeDockSource).not.toContain("overflow-x");
+    expect(mobileStylesSource).toContain("min-height: 2.75rem;");
+    expect(mobileStylesSource).toContain("touch-action: manipulation;");
+    expect(mobileStylesSource).toContain("@media (max-height: 500px) and (orientation: landscape)");
+  });
+
+  it("keeps mobile Live, Explore and modelled putting controls honest and touch-operable", () => {
+    expect(sceneSource).toContain("<MobileLiveControls");
+    expect(sceneSource).toContain('aria-label="Six-digit pairing code"');
+    expect(sceneSource).toContain('aria-label="Live club"');
+    expect(sceneSource).toContain("Measured launch · reconstructed flight and mapped placement");
+    expect(sceneSource).toContain('new CustomEvent("course-twin-roam-step"');
+    expect(sceneSource).toContain('window.addEventListener("course-twin-roam-step"');
+    expect(sceneSource).toContain('aria-label="Explore movement"');
+    expect(sceneSource).toContain("Modelled putt holed");
+    expect(sceneSource).toContain("outcome is not measured");
+    expect(mobileStylesSource).toContain(".exploreControls {");
+  });
+
+  it("treats full-screen mobile panels as focus-managed modal dialogs", () => {
+    expect(sceneSource).toContain('role={isCompactViewport ? "dialog" : undefined}');
+    expect(sceneSource).toContain('aria-modal={isCompactViewport ? "true" : undefined}');
+    expect(sceneSource).toContain("hudReturnFocusRef");
+    expect(sceneSource).toContain("toggleHudPanel");
+    expect(sceneSource).toContain("closeHudPanel");
+    expect(sceneSource).toContain('event.key !== "Tab"');
+    expect(sceneSource).toContain(
+      "inert={isCompactViewport && Boolean(hudPanel) ? true : undefined}",
+    );
+  });
+
+  it("preserves the desktop Course Twin from the 1024px boundary", () => {
+    expect(pageSource).toContain("xl:h-[calc(100dvh-3.5rem)]");
+    expect(sceneSource).toContain("xl:h-full xl:min-h-0 xl:overflow-hidden");
+    expect(mobileStylesSource).toContain("@media (max-width: 1023px)");
+    expect(mobileStylesSource).toContain("@media (min-width: 1024px)");
+    expect(mobileStylesSource).toContain(".mobileChrome,");
+    expect(mobileStylesSource).toContain(".exitButton {");
+    expect(mobileStylesSource).toContain("display: none;");
   });
 });

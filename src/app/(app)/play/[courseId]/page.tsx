@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import mobileStyles from "@/app/play/[courseId]/course-twin-mobile.module.css";
 import { CourseTwinRuntime } from "@/app/play/[courseId]/course-twin-runtime";
 import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -33,9 +34,20 @@ export default async function CourseTwinPage({
   return (
     <main
       id="main-content"
-      className="relative min-h-[calc(100dvh-3.5rem)] w-full overflow-x-hidden bg-[#07150e] xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:overflow-hidden"
+      data-course-twin-viewport
+      className={`${mobileStyles.viewport} relative min-h-[calc(100dvh-3.5rem)] w-full overflow-x-hidden bg-[#07150e] xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:overflow-hidden`}
     >
-      <div className="absolute left-4 top-4 z-30 hidden sm:block xl:bottom-3 xl:left-[200px] xl:top-auto 2xl:left-[216px]">
+      <Link
+        href="/course-twins"
+        prefetch={false}
+        data-course-twin-exit
+        className={mobileStyles.exitButton}
+        aria-label="Exit Course Twin"
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+        <span className="sr-only">Exit Course Twin</span>
+      </Link>
+      <div className="absolute left-4 top-4 z-30 hidden lg:block xl:bottom-3 xl:left-[200px] xl:top-auto 2xl:left-[216px]">
         <Button asChild variant="secondary" className="shadow-lg">
           <Link href={`/courses/${courseId}/holes`} prefetch={false}>
             <ArrowLeft className="size-4" />

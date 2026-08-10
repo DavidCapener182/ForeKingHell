@@ -25,6 +25,7 @@ import {
 } from "@/components/app/global-command-centre";
 import type { MobileNavProfile } from "@/components/app/mobile-nav";
 import { buildDesktopNavGroups } from "@/components/app/nav-items";
+import { isMobileImmersiveRoute } from "@/components/app/route-metadata";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,7 @@ const MobileNav = dynamic(() =>
 
 export function AppShell({ children, totalXp, isAdmin = false, profile = null }: AppShellProps) {
   const pathname = usePathname();
+  const isMobileImmersive = isMobileImmersiveRoute(pathname);
   const level = calculateUserLevel(totalXp);
   const xpToNextLevel = Math.max(0, level.nextLevelXp - totalXp);
   const desktopNavGroups = useMemo(() => buildDesktopNavGroups(isAdmin), [isAdmin]);
@@ -112,6 +114,22 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
       delete document.body.dataset.mobilePlatform;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobileImmersive) {
+      delete document.documentElement.dataset.mobileImmersive;
+      delete document.body.dataset.mobileImmersive;
+      return;
+    }
+
+    document.documentElement.dataset.mobileImmersive = "course-twin";
+    document.body.dataset.mobileImmersive = "course-twin";
+
+    return () => {
+      delete document.documentElement.dataset.mobileImmersive;
+      delete document.body.dataset.mobileImmersive;
+    };
+  }, [isMobileImmersive]);
 
   useEffect(() => {
     function handleTableKeyDown(event: KeyboardEvent) {
@@ -333,15 +351,21 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
 
       <div
         data-mobile-platform="apple"
-        className="relative flex min-w-0 flex-1 flex-col overflow-x-clip bg-background pt-[calc(3.25rem+env(safe-area-inset-top))] lg:pt-0"
+        data-mobile-immersive-shell={isMobileImmersive ? "course-twin" : undefined}
+        className={cn(
+          "relative flex min-w-0 flex-1 flex-col overflow-x-clip bg-background lg:pt-0",
+          isMobileImmersive ? "pt-0" : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
+        )}
       >
-        <MobileNav
-          pathname={pathname}
-          totalXp={totalXp}
-          level={level.level}
-          profile={profile}
-          isAdmin={isAdmin}
-        />
+        {isMobileImmersive ? null : (
+          <MobileNav
+            pathname={pathname}
+            totalXp={totalXp}
+            level={level.level}
+            profile={profile}
+            isAdmin={isAdmin}
+          />
+        )}
         <DesktopWorkbenchChrome
           navGroups={desktopNavGroups}
           isAdmin={isAdmin}

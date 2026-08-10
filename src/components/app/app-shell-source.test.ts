@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/components/app/app-shell.tsx"), "utf8");
+const achievementSource = readFileSync(
+  join(process.cwd(), "src/components/achievement-notifications.tsx"),
+  "utf8",
+);
 
 describe("app shell desktop accessibility", () => {
   it("keeps skip links for content, sidebar and table-heavy pages", () => {
@@ -49,5 +53,34 @@ describe("app shell desktop accessibility", () => {
       'import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome"',
     );
     expect(source).toContain("if (isPublicRoute(pathname))");
+  });
+
+  it("removes shared mobile chrome only for an immersive Course Twin", () => {
+    expect(source).toContain("isMobileImmersiveRoute");
+    expect(source).toContain("const isMobileImmersive");
+    expect(source).toContain(
+      'data-mobile-immersive-shell={isMobileImmersive ? "course-twin" : undefined}',
+    );
+    expect(source).toContain("{isMobileImmersive ? null : (");
+    expect(source).toContain("<MobileNav");
+    expect(source).toContain("document.documentElement.dataset.mobileImmersive");
+    expect(source).toContain("document.body.dataset.mobileImmersive");
+    expect(source).toContain("delete document.documentElement.dataset.mobileImmersive");
+    expect(source).toContain("delete document.body.dataset.mobileImmersive");
+  });
+
+  it("retains desktop workbench chrome while removing mobile Course Twin padding", () => {
+    expect(source).toContain("<DesktopWorkbenchChrome");
+    expect(source).toContain("lg:pt-0");
+    expect(source).toContain('isMobileImmersive ? "pt-0"');
+    expect(source).toContain("pt-[calc(3.25rem+env(safe-area-inset-top))]");
+  });
+
+  it("keeps achievement state mounted while exposing mobile-only toast suppression", () => {
+    expect(achievementSource).toContain("data-achievement-toast-viewport");
+    expect(achievementSource).toContain("{children}");
+    expect(achievementSource).toContain(
+      "window.addEventListener(ACHIEVEMENT_UNLOCK_EVENT, handleAchievementUnlock)",
+    );
   });
 });

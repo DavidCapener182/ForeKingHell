@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { findRouteMetadata, routesAvailableTo } from "@/components/app/route-metadata";
+import {
+  findRouteMetadata,
+  isMobileImmersiveRoute,
+  routesAvailableTo,
+} from "@/components/app/route-metadata";
 
 describe("central route metadata", () => {
   it("keeps accurate page titles separate from mobile navigation groups", () => {
@@ -18,5 +22,15 @@ describe("central route metadata", () => {
     expect(findRouteMetadata("/course-twins")?.searchAliases).toContain("course simulator");
     expect(routesAvailableTo(false).some((route) => route.route === "/admin")).toBe(false);
     expect(routesAvailableTo(true).some((route) => route.route === "/admin")).toBe(true);
+  });
+
+  it("recognises only playable Course Twin routes as mobile immersive experiences", () => {
+    expect(isMobileImmersiveRoute("/play/4de11156-16fd-4a36-84e0-fadda53456b0")).toBe(true);
+    expect(isMobileImmersiveRoute("/play/aintree")).toBe(true);
+
+    expect(isMobileImmersiveRoute("/play")).toBe(false);
+    expect(isMobileImmersiveRoute("/play/")).toBe(false);
+    expect(isMobileImmersiveRoute("/play/aintree/extra")).toBe(false);
+    expect(isMobileImmersiveRoute("/course-twins")).toBe(false);
   });
 });

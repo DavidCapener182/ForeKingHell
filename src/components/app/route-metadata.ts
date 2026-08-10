@@ -532,6 +532,10 @@ export function findRouteMetadata(pathname: string) {
   return undefined;
 }
 
+export function isMobileImmersiveRoute(pathname: string) {
+  return /^\/play\/[^/]+\/?$/.test(pathname);
+}
+
 export function routesAvailableTo(isAdmin: boolean) {
   return appRouteMetadata.filter((item) => !item.adminOnly || isAdmin);
 }
