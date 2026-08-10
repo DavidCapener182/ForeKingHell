@@ -35,7 +35,7 @@ export default async function CourseTwinPage({
       id="main-content"
       className="relative min-h-[calc(100dvh-3.5rem)] w-full overflow-x-hidden bg-[#07150e] xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:overflow-hidden"
     >
-      <div className="absolute left-4 top-4 z-30 hidden sm:block xl:bottom-3 xl:left-[326px] xl:top-auto">
+      <div className="absolute left-4 top-4 z-30 hidden sm:block xl:bottom-3 xl:left-[200px] xl:top-auto 2xl:left-[216px]">
         <Button asChild variant="secondary" className="shadow-lg">
           <Link href={`/courses/${courseId}/holes`} prefetch={false}>
             <ArrowLeft className="size-4" />

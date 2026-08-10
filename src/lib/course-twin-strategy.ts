@@ -106,7 +106,7 @@ export function buildCourseTwinStrategy({
     saferAlternative,
     clubs,
     disclosure:
-      "Landing clouds use the golfer's measured carry and side-dispersion distributions. Hazard probabilities are modelled against mapped polygons and remain estimates, not guarantees.",
+      "Landing clouds use measured carry and dispersion from up to 50 trusted full shots per club in the latest 30 days. Hazard probabilities are modelled against mapped polygons and remain estimates, not guarantees.",
   };
 }
 

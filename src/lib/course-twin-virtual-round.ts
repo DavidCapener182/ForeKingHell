@@ -438,10 +438,15 @@ function sampleSpinAxis(random: () => number, club: CourseTwinStrategyClub) {
       : ("inferred-from-dispersion" as const);
   if (club.clubType.toLowerCase().includes("putter")) return { value: 0, source };
   const carry = Math.max(40, club.shotModel.carryMedianYd);
-  const inferredMean = clamp((-club.shotModel.sideMeanYd / carry) * 60, -10, 10);
-  const inferredSpread = clamp((club.shotModel.sideStdDevYd / carry) * 70, 1.5, 8);
-  const mean = club.shotModel.spinAxisMeanDeg ?? inferredMean;
-  const spread = Math.max(0.5, club.shotModel.spinAxisStdDevDeg ?? inferredSpread);
+  if (club.shotModel.spinAxisMeanDeg === null) {
+    const inferredMean = clamp((-club.shotModel.sideMeanYd / carry) * 60, -3.5, 3.5);
+    const inferredSpread = clamp((club.shotModel.sideStdDevYd / carry) * 45, 0.5, 2);
+    const inferred = clamp(inferredMean * 0.7 + gaussian(random) * inferredSpread * 0.25, -4, 4);
+    return { value: Math.abs(inferred) < 0.35 ? 0 : inferred, source };
+  }
+
+  const mean = club.shotModel.spinAxisMeanDeg;
+  const spread = Math.max(0.5, club.shotModel.spinAxisStdDevDeg ?? 0.5);
   const centralShape = random() < 0.8;
   const historicalSample = gaussian(random);
   const sampled = centralShape
@@ -449,7 +454,7 @@ function sampleSpinAxis(random: () => number, club: CourseTwinStrategyClub) {
     : mean + historicalSample * spread * 0.9;
   const bounded = clamp(sampled, -18, 18);
   if (Math.abs(bounded) >= 1.25) return { value: bounded, source };
-  const direction = Math.sign(bounded || mean || inferredMean || (random() < 0.5 ? -1 : 1));
+  const direction = Math.sign(bounded || mean || (random() < 0.5 ? -1 : 1));
   return { value: direction * 1.25, source };
 }
 

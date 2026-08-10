@@ -198,25 +198,32 @@ describe("Course Twin virtual round", () => {
     expect(axes.reduce((total, axis) => total + Math.abs(axis), 0) / axes.length).toBeLessThan(10);
   });
 
-  it("infers a visible curve from measured lateral dispersion when spin axis is unavailable", () => {
-    const inferred = buildCourseTwinVirtualShot({
-      courseId: "bootle",
-      hole,
-      start: hole.tee,
-      club: {
-        ...club,
-        shotModel: {
-          ...club.shotModel,
-          spinAxisMeanDeg: null,
-          spinAxisStdDevDeg: null,
-        },
+  it("keeps dispersion-inferred curve subtle when recent shots have no measured spin axis", () => {
+    const inferredClub: CourseTwinStrategyClub = {
+      ...club,
+      shotModel: {
+        ...club.shotModel,
+        sideMeanYd: 5.25,
+        sideStdDevYd: 21.23,
+        spinAxisMeanDeg: null,
+        spinAxisStdDevDeg: null,
       },
-      aimOffsetYd: 0,
-      shotNumber: 4,
-    });
+    };
+    const inferred = Array.from({ length: 40 }, (_, index) =>
+      buildCourseTwinVirtualShot({
+        courseId: "aintree",
+        hole,
+        start: hole.tee,
+        club: inferredClub,
+        aimOffsetYd: 0,
+        shotNumber: index + 1,
+      }),
+    );
 
-    expect(inferred.sampled.shapeSource).toBe("inferred-from-dispersion");
-    expect(Math.abs(inferred.sampled.spinAxisDeg)).toBeGreaterThanOrEqual(0.75);
+    expect(inferred.every((shot) => shot.sampled.shapeSource === "inferred-from-dispersion")).toBe(
+      true,
+    );
+    expect(inferred.every((shot) => Math.abs(shot.sampled.spinAxisDeg) <= 4)).toBe(true);
   });
 
   it("turns a twenty-yard rough leave into a scaled chip rather than a full wedge", () => {

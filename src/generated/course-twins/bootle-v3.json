@@ -33,7 +33,7 @@
     "sha256": "0347fd36c66508576dd8778c8b516486563f2b251a0af91cd4dda0c6230f4596"
   },
   "imagery": {
-    "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=-2.9842590438336476%2C53.47588322193427%2C-2.968756766713718%2C53.4871248560828&bboxSR=4326&imageSR=4326&size=1536%2C1114&format=jpg&transparent=false&f=image",
+    "url": "/course-twins/bootle-v3/imagery.jpg",
     "kind": "aerial_reference",
     "geographicBounds": {
       "minLatitude": 53.47588322193427,
@@ -41,7 +41,10 @@
       "minLongitude": -2.9842590438336476,
       "maxLongitude": -2.968756766713718
     },
-    "attribution": "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+    "attribution": "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    "pixelWidth": 4096,
+    "pixelHeight": 2970,
+    "sha256": "8b0bb486543f3c45047e8be73d9484b7b46ebc1eb058744e83a88ec57f0c7c6a"
   },
   "semanticFeatures": [
     {

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { fromArrayBuffer } from "geotiff";
@@ -9,6 +9,10 @@ const packageVersion = 3;
 const packageKey = "bootle-v3";
 const outputWidth = 513;
 const outputHeight = 513;
+// The simulator regularly frames a single hole from the full-course export.
+// Keep the source at the ArcGIS export ceiling so those closer aerial views do
+// not magnify a ~1 px/m reference into a visibly soft course surface.
+const imageryWidth = 4096;
 const origin = { latitude: 53.4815, longitude: -2.9765 };
 const requestedBounds = {
   minLatitude: 53.476,
@@ -20,6 +24,11 @@ const coverageId = "13787b9a-26a4-4775-8523-806d13af58fc__Lidar_Composite_Elevat
 const wcsUrl =
   "https://environment.data.gov.uk/geoservices/datasets/13787b9a-26a4-4775-8523-806d13af58fc/wcs";
 const overpassUrl = "https://overpass-api.de/api/interpreter";
+
+if (process.argv.includes("--imagery-only")) {
+  await cacheExistingCourseImagery();
+  process.exit(0);
+}
 
 const requestUrl = new URL(wcsUrl);
 for (const [key, value] of Object.entries({
@@ -121,24 +130,11 @@ const packageResolutionM = Math.max(
   physicalWidthM / (outputWidth - 1),
   physicalHeightM / (outputHeight - 1),
 );
-const imageryWidth = 1536;
 const imageryHeight = Math.round(
   imageryWidth * ((maxLatitude - minLatitude) / (maxLongitude - minLongitude)),
 );
-const imageryUrl = new URL(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export",
-);
-for (const [key, value] of Object.entries({
-  bbox: `${minLongitude},${minLatitude},${maxLongitude},${maxLatitude}`,
-  bboxSR: "4326",
-  imageSR: "4326",
-  size: `${imageryWidth},${imageryHeight}`,
-  format: "jpg",
-  transparent: "false",
-  f: "image",
-})) {
-  imageryUrl.searchParams.set(key, value);
-}
+const imageryUrl = courseImageryUrl(geographicBounds, imageryWidth, imageryHeight);
+const imageryBuffer = await fetchCourseImagery(imageryUrl);
 
 const overpassQuery = `[out:json][timeout:25];(
   way["golf"~"bunker|water_hazard|lateral_water_hazard|tee"](${requestedBounds.minLatitude},${requestedBounds.minLongitude},${requestedBounds.maxLatitude},${requestedBounds.maxLongitude});
@@ -182,9 +178,12 @@ const metadata = {
     sha256: createHash("sha256").update(binary).digest("hex"),
   },
   imagery: {
-    url: imageryUrl.toString(),
+    url: `/course-twins/${packageKey}/imagery.jpg`,
     kind: "aerial_reference",
     geographicBounds,
+    pixelWidth: imageryWidth,
+    pixelHeight: imageryHeight,
+    sha256: createHash("sha256").update(imageryBuffer).digest("hex"),
     attribution:
       "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
   },
@@ -205,15 +204,85 @@ const metadata = {
 };
 
 const publicPath = resolve(root, `public/course-twins/${packageKey}/terrain.f32`);
+const imageryPath = resolve(root, `public/course-twins/${packageKey}/imagery.jpg`);
 const metadataPath = resolve(root, `src/generated/course-twins/${packageKey}.json`);
 await mkdir(dirname(publicPath), { recursive: true });
 await mkdir(dirname(metadataPath), { recursive: true });
 await Promise.all([
   writeFile(publicPath, binary),
+  writeFile(imageryPath, imageryBuffer),
   writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8"),
 ]);
 
-process.stdout.write(`${JSON.stringify({ publicPath, metadataPath, ...metadata }, null, 2)}\n`);
+process.stdout.write(
+  `${JSON.stringify({ publicPath, imageryPath, metadataPath, ...metadata }, null, 2)}\n`,
+);
+
+async function cacheExistingCourseImagery() {
+  const metadataPath = resolve(root, `src/generated/course-twins/${packageKey}.json`);
+  const imageryPath = resolve(root, `public/course-twins/${packageKey}/imagery.jpg`);
+  const metadata = JSON.parse(await readFile(metadataPath, "utf8"));
+  const geographicBounds = metadata.heightmap?.geographicBounds;
+  if (!geographicBounds) throw new Error(`Missing geographic bounds in ${metadataPath}`);
+
+  const imageryHeight = Math.round(
+    imageryWidth *
+      ((geographicBounds.maxLatitude - geographicBounds.minLatitude) /
+        (geographicBounds.maxLongitude - geographicBounds.minLongitude)),
+  );
+  const imageryUrl = courseImageryUrl(geographicBounds, imageryWidth, imageryHeight);
+  const imageryBuffer = await fetchCourseImagery(imageryUrl);
+  metadata.imagery = {
+    ...metadata.imagery,
+    url: `/course-twins/${packageKey}/imagery.jpg`,
+    pixelWidth: imageryWidth,
+    pixelHeight: imageryHeight,
+    sha256: createHash("sha256").update(imageryBuffer).digest("hex"),
+  };
+
+  await mkdir(dirname(imageryPath), { recursive: true });
+  await Promise.all([
+    writeFile(imageryPath, imageryBuffer),
+    writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8"),
+  ]);
+  process.stdout.write(
+    `${JSON.stringify({ imageryPath, metadataPath, imageryUrl: imageryUrl.toString(), imageryWidth, imageryHeight }, null, 2)}\n`,
+  );
+}
+
+function courseImageryUrl(bounds, width, height) {
+  const imageryUrl = new URL(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export",
+  );
+  for (const [key, value] of Object.entries({
+    bbox: `${bounds.minLongitude},${bounds.minLatitude},${bounds.maxLongitude},${bounds.maxLatitude}`,
+    bboxSR: "4326",
+    imageSR: "4326",
+    size: `${width},${height}`,
+    format: "jpg",
+    transparent: "false",
+    f: "image",
+  })) {
+    imageryUrl.searchParams.set(key, value);
+  }
+  return imageryUrl;
+}
+
+async function fetchCourseImagery(imageryUrl) {
+  const imageryResponse = await fetch(imageryUrl, {
+    headers: { "user-agent": "ForeKingHell Course Twin builder/0.2" },
+  });
+  if (!imageryResponse.ok) {
+    throw new Error(
+      `Esri World Imagery returned ${imageryResponse.status} ${imageryResponse.statusText}`,
+    );
+  }
+  const contentType = imageryResponse.headers.get("content-type") ?? "";
+  if (!contentType.startsWith("image/")) {
+    throw new Error(`Esri World Imagery returned unexpected content type ${contentType}`);
+  }
+  return Buffer.from(await imageryResponse.arrayBuffer());
+}
 
 function osmElementToSemanticFeature(element) {
   if (element?.type !== "way" || !Array.isArray(element.geometry)) return null;

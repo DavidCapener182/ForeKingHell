@@ -46,6 +46,38 @@ describe("Course Twin route boundaries", () => {
     expect(dataSource).toContain("bootleTerrainPackage.mapSource.label");
   });
 
+  it("presents Course Twin as a cinematic analysis canvas without removing its controls", () => {
+    expect(sceneSource).toContain("<CinematicPerformanceHud");
+    expect(sceneSource).toContain("Measured launch data · derived placement");
+    expect(sceneSource).toContain("Modelled estimate from {strategy.sampleSize} measured shots");
+    expect(sceneSource).toContain('type HudPanel = "course" | "analysis" | null');
+    expect(sceneSource).toContain('aria-label="Open course controls"');
+    expect(sceneSource).toContain('aria-label="Open analysis controls"');
+    expect(sceneSource).toContain("<RuntimeDockButton");
+    expect(sceneSource).toContain('label="Flyover"');
+    expect(sceneSource).toContain('label="Replay"');
+    expect(sceneSource).toContain('label="Strategy"');
+    expect(sceneSource).toContain('label="Play"');
+    expect(sceneSource).toContain('label="Live"');
+    expect(sceneSource).toContain('label="Explore"');
+  });
+
+  it("renders photographic aerial courses with TikTok-style tracer sequences", () => {
+    expect(sceneSource).toContain("course-twin-terrain-splat-v4-pbr-atlas");
+    expect(sceneSource).toContain("replayCompletedTracers");
+    expect(sceneSource).toContain("completedTracerColour");
+    expect(sceneSource).toContain("<TracerNumberMarker");
+    expect(sceneSource).toContain("lineWidth={active ? 10 : 7}");
+    expect(sceneSource).toContain("<HoleNumberMarker");
+    expect(sceneSource).toContain("strategyAreaTexture");
+    expect(sceneSource).toContain(
+      '.filter((hole) => cameraView === "golfer" || hole === selectedHole)',
+    );
+    expect(sceneSource).toContain(
+      'cameraView === "aerial" && (mode === "replay" || mode === "strategy")',
+    );
+  });
+
   it("runs selected-shot playback through terrain and surface-aware physics", () => {
     expect(sceneSource).toContain("simulateCourseTwinReplayShot(selectedShot");
     expect(sceneSource).toContain("createCourseTwinSurfaceClassifier");
@@ -70,7 +102,7 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("virtualDropPoint(virtualSimulation)");
     expect(sceneSource).toContain("Virtual round · My Bag");
     expect(sceneSource).toContain(
-      "Your imported shots do not contain spin axis, so curve is inferred from measured left/right dispersion.",
+      "Recent shots for this club do not contain spin axis, so only a subtle curve is inferred from its latest 30-day left/right pattern.",
     );
     expect(sceneSource).toContain("formatVirtualShape(shot.sampled.spinAxisDeg)");
     expect(sceneSource).toContain('"Dispersion inferred"');
@@ -99,7 +131,8 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("Carry is scaled to this");
     expect(sceneSource).toContain("The mapped landing");
     expect(sceneSource).toContain("virtualCompletedTracers");
-    expect(sceneSource).toContain("completedTracers={mode ===");
+    expect(sceneSource).toContain("completedTracers={");
+    expect(sceneSource).toContain('mode === "replay"');
     expect(sceneSource).toContain("<NextShotMarker");
     expect(sceneSource).toContain("courseTwinGroundPositionsCoincide");
     expect(sceneSource).toContain("showFinishMarker={");
@@ -171,6 +204,17 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain('label="Orbit camera left"');
     expect(sceneSource).toContain('label="Zoom camera in"');
     expect(sceneSource).toContain('label="Orbit camera right"');
+  });
+
+  it("keeps 3D shot-number markers out of the close golfer view", () => {
+    expect(sceneSource).toContain(
+      'label={cameraView === "aerial" ? (selectedShot.holeShotNumber ?? undefined) : undefined}',
+    );
+    expect(sceneSource).toContain(
+      'label={cameraView === "aerial" ? tracer.shotNumber : undefined}',
+    );
+    expect(sceneSource).toContain("scale={[4.2, 4.2, 1]}");
+    expect(sceneSource).not.toContain("scale={[9.5, 9.5, 1]}");
   });
 
   it("frames golfer view from a believable eye-height position behind the ball", () => {

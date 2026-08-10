@@ -18,6 +18,7 @@ import {
   CarFront,
   CirclePause,
   CirclePlay,
+  BarChart3,
   LocateFixed,
   Footprints,
   Copy,
@@ -29,6 +30,8 @@ import {
   WifiOff,
   ZoomIn,
   ZoomOut,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -95,6 +98,7 @@ import {
   decodeCourseTwinHeightmap,
   type CourseTwinTerrainSampler,
 } from "@/lib/course-twin-terrain";
+import { courseTwinHighDetailRuntimeUrl } from "@/lib/course-twin-imagery";
 import type {
   CourseTwinStrategyClub,
   CourseTwinStrategyDocument,
@@ -115,6 +119,7 @@ import { cn } from "@/lib/utils";
 type RuntimeMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
 type ExploreTransport = "walk" | "cart";
 type CameraView = "golfer" | "aerial";
+type HudPanel = "course" | "analysis" | null;
 type CameraControlAction = "orbit-left" | "orbit-right" | "zoom-in" | "zoom-out" | "reset";
 type CameraCommand = { id: number; action: CameraControlAction } | null;
 const GOLFER_SHOT_CAMERA = {
@@ -315,11 +320,14 @@ export function CourseTwinScene({
 }) {
   const [holeNumber, setHoleNumber] = useState(manifest.holes[0]?.holeNumber ?? 1);
   const [mode, setMode] = useState<RuntimeMode>(replay?.shots.length ? "replay" : "flyover");
-  const [cameraView, setCameraView] = useState<CameraView>("golfer");
+  const [cameraView, setCameraView] = useState<CameraView>(
+    replay?.shots.length ? "aerial" : "golfer",
+  );
   const [shotIndex, setShotIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [playback, setPlayback] = useState(0);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand>(null);
+  const [hudPanel, setHudPanel] = useState<HudPanel>(null);
   const [terrainSamples, setTerrainSamples] = useState<Float32Array | null>(null);
   const [terrainError, setTerrainError] = useState<string | null>(null);
   const [strategyState, setStrategyState] = useState<StrategyLoadState>({
@@ -413,6 +421,7 @@ export function CourseTwinScene({
   const selectMode = (nextMode: RuntimeMode) => {
     modeRef.current = nextMode;
     setMode(nextMode);
+    setHudPanel(nextMode === "play" || nextMode === "live" ? "analysis" : null);
   };
 
   useEffect(() => {
@@ -421,8 +430,10 @@ export function CourseTwinScene({
 
   const selectedHole =
     manifest.holes.find((hole) => hole.holeNumber === holeNumber) ?? manifest.holes[0];
-  const holeShots =
-    replay?.shots.filter((shot) => shot.holeNumber === selectedHole.holeNumber) ?? [];
+  const holeShots = useMemo(
+    () => replay?.shots.filter((shot) => shot.holeNumber === selectedHole.holeNumber) ?? [],
+    [replay?.shots, selectedHole.holeNumber],
+  );
   const selectedShot = holeShots[Math.min(shotIndex, Math.max(0, holeShots.length - 1))] ?? null;
   const selectedHoleIndex = manifest.holes.findIndex(
     (hole) => hole.holeNumber === selectedHole.holeNumber,
@@ -572,6 +583,17 @@ export function CourseTwinScene({
         : null,
     [classifySurface, sampleTerrain, selectedShot],
   );
+  const replayCompletedTracers = useMemo(() => {
+    if (!sampleTerrain || mode !== "replay") return [];
+    return holeShots.slice(0, shotIndex).map((shot, index) => ({
+      id: shot.id,
+      shotNumber: shot.holeShotNumber ?? index + 1,
+      simulation: simulateCourseTwinReplayShot(shot, {
+        groundHeight: sampleTerrain,
+        surfaceAt: classifySurface,
+      }),
+    }));
+  }, [classifySurface, holeShots, mode, sampleTerrain, shotIndex]);
   const virtualSimulation = useMemo(
     () =>
       sampleTerrain && virtualShot
@@ -680,6 +702,7 @@ export function CourseTwinScene({
       if (!courseTwinGroundPositionsCoincide(simulation.finalPosition, virtualStart)) return [];
       return {
         id: shot.clientEventId,
+        shotNumber: shot.shotNumber,
         simulation,
       };
     });
@@ -1420,6 +1443,35 @@ export function CourseTwinScene({
       });
   };
 
+  const activateRuntimeMode = (nextMode: RuntimeMode) => {
+    selectMode(nextMode);
+    setPlaying(false);
+    setCameraCommand(null);
+
+    if (nextMode === "explore") {
+      setExplorePosition(selectedHole.tee);
+      return;
+    }
+
+    setCameraView(
+      nextMode === "strategy" || nextMode === "replay" || nextMode === "flyover"
+        ? "aerial"
+        : "golfer",
+    );
+    if (nextMode === "strategy" || nextMode === "play" || nextMode === "live") {
+      if (
+        strategyState.holeNumber !== selectedHole.holeNumber ||
+        strategyState.status === "idle" ||
+        strategyState.status === "error"
+      ) {
+        loadStrategy(selectedHole.holeNumber);
+      }
+    }
+    if (nextMode === "live" && (bridgeState.status === "idle" || bridgeState.status === "error")) {
+      detectBridge();
+    }
+  };
+
   const selectHole = (nextHoleNumber: number) => {
     setHoleNumber(nextHoleNumber);
     setShotIndex(0);
@@ -1851,13 +1903,31 @@ export function CourseTwinScene({
     >
       <aside
         data-course-twin-hud
-        className="order-2 border-t border-white/10 bg-[#0b1d13] p-4 xl:pointer-events-none xl:absolute xl:inset-0 xl:z-20 xl:flex xl:items-start xl:justify-between xl:gap-4 xl:border-0 xl:bg-transparent xl:p-3"
+        className={cn(
+          "order-2 border-t border-white/10 bg-[#0b1d13] p-4",
+          hudPanel ? "block" : "hidden",
+          "xl:pointer-events-none xl:absolute xl:inset-0 xl:z-20 xl:flex xl:items-start xl:justify-between xl:gap-4 xl:border-0 xl:bg-transparent xl:p-3",
+        )}
       >
         <div
           data-course-twin-primary-controls
-          className="xl:pointer-events-auto xl:max-h-full xl:w-[300px] xl:overflow-y-auto xl:rounded-2xl xl:border xl:border-white/15 xl:bg-[#07150e]/90 xl:p-3 xl:shadow-2xl xl:backdrop-blur-xl"
+          className={cn(
+            hudPanel === "course" ? "block" : "hidden",
+            "xl:max-h-[calc(100%-5.5rem)] xl:w-[300px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
+            hudPanel === "course"
+              ? "xl:pointer-events-auto xl:translate-x-0 xl:opacity-100"
+              : "xl:pointer-events-none xl:-translate-x-3 xl:opacity-0",
+          )}
         >
-          <div className="space-y-1">
+          <div className="relative space-y-1 xl:pr-9">
+            <button
+              type="button"
+              className="absolute right-0 top-0 grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close course controls"
+              onClick={() => setHudPanel(null)}
+            >
+              <X className="size-4" />
+            </button>
             <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
               Grade {manifest.quality.grade} · {manifest.terrain.resolutionM?.toFixed(1)} m terrain
             </Badge>
@@ -1883,6 +1953,7 @@ export function CourseTwinScene({
               active={mode === "flyover"}
               onClick={() => {
                 selectMode("flyover");
+                setCameraView("aerial");
                 setCameraCommand(null);
               }}
             >
@@ -1893,7 +1964,7 @@ export function CourseTwinScene({
               disabled={!replay?.shots.length}
               onClick={() => {
                 selectMode("replay");
-                setCameraView("golfer");
+                setCameraView("aerial");
                 setCameraCommand(null);
               }}
             >
@@ -2335,8 +2406,35 @@ export function CourseTwinScene({
 
         <div
           data-course-twin-shot-controls
-          className="xl:pointer-events-auto xl:max-h-full xl:w-[340px] xl:overflow-y-auto xl:rounded-2xl xl:border xl:border-white/15 xl:bg-[#07150e]/90 xl:p-3 xl:shadow-2xl xl:backdrop-blur-xl"
+          className={cn(
+            hudPanel === "analysis" ? "block" : "hidden",
+            "xl:max-h-[calc(100%-5.5rem)] xl:w-[350px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
+            hudPanel === "analysis"
+              ? "xl:pointer-events-auto xl:translate-x-0 xl:opacity-100"
+              : "xl:pointer-events-none xl:translate-x-3 xl:opacity-0",
+          )}
         >
+          <div className="mb-1 flex items-center justify-between px-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/45">
+              {mode === "replay"
+                ? "Shot detail"
+                : mode === "strategy"
+                  ? "Model detail"
+                  : mode === "play"
+                    ? "Round controls"
+                    : mode === "live"
+                      ? "Live controls"
+                      : "Course detail"}
+            </p>
+            <button
+              type="button"
+              className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white"
+              aria-label="Close analysis controls"
+              onClick={() => setHudPanel(null)}
+            >
+              <X className="size-4" />
+            </button>
+          </div>
           {mode === "replay" ? (
             <ReplayControls
               replay={replay}
@@ -2350,7 +2448,7 @@ export function CourseTwinScene({
                 setShotIndex(index);
                 setPlayback(0);
                 setPlaying(false);
-                setCameraView("golfer");
+                setCameraView("aerial");
                 setCameraCommand(null);
               }}
               onToggle={() => {
@@ -2633,15 +2731,23 @@ export function CourseTwinScene({
             cursor: mode === "play" && !virtualShot && !virtualPuttReplay ? "crosshair" : "default",
           }}
           camera={{ position: [0, 180, 240], fov: 48, near: 0.5, far: 6000 }}
-          gl={{ antialias: true, powerPreference: "high-performance" }}
+          gl={{
+            antialias: true,
+            powerPreference: "high-performance",
+            toneMapping: THREE.ACESFilmicToneMapping,
+            toneMappingExposure: 1.14,
+          }}
           fallback={
             <div className="grid h-full min-h-[560px] place-items-center p-8 text-center">
               WebGL is unavailable. Use the hole table below for the accessible course view.
             </div>
           }
         >
-          <color attach="background" args={["#6aa3c6"]} />
-          <fog attach="fog" args={["#a9c8cf", 900, 3_100]} />
+          <color attach="background" args={[cameraView === "aerial" ? "#666b49" : "#75aecd"]} />
+          <fog
+            attach="fog"
+            args={[cameraView === "aerial" ? "#737758" : "#b6ced0", 1_050, 3_300]}
+          />
           <hemisphereLight args={["#d9efff", "#1d3b24", 0.58]} />
           <ambientLight color="#d9f0df" intensity={0.06} />
           <directionalLight
@@ -2690,7 +2796,13 @@ export function CourseTwinScene({
                           ? liveSimulation
                           : null
                   }
-                  completedTracers={mode === "play" ? virtualCompletedTracers : []}
+                  completedTracers={
+                    mode === "replay"
+                      ? replayCompletedTracers
+                      : mode === "play"
+                        ? virtualCompletedTracers
+                        : []
+                  }
                   nextShotStart={
                     mode === "play" && !virtualShot && !virtualPuttReplay ? virtualStart : null
                   }
@@ -2714,20 +2826,27 @@ export function CourseTwinScene({
                       : null
                   }
                   cameraStart={
-                    animatedShot?.start ??
-                    (mode === "play"
-                      ? virtualStart
-                      : mode === "live"
-                        ? liveStart
-                        : selectedHole.tee)
+                    cameraView === "aerial" && (mode === "replay" || mode === "strategy")
+                      ? selectedHole.tee
+                      : (animatedShot?.start ??
+                        (mode === "play"
+                          ? virtualStart
+                          : mode === "live"
+                            ? liveStart
+                            : selectedHole.tee))
                   }
                   cameraEnd={
-                    animatedShot?.totalEnd ??
-                    (mode === "play" && !virtualShot && !virtualPuttReplay
-                      ? virtualAimTarget
-                      : selectedHole.green)
+                    cameraView === "aerial" && (mode === "replay" || mode === "strategy")
+                      ? selectedHole.green
+                      : (animatedShot?.totalEnd ??
+                        (mode === "play" && !virtualShot && !virtualPuttReplay
+                          ? virtualAimTarget
+                          : selectedHole.green))
                   }
-                  cameraUsesShotFraming={Boolean(animatedShot)}
+                  cameraUsesShotFraming={
+                    Boolean(animatedShot) &&
+                    !(cameraView === "aerial" && (mode === "replay" || mode === "strategy"))
+                  }
                   strategyClub={mode === "strategy" ? strategyClub : null}
                   playback={playback}
                   cameraView={cameraView}
@@ -2738,18 +2857,317 @@ export function CourseTwinScene({
             </>
           ) : null}
         </Canvas>
-        <div
-          data-course-twin-hole-hud
-          className="pointer-events-none absolute left-1/2 top-3 z-10 hidden -translate-x-1/2 items-center gap-3 rounded-xl border border-white/20 bg-[#07150e]/82 px-4 py-2 text-sm font-semibold text-white shadow-xl backdrop-blur-xl xl:flex"
-        >
-          <span className="text-emerald-200">Hole {selectedHole.holeNumber}</span>
-          <span>Par {selectedHole.par}</span>
-          <span>{selectedHole.yards} yd</span>
-          {mode === "play" && activeRound?.status === "in_progress" ? (
-            <span className="border-l border-white/20 pl-3 text-[#e7ff6a]">
-              {Math.round(virtualRemainingYd)} yd remaining
+        <CinematicPerformanceHud
+          mode={mode}
+          replay={replay}
+          selectedHole={selectedHole}
+          shots={holeShots}
+          selectedShot={selectedShot}
+          shotIndex={shotIndex}
+          playing={playing}
+          playback={playback}
+          simulation={
+            mode === "replay"
+              ? selectedSimulation
+              : mode === "play"
+                ? (virtualPuttReplay?.simulation ?? virtualSimulation)
+                : mode === "live"
+                  ? liveSimulation
+                  : null
+          }
+          strategy={strategyClub}
+          strategyStatus={strategyState.status}
+          remainingYd={
+            mode === "play"
+              ? virtualRemainingYd
+              : mode === "live"
+                ? liveSimulation
+                  ? courseTwinDistanceToPinYd(
+                      simulationDropPoint(liveSimulation),
+                      selectedHole.green,
+                    )
+                  : courseTwinDistanceToPinYd(liveStart, selectedHole.green)
+                : null
+          }
+          strokes={mode === "play" ? virtualStrokes : mode === "live" ? liveStrokes : null}
+          onSelectShot={(index) => {
+            setShotIndex(index);
+            setPlayback(0);
+            setPlaying(false);
+            setCameraView("aerial");
+            setCameraCommand(null);
+          }}
+          onToggleReplay={() => {
+            if (playback >= 1) setPlayback(0);
+            setPlaying((current) => !current);
+          }}
+        />
+        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-center justify-between gap-2 xl:hidden">
+          <button
+            type="button"
+            className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-[#07150e]/80 px-2.5 py-2 text-left text-white shadow-xl backdrop-blur-2xl"
+            aria-label="Open course controls"
+            aria-expanded={hudPanel === "course"}
+            onClick={() => setHudPanel((current) => (current === "course" ? null : "course"))}
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-[#e7ff6a] text-xs font-black text-[#102217]">
+              CT
             </span>
-          ) : null}
+            <span className="min-w-0">
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-100/45">
+                Course Twin
+              </span>
+              <span className="block max-w-[150px] truncate text-xs font-semibold">
+                {manifest.course.name}
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "pointer-events-auto inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold shadow-xl backdrop-blur-2xl",
+              hudPanel === "analysis"
+                ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                : "border-white/15 bg-[#07150e]/80 text-white",
+            )}
+            aria-label="Open analysis controls"
+            aria-expanded={hudPanel === "analysis"}
+            onClick={() => setHudPanel((current) => (current === "analysis" ? null : "analysis"))}
+          >
+            <BarChart3 className="size-4" /> Details
+          </button>
+        </div>
+
+        <div className="pointer-events-none absolute inset-x-3 bottom-20 z-10 xl:hidden">
+          <div className="mb-2 flex items-end justify-between">
+            <div className="rounded-2xl border border-white/15 bg-[#07150e]/80 px-3 py-2 text-white shadow-xl backdrop-blur-2xl">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#e7ff6a]/70">
+                Hole {selectedHole.holeNumber}
+              </p>
+              <p className="text-sm font-bold">
+                {selectedHole.yards} yd · Par {selectedHole.par}
+              </p>
+            </div>
+            <div className="pointer-events-auto flex gap-1 rounded-full border border-white/15 bg-[#07150e]/80 p-1 shadow-xl backdrop-blur-2xl">
+              <button
+                type="button"
+                className="grid size-8 place-items-center rounded-full text-white disabled:opacity-30"
+                disabled={roundLocksHole || selectedHoleIndex <= 0}
+                onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+                aria-label="Previous hole"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                className="grid size-8 place-items-center rounded-full text-white disabled:opacity-30"
+                disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
+                onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+                aria-label="Next hole"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          </div>
+          <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-[#07150e]/84 p-1.5 shadow-2xl backdrop-blur-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <RuntimeDockButton
+              active={mode === "flyover"}
+              label="Flyover"
+              onClick={() => activateRuntimeMode("flyover")}
+            />
+            <RuntimeDockButton
+              active={mode === "replay"}
+              label="Replay"
+              disabled={!replay?.shots.length}
+              onClick={() => activateRuntimeMode("replay")}
+            />
+            {!readOnly ? (
+              <>
+                <RuntimeDockButton
+                  active={mode === "strategy"}
+                  label="Strategy"
+                  onClick={() => activateRuntimeMode("strategy")}
+                />
+                <RuntimeDockButton
+                  active={mode === "play"}
+                  label="Play"
+                  onClick={() => activateRuntimeMode("play")}
+                />
+                <RuntimeDockButton
+                  active={mode === "live"}
+                  label="Live"
+                  onClick={() => activateRuntimeMode("live")}
+                />
+                <RuntimeDockButton
+                  active={mode === "explore"}
+                  label="Explore"
+                  onClick={() => activateRuntimeMode("explore")}
+                />
+              </>
+            ) : null}
+          </div>
+        </div>
+        <div className="pointer-events-none absolute inset-0 z-10 hidden xl:block">
+          <button
+            type="button"
+            className="pointer-events-auto absolute left-4 top-4 flex max-w-[280px] items-center gap-3 rounded-2xl border border-white/15 bg-[#07150e]/76 px-3.5 py-2.5 text-left text-white shadow-xl shadow-black/20 backdrop-blur-2xl transition hover:border-white/25 hover:bg-[#07150e]/88"
+            aria-label="Open course controls"
+            aria-expanded={hudPanel === "course"}
+            onClick={() => setHudPanel((current) => (current === "course" ? null : "course"))}
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#e7ff6a] text-sm font-black text-[#102217]">
+              CT
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/50">
+                Course Twin · Grade {manifest.quality.grade}
+              </span>
+              <span className="mt-0.5 block truncate text-sm font-semibold">
+                {manifest.course.name}
+              </span>
+            </span>
+            <SlidersHorizontal className="ml-1 size-4 shrink-0 text-emerald-100/55" />
+          </button>
+
+          <div className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2">
+            <button
+              type="button"
+              className={cn(
+                "inline-flex h-10 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold shadow-xl shadow-black/20 backdrop-blur-2xl transition",
+                hudPanel === "analysis"
+                  ? "border-[#e7ff6a]/50 bg-[#e7ff6a] text-[#102217]"
+                  : "border-white/15 bg-[#07150e]/76 text-white hover:border-white/25 hover:bg-[#07150e]/88",
+              )}
+              aria-label="Open analysis controls"
+              aria-expanded={hudPanel === "analysis"}
+              onClick={() => setHudPanel((current) => (current === "analysis" ? null : "analysis"))}
+            >
+              <BarChart3 className="size-4" />
+              Details
+            </button>
+            <div className="flex items-center rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                  cameraView === "golfer" ? "bg-white/15 text-white" : "text-white/55",
+                )}
+                onClick={() => {
+                  setCameraView("golfer");
+                  setCameraCommand(null);
+                }}
+              >
+                Shot
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                  cameraView === "aerial" ? "bg-white/15 text-white" : "text-white/55",
+                )}
+                onClick={() => {
+                  setCameraView("aerial");
+                  setCameraCommand(null);
+                }}
+              >
+                Aerial
+              </button>
+            </div>
+          </div>
+
+          <div
+            data-course-twin-hole-hud
+            className="pointer-events-auto absolute bottom-4 left-4 w-[180px] rounded-[1.35rem] border border-white/15 bg-[#07150e]/78 p-4 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl 2xl:w-[190px]"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#e7ff6a]/75">
+              Now viewing
+            </p>
+            <div className="mt-1 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-4xl font-black tracking-[-0.06em]">{selectedHole.holeNumber}</p>
+                <p className="mt-0.5 text-sm font-semibold text-white/85">
+                  {selectedHole.yards} yd · Par {selectedHole.par}
+                </p>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 disabled:opacity-30"
+                  disabled={roundLocksHole || selectedHoleIndex <= 0}
+                  onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+                  aria-label="Previous hole"
+                >
+                  <ChevronLeft className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 disabled:opacity-30"
+                  disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
+                  onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+                  aria-label="Next hole"
+                >
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 h-px bg-gradient-to-r from-[#e7ff6a]/70 to-transparent" />
+          </div>
+
+          <div className="pointer-events-auto absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/15 bg-[#07150e]/82 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <RuntimeDockButton
+              active={mode === "flyover"}
+              label="Flyover"
+              onClick={() => activateRuntimeMode("flyover")}
+            />
+            <RuntimeDockButton
+              active={mode === "replay"}
+              label="Replay"
+              disabled={!replay?.shots.length}
+              onClick={() => activateRuntimeMode("replay")}
+            />
+            {!readOnly ? (
+              <>
+                <RuntimeDockButton
+                  active={mode === "strategy"}
+                  label="Strategy"
+                  onClick={() => activateRuntimeMode("strategy")}
+                />
+                <RuntimeDockButton
+                  active={mode === "play"}
+                  label="Play"
+                  onClick={() => activateRuntimeMode("play")}
+                />
+                <RuntimeDockButton
+                  active={mode === "live"}
+                  label="Live"
+                  onClick={() => activateRuntimeMode("live")}
+                />
+                <RuntimeDockButton
+                  active={mode === "explore"}
+                  label="Explore"
+                  onClick={() => activateRuntimeMode("explore")}
+                />
+              </>
+            ) : null}
+          </div>
+
+          <div className="pointer-events-auto absolute bottom-4 right-4 flex items-center gap-1 rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
+            <CameraControlButton
+              label="Orbit camera left"
+              onClick={() => issueCameraCommand("orbit-left")}
+            >
+              <ChevronLeft className="size-4" />
+            </CameraControlButton>
+            <CameraControlButton label="Reset camera" onClick={() => issueCameraCommand("reset")}>
+              <LocateFixed className="size-4" />
+            </CameraControlButton>
+            <CameraControlButton
+              label="Orbit camera right"
+              onClick={() => issueCameraCommand("orbit-right")}
+            >
+              <ChevronRight className="size-4" />
+            </CameraControlButton>
+          </div>
         </div>
         <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur xl:hidden">
           {terrainError
@@ -2787,6 +3205,275 @@ export function CourseTwinScene({
   );
 }
 
+function CinematicPerformanceHud({
+  mode,
+  replay,
+  selectedHole,
+  shots,
+  selectedShot,
+  shotIndex,
+  playing,
+  playback,
+  simulation,
+  strategy,
+  strategyStatus,
+  remainingYd,
+  strokes,
+  onSelectShot,
+  onToggleReplay,
+}: {
+  mode: RuntimeMode;
+  replay: CourseTwinReplayDocument | null;
+  selectedHole: CourseTwinHole;
+  shots: CourseTwinReplayShot[];
+  selectedShot: CourseTwinReplayShot | null;
+  shotIndex: number;
+  playing: boolean;
+  playback: number;
+  simulation: CourseTwinReplaySimulation | null;
+  strategy: CourseTwinStrategyClub | null;
+  strategyStatus: StrategyLoadState["status"];
+  remainingYd: number | null;
+  strokes: number | null;
+  onSelectShot: (index: number) => void;
+  onToggleReplay: () => void;
+}) {
+  if (mode === "replay" && selectedShot) {
+    const carry = selectedShot.metrics.carryYd.value;
+    const total = selectedShot.metrics.totalYd.value;
+    const side = selectedShot.metrics.sideCarryYd.value;
+    return (
+      <div className="pointer-events-auto absolute left-1/2 top-[4.25rem] z-10 w-[calc(100%-1.5rem)] min-w-0 -translate-x-1/2 rounded-[1.35rem] border border-white/15 bg-[#07150e]/78 p-3 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl xl:top-4 xl:w-[min(560px,calc(100vw-860px))] xl:min-w-[400px] xl:p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/50">
+              {replay?.session.title ?? "Shot replay"} · Hole {selectedHole.holeNumber}
+            </p>
+            <div className="mt-1 flex items-end gap-3">
+              <p className="whitespace-nowrap text-[2.65rem] font-black leading-none tracking-[-0.06em]">
+                {formatYards(carry)}
+              </p>
+              <p className="pb-1 text-sm font-semibold text-white/70">
+                {selectedShot.clubType} · measured carry
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="grid size-10 shrink-0 place-items-center rounded-full border border-white/15 bg-white/8 text-white transition hover:bg-white/15"
+            onClick={onToggleReplay}
+            aria-label={playing ? "Pause replay" : "Play replay"}
+          >
+            {playing ? <CirclePause className="size-5" /> : <CirclePlay className="size-5" />}
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+          <CinematicMetric label="Total" value={formatYards(total)} />
+          <CinematicMetric label="Offline" value={formatOffline(side)} />
+          <CinematicMetric
+            label="Finished"
+            value={simulation ? formatSurface(simulation.finalSurface) : "Reconstructed"}
+            alert={Boolean(simulation?.penalty)}
+          />
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-[#e7ff6a] transition-[width]"
+              style={{ width: `${playback * 100}%` }}
+            />
+          </div>
+          <div className="flex gap-1">
+            {shots.map((shot, index) => (
+              <button
+                key={shot.id}
+                type="button"
+                className={cn(
+                  "grid size-7 place-items-center rounded-full border text-[11px] font-bold transition",
+                  index === shotIndex
+                    ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/10 bg-white/5 text-white/65 hover:bg-white/10 hover:text-white",
+                )}
+                aria-label={`View shot ${shot.holeShotNumber ?? index + 1}`}
+                onClick={() => onSelectShot(index)}
+              >
+                {shot.holeShotNumber ?? index + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="mt-2 text-[10px] leading-4 text-amber-100/55">
+          Measured launch data · derived placement · reconstructed flight and roll
+        </p>
+      </div>
+    );
+  }
+
+  if (mode === "strategy") {
+    const seriousHazard = strategy
+      ? strategy.probabilities.water +
+        strategy.probabilities.out_of_bounds +
+        strategy.probabilities.trees
+      : null;
+    return (
+      <div className="pointer-events-none absolute left-1/2 top-[4.25rem] z-10 w-[calc(100%-1.5rem)] min-w-0 -translate-x-1/2 rounded-[1.35rem] border border-white/15 bg-[#07150e]/78 p-3 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl xl:top-4 xl:w-[min(540px,calc(100vw-860px))] xl:min-w-[400px] xl:p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/50">
+              My Bag strategy · Hole {selectedHole.holeNumber}
+            </p>
+            <div className="mt-1 flex items-end gap-3">
+              <p className="text-[2.65rem] font-black leading-none tracking-[-0.06em]">
+                {strategy?.clubType ?? (strategyStatus === "loading" ? "Modelling…" : "No model")}
+              </p>
+              {strategy ? (
+                <p className="pb-1 text-sm font-semibold text-[#e7ff6a]">
+                  {Math.round(strategy.carryMedianYd)} yd stock carry
+                </p>
+              ) : null}
+            </div>
+          </div>
+          {strategy ? (
+            <span className="rounded-full border border-[#e7ff6a]/30 bg-[#e7ff6a]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#efffa5]">
+              Recommended line
+            </span>
+          ) : null}
+        </div>
+        {strategy ? (
+          <>
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-white/10 pt-3">
+              <CinematicMetric
+                label="Fairway"
+                value={formatProbability(strategy.probabilities.fairway)}
+              />
+              <CinematicMetric
+                label="Serious hazard"
+                value={formatProbability(seriousHazard ?? 0)}
+                alert={(seriousHazard ?? 0) >= 0.15}
+              />
+              <CinematicMetric
+                label="Average leave"
+                value={`${strategy.averageRemainingYd.toFixed(0)} yd`}
+              />
+            </div>
+            <p className="mt-2 text-[10px] leading-4 text-amber-100/55">
+              Modelled estimate from {strategy.sampleSize} measured shots · outcomes are not
+              guarantees
+            </p>
+          </>
+        ) : (
+          <p className="mt-3 border-t border-white/10 pt-3 text-xs text-emerald-100/55">
+            {strategyStatus === "loading"
+              ? "Running your measured dispersion against the mapped hole…"
+              : "Open Details to load a strategy from your measured bag."}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (mode === "play" || mode === "live") {
+    return (
+      <div className="pointer-events-none absolute left-1/2 top-[4.25rem] z-10 w-[calc(100%-1.5rem)] min-w-0 -translate-x-1/2 rounded-[1.35rem] border border-white/15 bg-[#07150e]/78 p-3 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl xl:top-4 xl:w-[min(500px,calc(100vw-860px))] xl:min-w-[400px] xl:p-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/50">
+          {mode === "live" ? "Live launch-monitor round" : "My Bag test round"} · Hole{" "}
+          {selectedHole.holeNumber}
+        </p>
+        <div className="mt-1 flex items-end justify-between gap-4">
+          <div className="flex items-end gap-2">
+            <p className="text-[2.65rem] font-black leading-none tracking-[-0.06em]">
+              {remainingYd === null ? "—" : Math.round(remainingYd)}
+            </p>
+            <p className="pb-1 text-sm font-semibold text-white/65">yd remaining</p>
+          </div>
+          <p className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/75">
+            {strokes ?? 0} {(strokes ?? 0) === 1 ? "stroke" : "strokes"}
+          </p>
+        </div>
+        <div className="mt-3 h-px bg-gradient-to-r from-[#e7ff6a]/70 via-white/10 to-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-[4.25rem] z-10 w-[calc(100%-1.5rem)] min-w-0 -translate-x-1/2 rounded-[1.35rem] border border-white/15 bg-[#07150e]/72 p-3 text-center text-white shadow-2xl shadow-black/25 backdrop-blur-2xl xl:top-4 xl:w-[min(480px,calc(100vw-860px))] xl:min-w-[380px] xl:p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-100/50">
+        {mode === "explore" ? "Explore the mapped course" : "Course overview"}
+      </p>
+      <p className="mt-1 text-2xl font-black tracking-[-0.04em]">
+        Hole {selectedHole.holeNumber} · {selectedHole.yards} yd
+      </p>
+      <p className="mt-1 text-xs text-emerald-100/55">
+        Real mapped terrain · semantic fairways, greens and hazards
+      </p>
+    </div>
+  );
+}
+
+function CinematicMetric({
+  label,
+  value,
+  alert = false,
+}: {
+  label: string;
+  value: string;
+  alert?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100/40">
+        {label}
+      </p>
+      <p
+        className={cn("mt-0.5 truncate text-sm font-bold", alert ? "text-rose-300" : "text-white")}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function RuntimeDockButton({
+  active,
+  label,
+  disabled = false,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className={cn(
+        "rounded-xl px-3.5 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-35",
+        active
+          ? "bg-[#e7ff6a] text-[#102217] shadow-[0_0_24px_rgba(231,255,106,0.15)]"
+          : "text-white/60 hover:bg-white/8 hover:text-white",
+      )}
+      onClick={onClick}
+    >
+      {label}
+    </button>
+  );
+}
+
+function formatOffline(value: number | null) {
+  if (value === null) return "—";
+  if (Math.abs(value) < 0.5) return "Centre";
+  return `${Math.abs(value).toFixed(0)} yd ${value < 0 ? "left" : "right"}`;
+}
+
+function simulationDropPoint(simulation: CourseTwinReplaySimulation): CourseTwinPoint {
+  const point = virtualDropPoint(simulation);
+  return [point.x, point.y, point.z];
+}
+
 function CourseWorld({
   manifest,
   terrainSamples,
@@ -2814,7 +3501,11 @@ function CourseWorld({
   selectedHole: CourseTwinHole;
   selectedShot: CourseTwinReplayShot | null;
   selectedSimulation: CourseTwinReplaySimulation | null;
-  completedTracers: Array<{ id: string; simulation: CourseTwinReplaySimulation }>;
+  completedTracers: Array<{
+    id: string;
+    shotNumber: number;
+    simulation: CourseTwinReplaySimulation;
+  }>;
   nextShotStart: CourseTwinPoint | null;
   aimStart: CourseTwinPoint | null;
   aimEnd: CourseTwinPoint | null;
@@ -2835,10 +3526,10 @@ function CourseWorld({
   const focusDistance = cameraUsesShotFraming
     ? cameraView === "golfer"
       ? THREE.MathUtils.clamp(holeLength * 0.65, 24, 72)
-      : THREE.MathUtils.clamp(holeLength * 0.75, 38, 165)
+      : THREE.MathUtils.clamp(holeLength * 0.5, 28, 140)
     : cameraView === "golfer"
       ? THREE.MathUtils.clamp(holeLength * 0.62, 28, 85)
-      : Math.min(holeLength * 0.58, 165);
+      : Math.min(holeLength * 0.52, 150);
   const focusX = cameraStart[0] + ((cameraEnd[0] - cameraStart[0]) / holeLength) * focusDistance;
   const focusZ = cameraStart[2] + ((cameraEnd[2] - cameraStart[2]) / holeLength) * focusDistance;
   const golferFraming = cameraUsesShotFraming ? GOLFER_SHOT_CAMERA : GOLFER_TEE_CAMERA;
@@ -2862,37 +3553,45 @@ function CourseWorld({
         .map((surface) => (
           <PuttingSurfaceMesh key={surface.holeNumber} surface={surface} />
         ))}
-      <AtmosphericBackdrop
-        terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
-        sampleTerrain={sampleTerrain}
-      />
+      {cameraView === "golfer" ? (
+        <AtmosphericBackdrop
+          terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
+          sampleTerrain={sampleTerrain}
+        />
+      ) : null}
       {manifest.features.map((feature) => (
         <SemanticFeature key={feature.id} feature={feature} sampleTerrain={sampleTerrain} />
       ))}
-      <InstancedVegetation
-        features={manifest.features}
-        holes={manifest.holes}
-        terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
-        sampleTerrain={sampleTerrain}
-      />
-      {manifest.holes.map((hole) => (
-        <HoleGeometry
-          key={hole.holeNumber}
-          hole={hole}
-          selected={hole === selectedHole}
-          dimmed={
-            hole === selectedHole &&
-            (Boolean(selectedShot) || completedTracers.length > 0 || Boolean(nextShotStart))
-          }
+      {cameraView === "golfer" ? (
+        <InstancedVegetation
+          features={manifest.features}
+          holes={manifest.holes}
+          terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
           sampleTerrain={sampleTerrain}
         />
-      ))}
+      ) : null}
+      {manifest.holes
+        .filter((hole) => cameraView === "golfer" || hole === selectedHole)
+        .map((hole) => (
+          <HoleGeometry
+            key={hole.holeNumber}
+            hole={hole}
+            selected={hole === selectedHole}
+            dimmed={
+              hole === selectedHole &&
+              (Boolean(selectedShot) || completedTracers.length > 0 || Boolean(nextShotStart))
+            }
+            showNumber={hole === selectedHole && cameraView === "aerial"}
+            sampleTerrain={sampleTerrain}
+          />
+        ))}
       {selectedShot && selectedSimulation ? (
         <ReplayTracer
           key={selectedShot.id}
           simulation={selectedSimulation}
           playback={playback}
           active
+          label={cameraView === "aerial" ? (selectedShot.holeShotNumber ?? undefined) : undefined}
         />
       ) : null}
       {completedTracers.map((tracer) => (
@@ -2901,6 +3600,8 @@ function CourseWorld({
           simulation={tracer.simulation}
           playback={1}
           active={false}
+          label={cameraView === "aerial" ? tracer.shotNumber : undefined}
+          colourOverride={completedTracerColour(tracer.shotNumber)}
           showCarryMarker={false}
           showFinishMarker={
             !nextShotStart ||
@@ -3008,6 +3709,7 @@ function Terrain({
     <LidarTerrain
       asset={asset}
       imageryUrl={imagery.url}
+      highDetailImageryUrl={courseTwinHighDetailRuntimeUrl(manifest.course.id, imagery)}
       samples={samples}
       features={manifest.features}
       onAimPoint={onAimPoint}
@@ -3018,12 +3720,14 @@ function Terrain({
 function LidarTerrain({
   asset,
   imageryUrl,
+  highDetailImageryUrl,
   samples,
   features,
   onAimPoint,
 }: {
   asset: NonNullable<CourseTwinManifest["terrain"]["heightmap"]>;
   imageryUrl: string;
+  highDetailImageryUrl: string | null;
   samples: Float32Array;
   features: CourseTwinFeature[];
   onAimPoint: ((point: CourseTwinPoint) => void) | null;
@@ -3101,6 +3805,8 @@ function LidarTerrain({
     loadedSurfaceRoughnessAtlas,
     maxAnisotropy,
   ]);
+  const highDetailTexture = useProgressiveCourseImagery(highDetailImageryUrl, gl);
+  const aerialTexture = highDetailTexture ?? texture;
   const geometry = useMemo(() => {
     const bounds = asset.localBounds;
     const width = bounds.maxX - bounds.minX;
@@ -3164,7 +3870,7 @@ function LidarTerrain({
       }
     >
       <meshStandardMaterial
-        map={texture}
+        map={aerialTexture}
         normalMap={surfaceNormalAtlas}
         normalScale={new THREE.Vector2(0.36, 0.36)}
         color="#ffffff"
@@ -3400,6 +4106,41 @@ uniform vec4 courseSurfaceTileSize;`,
       />
     </mesh>
   );
+}
+
+function useProgressiveCourseImagery(url: string | null, gl: THREE.WebGLRenderer) {
+  const [loaded, setLoaded] = useState<{ texture: THREE.Texture; url: string } | null>(null);
+
+  useEffect(() => {
+    if (!url) return;
+    let active = true;
+    let loadedTexture: THREE.Texture | null = null;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      url,
+      (texture) => {
+        loadedTexture = texture;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = gl.capabilities.getMaxAnisotropy();
+        texture.needsUpdate = true;
+        if (active) setLoaded({ texture, url });
+        else texture.dispose();
+      },
+      undefined,
+      () => undefined,
+    );
+
+    return () => {
+      active = false;
+      loadedTexture?.dispose();
+    };
+  }, [gl, url]);
+
+  return loaded?.url === url ? loaded.texture : null;
 }
 
 function createCourseTwinTerrainMasks(
@@ -4177,11 +4918,13 @@ function HoleGeometry({
   hole,
   selected,
   dimmed,
+  showNumber,
   sampleTerrain,
 }: {
   hole: CourseTwinHole;
   selected: boolean;
   dimmed: boolean;
+  showNumber: boolean;
   sampleTerrain: CourseTwinTerrainSampler;
 }) {
   const points = hole.centerline.map((point) => terrainSurfacePoint(point, sampleTerrain, 0.08));
@@ -4202,9 +4945,62 @@ function HoleGeometry({
           <meshStandardMaterial color={selected ? "#f7f4de" : "#a7c6a2"} roughness={0.72} />
         </mesh>
       ) : null}
+      {showNumber ? <HoleNumberMarker position={tee} number={hole.holeNumber} /> : null}
       {selected ? <HoleFlag position={green} /> : null}
     </group>
   );
+}
+
+function HoleNumberMarker({
+  position,
+  number,
+}: {
+  position: [number, number, number];
+  number: number;
+}) {
+  const texture = useMemo(() => holeNumberTexture(number), [number]);
+  return (
+    <sprite position={[position[0], position[1] + 5.5, position[2]]} scale={[7.2, 8.2, 1]}>
+      <spriteMaterial
+        map={texture}
+        transparent
+        depthWrite={false}
+        depthTest={false}
+        toneMapped={false}
+      />
+    </sprite>
+  );
+}
+
+function holeNumberTexture(number: number) {
+  const key = `hole-number:${number}`;
+  const cached = proceduralTextureCache.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 192;
+  canvas.height = 224;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Hole number textures are unavailable.");
+  const gradient = context.createLinearGradient(0, 30, 0, 206);
+  gradient.addColorStop(0, "#fff4a8");
+  gradient.addColorStop(0.48, "#e8bd54");
+  gradient.addColorStop(1, "#8f5f16");
+  context.shadowColor = "rgba(20, 12, 2, 0.78)";
+  context.shadowBlur = 16;
+  context.shadowOffsetY = 10;
+  context.fillStyle = gradient;
+  context.strokeStyle = "rgba(255, 245, 188, 0.82)";
+  context.lineWidth = 4;
+  context.font = "900 176px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.strokeText(String(number), 96, 117);
+  context.fillText(String(number), 96, 117);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  proceduralTextureCache.set(key, texture);
+  return texture;
 }
 
 function HoleFlag({ position }: { position: [number, number, number] }) {
@@ -4291,12 +5087,16 @@ function ReplayTracer({
   simulation,
   playback,
   active,
+  label,
+  colourOverride,
   showCarryMarker = true,
   showFinishMarker = true,
 }: {
   simulation: CourseTwinReplaySimulation;
   playback: number;
   active: boolean;
+  label?: number;
+  colourOverride?: string;
   showCarryMarker?: boolean;
   showFinishMarker?: boolean;
 }) {
@@ -4312,57 +5112,214 @@ function ReplayTracer({
     : replayFramePoint(simulation.frames[0]);
   const carry = replayVectorPoint(simulation.carryPosition, 0.08);
   const finish = replayVectorPoint(simulation.finalPosition, 0.08);
+  const tracerColour = simulation.penalty
+    ? "#fb7185"
+    : (colourOverride ?? (active ? "#efff63" : "#63c9ff"));
+  const groundColour = simulation.penalty ? "#ff9aac" : active ? "#ffffff" : "#9ee3ff";
+  const flightPoints = flight.length >= 2 ? flight : [carry, carry];
   return (
     <group>
       <Line
-        points={flight.length >= 2 ? flight : [carry, carry]}
-        color={active ? "#f8ff84" : "#ffbd70"}
-        lineWidth={active ? 2.1 : 1.5}
+        points={flightPoints}
+        color={tracerColour}
+        lineWidth={active ? 10 : 7}
         transparent
-        opacity={active ? 0.94 : 0.78}
+        opacity={active ? 0.16 : 0.12}
+        depthTest={false}
+        renderOrder={24}
+      />
+      <Line
+        points={flightPoints}
+        color={tracerColour}
+        lineWidth={active ? 4.8 : 3.8}
+        transparent
+        opacity={active ? 0.98 : 0.9}
+        depthTest={false}
+        renderOrder={25}
+      />
+      <Line
+        points={flightPoints}
+        color="#ffffff"
+        lineWidth={active ? 1.35 : 0.9}
+        transparent
+        opacity={active ? 0.72 : 0.42}
+        depthTest={false}
+        renderOrder={26}
       />
       {ground.length >= 2 ? (
-        <Line
-          points={ground}
-          color={active ? "#ffffff" : "#ffd3a0"}
-          lineWidth={active ? 2 : 1.6}
-          dashed
-          dashSize={3}
-          gapSize={2}
-          transparent
-          opacity={active ? 0.9 : 0.72}
-        />
+        <>
+          <Line
+            points={ground}
+            color={groundColour}
+            lineWidth={active ? 7 : 5}
+            transparent
+            opacity={0.12}
+            depthTest={false}
+            renderOrder={24}
+          />
+          <Line
+            points={ground}
+            color={groundColour}
+            lineWidth={active ? 3.4 : 2.8}
+            transparent
+            opacity={active ? 0.92 : 0.78}
+            depthTest={false}
+            renderOrder={25}
+          />
+        </>
       ) : null}
       {showCarryMarker ? (
-        <mesh position={carry} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.34, 0.5, 28]} />
-          <meshBasicMaterial color="#f8ff84" transparent opacity={0.82} depthWrite={false} />
-        </mesh>
+        <group position={carry}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={27}>
+            <ringGeometry args={[0.7, 0.96, 40]} />
+            <meshBasicMaterial
+              color={tracerColour}
+              transparent
+              opacity={0.92}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+          <mesh position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={26}>
+            <circleGeometry args={[1.45, 40]} />
+            <meshBasicMaterial
+              color={tracerColour}
+              transparent
+              opacity={0.11}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+        </group>
       ) : null}
       {showFinishMarker ? (
-        <mesh position={finish} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.48, 0.66, 28]} />
-          <meshBasicMaterial
-            color={simulation.penalty ? "#fb7185" : "#ffffff"}
-            transparent
-            opacity={0.88}
-            depthWrite={false}
-          />
-        </mesh>
+        <group position={finish}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} renderOrder={27}>
+            <ringGeometry args={[0.9, 1.22, 44]} />
+            <meshBasicMaterial
+              color={tracerColour}
+              transparent
+              opacity={0.98}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+          <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={26}>
+            <circleGeometry args={[1.9, 44]} />
+            <meshBasicMaterial
+              color={tracerColour}
+              transparent
+              opacity={0.13}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+          {label ? <TracerNumberMarker label={label} colour={tracerColour} /> : null}
+        </group>
       ) : null}
       {active ? (
-        <mesh position={marker} castShadow>
-          <sphereGeometry args={[0.18, 20, 20]} />
-          <meshStandardMaterial color="#ffffff" emissive="#e7ff6a" emissiveIntensity={1.4} />
-        </mesh>
+        <group position={marker}>
+          <pointLight color={tracerColour} intensity={1.8} distance={12} decay={2} />
+          <mesh castShadow renderOrder={28}>
+            <sphereGeometry args={[0.34, 24, 24]} />
+            <meshStandardMaterial
+              color="#ffffff"
+              emissive={tracerColour}
+              emissiveIntensity={2.2}
+              roughness={0.24}
+            />
+          </mesh>
+          <sprite scale={[2.8, 2.8, 1]} renderOrder={27}>
+            <spriteMaterial
+              map={tracerGlowTexture()}
+              color={tracerColour}
+              transparent
+              opacity={0.55}
+              depthWrite={false}
+              depthTest={false}
+              toneMapped={false}
+            />
+          </sprite>
+        </group>
       ) : showFinishMarker ? (
         <mesh position={finish}>
-          <sphereGeometry args={[0.24, 12, 12]} />
-          <meshStandardMaterial color="#ffbd70" emissive="#ff8a3d" emissiveIntensity={0.4} />
+          <sphereGeometry args={[0.3, 16, 16]} />
+          <meshStandardMaterial color="#ffffff" emissive={tracerColour} emissiveIntensity={1.35} />
         </mesh>
       ) : null}
     </group>
   );
+}
+
+function completedTracerColour(shotNumber: number) {
+  const palette = ["#6ed7ff", "#ffcb4f", "#ff8f5a", "#ff78b4", "#83e7b0"];
+  return palette[(Math.max(1, shotNumber) - 1) % palette.length];
+}
+
+function TracerNumberMarker({ label, colour }: { label: number; colour: string }) {
+  const texture = useMemo(() => tracerNumberTexture(label, colour), [colour, label]);
+  return (
+    <sprite position={[0, 3.2, 0]} scale={[4.2, 4.2, 1]} renderOrder={30}>
+      <spriteMaterial
+        map={texture}
+        transparent
+        depthWrite={false}
+        depthTest={false}
+        toneMapped={false}
+      />
+    </sprite>
+  );
+}
+
+function tracerNumberTexture(label: number, colour: string) {
+  const key = `tracer-number:${label}:${colour}`;
+  const cached = proceduralTextureCache.get(key);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Shot marker textures are unavailable.");
+  context.shadowColor = colour;
+  context.shadowBlur = 18;
+  context.fillStyle = "rgba(8, 22, 14, 0.94)";
+  context.beginPath();
+  context.arc(64, 64, 43, 0, Math.PI * 2);
+  context.fill();
+  context.shadowBlur = 0;
+  context.strokeStyle = colour;
+  context.lineWidth = 8;
+  context.stroke();
+  context.fillStyle = "#ffffff";
+  context.font = "800 54px system-ui, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(String(label), 64, 67);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  proceduralTextureCache.set(key, texture);
+  return texture;
+}
+
+function tracerGlowTexture() {
+  const cached = proceduralTextureCache.get("tracer-glow");
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Tracer glow textures are unavailable.");
+  const gradient = context.createRadialGradient(64, 64, 2, 64, 64, 62);
+  gradient.addColorStop(0, "rgba(255,255,255,0.95)");
+  gradient.addColorStop(0.18, "rgba(255,255,255,0.5)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 128, 128);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  proceduralTextureCache.set("tracer-glow", texture);
+  return texture;
 }
 
 function courseTwinGroundPositionsCoincide(
@@ -4403,6 +5360,7 @@ function StrategyLandingCloud({
     return values;
   }, [club.landingCloud, sampleTerrain]);
   const pointTexture = useMemo(() => strategyPointTexture(), []);
+  const areaTexture = useMemo(() => strategyAreaTexture(), []);
   const cloudCenter = useMemo(() => {
     if (club.landingCloud.length === 0) return toTerrainPoint(hole.green, sampleTerrain);
     const total = club.landingCloud.reduce(
@@ -4414,40 +5372,105 @@ function StrategyLandingCloud({
     return [x, sampleTerrain(x, z) + 0.48, z] as [number, number, number];
   }, [club.landingCloud, hole.green, sampleTerrain]);
   const tee = toTerrainPoint(hole.tee, sampleTerrain);
+  const spread = useMemo(() => {
+    if (club.landingCloud.length === 0) return { width: 6, depth: 6 };
+    const xs = club.landingCloud.map((point) => point[0]);
+    const zs = club.landingCloud.map((point) => point[2]);
+    return {
+      width: THREE.MathUtils.clamp((Math.max(...xs) - Math.min(...xs)) * 0.58, 5, 28),
+      depth: THREE.MathUtils.clamp((Math.max(...zs) - Math.min(...zs)) * 0.58, 5, 28),
+    };
+  }, [club.landingCloud]);
 
   return (
     <group>
       <Line
         points={[tee, cloudCenter]}
         color="#e7ff6a"
-        lineWidth={1.2}
+        lineWidth={8}
+        transparent
+        opacity={0.12}
+        depthTest={false}
+        renderOrder={21}
+      />
+      <Line
+        points={[tee, cloudCenter]}
+        color="#efff63"
+        lineWidth={3.4}
         dashed
         dashSize={5}
         gapSize={3}
         transparent
-        opacity={0.72}
+        opacity={0.92}
+        depthTest={false}
+        renderOrder={22}
       />
+      <mesh
+        position={[cloudCenter[0], cloudCenter[1] - 0.34, cloudCenter[2]]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        scale={[spread.width, spread.depth, 1]}
+        renderOrder={18}
+      >
+        <circleGeometry args={[1, 64]} />
+        <meshBasicMaterial
+          map={areaTexture}
+          color="#dfff4d"
+          transparent
+          opacity={0.34}
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-4}
+        />
+      </mesh>
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          color="#e7ff6a"
+          color="#f0ff73"
           map={pointTexture}
           alphaTest={0.08}
-          size={1.7}
+          size={2.5}
           sizeAttenuation
           transparent
-          opacity={0.72}
+          opacity={0.88}
           depthWrite={false}
+          depthTest={false}
         />
       </points>
       <mesh position={cloudCenter} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[2.2, 2.75, 44]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.9} depthWrite={false} />
+        <ringGeometry args={[2.5, 3.2, 44]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.96}
+          depthWrite={false}
+          depthTest={false}
+        />
       </mesh>
     </group>
   );
+}
+
+function strategyAreaTexture() {
+  const cached = proceduralTextureCache.get("strategy-area");
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Strategy area textures are unavailable.");
+  const gradient = context.createRadialGradient(128, 128, 12, 128, 128, 126);
+  gradient.addColorStop(0, "rgba(245,255,196,0.72)");
+  gradient.addColorStop(0.48, "rgba(226,255,96,0.42)");
+  gradient.addColorStop(0.82, "rgba(183,235,45,0.16)");
+  gradient.addColorStop(1, "rgba(150,211,25,0)");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 256, 256);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  proceduralTextureCache.set("strategy-area", texture);
+  return texture;
 }
 
 function strategyPointTexture() {
@@ -4614,10 +5637,10 @@ function CameraFocus({
     const targetDistance = shotFraming
       ? view === "golfer"
         ? THREE.MathUtils.clamp(length * 0.65, 24, 72)
-        : THREE.MathUtils.clamp(length * 0.75, 38, 165)
+        : THREE.MathUtils.clamp(length * 0.5, 28, 140)
       : view === "golfer"
         ? THREE.MathUtils.clamp(length * 0.62, 28, 85)
-        : Math.min(length * 0.58, 165);
+        : Math.min(length * 0.52, 150);
     const targetX = terrainStart[0] + directionX * targetDistance;
     const targetZ = terrainStart[2] + directionZ * targetDistance;
     const framing = shotFraming ? GOLFER_SHOT_CAMERA : GOLFER_TEE_CAMERA;
@@ -4674,9 +5697,9 @@ function CameraFocus({
       );
     } else {
       camera.position.set(
-        terrainStart[0] - directionX * Math.min(62, length * 0.28) - directionZ * 42,
-        terrainStart[1] + Math.min(140, Math.max(62, length * 0.34)),
-        terrainStart[2] - directionZ * Math.min(62, length * 0.28) + directionX * 42,
+        terrainStart[0] - directionX * Math.min(38, length * 0.14) - directionZ * 34,
+        terrainStart[1] + Math.min(170, Math.max(76, length * 0.42)),
+        terrainStart[2] - directionZ * Math.min(38, length * 0.14) + directionX * 34,
       );
     }
     camera.lookAt(target);
@@ -5838,8 +6861,8 @@ function VirtualRoundControls({
             {shortGameActive
               ? "Short-game strike variation is modelled from the selected scoring club and current lie."
               : selectedClub.shotModel.spinAxisMeanDeg !== null
-                ? "Each shot samples your measured carry, dispersion and spin-axis shape."
-                : "Your imported shots do not contain spin axis, so curve is inferred from measured left/right dispersion."}{" "}
+                ? "Each shot samples this club's latest 30 days of full-shot evidence, including measured spin axis."
+                : "Recent shots for this club do not contain spin axis, so only a subtle curve is inferred from its latest 30-day left/right pattern."}{" "}
             This remains a model, not a guaranteed result.
           </p>
         </>

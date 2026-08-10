@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, or } from "drizzle-orm";
 
 import {
   clubs,
@@ -25,6 +25,10 @@ import {
 } from "@/lib/course-twin-contract";
 import { courseTwinBoundsForPoints, createCourseTwinProjector } from "@/lib/course-twin-geometry";
 import { buildCourseTwinReplay, type CourseTwinReplaySourceShot } from "@/lib/course-twin-replay";
+import {
+  COURSE_TWIN_SHAPE_LOOKBACK_DAYS,
+  selectCourseTwinRecentShots,
+} from "@/lib/course-twin-recent-shots";
 import type { CourseTwinBagProfile } from "@/lib/course-twin-strategy";
 import { loadActiveCourseTwinManifest } from "@/lib/course-twin-package-store";
 import bootleTerrainPackage from "@/generated/course-twins/bootle-v3.json";
@@ -387,6 +391,10 @@ export async function getCourseTwinReplay({
 
 export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTwinBagProfile[]> {
   const db = getDb();
+  const now = new Date();
+  const recentShotCutoff = new Date(
+    now.getTime() - COURSE_TWIN_SHAPE_LOOKBACK_DAYS * 24 * 60 * 60 * 1_000,
+  );
   const [clubRows, stockRows, shotRows] = await Promise.all([
     db
       .select({ id: clubs.id, type: clubs.type })
@@ -398,11 +406,7 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
         clubId: stockYardages.clubId,
         sampleSize: stockYardages.sampleSize,
         carryMedianYd: stockYardages.carryMedianYd,
-        carryP25Yd: stockYardages.carryP25Yd,
-        carryP75Yd: stockYardages.carryP75Yd,
         totalMedianYd: stockYardages.totalMedianYd,
-        dispersionLeftYd: stockYardages.dispersionLeftYd,
-        dispersionRightYd: stockYardages.dispersionRightYd,
         confidenceScore: stockYardages.confidenceScore,
         calculatedAt: stockYardages.calculatedAt,
       })
@@ -413,6 +417,7 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
     db
       .select({
         clubId: shots.clubId,
+        shotAt: shots.shotAt,
         carryYd: shots.carryYd,
         sideCarryYd: shots.sideCarryYd,
         ballSpeedMph: shots.ballSpeedMph,
@@ -423,10 +428,11 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
         qualityTag: shots.qualityTag,
       })
       .from(shots)
-      .where(eq(shots.userId, userId))
+      .where(and(eq(shots.userId, userId), gte(shots.shotAt, recentShotCutoff)))
       .orderBy(desc(shots.shotAt))
       .limit(2_000),
   ]);
+  const recentShotRows = selectCourseTwinRecentShots(shotRows, { now });
   const latestStockByClubId = new Map<string, (typeof stockRows)[number]>();
   for (const stock of stockRows) {
     if (!latestStockByClubId.has(stock.clubId)) latestStockByClubId.set(stock.clubId, stock);
@@ -436,41 +442,32 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
     .map((club) => {
       const stock = latestStockByClubId.get(club.id);
       if (!stock || stock.carryMedianYd === null || stock.sampleSize < 1) return null;
-      const measured = shotRows.filter(
-        (shot) =>
-          shot.clubId === club.id &&
-          shot.shotCategory === "full" &&
-          !shot.qualityTag?.toLowerCase().includes("exclude"),
-      );
+      const measured = recentShotRows.filter((shot) => shot.clubId === club.id);
+      if (measured.length === 0) return null;
       const carries = numericValues(measured.map((shot) => shot.carryYd));
       const sides = numericValues(measured.map((shot) => shot.sideCarryYd));
       const speeds = numericValues(measured.map((shot) => shot.ballSpeedMph));
       const launches = numericValues(measured.map((shot) => shot.launchAngleDeg));
       const spins = numericValues(measured.map((shot) => shot.spinRate));
       const spinAxes = numericValues(measured.map((shot) => shot.spinAxis));
-      const interquartileStdDev =
-        stock.carryP25Yd !== null && stock.carryP75Yd !== null
-          ? Math.abs(stock.carryP75Yd - stock.carryP25Yd) / 1.349
-          : null;
-      const storedSideSpread = Math.max(stock.dispersionLeftYd ?? 0, stock.dispersionRightYd ?? 0);
       return {
         clubId: club.id,
         clubType: club.type,
-        sampleSize: stock.sampleSize,
+        sampleSize: measured.length,
         confidenceScore: stock.confidenceScore ?? 0,
         carryMedianYd: stock.carryMedianYd,
-        carryStdDevYd: Math.max(2.5, interquartileStdDev ?? standardDeviation(carries) ?? 8),
+        carryStdDevYd: Math.max(2.5, standardDeviation(carries) ?? 5),
         totalMedianYd: stock.totalMedianYd,
         sideMeanYd: mean(sides) ?? 0,
-        sideStdDevYd: Math.max(2, (standardDeviation(sides) ?? storedSideSpread / 1.28) || 7),
+        sideStdDevYd: Math.max(2, standardDeviation(sides) ?? 4),
         ballSpeedMeanMph: mean(speeds),
         ballSpeedStdDevMph: standardDeviation(speeds),
         launchMeanDeg: mean(launches),
         launchStdDevDeg: standardDeviation(launches),
         spinMeanRpm: mean(spins),
         spinStdDevRpm: standardDeviation(spins),
-        spinAxisMeanDeg: mean(spinAxes),
-        spinAxisStdDevDeg: standardDeviation(spinAxes),
+        spinAxisMeanDeg: spinAxes.length >= 3 ? mean(spinAxes) : null,
+        spinAxisStdDevDeg: spinAxes.length >= 3 ? standardDeviation(spinAxes) : null,
       } satisfies CourseTwinBagProfile;
     })
     .filter((profile): profile is CourseTwinBagProfile => profile !== null);

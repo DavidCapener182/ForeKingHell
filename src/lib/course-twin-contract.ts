@@ -36,6 +36,9 @@ export type CourseTwinImageryAsset = {
   kind: "aerial_reference";
   geographicBounds: CourseTwinGeographicBounds;
   attribution: string;
+  pixelWidth?: number;
+  pixelHeight?: number;
+  sha256?: string;
 };
 
 export type CourseTwinPuttingSurface = {
