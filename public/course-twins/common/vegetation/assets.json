@@ -2,6 +2,26 @@
   "schemaVersion": 1,
   "assets": [
     {
+      "assetName": "Course Twin High-detail British Parkland Foliage Billboards",
+      "creator": "OpenAI image generation",
+      "sourcePage": "internal://course-twin/high-detail-foliage-billboards",
+      "licence": "OpenAI generated asset",
+      "downloadedAt": "2026-08-10",
+      "originalFile": "local generated chroma-key source images",
+      "modifiedFiles": [
+        "high-detail/tree-oak-hq.webp",
+        "high-detail/tree-birch-hq.webp",
+        "high-detail/tree-sycamore-hq.webp",
+        "high-detail/shrub-hawthorn-hq.webp"
+      ],
+      "modifications": [
+        "generated four distinct British parkland foliage cards at high resolution",
+        "removed the solid chroma-key background with soft alpha matting and despill",
+        "resized to a maximum 1024 px and encoded as alpha WebP for browser delivery",
+        "rendered as crossed deterministic instanced billboards in the authenticated Course Twin"
+      ]
+    },
+    {
       "assetName": "Course Twin British Parkland Vegetation Billboards",
       "creator": "OpenAI image generation",
       "sourcePage": "internal://course-twin/vegetation-billboards",

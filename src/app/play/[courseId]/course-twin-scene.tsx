@@ -198,35 +198,23 @@ const defaultRoundRules: CourseTwinRoundRules = {
 
 const proceduralTextureCache = new Map<string, THREE.CanvasTexture>();
 const treeBillboards = [
-  { url: "/course-twins/common/vegetation/billboards/tree-oak.png?v=2", aspect: 429 / 410 },
-  { url: "/course-twins/common/vegetation/billboards/tree-birch.png?v=2", aspect: 258 / 436 },
   {
-    url: "/course-twins/common/vegetation/billboards/tree-sycamore.png?v=2",
-    aspect: 414 / 443,
-    cropTop: 0.04,
+    url: "/course-twins/common/vegetation/high-detail/tree-oak-hq.webp?v=1",
+    aspect: 1,
   },
   {
-    url: "/course-twins/common/vegetation/billboards/tree-windswept.png?v=2",
-    aspect: 372 / 443,
-    cropTop: 0.04,
+    url: "/course-twins/common/vegetation/high-detail/tree-birch-hq.webp?v=1",
+    aspect: 1,
+  },
+  {
+    url: "/course-twins/common/vegetation/high-detail/tree-sycamore-hq.webp?v=1",
+    aspect: 1,
   },
 ] as const;
 const bushBillboards = [
   {
-    url: "/course-twins/common/vegetation/billboards/bush-hawthorn.png?v=2",
-    aspect: 331 / 384,
-  },
-  {
-    url: "/course-twins/common/vegetation/billboards/bush-white-flower.png?v=2",
-    aspect: 384 / 318,
-  },
-  {
-    url: "/course-twins/common/vegetation/billboards/bush-dog-rose.png?v=2",
-    aspect: 351 / 384,
-  },
-  {
-    url: "/course-twins/common/vegetation/billboards/bush-native-evergreen.png?v=2",
-    aspect: 384 / 379,
+    url: "/course-twins/common/vegetation/high-detail/shrub-hawthorn-hq.webp?v=1",
+    aspect: 1024 / 683,
   },
 ] as const;
 
@@ -244,6 +232,30 @@ const pbrSurfaceAssets: Record<
   rough: { asset: "Grass001", metresPerTile: 3.6, normalScale: 0.78 },
   bunker: { asset: "Ground080", metresPerTile: 1.25, normalScale: 1.15 },
 };
+
+const highDetailSurfaceMaps = {
+  rough: {
+    colour: "/course-twins/common/materials/high-detail/Grass001-Color.webp?v=1",
+    metresPerTile: pbrSurfaceAssets.rough.metresPerTile,
+  },
+  fairway: {
+    colour: "/course-twins/common/materials/high-detail/Grass005-Color.webp?v=1",
+    metresPerTile: pbrSurfaceAssets.fairway.metresPerTile,
+  },
+  green: {
+    colour: "/course-twins/common/materials/high-detail/Grass008-Color.webp?v=1",
+    metresPerTile: pbrSurfaceAssets.green.metresPerTile,
+  },
+  bunker: {
+    colour: "/course-twins/common/materials/high-detail/Ground080-Color.webp?v=1",
+    metresPerTile: pbrSurfaceAssets.bunker.metresPerTile,
+  },
+} as const;
+
+const highDetailSurfaceNormalAtlas =
+  "/course-twins/common/materials/high-detail/course-surface-normal-atlas.webp?v=1";
+const highDetailSurfaceRoughnessAtlas =
+  "/course-twins/common/materials/high-detail/course-surface-roughness-atlas.webp?v=1";
 
 function roundShotPayloadToReplayShot(
   shot: CourseTwinShotEventPayload & { clientEventId: string },
@@ -3009,17 +3021,79 @@ function LidarTerrain({
   features: CourseTwinFeature[];
   onAimPoint: ((point: CourseTwinPoint) => void) | null;
 }) {
-  const [texture, fairwayTexture, greenTexture, bunkerTexture] = useTexture([
+  const [
+    loadedAerialTexture,
+    loadedRoughTexture,
+    loadedFairwayTexture,
+    loadedGreenTexture,
+    loadedBunkerTexture,
+    loadedSurfaceNormalAtlas,
+    loadedSurfaceRoughnessAtlas,
+  ] = useTexture([
     imageryUrl,
-    "/course-twins/common/materials/Grass005-Color.jpg",
-    "/course-twins/common/materials/Grass008-Color.jpg",
-    "/course-twins/common/materials/Ground080-Color.jpg",
+    highDetailSurfaceMaps.rough.colour,
+    highDetailSurfaceMaps.fairway.colour,
+    highDetailSurfaceMaps.green.colour,
+    highDetailSurfaceMaps.bunker.colour,
+    highDetailSurfaceNormalAtlas,
+    highDetailSurfaceRoughnessAtlas,
   ]);
   const masks = useMemo(
     () => createCourseTwinTerrainMasks(features, asset.localBounds),
     [asset.localBounds, features],
   );
   const { gl } = useThree();
+  const maxAnisotropy = gl.capabilities.getMaxAnisotropy();
+  const [
+    texture,
+    roughTexture,
+    fairwayTexture,
+    greenTexture,
+    bunkerTexture,
+    surfaceNormalAtlas,
+    surfaceRoughnessAtlas,
+  ] = useMemo(() => {
+    const aerialTexture = loadedAerialTexture.clone();
+    aerialTexture.colorSpace = THREE.SRGBColorSpace;
+    aerialTexture.wrapS = THREE.ClampToEdgeWrapping;
+    aerialTexture.wrapT = THREE.ClampToEdgeWrapping;
+    aerialTexture.anisotropy = Math.min(12, maxAnisotropy);
+    aerialTexture.needsUpdate = true;
+
+    const surfaceTextures = [
+      loadedRoughTexture.clone(),
+      loadedFairwayTexture.clone(),
+      loadedGreenTexture.clone(),
+      loadedBunkerTexture.clone(),
+    ];
+    for (const surfaceTexture of surfaceTextures) {
+      surfaceTexture.colorSpace = THREE.SRGBColorSpace;
+      surfaceTexture.wrapS = THREE.RepeatWrapping;
+      surfaceTexture.wrapT = THREE.RepeatWrapping;
+      surfaceTexture.anisotropy = Math.min(12, maxAnisotropy);
+      surfaceTexture.needsUpdate = true;
+    }
+
+    const dataTextures = [loadedSurfaceNormalAtlas.clone(), loadedSurfaceRoughnessAtlas.clone()];
+    for (const dataTexture of dataTextures) {
+      dataTexture.colorSpace = THREE.NoColorSpace;
+      dataTexture.wrapS = THREE.RepeatWrapping;
+      dataTexture.wrapT = THREE.RepeatWrapping;
+      dataTexture.anisotropy = Math.min(12, maxAnisotropy);
+      dataTexture.needsUpdate = true;
+    }
+
+    return [aerialTexture, ...surfaceTextures, ...dataTextures] as const;
+  }, [
+    loadedAerialTexture,
+    loadedBunkerTexture,
+    loadedFairwayTexture,
+    loadedGreenTexture,
+    loadedRoughTexture,
+    loadedSurfaceNormalAtlas,
+    loadedSurfaceRoughnessAtlas,
+    maxAnisotropy,
+  ]);
   const geometry = useMemo(() => {
     const bounds = asset.localBounds;
     const width = bounds.maxX - bounds.minX;
@@ -3042,20 +3116,31 @@ function LidarTerrain({
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(
     () => () => {
+      texture.dispose();
+      roughTexture.dispose();
+      fairwayTexture.dispose();
+      greenTexture.dispose();
+      bunkerTexture.dispose();
+      surfaceNormalAtlas.dispose();
+      surfaceRoughnessAtlas.dispose();
+    },
+    [
+      bunkerTexture,
+      fairwayTexture,
+      greenTexture,
+      roughTexture,
+      surfaceNormalAtlas,
+      surfaceRoughnessAtlas,
+      texture,
+    ],
+  );
+  useEffect(
+    () => () => {
       masks.surface.dispose();
       masks.water.dispose();
     },
     [masks],
   );
-  useEffect(() => {
-    for (const surfaceTexture of [texture, fairwayTexture, greenTexture, bunkerTexture]) {
-      surfaceTexture.colorSpace = THREE.SRGBColorSpace;
-      surfaceTexture.wrapS = THREE.RepeatWrapping;
-      surfaceTexture.wrapT = THREE.RepeatWrapping;
-      surfaceTexture.anisotropy = Math.min(12, gl.capabilities.getMaxAnisotropy());
-      surfaceTexture.needsUpdate = true;
-    }
-  }, [bunkerTexture, fairwayTexture, gl, greenTexture, texture]);
   const terrainWidth = asset.localBounds.maxX - asset.localBounds.minX;
   const terrainDepth = asset.localBounds.maxZ - asset.localBounds.minZ;
   return (
@@ -3073,27 +3158,42 @@ function LidarTerrain({
     >
       <meshStandardMaterial
         map={texture}
+        normalMap={surfaceNormalAtlas}
+        normalScale={new THREE.Vector2(0.36, 0.36)}
         color="#ffffff"
-        roughness={0.88}
+        roughness={0.92}
         metalness={0}
         onBeforeCompile={(shader) => {
           shader.uniforms.courseSurfaceMask = { value: masks.surface };
           shader.uniforms.courseWaterMask = { value: masks.water };
+          shader.uniforms.roughColourMap = { value: roughTexture };
           shader.uniforms.fairwayColourMap = { value: fairwayTexture };
           shader.uniforms.greenColourMap = { value: greenTexture };
           shader.uniforms.bunkerColourMap = { value: bunkerTexture };
-          shader.uniforms.courseSurfaceRepeats = {
-            value: new THREE.Vector3(terrainWidth / 2.2, terrainDepth / 2.2, terrainWidth / 1.25),
+          shader.uniforms.courseSurfaceRoughnessAtlas = { value: surfaceRoughnessAtlas };
+          shader.uniforms.courseTerrainSize = {
+            value: new THREE.Vector2(terrainWidth, terrainDepth),
+          };
+          shader.uniforms.courseSurfaceTileSize = {
+            value: new THREE.Vector4(
+              highDetailSurfaceMaps.rough.metresPerTile,
+              highDetailSurfaceMaps.fairway.metresPerTile,
+              highDetailSurfaceMaps.green.metresPerTile,
+              highDetailSurfaceMaps.bunker.metresPerTile,
+            ),
           };
           shader.fragmentShader = shader.fragmentShader.replace(
             "#include <map_pars_fragment>",
             `#include <map_pars_fragment>
 uniform sampler2D courseSurfaceMask;
 uniform sampler2D courseWaterMask;
+uniform sampler2D roughColourMap;
 uniform sampler2D fairwayColourMap;
 uniform sampler2D greenColourMap;
 uniform sampler2D bunkerColourMap;
-uniform vec3 courseSurfaceRepeats;`,
+uniform sampler2D courseSurfaceRoughnessAtlas;
+uniform vec2 courseTerrainSize;
+uniform vec4 courseSurfaceTileSize;`,
           );
           shader.fragmentShader = shader.fragmentShader.replace(
             "#include <map_fragment>",
@@ -3101,20 +3201,81 @@ uniform vec3 courseSurfaceRepeats;`,
   vec4 aerialColour = texture2D(map, vMapUv);
   vec3 surfaceWeights = texture2D(courseSurfaceMask, vMapUv).rgb;
   float waterWeight = texture2D(courseWaterMask, vMapUv).r;
-  vec3 fairwayColour = texture2D(fairwayColourMap, vMapUv * courseSurfaceRepeats.xy).rgb;
-  vec3 greenColour = texture2D(greenColourMap, vMapUv * courseSurfaceRepeats.xy * 1.8).rgb;
-  vec3 bunkerColour = texture2D(bunkerColourMap, vMapUv * courseSurfaceRepeats.zy).rgb;
-  vec3 courseColour = aerialColour.rgb;
-  courseColour = mix(courseColour, fairwayColour * vec3(0.76, 0.88, 0.72), surfaceWeights.r * 0.66);
-  courseColour = mix(courseColour, greenColour * vec3(0.78, 0.96, 0.73), surfaceWeights.g * 0.78);
-  courseColour = mix(courseColour, bunkerColour * vec3(1.0, 0.94, 0.82), surfaceWeights.b * 0.94);
-  vec3 reflectedWater = mix(courseColour * vec3(0.42, 0.63, 0.68), vec3(0.18, 0.43, 0.52), 0.42);
-  courseColour = mix(courseColour, reflectedWater, waterWeight * 0.62);
+  vec2 roughSurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.x);
+  vec2 fairwaySurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.y);
+  vec2 greenSurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.z);
+  vec2 bunkerSurfaceUv = fract(vMapUv * courseTerrainSize / courseSurfaceTileSize.w);
+  vec3 roughColour = texture2D(roughColourMap, roughSurfaceUv).rgb;
+  vec3 fairwayColour = texture2D(fairwayColourMap, fairwaySurfaceUv).rgb;
+  vec3 greenColour = texture2D(greenColourMap, greenSurfaceUv).rgb;
+  vec3 bunkerColour = texture2D(bunkerColourMap, bunkerSurfaceUv).rgb;
+  float aerialLuma = dot(aerialColour.rgb, vec3(0.2126, 0.7152, 0.0722));
+  vec3 gradedAerial = mix(vec3(aerialLuma), aerialColour.rgb, 0.72) * vec3(1.14, 1.09, 0.98);
+  gradedAerial = pow(clamp((gradedAerial - 0.5) * 1.02 + 0.518, 0.0, 1.0), vec3(0.9));
+  float roughDetail = dot(roughColour, vec3(0.2126, 0.7152, 0.0722));
+  vec3 courseColour = gradedAerial * mix(0.97, 1.035, roughDetail);
+  courseColour = mix(courseColour, fairwayColour * vec3(0.74, 0.9, 0.68), surfaceWeights.r * 0.22);
+  courseColour = mix(courseColour, greenColour * vec3(0.72, 0.94, 0.68), surfaceWeights.g * 0.32);
+  courseColour = mix(courseColour, bunkerColour * vec3(1.04, 0.98, 0.88), surfaceWeights.b * 0.72);
+  vec3 reflectedWater = mix(courseColour * vec3(0.34, 0.58, 0.7), vec3(0.09, 0.4, 0.55), 0.58);
+  courseColour = mix(courseColour, reflectedWater, waterWeight * 0.76);
+  courseColour = pow(max(courseColour, vec3(0.0)), vec3(0.98));
   diffuseColor *= vec4(courseColour, aerialColour.a);
 #endif`,
           );
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <normal_fragment_maps>",
+            `#include <normal_fragment_maps>
+#ifdef USE_NORMALMAP_TANGENTSPACE
+  vec3 courseNormalWeights = texture2D(courseSurfaceMask, vMapUv).rgb;
+  float courseRoughWeight = clamp(
+    1.0 - courseNormalWeights.r - courseNormalWeights.g - courseNormalWeights.b,
+    0.0,
+    1.0
+  );
+  vec2 courseRoughNormalUv = roughSurfaceUv * 0.496 + vec2(0.002, 0.502);
+  vec2 courseFairwayNormalUv = fairwaySurfaceUv * 0.496 + vec2(0.502, 0.502);
+  vec2 courseGreenNormalUv = greenSurfaceUv * 0.496 + vec2(0.002, 0.002);
+  vec2 courseBunkerNormalUv = bunkerSurfaceUv * 0.496 + vec2(0.502, 0.002);
+  vec3 courseRoughNormal = texture2D(normalMap, courseRoughNormalUv).xyz * 2.0 - 1.0;
+  vec3 courseFairwayNormal = texture2D(normalMap, courseFairwayNormalUv).xyz * 2.0 - 1.0;
+  vec3 courseGreenNormal = texture2D(normalMap, courseGreenNormalUv).xyz * 2.0 - 1.0;
+  vec3 courseBunkerNormal = texture2D(normalMap, courseBunkerNormalUv).xyz * 2.0 - 1.0;
+  courseRoughNormal.xy *= 0.46;
+  courseFairwayNormal.xy *= 0.38;
+  courseGreenNormal.xy *= 0.28;
+  courseBunkerNormal.xy *= 0.58;
+  vec3 courseBlendedNormal = normalize(
+    courseRoughNormal * courseRoughWeight +
+    courseFairwayNormal * courseNormalWeights.r +
+    courseGreenNormal * courseNormalWeights.g +
+    courseBunkerNormal * courseNormalWeights.b
+  );
+  normal = normalize(tbn * courseBlendedNormal);
+#endif`,
+          );
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <roughnessmap_fragment>",
+            `float roughnessFactor = roughness;
+  vec3 courseRoughnessWeights = texture2D(courseSurfaceMask, vMapUv).rgb;
+  float courseRoughnessRoughWeight = clamp(
+    1.0 - courseRoughnessWeights.r - courseRoughnessWeights.g - courseRoughnessWeights.b,
+    0.0,
+    1.0
+  );
+  vec2 courseRoughRoughnessUv = roughSurfaceUv * 0.496 + vec2(0.002, 0.502);
+  vec2 courseFairwayRoughnessUv = fairwaySurfaceUv * 0.496 + vec2(0.502, 0.502);
+  vec2 courseGreenRoughnessUv = greenSurfaceUv * 0.496 + vec2(0.002, 0.002);
+  vec2 courseBunkerRoughnessUv = bunkerSurfaceUv * 0.496 + vec2(0.502, 0.002);
+  float courseSurfaceRoughness =
+    texture2D(courseSurfaceRoughnessAtlas, courseRoughRoughnessUv).g * courseRoughnessRoughWeight +
+    texture2D(courseSurfaceRoughnessAtlas, courseFairwayRoughnessUv).g * courseRoughnessWeights.r +
+    texture2D(courseSurfaceRoughnessAtlas, courseGreenRoughnessUv).g * courseRoughnessWeights.g +
+    texture2D(courseSurfaceRoughnessAtlas, courseBunkerRoughnessUv).g * courseRoughnessWeights.b;
+  roughnessFactor *= courseSurfaceRoughness;`,
+          );
         }}
-        customProgramCacheKey={() => "course-twin-terrain-splat-v1"}
+        customProgramCacheKey={() => "course-twin-terrain-splat-v4-pbr-atlas"}
       />
     </mesh>
   );
@@ -3588,13 +3749,11 @@ function InstancedVegetation({
   ]);
 
   useEffect(() => {
-    textures.forEach((texture, index) => {
+    textures.forEach((texture) => {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 4;
-      const treeAsset = index < treeBillboards.length ? treeBillboards[index] : null;
-      const cropTop = treeAsset && "cropTop" in treeAsset ? treeAsset.cropTop : 0;
       texture.offset.set(0, 0);
-      texture.repeat.set(1, 1 - cropTop);
+      texture.repeat.set(1, 1);
       texture.needsUpdate = true;
     });
   }, [textures]);
@@ -3679,11 +3838,15 @@ function InstancedBillboardPlane({
   }, [aspect, instances, planeRotation]);
 
   return (
-    <instancedMesh ref={meshRef} args={[undefined, undefined, instances.length]}>
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, instances.length]}
+      castShadow={planeRotation === 0}
+    >
       <planeGeometry args={[1, 1]} />
       <meshStandardMaterial
         map={texture}
-        alphaTest={0.28}
+        alphaTest={0.34}
         transparent
         side={THREE.DoubleSide}
         roughness={0.96}

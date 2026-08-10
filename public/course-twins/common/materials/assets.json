@@ -2,6 +2,39 @@
   "schemaVersion": 1,
   "assets": [
     {
+      "assetName": "Course Twin High-detail Surface Material Derivatives",
+      "creator": "ambientCG",
+      "sourcePages": [
+        "https://ambientcg.com/view?id=Grass001",
+        "https://ambientcg.com/view?id=Grass005",
+        "https://ambientcg.com/view?id=Grass008",
+        "https://ambientcg.com/view?id=Ground080"
+      ],
+      "licence": "CC0 1.0",
+      "downloadedAt": "2026-08-10",
+      "originalFiles": [
+        "Grass001_2K-JPG.zip",
+        "Grass005_2K-JPG.zip",
+        "Grass008_2K-JPG.zip",
+        "Ground080_2K-JPG.zip"
+      ],
+      "modifiedFiles": [
+        "high-detail/Grass001-Color.webp",
+        "high-detail/Grass005-Color.webp",
+        "high-detail/Grass008-Color.webp",
+        "high-detail/Ground080-Color.webp",
+        "high-detail/course-surface-normal-atlas.webp",
+        "high-detail/course-surface-roughness-atlas.webp"
+      ],
+      "modifications": [
+        "selected 2K JPG source maps for rough, fairway, green and bunker surfaces",
+        "encoded separate colour maps at 1536 px as WebP",
+        "packed four 1024 px tangent-space normal maps into one 2048 px local WebP atlas",
+        "packed four 512 px roughness maps into one 1024 px local WebP atlas",
+        "kept the material maps local while reducing texture units for the authenticated Course Twin PBR shader"
+      ]
+    },
+    {
       "assetName": "Grass 001",
       "creator": "ambientCG",
       "sourcePage": "https://ambientcg.com/a/Grass001",
