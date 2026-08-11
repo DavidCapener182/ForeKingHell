@@ -10,6 +10,7 @@ import {
   IOSMetricRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
+import { CompanionImageHero } from "@/components/app/companion-image-hero";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,11 @@ export default async function PlayCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-5" data-play-companion-hub>
         <MobileTopBar title="Play" />
+        <CompanionImageHero
+          variant="play"
+          label={selected?.name ?? "Course strategy"}
+          alt="An illustrated aerial golf-hole strategy showing the target, hazards and route to the green"
+        />
 
         <section className="grid gap-3">
           <div className="ios-grouped-list grid gap-4 p-5">

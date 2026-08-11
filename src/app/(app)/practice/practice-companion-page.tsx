@@ -1,4 +1,5 @@
 import { PracticeCompanionClient } from "@/app/practice/practice-companion-client";
+import { CompanionImageHero } from "@/components/app/companion-image-hero";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -25,11 +26,14 @@ export default async function PracticeCompanionPage({
 }) {
   const userId = await requireCurrentUserId();
   const params = await searchParams;
+  const options = practiceCompanionOptions(params);
   const [context, currentPlan] = await Promise.all([
-    getPracticePlannerContext(userId),
+    getPracticePlannerContext(userId, {
+      compactTraining: true,
+      includeSpeed: options.intent === "speed",
+    }),
     getCurrentPracticePlanSummary(userId),
   ]);
-  const options = practiceCompanionOptions(params);
   const resumable =
     currentPlan &&
     ["planned", "active", "awaiting_import", "match_found"].includes(currentPlan.status)
@@ -43,6 +47,11 @@ export default async function PracticeCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-4" data-practice-companion>
         <MobileTopBar title="Practice" />
+        <CompanionImageHero
+          variant="practice"
+          label="Range ready"
+          alt="A golfer practising with a launch monitor on a range at dusk"
+        />
         <PracticeCompanionClient
           accountId={userId}
           context={context}

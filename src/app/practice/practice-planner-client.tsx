@@ -1123,7 +1123,7 @@ function PracticeMobileBlockPicker({
               aria-pressed={selected}
               onClick={() => onSelect(block.id)}
               className={cn(
-                "focus-aaa min-h-11 min-w-[8.5rem] snap-start rounded-xl border px-3 py-2 text-left outline-none",
+                "focus-aaa min-h-11 w-[8.5rem] shrink-0 snap-start rounded-xl border px-3 py-2 text-left outline-none",
                 selected
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-foreground",

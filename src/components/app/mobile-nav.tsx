@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Upload,
   UserRound,
+  X,
 } from "lucide-react";
 
 import {
@@ -59,6 +60,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [compactTitleVisible, setCompactTitleVisible] = useState(false);
+  const moreCloseRef = useRef<HTMLButtonElement>(null);
   const scrollFrameRef = useRef<number | null>(null);
   const activePrimaryHref =
     mobilePrimaryItems.find((item) => item.isActive(pathname))?.href ?? pathname;
@@ -171,7 +173,15 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                 </Button>
               </SheetTrigger>
             )}
-            <SheetContent side="bottom" className="ios-navigation-sheet z-[70] gap-0 p-0">
+            <SheetContent
+              side="bottom"
+              showCloseButton={false}
+              onOpenAutoFocus={(event) => {
+                event.preventDefault();
+                moreCloseRef.current?.focus({ preventScroll: true });
+              }}
+              className="ios-navigation-sheet z-[70] gap-0 p-0"
+            >
               <span className="ios-sheet-handle" aria-hidden />
               <SheetHeader className="ios-sheet-header border-b px-4 pb-3 pt-2 text-left">
                 <div className="min-w-0 pr-10">
@@ -180,6 +190,18 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                     {profileLabel} · Level {level} · {xpFormatter.format(totalXp)} XP
                   </SheetDescription>
                 </div>
+                <SheetClose asChild>
+                  <Button
+                    ref={moreCloseRef}
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="ios-nav-button focus-aaa absolute right-3 top-3 size-11"
+                    aria-label="Close navigation"
+                  >
+                    <X className="size-5" aria-hidden />
+                  </Button>
+                </SheetClose>
                 <label className="relative mt-2 block">
                   <span className="sr-only">Search navigation</span>
                   <Search
@@ -337,6 +359,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
               <Link
                 key={`${item.label}-${item.href}`}
                 href={item.href}
+                prefetch
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "ios-tab-item focus-aaa flex min-h-14 touch-manipulation flex-col items-center justify-center gap-0.5 px-1 outline-none transition-[color,transform] duration-100 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",

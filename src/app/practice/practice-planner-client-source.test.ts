@@ -18,6 +18,7 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("Save &amp; Start Practice");
     expect(source).toContain("<ActiveRangeMode");
     expect(source).toContain("data-active-range-mode");
+    expect(source).toContain("w-[8.5rem] shrink-0 snap-start");
     expect(source).toContain("navigator.wakeLock");
     expect(source).toContain("Manual block completion is recorded separately");
     expect(source).not.toContain('label="Match upload"');

@@ -10,6 +10,7 @@ import {
   IOSMetricRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
+import { CompanionImageHero } from "@/components/app/companion-image-hero";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ export default async function TodayCompanionPage() {
 
   const userId = await requireCurrentUserId();
   const [context, currentPlan, courses, cookieStore] = await Promise.all([
-    getPracticePlannerContext(userId),
+    getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
     getCurrentPracticePlanSummary(userId),
     listAvailableCourseTwins(userId),
     cookies(),
@@ -56,6 +57,11 @@ export default async function TodayCompanionPage() {
     <PageShell>
       <MobileAppShell className="gap-3" data-today-companion>
         <MobileTopBar title="Today" />
+        <CompanionImageHero
+          variant="today"
+          label="Your next move"
+          alt="A golf hole viewed from the tee toward a tree-lined fairway and green"
+        />
 
         <section className="ios-grouped-list grid gap-2 p-3" data-primary-recommendation>
           <div className="flex items-start justify-between gap-3">

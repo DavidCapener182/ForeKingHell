@@ -283,7 +283,7 @@ export function PracticeCompanionClient({
               onClick={() => setSelectedIndex(index)}
               disabled={!hydrated}
               className={cn(
-                "focus-aaa min-h-20 min-w-40 snap-start rounded-xl border p-3 text-left",
+                "focus-aaa min-h-20 w-40 shrink-0 snap-start rounded-xl border p-3 text-left",
                 selectedIndex === index
                   ? "border-primary bg-primary text-primary-foreground"
                   : "bg-card",

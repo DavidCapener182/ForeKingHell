@@ -37,7 +37,10 @@ export async function getCompanionSummary(userId: string, pathname: string) {
 }
 
 async function coachSummary(userId: string): Promise<CompanionSummary> {
-  const context = await getPracticePlannerContext(userId);
+  const context = await getPracticePlannerContext(userId, {
+    compactTraining: true,
+    includeSpeed: false,
+  });
   const opportunity = context.latestPractice.biggestOpportunity;
   const club = context.latestPractice.clubs.find((item) => item.clubType === opportunity) ?? null;
 
@@ -68,7 +71,10 @@ async function coachSummary(userId: string): Promise<CompanionSummary> {
 }
 
 async function progressSummary(userId: string): Promise<CompanionSummary> {
-  const context = await getPracticePlannerContext(userId);
+  const context = await getPracticePlannerContext(userId, {
+    compactTraining: true,
+    includeSpeed: false,
+  });
   return {
     eyebrow: "Current progress",
     title: context.progress.priorities[0]?.title ?? "Keep building measured evidence",

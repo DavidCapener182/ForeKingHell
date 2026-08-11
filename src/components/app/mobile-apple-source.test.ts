@@ -89,6 +89,10 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("outline: 3px solid var(--ios-tint) !important;");
     expect(appleCssSource).toContain('body[data-mobile-platform="apple"]');
     expect(mobileNavSource).toContain("Search companion actions");
+    expect(mobileNavSource).toContain('aria-label="Close navigation"');
+    expect(mobileNavSource).toContain("event.preventDefault()");
+    expect(mobileNavSource).toContain("moreCloseRef.current?.focus({ preventScroll: true })");
+    expect(mobileNavSource).toContain("prefetch");
   });
 
   it("uses bottom-sheet materials with reduced transparency and motion fallbacks", () => {

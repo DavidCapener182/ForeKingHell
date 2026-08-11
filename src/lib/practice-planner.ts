@@ -22,6 +22,7 @@ import {
   type WedgeMatrixClub,
 } from "@/lib/bag-intelligence";
 import { formatClubType } from "@/lib/club-format";
+import { getCompanionTrainingLoad } from "@/lib/companion-training-load";
 import { getProgressData } from "@/lib/progress-data";
 import {
   buildProgressSummary,
@@ -443,12 +444,24 @@ const WEDGE_TYPES = new Set(["pw", "gw", "aw", "sw", "lw"]);
 const DRIVER_TYPES = new Set(["driver"]);
 const LONG_GAME_TYPES = new Set(["driver", "3w", "5w", "7w", "3h", "4h", "4i", "5i"]);
 
-export async function getPracticePlannerContext(userId: string): Promise<PracticePlannerContext> {
+type PracticePlannerContextOptions = {
+  compactTraining?: boolean;
+  includeSpeed?: boolean;
+};
+
+export async function getPracticePlannerContext(
+  userId: string,
+  options: PracticePlannerContextOptions = {},
+): Promise<PracticePlannerContext> {
+  const compactTraining = options.compactTraining ?? false;
+  const includeSpeed = options.includeSpeed ?? true;
   const [progressData, todayData, trainingData, speedData, scoring] = await Promise.all([
     getProgressData(userId),
     getTodayPracticeData().catch(() => null),
-    getTrainingOverTimeData(userId, "1y").catch(() => null),
-    getSpeedCoachCardData(userId).catch(() => null),
+    compactTraining
+      ? getCompanionTrainingLoad(userId).catch(() => null)
+      : getTrainingOverTimeData(userId, "1y").catch(() => null),
+    includeSpeed ? getSpeedCoachCardData(userId).catch(() => null) : null,
     getScoringContext(userId).catch(() => ({ weakestCategory: null, penaltyPattern: null })),
   ]);
   const progressSummary = buildProgressSummary(progressData.clubs);
