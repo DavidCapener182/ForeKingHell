@@ -19,6 +19,16 @@ describe("production environment validation", () => {
     expect(() => assertProductionEnvironment(valid)).not.toThrow();
   });
 
+  it("accepts the legacy anon key while deployments migrate to publishable keys", () => {
+    expect(
+      productionEnvironmentIssues({
+        ...valid,
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "legacy-anon-key",
+      }),
+    ).toEqual([]);
+  });
+
   it("reports missing, weak and malformed values together", () => {
     expect(
       productionEnvironmentIssues({
@@ -31,7 +41,7 @@ describe("production environment validation", () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is required",
         "SUPABASE_SERVICE_ROLE_KEY is required",
         "DATABASE_URL must be a PostgreSQL URL",
         "NEXT_PUBLIC_SITE_URL must be an HTTPS URL",

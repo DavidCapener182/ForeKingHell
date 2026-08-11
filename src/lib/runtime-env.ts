@@ -2,7 +2,6 @@ const requiredProductionSecrets = [
   "DATABASE_URL",
   "NEXT_PUBLIC_SITE_URL",
   "NEXT_PUBLIC_SUPABASE_URL",
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
   "SCORECARD_PROOF_SECRET",
   "CRON_SECRET",
@@ -13,6 +12,15 @@ export function productionEnvironmentIssues(env: NodeJS.ProcessEnv) {
 
   for (const name of requiredProductionSecrets) {
     if (!env[name]?.trim()) issues.push(`${name} is required`);
+  }
+
+  if (
+    !env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() &&
+    !env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
+  ) {
+    issues.push(
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is required",
+    );
   }
 
   for (const name of ["NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_SUPABASE_URL"] as const) {
