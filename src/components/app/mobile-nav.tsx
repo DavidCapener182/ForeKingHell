@@ -20,6 +20,7 @@ import {
   mobilePrimaryItems,
   type AppNavGroup,
 } from "@/components/app/nav-items";
+import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { purgePrivateClientData } from "@/lib/service-worker-cache";
@@ -34,7 +35,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { mobileBackNavigation } from "@/components/app/route-metadata";
+import { isMobileCompanionHeroRoute, mobileBackNavigation } from "@/components/app/route-metadata";
 
 export type MobileNavProfile = {
   displayName: string;
@@ -55,6 +56,7 @@ const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
 export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
   const pageTitle = mobilePageTitle(pathname);
+  const heroRoute = isMobileCompanionHeroRoute(pathname);
   const backNavigation = useMemo(() => mobileBackNavigation(pathname), [pathname]);
   const groups = mobileMoreGroups;
   const [query, setQuery] = useState("");
@@ -99,7 +101,12 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
     const rememberCurrentScroll = () => {
       const scrollY = Math.max(0, window.scrollY);
 
-      setCompactTitleVisible(scrollY >= 44);
+      const heroHeight = document
+        .querySelector<HTMLElement>("[data-companion-image-hero]")
+        ?.getBoundingClientRect().height;
+      const compactTitleThreshold = heroRoute && heroHeight ? Math.max(44, heroHeight - 52) : 44;
+
+      setCompactTitleVisible(scrollY >= compactTitleThreshold);
 
       try {
         window.sessionStorage.setItem(tabScrollStorageKey, String(scrollY));
@@ -139,12 +146,14 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
         scrollFrameRef.current = null;
       }
     };
-  }, [backNavigation, tabScrollStorageKey]);
+  }, [backNavigation, heroRoute, tabScrollStorageKey]);
 
   return (
     <>
       <header
         aria-label="Mobile app bar"
+        data-companion-hero-header={heroRoute ? "true" : undefined}
+        data-hero-collapsed={compactTitleVisible ? "true" : "false"}
         className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full px-3 pt-[env(safe-area-inset-top)]"
       >
         <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
@@ -262,10 +271,12 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                 </div>
                 <Button asChild variant="outline" className="min-h-12 justify-start">
                   <SheetClose asChild>
-                    <Link href={`/surface/workbench?next=${encodeURIComponent(pathname)}`}>
+                    <AppSurfaceLink
+                      href={`/surface/workbench?next=${encodeURIComponent(pathname)}`}
+                    >
                       <Search className="size-4" />
                       Open full desktop site
-                    </Link>
+                    </AppSurfaceLink>
                   </SheetClose>
                 </Button>
                 <Button asChild className="min-h-11 justify-center rounded-xl">

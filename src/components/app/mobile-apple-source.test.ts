@@ -46,10 +46,10 @@ describe("Apple mobile shell contract", () => {
     expect(mobileNavSource).toContain("ios-inline-title min-w-0 truncate text-center");
     expect(mobileNavSource).toContain("data-mobile-route-label");
     expect(mobileNavSource).toContain("{pageTitle}");
-    expect(mobileNavSource).toContain("scrollY >= 44");
+    expect(mobileNavSource).toContain("Math.max(44, heroHeight - 52)");
+    expect(mobileNavSource).toContain("scrollY >= compactTitleThreshold");
     expect(mobileNavSource).toContain("const [compactTitleVisible, setCompactTitleVisible] =");
     expect(mobileNavSource).toContain("useState(false)");
-    expect(mobileNavSource).toContain("setCompactTitleVisible(scrollY >= 44)");
     expect(mobileNavSource).toContain("data-compact-title-visible");
     expect(mobileNavSource).toContain("mobileBackNavigation(pathname)");
     expect(mobileNavSource).toContain("Back to ${backNavigation.label}");

@@ -572,6 +572,12 @@ export function isMobileImmersiveRoute(pathname: string) {
   return /^\/play\/[^/]+\/?$/.test(pathname);
 }
 
+const mobileCompanionHeroRoutes = new Set(["/today", "/practice", "/play", "/sessions"]);
+
+export function isMobileCompanionHeroRoute(pathname: string) {
+  return mobileCompanionHeroRoutes.has(pathname);
+}
+
 export type MobileBackNavigation = {
   href: string;
   label: string;

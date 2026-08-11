@@ -69,6 +69,11 @@ describe("app shell account data", () => {
     expect(source).toContain('<DropdownMenuRadioItem value="comfortable">');
     expect(source).toContain('<DropdownMenuRadioItem value="compact">');
     expect(source).toContain('<DropdownMenuRadioItem value="icon">');
+    expect(source).toContain("data-phone-companion-return");
+    expect(source).toContain("Return to companion");
+    expect(source).toContain("/surface/companion?next=%2Ftoday");
+    expect(source).toContain("<AppSurfaceLink");
+    expect(source).toContain("max-md:inline-flex");
     expect(source).toContain('event.key !== "ArrowDown"');
     expect(source).toContain('event.key !== "ArrowUp"');
     expect(source).toContain('event.key !== "Home"');

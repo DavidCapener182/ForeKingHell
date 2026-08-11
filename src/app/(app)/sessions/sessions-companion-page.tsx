@@ -3,7 +3,7 @@ import { CalendarDays } from "lucide-react";
 
 import { SessionsCompanionList } from "@/app/sessions/sessions-companion-list";
 import { CompanionImageHero } from "@/components/app/companion-image-hero";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -16,9 +16,9 @@ export default async function SessionsCompanionPage() {
   return (
     <PageShell>
       <MobileAppShell className="gap-4" data-sessions-companion>
-        <MobileTopBar title="Sessions" />
         <CompanionImageHero
           variant="sessions"
+          title="Sessions"
           label="Recent golf"
           alt="A golfer marking a scorecard with the course and green ahead"
         />

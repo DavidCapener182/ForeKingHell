@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
+import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome";
 import {
   GlobalCommandCentre,
@@ -386,6 +387,16 @@ export function WorkbenchAppShell({
             }
           />
         ) : null}
+        {surface === "workbench" ? (
+          <AppSurfaceLink
+            href="/surface/companion?next=%2Ftoday"
+            data-phone-companion-return
+            className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 hidden min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#071a11]/92 px-4 text-sm font-semibold text-white shadow-2xl backdrop-blur-xl max-md:inline-flex"
+          >
+            <PanelLeftIcon className="size-4" aria-hidden />
+            Return to companion
+          </AppSurfaceLink>
+        ) : null}
         {children}
         {surface === "workbench" ? (
           <GlobalCommandCentre isAdmin={isAdmin} enableKeyboardShortcut={false} />
@@ -703,10 +714,10 @@ function ProfileDropdown({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/surface/companion?next=%2Ftoday">
+          <AppSurfaceLink href="/surface/companion?next=%2Ftoday">
             <PanelLeftIcon className="size-4" />
             Open companion app
-          </Link>
+          </AppSurfaceLink>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link href="/billing">

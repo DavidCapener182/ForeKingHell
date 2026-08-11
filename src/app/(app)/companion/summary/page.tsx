@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import { IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
@@ -32,10 +33,10 @@ export default async function CompanionSummaryPage({
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{summary.description}</p>
           </div>
           <Button asChild className="min-h-12 rounded-xl">
-            <Link href={summary.primary.href}>
+            <SummaryActionLink href={summary.primary.href}>
               {summary.primary.label}
               <ArrowRight className="ml-2 size-4" aria-hidden />
-            </Link>
+            </SummaryActionLink>
           </Button>
         </section>
         <IOSGroupedList label={`${summary.eyebrow} details`}>
@@ -56,12 +57,20 @@ export default async function CompanionSummaryPage({
           )}
         </IOSGroupedList>
         <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href={`/surface/workbench?next=${encodeURIComponent(from)}`}>
+          <AppSurfaceLink href={`/surface/workbench?next=${encodeURIComponent(from)}`}>
             Open full desktop site
-          </Link>
+          </AppSurfaceLink>
         </Button>
       </MobileAppShell>
     </PageShell>
+  );
+}
+
+function SummaryActionLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return href.startsWith("/surface/") ? (
+    <AppSurfaceLink href={href as `/surface/${string}`}>{children}</AppSurfaceLink>
+  ) : (
+    <Link href={href}>{children}</Link>
   );
 }
 

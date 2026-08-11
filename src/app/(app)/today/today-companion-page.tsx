@@ -56,9 +56,9 @@ export default async function TodayCompanionPage() {
   return (
     <PageShell>
       <MobileAppShell className="gap-3" data-today-companion>
-        <MobileTopBar title="Today" />
         <CompanionImageHero
           variant="today"
+          title="Today"
           label="Your next move"
           alt="A golf hole viewed from the tee toward a tree-lined fairway and green"
         />

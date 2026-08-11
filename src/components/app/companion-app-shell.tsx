@@ -5,7 +5,10 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 import { MobileNav, type MobileNavProfile } from "@/components/app/mobile-nav";
-import { isMobileImmersiveRoute } from "@/components/app/route-metadata";
+import {
+  isMobileCompanionHeroRoute,
+  isMobileImmersiveRoute,
+} from "@/components/app/route-metadata";
 import { calculateUserLevel } from "@/lib/achievements/xp";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +23,7 @@ export function CompanionAppShell({
 }) {
   const pathname = usePathname();
   const immersive = isMobileImmersiveRoute(pathname);
+  const heroRoute = isMobileCompanionHeroRoute(pathname);
   const level = calculateUserLevel(totalXp);
 
   useEffect(() => {
@@ -50,9 +54,10 @@ export function CompanionAppShell({
       data-mobile-platform="apple"
       data-app-surface="companion"
       data-mobile-immersive-shell={immersive ? "course-twin" : undefined}
+      data-companion-hero-shell={heroRoute ? "true" : undefined}
       className={cn(
         "relative flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip bg-background",
-        immersive ? "pt-0" : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
+        immersive || heroRoute ? "pt-0" : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
       )}
     >
       <a

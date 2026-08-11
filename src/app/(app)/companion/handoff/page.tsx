@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArrowRight, BriefcaseBusiness, CalendarDays, Flag, Target } from "lucide-react";
 
+import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { findRouteMetadata } from "@/components/app/route-metadata";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
@@ -41,10 +41,10 @@ export default async function CompanionHandoffPage({
             <p className="mt-2 text-[15px] leading-6 text-muted-foreground">{explanation}</p>
           </div>
           <Button asChild className="min-h-12 rounded-xl">
-            <Link href={`/surface/workbench?next=${encodeURIComponent(requestedPath)}`}>
+            <AppSurfaceLink href={`/surface/workbench?next=${encodeURIComponent(requestedPath)}`}>
               Open Full Site
               <ArrowRight className="size-4" aria-hidden />
-            </Link>
+            </AppSurfaceLink>
           </Button>
         </section>
 
