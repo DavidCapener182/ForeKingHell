@@ -183,6 +183,57 @@ describe("proxy expired-session recovery", () => {
   });
 });
 
+describe("proxy legacy phone dashboard recovery", () => {
+  const originalBypass = process.env.PLAYWRIGHT_E2E_AUTH_BYPASS;
+  const originalBasicAuthPassword = process.env.FKH_BASIC_AUTH_PASSWORD;
+  const phoneUserAgent =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
+  const bypassCookie = "sb-playwright-auth-token=%7B%22access_token%22%3A%22phone-test-token%22%7D";
+
+  beforeEach(() => {
+    process.env.PLAYWRIGHT_E2E_AUTH_BYPASS = "1";
+    delete process.env.FKH_BASIC_AUTH_PASSWORD;
+  });
+
+  afterEach(() => {
+    if (originalBypass === undefined) delete process.env.PLAYWRIGHT_E2E_AUTH_BYPASS;
+    else process.env.PLAYWRIGHT_E2E_AUTH_BYPASS = originalBypass;
+
+    if (originalBasicAuthPassword === undefined) delete process.env.FKH_BASIC_AUTH_PASSWORD;
+    else process.env.FKH_BASIC_AUTH_PASSWORD = originalBasicAuthPassword;
+  });
+
+  it("resets an old phone dashboard launch to companion Today", async () => {
+    const response = await proxy(
+      new NextRequest("https://app.example.com/dashboard", {
+        headers: {
+          cookie: `${bypassCookie}; fkh-app-surface=workbench`,
+          "user-agent": phoneUserAgent,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://app.example.com/today");
+    expect(response.cookies.get("fkh-app-surface")?.value).toBe("companion");
+  });
+
+  it("leaves explicitly opened phone workbench pages available", async () => {
+    const response = await proxy(
+      new NextRequest("https://app.example.com/today", {
+        headers: {
+          cookie: `${bypassCookie}; fkh-app-surface=workbench`,
+          "user-agent": phoneUserAgent,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.cookies.get("fkh-app-surface")).toBeUndefined();
+  });
+});
+
 function configureSupabaseAuth() {
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://project.supabase.co";
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "publishable-key";

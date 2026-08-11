@@ -126,9 +126,15 @@ async function refreshSessionAndProtect(request: NextRequest) {
 }
 
 function protectedAppResponse(request: NextRequest) {
+  const deviceType = userAgent(request).device.type;
+
+  if (deviceType === "mobile" && request.nextUrl.pathname === "/dashboard") {
+    return mobileDashboardCompanionResponse(request);
+  }
+
   const surface = resolveAppSurface({
     storedPreference: request.cookies.get(APP_SURFACE_COOKIE)?.value,
-    deviceType: userAgent(request).device.type,
+    deviceType,
   });
 
   if (surface !== "companion") {
@@ -152,6 +158,22 @@ function protectedAppResponse(request: NextRequest) {
   }
 
   return NextResponse.next({ request });
+}
+
+function mobileDashboardCompanionResponse(request: NextRequest) {
+  const todayUrl = request.nextUrl.clone();
+  todayUrl.pathname = "/today";
+  todayUrl.search = "";
+
+  const response = noStore(NextResponse.redirect(todayUrl));
+  response.cookies.set(APP_SURFACE_COOKIE, "companion", {
+    httpOnly: true,
+    maxAge: 60 * 60 * 24 * 365,
+    path: "/",
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+  });
+  return response;
 }
 
 function unauthenticatedResponse(request: NextRequest) {
