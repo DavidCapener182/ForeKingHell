@@ -78,7 +78,7 @@
     "ws": "^8.21.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/proj4": "^2.5.6",
@@ -86,12 +86,12 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
-    "axe-core": "^4.11.4",
+    "axe-core": "^4.13.0",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
-    "lighthouse": "^12.8.2",
+    "lighthouse": "^13.4.1",
     "postject": "^1.0.0-alpha.6",
     "prettier": "^3.8.3",
     "shadcn": "^4.13.0",
