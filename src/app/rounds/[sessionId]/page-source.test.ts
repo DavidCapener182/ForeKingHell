@@ -6,6 +6,10 @@ const source = readFileSync(
   join(process.cwd(), "src/app/(app)/rounds/[sessionId]/page.tsx"),
   "utf8",
 );
+const mobileCollapsibleSource = readFileSync(
+  join(process.cwd(), "src/app/rounds/[sessionId]/mobile-collapsible.tsx"),
+  "utf8",
+);
 
 describe("round detail desktop workspace source", () => {
   it("keeps round review inside the desktop workbench with shared wide-monitor rail", () => {
@@ -50,14 +54,16 @@ describe("round detail desktop workspace source", () => {
   });
 
   it("uses real mobile disclosures while leaving desktop review content expanded", () => {
-    const mobileDisclosure =
-      source.match(/function MobileCollapsible[\s\S]*?function ReviewAccordion/)?.[0] ?? "";
-
-    expect(mobileDisclosure).toContain('<details className="group lg:contents">');
-    expect(mobileDisclosure).toContain("<summary");
-    expect(mobileDisclosure).toContain("group-open:block lg:contents");
-    expect(mobileDisclosure).toContain("group-open:rotate-180");
-    expect(mobileDisclosure).not.toContain('<section className="contents">');
+    expect(source).toContain(
+      'import { MobileCollapsible } from "@/app/rounds/[sessionId]/mobile-collapsible"',
+    );
+    expect(mobileCollapsibleSource).toContain("useSyncExternalStore");
+    expect(mobileCollapsibleSource).toContain('const DESKTOP_MEDIA_QUERY = "(min-width: 64rem)"');
+    expect(mobileCollapsibleSource).toContain("open={isDesktop || undefined}");
+    expect(mobileCollapsibleSource).toContain("<summary");
+    expect(mobileCollapsibleSource).toContain("group-open:block lg:contents");
+    expect(mobileCollapsibleSource).toContain("group-open:rotate-180");
+    expect(mobileCollapsibleSource).not.toContain('<section className="contents">');
   });
 
   it("renders a purpose-built mobile round review before the preserved desktop workbench", () => {

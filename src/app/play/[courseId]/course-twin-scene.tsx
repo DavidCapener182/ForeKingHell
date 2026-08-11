@@ -313,17 +313,27 @@ export function CourseTwinScene({
   readOnly = false,
   tournamentId,
   tournamentRoundNumber,
+  initialMode,
+  initialHoleNumber,
 }: {
   manifest: CourseTwinManifest;
   replay: CourseTwinReplayDocument | null;
   readOnly?: boolean;
   tournamentId?: string | null;
   tournamentRoundNumber?: number | null;
+  initialMode?: RuntimeMode;
+  initialHoleNumber?: number;
 }) {
-  const [holeNumber, setHoleNumber] = useState(manifest.holes[0]?.holeNumber ?? 1);
-  const [mode, setMode] = useState<RuntimeMode>(replay?.shots.length ? "replay" : "flyover");
+  const [holeNumber, setHoleNumber] = useState(
+    manifest.holes.some((hole) => hole.holeNumber === initialHoleNumber)
+      ? initialHoleNumber!
+      : (manifest.holes[0]?.holeNumber ?? 1),
+  );
+  const [mode, setMode] = useState<RuntimeMode>(
+    initialMode ?? (replay?.shots.length ? "replay" : "flyover"),
+  );
   const [cameraView, setCameraView] = useState<CameraView>(
-    replay?.shots.length ? "aerial" : "golfer",
+    initialMode === "strategy" || replay?.shots.length ? "aerial" : "golfer",
   );
   const [shotIndex, setShotIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -1483,51 +1493,60 @@ export function CourseTwinScene({
       });
   };
 
-  const loadStrategy = (nextHoleNumber: number) => {
-    strategyAbortRef.current?.abort();
-    const controller = new AbortController();
-    strategyAbortRef.current = controller;
-    setStrategyState({
-      holeNumber: nextHoleNumber,
-      status: "loading",
-      document: null,
-      error: null,
-    });
-    void fetch(
-      `/api/course-twins/${encodeURIComponent(manifest.course.id)}/strategy?holeNumber=${nextHoleNumber}`,
-      { cache: "no-store", signal: controller.signal },
-    )
-      .then(async (response) => {
-        const body = (await response.json()) as CourseTwinStrategyDocument | { error?: unknown };
-        if (!response.ok || !("modelVersion" in body)) {
-          throw new Error(
-            "error" in body && typeof body.error === "string"
-              ? body.error
-              : "Course strategy is unavailable.",
-          );
-        }
-        return body;
-      })
-      .then((document) => {
-        if (controller.signal.aborted) return;
-        setStrategyState({
-          holeNumber: nextHoleNumber,
-          status: "ready",
-          document,
-          error: null,
-        });
-        setStrategyClubId(document.recommended?.clubId ?? document.clubs[0]?.clubId ?? null);
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setStrategyState({
-          holeNumber: nextHoleNumber,
-          status: "error",
-          document: null,
-          error: error instanceof Error ? error.message : "Course strategy is unavailable.",
-        });
+  const loadStrategy = useCallback(
+    (nextHoleNumber: number) => {
+      strategyAbortRef.current?.abort();
+      const controller = new AbortController();
+      strategyAbortRef.current = controller;
+      setStrategyState({
+        holeNumber: nextHoleNumber,
+        status: "loading",
+        document: null,
+        error: null,
       });
-  };
+      void fetch(
+        `/api/course-twins/${encodeURIComponent(manifest.course.id)}/strategy?holeNumber=${nextHoleNumber}`,
+        { cache: "no-store", signal: controller.signal },
+      )
+        .then(async (response) => {
+          const body = (await response.json()) as CourseTwinStrategyDocument | { error?: unknown };
+          if (!response.ok || !("modelVersion" in body)) {
+            throw new Error(
+              "error" in body && typeof body.error === "string"
+                ? body.error
+                : "Course strategy is unavailable.",
+            );
+          }
+          return body;
+        })
+        .then((document) => {
+          if (controller.signal.aborted) return;
+          setStrategyState({
+            holeNumber: nextHoleNumber,
+            status: "ready",
+            document,
+            error: null,
+          });
+          setStrategyClubId(document.recommended?.clubId ?? document.clubs[0]?.clubId ?? null);
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          setStrategyState({
+            holeNumber: nextHoleNumber,
+            status: "error",
+            document: null,
+            error: error instanceof Error ? error.message : "Course strategy is unavailable.",
+          });
+        });
+    },
+    [manifest.course.id],
+  );
+
+  useEffect(() => {
+    if (initialMode !== "strategy" || strategyState.status !== "idle") return;
+    const timer = window.setTimeout(() => loadStrategy(selectedHole.holeNumber), 0);
+    return () => window.clearTimeout(timer);
+  }, [initialMode, loadStrategy, selectedHole.holeNumber, strategyState.status]);
 
   const activateRuntimeMode = (nextMode: RuntimeMode) => {
     selectMode(nextMode);
@@ -3509,7 +3528,7 @@ function MobileCourseTwinChrome({
   onSelectMode: (mode: RuntimeMode) => void;
   children: ReactNode;
 }) {
-  const modes: RuntimeMode[] = ["flyover", "replay", "strategy", "play", "live", "explore"];
+  const modes: RuntimeMode[] = ["strategy", "replay", "play"];
 
   return (
     <div
@@ -3591,7 +3610,7 @@ function MobileCourseTwinChrome({
         {modes.map((item) => {
           const unavailable =
             (item === "replay" && !replayAvailable) ||
-            (readOnly && item !== "flyover" && item !== "replay");
+            (readOnly && item !== "strategy" && item !== "replay");
           return (
             <button
               key={item}

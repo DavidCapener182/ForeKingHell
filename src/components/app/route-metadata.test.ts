@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  appRouteMetadata,
   findRouteMetadata,
   isMobileImmersiveRoute,
   mobileBackNavigation,
@@ -14,7 +15,17 @@ describe("central route metadata", () => {
     expect(findRouteMetadata("/data-chat")?.pageTitle).toBe("Data Chat");
     expect(findRouteMetadata("/data-chat")?.mobilePrimaryGroup).toBe("analyse");
     expect(findRouteMetadata("/play/bootle")?.pageTitle).toBe("Course Twins");
-    expect(findRouteMetadata("/play/bootle")?.mobilePrimaryGroup).toBe("sessions");
+    expect(findRouteMetadata("/play/bootle")?.mobilePrimaryGroup).toBe("play");
+    expect(findRouteMetadata("/play/bootle")?.mobileExperience).toBe("immersive");
+  });
+
+  it("classifies every canonical route for the companion surface", () => {
+    expect(appRouteMetadata.every((route) => Boolean(route.mobileExperience))).toBe(true);
+    expect(findRouteMetadata("/today")?.mobileNav).toBe("primary");
+    expect(findRouteMetadata("/practice")?.mobileNav).toBe("primary");
+    expect(findRouteMetadata("/play")?.mobileNav).toBe("primary");
+    expect(findRouteMetadata("/analyse")?.mobileExperience).toBe("desktop-only");
+    expect(findRouteMetadata("/admin")?.mobileNav).toBe(false);
   });
 
   it("keeps aliases available for command search without exposing admin routes to players", () => {

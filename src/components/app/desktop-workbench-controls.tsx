@@ -382,7 +382,13 @@ export function DesktopWorkbenchControls({
         <div className="flex min-w-0 flex-[1_1_26rem] flex-wrap items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" data-filter-control>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-filter-control
+                disabled={!hydrated}
+              >
                 <Save className="size-4" />
                 Saved views
               </Button>
@@ -445,7 +451,13 @@ export function DesktopWorkbenchControls({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" data-filter-control>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-filter-control
+                disabled={!hydrated}
+              >
                 <Columns3 className="size-4" />
                 Columns
                 <span className="hidden text-xs text-muted-foreground xl:inline">
@@ -479,7 +491,13 @@ export function DesktopWorkbenchControls({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" data-filter-control>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-filter-control
+                disabled={!hydrated}
+              >
                 <SlidersHorizontal className="size-4" />
                 Density
               </Button>
@@ -511,6 +529,7 @@ export function DesktopWorkbenchControls({
             variant="outline"
             size="sm"
             onClick={exportCurrentTable}
+            disabled={!hydrated}
             data-export-current-view
             data-export-table-id={exportTableId}
           >
@@ -526,6 +545,7 @@ export function DesktopWorkbenchControls({
             variant="outline"
             size="sm"
             onClick={() => void copyCurrentViewLink()}
+            disabled={!hydrated}
             data-copy-current-view
           >
             <Copy className="size-4" />

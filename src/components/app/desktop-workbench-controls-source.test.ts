@@ -33,6 +33,7 @@ describe("desktop workbench controls source", () => {
   it("keeps the desktop table control hooks for workbench pages", () => {
     expect(source).toContain("data-desktop-workbench-toolbar");
     expect(source).toContain('data-workbench-controls-hydrated={hydrated ? "true" : "false"}');
+    expect(source).toContain("disabled={!hydrated}");
     expect(source).toContain("data-filter-toolbar");
     expect(source).toContain("data-filter-control");
     expect(source).toContain("data-export-current-view");

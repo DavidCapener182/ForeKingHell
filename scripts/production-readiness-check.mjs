@@ -78,7 +78,7 @@ async function envForCheck(command, args) {
     };
   }
 
-  if (isE2eCheck(command, args) && hasAuthState) {
+  if (isE2eCheck(command, args)) {
     return {
       ...process.env,
       ...authenticatedE2eEnv,

@@ -58,15 +58,17 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { calculateUserLevel } from "@/lib/achievements/xp";
+import type { AppSurface } from "@/lib/app-surface";
 import { BRAND_NAME } from "@/lib/brand";
 import { getProfileInitials } from "@/lib/profile-initials";
 import { cn } from "@/lib/utils";
 
-type AppShellProps = {
+type WorkbenchAppShellProps = {
   children: ReactNode;
   totalXp: number;
   isAdmin?: boolean;
   profile?: MobileNavProfile;
+  surface: AppSurface;
 };
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
@@ -79,7 +81,13 @@ const MobileNav = dynamic(() =>
   import("@/components/app/mobile-nav").then((module) => module.MobileNav),
 );
 
-export function AppShell({ children, totalXp, isAdmin = false, profile = null }: AppShellProps) {
+export function WorkbenchAppShell({
+  children,
+  totalXp,
+  isAdmin = false,
+  profile = null,
+  surface,
+}: WorkbenchAppShellProps) {
   const pathname = usePathname();
   const isMobileImmersive = isMobileImmersiveRoute(pathname);
   const level = calculateUserLevel(totalXp);
@@ -106,13 +114,6 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    document.body.dataset.mobilePlatform = "apple";
-    return () => {
-      delete document.body.dataset.mobilePlatform;
-    };
   }, []);
 
   useEffect(() => {
@@ -210,178 +211,185 @@ export function AppShell({ children, totalXp, isAdmin = false, profile = null }:
       >
         Skip to content
       </a>
-      <a
-        href="#app-sidebar"
-        className="sr-only fixed left-3 top-14 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only"
-      >
-        Skip to sidebar
-      </a>
-      <MainTableSkipLink pathname={pathname} />
-      <Sidebar
-        id="app-sidebar"
-        tabIndex={-1}
-        collapsible="icon"
-        className="border-sidebar-border bg-sidebar"
-      >
-        <SidebarHeader
-          className={cn(
-            "border-b border-sidebar-border bg-sidebar text-sidebar-foreground",
-            isCompactSidebar && "gap-1 p-1.5",
-          )}
+      {surface === "workbench" ? (
+        <>
+          <a
+            href="#app-sidebar"
+            className="sr-only fixed left-3 top-14 z-[100] rounded-md bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-sm ring-2 ring-ring focus:not-sr-only"
+          >
+            Skip to sidebar
+          </a>
+          <MainTableSkipLink pathname={pathname} />
+        </>
+      ) : null}
+      {surface === "workbench" ? (
+        <Sidebar
+          id="app-sidebar"
+          tabIndex={-1}
+          collapsible="icon"
+          className="border-sidebar-border bg-sidebar"
         >
-          <div className={cn("flex items-center gap-2 px-1 py-1", isCompactSidebar && "py-0.5")}>
-            <SidebarMenuButton
-              asChild
-              size="lg"
-              tooltip="Dashboard"
-              className="text-sidebar-foreground hover:text-sidebar-accent-foreground"
-            >
-              <Link href="/dashboard">
-                <BrandMark
-                  className={cn("size-9 rounded-lg shadow-sm", isCompactSidebar && "size-8")}
-                  sizes={isCompactSidebar ? "32px" : "36px"}
-                />
-                <span className="grid min-w-0 flex-1 text-left leading-tight">
-                  <span className="truncate font-semibold">{BRAND_NAME}</span>
-                  <span className="truncate text-xs text-sidebar-foreground/70">
-                    Golf analytics
-                  </span>
-                </span>
-              </Link>
-            </SidebarMenuButton>
-            <SidebarTrigger className="ml-auto hidden size-8 text-sidebar-foreground hover:text-sidebar-accent-foreground sm:inline-flex" />
-          </div>
-        </SidebarHeader>
-
-        <SidebarContent>
-          <div className="px-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={openGlobalCommandCentre}
-              className="hidden min-h-10 w-full justify-between lg:flex"
-              aria-label="Search LM World Tour, Command K"
-            >
-              <span className="flex items-center gap-2">
-                <Search className="size-4" /> Search
-              </span>
-              <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                ⌘K
-              </kbd>
-            </Button>
-          </div>
-          {desktopNavGroups.map((group) => (
-            <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
-              <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
-                {group.label}
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {group.items.map((item) => {
-                    const Icon = item.icon;
-                    const active = item.isActive(pathname);
-
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={active}
-                          tooltip={item.label}
-                          className={cn(
-                            isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
-                            active &&
-                              "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
-                          )}
-                        >
-                          <Link href={item.href} aria-current={active ? "page" : undefined}>
-                            <Icon className="size-4" aria-hidden />
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                        {item.badge ? (
-                          <SidebarMenuBadge>
-                            <Badge
-                              variant={item.badge === "Admin" ? "default" : "secondary"}
-                              className="h-5 px-1.5 text-[10px]"
-                            >
-                              {item.badge}
-                            </Badge>
-                          </SidebarMenuBadge>
-                        ) : null}
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ))}
-        </SidebarContent>
-
-        <SidebarSeparator />
-        <SidebarFooter
-          className={cn(
-            "border-t border-sidebar-border bg-sidebar text-sidebar-foreground",
-            isCompactSidebar && "gap-1 p-1.5",
-          )}
-        >
-          <SidebarDensityMenu density={sidebarDensity} onDensityChange={updateSidebarDensity} />
-          <Button
-            asChild
+          <SidebarHeader
             className={cn(
-              "premium-action w-full justify-start rounded-lg",
-              isCompactSidebar && "h-8 px-2 text-xs",
+              "border-b border-sidebar-border bg-sidebar text-sidebar-foreground",
+              isCompactSidebar && "gap-1 p-1.5",
             )}
           >
-            <Link href="/import">
-              <Upload className="size-4" />
-              <span className="group-data-[collapsible=icon]:hidden">Import data</span>
-            </Link>
-          </Button>
-          <ProfileDropdown
-            totalXp={totalXp}
-            level={level.level}
-            xpToNextLevel={xpToNextLevel}
-            profile={profile}
-            isAdmin={isAdmin}
-            compact={isCompactSidebar}
-          />
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
+            <div className={cn("flex items-center gap-2 px-1 py-1", isCompactSidebar && "py-0.5")}>
+              <SidebarMenuButton
+                asChild
+                size="lg"
+                tooltip="Dashboard"
+                className="text-sidebar-foreground hover:text-sidebar-accent-foreground"
+              >
+                <Link href="/dashboard">
+                  <BrandMark
+                    className={cn("size-9 rounded-lg shadow-sm", isCompactSidebar && "size-8")}
+                    sizes={isCompactSidebar ? "32px" : "36px"}
+                  />
+                  <span className="grid min-w-0 flex-1 text-left leading-tight">
+                    <span className="truncate font-semibold">{BRAND_NAME}</span>
+                    <span className="truncate text-xs text-sidebar-foreground/70">
+                      Golf analytics
+                    </span>
+                  </span>
+                </Link>
+              </SidebarMenuButton>
+              <SidebarTrigger className="ml-auto hidden size-8 text-sidebar-foreground hover:text-sidebar-accent-foreground sm:inline-flex" />
+            </div>
+          </SidebarHeader>
 
-      <div
-        data-mobile-platform="apple"
-        data-mobile-immersive-shell={isMobileImmersive ? "course-twin" : undefined}
-        className={cn(
-          "relative flex min-w-0 flex-1 flex-col overflow-x-clip bg-background lg:pt-0",
-          isMobileImmersive ? "pt-0" : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
-        )}
-      >
-        {isMobileImmersive ? null : (
-          <MobileNav
-            pathname={pathname}
-            totalXp={totalXp}
-            level={level.level}
-            profile={profile}
-            isAdmin={isAdmin}
-          />
-        )}
-        <DesktopWorkbenchChrome
-          navGroups={desktopNavGroups}
-          isAdmin={isAdmin}
-          accountMenu={
+          <SidebarContent>
+            <div className="px-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openGlobalCommandCentre}
+                className="hidden min-h-10 w-full justify-between lg:flex"
+                aria-label="Search LM World Tour, Command K"
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="size-4" /> Search
+                </span>
+                <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </Button>
+            </div>
+            {desktopNavGroups.map((group) => (
+              <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
+                <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
+                  {group.label}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = item.isActive(pathname);
+
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={active}
+                            tooltip={item.label}
+                            className={cn(
+                              isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
+                              active &&
+                                "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
+                            )}
+                          >
+                            <Link href={item.href} aria-current={active ? "page" : undefined}>
+                              <Icon className="size-4" aria-hidden />
+                              <span>{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                          {item.badge ? (
+                            <SidebarMenuBadge>
+                              <Badge
+                                variant={item.badge === "Admin" ? "default" : "secondary"}
+                                className="h-5 px-1.5 text-[10px]"
+                              >
+                                {item.badge}
+                              </Badge>
+                            </SidebarMenuBadge>
+                          ) : null}
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
+          </SidebarContent>
+
+          <SidebarSeparator />
+          <SidebarFooter
+            className={cn(
+              "border-t border-sidebar-border bg-sidebar text-sidebar-foreground",
+              isCompactSidebar && "gap-1 p-1.5",
+            )}
+          >
+            <SidebarDensityMenu density={sidebarDensity} onDensityChange={updateSidebarDensity} />
+            <Button
+              asChild
+              className={cn(
+                "premium-action w-full justify-start rounded-lg",
+                isCompactSidebar && "h-8 px-2 text-xs",
+              )}
+            >
+              <Link href="/import">
+                <Upload className="size-4" />
+                <span className="group-data-[collapsible=icon]:hidden">Import data</span>
+              </Link>
+            </Button>
             <ProfileDropdown
               totalXp={totalXp}
               level={level.level}
               xpToNextLevel={xpToNextLevel}
               profile={profile}
               isAdmin={isAdmin}
-              surface="topbar"
+              compact={isCompactSidebar}
             />
-          }
-        />
+          </SidebarFooter>
+          <SidebarRail />
+        </Sidebar>
+      ) : null}
+
+      <div
+        data-app-surface={surface}
+        data-mobile-immersive-shell={isMobileImmersive ? "course-twin" : undefined}
+        className={cn(
+          "relative flex min-w-0 flex-1 flex-col bg-background",
+          surface === "workbench" ? "overflow-x-auto pt-0" : "overflow-x-clip",
+          isMobileImmersive || surface === "workbench"
+            ? "pt-0"
+            : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
+        )}
+      >
+        {isMobileImmersive || surface !== "companion" ? null : (
+          <MobileNav pathname={pathname} totalXp={totalXp} level={level.level} profile={profile} />
+        )}
+        {surface === "workbench" ? (
+          <DesktopWorkbenchChrome
+            navGroups={desktopNavGroups}
+            isAdmin={isAdmin}
+            accountMenu={
+              <ProfileDropdown
+                totalXp={totalXp}
+                level={level.level}
+                xpToNextLevel={xpToNextLevel}
+                profile={profile}
+                isAdmin={isAdmin}
+                surface="topbar"
+              />
+            }
+          />
+        ) : null}
         {children}
-        <GlobalCommandCentre isAdmin={isAdmin} />
+        {surface === "workbench" ? (
+          <GlobalCommandCentre isAdmin={isAdmin} enableKeyboardShortcut={false} />
+        ) : null}
       </div>
     </SidebarProvider>
   );
@@ -692,6 +700,12 @@ function ProfileDropdown({
           <Link href="/settings">
             <Settings className="size-4" />
             Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/surface/companion?next=%2Ftoday">
+            <PanelLeftIcon className="size-4" />
+            Open companion app
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

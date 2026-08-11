@@ -11,7 +11,11 @@ describe("installed app claims", () => {
       "utf8",
     );
 
-    expect(manifest).toContain('start_url: "/today"');
+    expect(manifest).toContain('start_url: "/surface/companion?next=%2Ftoday"');
+    expect(manifest).toContain('name: "Plan practice"');
+    expect(manifest).toContain('name: "Course strategy"');
+    expect(manifest).toContain('name: "Latest session"');
+    expect(manifest).toContain('name: "Import data"');
     expect(register).toContain("Private analysis needs a connection");
     expect(register).not.toContain("Previously loaded screens remain available");
     expect(register).toContain("retained for a safe retry");

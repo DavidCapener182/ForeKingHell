@@ -2,9 +2,27 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/(app)/practice/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/practice/practice-workbench-page.tsx"),
+  "utf8",
+);
+const routeSource = readFileSync(join(process.cwd(), "src/app/(app)/practice/page.tsx"), "utf8");
+const companionSource = readFileSync(
+  join(process.cwd(), "src/app/practice/practice-companion-client.tsx"),
+  "utf8",
+);
 
 describe("practice planner desktop workflow", () => {
+  it("branches before importing the companion or workbench implementation", () => {
+    expect(routeSource).toContain('surface === "companion"');
+    expect(routeSource).toContain('await import("./practice-companion-page")');
+    expect(routeSource).toContain('await import("./practice-workbench-page")');
+    expect(companionSource).toContain("Save & Start Practice");
+    expect(companionSource).toContain("data-active-range-mode");
+    expect(companionSource).not.toContain("DesktopTableWorkbenchControls");
+    expect(companionSource).not.toContain("PracticeLibrary");
+  });
+
   it("puts the active mobile drill before historical session evidence", () => {
     expect(source).toContain("<PracticePlannerClient");
     expect(source).toContain("<PracticeSessionCockpit");

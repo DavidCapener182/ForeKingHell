@@ -22,12 +22,16 @@ export function CourseTwinRuntime({
   readOnly = false,
   tournamentId,
   tournamentRoundNumber,
+  initialMode,
+  initialHoleNumber,
 }: {
   manifest: CourseTwinManifest;
   replay: CourseTwinReplayDocument | null;
   readOnly?: boolean;
   tournamentId?: string | null;
   tournamentRoundNumber?: number | null;
+  initialMode?: "strategy";
+  initialHoleNumber?: number;
 }) {
   return (
     <CourseTwinScene
@@ -36,6 +40,8 @@ export function CourseTwinRuntime({
       readOnly={readOnly}
       tournamentId={tournamentId}
       tournamentRoundNumber={tournamentRoundNumber}
+      initialMode={initialMode}
+      initialHoleNumber={initialHoleNumber}
     />
   );
 }

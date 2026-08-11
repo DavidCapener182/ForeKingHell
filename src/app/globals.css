@@ -62,6 +62,32 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * The explicit application surface outranks viewport width. This compatibility
+ * layer lets the existing workbench compositions render on tablets and when a
+ * phone user deliberately chooses Full Site. Companion requests are routed and
+ * data-gated before render; these selectors are not the surface decision.
+ */
+[data-app-surface="workbench"] .lg\:hidden {
+  display: none !important;
+}
+
+[data-app-surface="workbench"] .hidden.lg\:block {
+  display: block !important;
+}
+
+[data-app-surface="workbench"] .hidden.lg\:flex {
+  display: flex !important;
+}
+
+[data-app-surface="workbench"] .hidden.lg\:grid {
+  display: grid !important;
+}
+
+[data-app-surface="workbench"] .hidden.lg\:contents {
+  display: contents !important;
+}
+
 /* Clubhouse Manager is deliberately scoped outside the shared component layer so the established
    light and dark treatments remain in control outside this explicit fourth theme. */
 html[data-theme="clubhouse"] :where(.premium-card, [data-slot="card"], .desktop-data-panel),

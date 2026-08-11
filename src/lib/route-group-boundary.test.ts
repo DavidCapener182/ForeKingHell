@@ -17,7 +17,8 @@ describe("public and authenticated route groups", () => {
   it("enforces one authenticated shell and a separate admin boundary", () => {
     const appLayout = source("src/app/(app)/layout.tsx");
     const adminLayout = source("src/app/(admin)/layout.tsx");
-    expect(appLayout).toContain("await getAppShellData()");
+    expect(appLayout).toContain("getAppShellData(), getRequestAppSurface()");
+    expect(appLayout).toContain("Promise.all");
     expect(appLayout).toContain('redirect("/login")');
     expect(adminLayout).toContain("if (!data.isAdmin)");
     expect(adminLayout).toContain('redirect("/today")');

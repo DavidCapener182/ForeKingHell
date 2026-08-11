@@ -26,6 +26,7 @@ describe("production readiness gate", () => {
       '"test:lighthouse"',
       '"diff", "--check"',
       'PLAYWRIGHT_SERVER_MODE: "production"',
+      "if (isE2eCheck(command, args))",
       "playwright-scorecard-proof-secret-with-more-than-32-characters",
       "contains a local bypass token, not a Supabase session",
       "cookieHeaderFromStorageState(authState)",
@@ -285,13 +286,14 @@ describe("production readiness gate", () => {
 
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
+      "Practice",
+      "Play",
       "Sessions",
-      "Analyse",
-      "Improve",
       "More",
     ]);
     expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
-    expect(mobileNavSource).toContain("Search analysis, sessions or settings");
+    expect(mobileNavSource).toContain("Search companion actions");
+    expect(mobileNavSource).toContain("Open full desktop site");
     expect(mobileNavSource).toContain('href="/settings"');
     expect(mobileNavSource).toContain('href="/privacy"');
     expect(mobileNavSource).toContain('href="/profile"');
@@ -337,7 +339,10 @@ describe("production readiness gate", () => {
     const bagSource = readFileSync(join(root, "src/app/(app)/bag/page.tsx"), "utf8");
     const shotsSource = readFileSync(join(root, "src/app/(app)/shots/page.tsx"), "utf8");
     const challengesSource = readFileSync(join(root, "src/app/(app)/challenges/page.tsx"), "utf8");
-    const practiceSource = readFileSync(join(root, "src/app/(app)/practice/page.tsx"), "utf8");
+    const practiceSource = readFileSync(
+      join(root, "src/app/(app)/practice/practice-workbench-page.tsx"),
+      "utf8",
+    );
     const importSource = readFileSync(join(root, "src/app/(app)/import/page.tsx"), "utf8");
     const rapsodoSource = readFileSync(
       join(root, "src/app/rapsodo/rapsodo-sync-client.tsx"),
@@ -366,7 +371,10 @@ describe("production readiness gate", () => {
   it("keeps the AI caddie brief wired as the mobile dashboard to practice loop", () => {
     const dashboardSource = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
     const caddieSource = readFileSync(join(root, "src/lib/ai-caddie-brief.ts"), "utf8");
-    const practicePageSource = readFileSync(join(root, "src/app/(app)/practice/page.tsx"), "utf8");
+    const practicePageSource = readFileSync(
+      join(root, "src/app/(app)/practice/practice-workbench-page.tsx"),
+      "utf8",
+    );
     const practiceClientSource = readFileSync(
       join(root, "src/app/practice/practice-planner-client.tsx"),
       "utf8",

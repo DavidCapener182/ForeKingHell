@@ -16,9 +16,9 @@ describe("product brief acceptance", () => {
     );
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
+      "Practice",
+      "Play",
       "Sessions",
-      "Analyse",
-      "Improve",
       "More",
     ]);
   });
@@ -71,7 +71,9 @@ describe("product brief acceptance", () => {
 
   it("keeps deterministic weekly, post-round and seasonal competition workflows", () => {
     const progress = source("src/app/(app)/progress/page.tsx");
-    const courseStrategy = source("src/app/(app)/courses/strategy/page.tsx");
+    const courseStrategy = source(
+      "src/app/(app)/courses/strategy/course-strategy-workbench-page.tsx",
+    );
     const challenges = source("src/app/(app)/challenges/page.tsx");
     for (const field of [
       "Sessions and rounds",

@@ -12,65 +12,53 @@ describe("application navigation hierarchy", () => {
   it("keeps five action-first mobile destinations", () => {
     expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
       ["Today", "/today"],
+      ["Practice", "/practice"],
+      ["Play", "/play"],
       ["Sessions", "/sessions"],
-      ["Analyse", "/analyse"],
-      ["Improve", "/coach"],
       ["More", "#more"],
     ]);
 
-    expect(mobilePrimaryItems.find((item) => item.label === "Analyse")?.isActive("/progress")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/coach")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Analyse")?.isActive("/bag")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Play")?.isActive("/play/bootle")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Improve")?.isActive("/coach")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/quick-bag")).toBe(
       true,
     );
-    expect(
-      mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/play/bootle"),
-    ).toBe(true);
-    expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/feed")).toBe(true);
   });
 
-  it("keeps every non-primary player destination reachable from More", () => {
-    expect(mobileMoreGroups.map((group) => group.label)).toEqual([
-      "Home",
-      "Play",
-      "Analyse",
-      "Improve",
-      "Compete",
-      "Social",
-      "Account",
-    ]);
+  it("keeps only explicitly approved companion destinations in More", () => {
+    expect(mobileMoreGroups.map((group) => group.label)).toEqual(["Golf", "Compete", "Account"]);
 
     const mobileMoreRoutes = mobileMoreGroups.flatMap((group) =>
       group.items.map((item) => item.href),
     );
     const expectedMobileMoreRoutes = appRouteMetadata
-      .filter(
-        (route) =>
-          !route.adminOnly &&
-          !route.mobilePrimaryDestination &&
-          (route.desktopVisible !== false || route.mobileMoreGroup !== undefined),
-      )
+      .filter((route) => !route.adminOnly && route.mobileNav === "more")
       .map((route) => route.route)
       .sort();
 
     expect([...mobileMoreRoutes].sort()).toEqual(expectedMobileMoreRoutes);
     expect(mobileMoreRoutes).toEqual(
       expect.arrayContaining([
-        "/dashboard",
-        "/bag",
-        "/shots",
-        "/compare",
-        "/progress",
-        "/practice",
-        "/practice/quick-range",
-        "/speed",
+        "/quick-bag",
+        "/import",
+        "/rapsodo",
+        "/handicap",
         "/goals",
-        "/data-chat",
+        "/challenges",
+        "/tournaments",
+        "/leaderboard",
+        "/achievements",
+        "/profile",
+        "/settings/notifications",
+        "/settings",
       ]),
+    );
+    expect(mobileMoreRoutes).not.toEqual(
+      expect.arrayContaining(["/providers", "/billing", "/equipment", "/admin"]),
     );
   });
 

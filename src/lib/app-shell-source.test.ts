@@ -8,7 +8,7 @@ describe("app shell account data", () => {
   it("does not timeout authenticated sidebar identity to fake level 1 XP", () => {
     const source = readFileSync(join(root, "src/app/(app)/layout.tsx"), "utf8");
 
-    expect(source).toContain("await getAppShellData()");
+    expect(source).toContain("Promise.all([getAppShellData(), getRequestAppSurface()])");
     expect(source).not.toContain("getAppShellDataWithTimeout");
     expect(source).not.toContain("Promise.race");
     expect(source).not.toContain("appShellDataTimeoutMs");
@@ -36,7 +36,7 @@ describe("app shell account data", () => {
   });
 
   it("keeps desktop accessibility and table keyboard affordances in the app shell", () => {
-    const source = readFileSync(join(root, "src/components/app/app-shell.tsx"), "utf8");
+    const source = readFileSync(join(root, "src/components/app/workbench-app-shell.tsx"), "utf8");
 
     expect(source).toContain('href="#main-content"');
     expect(source).toContain("Skip to content");

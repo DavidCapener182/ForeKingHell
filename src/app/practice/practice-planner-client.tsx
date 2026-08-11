@@ -2,8 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   ClipboardCheck,
   Download,
@@ -87,6 +89,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type PracticePlannerClientProps = {
+  accountId: string;
   context: PracticePlannerContext;
   initialPlan: PracticePlan;
   savedPlans: SavedPracticePlan[];
@@ -128,15 +131,15 @@ const sessionTypes: Array<{ value: PracticeSessionType; label: string }> = [
 ];
 
 const ballCounts = [30, 50, 80, 100, 120];
-const timeOptions = [20, 30, 45, 60, 90];
+const timeOptions = [20, 30, 45, 60];
 const energyOptions: Array<{ value: PracticeEnergyLevel; label: string }> = [
   { value: "fresh", label: "Fresh" },
   { value: "normal", label: "Normal" },
   { value: "tired", label: "Tired" },
-  { value: "niggle", label: "Niggle" },
+  { value: "niggle", label: "Managing a niggle" },
 ];
 const intentOptions: Array<{ value: PracticeIntent; label: string }> = [
-  { value: "scoring", label: "Scoring" },
+  { value: "scoring", label: "Recommended" },
   { value: "confidence", label: "Confidence" },
   { value: "latest_weakness", label: "Latest weakness" },
   { value: "round_preparation", label: "Round prep" },
@@ -174,6 +177,7 @@ const practiceBlockSuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 export function PracticePlannerClient({
+  accountId,
   context,
   initialPlan,
   savedPlans,
@@ -215,6 +219,12 @@ export function PracticePlannerClient({
   );
   const [savedImageDialogOpen, setSavedImageDialogOpen] = useState(false);
   const [savedImagePreviewUrl, setSavedImagePreviewUrl] = useState<string | null>(null);
+  const [rangeModeActive, setRangeModeActive] = useState(false);
+  const [rangePaused, setRangePaused] = useState(false);
+  const [rangeFinished, setRangeFinished] = useState(false);
+  const [completedBlockIds, setCompletedBlockIds] = useState<string[]>([]);
+  const [rangeNote, setRangeNote] = useState("");
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const [isPending, startTransition] = useTransition();
   const sessionSummary = useMemo(
     () => summarizePracticeImportControl(plan, comparison),
@@ -225,6 +235,39 @@ export function PracticePlannerClient({
     () => plan.blocks.find((block) => block.id === selectedBlockId) ?? plan.blocks[0] ?? null,
     [plan.blocks, selectedBlockId],
   );
+
+  useEffect(() => {
+    const cached = readActivePractice(accountId);
+    if (!cached || cached.planId !== savedPlanId) return;
+    const timer = window.setTimeout(() => {
+      setRangeModeActive(true);
+      setCompletedBlockIds(cached.completedBlockIds);
+      setRangeNote(cached.note);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [accountId, savedPlanId]);
+
+  useEffect(() => {
+    if (!rangeModeActive || !("wakeLock" in navigator)) return;
+    let cancelled = false;
+    const wakeLock = navigator.wakeLock as {
+      request: (type: "screen") => Promise<{ release: () => Promise<void> }>;
+    };
+    void wakeLock
+      .request("screen")
+      .then((sentinel) => {
+        if (cancelled) return sentinel.release();
+        wakeLockRef.current = sentinel;
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+      const sentinel = wakeLockRef.current;
+      wakeLockRef.current = null;
+      if (sentinel) void sentinel.release().catch(() => undefined);
+    };
+  }, [rangeModeActive]);
 
   function updateOptions(patch: Partial<GeneratePracticePlanOptions>) {
     setOptions((current) => ({ ...current, ...patch }));
@@ -357,6 +400,27 @@ export function PracticePlannerClient({
     });
   }
 
+  function saveAndStartPractice() {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await savePracticePlanAction(plan);
+      await startPracticePlanAction(result.planId);
+      setSavedPlanId(result.planId);
+      setPlan((current) => ({ ...current, id: result.planId, status: "awaiting_import" }));
+      setComparison(null);
+      setPracticeScore(null);
+      setRangeModeActive(true);
+      setRangePaused(false);
+      setRangeFinished(false);
+      setCompletedBlockIds([]);
+      setSelectedBlockId(defaultSelectedPracticeBlockId(plan.blocks));
+      cacheActivePractice(accountId, result.planId, [], "");
+      setMessage(
+        "Practice saved and Range Mode started. Manual completion records activity, not measured success.",
+      );
+    });
+  }
+
   function linkSelectedSession() {
     if (!selectedImportId) {
       setMessage("Choose an uploaded session first.");
@@ -398,10 +462,48 @@ export function PracticePlannerClient({
     startTransition(async () => {
       await startPracticePlanAction(savedPlanId);
       setPlan((current) => ({ ...current, status: "awaiting_import" }));
+      setRangeModeActive(true);
+      setRangePaused(false);
+      setRangeFinished(false);
+      cacheActivePractice(accountId, savedPlanId, completedBlockIds, rangeNote);
       setMessage(
         "Practice started. Upload or sync the matching launch-monitor session when finished.",
       );
     });
+  }
+
+  function updateRangeNote(note: string) {
+    setRangeNote(note);
+    if (savedPlanId) cacheActivePractice(accountId, savedPlanId, completedBlockIds, note);
+  }
+
+  function completeCurrentRangeBlock() {
+    if (!selectedBlock) return;
+    const nextCompleted = completedBlockIds.includes(selectedBlock.id)
+      ? completedBlockIds
+      : [...completedBlockIds, selectedBlock.id];
+    setCompletedBlockIds(nextCompleted);
+    if (savedPlanId) cacheActivePractice(accountId, savedPlanId, nextCompleted, rangeNote);
+    const currentIndex = plan.blocks.findIndex((block) => block.id === selectedBlock.id);
+    const nextBlock = plan.blocks[currentIndex + 1];
+    if (nextBlock) setSelectedBlockId(nextBlock.id);
+  }
+
+  function moveRangeBlock(direction: -1 | 1) {
+    if (!selectedBlock) return;
+    const currentIndex = plan.blocks.findIndex((block) => block.id === selectedBlock.id);
+    const nextBlock = plan.blocks[currentIndex + direction];
+    if (nextBlock) setSelectedBlockId(nextBlock.id);
+  }
+
+  function finishRangeWithoutUpload() {
+    clearActivePractice(accountId);
+    setRangeModeActive(false);
+    setRangePaused(false);
+    setRangeFinished(true);
+    setMessage(
+      "Activity completed manually. No block has been marked as measured success; import evidence when available.",
+    );
   }
 
   function abandonPlan() {
@@ -460,142 +562,101 @@ export function PracticePlannerClient({
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 scroll-mt-28 lg:gap-4"
     >
       <div className="grid gap-3 lg:hidden">
-        <PracticeMobileTask
-          plan={plan}
-          block={selectedBlock}
-          comparison={comparison}
-          score={practiceScore}
-          savedPlanId={savedPlanId}
-          message={message}
-          isPending={isPending}
-          onSave={savePlan}
-          onStart={startPractice}
-          onGenerate={generatePlan}
-        />
+        {rangeModeActive ? (
+          <ActiveRangeMode
+            plan={plan}
+            block={selectedBlock}
+            completedBlockIds={completedBlockIds}
+            note={rangeNote}
+            onNoteChange={updateRangeNote}
+            onPrevious={() => moveRangeBlock(-1)}
+            onNext={() => moveRangeBlock(1)}
+            onCompleteBlock={completeCurrentRangeBlock}
+            onPause={() => {
+              setRangeModeActive(false);
+              setRangePaused(true);
+            }}
+            onFinishWithoutUpload={finishRangeWithoutUpload}
+          />
+        ) : (
+          <>
+            {rangeFinished ? <PracticeFinishedActions /> : null}
+            {rangePaused ? (
+              <Button
+                type="button"
+                className="min-h-12 rounded-xl"
+                onClick={() => {
+                  setRangeModeActive(true);
+                  setRangePaused(false);
+                }}
+              >
+                Resume Range Mode
+              </Button>
+            ) : null}
+            <PracticeMobileTask
+              plan={plan}
+              block={selectedBlock}
+              comparison={comparison}
+              score={practiceScore}
+              savedPlanId={savedPlanId}
+              message={message}
+              isPending={isPending}
+              onSaveAndStart={saveAndStartPractice}
+              onStart={startPractice}
+              onGenerate={generatePlan}
+            />
 
-        <PracticeMobileBlockPicker
-          blocks={plan.blocks}
-          selectedBlockId={selectedBlock?.id ?? null}
-          comparison={comparison}
-          onSelect={setSelectedBlockId}
-        />
+            <PracticeMobileBlockPicker
+              blocks={plan.blocks}
+              selectedBlockId={selectedBlock?.id ?? null}
+              comparison={comparison}
+              onSelect={setSelectedBlockId}
+            />
 
-        <div className="grid grid-cols-2 gap-2">
-          <MobileFilterSheet label="Plan setup">
-            <div className="pb-3 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
-              <PracticeSetupBar
-                options={options}
-                updateOptions={updateOptions}
-                updateFacility={updateFacility}
-                generatePlan={generatePlan}
-                isPending={isPending}
-                trainingBlocked={context.trainingLoad.highRecentLoad}
-              />
-            </div>
-          </MobileFilterSheet>
-          <MobileFilterSheet label="Match upload">
-            <div className="pb-3 [&_button]:min-h-11 [&_select]:min-h-11">
-              <PracticeSessionImportBar
-                importOptions={importOptions}
-                selectedImportId={selectedImportId}
-                onSelect={setSelectedImportId}
-                onLink={linkSelectedSession}
-                savedPlanId={savedPlanId}
-                hasImport={Boolean(comparison?.sourceSessionId || practiceScore)}
-                isPending={isPending}
-              />
-            </div>
-          </MobileFilterSheet>
-        </div>
-
-        <IOSSectionHeader
-          title="Plan depth"
-          description="The current task stays visible above. Open one supporting section at a time."
-        />
-        <IOSDisclosureGroup
-          label="Practice plan detail"
-          items={[
-            {
-              value: "why",
-              title: "Why this drill",
-              summary: `${plan.why.length} signals`,
-              description: "Selection evidence and practice intent",
-              content: <PracticeMobileWhy plan={plan} context={context} />,
-            },
-            {
-              value: "detail",
-              title: "Drill detail and target",
-              summary: selectedBlock
-                ? compactPracticeBlockRow(selectedBlock, comparison).volumeLabel
-                : "--",
-              description: "Technique, scoring rule and editable volume",
-              content: (
-                <PracticeMobileBlockDetail
-                  block={selectedBlock}
-                  comparison={comparison}
-                  drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
-                  onBallCountChange={updateSelectedBlockBalls}
-                  onSwapDrill={swapSelectedBlockDrill}
-                  onSuggestDrill={suggestSelectedBlockDrill}
+            <MobileFilterSheet label="Quick adjustments">
+              <div className="pb-3 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
+                <PracticeSetupBar
+                  options={options}
+                  updateOptions={updateOptions}
+                  updateFacility={updateFacility}
+                  generatePlan={generatePlan}
                   isPending={isPending}
+                  trainingBlocked={context.trainingLoad.highRecentLoad}
                 />
-              ),
-            },
-            {
-              value: "result",
-              title: "Plan versus actual",
-              summary: practiceScore ? `${practiceScore.score}/100` : "Waiting",
-              description: "Imported evidence and the next recommendation",
-              content: (
-                <PracticeMobileResult
-                  comparison={comparison}
-                  score={practiceScore}
-                  summary={sessionSummary}
-                />
-              ),
-            },
-            {
-              value: "control",
-              title: "Session controls",
-              summary: practiceMobileStatusLabel(plan, savedPlanId, practiceScore, comparison),
-              description: "Import, image, coach context and plan lifecycle",
-              content: (
-                <PracticeMobileControlDetails
-                  context={context}
-                  plan={plan}
-                  savedPlanId={savedPlanId}
-                  summary={sessionSummary}
-                  score={practiceScore}
-                  comparison={comparison}
-                  onAbandon={abandonPlan}
-                  onShowPracticeImage={() => openSavedImageDialog(true)}
-                  isPending={isPending}
-                />
-              ),
-            },
-            {
-              value: "ledger",
-              title: "Block ledger",
-              summary: `${plan.blocks.length} blocks`,
-              description: "Compact planned-versus-upload evidence rows",
-              content: <PracticeMobileLedger blocks={plan.blocks} comparison={comparison} />,
-            },
-            {
-              value: "library",
-              title: "Templates and saved plans",
-              summary: `${templates.length + localSavedPlans.length}`,
-              description: "Reuse a previous structure only when it fits today",
-              content: (
-                <PracticeMobileLibrary
-                  templates={templates}
-                  savedPlans={localSavedPlans}
-                  onUseTemplate={useTemplate}
-                  onLoadSavedPlan={loadSavedPlan}
-                />
-              ),
-            },
-          ]}
-        />
+              </div>
+            </MobileFilterSheet>
+
+            <IOSDisclosureGroup
+              label="Practice plan support"
+              items={[
+                {
+                  value: "why",
+                  title: "Why this plan?",
+                  summary: `${plan.why.length} signals`,
+                  description: "Latest weakness, bag trust and training context",
+                  content: <PracticeMobileWhy plan={plan} context={context} />,
+                },
+                ...(comparison || practiceScore
+                  ? [
+                      {
+                        value: "result",
+                        title: "Plan versus actual",
+                        summary: practiceScore ? `${practiceScore.score}/100` : "Measured",
+                        description: "Imported evidence and the next recommendation",
+                        content: (
+                          <PracticeMobileResult
+                            comparison={comparison}
+                            score={practiceScore}
+                            summary={sessionSummary}
+                          />
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </>
+        )}
       </div>
 
       <div className="hidden min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid">
@@ -685,6 +746,213 @@ export function PracticePlannerClient({
   );
 }
 
+function ActiveRangeMode({
+  plan,
+  block,
+  completedBlockIds,
+  note,
+  onNoteChange,
+  onPrevious,
+  onNext,
+  onCompleteBlock,
+  onPause,
+  onFinishWithoutUpload,
+}: {
+  plan: PracticePlan;
+  block: PracticeBlock | null;
+  completedBlockIds: string[];
+  note: string;
+  onNoteChange: (note: string) => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  onCompleteBlock: () => void;
+  onPause: () => void;
+  onFinishWithoutUpload: () => void;
+}) {
+  const currentIndex = block ? plan.blocks.findIndex((item) => item.id === block.id) : -1;
+  const row = block ? compactPracticeBlockRow(block, null) : null;
+  const allBlocksComplete =
+    plan.blocks.length > 0 && plan.blocks.every((item) => completedBlockIds.includes(item.id));
+
+  return (
+    <section className="grid min-h-[calc(100dvh-9rem)] content-start gap-4" data-active-range-mode>
+      <div className="ios-grouped-list grid gap-4 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Range Mode · Block {Math.max(1, currentIndex + 1)} of {plan.blocks.length}
+            </p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight">
+              {row?.clubLabel || "Mixed clubs"}
+            </h1>
+            <p className="mt-1 text-base text-muted-foreground">
+              {row?.volumeLabel ?? "Timed block"}
+            </p>
+          </div>
+          <IOSInlineStatus
+            label={`${completedBlockIds.length}/${plan.blocks.length} complete`}
+            tone={allBlocksComplete ? "positive" : "info"}
+          />
+        </div>
+
+        <div className="rounded-xl bg-secondary/60 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Target
+          </p>
+          <p className="mt-1 text-lg font-semibold leading-6">
+            {block?.successTarget ?? "Choose a block"}
+          </p>
+          <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Do this now
+          </p>
+          <p className="mt-1 text-[15px] leading-6">{block?.drill ?? plan.summary}</p>
+        </div>
+
+        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-11 rounded-xl"
+            disabled={currentIndex <= 0}
+            onClick={onPrevious}
+            aria-label="Previous block"
+          >
+            <ChevronLeft className="size-5" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            className="min-h-11 rounded-xl"
+            onClick={onCompleteBlock}
+            disabled={!block}
+          >
+            <CheckCircle2 className="size-4" aria-hidden />
+            Complete block
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="size-11 rounded-xl"
+            disabled={currentIndex < 0 || currentIndex >= plan.blocks.length - 1}
+            onClick={onNext}
+            aria-label="Next block"
+          >
+            <ChevronRight className="size-5" aria-hidden />
+          </Button>
+        </div>
+        <p className="text-xs leading-5 text-muted-foreground">
+          Completing a block records the activity only. Targets remain unmeasured until matching
+          launch-monitor evidence is imported.
+        </p>
+      </div>
+
+      <label className="ios-grouped-list grid gap-2 p-4 text-sm font-semibold">
+        Short note
+        <textarea
+          value={note}
+          onChange={(event) => onNoteChange(event.target.value)}
+          rows={2}
+          maxLength={300}
+          placeholder="Feel, strike or context"
+          className="min-h-20 resize-none rounded-xl border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </label>
+
+      <div className="grid gap-2">
+        <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={onPause}>
+          Pause session
+        </Button>
+        <Button asChild variant="outline" className="min-h-11 rounded-xl">
+          <Link href="/rapsodo">Sync Rapsodo</Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-11 rounded-xl">
+          <Link href="/import">Upload CSV</Link>
+        </Button>
+        <Button type="button" className="min-h-11 rounded-xl" onClick={onFinishWithoutUpload}>
+          Finish without upload
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function PracticeFinishedActions() {
+  return (
+    <section className="ios-grouped-list grid gap-3 p-5" data-practice-finished>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          Practice complete
+        </p>
+        <h2 className="mt-1 text-xl font-bold">Add evidence when it is ready</h2>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          Manual block completion is recorded separately from measured target success.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button asChild className="min-h-11 rounded-xl">
+          <Link href="/rapsodo">Sync Rapsodo</Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-11 rounded-xl">
+          <Link href="/import">Upload CSV</Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+type CachedActivePractice = {
+  planId: string;
+  completedBlockIds: string[];
+  note: string;
+};
+
+function activePracticeStorageKey(accountId: string) {
+  return `fkh:active-practice:${accountId}`;
+}
+
+function cacheActivePractice(
+  accountId: string,
+  planId: string,
+  completedBlockIds: string[],
+  note: string,
+) {
+  try {
+    window.localStorage.setItem(
+      activePracticeStorageKey(accountId),
+      JSON.stringify({ planId, completedBlockIds, note } satisfies CachedActivePractice),
+    );
+  } catch {
+    // Storage can be unavailable in strict or private browsing modes.
+  }
+}
+
+function readActivePractice(accountId: string): CachedActivePractice | null {
+  try {
+    const value = window.localStorage.getItem(activePracticeStorageKey(accountId));
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<CachedActivePractice>;
+    if (typeof parsed.planId !== "string") return null;
+    return {
+      planId: parsed.planId,
+      completedBlockIds: Array.isArray(parsed.completedBlockIds)
+        ? parsed.completedBlockIds.filter((id): id is string => typeof id === "string")
+        : [],
+      note: typeof parsed.note === "string" ? parsed.note : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearActivePractice(accountId: string) {
+  try {
+    window.localStorage.removeItem(activePracticeStorageKey(accountId));
+  } catch {
+    // Storage can be unavailable in strict or private browsing modes.
+  }
+}
+
 function PracticeMobileTask({
   plan,
   block,
@@ -693,7 +961,7 @@ function PracticeMobileTask({
   savedPlanId,
   message,
   isPending,
-  onSave,
+  onSaveAndStart,
   onStart,
   onGenerate,
 }: {
@@ -704,7 +972,7 @@ function PracticeMobileTask({
   savedPlanId: string | null;
   message: string | null;
   isPending: boolean;
-  onSave: () => void;
+  onSaveAndStart: () => void;
   onStart: () => void;
   onGenerate: () => void;
 }) {
@@ -773,12 +1041,12 @@ function PracticeMobileTask({
           ) : status === "draft" ? (
             <Button
               type="button"
-              onClick={onSave}
+              onClick={onSaveAndStart}
               disabled={isPending || Boolean(savedPlanId)}
               className="min-h-12 w-full rounded-xl"
             >
               <Save className="size-4" />
-              Save this practice
+              Save &amp; Start Practice
             </Button>
           ) : status === "planned" ? (
             <Button
@@ -788,7 +1056,7 @@ function PracticeMobileTask({
               className="min-h-12 w-full rounded-xl"
             >
               <ClipboardCheck className="size-4" />
-              Start this block
+              Resume Range Mode
             </Button>
           ) : status === "awaiting_import" || status === "match_found" ? (
             <Button asChild className="min-h-12 w-full rounded-xl">
@@ -901,61 +1169,6 @@ function PracticeMobileWhy({
   );
 }
 
-function PracticeMobileBlockDetail({
-  block,
-  comparison,
-  drillOptions,
-  onBallCountChange,
-  onSwapDrill,
-  onSuggestDrill,
-  isPending,
-}: {
-  block: PracticeBlock | null;
-  comparison: PracticeComparison | null;
-  drillOptions: PracticeDrillSuggestion[];
-  onBallCountChange: (ballCount: number) => void;
-  onSwapDrill: (suggestionId: string) => void;
-  onSuggestDrill: () => void;
-  isPending: boolean;
-}) {
-  if (!block) {
-    return <p className="text-sm text-muted-foreground">Generate a plan to see drill detail.</p>;
-  }
-
-  const row = compactPracticeBlockRow(block, comparison);
-  const decision = comparison?.decisions.find((item) => item.blockId === block.id) ?? null;
-  const options = drillOptions.length > 0 ? drillOptions : buildPracticeDrillOptions(block);
-
-  return (
-    <div className="grid gap-3">
-      <IOSGroupedList label="Selected drill detail" className="bg-card">
-        <IOSListRow label="Purpose" detail={block.purpose} />
-        <IOSListRow label="How to practise" detail={block.drill} />
-        <IOSListRow label="Success" detail={block.successTarget} />
-        <IOSListRow label="Record" detail={block.recordPrompt} />
-        <IOSListRow label="Scored from" detail={scoredFromLabel(block)} />
-        {decision ? (
-          <IOSListRow
-            label="Uploaded result"
-            value={practiceComparisonResultLabel(decision)}
-            detail={`${row.resultNote} ${decision.summary}`}
-          />
-        ) : null}
-      </IOSGroupedList>
-      <div className="[&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
-        <PracticeBlockEditControls
-          block={block}
-          options={options}
-          onBallCountChange={onBallCountChange}
-          onSwapDrill={onSwapDrill}
-          onSuggestDrill={onSuggestDrill}
-          disabled={isPending}
-        />
-      </div>
-    </div>
-  );
-}
-
 function PracticeMobileResult({
   comparison,
   score,
@@ -1006,191 +1219,6 @@ function PracticeMobileResult({
         />
       ))}
     </IOSGroupedList>
-  );
-}
-
-function PracticeMobileControlDetails({
-  context,
-  plan,
-  savedPlanId,
-  summary,
-  score,
-  comparison,
-  onAbandon,
-  onShowPracticeImage,
-  isPending,
-}: {
-  context: PracticePlannerContext;
-  plan: PracticePlan;
-  savedPlanId: string | null;
-  summary: ReturnType<typeof summarizePracticeImportControl>;
-  score: PracticeScore | null;
-  comparison: PracticeComparison | null;
-  onAbandon: () => void;
-  onShowPracticeImage: () => void;
-  isPending: boolean;
-}) {
-  const hasImport = Boolean(score || comparison?.sourceSessionId);
-  const plannedVolume =
-    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plan.totalBalls} balls`;
-
-  return (
-    <div className="grid gap-3">
-      <IOSGroupedList label="Practice session controls" className="bg-card">
-        <IOSListRow label="Planned" value={plannedVolume} detail={plan.title} />
-        <IOSListRow
-          label="Imported"
-          value={hasImport ? `${summary.importedBalls}/${summary.totalBalls}` : "0"}
-          detail={
-            hasImport
-              ? (comparison?.nextRecommendation ?? score?.nextAction)
-              : "Only a matching upload scores completion and effectiveness."
-          }
-        />
-        <IOSListRow
-          label="Coach note"
-          detail={
-            score
-              ? score.nextAction
-              : context.trainingLoad.highRecentLoad
-                ? "Technical practice only. Avoid speed chasing."
-                : plan.postSessionRules[0]
-          }
-        />
-        <IOSListRow label="Training load" detail={context.trainingLoad.recommendation} />
-        {hasImport ? (
-          <IOSListRow
-            label="Review latest session"
-            detail="Open the complete measured result and current recommendation."
-            href="/today"
-            icon={Target}
-          />
-        ) : savedPlanId ? (
-          <IOSListRow
-            label="Import after practice"
-            detail="Upload CSV or sync Rapsodo when this practice is finished."
-            href="/import"
-            icon={Upload}
-          />
-        ) : null}
-      </IOSGroupedList>
-      {savedPlanId ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onShowPracticeImage}
-          disabled={isPending}
-          className="min-h-11 rounded-xl"
-        >
-          <Eye className="size-4" />
-          Save practice reference
-        </Button>
-      ) : null}
-      {savedPlanId && !hasImport ? (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onAbandon}
-          disabled={isPending}
-          className="min-h-11 rounded-xl text-destructive hover:text-destructive"
-        >
-          Mark plan abandoned
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function PracticeMobileLedger({
-  blocks,
-  comparison,
-}: {
-  blocks: PracticeBlock[];
-  comparison: PracticeComparison | null;
-}) {
-  return (
-    <IOSGroupedList label="Practice block ledger rows" className="bg-card">
-      {blocks.map((block) => {
-        const row = compactPracticeBlockRow(block, comparison);
-
-        return (
-          <IOSListRow
-            key={block.id}
-            label={`${row.blockLabel} · ${row.title}`}
-            value={row.volumeLabel}
-            detail={`${row.clubLabel || "Mixed"} · ${row.successTarget}`}
-            status={
-              <IOSInlineStatus
-                label={`${row.statusLabel} · ${row.resultNote}`}
-                tone={row.importStatus === "matched_from_upload" ? "positive" : "neutral"}
-              />
-            }
-          />
-        );
-      })}
-    </IOSGroupedList>
-  );
-}
-
-function PracticeMobileLibrary({
-  templates,
-  savedPlans,
-  onUseTemplate,
-  onLoadSavedPlan,
-}: {
-  templates: PracticeTemplateView[];
-  savedPlans: SavedPracticePlan[];
-  onUseTemplate: (template: PracticeTemplateView) => void;
-  onLoadSavedPlan: (plan: SavedPracticePlan) => void;
-}) {
-  return (
-    <div className="grid gap-3">
-      <IOSSectionHeader title="Templates" description="Use only when it fits today's evidence." />
-      <IOSGroupedList label="Practice templates" className="bg-card">
-        {templates.slice(0, 5).map((template) => (
-          <button
-            key={template.id}
-            type="button"
-            onClick={() => onUseTemplate(template)}
-            className="ios-grouped-row focus-aaa min-h-14 w-full px-4 py-2.5 text-left outline-none active:bg-secondary"
-          >
-            <span className="block text-[15px] font-medium">{template.title}</span>
-            <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
-              {template.description}
-            </span>
-          </button>
-        ))}
-      </IOSGroupedList>
-      <IOSSectionHeader title="Saved plans" description={`${savedPlans.length} available`} />
-      <IOSGroupedList label="Saved practice plans" className="bg-card">
-        {savedPlans.length > 0 ? (
-          savedPlans.slice(0, 8).map((saved) => (
-            <button
-              key={saved.id}
-              type="button"
-              onClick={() => onLoadSavedPlan(saved)}
-              className="ios-grouped-row focus-aaa flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left outline-none active:bg-secondary"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-medium">{saved.title}</span>
-                <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  {saved.totalBalls ? `${saved.totalBalls} balls · ` : ""}
-                  {saved.timeMinutes} min · {saved.focusClubs.join(", ") || "Baseline"}
-                </span>
-              </span>
-              <span className="shrink-0 text-[13px] capitalize text-muted-foreground">
-                {saved.status}
-              </span>
-            </button>
-          ))
-        ) : (
-          <IOSListRow
-            label="No saved user plans yet"
-            detail="Save today's plan to make it available here."
-          />
-        )}
-      </IOSGroupedList>
-    </div>
   );
 }
 

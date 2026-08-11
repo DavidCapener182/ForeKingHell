@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, GitCompareArrows } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, GitCompareArrows, ListFilter } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -345,6 +345,12 @@ export function SelectedShotDetail({
           )}
 
           <div className="grid gap-2">
+            <Button asChild variant="outline" size={compact ? "sm" : "default"}>
+              <Link href={`/shots?club=${encodeURIComponent(shot.clubType)}`} prefetch={false}>
+                Filter this club
+                <ListFilter className="size-4" />
+              </Link>
+            </Button>
             <Button
               asChild
               className="justify-between bg-emerald-800 text-white hover:bg-emerald-900"

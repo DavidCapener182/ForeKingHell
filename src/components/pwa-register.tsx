@@ -16,6 +16,7 @@ import {
 import { setOfflineLastSyncAt } from "@/lib/offline-storage-preferences";
 import { Button } from "@/components/ui/button";
 import { BRAND_NAME } from "@/lib/brand";
+import { purgeCompanionDataForOtherAccounts } from "@/lib/service-worker-cache";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -125,6 +126,10 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
       window.setTimeout(() => setSyncMessage(null), 5000);
     });
   }, [activeUserId, refreshOfflineCount]);
+
+  useEffect(() => {
+    if (activeUserId) purgeCompanionDataForOtherAccounts(activeUserId);
+  }, [activeUserId]);
 
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {

@@ -72,7 +72,6 @@ import {
 } from "@/components/ui/sheet";
 import { savedInsightUpdatedEvent } from "@/components/app/desktop-save-insight-button";
 import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";
-import { openGlobalCommandCentre } from "@/components/app/global-command-centre";
 import { NotificationCentre } from "@/components/app/workbench/notification-centre";
 import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher";
 import { cn } from "@/lib/utils";
@@ -747,9 +746,9 @@ export function DesktopWorkbenchChrome({
 
           <button
             type="button"
-            onClick={openGlobalCommandCentre}
+            onClick={openCommandPalette}
             className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-card lg:min-w-[12rem] 2xl:min-w-[18rem]"
-            aria-label="Open command centre"
+            aria-label="Open command palette"
           >
             <Search className="size-4" aria-hidden />
             <span className="truncate">

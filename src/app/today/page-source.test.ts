@@ -2,29 +2,33 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/(app)/today/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/today/today-workbench-page.tsx"),
+  "utf8",
+);
+const routeSource = readFileSync(join(process.cwd(), "src/app/(app)/today/page.tsx"), "utf8");
+const companionSource = readFileSync(
+  join(process.cwd(), "src/app/(app)/today/today-companion-page.tsx"),
+  "utf8",
+);
 const chartsSource = readFileSync(
   join(process.cwd(), "src/app/today/today-shot-charts.tsx"),
   "utf8",
 );
 
 describe("latest practice desktop dashboard", () => {
-  it("uses an answer-first mobile composition with one level of progressive disclosure", () => {
-    expect(source).toContain("<TodayMobileIntent");
-    expect(source).toContain("<TodayMobileScopeSheet");
-    expect(source).toContain("<TodayMobileEvidence");
-    expect(source).toContain('label="Today evidence sections"');
-    expect(source).toContain('value: "numbers"');
-    expect(source).toContain('value: "clubs"');
-    expect(source).toContain('value: "charts"');
-    expect(source).toContain('value: "highlights"');
-    expect(source).toContain('value: "shots"');
-    expect(source).toContain('label="Review scope"');
-    expect(source).toContain("data.rawShots.slice(0, 10)");
-    expect(source).toContain('label="Club performance rows"');
-    expect(source).toContain('href={data.shots.length > 0 ? "/practice" : "/import"}');
-    expect(source).toContain("Open practice");
-    expect(source).not.toContain("<MobileSectionChips");
+  it("branches before importing the focused companion or full workbench", () => {
+    expect(routeSource).toContain('surface === "companion"');
+    expect(routeSource).toContain('await import("./today-companion-page")');
+    expect(routeSource).toContain('await import("./today-workbench-page")');
+    expect(companionSource).toContain("data-today-companion");
+    expect(companionSource).toContain("data-primary-recommendation");
+    expect(companionSource).toContain("Plan range session");
+    expect(companionSource).toContain("Why this recommendation?");
+    expect(companionSource).toContain('href="/quick-bag"');
+    expect(companionSource).not.toContain("TodayShotCharts");
+    expect(companionSource).not.toContain("TodayMobileEvidence");
+    expect(companionSource).not.toContain("getChallengesPageData");
   });
 
   it("uses the optional desktop AI rail for latest practice evidence", () => {

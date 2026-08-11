@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Check, ChevronRight, Database, Flag, GitCompareArrows } from "lucide-react";
 
 import {
@@ -26,11 +26,20 @@ export type SessionTimelineItem = {
   contextLabel: string;
   notes: string | null;
   equipmentNotes: string | null;
+  verdict: string;
+  planLinked: boolean;
+  evidenceConfidence: "High" | "Moderate" | "Low";
 };
 
 type TimelineFilter = "all" | "practice" | "round";
 
-export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] }) {
+export function SessionTimeline({
+  sessions,
+  accountId,
+}: {
+  sessions: SessionTimelineItem[];
+  accountId?: string;
+}) {
   const [selected, setSelected] = useState<string[]>([]);
   const [filter, setFilter] = useState<TimelineFilter>("all");
   const visible = useMemo(
@@ -53,6 +62,22 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
   const recentVisible = visible.slice(0, 10);
   const olderVisible = visible.slice(10);
 
+  useEffect(() => {
+    if (!accountId) return;
+    try {
+      window.localStorage.setItem(
+        `fkh:recent-review:${accountId}`,
+        JSON.stringify({
+          version: 1,
+          storedAt: new Date().toISOString(),
+          sessions: sessions.slice(0, 10),
+        }),
+      );
+    } catch {
+      // Storage can be unavailable in strict or private browsing modes.
+    }
+  }, [accountId, sessions]);
+
   function toggle(id: string) {
     setSelected((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
@@ -62,64 +87,44 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
 
   function mobileRows(items: SessionTimelineItem[], startIndex = 0) {
     return items.map((session, index) => {
-      const chosen = selected.includes(session.id);
       const href = session.isRound ? `/rounds/${session.id}` : `/today?session=${session.id}`;
       const Icon = session.isRound ? Flag : Database;
 
       return (
-        <article
+        <Link
           key={session.id}
-          className="ios-grouped-row grid min-h-[4.5rem] grid-cols-[minmax(0,1fr)_2.75rem] items-stretch"
+          href={href}
+          className="ios-grouped-row focus-aaa flex min-h-[4.75rem] min-w-0 touch-manipulation items-center gap-3 px-4 py-2.5 outline-none active:bg-secondary"
+          aria-label={`Open ${session.title}, ${session.dateLabel}`}
         >
-          <Link
-            href={href}
-            className="focus-aaa flex min-w-0 touch-manipulation items-center gap-3 px-4 py-2.5 outline-none active:bg-secondary"
-            aria-label={`Open ${session.title}, ${session.dateLabel}`}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-[0.55rem] bg-primary/10 text-primary">
-              <Icon className="size-[1.125rem]" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-start gap-2">
-                <span className="line-clamp-2 text-[15px] font-medium leading-5">
-                  {session.title}
-                </span>
-                {startIndex + index === 0 ? (
-                  <span className="mt-0.5 shrink-0 text-xs font-medium text-primary">Latest</span>
-                ) : null}
+          <span className="grid size-8 shrink-0 place-items-center rounded-[0.55rem] bg-primary/10 text-primary">
+            <Icon className="size-[1.125rem]" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex min-w-0 items-start gap-2">
+              <span className="line-clamp-2 text-[15px] font-medium leading-5">
+                {session.title}
               </span>
-              <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
-                {session.dateLabel} · {session.typeLabel} · {session.shotCount} shot
-                {session.shotCount === 1 ? "" : "s"}
-              </span>
-              {session.equipmentNotes ? (
-                <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
-                  Equipment change
-                </span>
+              {startIndex + index === 0 ? (
+                <span className="mt-0.5 shrink-0 text-xs font-medium text-primary">Latest</span>
               ) : null}
             </span>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
-          </Link>
-          <button
-            type="button"
-            aria-pressed={chosen}
-            aria-label={`${chosen ? "Remove" : "Select"} ${session.title} for comparison`}
-            onClick={() => toggle(session.id)}
-            className="focus-aaa grid min-h-11 min-w-11 touch-manipulation place-items-center border-l border-border/70 text-muted-foreground outline-none active:bg-secondary"
-          >
-            <span
-              className={cn(
-                "grid size-5 place-items-center rounded-md border",
-                chosen
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card",
-              )}
-              aria-hidden
-            >
-              {chosen ? <Check className="size-3.5" /> : null}
+            <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
+              {session.dateLabel} · {session.typeLabel} · {session.shotCount} shot
+              {session.shotCount === 1 ? "" : "s"}
             </span>
-          </button>
-        </article>
+            <span className="mt-0.5 block text-xs font-medium text-foreground">
+              {session.verdict} · {session.evidenceConfidence} confidence
+              {session.planLinked ? " · Plan linked" : ""}
+            </span>
+            {session.equipmentNotes ? (
+              <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
+                Equipment change
+              </span>
+            ) : null}
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
+        </Link>
       );
     });
   }
@@ -171,43 +176,6 @@ export function SessionTimeline({ sessions }: { sessions: SessionTimelineItem[] 
               },
             ]}
           />
-        ) : null}
-
-        {selected.length === 0 ? (
-          <p className="px-1 text-[13px] leading-[1.15rem] text-muted-foreground">
-            Use the trailing checkboxes to compare two measured sessions.
-          </p>
-        ) : null}
-
-        {selected.length > 0 ? (
-          <aside
-            aria-live="polite"
-            className="premium-mobile-action-bar sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 grid gap-2 rounded-xl p-3"
-          >
-            <div className="min-w-0">
-              <p className="font-semibold">Compare · {selected.length}/2</p>
-              <p className="line-clamp-1 text-sm text-muted-foreground">
-                {selectedSessions.map((session) => session.title).join(" versus ")}
-              </p>
-            </div>
-            <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2">
-              <Button type="button" variant="ghost" onClick={() => setSelected([])}>
-                Clear
-              </Button>
-              {compareHref ? (
-                <Button asChild className="min-h-11 rounded-xl">
-                  <Link href={compareHref}>
-                    <GitCompareArrows className="size-4" aria-hidden />
-                    Compare
-                  </Link>
-                </Button>
-              ) : (
-                <Button type="button" disabled className="min-h-11 rounded-xl">
-                  Select one more
-                </Button>
-              )}
-            </div>
-          </aside>
         ) : null}
       </div>
 

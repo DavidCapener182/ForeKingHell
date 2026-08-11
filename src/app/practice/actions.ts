@@ -40,6 +40,15 @@ export async function startPracticePlanAction(planId: string) {
   return { status: "awaiting_import" as const };
 }
 
+export async function completePracticeActivityAction(planId: string) {
+  const userId = await requireCurrentUserId();
+
+  await updatePracticePlanStatusForUser(userId, planId, "completed");
+  revalidatePracticePlannerSurfaces();
+
+  return { status: "completed" as const, measuredSuccess: false as const };
+}
+
 export async function linkPracticePlanSessionAction(planId: string, sourceSessionId: string) {
   const userId = await requireCurrentUserId();
   const latestSessionReview = await completePracticePlanFromSelectedImport(

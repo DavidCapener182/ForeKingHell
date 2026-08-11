@@ -29,6 +29,13 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import {
+  mobileCapabilities,
+  type MobileExperience,
+  type MobileRouteCapability,
+} from "@/lib/app-route-capabilities";
+
+export type { MobileExperience } from "@/lib/app-route-capabilities";
 
 export type AppRouteMetadata = {
   id: string;
@@ -36,9 +43,14 @@ export type AppRouteMetadata = {
   pageTitle: string;
   shortTitle: string;
   navigationGroup: "Home" | "Play" | "Analyse" | "Improve" | "Compete" | "Account" | "Admin";
-  mobilePrimaryGroup: "home" | "sessions" | "analyse" | "practice" | "more";
+  mobilePrimaryGroup: "home" | "practice" | "play" | "sessions" | "analyse" | "more";
   mobilePrimaryDestination?: boolean;
   mobileMoreGroup?: "Play" | "Compete" | "Social" | "Account" | "Admin";
+  mobileExperience: MobileExperience;
+  mobileNav?: "primary" | "more" | false;
+  mobileFallbackRoute?: string;
+  mobileFallbackLabel?: string;
+  mobileExplanation?: string;
   icon: LucideIcon;
   searchAliases: string[];
   badge?: string;
@@ -47,7 +59,9 @@ export type AppRouteMetadata = {
   desktopVisible?: boolean;
 };
 
-export const appRouteMetadata: AppRouteMetadata[] = [
+type BaseAppRouteMetadata = Omit<AppRouteMetadata, keyof MobileRouteCapability>;
+
+const baseAppRouteMetadata = [
   meta(
     "today",
     "/today",
@@ -130,6 +144,11 @@ export const appRouteMetadata: AppRouteMetadata[] = [
     ["course plan", "safe target", "yardage plan"],
     { mobileMoreGroup: "Play" },
   ),
+  meta("play-companion", "/play", "Play", "Play", "Play", "play", Flag, [
+    "round preparation",
+    "course strategy",
+    "course twin",
+  ]),
   meta(
     "analyse",
     "/analyse",
@@ -219,6 +238,11 @@ export const appRouteMetadata: AppRouteMetadata[] = [
     ClipboardCheck,
     ["practice plan", "practice session", "range plan", "drill"],
   ),
+  meta("quick-bag", "/quick-bag", "Quick Bag", "Quick Bag", "Improve", "more", Target, [
+    "trusted carry",
+    "club number",
+    "target distance",
+  ]),
   meta(
     "quick-range",
     "/practice/quick-range",
@@ -480,8 +504,13 @@ export const appRouteMetadata: AppRouteMetadata[] = [
   ),
 ];
 
-function meta(
-  id: string,
+export const appRouteMetadata: AppRouteMetadata[] = baseAppRouteMetadata.map((route) => ({
+  ...route,
+  ...mobileCapabilities[route.id],
+}));
+
+function meta<const Id extends string>(
+  id: Id,
   route: string,
   pageTitle: string,
   shortTitle: string,
@@ -491,7 +520,7 @@ function meta(
   searchAliases: string[],
   options: Partial<
     Omit<
-      AppRouteMetadata,
+      BaseAppRouteMetadata,
       | "id"
       | "route"
       | "pageTitle"
@@ -502,7 +531,7 @@ function meta(
       | "searchAliases"
     >
   > = {},
-): AppRouteMetadata {
+): BaseAppRouteMetadata & { id: Id } {
   return {
     id,
     route,
@@ -519,15 +548,22 @@ function meta(
 }
 
 export function findRouteMetadata(pathname: string) {
+  if (/^\/play\/[^/]+\/?$/.test(pathname)) {
+    const courseTwin = appRouteMetadata.find((item) => item.id === "course-twins");
+    return courseTwin
+      ? {
+          ...courseTwin,
+          mobileExperience: "immersive" as const,
+          mobilePrimaryGroup: "play" as const,
+        }
+      : undefined;
+  }
+
   const directMatch = [...appRouteMetadata]
     .sort((left, right) => right.route.length - left.route.length)
     .find((item) => pathname === item.route || pathname.startsWith(`${item.route}/`));
 
   if (directMatch) return directMatch;
-
-  if (pathname.startsWith("/play/")) {
-    return appRouteMetadata.find((item) => item.id === "course-twins");
-  }
 
   return undefined;
 }

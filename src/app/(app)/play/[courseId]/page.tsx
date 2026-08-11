@@ -15,7 +15,13 @@ export default async function CourseTwinPage({
   searchParams,
 }: {
   params: Promise<{ courseId: string }>;
-  searchParams: Promise<{ sessionId?: string; tournamentId?: string; roundNumber?: string }>;
+  searchParams: Promise<{
+    sessionId?: string;
+    tournamentId?: string;
+    roundNumber?: string;
+    mode?: string;
+    hole?: string;
+  }>;
 }) {
   const [{ courseId }, query, userId] = await Promise.all([
     params,
@@ -60,6 +66,8 @@ export default async function CourseTwinPage({
         replay={replay}
         tournamentId={query.tournamentId}
         tournamentRoundNumber={parseRoundNumber(query.roundNumber)}
+        initialMode={query.mode === "strategy" ? "strategy" : undefined}
+        initialHoleNumber={parseHoleNumber(query.hole)}
       />
     </main>
   );
@@ -68,4 +76,9 @@ export default async function CourseTwinPage({
 function parseRoundNumber(value: string | undefined) {
   const number = Number(value);
   return Number.isInteger(number) && number >= 1 && number <= 20 ? number : 1;
+}
+
+function parseHoleNumber(value: string | undefined) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 1 && number <= 18 ? number : undefined;
 }

@@ -88,7 +88,7 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain(".ios-tab-item:focus-visible");
     expect(appleCssSource).toContain("outline: 3px solid var(--ios-tint) !important;");
     expect(appleCssSource).toContain('body[data-mobile-platform="apple"]');
-    expect(mobileNavSource).toContain("Search all tools");
+    expect(mobileNavSource).toContain("Search companion actions");
   });
 
   it("uses bottom-sheet materials with reduced transparency and motion fallbacks", () => {

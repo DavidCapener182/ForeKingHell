@@ -3,11 +3,11 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
 
 const mobileRoutes = [
-  { path: "/dashboard", ready: /AI caddie|Start today's practice|Dashboard/i },
-  { path: "/today", ready: /Latest session|Today/i },
-  { path: "/analyse", ready: /Evidence hub|Analyse/i },
-  { path: "/bag", ready: /Bag health|Bag confidence ladder|Bag score trend/i },
-  { path: "/practice", ready: /Active session mode|Practice/i },
+  { path: "/today", ready: /Today's recommendation|Today/i },
+  { path: "/practice", ready: /Recommended session|Practice/i },
+  { path: "/play", ready: /Selected course|Play/i },
+  { path: "/sessions", ready: /Recent history|Sessions/i },
+  { path: "/quick-bag", ready: /Trusted carry|Quick Bag/i },
 ] as const;
 
 test.describe("site-wide Apple mobile presentation", () => {
@@ -143,11 +143,7 @@ test.describe("site-wide Apple mobile presentation", () => {
       },
     ]) {
       await page.emulateMedia({ colorScheme: appearance.scheme });
-      await gotoAuthenticatedRoute(
-        page,
-        "/dashboard",
-        /AI caddie|Start today's practice|Dashboard/i,
-      );
+      await gotoAuthenticatedRoute(page, "/today", /Today's recommendation|Today/i);
 
       await expect(page.locator("html")).toHaveAttribute("data-theme", appearance.theme);
       await expect(page.locator("html")).toHaveAttribute("data-theme-preference", /.+/);
@@ -158,11 +154,11 @@ test.describe("site-wide Apple mobile presentation", () => {
         `${appearance.theme} app frame`,
       );
       await expectExactSurface(
-        page.locator("[data-mobile-surface='grouped']").first(),
+        page.locator(".ios-grouped-list").first(),
         appearance.group,
         `${appearance.theme} grouped surface`,
       );
-      await expect(page.getByRole("banner", { name: "Mobile app bar" })).toContainText("Dashboard");
+      await expect(page.getByRole("banner", { name: "Mobile app bar" })).toContainText("Today");
       await expect(page.getByText("Home", { exact: true }).filter({ visible: true })).toHaveCount(
         0,
       );
@@ -170,7 +166,7 @@ test.describe("site-wide Apple mobile presentation", () => {
     }
   });
 
-  test("restores the existing desktop workbench at 1024px and above", async ({
+  test("restores the full workbench on tablets and desktop", async ({
     browserName,
     page,
   }, testInfo) => {
@@ -178,13 +174,17 @@ test.describe("site-wide Apple mobile presentation", () => {
     skipWhenNoAuth();
 
     for (const viewport of [
+      { width: 768, height: 1024 },
       { width: 1024, height: 768 },
       { width: 1440, height: 900 },
     ]) {
       await page.setViewportSize(viewport);
-      await gotoAuthenticatedRoute(page, "/today", /Latest session|Today/i);
+      await gotoAuthenticatedRoute(page, "/today", /Latest session|Today/i, "workbench");
 
-      await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
+      await expect(page.locator('[data-app-surface="workbench"]')).toBeVisible();
+      if (viewport.width >= 1024) {
+        await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeVisible();
+      }
       await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeHidden();
       await expect(page.locator(".ios-mobile-screen")).toBeHidden();
       await expectNoHorizontalOverflow(page);
@@ -205,8 +205,13 @@ function runOnceInBaseChromium(browserName: string, projectName: string) {
   );
 }
 
-async function gotoAuthenticatedRoute(page: Page, path: string, expectedText: RegExp | string) {
-  await gotoWithOneRetry(page, path);
+async function gotoAuthenticatedRoute(
+  page: Page,
+  path: string,
+  expectedText: RegExp | string,
+  surface: "companion" | "workbench" = "companion",
+) {
+  await gotoWithOneRetry(page, `/surface/${surface}?next=${encodeURIComponent(path)}`);
   await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
   test.skip(/\/login(?:\?|$)/.test(page.url()), "Stored auth state redirected to login.");
   await expectPageReady(page, expectedText);

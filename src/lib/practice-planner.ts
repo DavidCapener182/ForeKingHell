@@ -1431,7 +1431,7 @@ export async function savePracticePlanForUser(userId: string, plan: PracticePlan
 export async function updatePracticePlanStatusForUser(
   userId: string,
   planId: string,
-  status: Extract<PracticePlanStatus, "awaiting_import" | "abandoned">,
+  status: Extract<PracticePlanStatus, "awaiting_import" | "completed" | "abandoned">,
 ) {
   const now = new Date();
 
@@ -1440,7 +1440,7 @@ export async function updatePracticePlanStatusForUser(
     .set({
       status,
       startedAt: status === "awaiting_import" ? now : undefined,
-      completedAt: status === "abandoned" ? now : undefined,
+      completedAt: status === "completed" || status === "abandoned" ? now : undefined,
       updatedAt: now,
     })
     .where(and(eq(practicePlans.id, planId), eq(practicePlans.userId, userId)));

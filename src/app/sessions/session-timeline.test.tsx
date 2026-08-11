@@ -15,6 +15,9 @@ function session(index: number): SessionTimelineItem {
     contextLabel: "Practice",
     notes: null,
     equipmentNotes: index === 2 ? "Changed ball" : null,
+    verdict: "Measured review ready",
+    planLinked: index === 1,
+    evidenceConfidence: "High",
   };
 }
 
@@ -29,9 +32,8 @@ describe("SessionTimeline mobile hierarchy", () => {
     expect(markup).toContain("Older sessions");
     expect(markup).toContain("Continue through the archive");
     expect(markup).toContain("line-clamp-2");
-    expect(markup).toContain(
-      "Select A deliberately long session name 0 that should remain readable for comparison",
-    );
+    expect(markup).toContain("Measured review ready");
+    expect(markup).not.toContain("for comparison");
     expect(markup).not.toContain("Compare · 0/2");
   });
 

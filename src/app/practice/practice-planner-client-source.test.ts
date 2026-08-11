@@ -11,14 +11,16 @@ describe("practice planner desktop ledger", () => {
   it("uses a focused mobile task flow instead of stacking the desktop planner", () => {
     expect(source).toContain("data-practice-mobile-task");
     expect(source).toContain("<PracticeMobileBlockPicker");
-    expect(source).toContain('label="Plan setup"');
-    expect(source).toContain('label="Match upload"');
-    expect(source).toContain('label="Practice plan detail"');
+    expect(source).toContain('label="Quick adjustments"');
+    expect(source).toContain('label="Practice plan support"');
     expect(source).toContain('value: "why"');
-    expect(source).toContain('value: "detail"');
     expect(source).toContain('value: "result"');
-    expect(source).toContain('value: "ledger"');
-    expect(source).toContain("<PracticeMobileLedger");
+    expect(source).toContain("Save &amp; Start Practice");
+    expect(source).toContain("<ActiveRangeMode");
+    expect(source).toContain("data-active-range-mode");
+    expect(source).toContain("navigator.wakeLock");
+    expect(source).toContain("Manual block completion is recorded separately");
+    expect(source).not.toContain('label="Match upload"');
     expect(source).toContain('className="hidden min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid"');
   });
 

@@ -36,7 +36,13 @@ type CommandItem = {
 
 const recentStorageKey = "lmwt:command-centre:recent";
 
-export function GlobalCommandCentre({ isAdmin }: { isAdmin: boolean }) {
+export function GlobalCommandCentre({
+  isAdmin,
+  enableKeyboardShortcut = true,
+}: {
+  isAdmin: boolean;
+  enableKeyboardShortcut?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +81,8 @@ export function GlobalCommandCentre({ isAdmin }: { isAdmin: boolean }) {
   }, [openPalette]);
 
   useEffect(() => {
+    if (!enableKeyboardShortcut) return;
+
     function handleKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) return;
       const usesCommand = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
@@ -86,7 +94,7 @@ export function GlobalCommandCentre({ isAdmin }: { isAdmin: boolean }) {
     }
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [openPalette]);
+  }, [enableKeyboardShortcut, openPalette]);
 
   useEffect(() => {
     if (!open) return;

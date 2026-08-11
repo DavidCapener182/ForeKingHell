@@ -8,11 +8,13 @@ function source(path: string) {
 
 describe("Phase 5 product-page contract", () => {
   it("keeps Today focused on the latest evidence, next action and reversible review controls", () => {
-    const today = source("src/app/(app)/today/page.tsx");
+    const today = source("src/app/(app)/today/today-workbench-page.tsx");
+    const companion = source("src/app/(app)/today/today-companion-page.tsx");
 
-    expect(today.indexOf("<TodayMobileVerdictCard")).toBeLessThan(
-      today.indexOf("<TodayPrescriptionCard"),
-    );
+    expect(companion).toContain("data-primary-recommendation");
+    expect(companion).toContain("Plan range session");
+    expect(companion).toContain("Why this recommendation?");
+    expect(companion).not.toContain("TodayMobileEvidence");
     expect(today).toContain("TodayReviewControls");
     expect(today).toContain("Trusted shots");
     expect(today).toContain("All imported");
@@ -92,7 +94,8 @@ describe("Phase 5 product-page contract", () => {
 
   it("keeps social secondary, proof-labelled and privacy-aware", () => {
     const feed = source("src/app/(app)/feed/page.tsx");
-    const today = source("src/app/(app)/today/page.tsx");
+    const today = source("src/app/(app)/today/today-workbench-page.tsx");
+    const companion = source("src/app/(app)/today/today-companion-page.tsx");
 
     expect(feed).toContain('{ id: "proof", label: "Proof" }');
     expect(feed).toContain('{ id: "privacy", label: "Privacy" }');
@@ -100,5 +103,6 @@ describe("Phase 5 product-page contract", () => {
     expect(feed).toContain("data.profile.feedVisibilityDefault");
     expect(feed).toContain("item.verificationLabel");
     expect(today).toContain("Social comparison is on demand");
+    expect(companion).not.toContain("getChallengesPageData");
   });
 });

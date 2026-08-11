@@ -1,5 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, userAgent } from "next/server";
+
+import {
+  isDesktopOnlyCompanionPath,
+  isSummaryOnlyCompanionPath,
+} from "@/lib/app-route-capabilities";
+import { APP_SURFACE_COOKIE, resolveAppSurface } from "@/lib/app-surface";
 
 const PUBLIC_PATH_PREFIXES = ["/_next/static/", "/_next/image/", "/icons/", "/assets/", "/share/"];
 const PUBLIC_PATHS = new Set([
@@ -69,7 +75,7 @@ async function refreshSessionAndProtect(request: NextRequest) {
   }
 
   if (hasPlaywrightBypassSession(request)) {
-    return noStore(NextResponse.next({ request }));
+    return noStore(protectedAppResponse(request));
   }
 
   const supabaseConfig = getSupabasePublicConfig();
@@ -77,7 +83,7 @@ async function refreshSessionAndProtect(request: NextRequest) {
     return unauthenticatedResponse(request);
   }
 
-  let supabaseResponse = noStore(NextResponse.next({ request }));
+  let supabaseResponse = noStore(protectedAppResponse(request));
   const supabase = createServerClient(supabaseConfig.url, supabaseConfig.publishableKey, {
     cookies: {
       getAll() {
@@ -85,7 +91,7 @@ async function refreshSessionAndProtect(request: NextRequest) {
       },
       setAll(cookiesToSet, headers) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        supabaseResponse = noStore(NextResponse.next({ request }));
+        supabaseResponse = noStore(protectedAppResponse(request));
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options),
         );
@@ -117,6 +123,35 @@ async function refreshSessionAndProtect(request: NextRequest) {
   }
 
   return supabaseResponse;
+}
+
+function protectedAppResponse(request: NextRequest) {
+  const surface = resolveAppSurface({
+    storedPreference: request.cookies.get(APP_SURFACE_COOKIE)?.value,
+    deviceType: userAgent(request).device.type,
+  });
+
+  if (surface !== "companion") {
+    return NextResponse.next({ request });
+  }
+
+  if (isDesktopOnlyCompanionPath(request.nextUrl.pathname)) {
+    const handoffUrl = request.nextUrl.clone();
+    handoffUrl.pathname = "/companion/handoff";
+    handoffUrl.search = "";
+    handoffUrl.searchParams.set("from", localReturnTarget(request));
+    return NextResponse.rewrite(handoffUrl, { request });
+  }
+
+  if (isSummaryOnlyCompanionPath(request.nextUrl.pathname)) {
+    const summaryUrl = request.nextUrl.clone();
+    summaryUrl.pathname = "/companion/summary";
+    summaryUrl.search = "";
+    summaryUrl.searchParams.set("from", localReturnTarget(request));
+    return NextResponse.rewrite(summaryUrl, { request });
+  }
+
+  return NextResponse.next({ request });
 }
 
 function unauthenticatedResponse(request: NextRequest) {

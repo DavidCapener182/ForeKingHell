@@ -1,17 +1,17 @@
 # Product route map
 
-The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The mobile shell exposes only Home, Sessions, Analyse, Practice and More; every existing feature remains reachable through the grouped secondary navigation below. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and global command-centre destinations.
+The desktop workbench retains the full **investigate -> compare -> configure -> manage** product. The phone companion concentrates on **Today -> Practice -> Play -> Sessions**, with an explicitly approved More sheet. Desktop-only routes receive a companion handoff instead of loading hidden workbench code. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and surface capability.
 
 ## Primary personal analysis
 
 | Destination | Routes                                                                                                 | Purpose                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | Today       | `/today`, `/dashboard`                                                                                 | Latest evidence, main insight, data health and next action. Dashboard remains an extended overview.            |
-| Sessions    | `/sessions`, `/rounds`, `/rounds/[sessionId]`, `/rounds/new`                                           | Chronological practice/round history, round review and round entry.                                            |
+| Sessions    | `/sessions`, `/sessions/[sessionId]`, `/rounds`, `/rounds/[sessionId]`, `/rounds/new`                  | Chronological practice/round history, compact measured review, round review and round entry.                   |
 | Import      | `/import`, `/import/result`, `/rapsodo`, `/providers`                                                  | Contextual primary action for CSV/provider data and import results.                                            |
 | Analyse     | `/analyse`, `/analyse/compare`, `/analyse/conditions`, `/analyse/session-impact`, `/analyse/workspace` | Evidence hub, session/condition comparison, reversible impact checks, data quality, annotations and snapshots. |
 | Shots       | `/shots`                                                                                               | Filterable row-level shot evidence and patterns.                                                               |
-| Bag         | `/bag`, `/bag/[clubId]`, `/bag/[clubId]/analytics`, `/bag/longest`                                     | Stock/dependable carry, confidence, gapping, club evidence and raw/trusted records.                            |
+| Bag         | `/quick-bag`, `/bag`, `/bag/[clubId]`, `/bag/[clubId]/analytics`, `/bag/longest`                       | Companion trusted-number lookup plus desktop gapping, fitting and evidence workbenches.                        |
 
 ## Improve
 
@@ -30,13 +30,13 @@ The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The
 
 ## Courses, records and equipment
 
-| Feature            | Routes                                                                                                                                                | Where users find it                                               |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Courses            | `/courses`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Play navigation, Course Twin catalogue and pre-round preparation. |
-| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`                              | Courses and records group.                                        |
-| Course competition | `/courses/[courseId]/tournaments`                                                                                                                     | Compete navigation.                                               |
-| Equipment          | `/equipment`, `/equipment/experiments`                                                                                                                | Bag and Manage navigation.                                        |
-| Achievements       | `/achievements`                                                                                                                                       | Profile and Compete navigation.                                   |
+| Feature            | Routes                                                                                                                                                         | Where users find it                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Courses            | `/play`, `/courses`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Companion Play hub, Course Twin catalogue and pre-round preparation. |
+| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`                                       | Courses and records group.                                           |
+| Course competition | `/courses/[courseId]/tournaments`                                                                                                                              | Compete navigation.                                                  |
+| Equipment          | `/equipment`, `/equipment/experiments`                                                                                                                         | Bag and Manage navigation.                                           |
+| Achievements       | `/achievements`                                                                                                                                                | Profile and Compete navigation.                                      |
 
 ## Social and competition
 
@@ -61,6 +61,7 @@ The central loop is **Today -> Latest session -> Analyse -> Practice plan**. The
 | Billing                  | `/billing`                                                              | Manage.                                                                                  |
 | Partners                 | `/partners`                                                             | Manage for authorised users.                                                             |
 | Authentication and root  | `/`, `/login`, `/welcome`                                               | Public product landing, dedicated sign-in and resumable real-account activation journey. |
+| Companion routing        | `/companion/handoff`, `/companion/summary`                              | Early desktop-only handoff and compact read-only summaries for approved phone features.  |
 
 ## Command centre
 

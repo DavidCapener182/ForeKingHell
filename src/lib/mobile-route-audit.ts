@@ -21,6 +21,41 @@ export type MobileRouteAuditEntry = {
  */
 export const mobileRouteAudit = [
   {
+    file: "src/app/(app)/companion/summary/page.tsx",
+    route: "/companion/summary",
+    classification: 1,
+    resolution: "preserve",
+    note: "Approved summary routes render read-only current-state rows without loading their workbenches.",
+  },
+  {
+    file: "src/app/(app)/sessions/[sessionId]/page.tsx",
+    route: "/sessions/[sessionId]",
+    classification: 1,
+    resolution: "preserve",
+    note: "Compact measured practice review shows verdict, four metrics, dispersion, trajectory and next action.",
+  },
+  {
+    file: "src/app/(app)/companion/handoff/page.tsx",
+    route: "/companion/handoff",
+    classification: 1,
+    resolution: "preserve",
+    note: "Desktop-only phone requests receive an early lightweight handoff and companion alternatives.",
+  },
+  {
+    file: "src/app/(app)/play/page.tsx",
+    route: "/play",
+    classification: 1,
+    resolution: "preserve",
+    note: "Companion Play hub leads with selected-course readiness, strategy and Course Twin.",
+  },
+  {
+    file: "src/app/(app)/quick-bag/page.tsx",
+    route: "/quick-bag",
+    classification: 1,
+    resolution: "preserve",
+    note: "Quick Bag loads only trusted measured yardages for club and target-distance lookup.",
+  },
+  {
     file: "src/app/(admin)/admin/billing/page.tsx",
     route: "/admin/billing",
     classification: 3,

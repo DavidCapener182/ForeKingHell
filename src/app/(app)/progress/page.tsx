@@ -1611,7 +1611,7 @@ function GoalProgressPanel({
           How strong the current launch-monitor pattern is. This does not predict a score.
         </p>
       </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <div className="grid gap-4 md:grid-cols-[minmax(14rem,1fr)_minmax(11rem,18rem)] md:items-center">
         <div className="min-w-0">
           <div className="flex items-end justify-between gap-3">
             <span className="text-4xl font-bold leading-none tracking-normal text-[#111827]">

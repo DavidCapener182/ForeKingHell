@@ -2,13 +2,34 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/components/app/app-shell.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/components/app/workbench-app-shell.tsx"),
+  "utf8",
+);
+const companionSource = readFileSync(
+  join(process.cwd(), "src/components/app/companion-app-shell.tsx"),
+  "utf8",
+);
+const privateShellSource = readFileSync(
+  join(process.cwd(), "src/components/app/private-app-shell.tsx"),
+  "utf8",
+);
 const achievementSource = readFileSync(
   join(process.cwd(), "src/components/achievement-notifications.tsx"),
   "utf8",
 );
 
 describe("app shell desktop accessibility", () => {
+  it("branches before importing companion or workbench client chrome", () => {
+    expect(privateShellSource).toContain('surface === "companion"');
+    expect(privateShellSource).toContain('import("@/components/app/companion-app-shell")');
+    expect(privateShellSource).toContain('import("@/components/app/workbench-app-shell")');
+    expect(companionSource).toContain('data-app-surface="companion"');
+    expect(companionSource).toContain("<MobileNav");
+    expect(companionSource).not.toContain("DesktopWorkbenchChrome");
+    expect(companionSource).not.toContain("GlobalCommandCentre");
+  });
+
   it("keeps skip links for content, sidebar and table-heavy pages", () => {
     expect(source).toContain('href="#main-content"');
     expect(source).toContain("Skip to content");
@@ -61,7 +82,7 @@ describe("app shell desktop accessibility", () => {
     expect(source).toContain(
       'data-mobile-immersive-shell={isMobileImmersive ? "course-twin" : undefined}',
     );
-    expect(source).toContain("{isMobileImmersive ? null : (");
+    expect(source).toContain('{isMobileImmersive || surface !== "companion" ? null : (');
     expect(source).toContain("<MobileNav");
     expect(source).toContain("document.documentElement.dataset.mobileImmersive");
     expect(source).toContain("document.body.dataset.mobileImmersive");
@@ -71,8 +92,8 @@ describe("app shell desktop accessibility", () => {
 
   it("retains desktop workbench chrome while removing mobile Course Twin padding", () => {
     expect(source).toContain("<DesktopWorkbenchChrome");
-    expect(source).toContain("lg:pt-0");
-    expect(source).toContain('isMobileImmersive ? "pt-0"');
+    expect(source).toContain('surface === "workbench" ? "overflow-x-auto pt-0"');
+    expect(source).toContain('isMobileImmersive || surface === "workbench"');
     expect(source).toContain("pt-[calc(3.25rem+env(safe-area-inset-top))]");
   });
 

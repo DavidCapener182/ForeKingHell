@@ -65,9 +65,9 @@ export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
 
 const mobilePrimaryDefinitions = [
   { id: "today", label: "Today", group: "home" },
+  { id: "practice", label: "Practice", group: "practice" },
+  { id: "play-companion", label: "Play", group: "play" },
   { id: "sessions", label: "Sessions", group: "sessions" },
-  { id: "analyse", label: "Analyse", group: "analyse" },
-  { id: "coach", label: "Improve", group: "practice" },
 ] as const;
 
 export const mobilePrimaryItems: AppNavItem[] = [
@@ -83,40 +83,23 @@ export const mobilePrimaryItems: AppNavItem[] = [
     href: "#more",
     label: "More",
     icon: Menu,
-    isActive: (pathname) => findRouteMetadata(pathname)?.mobilePrimaryGroup === "more",
+    isActive: (pathname) => findRouteMetadata(pathname)?.mobileNav === "more",
   },
 ];
 
-const mobileMoreGroupOrder = [
-  "Home",
-  "Play",
-  "Analyse",
-  "Improve",
-  "Compete",
-  "Social",
-  "Account",
-] as const;
+const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
+
+const mobileMoreIds = {
+  Golf: ["quick-bag", "import", "rapsodo", "handicap", "goals"],
+  Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
+  Account: ["profile", "notifications", "settings"],
+} as const;
 
 function belongsInMobileMoreGroup(
   item: AppRouteMetadata,
   label: (typeof mobileMoreGroupOrder)[number],
 ) {
-  if (
-    item.mobilePrimaryDestination ||
-    (item.desktopVisible === false && item.mobileMoreGroup === undefined)
-  ) {
-    return false;
-  }
-
-  if (label === "Social" || label === "Account") {
-    return item.mobileMoreGroup === label;
-  }
-
-  if (label === "Play") {
-    return item.navigationGroup === "Play" || item.mobileMoreGroup === "Play";
-  }
-
-  return item.navigationGroup === label;
+  return item.mobileNav === "more" && mobileMoreIds[label].some((id) => id === item.id);
 }
 
 export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
@@ -127,13 +110,6 @@ export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
       .map(toNavItem),
   }))
   .filter((group) => group.items.length > 0);
-
-export const adminNavGroup: AppNavGroup = {
-  label: "Admin",
-  items: routesAvailableTo(true)
-    .filter((item) => item.mobileMoreGroup === "Admin")
-    .map(toNavItem),
-};
 
 export function mobilePageTitle(pathname: string) {
   return findRouteMetadata(pathname)?.pageTitle ?? "Golf analytics";

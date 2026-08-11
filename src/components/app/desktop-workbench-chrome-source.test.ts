@@ -333,7 +333,7 @@ describe("desktop workbench chrome source", () => {
     expect(viewsBlock).toContain('pathname.startsWith("/partners")');
     expect(chromeSource).toContain("commandRoutes(isAdmin)");
     expect(registrySource).toContain("appRouteMetadata");
-    expect(navSource).toContain("routesAvailableTo(true)");
+    expect(navSource).toContain("routesAvailableTo(isAdmin)");
     expect(routeMetadataSource).toContain('"/admin/system-checks"');
   });
 

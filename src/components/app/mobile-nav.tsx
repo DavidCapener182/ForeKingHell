@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import {
-  adminNavGroup,
   mobileMoreGroups,
   mobilePageTitle,
   mobilePrimaryItems,
@@ -34,7 +33,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { openGlobalCommandCentre } from "@/components/app/global-command-centre";
 import { mobileBackNavigation } from "@/components/app/route-metadata";
 
 export type MobileNavProfile = {
@@ -48,20 +46,16 @@ type MobileNavProps = {
   totalXp: number;
   level: number;
   profile: MobileNavProfile;
-  isAdmin: boolean;
 };
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
 const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
 
-export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: MobileNavProps) {
+export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps) {
   const profileLabel = profile?.displayName || profile?.username || "Profile";
   const pageTitle = mobilePageTitle(pathname);
   const backNavigation = useMemo(() => mobileBackNavigation(pathname), [pathname]);
-  const groups = useMemo(
-    () => (isAdmin ? [...mobileMoreGroups, adminNavGroup] : mobileMoreGroups),
-    [isAdmin],
-  );
+  const groups = mobileMoreGroups;
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [compactTitleVisible, setCompactTitleVisible] = useState(false);
@@ -149,7 +143,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
     <>
       <header
         aria-label="Mobile app bar"
-        className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full px-3 pt-[env(safe-area-inset-top)] lg:hidden"
+        className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full px-3 pt-[env(safe-area-inset-top)]"
       >
         <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
@@ -184,7 +178,6 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
                   <SheetTitle className="text-[1.375rem] font-bold tracking-tight">More</SheetTitle>
                   <SheetDescription className="mt-0.5 truncate">
                     {profileLabel} · Level {level} · {xpFormatter.format(totalXp)} XP
-                    {isAdmin ? " · Admin" : ""}
                   </SheetDescription>
                 </div>
                 <label className="relative mt-2 block">
@@ -197,7 +190,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
                     type="search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search analysis, sessions or settings"
+                    placeholder="Search companion actions"
                     className="ios-sheet-search focus-aaa min-h-11 w-full py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground"
                   />
                 </label>
@@ -245,17 +238,13 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
                     </Link>
                   </SheetClose>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-12 justify-start"
-                  onClick={() => {
-                    setMoreOpen(false);
-                    window.setTimeout(openGlobalCommandCentre, 0);
-                  }}
-                >
-                  <Search className="size-4" />
-                  Search all tools
+                <Button asChild variant="outline" className="min-h-12 justify-start">
+                  <SheetClose asChild>
+                    <Link href={`/surface/workbench?next=${encodeURIComponent(pathname)}`}>
+                      <Search className="size-4" />
+                      Open full desktop site
+                    </Link>
+                  </SheetClose>
                 </Button>
                 <Button asChild className="min-h-11 justify-center rounded-xl">
                   <SheetClose asChild>
@@ -317,10 +306,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin }: Mobile
         </div>
       </header>
 
-      <nav
-        aria-label="Mobile primary"
-        className="fixed bottom-0 left-0 z-40 w-dvw max-w-full lg:hidden"
-      >
+      <nav aria-label="Mobile primary" className="fixed bottom-0 left-0 z-40 w-dvw max-w-full">
         <div className="ios-tab-bar grid grid-cols-5 px-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
@@ -418,13 +404,8 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
 }
 
 function mobileGroupDescription(label: string) {
-  if (label === "Home") return "Dashboard and account overview";
-  if (label === "Play") return "Rounds, courses and import";
-  if (label === "Analyse") return "Shots, bag, comparisons and progress";
-  if (label === "Improve") return "Coaching, practice and speed";
-  if (label === "Compete") return "Challenges, tournaments and records";
-  if (label === "Social") return "Friends, groups and activity";
-  if (label === "Account") return "Profile, providers, billing and settings";
-  if (label === "Admin") return "System, users and operations";
+  if (label === "Golf") return "Bag numbers, goals and import";
+  if (label === "Compete") return "Current challenges, tournaments and achievements";
+  if (label === "Account") return "Profile, notifications and preferences";
   return "More ForeKingHell tools";
 }

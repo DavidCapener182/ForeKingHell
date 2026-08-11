@@ -2,12 +2,32 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/(app)/courses/strategy/page.tsx"), "utf8");
+const source = readFileSync(
+  join(process.cwd(), "src/app/(app)/courses/strategy/course-strategy-workbench-page.tsx"),
+  "utf8",
+);
+const companionSource = readFileSync(
+  join(process.cwd(), "src/app/(app)/courses/strategy/course-strategy-companion-page.tsx"),
+  "utf8",
+);
+const routeSource = readFileSync(
+  join(process.cwd(), "src/app/(app)/courses/strategy/page.tsx"),
+  "utf8",
+);
 
 describe("course strategy mode-aware mobile hierarchy", () => {
+  it("loads the companion before the dashboard-backed workbench", () => {
+    expect(routeSource).toContain('surface === "companion"');
+    expect(routeSource).toContain('await import("./course-strategy-companion-page")');
+    expect(routeSource).toContain('await import("./course-strategy-workbench-page")');
+    expect(companionSource).toContain("data-course-strategy-companion");
+    expect(companionSource).toContain("<MobileHoleStrategy");
+    expect(companionSource).not.toContain("getDashboardData");
+  });
+
   it("renders every pre-round planning surface only in pre mode", () => {
     expect(source).toContain(
-      '{mode === "pre" ? <MobilePreRoundStrategy data={data} strategyData={strategyData} /> : null}',
+      "<MobilePreRoundStrategy data={data} strategyData={strategyData} accountId={userId} />",
     );
     expect(source).toContain('{mode === "pre" ? (\n        <section');
     expect(source).toContain('className="hidden gap-4 rounded-2xl border bg-card p-4 lg:grid"');
@@ -19,7 +39,7 @@ describe("course strategy mode-aware mobile hierarchy", () => {
   it("puts the answer, warning and Prepare round action before hole disclosure", () => {
     const mobile = source.slice(
       source.indexOf("function MobilePreRoundStrategy"),
-      source.indexOf("function MobileHoleStrategyDetail"),
+      source.indexOf("function MobilePostRoundStrategy"),
     );
 
     expect(mobile.indexOf('title="Overall strategy"')).toBeLessThan(
@@ -28,15 +48,15 @@ describe("course strategy mode-aware mobile hierarchy", () => {
     expect(mobile.indexOf("Prepare round")).toBeLessThan(
       mobile.indexOf('title="Hole-by-hole plan"'),
     );
-    expect(mobile).toContain('label="Hole-by-hole strategy"');
-    expect(mobile).toContain("items={strategies.map((strategy)");
-    expect(mobile).toContain("content: <MobileHoleStrategyDetail strategy={strategy} />");
+    expect(mobile).toContain("<MobileHoleStrategy");
+    expect(mobile).toContain("strategies={strategies}");
+    expect(mobile).toContain("accountId={accountId}");
   });
 
   it("keeps secondary course selection and evidence one level deep", () => {
     const mobile = source.slice(
       source.indexOf("function MobilePreRoundStrategy"),
-      source.indexOf("function MobileHoleStrategyDetail"),
+      source.indexOf("function MobilePostRoundStrategy"),
     );
 
     expect(mobile).toContain('label="Course selection"');
