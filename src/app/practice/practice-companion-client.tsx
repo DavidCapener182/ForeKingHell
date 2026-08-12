@@ -577,7 +577,11 @@ function ActiveRangeMode({
   const [manualRemaining, setManualRemaining] = useState<number | null>(block?.ballCount ?? null);
 
   return (
-    <section className="grid min-h-[calc(100dvh-9rem)] content-start gap-4" data-active-range-mode>
+    <section
+      className="grid min-h-[calc(100dvh-9rem)] content-start gap-4"
+      data-active-range-mode
+      data-practice-plan-id={practicePlanId ?? undefined}
+    >
       <div className="ios-grouped-list grid gap-4 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>

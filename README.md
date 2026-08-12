@@ -54,6 +54,8 @@ npm run db:migrate
 
 Authenticated Playwright coverage is opt-in because Supabase sessions are cookie backed. Start the app, run `npm run test:e2e:capture-auth`, sign in with a tester account in the opened browser, then run with `PLAYWRIGHT_AUTH_STATE=.playwright/auth/forekinghell-state.json npm run test:e2e` to exercise import, mobile density, user isolation, social graph/feed, challenge, billing and coach checks. Set `PLAYWRIGHT_BASE_URL=https://your-preview-url` when capturing against a deployed environment. Without that env var, the public auth and login accessibility checks still run.
 
+Journeys that create plans, imports, sessions or shots are additionally locked to a disposable test account. Set `PLAYWRIGHT_MUTATING_TEST_USER_ID` to that test account's exact Supabase user ID and provide `DATABASE_URL`; the suite refuses to perform those writes when the authenticated user does not match and removes its exact fixtures after each test. Never designate a personal or production golfer account.
+
 `npm run production:check` is the public-tester gate. It runs formatting, lint, Next route type
 generation, TypeScript, unit tests, Drizzle consistency, the high/critical dependency-audit
 threshold, the production build, route budgets, E2E, Lighthouse and `git diff --check`. If

@@ -3,12 +3,19 @@ import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
+import {
+  canRunMutatingCompanionE2e,
+  MutatingCompanionFixture,
+  mutatingCompanionSkipReason,
+} from "./mutating-companion-fixture";
 
 test.describe("phone companion journeys", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run companion journeys.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
   test.describe.configure({ mode: "serial" });
   test.setTimeout(360_000);
+
+  let mutatingFixture: MutatingCompanionFixture | null = null;
 
   test.beforeEach(async ({ browserName, page }, testInfo) => {
     test.skip(
@@ -19,7 +26,14 @@ test.describe("phone companion journeys", () => {
     await page.setViewportSize({ width: 390, height: 844 });
   });
 
+  test.afterEach(async () => {
+    await mutatingFixture?.cleanup();
+    mutatingFixture = null;
+  });
+
   test("1-6: builds, runs, uploads and immediately reviews measured practice", async ({ page }) => {
+    test.skip(!canRunMutatingCompanionE2e, mutatingCompanionSkipReason);
+    mutatingFixture = new MutatingCompanionFixture();
     await openCompanion(
       page,
       "/practice?intent=latest_weakness&club=driver&time=30&source=e2e",
@@ -37,7 +51,9 @@ test.describe("phone companion journeys", () => {
       page.getByRole("toolbar", { name: "Practice blocks" }).getByRole("button"),
     ).toHaveCount(3);
     await page.getByRole("button", { name: "Save & Start Practice" }).click();
-    await expect(page.locator("[data-active-range-mode]")).toBeVisible();
+    const rangeMode = page.locator("[data-active-range-mode]");
+    await expect(rangeMode).toBeVisible();
+    mutatingFixture.trackPracticePlan(await rangeMode.getAttribute("data-practice-plan-id"));
     await expect(page.getByText(/Range Mode · Block 1 of 3/i)).toBeVisible();
     await expect(page.getByText(/activity only/i)).toBeVisible();
 
@@ -84,8 +100,10 @@ test.describe("phone companion journeys", () => {
         ].join(","),
       ),
     ].join("\n");
+    const fileName = `companion-range-${importToken}.csv`;
+    mutatingFixture.trackFileName(fileName);
     await page.locator("#companion-csv-file").setInputFiles({
-      name: `companion-range-${importToken}.csv`,
+      name: fileName,
       mimeType: "text/csv",
       buffer: Buffer.from(csvRows),
     });
@@ -104,6 +122,7 @@ test.describe("phone companion journeys", () => {
     await expect(page).toHaveURL(/\/import\/result\?sessionId=[0-9a-f-]+/, { timeout: 120_000 });
     const savedSessionId = new URL(page.url()).searchParams.get("sessionId");
     expect(savedSessionId).toBeTruthy();
+    mutatingFixture.trackSession(savedSessionId);
 
     await expect(page.locator("[data-session-verdict]")).toBeVisible();
     await expect(page.locator("[data-mobile-shot-pattern]")).toHaveAttribute(
@@ -188,10 +207,13 @@ test.describe("phone companion journeys", () => {
   test("mocked R-Cloud inbox previews uncertain matches and opens the common review", async ({
     page,
   }) => {
+    test.skip(!canRunMutatingCompanionE2e, mutatingCompanionSkipReason);
     test.skip(
       process.env.RAPSODO_E2E_FIXTURE !== "1",
       "Set RAPSODO_E2E_FIXTURE=1 with the local auth bypass to run the mocked R-Cloud journey.",
     );
+    mutatingFixture = new MutatingCompanionFixture();
+    mutatingFixture.trackFileName("playwright-rcloud-range.csv");
     await openCompanion(page, "/rapsodo", /Session inbox/i);
     const inbox = page.locator("[data-rapsodo-companion-inbox]");
     await expect(inbox).toHaveAttribute("data-hydrated", "true");
@@ -207,6 +229,7 @@ test.describe("phone companion journeys", () => {
     await preview.getByRole("button", { name: "Import and review" }).click();
 
     await expect(page).toHaveURL(/\/import\/result\?sessionId=[0-9a-f-]+/);
+    mutatingFixture.trackSession(new URL(page.url()).searchParams.get("sessionId"));
     await expect(page.locator("[data-session-verdict]")).toBeVisible();
     await expect(page.getByRole("img", { name: /Dispersion chart/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Shot Explorer|Shot rows/i })).toHaveCount(0);
