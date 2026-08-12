@@ -1,4 +1,4 @@
-import { Menu } from "lucide-react";
+import { Menu, ShieldCheck } from "lucide-react";
 
 import {
   appRouteMetadata,
@@ -90,7 +90,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
 const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
 
 const mobileMoreIds = {
-  Golf: ["quick-bag", "import", "rapsodo", "handicap", "goals"],
+  Golf: ["quick-bag", "import", "handicap", "goals"],
   Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
   Account: ["profile", "notifications", "settings"],
 } as const;
@@ -105,9 +105,24 @@ function belongsInMobileMoreGroup(
 export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
   .map((label) => ({
     label,
-    items: routesAvailableTo(false)
-      .filter((item) => belongsInMobileMoreGroup(item, label))
-      .map(toNavItem),
+    items: [
+      ...routesAvailableTo(false)
+        .filter((item) => belongsInMobileMoreGroup(item, label))
+        .map((item) => ({
+          ...toNavItem(item),
+          label: item.id === "import" ? "Import & Sync" : item.shortTitle,
+        })),
+      ...(label === "Account"
+        ? [
+            {
+              href: "/privacy",
+              label: "Privacy",
+              icon: ShieldCheck,
+              isActive: (pathname: string) => pathname === "/privacy",
+            },
+          ]
+        : []),
+    ],
   }))
   .filter((group) => group.items.length > 0);
 

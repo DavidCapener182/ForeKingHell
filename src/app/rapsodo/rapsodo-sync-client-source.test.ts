@@ -3,8 +3,52 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/rapsodo/rapsodo-sync-client.tsx"), "utf8");
+const companion = readFileSync(
+  join(process.cwd(), "src/app/rapsodo/rapsodo-companion-client.tsx"),
+  "utf8",
+);
+const companionWorkflow = readFileSync(
+  join(process.cwd(), "src/lib/rapsodo/companion-workflow.ts"),
+  "utf8",
+);
+const e2eFixture = readFileSync(join(process.cwd(), "src/lib/rapsodo/e2e-fixture.ts"), "utf8");
+const currentUserSource = readFileSync(join(process.cwd(), "src/lib/current-user.ts"), "utf8");
+const workbenchEntry = readFileSync(join(process.cwd(), "src/app/(app)/rapsodo/page.tsx"), "utf8");
+const runtimeEntry = readFileSync(
+  join(process.cwd(), "src/app/(app)/companion-runtime/rapsodo/page.tsx"),
+  "utf8",
+);
+const proxySource = readFileSync(join(process.cwd(), "proxy.ts"), "utf8");
 
 describe("rapsodo desktop provider console", () => {
+  it("compiles companion and workbench clients on isolated rewritten routes", () => {
+    expect(proxySource).toContain('pathname === "/rapsodo"');
+    expect(proxySource).toContain('return "/companion-runtime/rapsodo"');
+    expect(runtimeEntry).toContain("RapsodoCompanionClient");
+    expect(runtimeEntry).not.toContain("RapsodoSyncClient");
+    expect(workbenchEntry).toContain("rapsodo-workbench-page");
+    expect(workbenchEntry).not.toContain("RapsodoCompanionClient");
+  });
+
+  it("keeps the phone journey to recent unimported sessions and the common review", () => {
+    expect(companion).toContain("loadSessions");
+    expect(companion).toContain("companionRapsodoInbox");
+    expect(companionWorkflow).toContain("!session.importedSessionId");
+    expect(companion).toContain("Session preview");
+    expect(companion).toContain("Confirm uncertain clubs");
+    expect(companion).toContain("practicePlanId");
+    expect(companion).toContain("companionRapsodoResultHref");
+    expect(companionWorkflow).toContain("/import/result?sessionId=");
+    expect(companion).not.toContain('href="/shots"');
+    expect(companion).not.toContain("DesktopWorkflowLayout");
+  });
+
+  it("keeps the mocked provider fixture behind the non-production Playwright auth guard", () => {
+    expect(e2eFixture).toContain("isPlaywrightE2eAuthBypassEnabled()");
+    expect(e2eFixture).toContain('process.env.RAPSODO_E2E_FIXTURE === "1"');
+    expect(currentUserSource).toContain('if (process.env.NODE_ENV === "production")');
+    expect(currentUserSource).toContain("return false;");
+  });
   it("keeps the specialist import flow mobile-native through the lg breakpoint", () => {
     expect(source).toContain("IOSGroupedList");
     expect(source).toContain("MobileRapsodoSessionRows");

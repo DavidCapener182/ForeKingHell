@@ -4,8 +4,11 @@ import {
   authStorageState,
   expectNoCriticalAxeViolations,
   expectNoWcagAaAxeViolations,
+  hasAuthenticatedE2e,
   skipWhenNoAuth,
 } from "./helpers";
+
+test.use({ bypassCSP: true });
 
 test.describe("accessibility smoke checks", () => {
   test("login has no critical or serious axe violations", async ({ page }) => {
@@ -21,6 +24,7 @@ test.describe("accessibility smoke checks", () => {
 });
 
 test.describe("central analysis loop WCAG A and AA checks", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated Axe checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
   for (const route of ["/today", "/sessions", "/analyse", "/analyse/workspace", "/bag", "/coach"]) {
@@ -34,6 +38,7 @@ test.describe("central analysis loop WCAG A and AA checks", () => {
 });
 
 test.describe("authenticated accessibility smoke checks", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated Axe checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
   for (const route of [

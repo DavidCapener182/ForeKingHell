@@ -6,7 +6,6 @@ import {
   mobilePageTitle,
   mobilePrimaryItems,
 } from "@/components/app/nav-items";
-import { appRouteMetadata } from "@/components/app/route-metadata";
 
 describe("application navigation hierarchy", () => {
   it("keeps five action-first mobile destinations", () => {
@@ -35,17 +34,10 @@ describe("application navigation hierarchy", () => {
     const mobileMoreRoutes = mobileMoreGroups.flatMap((group) =>
       group.items.map((item) => item.href),
     );
-    const expectedMobileMoreRoutes = appRouteMetadata
-      .filter((route) => !route.adminOnly && route.mobileNav === "more")
-      .map((route) => route.route)
-      .sort();
-
-    expect([...mobileMoreRoutes].sort()).toEqual(expectedMobileMoreRoutes);
     expect(mobileMoreRoutes).toEqual(
       expect.arrayContaining([
         "/quick-bag",
         "/import",
-        "/rapsodo",
         "/handicap",
         "/goals",
         "/challenges",
@@ -55,7 +47,12 @@ describe("application navigation hierarchy", () => {
         "/profile",
         "/settings/notifications",
         "/settings",
+        "/privacy",
       ]),
+    );
+    expect(mobileMoreRoutes).not.toContain("/rapsodo");
+    expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.label))).toContain(
+      "Import & Sync",
     );
     expect(mobileMoreRoutes).not.toEqual(
       expect.arrayContaining(["/providers", "/billing", "/equipment", "/admin"]),

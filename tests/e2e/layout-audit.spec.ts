@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
-import { authStorageState } from "./helpers";
+import { authStorageState, hasAuthenticatedE2e } from "./helpers";
 
 const allViewports = [
   { name: "mobile-small", width: 320, height: 568 },
@@ -47,6 +47,7 @@ test.describe("layout audit", () => {
   });
 
   test.describe("authenticated pages", () => {
+    test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated layout audit.");
     test.use(authStorageState ? { storageState: authStorageState } : {});
 
     test("static app routes stay within their intended canvas", async ({ context, page }) => {
@@ -177,6 +178,7 @@ async function gotoLayoutRoute(page: Page, route: string, timeout = routeGotoTim
         message.includes("net::ERR_ABORTED") ||
         message.includes("net::ERR_CONNECTION_RESET") ||
         message.includes("net::ERR_NETWORK_IO_SUSPENDED") ||
+        message.includes("is interrupted by another navigation") ||
         message.includes("frame was detached");
 
       if (!retryable || attempt === 1) {

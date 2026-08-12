@@ -46,6 +46,24 @@ export function formatClubType(value: string) {
     .join(" ");
 }
 
+export function formatCompanionClubType(value: string) {
+  const normalized = normalizedClubType(value);
+  const numbered = normalized.match(/^([1-9])([iwh])$/);
+  if (numbered) {
+    const kind = numbered[2] === "i" ? "Iron" : numbered[2] === "w" ? "Wood" : "Hybrid";
+    return `${numbered[1]} ${kind}`;
+  }
+
+  const wedges: Record<string, string> = {
+    pw: "Pitching Wedge",
+    gw: "Gap Wedge",
+    aw: "Approach Wedge",
+    sw: "Sand Wedge",
+    lw: "Lob Wedge",
+  };
+  return wedges[normalized] ?? formatClubType(normalized || value);
+}
+
 export function formatClubModelName(club: {
   type: string;
   brand?: string | null;

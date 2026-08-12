@@ -109,13 +109,16 @@ test.describe("course records and major-style tournaments", () => {
 
     await page.goto(`/courses/${data.courseId}/records`);
     await expect(page.locator("body")).toContainText(/Current Champion|Course Champion/i);
-    await expect(
-      page.getByRole("link", { name: /Best gross score.*You 72/i }).first(),
-    ).toBeVisible();
+    const companionResult = page.getByRole("link", { name: /Best gross score.*You 72/i });
+    const workbenchResult = page
+      .getByRole("row")
+      .filter({ has: page.getByRole("link", { name: "Best gross score", exact: true }) })
+      .filter({ hasText: /72/ });
+    await expect(companionResult.or(workbenchResult).first()).toBeVisible();
 
     await page.goto(`/tournaments/${data.tournamentId}`);
     await expectPageReady(page, new RegExp(data.tournamentTitle));
-    await page.getByRole("button", { name: /^Enter$/i }).click();
+    await page.getByRole("button", { name: /^Enter(?: tournament)?$/i }).click();
     await page.getByLabel(/I accept/i).check();
     const entryForm = page
       .getByRole("button", { name: /Accept & enter tournament/i })
@@ -285,10 +288,9 @@ async function submitServerActionForm(
   await form.evaluate((node: HTMLFormElement) => node.requestSubmit());
   const response = await responsePromise;
 
-  // Next Server Actions return their client navigation target in this response header.
-  // Assert that contract directly: Playwright does not consistently emit a full load event
-  // for the ensuing client transition in a production build.
-  expect(response.status()).toBe(303);
+  // With JavaScript enabled, Next Server Actions return a streamed 200 response and communicate
+  // the client navigation target through this header. Progressive-enhancement submissions use 303.
+  expect([200, 303]).toContain(response.status());
   expect(response.headers()["x-action-redirect"]).toMatch(expectedRedirect);
 }
 

@@ -9,6 +9,12 @@ describe("CSP report collector boundary", () => {
     const config = source("next.config.ts");
 
     expect(config).toContain('"report-uri /api/security/csp-report"');
+    expect(config).toContain(
+      "value: \"frame-ancestors 'none'; base-uri 'self'; object-src 'none'\"",
+    );
+    expect(config).not.toContain("  \"frame-ancestors 'none'\",");
+    expect(config).toContain('process.env.NODE_ENV === "development"');
+    expect(config).toContain(": \"script-src 'self' 'unsafe-inline' https://plausible.io\"");
   });
 
   it("keeps the public collector bounded and privacy-reducing", () => {

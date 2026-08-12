@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("shot pattern overlay", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run shot-pattern checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
   test("opens a mapped course shot pattern and supports core toggles", async ({ page }) => {

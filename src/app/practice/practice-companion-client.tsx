@@ -7,7 +7,8 @@ import { CheckCircle2, ChevronLeft, ChevronRight, Pause, Play, Save, Upload } fr
 import {
   completePracticeActivityAction,
   generatePracticePlanAction,
-  savePracticePlanAction,
+  savePracticeActivityProgressAction,
+  saveAndStartPracticePlanAction,
   startPracticePlanAction,
 } from "@/app/practice/actions";
 import {
@@ -19,6 +20,13 @@ import {
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type {
   GeneratePracticePlanOptions,
   PracticeBlock,
@@ -111,21 +119,43 @@ export function PracticeCompanionClient({
     const wakeLock = navigator.wakeLock as {
       request: (type: "screen") => Promise<{ release: () => Promise<void> }>;
     };
-    void wakeLock
-      .request("screen")
-      .then((sentinel) => {
-        if (cancelled) return sentinel.release();
-        wakeLockRef.current = sentinel;
-      })
-      .catch(() => undefined);
+    const acquire = () => {
+      if (cancelled || document.visibilityState !== "visible" || wakeLockRef.current) return;
+      void wakeLock
+        .request("screen")
+        .then((sentinel) => {
+          if (cancelled) return sentinel.release();
+          wakeLockRef.current = sentinel;
+        })
+        .catch(() => undefined);
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") acquire();
+      else wakeLockRef.current = null;
+    };
+    acquire();
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
       const sentinel = wakeLockRef.current;
       wakeLockRef.current = null;
       if (sentinel) void sentinel.release().catch(() => undefined);
     };
   }, [rangeMode]);
+
+  useEffect(() => {
+    if (!rangeMode || !savedPlanId || !navigator.onLine) return;
+    const timer = window.setTimeout(() => {
+      void savePracticeActivityProgressAction(savedPlanId, {
+        blockIndex: selectedIndex,
+        completedBlockIds,
+        note,
+      }).catch(() => undefined);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [completedBlockIds, note, rangeMode, savedPlanId, selectedIndex]);
 
   function regenerate(nextOptions = options) {
     setMessage(null);
@@ -146,8 +176,7 @@ export function PracticeCompanionClient({
   function saveAndStart() {
     setMessage(null);
     startTransition(async () => {
-      const { planId } = await savePracticePlanAction(plan);
-      await startPracticePlanAction(planId);
+      const { planId } = await saveAndStartPracticePlanAction(plan);
       setSavedPlanId(planId);
       setPlan((current) => ({ ...current, id: planId, status: "awaiting_import" }));
       setRangeMode(true);
@@ -197,6 +226,7 @@ export function PracticeCompanionClient({
   if (rangeMode) {
     return (
       <ActiveRangeMode
+        key={selectedBlock?.id ?? `block-${selectedIndex}`}
         plan={plan}
         block={selectedBlock}
         blockIndex={selectedIndex}
@@ -216,6 +246,7 @@ export function PracticeCompanionClient({
           setPaused(true);
         }}
         onFinish={finishWithoutUpload}
+        practicePlanId={savedPlanId}
       />
     );
   }
@@ -300,6 +331,7 @@ export function PracticeCompanionClient({
       {selectedBlock ? <BlockCard block={selectedBlock} /> : null}
 
       <QuickAdjustments
+        key={`${options.timeMinutes}-${options.ballCount ?? "time"}-${options.energy}-${options.intent}-${options.facility}`}
         options={options}
         pending={isPending || !hydrated}
         onChange={(next) => {
@@ -386,6 +418,8 @@ function QuickAdjustments({
   pending: boolean;
   onChange: (options: GeneratePracticePlanOptions) => void;
 }) {
+  const [draft, setDraft] = useState(options);
+
   return (
     <IOSDisclosureGroup
       label="Quick adjustments"
@@ -394,7 +428,7 @@ function QuickAdjustments({
         {
           value: "adjust",
           title: "Quick adjustments",
-          summary: `${options.timeMinutes} min`,
+          summary: `${draft.timeMinutes} min`,
           description: "Time, energy, facilities and intent",
           content: (
             <div className="grid gap-4">
@@ -404,24 +438,24 @@ function QuickAdjustments({
                   value: String(value),
                   label: `${value} min`,
                 }))}
-                selected={String(options.timeMinutes)}
+                selected={String(draft.timeMinutes)}
                 onSelect={(value) =>
-                  onChange({ ...options, timeMinutes: Number(value), ballCount: null })
+                  setDraft({ ...draft, timeMinutes: Number(value), ballCount: null })
                 }
                 disabled={pending}
               />
               <ChoiceGroup
                 label="Energy"
                 options={energyOptions}
-                selected={options.energy}
-                onSelect={(value) => onChange({ ...options, energy: value as PracticeEnergyLevel })}
+                selected={draft.energy}
+                onSelect={(value) => setDraft({ ...draft, energy: value as PracticeEnergyLevel })}
                 disabled={pending}
               />
               <ChoiceGroup
                 label="Intent"
                 options={intentOptions}
-                selected={options.intent}
-                onSelect={(value) => onChange({ ...options, intent: value as PracticeIntent })}
+                selected={draft.intent}
+                onSelect={(value) => setDraft({ ...draft, intent: value as PracticeIntent })}
                 disabled={pending}
               />
               <div>
@@ -430,7 +464,7 @@ function QuickAdjustments({
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   {facilityOptions.map((facility) => {
-                    const selected = Boolean(options.facility?.[facility.key]);
+                    const selected = Boolean(draft.facility?.[facility.key]);
                     return (
                       <button
                         key={facility.key}
@@ -438,9 +472,9 @@ function QuickAdjustments({
                         aria-pressed={selected}
                         disabled={pending}
                         onClick={() =>
-                          onChange({
-                            ...options,
-                            facility: { ...options.facility, [facility.key]: !selected },
+                          setDraft({
+                            ...draft,
+                            facility: { ...draft.facility, [facility.key]: !selected },
                           })
                         }
                         className={cn(
@@ -454,6 +488,14 @@ function QuickAdjustments({
                   })}
                 </div>
               </div>
+              <Button
+                type="button"
+                className="min-h-11 rounded-xl"
+                disabled={pending}
+                onClick={() => onChange(draft)}
+              >
+                Apply adjustments
+              </Button>
             </div>
           ),
         },
@@ -514,6 +556,7 @@ function ActiveRangeMode({
   onComplete,
   onPause,
   onFinish,
+  practicePlanId,
 }: {
   plan: PracticePlan;
   block: PracticeBlock | null;
@@ -527,8 +570,11 @@ function ActiveRangeMode({
   onComplete: () => void;
   onPause: () => void;
   onFinish: () => void;
+  practicePlanId: string | null;
 }) {
   const allComplete = plan.blocks.length > 0 && completedBlockIds.length >= plan.blocks.length;
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [manualRemaining, setManualRemaining] = useState<number | null>(block?.ballCount ?? null);
 
   return (
     <section className="grid min-h-[calc(100dvh-9rem)] content-start gap-4" data-active-range-mode>
@@ -599,6 +645,37 @@ function ActiveRangeMode({
           Manual completion records activity only. A target remains unmeasured until matching
           launch-monitor evidence arrives.
         </p>
+        {manualRemaining !== null ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3">
+            <div>
+              <p className="text-sm font-semibold">Manual balls remaining</p>
+              <p className="text-xs text-muted-foreground">Activity tracking only · not evidence</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                onClick={() => setManualRemaining((value) => Math.max(0, (value ?? 0) - 1))}
+                aria-label="Remove one ball"
+              >
+                −
+              </Button>
+              <span className="w-8 text-center text-lg font-bold">{manualRemaining}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11"
+                onClick={() => setManualRemaining((value) => (value ?? 0) + 1)}
+                aria-label="Add one ball"
+              >
+                +
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </div>
       <label className="ios-grouped-list grid gap-2 p-4 text-sm font-semibold">
         Short note
@@ -611,24 +688,58 @@ function ActiveRangeMode({
           className="min-h-20 resize-none rounded-xl border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </label>
-      <div className="grid gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={onPause}>
           <Pause className="size-4" />
-          Pause session
+          Pause
         </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/rapsodo">Sync Rapsodo</Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/import">
-            <Upload className="size-4" />
-            Upload CSV
-          </Link>
-        </Button>
-        <Button type="button" className="min-h-11 rounded-xl" onClick={onFinish} disabled={pending}>
-          Finish without upload
+        <Button
+          type="button"
+          className="min-h-11 rounded-xl"
+          onClick={() => setFinishOpen(true)}
+          disabled={pending}
+        >
+          Finish Practice
         </Button>
       </div>
+      <Sheet open={finishOpen} onOpenChange={setFinishOpen}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-3xl pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        >
+          <SheetHeader className="text-left">
+            <SheetTitle>Add measured evidence?</SheetTitle>
+            <SheetDescription>
+              Choose the source you used. Manual activity will not be presented as measured success.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 grid gap-2">
+            <Button asChild className="min-h-12 rounded-xl">
+              <Link
+                href={`/rapsodo${practicePlanId ? `?practicePlanId=${encodeURIComponent(practicePlanId)}` : ""}`}
+              >
+                Sync Rapsodo
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="min-h-12 rounded-xl">
+              <Link
+                href={`/import?source=csv${practicePlanId ? `&practicePlanId=${encodeURIComponent(practicePlanId)}` : ""}`}
+              >
+                <Upload className="size-4" /> Choose CSV
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-12"
+              onClick={onFinish}
+              disabled={pending}
+            >
+              Finish without evidence
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </section>
   );
 }

@@ -7,7 +7,15 @@ import {
 } from "@/lib/app-route-capabilities";
 import { APP_SURFACE_COOKIE, resolveAppSurface } from "@/lib/app-surface";
 
-const PUBLIC_PATH_PREFIXES = ["/_next/static/", "/_next/image/", "/icons/", "/assets/", "/share/"];
+const PUBLIC_PATH_PREFIXES = [
+  "/_next/static/",
+  "/_next/image/",
+  "/icons/",
+  "/assets/",
+  "/brand/",
+  "/share/",
+  "/course-twins/common/",
+];
 const PUBLIC_PATHS = new Set([
   "/",
   "/.well-known/security.txt",
@@ -141,6 +149,13 @@ function protectedAppResponse(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  const companionRuntimePath = companionRuntimePathFor(request.nextUrl.pathname);
+  if (companionRuntimePath) {
+    const runtimeUrl = request.nextUrl.clone();
+    runtimeUrl.pathname = companionRuntimePath;
+    return NextResponse.rewrite(runtimeUrl, { request });
+  }
+
   if (isDesktopOnlyCompanionPath(request.nextUrl.pathname)) {
     const handoffUrl = request.nextUrl.clone();
     handoffUrl.pathname = "/companion/handoff";
@@ -158,6 +173,13 @@ function protectedAppResponse(request: NextRequest) {
   }
 
   return NextResponse.next({ request });
+}
+
+function companionRuntimePathFor(pathname: string) {
+  if (pathname === "/import/result") return "/companion-runtime/import/result";
+  if (pathname === "/import") return "/companion-runtime/import";
+  if (pathname === "/rapsodo") return "/companion-runtime/rapsodo";
+  return null;
 }
 
 function mobileDashboardCompanionResponse(request: NextRequest) {

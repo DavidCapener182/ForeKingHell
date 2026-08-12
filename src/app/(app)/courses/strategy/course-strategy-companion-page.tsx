@@ -12,22 +12,36 @@ import {
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 
 export default async function CourseStrategyCompanionPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ courseId?: string }>;
+  searchParams?: Promise<{ courseId?: string; teeSetId?: string }>;
 }) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
-  const data = await getCourseStrategyData(params?.courseId);
+  const [data, availableTwins] = await Promise.all([
+    getCourseStrategyData(params?.courseId, params?.teeSetId),
+    listAvailableCourseTwins(userId),
+  ]);
+  const courseTwinAvailable = availableTwins.some(
+    (twin) => twin.courseId === data.selectedCourse?.id,
+  );
+  const usedClubs = new Set(data.strategies.map((strategy) => strategy.recommendedClub));
   const pressureClub =
-    data.trustedBag.sort((left, right) => right.confidence - left.confidence)[0] ?? null;
-  const avoidClub =
     data.trustedBag
-      .filter((club) => club.sampleSize > 0)
+      .filter(
+        (club) => usedClubs.has(club.label) && club.sampleSize >= 8 && club.confidence >= 0.55,
+      )
+      .sort(
+        (left, right) => right.confidence - left.confidence || right.sampleSize - left.sampleSize,
+      )[0] ?? null;
+  const warningClub =
+    data.trustedBag
+      .filter((club) => usedClubs.has(club.label) && club.sampleSize > 0 && club.confidence < 0.55)
       .sort((left, right) => left.confidence - right.confidence)[0] ?? null;
   const firstHole = data.strategies[0] ?? null;
 
@@ -69,11 +83,11 @@ export default async function CourseStrategyCompanionPage({
               }
             />
             <IOSListRow
-              label="Avoid under pressure"
-              value={avoidClub?.label ?? "No clear warning"}
+              label="Low-confidence warning"
+              value={warningClub?.label ?? "No clear warning"}
               detail={
-                avoidClub
-                  ? `${Math.round(avoidClub.confidence * 100)}% confidence from ${avoidClub.sampleSize} shots`
+                warningClub
+                  ? `${Math.round(warningClub.confidence * 100)}% confidence from ${warningClub.sampleSize} shots · choose a conservative alternative when this club is required`
                   : "No low-confidence club is separated."
               }
             />
@@ -117,6 +131,21 @@ export default async function CourseStrategyCompanionPage({
                       </option>
                     ))}
                   </select>
+                  {data.teeOptions.length > 0 ? (
+                    <select
+                      name="teeSetId"
+                      defaultValue={data.selectedTee?.id ?? ""}
+                      className="min-h-11 w-full rounded-xl border bg-background px-3"
+                      aria-label="Tee"
+                    >
+                      {data.teeOptions.map((tee) => (
+                        <option key={tee.id} value={tee.id}>
+                          {tee.name}
+                          {tee.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                   <Button type="submit" variant="outline" className="min-h-11">
                     Load strategy
                   </Button>
@@ -135,6 +164,7 @@ export default async function CourseStrategyCompanionPage({
               accountId={userId}
               trustedBag={data.trustedBag}
               tee={data.selectedTee}
+              courseTwinAvailable={courseTwinAvailable}
             />
           ) : (
             <IOSGroupedList label="Hole strategy unavailable">

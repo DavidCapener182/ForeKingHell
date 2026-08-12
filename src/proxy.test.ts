@@ -50,6 +50,34 @@ describe("proxy public service endpoints", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("serves only the shared Course Twin assets used by the public demo", async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+    const material = await proxy(
+      new NextRequest(
+        "https://app.example.com/course-twins/common/materials/Grass001-Color.jpg?v=1",
+      ),
+    );
+    const privateTwin = await proxy(
+      new NextRequest("https://app.example.com/course-twins/private-course"),
+    );
+    const vegetation = await proxy(
+      new NextRequest(
+        "https://app.example.com/course-twins/common/vegetation/high-detail/tree-oak-hq.webp?v=1",
+      ),
+    );
+    const brand = await proxy(
+      new NextRequest("https://app.example.com/brand/lm-world-tour-logo.png"),
+    );
+
+    expect(material.status).toBe(200);
+    expect(material.headers.get("x-middleware-next")).toBe("1");
+    expect(vegetation.status).toBe(200);
+    expect(brand.status).toBe(200);
+    expect(privateTwin.status).toBe(307);
+  });
+
   it("allows only the configured cron endpoint through the public boundary", async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Cuboid, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Cuboid, Save, Trash2 } from "lucide-react";
 
 import { IOSGroupedList, IOSInlineStatus, IOSListRow } from "@/components/app/ios-mobile";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ export function MobileHoleStrategy({
   accountId,
   trustedBag = [],
   tee = null,
+  courseTwinAvailable = false,
 }: {
   strategies: HoleStrategy[];
   course: { id: string; name: string };
@@ -28,9 +29,12 @@ export function MobileHoleStrategy({
     sampleSize: number;
   }>;
   tee?: { id: string; name: string; yards: number | null } | null;
+  courseTwinAvailable?: boolean;
 }) {
   const [index, setIndex] = useState(0);
   const [downloaded, setDownloaded] = useState(false);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [savedCopyIsStale, setSavedCopyIsStale] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const strategy = strategies[index];
 
@@ -38,6 +42,35 @@ export function MobileHoleStrategy({
     const timer = window.setTimeout(() => setHydrated(true), 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(`fkh:round-download:${accountId}:${course.id}`);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        accountId?: unknown;
+        course?: { id?: unknown };
+        storedAt?: unknown;
+      };
+      if (
+        saved.accountId !== accountId ||
+        saved.course?.id !== course.id ||
+        typeof saved.storedAt !== "string"
+      ) {
+        return;
+      }
+      const date = new Date(saved.storedAt);
+      if (Number.isNaN(date.getTime())) return;
+      const timer = window.setTimeout(() => {
+        setDownloaded(true);
+        setSavedAt(date);
+        setSavedCopyIsStale(Date.now() - date.getTime() > 24 * 60 * 60 * 1_000);
+      }, 0);
+      return () => window.clearTimeout(timer);
+    } catch {
+      // Local storage is an optional poor-connection aid.
+    }
+  }, [accountId, course.id]);
 
   if (!strategy) return null;
 
@@ -108,15 +141,48 @@ export function MobileHoleStrategy({
           value={strategy.expectedLeave}
           detail={plannedSequence(strategy)}
         />
-        <IOSListRow
-          icon={Cuboid}
-          label="View this hole in Course Twin"
-          detail="Open directly in Strategy mode"
-          href={`/play/${course.id}?mode=strategy&hole=${strategy.holeNumber}`}
-        />
+        {courseTwinAvailable ? (
+          <IOSListRow
+            icon={Cuboid}
+            label="View this hole in Course Twin"
+            detail="Open directly in Strategy mode"
+            href={`/play/${course.id}?mode=strategy&hole=${strategy.holeNumber}`}
+          />
+        ) : (
+          <IOSListRow
+            icon={Cuboid}
+            label="Course Twin unavailable"
+            detail="This course has strategy data but no published 3D twin."
+          />
+        )}
       </IOSGroupedList>
 
       <p className="px-1 text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
+
+      {savedAt ? (
+        <IOSGroupedList label="Saved strategy status">
+          <IOSListRow
+            label="Saved on this device"
+            value={savedAt.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            detail={
+              savedCopyIsStale
+                ? "This copy may be stale. Refresh it before the round. Course Twin still needs a connection."
+                : "Hole strategy can be read here from this device. Course Twin still needs a connection."
+            }
+            status={
+              <IOSInlineStatus
+                label={savedCopyIsStale ? "Stale" : "Saved"}
+                tone={savedCopyIsStale ? "attention" : "positive"}
+              />
+            }
+          />
+        </IOSGroupedList>
+      ) : null}
 
       <Button
         type="button"
@@ -144,14 +210,32 @@ export function MobileHoleStrategy({
               }),
             );
             setDownloaded(true);
+            setSavedAt(new Date());
+            setSavedCopyIsStale(false);
           } catch {
             setDownloaded(false);
           }
         }}
       >
-        <Download className="size-4" aria-hidden />
-        {downloaded ? "Available for this round" : "Download for Round"}
+        <Save className="size-4" aria-hidden />
+        {downloaded ? "Refresh Saved Strategy" : "Save Strategy on This Device"}
       </Button>
+      {downloaded ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-11 rounded-xl"
+          onClick={() => {
+            window.localStorage.removeItem(`fkh:round-download:${accountId}:${course.id}`);
+            setDownloaded(false);
+            setSavedAt(null);
+            setSavedCopyIsStale(false);
+          }}
+        >
+          <Trash2 className="size-4" aria-hidden />
+          Clear saved strategy
+        </Button>
+      ) : null}
     </div>
   );
 }

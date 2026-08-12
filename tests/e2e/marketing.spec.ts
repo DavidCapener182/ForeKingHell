@@ -48,6 +48,12 @@ async function expectInteractiveCourseTwin(
 }
 
 test.describe("public product landing", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/security/csp-report", (route) =>
+      route.fulfill({ status: 204, body: "" }),
+    );
+  });
+
   test("shows the product journey, CTAs, sample tour and FAQ without sign-in", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (message) => {
@@ -125,15 +131,39 @@ test.describe("public product landing", () => {
     await expect(stage).toBeVisible();
     const rangeArt = stage.getByAltText(/Golfer using a launch monitor/i);
     const before = await rangeArt.evaluate((element) => getComputedStyle(element).transform);
-    expect(await rangeArt.evaluate((element) => getComputedStyle(element).animationName)).toContain(
-      "marketing-hero-range-zoom",
+    const usesCompactLayout = (page.viewportSize()?.width ?? 1024) <= 767;
+    const supportsViewTimeline = await page.evaluate(() =>
+      CSS.supports("animation-timeline: view()"),
     );
+    if (usesCompactLayout) {
+      expect(await rangeArt.evaluate((element) => getComputedStyle(element).animationName)).toBe(
+        "none",
+      );
+    } else if (supportsViewTimeline) {
+      expect(
+        await rangeArt.evaluate((element) => getComputedStyle(element).animationName),
+      ).toContain("marketing-hero-range-zoom");
+    } else {
+      await expect(stage).toHaveAttribute("data-composited-scroll-zoom", "true");
+    }
 
-    await page.evaluate(() => window.scrollTo({ top: Math.round(window.innerHeight * 0.45) }));
+    if (usesCompactLayout) {
+      await page.evaluate(() => window.scrollTo({ top: Math.round(window.innerHeight * 0.45) }));
+    } else {
+      await stage.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const stageCentre = window.scrollY + rect.top + rect.height / 2;
+        window.scrollTo({ top: Math.max(0, Math.round(stageCentre - window.innerHeight / 2)) });
+      });
+    }
     await page.waitForTimeout(120);
     const after = await rangeArt.evaluate((element) => getComputedStyle(element).transform);
 
-    expect(after).not.toBe(before);
+    if (usesCompactLayout) {
+      expect(after).toBe(before);
+    } else {
+      expect(after).not.toBe(before);
+    }
     await expect(page.locator("#how-it-works")).toBeAttached();
   });
 });

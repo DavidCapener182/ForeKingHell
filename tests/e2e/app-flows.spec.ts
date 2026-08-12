@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 
-import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("authenticated app flows", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated app flows.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
   test.setTimeout(90_000);
 

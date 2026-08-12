@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("accessible mobile interactions", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run mobile interaction checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
   test.beforeEach(async ({ page }) => {
@@ -13,13 +14,12 @@ test.describe("accessible mobile interactions", () => {
   test("primary tabs expose current state, 44px targets and a visible keyboard focus ring", async ({
     page,
   }) => {
-    await page.goto("/analyse");
-    await expectPageReady(page, /Evidence hub|Analyse/i);
+    await openCompanionRoute(page, "/today", /Today/i);
 
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     const destinations = navigation.locator(".ios-tab-item");
     await expect(destinations).toHaveCount(5);
-    await expect(navigation.getByRole("link", { name: "Analyse" })).toHaveAttribute(
+    await expect(navigation.getByRole("link", { name: "Today" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -52,8 +52,7 @@ test.describe("accessible mobile interactions", () => {
 
   test("reduced motion removes navigation and segmented-control transitions", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.goto("/analyse/session-impact");
-    await expectPageReady(page, /Session impact/i);
+    await openCompanionRoute(page, "/sessions", /Recent sessions/i);
 
     const transitionDurations = await page.evaluate(() => {
       const elements = [
@@ -71,7 +70,7 @@ test.describe("accessible mobile interactions", () => {
   test("flight paths expose a labelled visual and plain-language non-chart summary", async ({
     page,
   }) => {
-    await page.goto("/analyse/session-impact");
+    await page.goto(`/surface/workbench?next=${encodeURIComponent("/analyse/session-impact")}`);
     await expectPageReady(page, /Session impact/i);
 
     const chart = page.getByRole("img", { name: /Top-down summary of .* shot paths/i });
@@ -83,3 +82,12 @@ test.describe("accessible mobile interactions", () => {
     );
   });
 });
+
+async function openCompanionRoute(
+  page: import("@playwright/test").Page,
+  destination: string,
+  ready: RegExp,
+) {
+  await page.goto(`/surface/companion?next=${encodeURIComponent(destination)}`);
+  await expectPageReady(page, ready);
+}

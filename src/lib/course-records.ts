@@ -1681,6 +1681,11 @@ async function syncVerifiedRoundRecordAttempts({
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const recalculationRecordIds = new Set<string>();
   const now = new Date();
+  const pendingAttempts: Array<{
+    key: string;
+    values: typeof courseRecordAttempts.$inferInsert;
+    evidence: Omit<typeof courseRecordEvidence.$inferInsert, "attemptId"> | null;
+  }> = [];
 
   for (const record of records) {
     const category = categoryById.get(record.categoryId);
@@ -1717,9 +1722,9 @@ async function syncVerifiedRoundRecordAttempts({
 
       const autoProof = autoSyncedRoundProof(session, sync);
       const csvHash = autoProof.csvHash;
-      const [attempt] = await db
-        .insert(courseRecordAttempts)
-        .values({
+      pendingAttempts.push({
+        key,
+        values: {
           recordId: record.id,
           categoryId: record.categoryId,
           courseId: record.courseId,
@@ -1750,35 +1755,60 @@ async function syncVerifiedRoundRecordAttempts({
           },
           submittedAt: session.date,
           updatedAt: now,
-        })
-        .returning();
-
-      if (autoProof.evidenceType) {
-        await db.insert(courseRecordEvidence).values({
-          attemptId: attempt.id,
-          evidenceType: autoProof.evidenceType,
-          rapsodoSyncSessionId: sync?.id ?? null,
-          csvHash,
-          extractedScorecardTotal: summary.totalScore,
-          metadataJson: {
-            source: autoProof.sourceKind,
-            autoSyncedFromVerifiedRound: true,
-            originalHoleCount: summary.originalHoleCount,
-            normalisedHoleCount: summary.holeCount,
-            nineHoleEquivalent: summary.isNineHoleEquivalent,
-          },
-          reviewStatus: autoProof.evidenceReviewStatus,
-          updatedAt: now,
-        });
-      }
+        },
+        evidence: autoProof.evidenceType
+          ? {
+              evidenceType: autoProof.evidenceType,
+              rapsodoSyncSessionId: sync?.id ?? null,
+              csvHash,
+              extractedScorecardTotal: summary.totalScore,
+              metadataJson: {
+                source: autoProof.sourceKind,
+                autoSyncedFromVerifiedRound: true,
+                originalHoleCount: summary.originalHoleCount,
+                normalisedHoleCount: summary.holeCount,
+                nineHoleEquivalent: summary.isNineHoleEquivalent,
+              },
+              reviewStatus: autoProof.evidenceReviewStatus,
+              updatedAt: now,
+            }
+          : null,
+      });
 
       existingKeys.add(key);
-      recalculationRecordIds.add(record.id);
     }
   }
 
-  for (const recordId of recalculationRecordIds) {
-    await recalculateCourseRecordResults(recordId);
+  if (pendingAttempts.length === 0) {
+    return;
+  }
+
+  const insertedAttempts = await db
+    .insert(courseRecordAttempts)
+    .values(pendingAttempts.map((attempt) => attempt.values))
+    .returning({
+      id: courseRecordAttempts.id,
+      recordId: courseRecordAttempts.recordId,
+      sessionId: courseRecordAttempts.sessionId,
+    });
+  const pendingByKey = new Map(pendingAttempts.map((attempt) => [attempt.key, attempt]));
+  const evidenceValues: Array<typeof courseRecordEvidence.$inferInsert> = [];
+
+  for (const attempt of insertedAttempts) {
+    recalculationRecordIds.add(attempt.recordId);
+    const pending = pendingByKey.get(`${attempt.recordId}:${attempt.sessionId}`);
+    if (pending?.evidence) {
+      evidenceValues.push({ attemptId: attempt.id, ...pending.evidence });
+    }
+  }
+
+  if (evidenceValues.length > 0) {
+    await db.insert(courseRecordEvidence).values(evidenceValues);
+  }
+
+  const recordIds = [...recalculationRecordIds];
+  for (let index = 0; index < recordIds.length; index += 8) {
+    await Promise.all(recordIds.slice(index, index + 8).map(recalculateCourseRecordResults));
   }
 }
 

@@ -79,9 +79,31 @@ async function main() {
       args.push(`--extra-headers=${process.env.LIGHTHOUSE_EXTRA_HEADERS_JSON}`);
     }
 
-    await execFileAsync(npxBin, args, { maxBuffer: 1024 * 1024 * 16 });
+    await runLighthouseAudit(url, args);
     process.stdout.write(`Lighthouse audit written for ${url}\n`);
   }
+}
+
+async function runLighthouseAudit(url, args) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      await execFileAsync(npxBin, args, { maxBuffer: 1024 * 1024 * 16 });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 1) {
+        process.stderr.write(`Lighthouse audit failed for ${url}; retrying once.\n`);
+      }
+    }
+  }
+
+  const stderr =
+    typeof lastError?.stderr === "string" && lastError.stderr.trim()
+      ? `: ${lastError.stderr.trim()}`
+      : "";
+  throw new Error(`Lighthouse audit failed for ${url}${stderr}`);
 }
 
 function localAuditServerEnvironment() {

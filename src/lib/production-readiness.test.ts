@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { mobilePrimaryItems } from "@/components/app/nav-items";
+import { mobileMoreGroups, mobilePrimaryItems } from "@/components/app/nav-items";
 import { appRouteMetadata } from "@/components/app/route-metadata";
 
 const root = process.cwd();
@@ -294,9 +294,10 @@ describe("production readiness gate", () => {
     expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
     expect(mobileNavSource).toContain("Search companion actions");
     expect(mobileNavSource).toContain("Open full desktop site");
-    expect(mobileNavSource).toContain('href="/settings"');
-    expect(mobileNavSource).toContain('href="/privacy"');
-    expect(mobileNavSource).toContain('href="/profile"');
+    expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.href))).toEqual(
+      expect.arrayContaining(["/settings", "/privacy", "/profile"]),
+    );
+    expect(mobileNavSource).not.toContain('className="ios-drawer-group grid grid-cols-3');
     expect(mobileNavSource).toContain("focus-aaa");
   });
 
@@ -343,7 +344,14 @@ describe("production readiness gate", () => {
       join(root, "src/app/(app)/practice/practice-workbench-page.tsx"),
       "utf8",
     );
-    const importSource = readFileSync(join(root, "src/app/(app)/import/page.tsx"), "utf8");
+    const importSource = readFileSync(
+      join(root, "src/app/(app)/import/import-companion-page.tsx"),
+      "utf8",
+    );
+    const importWorkbenchSource = readFileSync(
+      join(root, "src/app/(app)/import/import-workbench-page.tsx"),
+      "utf8",
+    );
     const rapsodoSource = readFileSync(
       join(root, "src/app/rapsodo/rapsodo-sync-client.tsx"),
       "utf8",
@@ -361,8 +369,9 @@ describe("production readiness gate", () => {
     expect(practiceSource).toContain("Active session mode");
     expect(practiceSource).toContain("Practice scoring is driven by imported launch-monitor shots");
     expect(practiceSource).toContain("spinAverageRpm");
-    expect(importSource).toContain("Choose source");
-    expect(importSource).toContain("Review and import");
+    expect(importSource).toContain("Choose CSV from Files");
+    expect(importSource).toContain("Rapsodo R-Cloud");
+    expect(importWorkbenchSource).toContain("Review and import");
     expect(rapsodoSource).toContain("Map clubs");
     expect(rapsodoSource).toContain("Review trust");
     expect(rapsodoSource).toContain('setMobileStep("review")');

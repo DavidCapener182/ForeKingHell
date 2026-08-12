@@ -7,6 +7,7 @@ type StrategySearchParams = Promise<{
   courseId?: string;
   roundId?: string;
   saved?: string;
+  teeSetId?: string;
 }>;
 
 export default async function CourseStrategyPage({

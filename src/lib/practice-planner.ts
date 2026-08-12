@@ -1459,6 +1459,38 @@ export async function updatePracticePlanStatusForUser(
     .where(and(eq(practicePlans.id, planId), eq(practicePlans.userId, userId)));
 }
 
+export async function savePracticePlanActivityProgressForUser(
+  userId: string,
+  planId: string,
+  input: { blockIndex: number; completedBlockIds: string[]; note: string },
+) {
+  const [row] = await getDb()
+    .select({ contextJson: practicePlans.contextJson })
+    .from(practicePlans)
+    .where(and(eq(practicePlans.id, planId), eq(practicePlans.userId, userId)))
+    .limit(1);
+  if (!row) return false;
+  const completedBlockIds = input.completedBlockIds
+    .filter((id): id is string => typeof id === "string" && id.length <= 100)
+    .slice(0, 12);
+  await getDb()
+    .update(practicePlans)
+    .set({
+      contextJson: {
+        ...row.contextJson,
+        activityProgress: {
+          blockIndex: Math.max(0, Math.min(12, Math.trunc(input.blockIndex))),
+          completedBlockIds,
+          note: input.note.slice(0, 300),
+          savedAt: new Date().toISOString(),
+        },
+      },
+      updatedAt: new Date(),
+    })
+    .where(and(eq(practicePlans.id, planId), eq(practicePlans.userId, userId)));
+  return true;
+}
+
 export async function completePracticePlanForUser(
   userId: string,
   planId: string,
@@ -1570,6 +1602,76 @@ export async function completeMatchingPracticePlanFromImport(
       matched.match.score >= 75 ? "high" : matched.match.score >= 60 ? "medium" : "low",
     matchReason: matched.match.reason,
     matchBreakdown: matched.match.breakdown,
+    importedSession: {
+      shotCount: sessionSummary.shotCount,
+      sessionType: sessionSummary.sessionType,
+      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+    },
+  };
+}
+
+export async function completeOwnedPracticePlanFromImport(
+  userId: string,
+  planId: string,
+  sourceSessionId: string,
+): Promise<PracticePlanImportMatch | null> {
+  const [saved, sessionSummary] = await Promise.all([
+    getSavedPracticePlan(userId, planId),
+    getImportedPracticeSessionSummary(userId, sourceSessionId),
+  ]);
+
+  if (
+    !saved ||
+    !sessionSummary ||
+    sessionSummary.shotCount <= 0 ||
+    !["planned", "active", "awaiting_import", "match_found"].includes(saved.status) ||
+    (saved.sourceSessionId && saved.sourceSessionId !== sourceSessionId) ||
+    !canImportedSessionReviewPracticePlan(saved, sessionSummary)
+  ) {
+    return null;
+  }
+
+  const match = scorePracticePlanSessionMatch(saved, sessionSummary);
+  const plan = savedPlanToPracticePlan(saved);
+  const comparison = comparePlanWithShotRows(
+    plan,
+    sourceSessionId,
+    {
+      shotCount: sessionSummary.shotCount,
+      sessionType: sessionSummary.sessionType,
+      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+      clubTypes: sessionSummary.clubTypes,
+      shotRows: sessionSummary.shotRows,
+    },
+    Math.max(90, match.score),
+  );
+  const input = buildPracticeResultFromImport(plan, sessionSummary, comparison);
+  const { score } = await persistCompletedPracticePlan(userId, saved, plan, input, comparison, {
+    ...match,
+    score: Math.max(90, match.score),
+    reason: `Owned plan selected at import · ${match.reason}`,
+  });
+  await recordPracticePlanMatch(
+    userId,
+    saved,
+    sessionSummary,
+    {
+      ...match,
+      score: Math.max(90, match.score),
+      reason: `Owned plan selected at import · ${match.reason}`,
+    },
+    true,
+  );
+
+  return {
+    planId: saved.id,
+    title: saved.title,
+    score,
+    comparison,
+    matchScore: Math.max(90, match.score),
+    matchConfidence: "high",
+    matchReason: `Owned plan selected at import · ${match.reason}`,
+    matchBreakdown: match.breakdown,
     importedSession: {
       shotCount: sessionSummary.shotCount,
       sessionType: sessionSummary.sessionType,

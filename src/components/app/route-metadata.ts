@@ -572,7 +572,7 @@ export function isMobileImmersiveRoute(pathname: string) {
   return /^\/play\/[^/]+\/?$/.test(pathname);
 }
 
-const mobileCompanionHeroRoutes = new Set(["/today", "/practice", "/play", "/sessions"]);
+const mobileCompanionHeroRoutes = new Set<string>();
 
 export function isMobileCompanionHeroRoute(pathname: string) {
   return mobileCompanionHeroRoutes.has(pathname);

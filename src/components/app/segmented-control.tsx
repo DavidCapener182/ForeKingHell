@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 export type SegmentedControlOption = {
   label: string;
   value: string;
+  disabled?: boolean;
 };
 
 export function SegmentedControl({
@@ -36,12 +37,15 @@ export function SegmentedControl({
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
+            disabled={option.disabled}
             aria-pressed={value === option.value}
             className={cn(
               "focus-aaa min-h-11 rounded-lg px-3 text-sm font-semibold transition-[background-color,color,box-shadow] motion-reduce:transition-none",
-              value === option.value
-                ? "bg-card text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
+              option.disabled
+                ? "cursor-not-allowed text-muted-foreground/50"
+                : value === option.value
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
             )}
           >
             {option.label}

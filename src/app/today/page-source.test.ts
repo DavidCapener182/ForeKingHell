@@ -11,6 +11,10 @@ const companionSource = readFileSync(
   join(process.cwd(), "src/app/(app)/today/today-companion-page.tsx"),
   "utf8",
 );
+const primaryAnswerSource = readFileSync(
+  join(process.cwd(), "src/components/app/today-primary-answer.tsx"),
+  "utf8",
+);
 const chartsSource = readFileSync(
   join(process.cwd(), "src/app/today/today-shot-charts.tsx"),
   "utf8",
@@ -22,7 +26,8 @@ describe("latest practice desktop dashboard", () => {
     expect(routeSource).toContain('await import("./today-companion-page")');
     expect(routeSource).toContain('await import("./today-workbench-page")');
     expect(companionSource).toContain("data-today-companion");
-    expect(companionSource).toContain("data-primary-recommendation");
+    expect(companionSource).toContain("TodayPrimaryAnswer");
+    expect(primaryAnswerSource).toContain("data-primary-recommendation");
     expect(companionSource).toContain("Plan range session");
     expect(companionSource).toContain("Why this recommendation?");
     expect(companionSource).toContain('href="/quick-bag"');

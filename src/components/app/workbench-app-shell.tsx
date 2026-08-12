@@ -243,7 +243,7 @@ export function WorkbenchAppShell({
                 tooltip="Dashboard"
                 className="text-sidebar-foreground hover:text-sidebar-accent-foreground"
               >
-                <Link href="/dashboard">
+                <Link href="/dashboard" prefetch={false}>
                   <BrandMark
                     className={cn("size-9 rounded-lg shadow-sm", isCompactSidebar && "size-8")}
                     sizes={isCompactSidebar ? "32px" : "36px"}
@@ -300,7 +300,11 @@ export function WorkbenchAppShell({
                                 "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
                             )}
                           >
-                            <Link href={item.href} aria-current={active ? "page" : undefined}>
+                            <Link
+                              href={item.href}
+                              prefetch={false}
+                              aria-current={active ? "page" : undefined}
+                            >
                               <Icon className="size-4" aria-hidden />
                               <span>{item.label}</span>
                             </Link>
@@ -339,7 +343,7 @@ export function WorkbenchAppShell({
                 isCompactSidebar && "h-8 px-2 text-xs",
               )}
             >
-              <Link href="/import">
+              <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
                 <span className="group-data-[collapsible=icon]:hidden">Import data</span>
               </Link>
@@ -387,7 +391,7 @@ export function WorkbenchAppShell({
             }
           />
         ) : null}
-        {surface === "workbench" ? (
+        {surface === "workbench" && !isMobileImmersive ? (
           <AppSurfaceLink
             href="/surface/companion?next=%2Ftoday"
             data-phone-companion-return

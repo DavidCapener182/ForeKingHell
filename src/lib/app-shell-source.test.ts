@@ -72,6 +72,10 @@ describe("app shell account data", () => {
     expect(source).toContain("data-phone-companion-return");
     expect(source).toContain("Return to companion");
     expect(source).toContain("/surface/companion?next=%2Ftoday");
+    expect(source).toContain('surface === "workbench" && !isMobileImmersive');
+    expect(source).toContain('<Link href="/dashboard" prefetch={false}>');
+    expect(source).toContain("href={item.href}\n                              prefetch={false}");
+    expect(source).toContain('<Link href="/import" prefetch={false}>');
     expect(source).toContain("<AppSurfaceLink");
     expect(source).toContain("max-md:inline-flex");
     expect(source).toContain('event.key !== "ArrowDown"');

@@ -1,12 +1,13 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { getDb } from "@/db/client";
-import { clubs, stockYardages } from "@/db/schema";
+import { clubs, shots, stockYardages } from "@/db/schema";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { buildShotPatternPoints, summarizeShotPattern } from "@/lib/shot-pattern-chart-data";
 
 export const dynamic = "force-dynamic";
 
@@ -57,12 +58,42 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
     .orderBy(asc(clubs.bagSection), asc(clubs.bagPosition), desc(stockYardages.calculatedAt));
 
   const seen = new Set<string>();
-  return rows.flatMap((row) => {
-    if (seen.has(row.id)) return [];
+  const latestRows = rows.filter((row) => {
+    if (seen.has(row.id)) return false;
     seen.add(row.id);
-    const left = Math.abs(row.dispersionLeftYd ?? 0);
-    const right = Math.abs(row.dispersionRightYd ?? 0);
-    const commonMiss = left === 0 && right === 0 ? "Not measured" : left > right ? "Left" : "Right";
+    return true;
+  });
+  const shotRows =
+    latestRows.length > 0
+      ? await getDb()
+          .select({
+            id: shots.id,
+            clubId: shots.clubId,
+            clubType: shots.clubType,
+            carryYd: shots.carryYd,
+            sideCarryYd: shots.sideCarryYd,
+            apexFt: shots.apexFt,
+            shotAt: shots.shotAt,
+            qualityTag: shots.qualityTag,
+          })
+          .from(shots)
+          .where(
+            and(
+              eq(shots.userId, userId),
+              inArray(
+                shots.clubId,
+                latestRows.map((row) => row.id),
+              ),
+            ),
+          )
+          .orderBy(desc(shots.shotAt))
+          .limit(800)
+      : [];
+
+  return latestRows.flatMap((row) => {
+    const recentShots = shotRows.filter((shot) => shot.clubId === row.id).slice(0, 60);
+    const trustedPattern = buildShotPatternPoints(recentShots).filter((shot) => shot.trusted);
+    const summary = summarizeShotPattern(trustedPattern);
 
     return [
       {
@@ -70,10 +101,15 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
         label: formatClubType(row.type),
         model: [row.brand, row.model].filter(Boolean).join(" ") || "Current club",
         trustedCarryYd: row.carryMedianYd,
-        playsLikeYd: row.recommendedPlayNumberYd,
+        playNumberYd: row.recommendedPlayNumberYd,
         lowYd: row.carryP25Yd,
         highYd: row.carryP75Yd,
-        commonMiss,
+        typicalMiss: summary.typicalMiss,
+        widerSide: summary.widerSide,
+        medianLateralYd: summary.medianSideYd,
+        lateralLowYd: summary.sideLowYd,
+        lateralHighYd: summary.sideHighYd,
+        patternSampleSize: summary.sampleSize,
         confidence: Math.round(row.confidenceScore ?? 0),
         sampleSize: row.sampleSize ?? 0,
       },

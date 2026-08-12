@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("visual spacing audit", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run visual spacing checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
   test.setTimeout(1_200_000);
 

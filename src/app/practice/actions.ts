@@ -9,6 +9,7 @@ import {
   generatePracticePlan,
   getPracticePlannerContext,
   savePracticePlanForUser,
+  savePracticePlanActivityProgressForUser,
   updatePracticePlanStatusForUser,
   type GeneratePracticePlanOptions,
   type PracticePlan,
@@ -31,6 +32,16 @@ export async function savePracticePlanAction(plan: PracticePlan) {
   return { planId, latestSessionReview: null };
 }
 
+export async function saveAndStartPracticePlanAction(plan: PracticePlan) {
+  const userId = await requireCurrentUserId();
+  const planId = await savePracticePlanForUser(userId, plan);
+
+  await updatePracticePlanStatusForUser(userId, planId, "awaiting_import");
+  revalidatePracticePlannerSurfaces({ includePractice: false });
+
+  return { planId, status: "awaiting_import" as const };
+}
+
 export async function startPracticePlanAction(planId: string) {
   const userId = await requireCurrentUserId();
 
@@ -47,6 +58,15 @@ export async function completePracticeActivityAction(planId: string) {
   revalidatePracticePlannerSurfaces();
 
   return { status: "completed" as const, measuredSuccess: false as const };
+}
+
+export async function savePracticeActivityProgressAction(
+  planId: string,
+  input: { blockIndex: number; completedBlockIds: string[]; note: string },
+) {
+  const userId = await requireCurrentUserId();
+  await savePracticePlanActivityProgressForUser(userId, planId, input);
+  return { saved: true as const };
 }
 
 export async function linkPracticePlanSessionAction(planId: string, sourceSessionId: string) {
@@ -83,8 +103,8 @@ export async function completePracticePlanAction(planId: string, input: Practice
   return result;
 }
 
-function revalidatePracticePlannerSurfaces() {
-  revalidatePath("/practice");
+function revalidatePracticePlannerSurfaces({ includePractice = true } = {}) {
+  if (includePractice) revalidatePath("/practice");
   revalidatePath("/dashboard");
   revalidatePath("/today");
   revalidatePath("/progress");

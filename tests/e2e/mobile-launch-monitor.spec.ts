@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("mobile launch monitor loop", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run mobile launch checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
   test.beforeEach(async ({ page }) => {

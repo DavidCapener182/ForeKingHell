@@ -22,6 +22,8 @@ describe("course strategy mode-aware mobile hierarchy", () => {
     expect(routeSource).toContain('await import("./course-strategy-workbench-page")');
     expect(companionSource).toContain("data-course-strategy-companion");
     expect(companionSource).toContain("<MobileHoleStrategy");
+    expect(companionSource).toContain("courseTwinAvailable={courseTwinAvailable}");
+    expect(companionSource).toContain("listAvailableCourseTwins(userId)");
     expect(companionSource).not.toContain("getDashboardData");
   });
 

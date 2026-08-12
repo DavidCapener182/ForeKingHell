@@ -10,6 +10,8 @@ export const authStorageState = process.env.PLAYWRIGHT_AUTH_STATE;
 export const hasLocalAuthBypass = localAuthBypassEnabled(
   process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100",
 );
+export const hasAuthenticatedE2e =
+  hasLocalAuthBypass || Boolean(authStorageState && existsSync(authStorageState));
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/*", async (route) => {
@@ -50,10 +52,7 @@ test.afterEach(async ({ page }, testInfo) => {
 });
 
 export function skipWhenNoAuth() {
-  test.skip(
-    !hasLocalAuthBypass && (!authStorageState || !existsSync(authStorageState)),
-    "Set PLAYWRIGHT_AUTH_STATE to run authenticated app flows.",
-  );
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated app flows.");
 }
 
 export async function expectPageReady(page: Page, expectedText: RegExp | string) {

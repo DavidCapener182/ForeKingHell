@@ -73,6 +73,7 @@ describe("mobile Apple login", () => {
     expect(formSource).toContain('value="apple"');
     expect(pageSource).toContain("Your shot data stays scoped to your account.");
     expect(pageSource).toContain("Read the data notice");
+    expect(pageSource).toContain('aria-label="Read the data notice"');
     expect(pageSource).toContain('href="/privacy"');
   });
 });

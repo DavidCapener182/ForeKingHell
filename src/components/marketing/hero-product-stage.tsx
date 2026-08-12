@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { marketingJoinBetaHref } from "@/lib/marketing-links";
 
 import styles from "./marketing.module.css";
+import { ScrollZoomFrame } from "./scroll-zoom-frame";
 
 export function HeroProductStage() {
   return (
@@ -36,9 +37,10 @@ export function HeroProductStage() {
         </p>
       </div>
 
-      <div
+      <ScrollZoomFrame
         className={styles.productStage}
         aria-label="Example LM World Tour product screens using demo data"
+        data-composited-scroll-zoom
       >
         <Image
           className={styles.stageRangeImage}
@@ -131,7 +133,7 @@ export function HeroProductStage() {
           <span>Practice</span>
           <span>Course plan</span>
         </div>
-      </div>
+      </ScrollZoomFrame>
     </section>
   );
 }

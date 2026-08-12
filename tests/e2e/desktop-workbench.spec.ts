@@ -28,6 +28,10 @@ const desktopMatrixRoutes = [
 ] as const;
 
 test.describe("desktop workbench", () => {
+  test.skip(
+    !hasAuthBypass && !useAuthStorage,
+    "Set PLAYWRIGHT_AUTH_STATE or PLAYWRIGHT_E2E_AUTH_BYPASS=1 to run desktop workbench flows.",
+  );
   test.use(
     useAuthStorage
       ? { storageState: authStorageState, acceptDownloads: true }

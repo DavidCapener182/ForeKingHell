@@ -177,9 +177,10 @@ export async function syncAchievementsForUser(userId: string) {
 
   const unlockedAchievements = await awardAchievements(userId, evaluation.unlocks);
 
-  for (const progress of evaluation.progress.filter(shouldPersistProgressCandidate)) {
-    await upsertProgress(userId, progress);
-  }
+  await upsertProgressCandidates(
+    userId,
+    evaluation.progress.filter(shouldPersistProgressCandidate),
+  );
 
   const db = getDb();
   const [[shotCount], [sessionCount], [speedSessionCount], [speedGoalCount], [achievementCount]] =
@@ -1404,26 +1405,36 @@ async function awardXP(input: {
   return { awarded: true, amount };
 }
 
-async function upsertProgress(userId: string, candidate: AchievementProgressCandidate) {
+async function upsertProgressCandidates(
+  userId: string,
+  candidates: AchievementProgressCandidate[],
+) {
+  if (candidates.length === 0) {
+    return;
+  }
+
   const db = getDb();
+  const updatedAt = new Date();
 
   await db
     .insert(achievementProgress)
-    .values({
-      userId,
-      achievementId: candidate.achievementId,
-      progressValue: candidate.progressValue,
-      targetValue: candidate.targetValue,
-      metadataJson: candidate.metadata ?? null,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: [achievementProgress.userId, achievementProgress.achievementId],
-      set: {
+    .values(
+      candidates.map((candidate) => ({
+        userId,
+        achievementId: candidate.achievementId,
         progressValue: candidate.progressValue,
         targetValue: candidate.targetValue,
         metadataJson: candidate.metadata ?? null,
-        updatedAt: new Date(),
+        updatedAt,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [achievementProgress.userId, achievementProgress.achievementId],
+      set: {
+        progressValue: sql`excluded.progress_value`,
+        targetValue: sql`excluded.target_value`,
+        metadataJson: sql`excluded.metadata_json`,
+        updatedAt: sql`excluded.updated_at`,
       },
     });
 }

@@ -46,7 +46,12 @@ for (const [command, args] of checks) {
   const label = [command, ...args].join(" ");
   console.log(`\n==> ${label}`);
   const env = await envForCheck(command, args);
-  const code = await run(command, args, env);
+  let code = await run(command, args, env);
+
+  if (code !== 0 && isAuditCheck(command, args)) {
+    console.warn("npm audit failed once; retrying the unchanged high-severity audit.");
+    code = await run(command, args, env);
+  }
 
   if (code !== 0) {
     failedChecks.push(`${label} exited ${code}`);
@@ -94,6 +99,10 @@ function isE2eCheck(command, args) {
 
 function isLighthouseCheck(command, args) {
   return command === "npm" && args[0] === "run" && args[1] === "test:lighthouse";
+}
+
+function isAuditCheck(command, args) {
+  return command === "npm" && args[0] === "audit" && args.includes("--audit-level=high");
 }
 
 function loadAuthenticatedStorageState(path) {

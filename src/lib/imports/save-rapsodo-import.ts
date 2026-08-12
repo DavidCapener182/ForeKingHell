@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import {
@@ -28,6 +29,7 @@ import {
 import { requireCurrentUserId } from "@/lib/current-user";
 import { inferPlayContext } from "@/lib/play-context";
 import {
+  completeOwnedPracticePlanFromImport,
   completeMatchingPracticePlanFromImport,
   type PracticePlanImportMatch,
 } from "@/lib/practice-planner";
@@ -105,6 +107,7 @@ export type SaveRapsodoImportInput = {
   }>;
   shotOverrides?: RapsodoShotOverride[];
   notes?: string;
+  practicePlanId?: string;
 };
 
 export type LongestShotNotification = {
@@ -233,27 +236,38 @@ export async function saveLaunchMonitorImport(
       coursePlan,
       courseLink,
     });
-    const practicePlanMatch = result.skipped
-      ? null
-      : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
-
-    const achievementUnlockNotifications = result.skipped
-      ? []
-      : [
-          ...(await evaluateAchievementsAfterImport(userId)).unlockedAchievements,
-          ...(await evaluateCoachDrillAchievementsForUser(userId)).notifications,
-        ];
+    const practicePlanMatch = validatedInput.practicePlanId
+      ? await completeOwnedPracticePlanFromImport(
+          userId,
+          validatedInput.practicePlanId,
+          result.sessionId,
+        )
+      : result.skipped
+        ? null
+        : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
 
     if (!result.skipped) {
-      await recordImportFeedItems({
-        userId,
-        sessionId: result.sessionId,
-        fileName: validatedInput.fileName,
-        source: validatedInput.source,
-        shotCount: result.shotCount,
-        rawRowCount: result.rawRowCount,
-        longestShotNotifications: result.longestShotNotifications,
-        achievementUnlockNotifications,
+      after(async () => {
+        try {
+          const achievementUnlockNotifications = [
+            ...(await evaluateAchievementsAfterImport(userId)).unlockedAchievements,
+            ...(await evaluateCoachDrillAchievementsForUser(userId)).notifications,
+          ];
+          await recordImportFeedItems({
+            userId,
+            sessionId: result.sessionId,
+            fileName: validatedInput.fileName,
+            source: validatedInput.source,
+            shotCount: result.shotCount,
+            rawRowCount: result.rawRowCount,
+            longestShotNotifications: result.longestShotNotifications,
+            achievementUnlockNotifications,
+          });
+        } catch (error) {
+          reportServerFailure("import_secondary_processing_failed", error, {
+            "app.source": validatedInput.source,
+          });
+        }
       });
     }
 
@@ -277,7 +291,7 @@ export async function saveLaunchMonitorImport(
       ok: true,
       ...result,
       practicePlanMatch,
-      achievementUnlockNotifications,
+      achievementUnlockNotifications: [],
       warnings: [...parsed.warnings, ...(coursePlan?.warnings ?? [])],
     };
   } catch (error) {
@@ -927,7 +941,19 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     courseHoleScoring: sanitizeHoleScoring(input.courseHoleScoring),
     shotOverrides: sanitizeShotOverrides(input.shotOverrides),
     notes: input.notes?.slice(0, 2000),
+    practicePlanId: sanitizeUuid(input.practicePlanId),
   };
+}
+
+function sanitizeUuid(value: string | undefined) {
+  if (!value) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(normalized)
+  ) {
+    throw new ImportValidationError("Practice plan reference is invalid.");
+  }
+  return normalized;
 }
 
 function validateParsedImport(

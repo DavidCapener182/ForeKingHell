@@ -8,7 +8,10 @@ import { formatClubType } from "@/lib/club-format";
 import { buildHoleStrategies } from "@/lib/course-strategy";
 import { requireCurrentUserId } from "@/lib/current-user";
 
-export async function getCourseStrategyData(requestedCourseId?: string) {
+export async function getCourseStrategyData(
+  requestedCourseId?: string,
+  requestedTeeSetId?: string,
+) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const courseOptions = await db
@@ -20,7 +23,14 @@ export async function getCourseStrategyData(requestedCourseId?: string) {
     courseOptions.find((course) => course.id === requestedCourseId) ?? courseOptions[0] ?? null;
 
   if (!selectedCourse) {
-    return { courseOptions, selectedCourse, selectedTee: null, strategies: [], trustedBag: [] };
+    return {
+      courseOptions,
+      selectedCourse,
+      selectedTee: null,
+      teeOptions: [],
+      strategies: [],
+      trustedBag: [],
+    };
   }
 
   const [teeRows, featureRows, stockRows] = await Promise.all([
@@ -52,10 +62,20 @@ export async function getCourseStrategyData(requestedCourseId?: string) {
       .where(eq(stockYardages.userId, userId))
       .orderBy(desc(stockYardages.calculatedAt)),
   ]);
-  const selectedTee = teeRows[0] ?? null;
+  const selectedTee =
+    teeRows.find((tee) => tee.id === requestedTeeSetId) ??
+    teeRows[Math.floor((teeRows.length - 1) / 2)] ??
+    null;
 
   if (!selectedTee) {
-    return { courseOptions, selectedCourse, selectedTee, strategies: [], trustedBag: [] };
+    return {
+      courseOptions,
+      selectedCourse,
+      selectedTee,
+      teeOptions: teeRows,
+      strategies: [],
+      trustedBag: [],
+    };
   }
 
   const holeRows = await db
@@ -82,6 +102,7 @@ export async function getCourseStrategyData(requestedCourseId?: string) {
     courseOptions,
     selectedCourse,
     selectedTee,
+    teeOptions: teeRows,
     strategies: buildHoleStrategies({
       holes: holeRows,
       hazardsByHole,

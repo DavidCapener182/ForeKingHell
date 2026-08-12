@@ -2,17 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import {
-  ArrowLeft,
-  Menu,
-  MoreHorizontal,
-  Search,
-  Settings,
-  ShieldCheck,
-  Upload,
-  UserRound,
-  X,
-} from "lucide-react";
+import { ArrowLeft, Menu, MoreHorizontal, Search, Upload, X } from "lucide-react";
 
 import {
   mobileMoreGroups,
@@ -240,35 +230,6 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                 </div>
               </ScrollArea>
               <div className="ios-sheet-footer mt-auto grid gap-3 border-t px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
-                <div className="ios-drawer-group grid grid-cols-3 divide-x divide-border">
-                  <SheetClose asChild>
-                    <Link
-                      href="/profile"
-                      className="focus-aaa grid min-h-14 place-items-center gap-1 px-2 py-2 text-center text-[11px] font-medium text-foreground"
-                    >
-                      <UserRound className="size-4" aria-hidden />
-                      Profile
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link
-                      href="/settings"
-                      className="focus-aaa grid min-h-14 place-items-center gap-1 px-2 py-2 text-center text-[11px] font-medium text-foreground"
-                    >
-                      <Settings className="size-4" aria-hidden />
-                      Settings
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link
-                      href="/privacy"
-                      className="focus-aaa grid min-h-14 place-items-center gap-1 px-2 py-2 text-center text-[11px] font-medium text-foreground"
-                    >
-                      <ShieldCheck className="size-4" aria-hidden />
-                      Privacy
-                    </Link>
-                  </SheetClose>
-                </div>
                 <Button asChild variant="outline" className="min-h-12 justify-start">
                   <SheetClose asChild>
                     <AppSurfaceLink
@@ -277,14 +238,6 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                       <Search className="size-4" />
                       Open full desktop site
                     </AppSurfaceLink>
-                  </SheetClose>
-                </Button>
-                <Button asChild className="min-h-11 justify-center rounded-xl">
-                  <SheetClose asChild>
-                    <Link href="/import">
-                      <Upload className="size-4" />
-                      Import data
-                    </Link>
                   </SheetClose>
                 </Button>
                 <form

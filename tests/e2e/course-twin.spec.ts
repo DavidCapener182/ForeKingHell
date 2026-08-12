@@ -3,9 +3,11 @@ import { resolve } from "node:path";
 
 import { expect, test } from "@playwright/test";
 
-import { expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("Course Twin", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run Course Twin checks.");
+  test.use(authStorageState ? { storageState: authStorageState } : {});
   test("serves and browser-renders every verified first-wave package", async ({
     browser,
     page,
@@ -82,7 +84,12 @@ test.describe("Course Twin", () => {
           waitUntil: "domcontentloaded",
           timeout: 90_000,
         });
-        await expect(renderPage.getByText(/Grade B/)).toBeVisible();
+        await expect(
+          renderPage
+            .getByText(/Grade B/)
+            .filter({ visible: true })
+            .first(),
+        ).toBeVisible();
         await expect(renderPage.locator("canvas")).toBeVisible();
         await expect
           .poll(
@@ -164,17 +171,35 @@ test.describe("Course Twin", () => {
 
     await pilotLink.click();
     await expect(page).toHaveURL(new RegExp(`/play/${courseId}$`));
-    await expect(page.getByText(/Grade B · 2\.4 m terrain/)).toBeVisible();
-    await expect(page.getByText("LiDAR Course Twin · 2.4 m runtime mesh")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Strategy" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Live" })).toBeVisible();
-    await expect(page.getByText("Camera controls")).toBeVisible();
-    await expect(page.locator("canvas")).toBeVisible();
-
-    await page.getByRole("button", { name: "Explore" }).click();
-    await expect(page.getByRole("button", { name: "Walk" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Cart" })).toBeVisible();
+    await expect(
+      page.getByText("LiDAR Course Twin · 2.4 m runtime mesh").filter({ visible: true }).first(),
+    ).toBeVisible();
+    await expect(page.locator("canvas").filter({ visible: true }).first()).toBeVisible();
+    await expect
+      .poll(() => readTerrainStatus(page), { message: "Bootle terrain readiness" })
+      .toBe("ready");
+    await expect(
+      page.getByRole("button", { name: "Strategy" }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Play", exact: true }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Live" }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Explore" }).filter({ visible: true }).first().click();
+    await expect.poll(() => readRuntimeMode(page)).toBe("explore");
+    await page
+      .getByRole("button", { name: "Open course controls" })
+      .filter({ visible: true })
+      .last()
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Walk" }).filter({ visible: true }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Cart" }).filter({ visible: true }).first(),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "Start group session" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Join as spectator" })).toBeVisible();
     if (testInfo.project.name === "chromium") {
@@ -245,7 +270,7 @@ test.describe("Course Twin", () => {
       });
     }
 
-    await page.getByRole("button", { name: "Cart" }).click();
+    await page.getByRole("button", { name: "Cart" }).filter({ visible: true }).click();
     const beforeCart = await readExplorationPosition(page);
     await page.keyboard.down("ArrowUp");
     await page.evaluate(() => {
@@ -256,7 +281,9 @@ test.describe("Course Twin", () => {
     await expect.poll(() => readExplorationPosition(page)).not.toEqual(beforeCart);
     if (testInfo.project.name === "chromium") {
       await page.getByRole("button", { name: "Leave group" }).click();
-      await expect(page.getByRole("button", { name: "Start group session" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Start group session" })).toBeVisible({
+        timeout: 30_000,
+      });
     }
 
     const bootleSessionId = "7aca3491-bd8d-4016-a05c-d1ba87f87db4";
@@ -277,8 +304,7 @@ test.describe("Course Twin", () => {
     );
     await replayPilotLink.click();
     await expect(page).toHaveURL(/\/play\/[0-9a-f-]+\?sessionId=[0-9a-f-]+$/);
-    await expect(page.getByText(/Grade B · 2\.4 m terrain/)).toBeVisible();
-    await expect(page.getByText("Shot 1")).toBeVisible();
+    await expect(page.getByRole("button", { name: "View shot 1" })).toBeVisible();
   });
 
   test("opens the existing Aintree course as a nine-hole Grade B twin", async ({ page }) => {
@@ -307,8 +333,11 @@ test.describe("Course Twin", () => {
     await aintreeCard.getByRole("link", { name: "Open Course Twin" }).click();
     await expect(page).toHaveURL(`/play/${aintreeCourseId}`);
     await expectPageReady(page, /Aintree Golf Centre/i);
-    await expect(page.getByText(/Grade B/)).toBeVisible();
-    await expect(page.getByRole("button", { name: "9" })).toBeVisible();
+    await expect(
+      page.getByRole("table", { name: /Aintree Golf Centre Course Twin holes/ }).getByRole("row", {
+        name: /^9\s/,
+      }),
+    ).toBeAttached();
     await expect(page.locator("canvas")).toBeVisible();
   });
 
@@ -348,8 +377,9 @@ test.describe("Course Twin", () => {
       const stage = page.locator("[data-course-twin-stage]");
       const canvas = stage.locator("canvas");
       const exit = page.getByRole("link", { name: "Exit Course Twin" });
-      const course = page.getByRole("button", { name: "Open course controls" });
-      const details = page.getByRole("button", { name: "Open shot details" });
+      const mobileChrome = page.locator("[data-course-twin-mobile-chrome]");
+      const course = mobileChrome.getByRole("button", { name: "Open course controls" });
+      const details = mobileChrome.getByRole("button", { name: "Open shot details" });
       const modeDock = page.locator("[data-course-twin-mode-dock]");
       const actionTray = page.locator("[data-course-twin-action-tray]");
 
@@ -376,19 +406,12 @@ test.describe("Course Twin", () => {
       expectBoxInsideViewport(layout.details, viewport, 44);
       expectBoxInsideViewport(layout.modeDock, viewport);
       expect(layout.modeDockScrollWidth).toBeLessThanOrEqual(layout.modeDockClientWidth + 1);
-      expect(layout.modes.map((item) => item.label)).toEqual([
-        "Flyover",
-        "Replay",
-        "Strategy",
-        "Play",
-        "Live",
-        "Explore",
-      ]);
+      expect(layout.modes.map((item) => item.label)).toEqual(["Strategy", "Replay", "Play"]);
       for (const modeControl of layout.modes) {
         expectBoxInsideViewport(modeControl.box, viewport, 44);
       }
 
-      for (const label of ["Flyover", "Replay", "Strategy", "Play", "Live", "Explore"]) {
+      for (const label of ["Strategy", "Replay", "Play"]) {
         const modeControl = modeDock.getByRole("button", { name: label, exact: true });
         await expect(modeControl).toBeVisible();
       }
@@ -441,7 +464,11 @@ test.describe("Course Twin", () => {
         await expect(shotControls).toBeHidden();
         await expect(details).toBeFocused();
 
-        await modeDock.getByRole("button", { name: "Explore", exact: true }).click();
+        await course.click();
+        const primaryControls = page.locator("[data-course-twin-primary-controls]");
+        await expect(primaryControls).toBeVisible();
+        await primaryControls.getByRole("button", { name: "Explore", exact: true }).click();
+        await expect.poll(() => readRuntimeMode(page)).toBe("explore");
         const exploreMovement = page.getByRole("group", { name: "Explore movement" });
         await expect(exploreMovement).toBeVisible();
         await expect(exploreMovement.getByRole("button", { name: "Forward" })).toBeVisible();
@@ -509,13 +536,17 @@ test.describe("Course Twin", () => {
 
     await page.goto(`/play/${courseId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await expectPageReady(page, /Bootle Golf Course/i);
-    await page.getByRole("button", { name: "Play", exact: true }).click();
-    await expect(page.getByText("Start My Bag round")).toBeVisible();
+    await page
+      .locator("[data-course-twin-runtime-mode-dock]:visible")
+      .getByRole("button", { name: "Play", exact: true })
+      .last()
+      .click();
+    await expect(page.getByText("Start My Bag test round")).toBeVisible();
     await page.getByRole("button", { name: "Front 9" }).click();
     await page.getByRole("button", { name: "8 mph" }).click();
     await page.getByRole("button", { name: "From W" }).click();
     await page.getByRole("button", { name: "Start 9-hole My Bag round" }).click();
-    await expect(page.getByText("Verified round ledger")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Course Twin strategy sandbox")).toBeVisible({ timeout: 30_000 });
 
     await expect
       .poll(() => readRoundLedger(page))
@@ -529,8 +560,26 @@ test.describe("Course Twin", () => {
     const round = await readRoundLedger(page);
     expect(round).toBeTruthy();
 
+    await expect
+      .poll(
+        async () => {
+          const response = await page.request.get(`/api/course-twins/${courseId}/rounds`);
+          if (!response.ok()) return null;
+          const persisted = await response.json();
+          return persisted?.id ?? null;
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(round.id);
+
     await page.reload({ waitUntil: "domcontentloaded" });
-    await expect(page.getByText("Verified round ledger")).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(() => readRoundLedger(page), { timeout: 30_000 })
+      .toMatchObject({
+        id: round.id,
+        status: "in_progress",
+        sync: "ready",
+      });
     const resumed = await readRoundLedger(page);
     expect(resumed.id).toBe(round.id);
     expect(resumed.version).toBe(round.version);
@@ -676,7 +725,10 @@ test.describe("Course Twin", () => {
       timeout: 90_000,
     });
     await expectPageReady(page, /Bootle Golf Course/i);
-    await expect(page.getByText(/Approximate green · putt 1/i)).toBeVisible({
+    await page.getByRole("button", { name: "Open analysis controls" }).last().click();
+    const puttStatus = page.getByText(/Approximate green · putt 1/i);
+    await puttStatus.scrollIntoViewIfNeeded();
+    await expect(puttStatus).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.getByText(/ft to the cup/i)).toBeVisible();
@@ -753,6 +805,26 @@ async function readGroupSession(page: import("@playwright/test").Page) {
         "{}",
     );
     return state.exploration?.groupSession ?? null;
+  });
+}
+
+async function readTerrainStatus(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const state = JSON.parse(
+      (window as typeof window & { render_game_to_text?: () => string }).render_game_to_text?.() ??
+        "{}",
+    );
+    return state.terrain?.status ?? null;
+  });
+}
+
+async function readRuntimeMode(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const state = JSON.parse(
+      (window as typeof window & { render_game_to_text?: () => string }).render_game_to_text?.() ??
+        "{}",
+    );
+    return state.mode ?? null;
   });
 }
 

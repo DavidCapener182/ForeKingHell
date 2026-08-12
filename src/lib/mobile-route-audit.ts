@@ -21,6 +21,27 @@ export type MobileRouteAuditEntry = {
  */
 export const mobileRouteAudit = [
   {
+    file: "src/app/(app)/companion-runtime/import/page.tsx",
+    route: "/companion-runtime/import",
+    classification: 1,
+    resolution: "preserve",
+    note: "Internal authenticated rewrite isolates the fast companion CSV source flow from the workbench bundle.",
+  },
+  {
+    file: "src/app/(app)/companion-runtime/import/result/page.tsx",
+    route: "/companion-runtime/import/result",
+    classification: 1,
+    resolution: "preserve",
+    note: "Internal authenticated rewrite isolates the immediate mobile verdict and chart review.",
+  },
+  {
+    file: "src/app/(app)/companion-runtime/rapsodo/page.tsx",
+    route: "/companion-runtime/rapsodo",
+    classification: 1,
+    resolution: "preserve",
+    note: "Internal authenticated rewrite loads only the recent-session R-Cloud companion client.",
+  },
+  {
     file: "src/app/(app)/companion/summary/page.tsx",
     route: "/companion/summary",
     classification: 1,

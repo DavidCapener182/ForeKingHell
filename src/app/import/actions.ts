@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { importFiles } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { checkImportDuplicate } from "@/lib/imports/check-import-duplicate";
 import {
   type SaveRapsodoImportInput,
   saveRapsodoImport,
@@ -12,6 +13,11 @@ import {
 } from "@/lib/imports/save-rapsodo-import";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { requireCurrentUserId } from "@/lib/current-user";
+
+export async function checkImportDuplicateAction(rawCsvText: string) {
+  const userId = await requireCurrentUserId();
+  return checkImportDuplicate(userId, rawCsvText);
+}
 
 export async function saveRapsodoImportAction(input: SaveRapsodoImportInput) {
   const result = await saveRapsodoImport(input);

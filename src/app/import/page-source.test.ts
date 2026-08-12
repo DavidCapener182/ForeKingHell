@@ -2,55 +2,61 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/(app)/import/page.tsx"), "utf8");
+const root = process.cwd();
+const entry = readFileSync(join(root, "src/app/(app)/import/page.tsx"), "utf8");
+const runtimeEntry = readFileSync(
+  join(root, "src/app/(app)/companion-runtime/import/page.tsx"),
+  "utf8",
+);
+const proxy = readFileSync(join(root, "proxy.ts"), "utf8");
+const companion = readFileSync(
+  join(root, "src/app/(app)/import/import-companion-page.tsx"),
+  "utf8",
+);
+const companionRangeImport = readFileSync(
+  join(root, "src/app/import/companion-range-import.tsx"),
+  "utf8",
+);
+const workbench = readFileSync(
+  join(root, "src/app/(app)/import/import-workbench-page.tsx"),
+  "utf8",
+);
 
-describe("import desktop file library", () => {
-  it("keeps the source decision and first-run guidance native on phones", () => {
-    expect(source).toContain("MobileImportSourceChooser");
-    expect(source).toContain("MobileImportFirstRun");
-    expect(source).toContain("IOSGroupedList");
-    expect(source).toContain("IOSListRow");
-    expect(source).toContain('className="hidden lg:contents"');
-    expect(source).not.toContain('className="hidden sm:contents"');
+describe("surface-specific import centre", () => {
+  it("rewrites the companion to an isolated compiled route before loading clients", () => {
+    expect(proxy).toContain('pathname === "/import"');
+    expect(proxy).toContain('return "/companion-runtime/import"');
+    expect(runtimeEntry).toContain('from "../../import/import-companion-page"');
+    expect(entry).toContain('from "./import-workbench-page"');
+    expect(entry).not.toContain("getFeatureIdeasData");
+    expect(runtimeEntry).not.toContain("import-workbench-page");
   });
 
-  it("uses the desktop workflow template for the import centre", () => {
-    expect(source).toContain("DesktopWorkflowLayout");
-    expect(source).toContain("importWorkflowHelpItems");
-    expect(source).toContain("buildImportWorkflowSteps");
-    expect(source).toContain('helpTitle="Import centre help"');
-    expect(source).toContain('helpDescription="Keep launch-monitor data trustworthy"');
-    expect(source).toContain("Choose source");
-    expect(source).toContain("Preview data");
-    expect(source).toContain("Confirm club mapping");
-    expect(source).toContain("Review and import");
-    expect(source).toContain("Rapsodo first");
-    expect(source).toContain("Trust before action");
-    expect(source).toContain("Proof stays secondary");
-    expect(source).not.toContain("DesktopWorkbenchLayout");
+  it("keeps the phone source decision short and action-first", () => {
+    expect(companion).toContain("Rapsodo R-Cloud");
+    expect(companion).toContain("Choose CSV from Files");
+    expect(companion).toContain("Add a manual round");
+    expect(companion).toContain("Connection status");
+    expect(companion).toContain("Recent imports");
+    expect(companion).toContain("CompanionSyncStatus");
+    expect(companion).not.toContain("getFeatureIdeasData");
+    expect(companion).not.toContain("MobileImportFirstRun");
   });
 
-  it("keeps the import library table exportable and configurable", () => {
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain('viewKey="import-library"');
-    expect(source).toContain('scope="import"');
-    expect(source).toContain('exportTableId="import-library"');
-    expect(source).toContain('data-workbench-scope="import"');
-    expect(source).toContain('data-workbench-export-table="import-library"');
-    expect(source).toContain('mainTableLabel="Import file library table"');
-    expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source).toContain("focus-aaa outline-none");
-    expect(source).toContain("sticky left-0 z-20");
-    expect(source).toContain("ConfirmSubmitButton");
-    expect(source).toContain('confirmTitle="Archive import file"');
-    expect(source).toContain("confirmMessage={`Archive ${file.fileName}?");
-    expect(source).toContain("without deleting linked session evidence");
-    expect(source).toContain('confirmActionLabel="Archive file"');
+  it("runs duplicate detection once per stable CSV instead of once per parsed object render", () => {
+    expect(companionRangeImport).toContain("const rawCsvText = file?.rawCsvText ?? null");
+    expect(companionRangeImport).toContain('fetch("/api/imports/duplicate-check"');
+    expect(companionRangeImport).toContain("}, [rawCsvText]);");
+  });
 
-    for (const column of ["file", "status", "session", "parse", "actions"]) {
-      expect(source).toContain(`data-column="${column}"`);
-    }
+  it("preserves the exportable configurable workbench library", () => {
+    expect(workbench).toContain("DesktopWorkflowLayout");
+    expect(workbench).toContain("DesktopTableWorkbenchControls");
+    expect(workbench).toContain('viewKey="import-library"');
+    expect(workbench).toContain('exportTableId="import-library"');
+    expect(workbench).toContain('data-workbench-export-table="import-library"');
+    expect(workbench).toContain('mainTableLabel="Import file library table"');
+    expect(workbench).toContain("ConfirmSubmitButton");
+    expect(workbench).toContain('confirmActionLabel="Archive file"');
   });
 });

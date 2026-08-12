@@ -167,6 +167,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             </h2>
             <Link
               href="/privacy"
+              aria-label="Read the data notice"
               className="min-h-11 content-center text-[15px] font-medium text-[var(--ios-link)] underline-offset-4 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ios-tint)]"
             >
               Data notice

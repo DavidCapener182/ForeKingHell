@@ -1,5 +1,4 @@
 import { PracticeCompanionClient } from "@/app/practice/practice-companion-client";
-import { CompanionImageHero } from "@/components/app/companion-image-hero";
 import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -46,12 +45,6 @@ export default async function PracticeCompanionPage({
   return (
     <PageShell>
       <MobileAppShell className="gap-4" data-practice-companion>
-        <CompanionImageHero
-          variant="practice"
-          title="Practice"
-          label="Range ready"
-          alt="A golfer practising with a launch monitor on a range at dusk"
-        />
         <PracticeCompanionClient
           accountId={userId}
           context={context}

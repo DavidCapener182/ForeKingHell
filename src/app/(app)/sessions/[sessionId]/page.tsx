@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, ChartNoAxesCombined } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
+import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
@@ -15,7 +16,8 @@ import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlanForSourceSessions } from "@/lib/practice-planner";
-import { getTodayPracticeData, type TodayPracticeShot } from "@/lib/today-session-data";
+import { buildShotPatternPoints, shotPatternConfidence } from "@/lib/shot-pattern-chart-data";
+import { getTodayPracticeData } from "@/lib/today-session-data";
 
 export const dynamic = "force-dynamic";
 
@@ -33,8 +35,23 @@ export default async function PracticeSessionReviewPage({
   const plan = await getPracticePlanForSourceSessions(userId, [sessionId]);
   const comparisons = [...data.clubComparisons].sort((left, right) => left.score - right.score);
   const remaining = comparisons[0] ?? null;
-  const improved = [...comparisons].sort((left, right) => right.score - left.score)[0] ?? null;
+  const improved =
+    comparisons
+      .filter((comparison) => comparison.verdict === "better")
+      .sort((left, right) => right.score - left.score)[0] ?? null;
   const shots = data.shots.filter((shot) => shot.sessionId === sessionId);
+  const patternPoints = buildShotPatternPoints(
+    data.rawShots.filter((shot) => shot.sessionId === sessionId),
+  );
+  const preferredClub =
+    plan?.comparisonSummary && plan.blocks[0]?.clubs[0]
+      ? plan.blocks[0].clubs[0]
+      : (remaining?.clubType ?? patternPoints[0]?.clubType ?? null);
+  const focusConfidence = shotPatternConfidence(
+    patternPoints.filter(
+      (point) => point.trusted && (!preferredClub || point.clubType === preferredClub),
+    ),
+  );
 
   return (
     <PageShell>
@@ -53,15 +70,30 @@ export default async function PracticeSessionReviewPage({
               <p className="mt-2 text-sm leading-5 text-muted-foreground">{data.overall.summary}</p>
             </div>
             <IOSInlineStatus
-              label={confidenceLabel(shots.length)}
-              tone={shots.length >= 8 ? "positive" : "attention"}
+              label={`${focusConfidence.label} confidence`}
+              tone={focusConfidence.label === "Low" ? "attention" : "positive"}
             />
           </div>
-          <IOSGroupedList label="Practice changes" className="bg-card">
+        </section>
+
+        <section className="grid gap-2.5">
+          <IOSSectionHeader
+            title="Shot pattern"
+            description="Dispersion first, with measured flight when apex data exists."
+          />
+          <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
+        </section>
+
+        <section className="grid gap-2.5">
+          <IOSSectionHeader title="What changed" />
+          <IOSGroupedList label="Practice changes">
             <IOSListRow
               label="What improved"
               value={improved?.clubLabel ?? "Baseline built"}
-              detail={improved?.summary ?? "This measured session establishes the next comparison."}
+              detail={
+                improved?.summary ??
+                "There is no prior like-for-like baseline strong enough for an improvement claim."
+              }
             />
             <IOSListRow
               label="What needs work"
@@ -88,22 +120,6 @@ export default async function PracticeSessionReviewPage({
               value={formatPercent(data.overall.today.playableRate)}
             />
           </IOSGroupedList>
-        </section>
-
-        <section className="grid gap-2.5">
-          <IOSSectionHeader
-            title="Dispersion"
-            description="Measured landing pattern, not a modelled target result."
-          />
-          <DispersionPreview shots={shots} />
-        </section>
-
-        <section className="grid gap-2.5">
-          <IOSSectionHeader
-            title="Flight trajectory"
-            description="Compact measured-flight preview."
-          />
-          <TrajectoryPreview shots={shots} />
         </section>
 
         <IOSDisclosureGroup
@@ -159,93 +175,6 @@ export default async function PracticeSessionReviewPage({
       </MobileAppShell>
     </PageShell>
   );
-}
-
-function DispersionPreview({ shots }: { shots: TodayPracticeShot[] }) {
-  const points = shots
-    .filter((shot) => shot.carryYd !== null && shot.sideCarryYd !== null)
-    .slice(0, 40);
-  const maxCarry = Math.max(1, ...points.map((shot) => Number(shot.carryYd)));
-  const maxSide = Math.max(20, ...points.map((shot) => Math.abs(Number(shot.sideCarryYd))));
-
-  return (
-    <div className="ios-grouped-list overflow-hidden p-3">
-      {points.length > 0 ? (
-        <svg
-          viewBox="0 0 320 190"
-          role="img"
-          aria-label="Measured shot landing dispersion"
-          className="h-auto w-full"
-        >
-          <rect width="320" height="190" rx="16" className="fill-secondary/60" />
-          <path d="M160 180 L160 10" className="stroke-border" strokeDasharray="4 5" />
-          {points.map((shot) => {
-            const x = 160 + (Number(shot.sideCarryYd) / maxSide) * 130;
-            const y = 176 - (Number(shot.carryYd) / maxCarry) * 155;
-            return <circle key={shot.id} cx={x} cy={y} r="4" className="fill-primary/75" />;
-          })}
-        </svg>
-      ) : (
-        <EmptyChart label="No measured landing coordinates are available." />
-      )}
-    </div>
-  );
-}
-
-function TrajectoryPreview({ shots }: { shots: TodayPracticeShot[] }) {
-  const flights = shots
-    .filter((shot) => shot.carryYd !== null && shot.apexFt !== null)
-    .slice(0, 12);
-  const maxCarry = Math.max(1, ...flights.map((shot) => Number(shot.carryYd)));
-  const maxApex = Math.max(1, ...flights.map((shot) => Number(shot.apexFt)));
-
-  return (
-    <div className="ios-grouped-list overflow-hidden p-3">
-      {flights.length > 0 ? (
-        <svg
-          viewBox="0 0 320 170"
-          role="img"
-          aria-label="Measured shot flight trajectories"
-          className="h-auto w-full"
-        >
-          <rect width="320" height="170" rx="16" className="fill-secondary/60" />
-          <path d="M16 150 H304" className="stroke-border" />
-          {flights.map((shot) => {
-            const endX = 20 + (Number(shot.carryYd) / maxCarry) * 280;
-            const apexY = 142 - (Number(shot.apexFt) / maxApex) * 115;
-            return (
-              <path
-                key={shot.id}
-                d={`M20 150 Q ${endX / 2} ${apexY} ${endX} 150`}
-                fill="none"
-                className="stroke-primary/55"
-                strokeWidth="2"
-              />
-            );
-          })}
-        </svg>
-      ) : (
-        <EmptyChart label="No measured apex data are available." />
-      )}
-    </div>
-  );
-}
-
-function EmptyChart({ label }: { label: string }) {
-  return (
-    <div className="grid min-h-36 place-items-center text-center text-sm text-muted-foreground">
-      <span>
-        <ChartNoAxesCombined className="mx-auto mb-2 size-6" aria-hidden />
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function confidenceLabel(shotCount: number) {
-  if (shotCount >= 20) return "High confidence";
-  if (shotCount >= 8) return "Moderate confidence";
-  return "Low confidence";
 }
 
 function formatYards(value: number | null) {

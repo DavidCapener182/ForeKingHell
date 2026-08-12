@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
-import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
+import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 const phoneViewports = [
   { name: "320x568", width: 320, height: 568 },
@@ -19,6 +19,7 @@ const workbenchViewports = [
 ] as const;
 
 test.describe("companion and workbench density contract", () => {
+  test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run density checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
   test.setTimeout(360_000);
 
@@ -36,7 +37,7 @@ test.describe("companion and workbench density contract", () => {
 
     for (const viewport of phoneViewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await openSurface(page, "companion", "/today", /Today's recommendation/i);
+      await openSurface(page, "companion", "/today", /Today/i);
 
       const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
       await expect(mobileNav).toBeVisible();
@@ -48,9 +49,11 @@ test.describe("companion and workbench density contract", () => {
       await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeHidden();
       await expectNoHorizontalOverflow(page);
       if (viewport.height > viewport.width) {
-        const actionBottom = await page
-          .getByRole("link", { name: "Plan range session" })
-          .evaluate((element) => element.getBoundingClientRect().bottom);
+        const primaryAction = page.locator("[data-primary-recommendation] a").first();
+        await expect(primaryAction).toBeVisible();
+        const actionBottom = await primaryAction.evaluate(
+          (element) => element.getBoundingClientRect().bottom,
+        );
         const tabTop = await mobileNav.evaluate((element) => element.getBoundingClientRect().top);
         expect(actionBottom).toBeLessThanOrEqual(tabTop);
       }
@@ -59,6 +62,33 @@ test.describe("companion and workbench density contract", () => {
         path: path.join(outputDirectory, `companion-today-${viewport.name}.png`),
         fullPage: true,
       });
+    }
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const routes = [
+      {
+        route: "/practice",
+        ready: /Recommended session|Active Range Mode/i,
+        answer: "[data-current-practice-plan], [data-active-range-mode]",
+      },
+      { route: "/play", ready: /Play/i, answer: "[data-active-round], [data-selected-course]" },
+      {
+        route: "/sessions",
+        ready: /Recent sessions/i,
+        answer: '[role="group"][aria-label="Session type"]',
+      },
+    ];
+    for (const route of routes) {
+      await openSurface(page, "companion", route.route, route.ready);
+      const answer = page.locator(route.answer).first();
+      await expect(answer).toBeVisible();
+      const answerTop = await answer.evaluate((element) => element.getBoundingClientRect().top);
+      const tabTop = await page
+        .getByRole("navigation", { name: "Mobile primary" })
+        .evaluate((element) => element.getBoundingClientRect().top);
+      expect(answerTop).toBeLessThan(tabTop);
+      await expect(page.locator("[data-companion-image-hero]")).toHaveCount(0);
+      await expectNoHorizontalOverflow(page);
     }
   });
 

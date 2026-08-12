@@ -31,6 +31,11 @@ import { formatClubType } from "@/lib/club-format";
 import { parseRapsodoCsv, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 import { inferRapsodoImportSessionType } from "@/lib/round-sessions";
 import { buildRapsodoSyncSessionKey, hashRapsodoExportCsv } from "@/lib/rapsodo/sync-identity";
+import {
+  rapsodoE2eFixtureEnabled,
+  rapsodoE2eFixturePreview,
+  rapsodoE2eFixtureSessions,
+} from "@/lib/rapsodo/e2e-fixture";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string; code?: string };
 
@@ -43,6 +48,13 @@ export async function getRapsodoConnectionStatusAction(): Promise<
     profile: Record<string, unknown> | null;
   }>
 > {
+  if (rapsodoE2eFixtureEnabled()) {
+    return {
+      ok: true,
+      data: { connected: true, expiresAt: null, profile: { fixture: "playwright" } },
+    };
+  }
+
   const stored = await getStoredRapsodoToken();
 
   return {
@@ -96,6 +108,10 @@ export async function listRapsodoSessionsAction(
     endDate?: string | null;
   } = {},
 ): Promise<ActionResult<RapsodoSessionListItem[]>> {
+  if (rapsodoE2eFixtureEnabled()) {
+    return { ok: true, data: rapsodoE2eFixtureSessions().slice(0, input.take ?? 50) };
+  }
+
   const stored = await getStoredRapsodoToken();
 
   if (!stored) {
@@ -130,6 +146,13 @@ export async function listRapsodoSessionsAction(
 export async function previewRapsodoSessionAction(
   session: RapsodoSessionListItem,
 ): Promise<ActionResult<RapsodoSessionPreview>> {
+  if (rapsodoE2eFixtureEnabled()) {
+    const preview = rapsodoE2eFixturePreview(session);
+    return preview
+      ? { ok: true, data: preview }
+      : { ok: false, message: "The Playwright R-Cloud fixture session was not found." };
+  }
+
   const stored = await getStoredRapsodoToken();
 
   if (!stored) {

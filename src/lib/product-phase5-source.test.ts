@@ -10,8 +10,10 @@ describe("Phase 5 product-page contract", () => {
   it("keeps Today focused on the latest evidence, next action and reversible review controls", () => {
     const today = source("src/app/(app)/today/today-workbench-page.tsx");
     const companion = source("src/app/(app)/today/today-companion-page.tsx");
+    const primaryAnswer = source("src/components/app/today-primary-answer.tsx");
 
-    expect(companion).toContain("data-primary-recommendation");
+    expect(companion).toContain("TodayPrimaryAnswer");
+    expect(primaryAnswer).toContain("data-primary-recommendation");
     expect(companion).toContain("Plan range session");
     expect(companion).toContain("Why this recommendation?");
     expect(companion).not.toContain("TodayMobileEvidence");

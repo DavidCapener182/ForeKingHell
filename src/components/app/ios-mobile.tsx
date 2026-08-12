@@ -102,6 +102,7 @@ export function IOSListRow({
   destructive = false,
   className,
   ariaLabel,
+  onClick,
 }: {
   label: ReactNode;
   value?: ReactNode;
@@ -114,6 +115,7 @@ export function IOSListRow({
   destructive?: boolean;
   className?: string;
   ariaLabel?: string;
+  onClick?: () => void;
 }) {
   const content = (
     <>
@@ -148,14 +150,15 @@ export function IOSListRow({
         </span>
       ) : null}
       {trailing ? <span className="shrink-0">{trailing}</span> : null}
-      {href ? (
+      {href || onClick ? (
         <ChevronRight className="size-4 shrink-0 text-muted-foreground/70" aria-hidden />
       ) : null}
     </>
   );
   const rowClassName = cn(
     "ios-grouped-row focus-aaa flex min-h-14 w-full min-w-0 touch-manipulation items-center gap-3 px-4 py-2.5 text-left outline-none",
-    href && "transition-colors duration-100 active:bg-secondary motion-reduce:transition-none",
+    (href || onClick) &&
+      "transition-colors duration-100 active:bg-secondary motion-reduce:transition-none",
     className,
   );
 
@@ -164,6 +167,14 @@ export function IOSListRow({
       <Link href={href} prefetch={false} aria-label={ariaLabel} className={rowClassName}>
         {content}
       </Link>
+    );
+  }
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} aria-label={ariaLabel} className={rowClassName}>
+        {content}
+      </button>
     );
   }
 

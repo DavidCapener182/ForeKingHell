@@ -78,8 +78,12 @@ describe("round detail desktop workspace source", () => {
     expect(source).toContain('value: "performance"');
     expect(source).toContain('value: "scorecard"');
     expect(source).toContain('value: "map"');
-    expect(source).toContain('value: "proof"');
-    expect(source).toContain('value: "corrections"');
+    expect(source).toContain('value: "full-site"');
+    expect(source).toContain("MobileCompletedScorecard");
+    expect(source).toContain("Turning point");
+    expect(source).toContain("Strongest area");
+    expect(source).toContain("Most costly area");
+    expect(source).toContain("Build next practice");
   });
 
   it("uses hole values in the current-hole summary rather than cumulative round totals", () => {
@@ -94,15 +98,17 @@ describe("round detail desktop workspace source", () => {
     expect(firstCard).toContain('href="#mobile-current-hole"');
   });
 
-  it("keeps specialist maps and dense corrections behind one accessible disclosure level", () => {
+  it("keeps replay in one disclosure and moves completed-round management to Full Site", () => {
     const mobileDetail =
       source.match(/function MobileRoundDetail[\s\S]*?function MobileRoundResultCard/)?.[0] ?? "";
 
     expect(mobileDetail.match(/<IOSDisclosureGroup/g)).toHaveLength(1);
     expect(mobileDetail).toContain("<MobileRoundMap");
-    expect(mobileDetail).toContain("<MobileRoundCorrections");
+    expect(mobileDetail).not.toContain("<MobileRoundCorrections");
+    expect(mobileDetail).not.toContain("<MobileRoundProof");
+    expect(mobileDetail).toContain("Corrections & proof");
+    expect(mobileDetail).toContain("Open Full Site");
     expect(source).toContain("<RoundShotMap");
     expect(source).toContain('id="mobile-round-review"');
-    expect(source).toContain('href="#mobile-round-review"');
   });
 });

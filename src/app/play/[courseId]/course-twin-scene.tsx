@@ -1993,11 +1993,26 @@ export function CourseTwinScene({
   };
 
   const leaveRoom = async () => {
-    if (roomState.room) {
-      await fetch(`/api/course-twins/rooms/${roomState.room.id}`, { method: "DELETE" });
-    }
-    setRoomState({ status: "idle", room: null, error: null });
+    const roomId = roomState.room?.id;
+    setRoomState({ status: "loading", room: null, error: null });
     setRoomInviteCode("");
+
+    if (!roomId) {
+      setRoomState({ status: "idle", room: null, error: null });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/course-twins/rooms/${roomId}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Unable to leave the group session.");
+      setRoomState({ status: "idle", room: null, error: null });
+    } catch (error) {
+      setRoomState({
+        status: "error",
+        room: null,
+        error: error instanceof Error ? error.message : "Unable to leave the group session.",
+      });
+    }
   };
 
   const playVirtualShot = () => {
@@ -3255,7 +3270,10 @@ export function CourseTwinScene({
               </button>
             </div>
           </div>
-          <div className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-[#07150e]/84 p-1.5 shadow-2xl backdrop-blur-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            data-course-twin-runtime-mode-dock
+            className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-[#07150e]/84 p-1.5 shadow-2xl backdrop-blur-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             <RuntimeDockButton
               active={mode === "flyover"}
               label="Flyover"
@@ -3399,7 +3417,10 @@ export function CourseTwinScene({
             <div className="mt-3 h-px bg-gradient-to-r from-[#e7ff6a]/70 to-transparent" />
           </div>
 
-          <div className="pointer-events-auto absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/15 bg-[#07150e]/82 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+          <div
+            data-course-twin-runtime-mode-dock
+            className="pointer-events-auto absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/15 bg-[#07150e]/82 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+          >
             <RuntimeDockButton
               active={mode === "flyover"}
               label="Flyover"

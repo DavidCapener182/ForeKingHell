@@ -1,27 +1,29 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { ArrowRight, CalendarDays, Flag, Gauge, ShieldCheck, Target } from "lucide-react";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { CalendarDays, Flag, ShieldCheck, Target } from "lucide-react";
 
+import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
+import { TodayPrimaryAnswer } from "@/components/app/today-primary-answer";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
-  IOSInlineStatus,
   IOSListRow,
   IOSMetricRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
-import { CompanionImageHero } from "@/components/app/companion-image-hero";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
-import { Button } from "@/components/ui/button";
-import { listAvailableCourseTwins } from "@/lib/course-twin-data";
+import { getDb } from "@/db/client";
+import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   getCurrentPracticePlanSummary,
   getPracticePlannerContext,
   type PracticePlannerContext,
 } from "@/lib/practice-planner";
-import { SELECTED_COURSE_COOKIE } from "@/lib/selected-course";
+import { buildShotPatternPoints } from "@/lib/shot-pattern-chart-data";
+import { classifyTodayRecommendationIssue } from "@/lib/today-recommendation-issue";
+import { getTodayPracticeData } from "@/lib/today-session-data";
 
 export default async function TodayCompanionPage() {
   if (!process.env.DATABASE_URL?.trim()) {
@@ -41,102 +43,57 @@ export default async function TodayCompanionPage() {
   }
 
   const userId = await requireCurrentUserId();
-  const [context, currentPlan, courses, cookieStore] = await Promise.all([
+  const [context, currentPlan, activeRound] = await Promise.all([
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
     getCurrentPracticePlanSummary(userId),
-    listAvailableCourseTwins(userId),
-    cookies(),
+    getInProgressRound(userId),
   ]);
   const recommendation = companionRecommendation(context);
-  const selectedCourse =
-    courses.find((course) => course.courseId === cookieStore.get(SELECTED_COURSE_COOKIE)?.value) ??
-    courses[0] ??
-    null;
+  const latestData = context.latestPractice.sessionId
+    ? await getTodayPracticeData({ sessionId: context.latestPractice.sessionId }).catch(() => null)
+    : null;
+  const latestShots =
+    latestData?.rawShots.filter((shot) => shot.sessionId === context.latestPractice.sessionId) ??
+    [];
+  const patternPoints = buildShotPatternPoints(latestShots);
+  const mainState = todayMainState({ currentPlan, activeRound, recommendation, latestData });
 
   return (
     <PageShell>
       <MobileAppShell className="gap-3" data-today-companion>
-        <CompanionImageHero
-          variant="today"
-          title="Today"
-          label="Your next move"
-          alt="A golf hole viewed from the tee toward a tree-lined fairway and green"
+        <TodayPrimaryAnswer
+          accountId={userId}
+          serverState={mainState}
+          facts={[
+            { label: "Suggested session", value: `${recommendation.minutes} min` },
+            { label: "Training load", value: context.trainingLoad.statusLabel },
+            { label: "Main club", value: recommendation.clubLabel },
+            { label: "Evidence", value: recommendation.evidenceLabel },
+          ]}
         />
 
-        <section className="ios-grouped-list grid gap-2 p-3" data-primary-recommendation>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                Today&apos;s recommendation
-              </p>
-              <h1 className="mt-1 text-xl font-bold leading-6 tracking-tight">
-                {recommendation.title}
-              </h1>
-            </div>
-            <IOSInlineStatus
-              label={recommendation.confidence}
-              tone={recommendation.confidence === "Low" ? "attention" : "positive"}
-            />
-          </div>
-
-          <p className="text-sm leading-5 text-muted-foreground">{recommendation.reason}</p>
-
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border/70 py-2">
-            <RecommendationFact label="Suggested session" value={`${recommendation.minutes} min`} />
-            <RecommendationFact label="Training load" value={context.trainingLoad.statusLabel} />
-            <RecommendationFact label="Main club" value={recommendation.clubLabel} />
-            <RecommendationFact label="Evidence" value={recommendation.evidenceLabel} />
-          </div>
-
-          <Button asChild className="min-h-12 rounded-xl text-base">
-            <Link href={`/practice?time=${recommendation.minutes}`}>
-              Plan range session
-              <ArrowRight className="ml-2 size-4" aria-hidden />
+        {patternPoints.length > 0 && context.latestPractice.sessionId ? (
+          <section className="grid gap-2.5" aria-label="Latest measured pattern">
+            <IOSSectionHeader title="Latest pattern" description={latestSessionDetail(context)} />
+            <Link
+              href={`/sessions/${context.latestPractice.sessionId}`}
+              className="focus-aaa block rounded-2xl"
+            >
+              <MobileShotPatternCharts
+                points={patternPoints}
+                preferredClub={recommendation.clubType}
+                compact
+              />
             </Link>
-          </Button>
-
-          <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
-            <Link className="focus-aaa rounded-xl bg-secondary px-2 py-3" href="/sessions">
-              Latest session
-            </Link>
-            <Link className="focus-aaa rounded-xl bg-secondary px-2 py-3" href="/play">
-              Prepare to play
-            </Link>
-            <Link className="focus-aaa rounded-xl bg-secondary px-2 py-3" href="/quick-bag">
-              Quick Bag
-            </Link>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         <section className="grid gap-2.5">
-          <IOSSectionHeader title="At a glance" />
-          <IOSGroupedList label="Today at a glance">
-            <IOSListRow
-              icon={Gauge}
-              label="Latest session"
-              detail={latestSessionDetail(context)}
-              href="/sessions"
-            />
-            <IOSListRow
-              icon={Target}
-              label={currentPlan?.title ?? "No saved practice plan"}
-              detail={
-                currentPlan
-                  ? `${currentPlan.timeMinutes} min · ${formatPlanStatus(currentPlan.status)}`
-                  : "Build the recommended session when you are ready."
-              }
-              href="/practice"
-            />
-            <IOSListRow
-              icon={Flag}
-              label={selectedCourse?.name ?? "No course selected"}
-              detail={
-                selectedCourse
-                  ? `Course strategy ready · Grade ${selectedCourse.grade}`
-                  : "Choose a mapped course before your next round."
-              }
-              href="/play"
-            />
+          <IOSSectionHeader title="Quick actions" />
+          <IOSGroupedList label="Today quick actions">
+            <IOSListRow icon={Target} label="Plan practice" href="/practice" />
+            <IOSListRow icon={Flag} label="Prepare to play" href="/play" />
+            <IOSListRow icon={ShieldCheck} label="Quick Bag" href="/quick-bag" />
           </IOSGroupedList>
         </section>
 
@@ -188,15 +145,6 @@ export default async function TodayCompanionPage() {
   );
 }
 
-function RecommendationFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm font-semibold">{value}</p>
-    </div>
-  );
-}
-
 function companionRecommendation(context: PracticePlannerContext) {
   const opportunity = context.latestPractice.biggestOpportunity;
   const club =
@@ -208,7 +156,18 @@ function companionRecommendation(context: PracticePlannerContext) {
     (club?.shotCount ?? 0) >= 12 ? "High" : (club?.shotCount ?? 0) >= 6 ? "Moderate" : "Low";
   const minutes = context.trainingLoad.highRecentLoad ? 20 : 45;
   const clubLabel = club?.label ?? "Baseline";
-  const title = club ? `Practise ${clubLabel} start-line control` : "Build a measured baseline";
+  const issue = classifyTodayRecommendationIssue({
+    club,
+    bagClub,
+    priority:
+      context.progress.priorities.find((priority) => priority.clubType === club?.clubType) ?? null,
+    bagIssues: context.bag.issues,
+    scoring: context.scoring,
+    speed: context.speed,
+  });
+  const title = club
+    ? `Practise ${clubLabel} ${issue.label.toLowerCase()}`
+    : "Build a measured baseline";
   const reason = club
     ? `${clubLabel} is the clearest current opportunity. ${club.shotCount} measured shots show ${formatDirectionEvidence(club)}. Begin with a short calibration block before adding pressure.`
     : "There is not enough measured evidence to isolate a weakness yet. Start with a short baseline session so the next recommendation is evidence-led.";
@@ -217,6 +176,8 @@ function companionRecommendation(context: PracticePlannerContext) {
     title,
     reason,
     clubLabel,
+    clubType: club?.clubType ?? null,
+    issue: issue.label,
     confidence,
     minutes,
     evidenceLabel: club ? `${club.shotCount} measured shots` : "Baseline needed",
@@ -225,6 +186,114 @@ function companionRecommendation(context: PracticePlannerContext) {
       ? `The latest measured weakness, ${bagClub?.confidenceLabel?.toLowerCase() ?? "unsettled"} bag confidence and ${context.trainingLoad.statusLabel.toLowerCase()} training load point to a ${minutes}-minute ${clubLabel} session.`
       : "The app needs a fresh measured sample before it can make a club-specific claim.",
   };
+}
+
+function todayMainState({
+  currentPlan,
+  activeRound,
+  recommendation,
+  latestData,
+}: {
+  currentPlan: Awaited<ReturnType<typeof getCurrentPracticePlanSummary>>;
+  activeRound: Awaited<ReturnType<typeof getInProgressRound>>;
+  recommendation: ReturnType<typeof companionRecommendation>;
+  latestData: Awaited<ReturnType<typeof getTodayPracticeData>> | null;
+}) {
+  if (currentPlan?.status === "active") {
+    return {
+      eyebrow: "Active Range Mode",
+      title: currentPlan.title,
+      reason: "Your practice is still active on this phone. Continue at the current block.",
+      status: "In progress",
+      tone: "positive" as const,
+      href: "/practice",
+      action: "Continue practice",
+    };
+  }
+  if (currentPlan?.status === "awaiting_import") {
+    return {
+      eyebrow: "Practice finished",
+      title: "Add the measured session",
+      reason: "Choose R-Cloud or a CSV to replace activity tracking with measured evidence.",
+      status: "Evidence needed",
+      tone: "attention" as const,
+      href: `/import?practicePlanId=${encodeURIComponent(currentPlan.id)}`,
+      action: "Import session",
+    };
+  }
+  if (
+    latestData?.sessions[0]?.id &&
+    latestData.shots.length > 0 &&
+    isReviewReadyDate(currentPlan?.sourceSessionId ? null : latestData.dateLabel)
+  ) {
+    return {
+      eyebrow: "New session ready",
+      title: latestData.overall.title,
+      reason: latestData.overall.summary,
+      status: "Review ready",
+      tone: "positive" as const,
+      href: `/sessions/${latestData.sessions[0].id}`,
+      action: "Review session",
+    };
+  }
+  if (activeRound) {
+    return {
+      eyebrow: "Round in progress",
+      title: activeRound.courseName ?? "Continue your round",
+      reason: "Your scorecard is still open and ready at the current hole.",
+      status: "In progress",
+      tone: "positive" as const,
+      href: `/rounds/${activeRound.id}`,
+      action: "Continue round",
+    };
+  }
+  if (currentPlan?.status === "planned") {
+    return {
+      eyebrow: "Saved practice plan",
+      title: currentPlan.title,
+      reason: `${currentPlan.timeMinutes} minutes planned and ready to start.`,
+      status: "Ready",
+      tone: "info" as const,
+      href: "/practice",
+      action: "Start plan",
+    };
+  }
+  return {
+    eyebrow: "Today’s recommendation",
+    title: recommendation.title,
+    reason: recommendation.reason,
+    status: recommendation.confidence,
+    tone: recommendation.confidence === "Low" ? ("attention" as const) : ("positive" as const),
+    href: `/practice?intent=latest_weakness&club=${encodeURIComponent(recommendation.clubType ?? "")}&time=${recommendation.minutes}&source=today`,
+    action: "Plan range session",
+  };
+}
+
+function isReviewReadyDate(dateLabel: string | null) {
+  if (dateLabel === null) return true;
+  const date = new Date(dateLabel);
+  if (Number.isNaN(date.getTime())) return false;
+  const age = Date.now() - date.getTime();
+  return age >= 0 && age <= 36 * 60 * 60 * 1_000;
+}
+
+async function getInProgressRound(userId: string) {
+  return (
+    (
+      await getDb()
+        .select({ id: sessions.id, courseName: sessions.courseName })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.userId, userId),
+            inArray(sessions.type, ["round", "real_round", "simulator", "simulated_course"]),
+            inArray(sessions.roundStatus, ["in_progress", "active"]),
+          ),
+        )
+        .orderBy(desc(sessions.date))
+        .limit(1)
+    )[0] ?? null
+  );
 }
 
 function formatDirectionEvidence(club: PracticePlannerContext["latestPractice"]["clubs"][number]) {
@@ -245,8 +314,4 @@ function latestSessionDetail(context: PracticePlannerContext) {
   }
 
   return `${context.latestPractice.dateLabel} · ${context.latestPractice.clubs.reduce((total, club) => total + club.shotCount, 0)} measured shots`;
-}
-
-function formatPlanStatus(status: string) {
-  return status.replaceAll("_", " ");
 }
