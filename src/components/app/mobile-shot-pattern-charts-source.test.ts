@@ -18,21 +18,15 @@ describe("mobile shot-pattern chart surface", () => {
     expect(source).toContain("Club average");
   });
 
-  it("keeps axes, median, summary and accessible rows explicit", () => {
-    for (const label of [
-      "Left",
-      "Right",
-      "Target line",
-      "Median landing point",
-      "Central 10–90% region",
-    ]) {
-      expect(source).toContain(label);
-    }
-    expect(source).toContain("10th-to-90th-percentile carry and lateral region");
+  it("uses the desktop chart engine while keeping summary and accessible rows explicit", () => {
+    expect(source).toContain('import("@/app/today/today-shot-charts")');
+    expect(source).toContain("module.SharedShotPatternVisual");
+    expect(source).toContain('mode="dispersion"');
+    expect(source).toContain('mode="trajectory"');
     expect(source).toContain("-side miss reaches");
-    expect(source).toContain('role="img"');
     expect(source).toContain("Accessible shot data");
-    expect(source).toContain("deterministicShotSample");
+    expect(source).not.toContain("function DispersionChart");
+    expect(source).not.toContain("function FlightChart");
     expect(source).not.toContain("slice(0, 40)");
     expect(source).not.toContain("slice(0, 12)");
   });

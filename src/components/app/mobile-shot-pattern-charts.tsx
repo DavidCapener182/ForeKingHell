@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 
 import { SegmentedControl } from "@/components/app/segmented-control";
 import {
   defaultShotPatternClub,
-  deterministicShotSample,
   filterShotPatternPoints,
   shotPatternClubs,
   shotPatternConfidence,
@@ -17,7 +17,19 @@ import { cn } from "@/lib/utils";
 type ChartMode = "dispersion" | "flight";
 type FlightMode = "shots" | "average";
 
-const clubColours = ["#0b7a3b", "#2563eb", "#d97706", "#7c3aed", "#dc2626", "#0891b2"];
+const SharedShotPatternVisual = dynamic(
+  () => import("@/app/today/today-shot-charts").then((module) => module.SharedShotPatternVisual),
+  {
+    loading: () => (
+      <div
+        className="grid aspect-[82/43] w-full place-items-center bg-slate-50 text-xs font-medium text-slate-500"
+        role="status"
+      >
+        Drawing measured shot pattern…
+      </div>
+    ),
+  },
+);
 
 export function MobileShotPatternCharts({
   points,
@@ -45,10 +57,6 @@ export function MobileShotPatternCharts({
   const hasFlight = selected.some((point) => point.carryYd !== null && point.apexFt !== null);
   const summary = useMemo(() => summarizeShotPattern(selected), [selected]);
   const confidence = useMemo(() => shotPatternConfidence(selected), [selected]);
-  const colours = useMemo(
-    () => new Map(clubs.map((item, index) => [item.type, clubColours[index % clubColours.length]])),
-    [clubs],
-  );
 
   if (clubs.length === 0) {
     return (
@@ -144,9 +152,17 @@ export function MobileShotPatternCharts({
       ) : null}
 
       {mode === "dispersion" || compact ? (
-        <DispersionChart points={selected} colours={colours} compact={compact} />
+        <div className={cn("overflow-hidden rounded-xl bg-white", compact && "max-h-52")}>
+          <SharedShotPatternVisual shots={selected} mode="dispersion" />
+        </div>
       ) : hasFlight ? (
-        <FlightChart points={selected} colours={colours} flightMode={flightMode} />
+        <div className="overflow-hidden rounded-xl bg-white">
+          <SharedShotPatternVisual
+            shots={selected}
+            mode="trajectory"
+            trajectoryView={flightMode === "average" ? "averages" : "shots"}
+          />
+        </div>
       ) : (
         <p className="rounded-xl bg-secondary/60 p-4 text-sm text-muted-foreground">
           Flight is unavailable because this session has no measured apex data.
@@ -159,223 +175,6 @@ export function MobileShotPatternCharts({
 
       {!compact ? <AccessibleShotTable points={selected} /> : null}
     </section>
-  );
-}
-
-function DispersionChart({
-  points,
-  colours,
-  compact,
-}: {
-  points: ShotPatternPoint[];
-  colours: Map<string, string>;
-  compact: boolean;
-}) {
-  const landing = points.filter(
-    (point): point is ShotPatternPoint & { carryYd: number; sideCarryYd: number } =>
-      point.carryYd !== null && point.sideCarryYd !== null,
-  );
-  const sampled = deterministicShotSample(landing, compact ? 70 : 160);
-  const summary = summarizeShotPattern(landing);
-  const maxCarry = Math.max(1, ...landing.map((point) => point.carryYd));
-  const minCarry = Math.min(...landing.map((point) => point.carryYd), 0);
-  const carrySpan = Math.max(20, maxCarry - minCarry);
-  const maxSide = Math.max(15, ...landing.map((point) => Math.abs(point.sideCarryYd)));
-  const x = (side: number) => 160 + (side / maxSide) * 126;
-  const y = (carry: number) => 174 - ((carry - minCarry) / carrySpan) * 148;
-  const region =
-    summary.sideLowYd !== null &&
-    summary.sideHighYd !== null &&
-    summary.carryLowYd !== null &&
-    summary.carryHighYd !== null
-      ? {
-          x: x(summary.sideLowYd),
-          y: y(summary.carryHighYd),
-          width: Math.max(2, x(summary.sideHighYd) - x(summary.sideLowYd)),
-          height: Math.max(2, y(summary.carryLowYd) - y(summary.carryHighYd)),
-        }
-      : null;
-
-  return (
-    <div>
-      <svg
-        viewBox="0 0 320 200"
-        role="img"
-        aria-label={`Dispersion chart. ${patternReadout(summary)}`}
-        className={cn("h-auto w-full", compact && "max-h-44")}
-      >
-        <desc>
-          The shaded rectangle marks the central 10th-to-90th-percentile carry and lateral region.
-          The dashed vertical line is the target line and the dashed horizontal line is the trusted
-          carry reference.
-        </desc>
-        <rect width="320" height="200" rx="16" className="fill-secondary/60" />
-        <text x="14" y="194" className="fill-muted-foreground text-[10px]">
-          Left
-        </text>
-        <text x="282" y="194" textAnchor="end" className="fill-muted-foreground text-[10px]">
-          Right
-        </text>
-        <text x="160" y="194" textAnchor="middle" className="fill-muted-foreground text-[10px]">
-          Target line
-        </text>
-        <text x="8" y="16" className="fill-muted-foreground text-[10px]">
-          {Math.round(maxCarry)} yd
-        </text>
-        <text x="8" y="178" className="fill-muted-foreground text-[10px]">
-          {Math.round(minCarry)} yd
-        </text>
-        <path d="M160 182 L160 12" className="stroke-foreground/40" strokeDasharray="4 4" />
-        {summary.medianCarryYd !== null ? (
-          <path
-            d={`M24 ${y(summary.medianCarryYd)} H296`}
-            className="stroke-primary/50"
-            strokeDasharray="3 5"
-            aria-label={`Trusted carry reference ${Math.round(summary.medianCarryYd)} yards`}
-          />
-        ) : null}
-        {region ? (
-          <g>
-            <rect
-              x={region.x}
-              y={region.y}
-              width={region.width}
-              height={region.height}
-              rx="12"
-              className="fill-primary/10 stroke-primary/40"
-              strokeDasharray="5 4"
-            />
-            <text
-              x={Math.max(28, Math.min(region.x + 4, 240))}
-              y={Math.max(24, region.y - 4)}
-              className="fill-muted-foreground text-[9px]"
-            >
-              Central 10–90% region
-            </text>
-          </g>
-        ) : null}
-        {sampled.points.map((point, index) => (
-          <g key={point.id}>
-            <circle
-              cx={x(point.sideCarryYd)}
-              cy={y(point.carryYd)}
-              r="4"
-              fill={colours.get(point.clubType) ?? clubColours[0]}
-              opacity="0.78"
-            />
-            {index % 2 === 0 ? (
-              <path
-                d={`M ${x(point.sideCarryYd) - 2} ${y(point.carryYd)} h 4`}
-                className="stroke-background"
-                strokeWidth="1"
-              />
-            ) : null}
-          </g>
-        ))}
-        {summary.medianSideYd !== null && summary.medianCarryYd !== null ? (
-          <g aria-label="Median landing point">
-            <circle
-              cx={x(summary.medianSideYd)}
-              cy={y(summary.medianCarryYd)}
-              r="7"
-              className="fill-background stroke-foreground"
-              strokeWidth="2"
-            />
-            <circle
-              cx={x(summary.medianSideYd)}
-              cy={y(summary.medianCarryYd)}
-              r="2.5"
-              className="fill-foreground"
-            />
-          </g>
-        ) : null}
-      </svg>
-      {sampled.downsampled ? (
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Showing a deterministic {sampled.points.length}-point sample of {sampled.total},
-          preserving extremes and chronological spread.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function FlightChart({
-  points,
-  colours,
-  flightMode,
-}: {
-  points: ShotPatternPoint[];
-  colours: Map<string, string>;
-  flightMode: FlightMode;
-}) {
-  const flights = points.filter(
-    (point): point is ShotPatternPoint & { carryYd: number; apexFt: number } =>
-      point.carryYd !== null && point.apexFt !== null,
-  );
-  const sampled = deterministicShotSample(flights, 120);
-  const visibleFlights =
-    flightMode === "average"
-      ? [...new Set(flights.map((point) => point.clubType))].map((clubType) => {
-          const clubShots = flights.filter((point) => point.clubType === clubType);
-          const template = clubShots[0]!;
-          return {
-            ...template,
-            id: `average-${clubType}`,
-            carryYd:
-              clubShots.reduce((total, point) => total + point.carryYd, 0) / clubShots.length,
-            apexFt: clubShots.reduce((total, point) => total + point.apexFt, 0) / clubShots.length,
-          };
-        })
-      : sampled.points;
-  const maxCarry = Math.max(1, ...flights.map((point) => point.carryYd));
-  const maxApex = Math.max(1, ...flights.map((point) => point.apexFt));
-
-  return (
-    <div>
-      <svg
-        viewBox="0 0 320 190"
-        role="img"
-        aria-label={`Flight chart showing ${flightMode === "average" ? `${visibleFlights.length} club averages from` : ""} ${flights.length} measured shots. Maximum apex ${Math.round(maxApex)} feet and longest carry ${Math.round(maxCarry)} yards.`}
-        className="h-auto w-full"
-      >
-        <rect width="320" height="190" rx="16" className="fill-secondary/60" />
-        <path d="M20 164 H304" className="stroke-foreground/40" />
-        <text x="10" y="18" className="fill-muted-foreground text-[10px]">
-          {Math.round(maxApex)} ft apex
-        </text>
-        <text x="302" y="181" textAnchor="end" className="fill-muted-foreground text-[10px]">
-          {Math.round(maxCarry)} yd carry
-        </text>
-        {visibleFlights.map((point) => {
-          const endX = 20 + (point.carryYd / maxCarry) * 282;
-          const apexY = 154 - (point.apexFt / maxApex) * 126;
-          return (
-            <g key={point.id}>
-              <path
-                d={`M20 164 Q ${20 + (endX - 20) * 0.52} ${apexY} ${endX} 164`}
-                fill="none"
-                stroke={colours.get(point.clubType) ?? clubColours[0]}
-                strokeWidth={flightMode === "average" ? "3" : "1.75"}
-                opacity={flightMode === "average" ? "0.9" : "0.42"}
-              />
-              <circle
-                cx={endX}
-                cy="164"
-                r="2.5"
-                fill={colours.get(point.clubType) ?? clubColours[0]}
-              />
-            </g>
-          );
-        })}
-      </svg>
-      {flightMode === "shots" && sampled.downsampled ? (
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Showing {sampled.points.length} of {sampled.total} flights with extremes and chronological
-          spread preserved.
-        </p>
-      ) : null}
-    </div>
   );
 }
 

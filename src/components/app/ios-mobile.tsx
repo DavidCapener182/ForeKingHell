@@ -164,7 +164,7 @@ export function IOSListRow({
 
   if (href) {
     return (
-      <Link href={href} prefetch={false} aria-label={ariaLabel} className={rowClassName}>
+      <Link href={href} prefetch aria-label={ariaLabel} className={rowClassName}>
         {content}
       </Link>
     );

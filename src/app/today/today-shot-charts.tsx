@@ -332,7 +332,7 @@ export function TodayShotCharts({
             }
             chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
-            <DispersionChart shots={visibleShots} />
+            <SharedShotPatternVisual shots={visibleShots} mode="dispersion" />
           </ChartPanel>
           <ChartPanel
             title="Trajectory"
@@ -354,12 +354,43 @@ export function TodayShotCharts({
             }
             chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
-            <TrajectoryChart shots={visibleShots} view={trajectoryView} />
+            <SharedShotPatternVisual
+              shots={visibleShots}
+              mode="trajectory"
+              trajectoryView={trajectoryView}
+            />
           </ChartPanel>
         </div>
         <ClubLegend clubs={clubGroups} />
       </CardContent>
     </Card>
+  );
+}
+
+export function SharedShotPatternVisual({
+  shots,
+  mode,
+  trajectoryView = "shots",
+}: {
+  shots: Array<
+    Omit<TodayChartShot, "totalYd" | "launchDirectionDeg" | "ballSpeedMph"> &
+      Partial<Pick<TodayChartShot, "totalYd" | "launchDirectionDeg" | "ballSpeedMph">>
+  >;
+  mode: "dispersion" | "trajectory";
+  trajectoryView?: TrajectoryView;
+}) {
+  const chartPoints = shots.map((shot) => ({
+    ...shot,
+    totalYd: shot.totalYd ?? null,
+    launchDirectionDeg: shot.launchDirectionDeg ?? null,
+    ballSpeedMph: shot.ballSpeedMph ?? null,
+    color: colorForClub(shot.clubType),
+  }));
+
+  return mode === "dispersion" ? (
+    <DispersionChart shots={chartPoints} />
+  ) : (
+    <TrajectoryChart shots={chartPoints} view={trajectoryView} />
   );
 }
 

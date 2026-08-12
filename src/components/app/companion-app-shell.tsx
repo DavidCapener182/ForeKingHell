@@ -2,9 +2,10 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { MobileNav, type MobileNavProfile } from "@/components/app/mobile-nav";
+import { CompanionRouteProgress } from "@/components/app/companion-route-progress";
 import {
   isMobileCompanionHeroRoute,
   isMobileImmersiveRoute,
@@ -22,6 +23,7 @@ export function CompanionAppShell({
   profile?: MobileNavProfile;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const immersive = isMobileImmersiveRoute(pathname);
   const heroRoute = isMobileCompanionHeroRoute(pathname);
   const level = calculateUserLevel(totalXp);
@@ -49,6 +51,15 @@ export function CompanionAppShell({
     };
   }, [immersive]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      for (const href of ["/today", "/practice", "/play", "/sessions", "/import"]) {
+        router.prefetch(href);
+      }
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [router]);
+
   return (
     <div
       data-mobile-platform="apple"
@@ -69,6 +80,7 @@ export function CompanionAppShell({
       {immersive ? null : (
         <MobileNav pathname={pathname} totalXp={totalXp} level={level.level} profile={profile} />
       )}
+      <CompanionRouteProgress />
       {children}
     </div>
   );

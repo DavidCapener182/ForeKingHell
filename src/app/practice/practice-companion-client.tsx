@@ -266,7 +266,18 @@ export function PracticeCompanionClient({
         </Button>
       ) : null}
 
-      <section className="ios-grouped-list grid gap-4 p-5" data-current-practice-plan>
+      <section
+        className="ios-grouped-list relative isolate grid gap-4 overflow-hidden p-5"
+        data-current-practice-plan
+      >
+        <div
+          className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/companion/practice-hero.avif')] bg-cover bg-[68%_center] opacity-30"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-card via-card/90 to-card/60"
+          aria-hidden
+        />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">

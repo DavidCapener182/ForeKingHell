@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { and, asc, countDistinct, desc, eq, inArray, or } from "drizzle-orm";
 import { Cuboid, Flag, MapPinned, ShieldCheck } from "lucide-react";
 
+import { PlaySelectionControls } from "@/app/play/play-selection-controls";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
@@ -210,37 +211,20 @@ export default async function PlayCompanionPage({
               summary: `${availableCourses.length} courses`,
               description: "Course and tee choices are stored independently",
               content: (
-                <div className="grid gap-3">
-                  <IOSGroupedList label="Available courses" className="bg-card">
-                    {availableCourses.map((course) => (
-                      <IOSListRow
-                        key={course.id}
-                        label={course.name}
-                        value={course.id === selected?.id ? "Selected" : undefined}
-                        detail={`${course.holeCount} mapped holes`}
-                        href={`/play/select?courseId=${course.id}`}
-                      />
-                    ))}
-                  </IOSGroupedList>
-                  {selected && tees.length > 0 ? (
-                    <IOSGroupedList label="Available tees" className="bg-card">
-                      {tees.map((tee) => (
-                        <IOSListRow
-                          key={tee.id}
-                          label={tee.name}
-                          value={
-                            tee.id === selectedTee?.id
-                              ? "Selected"
-                              : tee.yards
-                                ? `${tee.yards.toLocaleString("en-GB")} yd`
-                                : undefined
-                          }
-                          href={`/play/select?courseId=${selected.id}&teeSetId=${tee.id}`}
-                        />
-                      ))}
-                    </IOSGroupedList>
-                  ) : null}
-                </div>
+                <PlaySelectionControls
+                  courses={availableCourses.map((course) => ({
+                    id: course.id,
+                    name: course.name,
+                    detail: `${course.holeCount} mapped holes`,
+                  }))}
+                  tees={tees.map((tee) => ({
+                    id: tee.id,
+                    name: tee.name,
+                    detail: tee.yards ? `${tee.yards.toLocaleString("en-GB")} yd` : undefined,
+                  }))}
+                  selectedCourseId={selected?.id ?? null}
+                  selectedTeeId={selectedTee?.id ?? null}
+                />
               ),
             },
           ]}

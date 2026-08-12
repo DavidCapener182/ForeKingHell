@@ -82,7 +82,7 @@ export function MobileIconButton({
       size="icon"
       className="focus-aaa size-11 rounded-full text-foreground"
     >
-      <Link href={href} prefetch={false} aria-label={label}>
+      <Link href={href} prefetch aria-label={label}>
         <Icon className="size-5" />
       </Link>
     </Button>

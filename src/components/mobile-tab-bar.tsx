@@ -156,7 +156,7 @@ export function MobileTabBar({
           <Link
             key={tab.key}
             href={tab.href}
-            prefetch={false}
+            prefetch
             aria-current={active ? "page" : undefined}
             className={cn(
               "ios-route-tab focus-aaa min-h-11 snap-start touch-manipulation whitespace-nowrap outline-none transition-[background-color,color,box-shadow,transform] duration-100 ease-out active:scale-[0.98]",

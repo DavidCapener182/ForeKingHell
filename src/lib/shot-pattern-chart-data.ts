@@ -5,9 +5,12 @@ export type ShotPatternInput = {
   clubType: string;
   clubLabel?: string | null;
   carryYd: number | null;
+  totalYd?: number | null;
   sideCarryYd: number | null;
   apexFt: number | null;
   launchAngleDeg?: number | null;
+  launchDirectionDeg?: number | null;
+  ballSpeedMph?: number | null;
   shotNumber?: number | null;
   shotAt?: Date | string | null;
   qualityTag?: string | null;
@@ -19,9 +22,12 @@ export type ShotPatternPoint = {
   clubType: string;
   clubLabel: string;
   carryYd: number | null;
+  totalYd?: number | null;
   sideCarryYd: number | null;
   apexFt: number | null;
   launchAngleDeg: number | null;
+  launchDirectionDeg?: number | null;
+  ballSpeedMph?: number | null;
   shotNumber: number | null;
   shotAt: string | null;
   trusted: boolean;
@@ -53,9 +59,12 @@ export function buildShotPatternPoints(shots: ShotPatternInput[]): ShotPatternPo
     clubType: shot.clubType,
     clubLabel: shot.clubLabel?.trim() || formatClubLabel(shot.clubType),
     carryYd: finiteOrNull(shot.carryYd),
+    totalYd: finiteOrNull(shot.totalYd),
     sideCarryYd: finiteOrNull(shot.sideCarryYd),
     apexFt: finiteOrNull(shot.apexFt),
     launchAngleDeg: finiteOrNull(shot.launchAngleDeg),
+    launchDirectionDeg: finiteOrNull(shot.launchDirectionDeg),
+    ballSpeedMph: finiteOrNull(shot.ballSpeedMph),
     shotNumber: finiteOrNull(shot.shotNumber),
     shotAt:
       shot.shotAt instanceof Date

@@ -1,5 +1,6 @@
 import { Activity, Flag, Target } from "lucide-react";
 
+import { CompanionBrandLockup } from "@/components/app/companion-brand";
 import { PageShell } from "@/components/premium";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: Gol
     <PageShell>
       <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4 lg:hidden">
         <header className="ios-page-header">
+          <CompanionBrandLockup className="mb-4 justify-start" />
           <p className="text-[13px] font-semibold text-primary">{variantLabel(variant)}</p>
           <h1>{title}</h1>
           <p className="mt-1 text-[15px] leading-5 text-muted-foreground">{subtitle}</p>

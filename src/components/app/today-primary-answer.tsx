@@ -49,8 +49,19 @@ export function TodayPrimaryAnswer({
     : facts;
 
   return (
-    <section className="ios-grouped-list grid gap-2 p-3" data-primary-recommendation>
-      <div className="flex items-start justify-between gap-3">
+    <section
+      className="ios-grouped-list relative isolate grid gap-2 overflow-hidden p-3"
+      data-primary-recommendation
+    >
+      <div
+        className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/generated/lmwt-range-hero.png')] bg-cover bg-[72%_center] opacity-30"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-card via-card/90 to-card/60"
+        aria-hidden
+      />
+      <div className="flex items-start justify-between gap-3 pr-1">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             {state.eyebrow}
@@ -60,7 +71,7 @@ export function TodayPrimaryAnswer({
         <IOSInlineStatus label={state.status} tone={state.tone} />
       </div>
 
-      <p className="text-sm leading-5 text-muted-foreground">{state.reason}</p>
+      <p className="max-w-[92%] text-sm leading-5 text-muted-foreground">{state.reason}</p>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border/70 py-2">
         {displayedFacts.map((fact) => (

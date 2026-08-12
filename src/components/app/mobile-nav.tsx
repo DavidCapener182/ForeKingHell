@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, Menu, MoreHorizontal, Search, Upload, X } from "lucide-react";
 
+import { CompanionBrandLockup } from "@/components/app/companion-brand";
 import {
   mobileMoreGroups,
   mobilePageTitle,
@@ -253,16 +254,24 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
             </SheetContent>
           </Sheet>
 
-          <p
-            className={cn(
-              "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
-              compactTitleVisible ? "opacity-100" : "opacity-0",
-            )}
-            data-mobile-route-label
-            data-compact-title-visible={compactTitleVisible ? "true" : "false"}
-          >
-            {pageTitle}
-          </p>
+          <div className="relative grid min-w-0 place-items-center">
+            <CompanionBrandLockup
+              className={cn(
+                "absolute transition-opacity duration-150 motion-reduce:transition-none",
+                compactTitleVisible ? "pointer-events-none opacity-0" : "opacity-100",
+              )}
+            />
+            <p
+              className={cn(
+                "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
+                compactTitleVisible ? "opacity-100" : "pointer-events-none opacity-0",
+              )}
+              data-mobile-route-label
+              data-compact-title-visible={compactTitleVisible ? "true" : "false"}
+            >
+              {pageTitle}
+            </p>
+          </div>
 
           {backNavigation ? (
             <Button
