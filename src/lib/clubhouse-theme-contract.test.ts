@@ -19,6 +19,10 @@ const desktopWorkbench = readFileSync(
   join(root, "src/components/app/desktop-workbench.tsx"),
   "utf8",
 );
+const operationStepper = readFileSync(
+  join(root, "src/components/app/operation-stepper.tsx"),
+  "utf8",
+);
 const desktopWorkbenchControls = readFileSync(
   join(root, "src/components/app/desktop-workbench-controls.tsx"),
   "utf8",
@@ -169,7 +173,8 @@ describe("Clubhouse Manager theme contract", () => {
   it("exposes semantic tones, current workflow state and live import readiness", () => {
     expect(premium).toContain("data-tone={tone}");
     expect(metricCard).toContain("data-tone={tone}");
-    expect(desktopWorkbench).toContain("data-workflow-status={status}");
+    expect(desktopWorkbench).toContain("<OperationStepper");
+    expect(operationStepper).toContain("data-workflow-status={step.status}");
     expect(importForm).toContain('data-clubhouse-state={canSave ? "live" : "current"}');
     expect(globals).toContain('[data-tone="sky"]');
     expect(globals).toContain('[data-workflow-status="current"]');

@@ -23,6 +23,14 @@ import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { ScorecardProofUploader } from "@/components/scorecard-proof-uploader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -124,19 +132,19 @@ export default async function CourseRecordDetailPage({
                   <input type="hidden" name="recordId" value={data.record.id} />
                   <label className="grid gap-1 text-sm font-medium">
                     Saved round
-                    <select
-                      name="sessionId"
-                      defaultValue={selectedRound.id}
-                      className="h-11 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
-                      required
-                    >
-                      {data.recentSessions.map((session) => (
-                        <option key={session.id} value={session.id}>
-                          {session.metricLabel} · {dateFormatter.format(session.date)} ·{" "}
-                          {session.proofLabel}
-                        </option>
-                      ))}
-                    </select>
+                    <Select name="sessionId" defaultValue={selectedRound.id} required>
+                      <SelectTrigger className="h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.recentSessions.map((session) => (
+                          <SelectItem key={session.id} value={session.id}>
+                            {session.metricLabel} · {dateFormatter.format(session.date)} ·{" "}
+                            {session.proofLabel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                   <div className="rounded-lg bg-[#F5F6F4] p-3 text-sm">
                     <p className="font-semibold">Locked from selected round</p>
@@ -365,19 +373,19 @@ export default async function CourseRecordDetailPage({
                 <input type="hidden" name="recordId" value={data.record.id} />
                 <label className="grid gap-1 text-sm font-medium">
                   Saved round
-                  <select
-                    name="sessionId"
-                    defaultValue={selectedRound.id}
-                    className="h-10 rounded-xl border bg-white px-3 text-sm"
-                    required
-                  >
-                    {data.recentSessions.map((session) => (
-                      <option key={session.id} value={session.id}>
-                        {session.metricLabel} · {dateFormatter.format(session.date)} ·{" "}
-                        {session.proofLabel}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="sessionId" defaultValue={selectedRound.id} required>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.recentSessions.map((session) => (
+                        <SelectItem key={session.id} value={session.id}>
+                          {session.metricLabel} · {dateFormatter.format(session.date)} ·{" "}
+                          {session.proofLabel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 <div className="rounded-lg border bg-[#F5F6F4] p-3 text-sm">
                   <p className="font-semibold">Locked from selected round</p>
@@ -413,11 +421,11 @@ export default async function CourseRecordDetailPage({
               <CourseRecordLeaderboardTable recordId={data.record.id} rows={data.results} />
             </section>
 
-            <details id="recent-attempts" className="premium-card">
-              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            <Collapsible id="recent-attempts" className="premium-card">
+              <CollapsibleTrigger className="w-full cursor-pointer px-4 py-3 text-left text-sm font-semibold">
                 Recent attempts
-              </summary>
-              <div className="grid gap-2 border-t p-4">
+              </CollapsibleTrigger>
+              <CollapsibleContent className="grid gap-2 border-t p-4">
                 {data.attempts.map(({ attempt, profile }) => (
                   <div key={attempt.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
                     <p className="font-medium">
@@ -433,8 +441,8 @@ export default async function CourseRecordDetailPage({
                 {data.attempts.length === 0 ? (
                   <p className="text-sm text-muted-foreground">No attempts yet.</p>
                 ) : null}
-              </div>
-            </details>
+              </CollapsibleContent>
+            </Collapsible>
           </section>
         </section>
       </DesktopWorkbenchLayout>

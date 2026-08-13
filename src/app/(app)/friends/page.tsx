@@ -5,7 +5,6 @@ import {
   Ban,
   Check,
   Copy,
-  QrCode,
   Search,
   Trophy,
   UserMinus,
@@ -23,6 +22,11 @@ import {
   sendFriendRequestAction,
   unblockUserAction,
 } from "@/app/friends/actions";
+import { FriendActionMenu } from "@/app/friends/friend-action-menu";
+import { FriendInviteDialog } from "@/app/friends/friend-invite-dialog";
+import { FriendsTabs, type FriendsTab } from "@/app/friends/friends-tabs";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import {
   DataPair,
   DataPanel,
@@ -59,6 +63,14 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { Input } from "@/components/ui/input";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import {
   Table,
   TableBody,
@@ -123,6 +135,7 @@ type FriendsPageProps = {
     request?: string;
     friend?: string;
     user?: string;
+    tab?: string;
   }>;
 };
 
@@ -131,14 +144,18 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
   const query = params?.q?.trim() ?? "";
   const data = await getFriendsPageData(query);
   const profileUrl = `${getSiteOrigin()}/profile/${data.profile.username}`;
-  const friendGraphRows = buildFriendGraphRows({
-    friends: data.friends,
-    incomingRequests: data.incomingRequests,
-    outgoingRequests: data.outgoingRequests,
-    suggestedProfiles: data.suggestedProfiles,
-    searchResults: query ? data.searchResults : [],
-    blockedUsers: data.blockedUsers,
-  });
+  const activeTab = parseFriendsTab(params?.tab, query);
+  const friendGraphRows = filterFriendGraphRows(
+    buildFriendGraphRows({
+      friends: data.friends,
+      incomingRequests: data.incomingRequests,
+      outgoingRequests: data.outgoingRequests,
+      suggestedProfiles: data.suggestedProfiles,
+      searchResults: query ? data.searchResults : [],
+      blockedUsers: data.blockedUsers,
+    }),
+    activeTab,
+  );
 
   return (
     <PageShell>
@@ -218,11 +235,14 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
                 </div>
               </div>
               <div data-primary-action className="shrink-0">
-                <Button asChild size="sm" variant="outline" className="rounded-lg bg-white">
-                  <Link href="/feed" prefetch={false}>
-                    Open feed
-                  </Link>
-                </Button>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <FriendInviteDialog username={data.profile.username} profileUrl={profileUrl} />
+                  <Button asChild size="sm" variant="outline" className="rounded-lg bg-white">
+                    <Link href="/feed" prefetch={false}>
+                      Open feed
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
             <div className="hidden gap-2 sm:grid sm:grid-cols-4">
@@ -256,7 +276,8 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           </Alert>
         ) : null}
 
-        <FriendGraphTable rows={friendGraphRows} query={query} />
+        <FriendsTabs activeTab={activeTab} />
+        <FriendGraphTable rows={friendGraphRows} query={query} activeTab={activeTab} />
 
         <section className="grid gap-4 lg:grid-cols-3">
           <DataPanel>
@@ -290,37 +311,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           </DataPanel>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside aria-label="Friend invite rail" className="min-w-0">
-            <DataPanel id="friend-invite">
-              <SectionHeader
-                title="Invite"
-                description="Profile link and compact QR invite."
-                action={<QrCode className="size-5 text-emerald-600" />}
-              />
-              <CardContent className="grid gap-3">
-                <div className="rounded-lg border bg-white p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/friends/qr/${data.profile.username}`}
-                    alt={`QR invite for @${data.profile.username}`}
-                    className="mx-auto aspect-square w-full max-w-28 sm:max-w-36"
-                  />
-                </div>
-                <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs">
-                  <p className="font-medium">Invite link</p>
-                  <code className="mt-1 block break-all text-muted-foreground">{profileUrl}</code>
-                </div>
-                <Button asChild variant="outline">
-                  <Link href={profileUrl} prefetch={false}>
-                    <Copy className="size-4" />
-                    Open invite page
-                  </Link>
-                </Button>
-              </CardContent>
-            </DataPanel>
-          </aside>
-
+        <section className="grid gap-4">
           <aside aria-label="Friend discovery rail" className="min-w-0">
             <DataPanel>
               <SectionHeader
@@ -671,27 +662,31 @@ function MobileFriendDetails({ data, profileUrl }: { data: FriendsPageData; prof
                 <div className="flex items-center gap-1">
                   <form action={removeFriendAction}>
                     <input type="hidden" name="friendUserId" value={profile.userId} />
-                    <Button
-                      type="submit"
+                    <ConfirmSubmitButton
                       variant="ghost"
                       size="icon"
                       className="size-11 rounded-full"
                       aria-label={`Remove ${profile.displayName} as a friend`}
+                      confirmTitle="Remove this friend?"
+                      confirmMessage={`${profile.displayName} will be removed from your connected friends.`}
+                      confirmActionLabel="Remove friend"
                     >
                       <UserMinus className="size-4" />
-                    </Button>
+                    </ConfirmSubmitButton>
                   </form>
                   <form action={blockUserAction} data-friend-block-form>
                     <input type="hidden" name="blockedUserId" value={profile.userId} />
-                    <Button
-                      type="submit"
+                    <ConfirmSubmitButton
                       variant="ghost"
                       size="icon"
                       className="size-11 rounded-full text-destructive"
                       aria-label={`Block ${profile.displayName}`}
+                      confirmTitle="Block this golfer?"
+                      confirmMessage={`${profile.displayName} will no longer be able to interact with you.`}
+                      confirmActionLabel="Block golfer"
                     >
                       <Ban className="size-4" />
-                    </Button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
               }
@@ -811,14 +806,22 @@ function MobileFriendDetails({ data, profileUrl }: { data: FriendsPageData; prof
   return <IOSDisclosureGroup label="Friend details" items={items} />;
 }
 
-function FriendGraphTable({ rows, query }: { rows: FriendGraphRow[]; query: string }) {
+function FriendGraphTable({
+  rows,
+  query,
+  activeTab,
+}: {
+  rows: FriendGraphRow[];
+  query: string;
+  activeTab: FriendsTab;
+}) {
   return (
     <section id="friend-graph-table" className="grid gap-3" data-workbench-scope="friend-graph">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-normal">Friend manager</h2>
+          <h2 className="text-xl font-semibold tracking-normal">{friendsTabLabel(activeTab)}</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Requests, friends, suggestions, blocked users and profile search in one responsive view.
+            {friendsTabDescription(activeTab)}
           </p>
         </div>
         <StatusPill tone={rows.length > 0 ? "green" : "slate"}>{rows.length} profiles</StatusPill>
@@ -868,9 +871,18 @@ function FriendGraphTable({ rows, query }: { rows: FriendGraphRow[]; query: stri
             </article>
           ))
         ) : (
-          <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-            No friend graph rows yet. Search for a public username or share your invite link.
-          </p>
+          <AppEmptyState
+            icon={<Users className="size-5" />}
+            title={`No ${friendsTabLabel(activeTab).toLowerCase()} yet`}
+            description="Search public profiles or share your invite link to grow your golf network."
+            primaryAction={
+              <Button asChild size="sm">
+                <Link href="/friends?tab=discover#find-friends" prefetch={false}>
+                  Discover golfers
+                </Link>
+              </Button>
+            }
+          />
         )}
       </NativeListSection>
       <div className="hidden sm:grid sm:gap-3">
@@ -964,8 +976,8 @@ function FriendGraphTable({ rows, query }: { rows: FriendGraphRow[]; query: stri
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                    No friend graph rows yet. Search for a public username or share your invite
-                    link.
+                    No {friendsTabLabel(activeTab).toLowerCase()} yet. Use Discover to find a public
+                    golfer or share your invite link.
                   </TableCell>
                 </TableRow>
               )}
@@ -1013,22 +1025,11 @@ function FriendGraphRowAction({ row }: { row: FriendGraphRow }) {
 
   if (row.status === "friend") {
     return (
-      <div className="flex justify-end gap-2">
-        <form action={removeFriendAction}>
-          <input type="hidden" name="friendUserId" value={row.profile.userId} />
-          <Button type="submit" variant="ghost" size="sm">
-            <UserMinus className="size-4" />
-            Remove
-          </Button>
-        </form>
-        <form action={blockUserAction} data-friend-block-form>
-          <input type="hidden" name="blockedUserId" value={row.profile.userId} />
-          <Button type="submit" variant="ghost" size="sm">
-            <Ban className="size-4" />
-            Block
-          </Button>
-        </form>
-      </div>
+      <FriendActionMenu
+        userId={row.profile.userId}
+        username={row.profile.username}
+        displayName={row.profile.displayName}
+      />
     );
   }
 
@@ -1097,59 +1098,62 @@ function ProfileList({
 }) {
   if (profiles.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">{empty}</p>
+      <AppEmptyState
+        icon={<Users className="size-5" />}
+        title="No golfers here yet"
+        description={empty}
+        primaryAction={
+          <Button asChild size="sm" variant="outline">
+            <Link href="/friends?tab=discover#find-friends" prefetch={false}>
+              Discover golfers
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 
   return (
     <div className="grid gap-2">
       {profiles.map((profile) => (
-        <div
-          key={profile.userId}
-          className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3"
-          data-friend-user-id={profile.userId}
-        >
-          <div className="flex min-w-0 items-center gap-3">
+        <Item key={profile.userId} variant="outline" data-friend-user-id={profile.userId}>
+          <ItemMedia>
             <SocialAvatar
               displayName={profile.displayName}
               username={profile.username}
               avatarUrl={profile.avatarUrl}
               href={`/profile/${profile.username}`}
             />
-            <div className="min-w-0">
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
               <Link
                 href={`/profile/${profile.username}`}
                 prefetch={false}
-                className="truncate text-sm font-semibold hover:underline"
+                className="hover:underline"
               >
                 {profile.displayName}
               </Link>
-              <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+            </ItemTitle>
+            <ItemDescription>
+              @{profile.username} · {profile.homeCourse ?? "Home course not set"}
+            </ItemDescription>
+          </ItemContent>
+          <Badge variant={mode === "friends" ? "secondary" : "outline"}>
+            {mode === "friends" ? "Friend" : "Discover"}
+          </Badge>
+          <ItemActions>
             {mode === "friends" ? (
-              <>
-                <form action={removeFriendAction}>
-                  <input type="hidden" name="friendUserId" value={profile.userId} />
-                  <Button type="submit" variant="ghost" size="sm">
-                    <UserMinus className="size-4" />
-                    Remove
-                  </Button>
-                </form>
-                <form action={blockUserAction} data-friend-block-form>
-                  <input type="hidden" name="blockedUserId" value={profile.userId} />
-                  <Button type="submit" variant="ghost" size="sm">
-                    <Ban className="size-4" />
-                    Block
-                  </Button>
-                </form>
-              </>
+              <FriendActionMenu
+                userId={profile.userId}
+                username={profile.username}
+                displayName={profile.displayName}
+              />
             ) : (
               <SearchResultAction profile={profile} />
             )}
-          </div>
-        </div>
+          </ItemActions>
+        </Item>
       ))}
     </div>
   );
@@ -1182,30 +1186,47 @@ function SearchResultAction({ profile }: { profile: SocialProfileSummary }) {
 function BlockedList({ profiles }: { profiles: SocialProfileSummary[] }) {
   if (profiles.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        No blocked users.
-      </p>
+      <AppEmptyState
+        icon={<Ban className="size-5" />}
+        title="No blocked users"
+        description="People you block will appear here so you can review or restore access."
+        primaryAction={
+          <Button asChild size="sm" variant="outline">
+            <Link href="/friends?tab=friends" prefetch={false}>
+              Back to friends
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 
   return (
     <div className="grid gap-2">
       {profiles.map((profile) => (
-        <div
-          key={profile.userId}
-          className="flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm"
-        >
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{profile.displayName}</p>
-            <p className="truncate text-xs text-muted-foreground">@{profile.username}</p>
-          </div>
-          <form action={unblockUserAction}>
-            <input type="hidden" name="blockedUserId" value={profile.userId} />
-            <Button type="submit" variant="outline" size="sm">
-              Unblock
-            </Button>
-          </form>
-        </div>
+        <Item key={profile.userId} variant="outline">
+          <ItemMedia>
+            <SocialAvatar
+              displayName={profile.displayName}
+              username={profile.username}
+              avatarUrl={profile.avatarUrl}
+              href={`/profile/${profile.username}`}
+            />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{profile.displayName}</ItemTitle>
+            <ItemDescription>@{profile.username}</ItemDescription>
+          </ItemContent>
+          <Badge variant="destructive">Blocked</Badge>
+          <ItemActions>
+            <form action={unblockUserAction}>
+              <input type="hidden" name="blockedUserId" value={profile.userId} />
+              <Button type="submit" variant="outline" size="sm">
+                Unblock
+              </Button>
+            </form>
+          </ItemActions>
+        </Item>
       ))}
     </div>
   );
@@ -1220,64 +1241,74 @@ function RequestList({
 }) {
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        No pending requests.
-      </p>
+      <AppEmptyState
+        icon={<UserPlus className="size-5" />}
+        title="No pending requests"
+        description="New incoming or sent friend requests will appear here."
+        primaryAction={
+          <Button asChild size="sm" variant="outline">
+            <Link href="/friends?tab=discover#find-friends" prefetch={false}>
+              Find golfers
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 
   return (
     <div className="grid gap-2">
       {rows.map((row) => (
-        <div
-          key={row.request.id}
-          className="grid gap-3 rounded-lg border bg-white px-3 py-3 shadow-sm"
-        >
-          <div className="flex min-w-0 items-center gap-3">
+        <Item key={row.request.id} variant="outline" className="items-start">
+          <ItemMedia>
             <SocialAvatar
               displayName={row.profile.displayName}
               username={row.profile.username}
               avatarUrl={row.profile.avatarUrl}
               href={`/profile/${row.profile.username}`}
             />
-            <div className="min-w-0">
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>
               <Link
                 href={`/profile/${row.profile.username}`}
                 prefetch={false}
-                className="truncate text-sm font-semibold hover:underline"
+                className="hover:underline"
               >
                 {row.profile.displayName}
               </Link>
-              <p className="truncate text-xs text-muted-foreground">@{row.profile.username}</p>
-            </div>
-          </div>
-          {direction === "incoming" ? (
-            <div className="flex gap-2">
-              <form action={acceptFriendRequestAction}>
-                <input type="hidden" name="requestId" value={row.request.id} />
-                <Button type="submit" size="sm">
-                  <Check className="size-4" />
-                  Accept
-                </Button>
-              </form>
-              <form action={declineFriendRequestAction}>
+            </ItemTitle>
+            <ItemDescription>@{row.profile.username}</ItemDescription>
+          </ItemContent>
+          <ItemActions className="self-center">
+            {direction === "incoming" ? (
+              <div className="flex gap-2">
+                <form action={acceptFriendRequestAction}>
+                  <input type="hidden" name="requestId" value={row.request.id} />
+                  <Button type="submit" size="sm">
+                    <Check className="size-4" />
+                    Accept
+                  </Button>
+                </form>
+                <form action={declineFriendRequestAction}>
+                  <input type="hidden" name="requestId" value={row.request.id} />
+                  <Button type="submit" variant="outline" size="sm">
+                    <X className="size-4" />
+                    Decline
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              <form action={cancelFriendRequestAction}>
                 <input type="hidden" name="requestId" value={row.request.id} />
                 <Button type="submit" variant="outline" size="sm">
                   <X className="size-4" />
-                  Decline
+                  Cancel
                 </Button>
               </form>
-            </div>
-          ) : (
-            <form action={cancelFriendRequestAction}>
-              <input type="hidden" name="requestId" value={row.request.id} />
-              <Button type="submit" variant="outline" size="sm">
-                <X className="size-4" />
-                Cancel
-              </Button>
-            </form>
-          )}
-        </div>
+            )}
+          </ItemActions>
+        </Item>
       ))}
     </div>
   );
@@ -1319,6 +1350,49 @@ function buildFriendGraphRows(input: {
   input.suggestedProfiles.forEach((profile) => pushRow(profile, "suggested"));
 
   return rows;
+}
+
+function parseFriendsTab(value: string | undefined, query: string): FriendsTab {
+  if (query) {
+    return "discover";
+  }
+
+  return value === "incoming" || value === "sent" || value === "discover" || value === "blocked"
+    ? value
+    : "friends";
+}
+
+function filterFriendGraphRows(rows: FriendGraphRow[], activeTab: FriendsTab) {
+  if (activeTab === "friends") {
+    return rows.filter((row) => row.status === "friend");
+  }
+  if (activeTab === "incoming") {
+    return rows.filter((row) => row.status === "incoming");
+  }
+  if (activeTab === "sent") {
+    return rows.filter((row) => row.status === "outgoing");
+  }
+  if (activeTab === "blocked") {
+    return rows.filter((row) => row.status === "blocked");
+  }
+  return rows.filter((row) => row.status === "suggested" || row.status === "search");
+}
+
+function friendsTabLabel(tab: FriendsTab) {
+  if (tab === "incoming") return "Incoming requests";
+  if (tab === "sent") return "Sent requests";
+  if (tab === "discover") return "Discover golfers";
+  if (tab === "blocked") return "Blocked users";
+  return "Friends";
+}
+
+function friendsTabDescription(tab: FriendsTab) {
+  if (tab === "incoming") return "Approve or decline people who have asked to connect.";
+  if (tab === "sent") return "Review friend requests that are still waiting for a response.";
+  if (tab === "discover") return "Search public profiles and build your golf network.";
+  if (tab === "blocked")
+    return "Review people hidden from friend-scoped profile and feed activity.";
+  return "Connected golfers who power friend-scoped feeds, records and leaderboards.";
 }
 
 function friendGraphStatusLabel(status: FriendGraphStatus) {

@@ -88,6 +88,13 @@
   display: contents !important;
 }
 
+/* Preserve Course Twin's tablet-to-desktop hand-off inside Full Site mode. */
+@media (min-width: 80rem) {
+  [data-app-surface="workbench"] [data-course-twin-stage] [data-course-twin-tablet-controls] {
+    display: none !important;
+  }
+}
+
 /* Clubhouse Manager is deliberately scoped outside the shared component layer so the established
    light and dark treatments remain in control outside this explicit fourth theme. */
 html[data-theme="clubhouse"] :where(.premium-card, [data-slot="card"], .desktop-data-panel),
@@ -174,15 +181,26 @@ html[data-theme="clubhouse"] :where(.font-score, .tabular-nums) {
   background: conic-gradient(var(--primary) 70deg, var(--muted) 0deg);
 }
 
-@keyframes companion-launch-draw {
+@keyframes companion-launch-reveal {
   0% {
-    stroke-dashoffset: 620;
-    opacity: 0.18;
+    transform: scaleX(0.02);
   }
-  55%,
   100% {
-    stroke-dashoffset: 0;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes companion-launch-flight-fade {
+  0%,
+  6% {
+    opacity: 0;
+  }
+  14%,
+  82% {
     opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }
 
@@ -195,21 +213,35 @@ html[data-theme="clubhouse"] :where(.font-score, .tabular-nums) {
   }
 }
 
-.companion-launch-trace {
-  stroke-dasharray: 620;
-  stroke-dashoffset: 620;
-  animation: companion-launch-draw 1.8s ease-in-out infinite;
+.companion-launch-trace-reveal {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: companion-launch-reveal 1.8s linear infinite;
+  will-change: transform;
+}
+
+.companion-launch-trace-flight {
+  animation: companion-launch-flight-fade 1.8s linear infinite;
+}
+
+.companion-launch-trace-glow {
+  opacity: 0.72;
 }
 
 .companion-launch-progress,
 .companion-route-progress {
-  animation: companion-loading-slide 1.15s ease-in-out infinite;
+  animation: companion-loading-slide 1.15s linear infinite;
   will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .companion-launch-trace {
-    stroke-dashoffset: 0;
+  .companion-launch-trace-reveal {
+    transform: scaleX(1);
+    animation: none;
+  }
+
+  .companion-launch-trace-flight {
+    opacity: 0.82;
     animation: none;
   }
 

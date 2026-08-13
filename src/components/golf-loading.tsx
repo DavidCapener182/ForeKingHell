@@ -1,8 +1,6 @@
-import { Activity, Flag, Target } from "lucide-react";
-
 import { CompanionBrandLockup } from "@/components/app/companion-brand";
+import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
 import { PageShell } from "@/components/premium";
-import { cn } from "@/lib/utils";
 
 type GolfLoadingProps = {
   title: string;
@@ -49,107 +47,36 @@ type GolfLoadingProps = {
 };
 
 export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: GolfLoadingProps) {
-  const metricLabels = loadingMetricLabels(variant);
-
   return (
     <PageShell>
-      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4 lg:hidden">
-        <header className="ios-page-header">
+      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4 lg:gap-5">
+        <header className="ios-page-header lg:hidden">
           <CompanionBrandLockup className="mb-4 justify-start" />
           <p className="text-[13px] font-semibold text-primary">{variantLabel(variant)}</p>
           <h1>{title}</h1>
           <p className="mt-1 text-[15px] leading-5 text-muted-foreground">{subtitle}</p>
         </header>
-        <section className="ios-grouped-list overflow-hidden" aria-label="Loading summary">
-          <div className="ios-grouped-row px-4 py-4">
-            <div className="h-3 w-24 animate-pulse rounded-full bg-border motion-reduce:animate-none" />
-            <div className="mt-3 h-8 w-32 animate-pulse rounded-md bg-primary/12 motion-reduce:animate-none" />
-          </div>
-          {metricLabels.slice(0, 3).map((label, index) => (
-            <div
-              key={label}
-              className="ios-grouped-row grid min-h-14 grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3 px-4 py-2.5"
-            >
-              <div>
-                <p className="text-[13px] text-muted-foreground">{label}</p>
-                <div
-                  className={cn(
-                    "mt-1.5 h-3 animate-pulse rounded-full bg-border motion-reduce:animate-none",
-                    index === 1 ? "w-28" : "w-20",
-                  )}
-                />
-              </div>
-              <div className="h-6 animate-pulse rounded-md bg-secondary motion-reduce:animate-none" />
-            </div>
-          ))}
-        </section>
-        <p className="px-1 text-[13px] text-muted-foreground">Preparing your measured golf data…</p>
-      </div>
 
-      <div className="hidden gap-5 lg:grid">
-        <section className="premium-card overflow-hidden rounded-lg border border-border bg-card">
-          <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="min-w-0">
-              <div className="flex flex-wrap gap-2">
-                <LoadingPill label="Loading read" />
-                <LoadingPill label={variantLabel(variant)} />
-              </div>
-              <div className="mt-8 h-14 max-w-2xl rounded-lg bg-muted" />
-              <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
-              <div className="mt-7 grid gap-3 sm:grid-cols-4">
-                {metricLabels.map((label) => (
-                  <div key={label} className="rounded-lg border border-border bg-muted/45 p-3">
-                    <div className="h-3 w-20 rounded-full bg-border" />
-                    <div className="mt-3 h-7 w-16 rounded-md bg-primary/15" />
-                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                      {label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border bg-muted/45 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{title}</p>
-                  <div className="mt-2 h-3 w-36 rounded-full bg-border" />
-                </div>
-                <Target className="size-5 text-primary" />
-              </div>
-              <div className="mt-7 grid place-items-center">
-                <div className="golf-loading-progress grid size-36 place-items-center rounded-full p-2">
-                  <div className="grid size-full place-items-center rounded-full bg-card">
-                    <Activity className="size-8 animate-pulse text-primary" />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6 grid gap-2">
-                {[0, 1, 2].map((item) => (
-                  <div key={item} className="h-10 rounded-lg bg-card/80 ring-1 ring-border" />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <div className="grid gap-4 lg:hidden">
+          <AppLoadingSkeleton variant="answer" />
+          <AppLoadingSkeleton variant="list" rows={3} />
+        </div>
 
-        <section className="grid gap-4 lg:grid-cols-4">
-          {[Flag, Target, Activity, Flag].map((Icon, index) => (
-            <div key={index} className="premium-card rounded-lg border border-border bg-card p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="h-3 w-24 rounded-full bg-border" />
-                  <div className="mt-5 h-9 w-20 rounded-md bg-muted" />
-                </div>
-                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="size-5" />
-                </span>
-              </div>
-              <div
-                className={cn("mt-5 h-2 rounded-full bg-muted", index % 2 ? "w-3/4" : "w-full")}
-              />
+        <div className="hidden gap-5 lg:grid">
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <LoadingPill label="Loading read" />
+              <LoadingPill label={variantLabel(variant)} />
             </div>
-          ))}
-        </section>
+            <h1 className="mt-3 text-2xl font-semibold">{title}</h1>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{subtitle}</p>
+          </div>
+          <AppLoadingSkeleton variant="answer" />
+          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.7fr)]">
+            <AppLoadingSkeleton variant="table" rows={5} />
+            <AppLoadingSkeleton variant="detail" rows={4} />
+          </div>
+        </div>
       </div>
     </PageShell>
   );
@@ -244,46 +171,5 @@ function variantLabel(variant: NonNullable<GolfLoadingProps["variant"]>) {
       return "Safety console";
     default:
       return "Command centre";
-  }
-}
-
-function loadingMetricLabels(variant: NonNullable<GolfLoadingProps["variant"]>) {
-  switch (variant) {
-    case "billing":
-    case "partners":
-    case "providers":
-    case "settings":
-      return ["Plan", "Access", "Status", "Actions"];
-    case "feed":
-    case "friends":
-    case "groups":
-    case "profile":
-    case "socialSafety":
-      return ["Privacy", "Activity", "Network", "Safety"];
-    case "leaderboard":
-    case "challenges":
-    case "tournaments":
-    case "achievements":
-      return ["Rank", "Proof", "Progress", "Action"];
-    case "import":
-    case "rapsodo":
-      return ["Source", "Mapping", "Quality", "History"];
-    case "practice":
-    case "trainingLoad":
-      return ["Load", "Focus", "Blocks", "Recovery"];
-    case "analyse":
-      return ["Conclusion", "Evidence", "Trend", "Action"];
-    case "compare":
-      return ["Verdict", "Difference", "Confidence", "Evidence"];
-    case "sessions":
-      return ["Recent", "Type", "Result", "Status"];
-    case "equipment":
-      return ["Bag", "Change", "Impact", "Notes"];
-    case "handicap":
-      return ["Index", "Rounds", "Proof", "Trend"];
-    case "simulatorLab":
-      return ["Playing level", "Main leak", "Readiness", "Next action"];
-    default:
-      return ["Trust", "Round ready", "Carry", "Pattern"];
   }
 }

@@ -11,13 +11,17 @@ const panelSource = readFileSync(
 describe("data chat desktop workbench", () => {
   it("uses the data chat artwork variant in the desktop header", () => {
     expect(pageSource).toContain('variant="dataChat"');
-    expect(pageSource).toContain("visual={<PageArtwork");
+    expect(pageSource).toContain('<PageArtwork variant="dataChat"');
     expect(pageSource).toContain("min-h-36");
   });
 
-  it("keeps the contextual AI data rail on the desktop route", () => {
+  it("keeps the contextual AI rail inside the shared resizable workbench", () => {
+    expect(pageSource).toContain("AiDesktopWorkbench");
+    expect(pageSource).toContain('defaultTab="ask"');
     expect(pageSource).toContain("DesktopInsightRail");
-    expect(pageSource).toContain('title="AI data rail"');
+    expect(pageSource).toContain('title="AI data context"');
+    expect(pageSource).toContain("ConnectedMetricBar");
+    expect(pageSource).toContain("<Alert");
     expect(pageSource).toContain('scope="data-chat"');
     expect(pageSource).toContain("savedAnswerWorkbench");
     expect(pageSource).toContain("normalizePrompt");

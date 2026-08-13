@@ -38,9 +38,10 @@ describe("bag desktop workbench source", () => {
 
   it("keeps the desktop gapping table open, exportable and reachable as the main table", () => {
     const gappingBlock =
-      source.match(/<details[\s\S]*?data-bag-gapping-table[\s\S]*?<\/details>/)?.[0] ?? "";
+      source.match(/function CarryGappingTable[\s\S]*?function GappingRecommendations/)?.[0] ?? "";
 
-    expect(gappingBlock).toContain("open");
+    expect(source).toContain('<TabsContent value="distances"');
+    expect(gappingBlock).not.toContain("<details");
     expect(gappingBlock).toContain("DesktopTableWorkbenchControls");
     expect(gappingBlock).toContain('data-workbench-scope="bag"');
     expect(gappingBlock).toContain('data-workbench-export-table="bag-gapping"');

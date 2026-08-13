@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { AlertTriangle, Bot, Cable, CreditCard, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 import {
-  AdminMetric,
   AdminMobileShell,
   AdminNav,
   AdminPageHeader,
   AdminSection,
 } from "@/app/admin/admin-components";
+import { AdminRetryButton } from "@/app/admin/admin-retry-button";
+import { StatusTimeline } from "@/components/app/status-timeline";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -24,6 +25,11 @@ import {
 } from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
+import { Progress } from "@/components/ui/progress";
 import { getAdminOperationsSnapshot } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -59,8 +65,18 @@ export default async function AdminSystemChecksPage() {
   const operations = await getAdminOperationsSnapshot();
   const providerStatus =
     operations.providerImportFailures > 0 ? "Needs review" : "No failures flagged";
-  const billingStatus = operations.billingFailures > 0 ? "Needs review" : "No failures flagged";
   const systemCheckRows = buildSystemCheckRows(operations);
+  const attentionRows = systemCheckRows.filter((row) => row.tone === "amber");
+  const importHealth =
+    operations.importJobs > 0
+      ? Math.max(
+          0,
+          Math.round(
+            ((operations.importJobs - operations.providerImportFailures) / operations.importJobs) *
+              100,
+          ),
+        )
+      : 0;
 
   return (
     <PageShell>
@@ -78,38 +94,90 @@ export default async function AdminSystemChecksPage() {
           title="Provider status and platform checks"
           description="Review provider imports, billing failures and operating signals before opening support or moderation work."
           action={
-            <StatusPill tone={operations.providerImportFailures > 0 ? "amber" : "green"}>
-              {providerStatus}
-            </StatusPill>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill tone={operations.providerImportFailures > 0 ? "amber" : "green"}>
+                {providerStatus}
+              </StatusPill>
+              <AdminRetryButton />
+            </div>
           }
         />
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <AdminMetric
-            icon={Cable}
-            label="Provider accounts"
-            value={operations.providerAccounts}
-            detail={`${operations.importJobs} import jobs tracked`}
-          />
-          <AdminMetric
-            icon={AlertTriangle}
-            label="Provider failures"
-            value={operations.providerImportFailures}
-            detail={providerStatus}
-          />
-          <AdminMetric
-            icon={CreditCard}
-            label="Billing failures"
-            value={operations.billingFailures}
-            detail={billingStatus}
-          />
-          <AdminMetric
-            icon={Bot}
-            label="AI summaries"
-            value={operations.aiSummaries}
-            detail={`${operations.groups} groups and ${operations.friendships} friendships`}
-          />
+        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Overall system status</CardTitle>
+              <Badge
+                variant={attentionRows.length > 0 ? "destructive" : "secondary"}
+                className="w-fit"
+              >
+                {attentionRows.length > 0
+                  ? `${attentionRows.length} need review`
+                  : "No failures flagged"}
+              </Badge>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <div>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span>Provider import health</span>
+                  <span className="font-medium">{importHealth}%</span>
+                </div>
+                <Progress value={importHealth} className="mt-2" />
+              </div>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Based on {operations.importJobs} tracked import jobs and{" "}
+                {operations.providerImportFailures} flagged failures.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Service health</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {systemCheckRows.slice(0, 4).map((row) => (
+                <Item key={row.id} variant="outline" size="sm">
+                  <ItemContent>
+                    <ItemTitle>{row.label}</ItemTitle>
+                    <ItemDescription>{row.detail}</ItemDescription>
+                  </ItemContent>
+                  <Badge variant={row.tone === "amber" ? "destructive" : "secondary"}>
+                    {row.status}
+                  </Badge>
+                </Item>
+              ))}
+            </CardContent>
+          </Card>
         </section>
+
+        <Alert>
+          <ShieldCheck className="size-4" />
+          <AlertTitle>Live verification configuration is separate</AlertTitle>
+          <AlertDescription>
+            This operations snapshot does not query CI, RLS, or automated test state. Use current
+            deployment evidence before changing access controls; missing verification is not treated
+            as an outage.
+          </AlertDescription>
+        </Alert>
+
+        <AdminSection
+          title="Incident history"
+          description="Current checks that require operator attention."
+        >
+          <StatusTimeline
+            label="System incident history"
+            items={attentionRows.map((row) => ({
+              id: row.id,
+              title: row.label,
+              description: row.impact,
+              status: row.status,
+              kind: "warning",
+              href: row.href,
+            }))}
+            empty={<p className="text-sm text-muted-foreground">No current incident rows.</p>}
+          />
+        </AdminSection>
 
         <AdminSection
           title="Operational check register"
@@ -381,7 +449,7 @@ function buildSystemCheckRows(
     },
     {
       id: "provider-failures",
-      label: "Failed provider imports",
+      label: "Provider failures",
       detail: "Provider imports that need operator review.",
       area: "Provider",
       status: operations.providerImportFailures > 0 ? "Needs review" : "Clear",

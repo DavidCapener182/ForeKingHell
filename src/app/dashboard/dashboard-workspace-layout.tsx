@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 export type DashboardWorkspacePanelId =
@@ -211,36 +212,41 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
 
   return (
     <DashboardWorkspaceModeContext.Provider value={settings.mode}>
-      <details
+      <Collapsible
         className="premium-card group rounded-lg border border-border bg-card/82 shadow-sm"
         data-dashboard-layout-controls
       >
-        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <LayoutDashboard className="size-4" aria-hidden />
-            </span>
-            <span className="min-w-0">
-              <span id="dashboard-layout-controls-title" className="block text-sm font-semibold">
-                Dashboard layout
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <LayoutDashboard className="size-4" aria-hidden />
               </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {visiblePanelCount} visible panels
-                {hydrated && customHiddenCount > 0 ? ` · ${customHiddenCount} hidden` : ""}
-                {modeHiddenCount > 0 ? ` · ${modeHiddenCount} folded into executive mode` : ""}
+              <span className="min-w-0">
+                <span id="dashboard-layout-controls-title" className="block text-sm font-semibold">
+                  Dashboard layout
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {visiblePanelCount} visible panels
+                  {hydrated && customHiddenCount > 0 ? ` · ${customHiddenCount} hidden` : ""}
+                  {modeHiddenCount > 0 ? ` · ${modeHiddenCount} folded into executive mode` : ""}
+                </span>
               </span>
             </span>
-          </span>
-          <span className="flex shrink-0 items-center gap-2">
-            <Badge variant="outline" className="capitalize">
-              {settings.mode.replace("-", " ")}
-            </Badge>
-            <span className="text-xs font-semibold text-muted-foreground">Customise</span>
-            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          </span>
-        </summary>
+            <span className="flex shrink-0 items-center gap-2">
+              <Badge variant="outline" className="capitalize">
+                {settings.mode.replace("-", " ")}
+              </Badge>
+              <span className="text-xs font-semibold text-muted-foreground">Customise</span>
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </span>
+          </button>
+        </CollapsibleTrigger>
 
-        <div className="grid gap-3 border-t border-border p-3">
+        <CollapsibleContent className="grid gap-3 border-t border-border p-3">
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
             <div className="min-w-0">
               <p className="text-sm font-semibold">Workspace mode</p>
@@ -364,8 +370,8 @@ export function DashboardWorkspace({ children, panels }: DashboardWorkspaceProps
           <span className="sr-only" aria-live="polite" aria-atomic="true">
             {layoutStatusMessage}
           </span>
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div
         className={cn(

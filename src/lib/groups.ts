@@ -115,6 +115,7 @@ export type GroupDetailData = {
   };
   canPost: boolean;
   canAdmin: boolean;
+  isOwner: boolean;
 };
 
 export type GroupInvitePreview = {
@@ -266,6 +267,7 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     rivalry,
     canPost: group.ownerUserId === userId || Boolean(viewerMembership),
     canAdmin,
+    isOwner: group.ownerUserId === userId,
   };
 }
 
@@ -370,6 +372,49 @@ export async function joinGroupByInviteCode(inviteCode: string) {
 
   await joinGroup(group.id, code);
   return group.slug;
+}
+
+export async function leaveGroup(groupId: string) {
+  const userId = await requireCurrentUserId();
+  const [group] = await getDb().select().from(groups).where(eq(groups.id, groupId)).limit(1);
+
+  if (!group) {
+    throw new Error("Group not found.");
+  }
+
+  if (group.ownerUserId === userId) {
+    throw new Error("The group owner must delete the group or transfer ownership before leaving.");
+  }
+
+  const [membership] = await getDb()
+    .update(groupMemberships)
+    .set({ status: "left", updatedAt: new Date() })
+    .where(and(eq(groupMemberships.groupId, groupId), eq(groupMemberships.userId, userId)))
+    .returning({ id: groupMemberships.id });
+
+  if (!membership) {
+    throw new Error("You are not an active member of this group.");
+  }
+
+  revalidateGroups(group.slug);
+}
+
+export async function deleteGroup(groupId: string) {
+  const userId = await requireCurrentUserId();
+  const [group] = await getDb().select().from(groups).where(eq(groups.id, groupId)).limit(1);
+
+  if (!group) {
+    throw new Error("Group not found.");
+  }
+
+  if (group.ownerUserId !== userId) {
+    throw new Error("Only the group owner can delete this group.");
+  }
+
+  await getDb()
+    .delete(groups)
+    .where(and(eq(groups.id, groupId), eq(groups.ownerUserId, userId)));
+  revalidateGroups(group.slug);
 }
 
 export async function createGroupPost(groupId: string, title: string | null, body: string) {

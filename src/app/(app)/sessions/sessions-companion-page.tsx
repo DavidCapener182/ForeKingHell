@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 
 import { SessionsCompanionList } from "@/app/sessions/sessions-companion-list";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
@@ -18,25 +19,22 @@ export default async function SessionsCompanionPage() {
         {sessions.length > 0 ? (
           <SessionsCompanionList sessions={sessions} accountId={userId} />
         ) : (
-          <section className="ios-grouped-list grid place-items-center gap-3 p-8 text-center">
-            <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary">
-              <CalendarDays className="size-6" aria-hidden />
-            </span>
-            <div>
-              <h1 className="text-lg font-semibold">No sessions yet</h1>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Import measured data or add a round to create your review history.
-              </p>
-            </div>
-            <div className="grid w-full grid-cols-2 gap-2">
+          <AppEmptyState
+            icon={<CalendarDays className="size-6" aria-hidden />}
+            title="No sessions yet"
+            description="Import measured data or add a round to create your review history."
+            primaryAction={
               <Button asChild className="min-h-11 rounded-xl">
                 <Link href="/import">Import data</Link>
               </Button>
+            }
+            secondaryAction={
               <Button asChild variant="outline" className="min-h-11 rounded-xl">
                 <Link href="/rounds/new">Add round</Link>
               </Button>
-            </div>
-          </section>
+            }
+            className="ios-grouped-list border-0"
+          />
         )}
       </MobileAppShell>
     </PageShell>

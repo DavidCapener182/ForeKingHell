@@ -20,6 +20,7 @@ import {
 } from "@/components/app/desktop-workbench";
 import { DataTableFrame } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -622,8 +623,8 @@ function ShotHistory({
   const worstCarryYd = minMetric(carryValues);
 
   return (
-    <details id="club-shot-history" className="group premium-card scroll-mt-28 overflow-hidden">
-      <summary className="grid cursor-pointer list-none gap-3 px-4 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
+    <Collapsible id="club-shot-history" className="group premium-card scroll-mt-28 overflow-hidden">
+      <CollapsibleTrigger className="grid w-full cursor-pointer gap-3 px-4 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <span className="min-w-0">
           <span className="block text-xl font-semibold tracking-normal">
             Recent shots ({allShots.length})
@@ -635,30 +636,25 @@ function ShotHistory({
         </span>
         <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700">
           Expand
-          <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+          <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
         </span>
-      </summary>
-      <div className="space-y-3 border-t border-slate-200 bg-slate-50/45 p-3">
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-3 border-t border-slate-200 bg-slate-50/45 p-3">
         {groups.map((group) => {
           const isOpen = activeOpenDateKeys.includes(group.dateKey);
           const selectedInGroup = group.shots.some((shot) => shot.id === selectedShotId);
 
           return (
-            <details
+            <Collapsible
               key={group.dateKey}
               open={isOpen}
+              onOpenChange={(open) => onToggleGroup(group.dateKey, open)}
               className={cn(
                 "group/date overflow-hidden rounded-lg border bg-white/88 shadow-sm ring-1 ring-slate-200/80",
                 selectedInGroup && "border-emerald-300 ring-emerald-200",
               )}
             >
-              <summary
-                className="grid cursor-pointer list-none grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden"
-                onClick={(event) => {
-                  event.preventDefault();
-                  onToggleGroup(group.dateKey, !isOpen);
-                }}
-              >
+              <CollapsibleTrigger className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50">
                 <span className="grid size-9 place-items-center rounded-full border bg-white text-muted-foreground">
                   <CalendarDays className="size-4" />
                 </span>
@@ -671,9 +667,9 @@ function ShotHistory({
                     {formatMetric(group.bestCarryYd)} yd
                   </span>
                 </span>
-                <ChevronDown className="size-4 text-muted-foreground transition-transform group-open/date:rotate-180" />
-              </summary>
-              <div className="space-y-2 border-t bg-slate-50/70 p-2 sm:p-3">
+                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]/date:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 border-t bg-slate-50/70 p-2 sm:p-3">
                 {group.shots.map((shot) => (
                   <button
                     key={shot.id}
@@ -703,12 +699,12 @@ function ShotHistory({
                     </span>
                   </button>
                 ))}
-              </div>
-            </details>
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
-      </div>
-    </details>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

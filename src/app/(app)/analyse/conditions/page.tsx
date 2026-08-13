@@ -17,6 +17,13 @@ import { MobileFilterSheet, PageHeader, PageShell, StatusPill } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -63,17 +70,18 @@ export default async function ConditionsAnalysisPage({
             <form action="/analyse/conditions" className="flex flex-wrap items-end gap-2">
               <label className="grid gap-1 text-sm font-semibold">
                 Club
-                <select
-                  name="clubId"
-                  defaultValue={data.selectedClub?.id ?? ""}
-                  className="min-h-11 min-w-52 rounded-xl border bg-background px-3"
-                >
-                  {data.clubOptions.map((club) => (
-                    <option key={club.id} value={club.id}>
-                      {club.label} · {club.shotCount} shots
-                    </option>
-                  ))}
-                </select>
+                <Select name="clubId" defaultValue={data.selectedClub?.id}>
+                  <SelectTrigger className="min-h-11 min-w-52">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.clubOptions.map((club) => (
+                      <SelectItem key={club.id} value={club.id}>
+                        {club.label} · {club.shotCount} shots
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
               <Button type="submit" variant="outline" className="min-h-11">
                 Compare
@@ -288,17 +296,18 @@ function MobileConditionsAnalysis({
           <form action="/analyse/conditions" className="grid gap-4 pb-2">
             <label className="grid gap-1 text-sm font-semibold">
               Club
-              <select
-                name="clubId"
-                defaultValue={data.selectedClub.id}
-                className="min-h-11 w-full rounded-xl border bg-background px-3"
-              >
-                {data.clubOptions.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.label} · {club.shotCount} shots
-                  </option>
-                ))}
-              </select>
+              <Select name="clubId" defaultValue={data.selectedClub.id}>
+                <SelectTrigger className="min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.clubOptions.map((club) => (
+                    <SelectItem key={club.id} value={club.id}>
+                      {club.label} · {club.shotCount} shots
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <Button type="submit" className="min-h-11 rounded-xl">
               Compare this club

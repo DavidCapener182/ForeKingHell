@@ -18,6 +18,7 @@ import {
 import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { DateFilterPopover } from "@/components/app/date-filter-popover";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
@@ -38,8 +39,26 @@ import { SavedShotViewsPanel } from "@/components/features/feature-panels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   ActiveFilterChips,
   CompactReadoutGrid,
@@ -263,26 +282,69 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
       categories={categories}
     />
   );
+  const mobileOverview = (
+    <ShotsMobileOverview
+      stats={stats}
+      savedShots={savedShots}
+      dispersionShots={dispersionShots}
+      selectedShotId={selectedShotId}
+      selectedShot={selectedMapShotDetail}
+      totalFilteredShots={totalFilteredShots}
+      totalPages={totalPages}
+      filters={filters}
+      activeFilterChips={activeFilterChips}
+      currentViewLabel={currentViewLabel}
+      clubsForFilter={clubsForFilter}
+      sessionSummaries={sessionSummaries}
+      rowTypes={rowTypes}
+      featureData={featureData}
+      filterForm={filterForm}
+    />
+  );
+
+  if (stats.shotCount === 0) {
+    return (
+      <PageShell>
+        {mobileOverview}
+        <div className="hidden gap-5 lg:grid" data-shots-desktop-workbench>
+          <div className="flex items-center justify-between gap-4">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/dashboard">
+                <ArrowLeft className="size-4" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/import">
+                <Upload className="size-4" />
+                Import CSV
+              </Link>
+            </Button>
+          </div>
+          <AppEmptyState
+            className="premium-card min-h-[30rem]"
+            icon={<Database className="size-6" aria-hidden />}
+            title="Import your first measured shots"
+            description="Shot maps, filters and evidence tables appear after a launch-monitor or CSV session is saved."
+            primaryAction={
+              <Button asChild>
+                <Link href="/import">Import shot data</Link>
+              </Button>
+            }
+            secondaryAction={
+              <Button asChild variant="outline">
+                <Link href="/providers">Connect Rapsodo</Link>
+              </Button>
+            }
+          />
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
-      <ShotsMobileOverview
-        stats={stats}
-        savedShots={savedShots}
-        dispersionShots={dispersionShots}
-        selectedShotId={selectedShotId}
-        selectedShot={selectedMapShotDetail}
-        totalFilteredShots={totalFilteredShots}
-        totalPages={totalPages}
-        filters={filters}
-        activeFilterChips={activeFilterChips}
-        currentViewLabel={currentViewLabel}
-        clubsForFilter={clubsForFilter}
-        sessionSummaries={sessionSummaries}
-        rowTypes={rowTypes}
-        featureData={featureData}
-        filterForm={filterForm}
-      />
+      {mobileOverview}
 
       <div className="hidden lg:contents" data-shots-desktop-workbench>
         <div className="hidden items-center justify-between gap-4 sm:flex">
@@ -385,19 +447,17 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
         <MobileSectionChips
           items={[
             { label: "Import", href: "/import" },
-            { label: "Dispersion", href: "#dispersion" },
+            { label: "Dispersion", href: "#dispersion-desktop" },
             { label: "Filters", href: "#filters" },
             { label: "Sessions", href: "#sessions" },
             { label: "Shots", href: "#shots" },
           ]}
         />
 
-        <MobileShotDispersionMap
+        <DesktopShotDispersionMap
           shots={dispersionShots}
-          filters={filters}
-          clubsForFilter={clubsForFilter}
-          selectedShotId={selectedShotId}
-          selectedShot={selectedMapShotDetail}
+          currentViewLabel={mapScopeLabel}
+          initialClub={filters.club}
         />
 
         <div id="filters" className="grid gap-3 scroll-mt-28">
@@ -467,11 +527,17 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               )}
             </MobileDataList>
             {rowTypes.length > 0 ? (
-              <details className="mt-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
-                <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
-                  File audit
-                </summary>
-                <div className="mt-2 grid gap-2">
+              <Collapsible className="mt-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start px-0 text-emerald-700"
+                  >
+                    File audit
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 grid gap-2">
                   {rowTypes.map((rowType) => (
                     <DataPair
                       key={rowType.rowType}
@@ -479,8 +545,8 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                       value={integerFormatter.format(rowType.count)}
                     />
                   ))}
-                </div>
-              </details>
+                </CollapsibleContent>
+              </Collapsible>
             ) : null}
           </MobileAccordionSection>
 
@@ -699,11 +765,6 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             />
           }
         >
-          <DesktopShotDispersionMap
-            shots={dispersionShots}
-            currentViewLabel={mapScopeLabel}
-            initialClub={filters.club}
-          />
           <ShotPatternExplorer
             groups={buildShotPatternGroups(dispersionShots.map(serializePatternShot))}
           />
@@ -718,23 +779,26 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                     {filters.page} of {totalPages}.
                   </CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button asChild variant="outline" size="sm" aria-disabled={filters.page <= 1}>
-                    <Link href={pageHref(filters, Math.max(1, filters.page - 1))}>
-                      <ChevronLeft className="size-4" /> Previous
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    aria-disabled={filters.page >= totalPages}
-                  >
-                    <Link href={pageHref(filters, Math.min(totalPages, filters.page + 1))}>
-                      Next <ChevronRight className="size-4" />
-                    </Link>
-                  </Button>
-                </div>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href={pageHref(filters, Math.max(1, filters.page - 1))}
+                        aria-disabled={filters.page <= 1}
+                        className={filters.page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        href={pageHref(filters, Math.min(totalPages, filters.page + 1))}
+                        aria-disabled={filters.page >= totalPages}
+                        className={
+                          filters.page >= totalPages ? "pointer-events-none opacity-50" : undefined
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               </div>
               <DesktopTableWorkbenchControls
                 viewKey="shots"
@@ -781,19 +845,25 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                         </div>
                         <DataPair label="Shot" value={shot.shotNumber ?? "--"} />
                         <DataPair label="Total" value={formatMetric(shot.totalYd)} />
-                        <details className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                          <summary className="cursor-pointer list-none font-semibold text-emerald-700 [&::-webkit-details-marker]:hidden">
-                            Advanced
-                          </summary>
-                          <div className="mt-2 grid gap-2">
+                        <Collapsible className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start px-0 text-emerald-700"
+                            >
+                              Advanced
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-2 grid gap-2">
                             <DataPair label="Launch" value={formatMetric(shot.launchAngleDeg)} />
                             <DataPair label="Smash" value={formatMetric(shot.smashFactor)} />
                             <DataPair label="Apex" value={formatMetric(shot.apexFt)} />
                             <DataPair label="Attack" value={formatMetric(shot.attackAngleDeg)} />
                             <DataPair label="Path" value={formatMetric(shot.clubPathDeg)} />
                             <DataPair label="Face" value={formatMetric(shot.faceAngleDeg)} />
-                          </div>
-                        </details>
+                          </CollapsibleContent>
+                        </Collapsible>
                       </MobileDataCard>
                     ))
                   ) : (
@@ -1166,59 +1236,59 @@ function MobileSavedShotViews({ data }: { data: Awaited<ReturnType<typeof getFea
       <form action={saveShotViewAction} className="grid gap-3" aria-label="Save current shot view">
         <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
           View name
-          <input
+          <Input
             name="name"
             required
             autoComplete="off"
             placeholder="Tournament driver misses"
-            className="min-h-11 rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-11"
           />
         </label>
         <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
           Description
-          <input
+          <Input
             name="description"
             autoComplete="off"
             placeholder="What this view is for"
-            className="min-h-11 rounded-xl border border-input bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-11"
           />
         </label>
         <div className="grid grid-cols-2 gap-2">
           <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
             Club
-            <select
-              name="club"
-              aria-label="Saved view club filter"
-              className="min-h-11 min-w-0 rounded-xl border border-input bg-background px-3 text-base"
-            >
-              <option value="">All clubs</option>
-              {data.savedViewOptions.clubs.map((club) => (
-                <option key={club.value} value={club.value}>
-                  {club.label}
-                </option>
-              ))}
-            </select>
+            <Select name="club">
+              <SelectTrigger className="min-h-11 min-w-0" aria-label="Saved view club filter">
+                <SelectValue placeholder="All clubs" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.savedViewOptions.clubs.map((club) => (
+                  <SelectItem key={club.value} value={club.value}>
+                    {club.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
             Category
-            <select
-              name="category"
-              aria-label="Saved view category filter"
-              className="min-h-11 min-w-0 rounded-xl border border-input bg-background px-3 text-base"
-            >
-              <option value="">All</option>
-              {data.savedViewOptions.categories.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
+            <Select name="category">
+              <SelectTrigger className="min-h-11 min-w-0" aria-label="Saved view category filter">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.savedViewOptions.categories.map((category) => (
+                  <SelectItem key={category.value} value={category.value}>
+                    {category.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         </div>
-        <label className="flex min-h-11 items-center gap-3 rounded-xl border border-input bg-background px-3 text-sm">
-          <input name="pinned" type="checkbox" className="size-5 accent-primary" />
-          Pin this view
-        </label>
+        <div className="flex min-h-11 items-center gap-3 rounded-xl border border-input bg-background px-3 text-sm">
+          <Switch id="saved-shot-view-pinned" name="pinned" />
+          <Label htmlFor="saved-shot-view-pinned">Pin this view</Label>
+        </div>
         <Button type="submit" className="min-h-11 w-full rounded-xl">
           Save current view
         </Button>
@@ -1654,80 +1724,80 @@ function ShotFilterFields({
       </Field>
       <Field>
         <FieldLabel>Club</FieldLabel>
-        <select
-          name="club"
-          defaultValue={filters.club || "__all"}
-          aria-label="Club filter"
-          className="h-10 w-full rounded-md border border-input bg-white/90 px-3 text-sm"
-        >
-          <option value="__all">All clubs</option>
-          {clubsForFilter.map((club) => (
-            <option key={club} value={club}>
-              {formatClubType(club)}
-            </option>
-          ))}
-        </select>
+        <Select name="club" defaultValue={filters.club || "__all"}>
+          <SelectTrigger className="h-10 w-full bg-white/90" aria-label="Club filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">All clubs</SelectItem>
+            {clubsForFilter.map((club) => (
+              <SelectItem key={club} value={club}>
+                {formatClubType(club)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
       <Field>
         <FieldLabel>Session</FieldLabel>
-        <select
-          name="sessionId"
-          defaultValue={filters.sessionId || "__all"}
-          aria-label="Session filter"
-          className="h-10 w-full rounded-md border border-input bg-white/90 px-3 text-sm"
-        >
-          <option value="__all">All sessions</option>
-          {sessionSummaries.map((session) => (
-            <option key={session.id} value={session.id}>
-              {session.fileName ?? formatDate(session.date)}
-            </option>
-          ))}
-        </select>
+        <Select name="sessionId" defaultValue={filters.sessionId || "__all"}>
+          <SelectTrigger className="h-10 w-full bg-white/90" aria-label="Session filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">All sessions</SelectItem>
+            {sessionSummaries.map((session) => (
+              <SelectItem key={session.id} value={session.id}>
+                {session.fileName ?? formatDate(session.date)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
       <Field>
         <FieldLabel>Category</FieldLabel>
-        <select
-          name="category"
-          defaultValue={filters.category || "__all"}
-          aria-label="Category filter"
-          className="h-10 w-full rounded-md border border-input bg-white/90 px-3 text-sm"
-        >
-          <option value="__all">All categories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {formatSessionType(category)}
-            </option>
-          ))}
-        </select>
+        <Select name="category" defaultValue={filters.category || "__all"}>
+          <SelectTrigger className="h-10 w-full bg-white/90" aria-label="Category filter">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">All categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {formatSessionType(category)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
       <DateFilterPopover name="from" label="From" defaultValue={filters.from} />
       <DateFilterPopover name="to" label="To" defaultValue={filters.to} />
       <Field>
         <FieldLabel>Sort by</FieldLabel>
-        <select
-          name="sort"
-          defaultValue={filters.sort}
-          aria-label="Sort shots by metric"
-          className="h-10 w-full rounded-md border border-input bg-white/90 px-3 text-sm"
-        >
-          {shotSortMetrics.map((metric) => (
-            <option key={metric} value={metric}>
-              {shotSortLabels[metric]}
-            </option>
-          ))}
-        </select>
+        <Select name="sort" defaultValue={filters.sort}>
+          <SelectTrigger className="h-10 w-full bg-white/90" aria-label="Sort shots by metric">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {shotSortMetrics.map((metric) => (
+              <SelectItem key={metric} value={metric}>
+                {shotSortLabels[metric]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </Field>
       <Field>
         <FieldLabel>Order</FieldLabel>
-        <select
-          name="dir"
-          defaultValue={filters.dir}
-          aria-label="Sort direction"
-          className="h-10 w-full rounded-md border border-input bg-white/90 px-3 text-sm"
-        >
-          <option value="desc">High to low</option>
-          <option value="asc">Low to high</option>
-        </select>
+        <Select name="dir" defaultValue={filters.dir}>
+          <SelectTrigger className="h-10 w-full bg-white/90" aria-label="Sort direction">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">High to low</SelectItem>
+            <SelectItem value="asc">Low to high</SelectItem>
+          </SelectContent>
+        </Select>
       </Field>
     </>
   );

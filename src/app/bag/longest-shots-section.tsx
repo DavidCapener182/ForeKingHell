@@ -11,7 +11,15 @@ import {
   IOSListRow,
 } from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatClubType } from "@/lib/club-format";
 import {
   formatStoredApexFeet,
@@ -148,19 +156,22 @@ function MobileLongestShotSelector({
     <div className="space-y-3 lg:hidden" data-mobile-longest-selector>
       <label className="block text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
         Club record
-        <select
-          value={selectedShot.id}
-          onChange={(event) => onSelect(event.target.value)}
-          aria-label="Choose a club record to replay"
-          className="focus-aaa mt-1.5 min-h-11 w-full touch-manipulation rounded-[0.7rem] border border-border bg-card px-3 text-[16px] font-medium text-foreground outline-none"
-        >
-          {shots.map((shot) => (
-            <option key={shot.id} value={shot.id}>
-              {formatClubType(shot.clubType)} ·{" "}
-              {formatStoredYards(shotDistance(shot), preferredUnits)}
-            </option>
-          ))}
-        </select>
+        <Select value={selectedShot.id} onValueChange={onSelect}>
+          <SelectTrigger
+            className="mt-1.5 min-h-11 w-full text-base"
+            aria-label="Choose a club record to replay"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {shots.map((shot) => (
+              <SelectItem key={shot.id} value={shot.id}>
+                {formatClubType(shot.clubType)} ·{" "}
+                {formatStoredYards(shotDistance(shot), preferredUnits)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
 
       <IOSGroupedList label="Selected longest shot summary">
@@ -185,13 +196,9 @@ function MobileLongestShotSelector({
       </IOSGroupedList>
 
       {warning ? (
-        <div
-          role="status"
-          className="rounded-[0.7rem] border border-amber-300/80 bg-amber-50 px-3 py-2.5 text-[13px] leading-[1.15rem] text-amber-950 dark:border-amber-800 dark:bg-amber-950/45 dark:text-amber-100"
-          data-mobile-record-warning
-        >
-          {warning}
-        </div>
+        <Alert data-mobile-record-warning>
+          <AlertDescription>{warning}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   );

@@ -74,11 +74,11 @@ test.describe("public product landing", () => {
     );
     await page.getByRole("link", { name: "Explore the sample tour" }).click();
     await expect(page.getByRole("heading", { name: /See the decision chain/i })).toBeVisible();
-    await page.getByRole("button", { name: "7 Iron" }).click();
-    await page.getByRole("button", { name: "Raw shots" }).click();
+    await page.getByRole("radio", { name: "7 Iron" }).click();
+    await page.getByRole("radio", { name: "Raw shots" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: /Which launch monitors are supported/i }).click();
-    await expect(page.getByText("Rapsodo CSV import is available", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Rapsodo CSV import is available/)).toBeVisible();
     expect(
       await page
         .locator("img")

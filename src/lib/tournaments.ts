@@ -337,7 +337,10 @@ export async function getTournamentDetailData(tournamentId: string) {
     ]),
   ];
   const profiles = await profilesByUserId(userIds);
-  const viewerEntry = entryRows.find((entry) => entry.userId === viewerUserId) ?? null;
+  const activeEntryRows = entryRows.filter(
+    (entry) => entry.status === "entered" && entry.withdrawnAt === null,
+  );
+  const viewerEntry = activeEntryRows.find((entry) => entry.userId === viewerUserId) ?? null;
   const viewerSubmissions = submissionRows.filter(
     (submission) => submission.userId === viewerUserId,
   );
@@ -380,7 +383,10 @@ export async function getTournamentDetailData(tournamentId: string) {
     course: courseRows[0] ?? null,
     teeSet: teeRows[0] ?? null,
     rounds: roundRows,
-    entries: entryRows.map((entry) => ({ entry, profile: profiles.get(entry.userId) ?? null })),
+    entries: activeEntryRows.map((entry) => ({
+      entry,
+      profile: profiles.get(entry.userId) ?? null,
+    })),
     submissions: submissionRows.map((submission) => ({
       submission,
       profile: profiles.get(submission.userId) ?? null,
@@ -555,6 +561,26 @@ export async function joinTournament(
   });
   await awardTournamentAchievement(userId, "major_contender", tournament.id, 150);
 
+  revalidateTournamentPaths(tournamentId);
+}
+
+export async function withdrawTournament(tournamentId: string) {
+  const userId = await requireCurrentUserId();
+  const tournament = await requireVisibleTournament(userId, tournamentId);
+
+  if (tournament.createdByUserId === userId) {
+    throw new Error("Tournament creators cannot withdraw from their own event.");
+  }
+
+  const now = new Date();
+  await getDb()
+    .update(tournamentEntries)
+    .set({ status: "withdrawn", withdrawnAt: now, updatedAt: now })
+    .where(
+      and(eq(tournamentEntries.tournamentId, tournamentId), eq(tournamentEntries.userId, userId)),
+    );
+
+  await recalculateTournamentStandings(tournamentId);
   revalidateTournamentPaths(tournamentId);
 }
 
@@ -767,11 +793,27 @@ export async function addTournamentComment(tournamentId: string, body: string) {
 
 export async function recalculateTournamentStandings(tournamentId: string) {
   const db = getDb();
-  const submissions = await db
-    .select()
-    .from(tournamentSubmissions)
-    .where(eq(tournamentSubmissions.tournamentId, tournamentId));
-  const accepted = submissions.filter((submission) => submission.verificationStatus === "verified");
+  const [submissions, activeEntries] = await Promise.all([
+    db
+      .select()
+      .from(tournamentSubmissions)
+      .where(eq(tournamentSubmissions.tournamentId, tournamentId)),
+    db
+      .select({ id: tournamentEntries.id })
+      .from(tournamentEntries)
+      .where(
+        and(
+          eq(tournamentEntries.tournamentId, tournamentId),
+          eq(tournamentEntries.status, "entered"),
+          isNull(tournamentEntries.withdrawnAt),
+        ),
+      ),
+  ]);
+  const activeEntryIds = new Set(activeEntries.map((entry) => entry.id));
+  const accepted = submissions.filter(
+    (submission) =>
+      submission.verificationStatus === "verified" && activeEntryIds.has(submission.entryId),
+  );
   const byEntry = new Map<string, typeof accepted>();
 
   for (const submission of accepted) {
@@ -1434,6 +1476,9 @@ function hydrateTournamentListItem(input: {
   profiles: Map<string, typeof userProfiles.$inferSelect>;
   viewerUserId: string;
 }) {
+  const activeEntries = input.entries.filter(
+    (entry) => entry.status === "entered" && entry.withdrawnAt === null,
+  );
   const leader = input.standings.find((standing) => standing.rank === 1) ?? null;
   const leaderProfile = leader ? (input.profiles.get(leader.userId) ?? null) : null;
   const viewerStanding =
@@ -1475,8 +1520,8 @@ function hydrateTournamentListItem(input: {
     actualTourEvent,
     courseName: input.course?.name ?? "Course TBD",
     teeSetName: input.teeSet?.name ?? "Any tee",
-    entryCount: input.entries.length,
-    viewerEntered: input.entries.some((entry) => entry.userId === input.viewerUserId),
+    entryCount: activeEntries.length,
+    viewerEntered: activeEntries.some((entry) => entry.userId === input.viewerUserId),
     viewerRank: viewerStanding?.rank ?? null,
     viewerSubmissionCount: viewerEvidence.submissionCount,
     viewerVerifiedSubmissionCount: viewerEvidence.verifiedSubmissionCount,

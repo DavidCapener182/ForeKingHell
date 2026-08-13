@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft, Crosshair, GitCompareArrows, Save, Share2, Target, Trash2 } from "lucide-react";
+import { ArrowLeft, Crosshair, GitCompareArrows, Save, Share2, Target } from "lucide-react";
 import { and, desc, eq, sql } from "drizzle-orm";
 
-import {
-  deleteSessionComparisonAction,
-  saveSessionComparisonAction,
-} from "@/app/analyse/compare/actions";
+import { saveSessionComparisonAction } from "@/app/analyse/compare/actions";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
@@ -14,19 +11,45 @@ import {
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { BottomSheet, MobileTopBar } from "@/components/mobile-sports";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { StatusTimeline } from "@/components/app/status-timeline";
 import { MobileFilterSheet, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ComparisonProvenancePanel } from "@/app/analyse/compare/comparison-provenance-panel";
+import { DeleteComparisonButton } from "@/app/analyse/compare/delete-comparison-button";
+import { SaveComparisonDialog } from "@/app/analyse/compare/save-comparison-dialog";
+import { SessionComparisonToolbar } from "@/app/analyse/compare/session-comparison-toolbar";
 import { getDb } from "@/db/client";
 import { analysisSnapshots } from "@/db/schema";
-import { buildComparisonProvenance } from "@/lib/comparison-provenance";
+import {
+  buildComparisonProvenance,
+  type ComparisonMetricProvenance,
+} from "@/lib/comparison-provenance";
 import {
   defaultCompareFilters,
   getCompareData,
   type CompareConditionMode,
   type CompareFilters,
+  type CompareSampleSummary,
 } from "@/lib/compare-data";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { Textarea } from "@/components/ui/textarea";
 
 export const dynamic = "force-dynamic";
 
@@ -104,79 +127,17 @@ export default async function SessionComparePage({ searchParams }: { searchParam
       />
 
       <div className="hidden lg:contents">
-        <form
-          action="/analyse/compare"
-          className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(160px,0.6fr)_minmax(170px,0.65fr)_auto] xl:items-end"
-        >
-          <SessionSelect
-            label="Focus session"
-            name="sessionId"
-            value={data.filters.sessionId}
-            sessions={data.sessions}
-          />
-          <SessionSelect
-            label="Baseline session"
-            name="baselineSessionId"
-            value={data.filters.baselineSessionId}
-            sessions={data.sessions}
-          />
-          <label className="grid gap-1 text-sm font-medium">
-            Club
-            <select
-              name="clubId"
-              defaultValue={data.filters.clubId}
-              className="min-h-11 rounded-md border bg-background px-3"
-            >
-              <option value="">All clubs</option>
-              {data.clubs.map((club) => (
-                <option key={club.id} value={club.id}>
-                  {club.label} · {club.shotCount} shots
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Comparison mode
-            <select
-              name="condition"
-              defaultValue={data.filters.condition}
-              className="min-h-11 rounded-md border bg-background px-3"
-            >
-              <option value="same">Selected sessions</option>
-              <option value="indoor-outdoor">Outdoor vs indoor</option>
-              <option value="practice-round">Round vs practice</option>
-            </select>
-          </label>
-          <Button type="submit" className="min-h-11">
-            <GitCompareArrows className="size-4" />
-            Compare
-          </Button>
-        </form>
-
-        <div
-          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
-          aria-label="Comparison experiment presets"
-        >
-          {[
-            ["Before and after a lesson", "lesson"],
-            ["Before and after equipment", "equipment_change"],
-            ["This month versus last", "month"],
-            ["Golf ball or club setting", "equipment_setup"],
-          ].map(([label, preset]) => (
-            <Link
-              key={preset}
-              href={preset === "month" ? "/analyse/compare?period=month" : "/analyse/compare"}
-              className="rounded-xl border bg-card p-3 text-sm font-semibold hover:border-primary"
-            >
-              {label}
-              <span className="mt-1 block font-normal text-muted-foreground">
-                {preset === "month"
-                  ? "Uses two 30-day windows"
-                  : "Select matched sessions, then save the context and notes"}
-              </span>
-            </Link>
-          ))}
-        </div>
+        <SessionComparisonToolbar
+          sessions={data.sessions}
+          clubs={data.clubs}
+          initial={{
+            focusSessionId: data.filters.sessionId,
+            baselineSessionId: data.filters.baselineSessionId,
+            clubId: data.filters.clubId,
+            condition: data.filters.condition,
+          }}
+          period={params.period === "month" ? "month" : "sessions"}
+        />
 
         <section className="grid gap-4 rounded-lg border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_280px]">
           <div>
@@ -203,49 +164,58 @@ export default async function SessionComparePage({ searchParams }: { searchParam
         </section>
 
         <section aria-labelledby="changed-metrics-title">
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-muted-foreground">What changed</p>
               <h2 id="changed-metrics-title" className="text-2xl font-semibold">
-                Metric deltas
+                Comparison result
               </h2>
             </div>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/shots" prefetch={false}>
-                <Crosshair className="size-4" />
-                Inspect raw shots
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <ComparisonProvenancePanel metrics={provenance} />
+              <Button asChild variant="outline" size="sm">
+                <Link href="/shots" prefetch={false}>
+                  <Crosshair className="size-4" />
+                  Inspect raw shots
+                </Link>
+              </Button>
+            </div>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {provenance.map((metric) => (
-              <article key={metric.key} className="rounded-lg border bg-card p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold">{metric.label}</p>
-                  <StatusPill tone={directionTone(metric.direction)}>{metric.direction}</StatusPill>
-                </div>
-                <p className="mt-3 text-3xl font-semibold tabular-nums">
-                  {formatDelta(metric.value, metric.unit)}
-                </p>
-                <details className="mt-3 text-sm">
-                  <summary className="cursor-pointer font-medium">Source and method</summary>
-                  <dl className="mt-2 grid gap-2 text-muted-foreground">
-                    <div>
-                      <dt className="font-medium text-foreground">Source</dt>
-                      <dd>{metric.source}</dd>
-                    </div>
-                    <div>
-                      <dt className="font-medium text-foreground">Method</dt>
-                      <dd>{metric.method}</dd>
-                    </div>
-                    <div>
-                      <dt className="font-medium text-foreground">Confidence</dt>
-                      <dd>{metric.confidenceLabel}</dd>
-                    </div>
-                  </dl>
-                </details>
-              </article>
-            ))}
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border/70 bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Metric</TableHead>
+                  <TableHead className="text-right">Focus</TableHead>
+                  <TableHead className="text-right">Baseline</TableHead>
+                  <TableHead className="text-right">Delta</TableHead>
+                  <TableHead>Direction</TableHead>
+                  <TableHead>Confidence</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {provenance.map((metric) => (
+                  <TableRow key={metric.key}>
+                    <TableCell className="font-semibold">{metric.label}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {comparisonMetricValue(metric.key, data.focus, metric.unit)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {comparisonMetricValue(metric.key, data.baseline, metric.unit)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      {formatDelta(metric.value, metric.unit)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill tone={directionTone(metric.direction)}>
+                        {metric.direction}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell>{metric.confidenceLabel}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </section>
 
@@ -263,68 +233,36 @@ export default async function SessionComparePage({ searchParams }: { searchParam
         ) : null}
 
         <section
-          className="grid gap-4 rounded-2xl border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-card p-4"
           aria-labelledby="save-comparison-title"
         >
-          <form action={saveSessionComparisonAction} className="grid gap-3 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <h2 id="save-comparison-title" className="text-xl font-semibold">
-                Save the experiment
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Keep the exact filters, evidence summary and your interpretation for later review or
-                coach sharing.
-              </p>
-            </div>
-            <input type="hidden" name="sessionId" value={data.filters.sessionId} />
-            <input type="hidden" name="baselineSessionId" value={data.filters.baselineSessionId} />
-            <input type="hidden" name="clubId" value={data.filters.clubId} />
-            <input type="hidden" name="condition" value={data.filters.condition} />
-            <input type="hidden" name="period" value={params.period ?? ""} />
-            <label className="grid gap-1 text-sm font-medium">
-              <span>Name</span>
-              <Input
-                name="name"
-                defaultValue={`${data.focus.label} vs ${data.baseline.label}`}
-                maxLength={180}
-                required
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-medium">
-              <span>Experiment type</span>
-              <select
-                name="experimentType"
-                className="min-h-10 rounded-md border bg-background px-3"
-              >
-                <option value="session_vs_session">Session vs session</option>
-                <option value="lesson">Before/after lesson</option>
-                <option value="equipment_change">Equipment change</option>
-                <option value="ball_change">Golf ball</option>
-                <option value="club_setting">Club setting</option>
-                <option value="practice_round">Practice vs round</option>
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-medium md:col-span-2">
-              <span>Your notes</span>
-              <textarea
-                name="notes"
-                rows={3}
-                maxLength={4000}
-                className="rounded-md border bg-background p-3"
-                placeholder="What stayed constant, what changed, and what decision will this inform?"
-              />
-            </label>
-            <Button type="submit" className="min-h-11 md:w-fit">
-              <Save className="size-4" aria-hidden />
-              Save comparison
+          <div>
+            <h2 id="save-comparison-title" className="text-lg font-semibold">
+              Keep this evidence
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Save the exact scope or pass it to a coach without turning the result into another
+              dashboard card.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <SaveComparisonDialog
+              filters={{
+                focusSessionId: data.filters.sessionId,
+                baselineSessionId: data.filters.baselineSessionId,
+                clubId: data.filters.clubId,
+                condition: data.filters.condition,
+                period: params.period ?? "",
+              }}
+              defaultName={`${data.focus.label} vs ${data.baseline.label}`}
+            />
+            <Button asChild variant="outline">
+              <Link href="/coach/reports?include=comparisons">
+                <Share2 className="size-4" aria-hidden />
+                Share with coach
+              </Link>
             </Button>
-          </form>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href="/coach/reports?include=comparisons">
-              <Share2 className="size-4" aria-hidden />
-              Share with coach
-            </Link>
-          </Button>
+          </div>
         </section>
 
         <section className="grid gap-3" aria-labelledby="saved-comparisons-title">
@@ -337,48 +275,47 @@ export default async function SessionComparePage({ searchParams }: { searchParam
             </p>
           </div>
           {savedComparisons.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {savedComparisons.map((snapshot) => (
-                <article key={snapshot.id} className="rounded-xl border bg-card p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">{snapshot.name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Saved{" "}
-                        {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
-                          snapshot.capturedAt,
-                        )}
-                      </p>
-                    </div>
-                    <form action={deleteSessionComparisonAction}>
-                      <input type="hidden" name="snapshotId" value={snapshot.id} />
-                      <Button
-                        type="submit"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${snapshot.name}`}
-                      >
-                        <Trash2 className="size-4" aria-hidden />
-                      </Button>
-                    </form>
-                  </div>
-                  {snapshot.notes ? (
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{snapshot.notes}</p>
-                  ) : null}
-                  <p className="mt-3 text-sm font-semibold text-primary">
-                    {String(
-                      snapshot.summaryJson.summary ??
-                        snapshot.summaryJson.verdict ??
-                        "Saved evidence comparison",
-                    )}
-                  </p>
-                </article>
-              ))}
-            </div>
+            <StatusTimeline
+              label="Saved comparisons"
+              className="rounded-2xl border bg-card p-4"
+              items={savedComparisons.map((snapshot) => ({
+                id: snapshot.id,
+                dateGroup: new Intl.DateTimeFormat("en-GB", {
+                  month: "long",
+                  year: "numeric",
+                }).format(snapshot.capturedAt),
+                timestamp: new Intl.DateTimeFormat("en-GB", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(snapshot.capturedAt),
+                title: snapshot.name,
+                description: String(
+                  snapshot.summaryJson.summary ??
+                    snapshot.summaryJson.verdict ??
+                    "Saved evidence comparison",
+                ),
+                meta: snapshot.notes || "No interpretation note added.",
+                kind: "reviewed" as const,
+                action: <DeleteComparisonButton id={snapshot.id} name={snapshot.name} />,
+              }))}
+            />
           ) : (
-            <div className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
-              No saved comparison yet.
-            </div>
+            <AppEmptyState
+              title="No saved comparison yet"
+              description="Save a comparison when its filters, evidence and interpretation are worth revisiting."
+              primaryAction={
+                <SaveComparisonDialog
+                  filters={{
+                    focusSessionId: data.filters.sessionId,
+                    baselineSessionId: data.filters.baselineSessionId,
+                    clubId: data.filters.clubId,
+                    condition: data.filters.condition,
+                    period: params.period ?? "",
+                  }}
+                  defaultName={`${data.focus.label} vs ${data.baseline.label}`}
+                />
+              }
+            />
           )}
         </section>
       </div>
@@ -489,30 +426,32 @@ function MobileSessionCompare({
             />
             <label className="grid gap-1 text-sm font-medium">
               Club
-              <select
-                name="clubId"
-                defaultValue={data.filters.clubId}
-                className="min-h-11 rounded-xl border bg-background px-3"
-              >
-                <option value="">All clubs</option>
-                {data.clubs.map((club) => (
-                  <option key={club.id} value={club.id}>
-                    {club.label} · {club.shotCount} shots
-                  </option>
-                ))}
-              </select>
+              <Select name="clubId" defaultValue={data.filters.clubId || "all"}>
+                <SelectTrigger className="min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All clubs</SelectItem>
+                  {data.clubs.map((club) => (
+                    <SelectItem key={club.id} value={club.id}>
+                      {club.label} · {club.shotCount} shots
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <label className="grid gap-1 text-sm font-medium">
               Comparison mode
-              <select
-                name="condition"
-                defaultValue={data.filters.condition}
-                className="min-h-11 rounded-xl border bg-background px-3"
-              >
-                <option value="same">Selected sessions</option>
-                <option value="indoor-outdoor">Outdoor vs indoor</option>
-                <option value="practice-round">Round vs practice</option>
-              </select>
+              <Select name="condition" defaultValue={data.filters.condition}>
+                <SelectTrigger className="min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="same">Selected sessions</SelectItem>
+                  <SelectItem value="indoor-outdoor">Outdoor vs indoor</SelectItem>
+                  <SelectItem value="practice-round">Round vs practice</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             {params.period ? <input type="hidden" name="period" value={params.period} /> : null}
             <Button type="submit" className="min-h-11 rounded-xl">
@@ -628,25 +567,27 @@ function MobileSessionCompare({
             </label>
             <label className="grid gap-1 text-sm font-medium">
               <span>Experiment type</span>
-              <select
-                name="experimentType"
-                className="min-h-11 rounded-xl border bg-background px-3"
-              >
-                <option value="session_vs_session">Session vs session</option>
-                <option value="lesson">Before/after lesson</option>
-                <option value="equipment_change">Equipment change</option>
-                <option value="ball_change">Golf ball</option>
-                <option value="club_setting">Club setting</option>
-                <option value="practice_round">Practice vs round</option>
-              </select>
+              <Select name="experimentType" defaultValue="session_vs_session">
+                <SelectTrigger className="min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="session_vs_session">Session vs session</SelectItem>
+                  <SelectItem value="lesson">Before/after lesson</SelectItem>
+                  <SelectItem value="equipment_change">Equipment change</SelectItem>
+                  <SelectItem value="ball_change">Golf ball</SelectItem>
+                  <SelectItem value="club_setting">Club setting</SelectItem>
+                  <SelectItem value="practice_round">Practice vs round</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <label className="grid gap-1 text-sm font-medium">
               <span>Your notes</span>
-              <textarea
+              <Textarea
                 name="notes"
                 rows={4}
                 maxLength={4000}
-                className="min-h-28 rounded-xl border bg-background p-3"
+                className="min-h-28"
                 placeholder="What stayed constant, what changed, and what decision will this inform?"
               />
             </label>
@@ -694,18 +635,7 @@ function MobileSessionCompare({
                             )}
                           </p>
                         </div>
-                        <form action={deleteSessionComparisonAction}>
-                          <input type="hidden" name="snapshotId" value={snapshot.id} />
-                          <Button
-                            type="submit"
-                            variant="ghost"
-                            size="icon"
-                            className="size-11 shrink-0"
-                            aria-label={`Delete ${snapshot.name}`}
-                          >
-                            <Trash2 className="size-4" aria-hidden />
-                          </Button>
-                        </form>
+                        <DeleteComparisonButton id={snapshot.id} name={snapshot.name} />
                       </div>
                     </article>
                   ))}
@@ -745,18 +675,19 @@ function SessionSelect({
   return (
     <label className="grid gap-1 text-sm font-medium">
       {label}
-      <select
-        name={name}
-        defaultValue={value}
-        className="min-h-11 rounded-md border bg-background px-3"
-      >
-        <option value="">Automatic</option>
-        {sessions.map((session) => (
-          <option key={session.id} value={session.id}>
-            {session.dateLabel} · {session.label} · {session.shotCount} shots
-          </option>
-        ))}
-      </select>
+      <Select name={name} defaultValue={value || "automatic"}>
+        <SelectTrigger className="min-h-11 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="automatic">Automatic</SelectItem>
+          {sessions.map((session) => (
+            <SelectItem key={session.id} value={session.id}>
+              {session.dateLabel} · {session.label} · {session.shotCount} shots
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
 }
@@ -771,9 +702,10 @@ function filtersFromParams(params: Awaited<SearchParams>): CompareFilters {
     ...defaultCompareFilters(),
     focus: period ? "last-30" : "session",
     baseline: period ? "previous-30" : "previous-session",
-    sessionId: params.sessionId ?? "",
-    baselineSessionId: params.baselineSessionId ?? "",
-    clubId: params.clubId ?? "",
+    sessionId: params.sessionId === "automatic" ? "" : (params.sessionId ?? ""),
+    baselineSessionId:
+      params.baselineSessionId === "automatic" ? "" : (params.baselineSessionId ?? ""),
+    clubId: params.clubId === "all" ? "" : (params.clubId ?? ""),
     condition,
   };
 }
@@ -782,6 +714,29 @@ function formatDelta(value: number | null, unit: string) {
   if (value === null) return "Not available";
   const rounded = Math.round(value * 10) / 10;
   return `${rounded > 0 ? "+" : ""}${rounded} ${unit}`;
+}
+
+function comparisonMetricValue(
+  key: ComparisonMetricProvenance["key"],
+  sample: CompareSampleSummary,
+  unit: ComparisonMetricProvenance["unit"],
+) {
+  const value =
+    key === "carryDeltaYd"
+      ? sample.carryMedianYd
+      : key === "ballSpeedDeltaMph"
+        ? sample.ballSpeedAverageMph
+        : key === "launchDeltaDeg"
+          ? sample.launchAverageDeg
+          : key === "offlineDeltaYd"
+            ? sample.absoluteOfflineAverageYd
+            : key === "coneDeltaYd"
+              ? sample.shotConeWidthYd
+              : key === "playableRateDelta"
+                ? sample.playableRate
+                : sample.bigMissRate;
+  if (value === null) return "Not available";
+  return `${Math.round(value * 10) / 10} ${unit === "points" ? "%" : unit}`;
 }
 
 function directionTone(direction: string) {

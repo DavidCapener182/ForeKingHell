@@ -240,7 +240,10 @@ function requiredString(formData: FormData, key: string) {
 
 function nullableString(formData: FormData, key: string) {
   const value = formData.get(key);
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  return normalized && normalized !== "__none__" ? normalized : null;
 }
 
 function nullableNumber(formData: FormData, key: string) {

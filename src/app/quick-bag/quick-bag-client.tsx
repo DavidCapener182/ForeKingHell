@@ -1,15 +1,36 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Target } from "lucide-react";
+import { Target } from "lucide-react";
 
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { EntityCombobox } from "@/components/app/entity-combobox";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { rankQuickBagForTarget, type TargetPreference } from "@/lib/quick-bag-ranking";
 
 export type QuickBagClub = {
@@ -33,22 +54,17 @@ export type QuickBagClub = {
 const quickTargets = [100, 125, 150, 175, 200];
 
 export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; accountId: string }) {
-  const [query, setQuery] = useState("");
   const [targetDistance, setTargetDistance] = useState("");
   const [preference, setPreference] = useState<TargetPreference>("finish");
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const target = Number(targetDistance);
   const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    const matching = clubs.filter(
-      (club) =>
-        !normalizedQuery || `${club.label} ${club.model}`.toLowerCase().includes(normalizedQuery),
-    );
     return Number.isFinite(target) && target > 0
-      ? rankQuickBagForTarget(matching, target, preference)
-      : matching;
-  }, [clubs, preference, query, target]);
+      ? rankQuickBagForTarget(clubs, target, preference)
+      : clubs;
+  }, [clubs, preference, target]);
   const bestMatch = Number.isFinite(target) && target > 0 ? (filtered[0] ?? null) : null;
   const selectedClub =
     (selectedClubId ? clubs.find((club) => club.id === selectedClubId) : null) ??
@@ -74,96 +90,108 @@ export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; ac
 
   return (
     <>
-      <section
-        className="ios-grouped-list grid gap-3 p-4"
+      <Card
+        size="sm"
+        className="gap-3"
         aria-label="Quick Bag search"
         data-quick-bag-hydrated={hydrated ? "true" : "false"}
       >
-        <label className="relative block">
-          <span className="sr-only">Search by club</span>
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by club"
-            className="ios-sheet-search min-h-12 w-full pl-10 pr-3 text-base outline-none"
-          />
-        </label>
-        <label className="grid gap-1.5 text-sm font-semibold">
-          Target distance
-          <div className="relative">
-            <Target
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <input
-              inputMode="numeric"
-              value={targetDistance}
-              onChange={(event) => {
-                setTargetDistance(event.target.value.replace(/[^0-9]/g, ""));
+        <CardHeader>
+          <CardTitle>Find the number</CardTitle>
+          <CardDescription>Search one club or enter the target you need to cover.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3">
+          <EntityCombobox
+            label="Club or target"
+            value={
+              targetDistance
+                ? `target:${targetDistance}`
+                : selectedClubId
+                  ? `club:${selectedClubId}`
+                  : ""
+            }
+            placeholder="Search club or enter target"
+            searchPlaceholder="Club name or target yards…"
+            emptyLabel="Type a target distance or search another club."
+            options={[
+              ...quickTargets.map((value) => ({
+                value: `target:${value}`,
+                label: `${value} yards`,
+                description: "Common target",
+              })),
+              ...clubs.map((club) => ({
+                value: `club:${club.id}`,
+                label: club.label,
+                description: `${club.model} · carry ${yardValue(club.trustedCarryYd)}`,
+              })),
+            ]}
+            onValueChange={(value) => {
+              if (value.startsWith("target:")) {
+                setTargetDistance(value.slice("target:".length));
                 setSelectedClubId(null);
-              }}
-              placeholder="e.g. 165 yards"
-              className="ios-sheet-search min-h-12 w-full pl-10 pr-3 text-base outline-none"
-            />
-          </div>
-        </label>
-        <div className="flex gap-2 overflow-x-auto" aria-label="Common target distances">
-          {quickTargets.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setTargetDistance(String(value));
-                setSelectedClubId(null);
-              }}
-              aria-pressed={target === value}
-              className="focus-aaa min-h-11 shrink-0 rounded-full border bg-card px-3 text-sm font-semibold"
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-        <div
-          className="grid grid-cols-2 rounded-xl bg-secondary p-1"
-          role="group"
-          aria-label="Target preference"
-        >
-          <button
-            type="button"
-            aria-pressed={preference === "carry"}
-            onClick={() => {
-              setPreference("carry");
+                return;
+              }
+              setTargetDistance("");
+              setSelectedClubId(value.slice("club:".length));
+            }}
+            customValueLabel={(value) =>
+              /^\d{2,3}$/.test(value) && Number(value) >= 40 && Number(value) <= 350
+                ? `Use ${value} yards`
+                : null
+            }
+            onCustomValue={(value) => {
+              setTargetDistance(value);
               setSelectedClubId(null);
             }}
-            className={`focus-aaa min-h-11 rounded-lg text-sm font-semibold ${preference === "carry" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
-          >
-            Carry the number
-          </button>
-          <button
-            type="button"
-            aria-pressed={preference === "finish"}
-            onClick={() => {
-              setPreference("finish");
+            className="min-h-12 rounded-xl bg-background text-base"
+          />
+          <ToggleGroup
+            type="single"
+            value={quickTargets.includes(target) ? String(target) : ""}
+            onValueChange={(value) => {
+              if (!value) return;
+              setTargetDistance(value);
               setSelectedClubId(null);
             }}
-            className={`focus-aaa min-h-11 rounded-lg text-sm font-semibold ${preference === "finish" ? "bg-card shadow-sm" : "text-muted-foreground"}`}
+            variant="outline"
+            className="flex justify-start gap-2 overflow-x-auto"
+            aria-label="Common target distances"
           >
-            Finish at it
-          </button>
-        </div>
-      </section>
+            {quickTargets.map((value) => (
+              <ToggleGroupItem
+                key={value}
+                value={String(value)}
+                className="min-h-11 shrink-0 rounded-full px-3 text-sm font-semibold"
+              >
+                {value}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <ToggleGroup
+            type="single"
+            value={preference}
+            onValueChange={(value) => {
+              if (value !== "carry" && value !== "finish") return;
+              setPreference(value);
+              setSelectedClubId(null);
+            }}
+            variant="outline"
+            className="grid grid-cols-2 rounded-xl bg-secondary p-1"
+            aria-label="Number type"
+          >
+            <ToggleGroupItem value="carry" className="min-h-11 rounded-lg text-sm font-semibold">
+              Carry
+            </ToggleGroupItem>
+            <ToggleGroupItem value="finish" className="min-h-11 rounded-lg text-sm font-semibold">
+              Play number
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </CardContent>
+      </Card>
 
       {bestMatch ? (
-        <section
-          className="ios-grouped-list grid gap-3 border-primary/25 bg-primary/5 p-5"
-          data-quick-bag-best-match
-        >
-          <div className="flex items-start justify-between gap-3">
+        <Card className="border-primary/25 bg-primary/5" data-quick-bag-best-match>
+          <CardHeader>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Best match for {Math.round(target)} yards
@@ -171,71 +199,138 @@ export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; ac
               <h2 className="mt-1 text-2xl font-bold">{bestMatch.label}</h2>
               <p className="text-sm text-muted-foreground">{bestMatch.model}</p>
             </div>
-            <IOSInlineStatus
-              label={`${bestMatch.confidence}% confidence`}
-              tone={
-                bestMatch.confidence >= 75
-                  ? "positive"
-                  : bestMatch.confidence >= 55
-                    ? "info"
-                    : "attention"
-              }
-            />
-          </div>
-          <IOSGroupedList label="Best target match" className="bg-card">
-            <IOSMetricRow label="Play number" value={yardValue(bestMatch.playNumberYd)} />
-            <IOSMetricRow label="Trusted carry" value={yardValue(bestMatch.trustedCarryYd)} />
-            <IOSMetricRow label="Measured range" value={rangeLabel(bestMatch)} />
-            <IOSMetricRow label="Typical pattern" value={patternLabel(bestMatch)} />
-          </IOSGroupedList>
-        </section>
+            <CardAction>
+              <Badge variant={bestMatch.confidence >= 75 ? "default" : "secondary"}>
+                {bestMatch.confidence}% confidence
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <QuickMetric label="Play number" value={yardValue(bestMatch.playNumberYd)} />
+              <QuickMetric label="Trusted carry" value={yardValue(bestMatch.trustedCarryYd)} />
+              <QuickMetric label="Measured range" value={rangeLabel(bestMatch)} />
+              <QuickMetric label="Typical pattern" value={patternLabel(bestMatch)} />
+            </div>
+            <LateralRange club={bestMatch} />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setSelectedClubId(bestMatch.id);
+                setDetailOpen(true);
+              }}
+            >
+              View club detail
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
 
-      {selectedClub ? (
-        <section className="grid gap-2.5">
-          <IOSSectionHeader
-            title={`${selectedClub.label} lateral range`}
-            description="Recent trusted-shot distribution"
-          />
-          <LateralRange club={selectedClub} />
-        </section>
-      ) : null}
-
-      <section className="grid gap-2.5">
-        <IOSSectionHeader
-          title={bestMatch ? "Alternatives" : "Trusted numbers"}
-          description={`${filtered.length} active ${filtered.length === 1 ? "club" : "clubs"}`}
-        />
-        <IOSGroupedList label="Quick Bag trusted numbers">
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>{bestMatch ? "Alternatives" : "Trusted numbers"}</CardTitle>
+          <CardDescription>
+            {filtered.length} active {filtered.length === 1 ? "club" : "clubs"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-2">
           {(bestMatch ? filtered.slice(1) : filtered).map((club) => (
-            <IOSListRow
-              key={club.id}
-              icon={Target}
-              label={club.label}
-              detail={`${club.model} · ${rangeLabel(club)} · ${patternLabel(club)}${club.playNumberYd === null ? "" : ` · Play number ${Math.round(club.playNumberYd)} yd`}`}
-              value={yardValue(club.trustedCarryYd)}
-              onClick={() => setSelectedClubId(club.id)}
-              status={
-                <IOSInlineStatus
-                  label={confidenceLabel(club)}
-                  tone={
-                    club.confidence >= 75
-                      ? "positive"
-                      : club.confidence >= 55
-                        ? "info"
-                        : "attention"
-                  }
-                />
-              }
-            />
+            <Item key={club.id} size="sm">
+              <ItemMedia>
+                <Target className="size-4 text-primary" aria-hidden />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>{club.label}</ItemTitle>
+                <ItemDescription>
+                  {club.model} · {rangeLabel(club)} · {patternLabel(club)}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <div className="text-right">
+                  <p className="font-semibold">{yardValue(club.trustedCarryYd)}</p>
+                  <Badge variant="outline" className="mt-1">
+                    {confidenceLabel(club)}
+                  </Badge>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedClubId(club.id);
+                    setDetailOpen(true);
+                  }}
+                >
+                  Detail
+                </Button>
+              </ItemActions>
+            </Item>
           ))}
-        </IOSGroupedList>
+          {filtered.length === 0 ? (
+            <AppEmptyState
+              title="No matching club"
+              description="Try another target or build trusted club numbers from measured shots."
+              primaryAction={
+                <Button type="button" size="sm" onClick={() => setTargetDistance("")}>
+                  Show trusted clubs
+                </Button>
+              }
+              className="border-0 p-4 shadow-none"
+            />
+          ) : null}
+        </CardContent>
         <p className="px-1 text-xs leading-5 text-muted-foreground">
           Play number is the recommended stock number. “Plays like” is reserved for a live
           conditions-adjusted value.
         </p>
-      </section>
+      </Card>
+
+      <QuickBagClubDrawer club={selectedClub} open={detailOpen} onOpenChange={setDetailOpen} />
     </>
+  );
+}
+
+function QuickMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function QuickBagClubDrawer({
+  club,
+  open,
+  onOpenChange,
+}: {
+  club: QuickBagClub | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+      <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <DrawerHeader className="text-left">
+          <DrawerTitle>{club?.label ?? "Club detail"}</DrawerTitle>
+          <DrawerDescription>
+            {club ? `${club.model} · ${confidenceLabel(club)}` : "Choose a measured club."}
+          </DrawerDescription>
+        </DrawerHeader>
+        {club ? (
+          <div className="grid gap-4 px-4 pb-4">
+            <LateralRange club={club} />
+            <div className="grid grid-cols-2 gap-3 rounded-xl bg-muted/55 p-3">
+              <QuickMetric label="Trusted carry" value={yardValue(club.trustedCarryYd)} />
+              <QuickMetric label="Play number" value={yardValue(club.playNumberYd)} />
+              <QuickMetric label="Measured range" value={rangeLabel(club)} />
+              <QuickMetric label="Typical pattern" value={patternLabel(club)} />
+            </div>
+          </div>
+        ) : null}
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -247,7 +342,7 @@ function LateralRange({ club }: { club: QuickBagClub }) {
   const position = (value: number) => 50 + (value / bound) * 44;
   return (
     <div
-      className="ios-grouped-list p-4"
+      className="rounded-xl border bg-card p-4"
       role="img"
       aria-label={`${club.label} lateral measured range. ${patternLabel(club)}.`}
     >

@@ -4,6 +4,8 @@ import { ShieldCheck } from "lucide-react";
 import { useEffect, useState, type ComponentType } from "react";
 
 import { trackPlausibleEvent } from "@/lib/analytics";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   CourseTwinStaticFallback,
@@ -104,8 +106,41 @@ export function CourseTwinShowcase() {
         className={styles.courseTwinDemo}
         onClick={() => trackPlausibleEvent("Public Course Twin Demo Opened")}
       >
-        {Runtime ? <Runtime /> : <CourseTwinStaticFallback mode={fallbackMode} />}
+        {Runtime ? <Runtime /> : <CourseTwinDemoState mode={fallbackMode} />}
       </ScrollZoomFrame>
     </section>
   );
+}
+
+function CourseTwinDemoState({ mode }: { mode: CourseTwinFallbackMode }) {
+  if (mode === "checking" || mode === "loading") {
+    return (
+      <div
+        className="grid min-h-[420px] content-end gap-3 bg-emerald-950 p-5"
+        aria-label="Loading Course Twin demo"
+      >
+        <Skeleton className="h-6 w-40 bg-white/15" />
+        <Skeleton className="h-10 w-72 max-w-full bg-white/15" />
+        <Skeleton className="h-24 w-full bg-white/10" />
+      </div>
+    );
+  }
+
+  if (mode === "unsupported" || mode === "runtime-error") {
+    return (
+      <div className="grid gap-2 bg-emerald-950 p-2">
+        <Alert className="border-white/20 bg-white text-foreground">
+          <ShieldCheck className="size-4" />
+          <AlertTitle>Interactive Course Twin is unavailable</AlertTitle>
+          <AlertDescription>
+            The labelled static plan remains available; measured, reconstructed, and modelled data
+            stay separate.
+          </AlertDescription>
+        </Alert>
+        <CourseTwinStaticFallback mode={mode} />
+      </div>
+    );
+  }
+
+  return <CourseTwinStaticFallback mode={mode} />;
 }

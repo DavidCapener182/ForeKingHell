@@ -5,6 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ShieldCheck, Trash2, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   clearOfflineActions,
   currentOfflineAccountId,
@@ -80,13 +89,12 @@ export function OfflineStoragePanel() {
             shared devices.
           </p>
         </div>
-        <label className="grid gap-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm font-medium">
-          Import retention on this device
-          <select
-            value={retentionDays}
-            className="min-h-9 rounded-md border bg-background px-2"
-            onChange={(event) => {
-              const next = Number(event.target.value) as OfflineImportRetentionDays;
+        <div className="grid gap-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm font-medium">
+          <Label>Import retention on this device</Label>
+          <Select
+            value={String(retentionDays)}
+            onValueChange={(value) => {
+              const next = Number(value) as OfflineImportRetentionDays;
               if (!offlineImportRetentionOptions.includes(next)) return;
               setOfflineImportRetentionDays(next);
               setMessage(
@@ -96,12 +104,17 @@ export function OfflineStoragePanel() {
               );
             }}
           >
-            <option value={0}>Never store imports offline</option>
-            <option value={1}>24 hours</option>
-            <option value={3}>72 hours</option>
-            <option value={7}>7 days</option>
-          </select>
-        </label>
+            <SelectTrigger className="min-h-9 w-full bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">Never store imports offline</SelectItem>
+              <SelectItem value="1">24 hours</SelectItem>
+              <SelectItem value="3">72 hours</SelectItem>
+              <SelectItem value="7">7 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -118,14 +131,10 @@ export function OfflineStoragePanel() {
       </p>
 
       {message ? (
-        <p
-          className="mt-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-sm text-primary"
-          data-tone="green"
-          data-tone-role="surface"
-        >
+        <Alert className="mt-3" data-tone="green" data-tone-role="surface">
           <ShieldCheck className="size-4" />
-          {message}
-        </p>
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">

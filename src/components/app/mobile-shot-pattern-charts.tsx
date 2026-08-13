@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 
-import { SegmentedControl } from "@/components/app/segmented-control";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   defaultShotPatternClub,
   filterShotPatternPoints,
@@ -21,12 +27,10 @@ const SharedShotPatternVisual = dynamic(
   () => import("@/app/today/today-shot-charts").then((module) => module.SharedShotPatternVisual),
   {
     loading: () => (
-      <div
-        className="grid aspect-[82/43] w-full place-items-center bg-slate-50 text-xs font-medium text-slate-500"
-        role="status"
-      >
-        Drawing measured shot pattern…
-      </div>
+      <Skeleton
+        className="aspect-[82/43] w-full rounded-xl"
+        aria-label="Drawing measured shot pattern"
+      />
     ),
   },
 );
@@ -60,9 +64,15 @@ export function MobileShotPatternCharts({
 
   if (clubs.length === 0) {
     return (
-      <div className="ios-grouped-list grid min-h-36 place-items-center p-5 text-center text-sm text-muted-foreground">
-        No measured landing data are available for this session.
-      </div>
+      <AppEmptyState
+        title="No measured landing data"
+        description="Import a measured session with carry and lateral coordinates to unlock the shot pattern."
+        primaryAction={
+          <Button asChild size="sm">
+            <Link href="/import">Import a session</Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -73,15 +83,14 @@ export function MobileShotPatternCharts({
       data-mobile-shot-pattern-hydrated={hydrated ? "true" : "false"}
     >
       {!compact ? (
-        <SegmentedControl
-          label="Shot pattern view"
-          value={mode}
-          options={[
-            { value: "dispersion", label: "Dispersion" },
-            { value: "flight", label: "Flight", disabled: !hasFlight },
-          ]}
-          onChange={(value) => setMode(value as ChartMode)}
-        />
+        <Tabs value={mode} onValueChange={(value) => setMode(value as ChartMode)}>
+          <TabsList className="grid w-full grid-cols-2" aria-label="Shot pattern view">
+            <TabsTrigger value="dispersion">Dispersion</TabsTrigger>
+            <TabsTrigger value="flight" disabled={!hasFlight}>
+              Flight
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       ) : null}
       {!compact && !hasFlight ? (
         <p className="rounded-xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
@@ -90,64 +99,70 @@ export function MobileShotPatternCharts({
       ) : null}
 
       {!compact && mode === "flight" && hasFlight ? (
-        <SegmentedControl
-          label="Flight detail"
+        <ToggleGroup
+          type="single"
           value={flightMode}
-          options={[
-            { value: "shots", label: "Individual shots" },
-            { value: "average", label: "Club average" },
-          ]}
-          onChange={(value) => setFlightMode(value as FlightMode)}
-        />
+          onValueChange={(value) => value && setFlightMode(value as FlightMode)}
+          variant="outline"
+          className="grid w-full grid-cols-2"
+          aria-label="Flight detail"
+        >
+          <ToggleGroupItem value="shots" className="w-full">
+            Individual shots
+          </ToggleGroupItem>
+          <ToggleGroupItem value="average" className="w-full">
+            Club average
+          </ToggleGroupItem>
+        </ToggleGroup>
       ) : null}
 
-      <div
-        className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1"
-        role="toolbar"
+      <ToggleGroup
+        type="single"
+        value={club}
+        onValueChange={(value) => value && setClub(value)}
+        className="-mx-1 w-auto snap-x justify-start gap-2 overflow-x-auto px-1 pb-1"
         aria-label="Chart club"
       >
         {clubs.map((item) => (
-          <button
+          <ToggleGroupItem
             key={item.type}
-            type="button"
-            aria-pressed={club === item.type}
-            onClick={() => setClub(item.type)}
-            className={cn(
-              "focus-aaa min-h-11 shrink-0 snap-start rounded-full border px-3 text-sm font-semibold",
-              club === item.type ? "border-primary bg-primary text-primary-foreground" : "bg-card",
-            )}
+            value={item.type}
+            variant="outline"
+            size="lg"
+            className="focus-aaa min-h-11 shrink-0 snap-start rounded-full px-3 text-sm font-semibold"
           >
             {item.label}
-          </button>
+          </ToggleGroupItem>
         ))}
         {clubs.length > 1 && !compact ? (
-          <button
-            type="button"
-            aria-pressed={club === "all"}
-            onClick={() => setClub("all")}
-            className={cn(
-              "focus-aaa min-h-11 shrink-0 snap-start rounded-full border px-3 text-sm font-semibold",
-              club === "all" ? "border-primary bg-primary text-primary-foreground" : "bg-card",
-            )}
+          <ToggleGroupItem
+            value="all"
+            variant="outline"
+            size="lg"
+            className="focus-aaa min-h-11 shrink-0 snap-start rounded-full px-3 text-sm font-semibold"
           >
             All clubs
-          </button>
+          </ToggleGroupItem>
         ) : null}
-      </div>
+      </ToggleGroup>
 
       {!compact ? (
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {confidence.sampleSize} measured landing points · {confidence.label} confidence
           </p>
-          <button
-            type="button"
-            aria-pressed={trustedOnly}
-            onClick={() => setTrustedOnly((value) => !value)}
-            className="focus-aaa min-h-11 rounded-full border bg-card px-3 text-xs font-semibold"
+          <ToggleGroup
+            type="single"
+            value={trustedOnly ? "trusted" : "all"}
+            onValueChange={(value) => value && setTrustedOnly(value === "trusted")}
+            variant="outline"
+            size="sm"
+            spacing={0}
+            aria-label="Evidence trust"
           >
-            {trustedOnly ? "Trusted shots" : "All shots"}
-          </button>
+            <ToggleGroupItem value="trusted">Trusted shots</ToggleGroupItem>
+            <ToggleGroupItem value="all">All shots</ToggleGroupItem>
+          </ToggleGroup>
         </div>
       ) : null}
 
@@ -180,38 +195,40 @@ export function MobileShotPatternCharts({
 
 function AccessibleShotTable({ points }: { points: ShotPatternPoint[] }) {
   return (
-    <details className="rounded-xl border bg-card px-3 py-2">
-      <summary className="focus-aaa min-h-11 cursor-pointer py-3 text-sm font-semibold">
+    <Collapsible className="rounded-xl border bg-card px-3 py-2">
+      <CollapsibleTrigger className="focus-aaa min-h-11 w-full cursor-pointer py-3 text-left text-sm font-semibold outline-none">
         Accessible shot data ({points.length})
-      </summary>
-      <div className="max-h-72 overflow-auto pb-2">
-        <table className="w-full min-w-[30rem] text-left text-xs">
-          <caption className="sr-only">Measured shot data used by this chart</caption>
-          <thead>
-            <tr className="border-b">
-              <th className="p-2">Shot</th>
-              <th className="p-2">Club</th>
-              <th className="p-2">Carry</th>
-              <th className="p-2">Lateral</th>
-              <th className="p-2">Apex</th>
-              <th className="p-2">Trust</th>
-            </tr>
-          </thead>
-          <tbody>
-            {points.map((point, index) => (
-              <tr key={point.id} className="border-b last:border-0">
-                <td className="p-2">{point.shotNumber ?? index + 1}</td>
-                <td className="p-2">{point.clubLabel}</td>
-                <td className="p-2">{formatMeasure(point.carryYd, "yd")}</td>
-                <td className="p-2">{formatSigned(point.sideCarryYd)}</td>
-                <td className="p-2">{formatMeasure(point.apexFt, "ft")}</td>
-                <td className="p-2">{point.trusted ? "Trusted" : "Unusual"}</td>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="max-h-72 overflow-auto pb-2">
+          <table className="w-full min-w-[30rem] text-left text-xs">
+            <caption className="sr-only">Measured shot data used by this chart</caption>
+            <thead>
+              <tr className="border-b">
+                <th className="p-2">Shot</th>
+                <th className="p-2">Club</th>
+                <th className="p-2">Carry</th>
+                <th className="p-2">Lateral</th>
+                <th className="p-2">Apex</th>
+                <th className="p-2">Trust</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </details>
+            </thead>
+            <tbody>
+              {points.map((point, index) => (
+                <tr key={point.id} className="border-b last:border-0">
+                  <td className="p-2">{point.shotNumber ?? index + 1}</td>
+                  <td className="p-2">{point.clubLabel}</td>
+                  <td className="p-2">{formatMeasure(point.carryYd, "yd")}</td>
+                  <td className="p-2">{formatSigned(point.sideCarryYd)}</td>
+                  <td className="p-2">{formatMeasure(point.apexFt, "ft")}</td>
+                  <td className="p-2">{point.trusted ? "Trusted" : "Unusual"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { and, count, eq, gte, sql } from "drizzle-orm";
-import { ArrowRight, CalendarDays, CheckCircle2, Flag, Target, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarDays, Flag, Target } from "lucide-react";
 
-import { addGoalAction, deleteGoalAction, saveSeasonPlanAction } from "@/app/goals/actions";
+import { saveSeasonPlanAction } from "@/app/goals/actions";
+import { GoalCreateDialog, GoalDeleteDialog, GoalEditSheet } from "@/app/goals/goal-form-panels";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   AnswerCard,
   MetricEvidenceDrawer,
@@ -17,9 +19,11 @@ import {
 } from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { getDb } from "@/db/client";
 import { sessions, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -27,7 +31,6 @@ import {
   getProductPreferences,
   goalProgress,
   goalTypeLabel,
-  goalTypes,
   type SeasonGoal,
   type SeasonPlan,
 } from "@/lib/product-preferences";
@@ -76,23 +79,15 @@ export default async function GoalsPage({
       />
 
       {params?.saved === "1" ? (
-        <div
-          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/55 dark:text-emerald-100"
-          role="status"
-        >
-          <CheckCircle2 className="size-5" aria-hidden />
-          Season plan saved.
-        </div>
+        <Alert>
+          <AlertDescription>Season plan saved.</AlertDescription>
+        </Alert>
       ) : null}
 
       {params?.saved === "goal" ? (
-        <div
-          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/55 dark:text-emerald-100"
-          role="status"
-        >
-          <CheckCircle2 className="size-5" aria-hidden />
-          Goal added to the season plan.
-        </div>
+        <Alert>
+          <AlertDescription>Goal saved in the season plan.</AlertDescription>
+        </Alert>
       ) : null}
 
       <AnswerCard
@@ -189,7 +184,7 @@ export default async function GoalsPage({
                 title: "Add a measured goal",
                 summary: "New",
                 description: "Handicap, distance, speed, practice or competition",
-                content: <AddGoalForm idPrefix="mobile-goal" />,
+                content: <GoalCreateDialog label="Add measured goal" />,
               },
               {
                 value: "evidence-method",
@@ -325,87 +320,16 @@ export default async function GoalsPage({
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-muted-foreground">
-            No measured target yet. Add one below; the season outcome above can stay broad while
-            these targets remain numerical.
-          </div>
+          <AppEmptyState
+            title="No active measured goals"
+            description="Keep the season outcome broad and add one numerical target backed by imported evidence."
+            primaryAction={<GoalCreateDialog label="Add first goal" />}
+          />
         )}
 
-        <Card className="premium-card">
-          <CardHeader>
-            <CardTitle>Add a measured goal</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form action={addGoalAction} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Field label="Goal type" htmlFor="type">
-                <select
-                  id="type"
-                  name="type"
-                  className="min-h-10 w-full rounded-md border bg-background px-3"
-                  defaultValue="carry"
-                >
-                  {goalTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {goalTypeLabel(type)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Goal title" htmlFor="title" className="xl:col-span-2">
-                <Input
-                  id="title"
-                  name="title"
-                  placeholder="Driver carry 250 yards"
-                  maxLength={100}
-                  required
-                />
-              </Field>
-              <Field label="Club or context" htmlFor="club">
-                <Input id="club" name="club" placeholder="Driver" maxLength={40} />
-              </Field>
-              <Field label="Starting value" htmlFor="startingValue">
-                <Input id="startingValue" name="startingValue" type="number" step="0.1" required />
-              </Field>
-              <Field label="Current value" htmlFor="currentValue">
-                <Input id="currentValue" name="currentValue" type="number" step="0.1" required />
-              </Field>
-              <Field label="Target value" htmlFor="targetValue">
-                <Input id="targetValue" name="targetValue" type="number" step="0.1" required />
-              </Field>
-              <Field label="Unit" htmlFor="unit">
-                <Input id="unit" name="unit" placeholder="yd" maxLength={20} required />
-              </Field>
-              <Field label="Target date" htmlFor="goalTargetDate">
-                <Input id="goalTargetDate" name="goalTargetDate" type="date" />
-              </Field>
-              <Field label="Evidence source" htmlFor="evidenceSource" className="xl:col-span-2">
-                <Input
-                  id="evidenceSource"
-                  name="evidenceSource"
-                  defaultValue="Imported session evidence"
-                  maxLength={120}
-                  required
-                />
-              </Field>
-              <Field
-                label="Recommended next action"
-                htmlFor="nextAction"
-                className="md:col-span-2 xl:col-span-3"
-              >
-                <Input
-                  id="nextAction"
-                  name="nextAction"
-                  placeholder="Run a 15-shot measured driver set"
-                  maxLength={180}
-                  required
-                />
-              </Field>
-              <Button type="submit" className="premium-action min-h-11 self-end">
-                Add goal
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <div className="flex justify-end">
+          <GoalCreateDialog label="Add measured goal" />
+        </div>
       </section>
 
       <RecommendedAction
@@ -449,29 +373,17 @@ function mobileGoalDisclosure(goal: SeasonGoal) {
           </div>
         </dl>
         <div>
-          <div
-            className="h-2 overflow-hidden rounded-full bg-secondary"
-            aria-label={`${progress}% progress`}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
-          </div>
+          <Progress value={progress} aria-label={`${progress}% progress`} />
           <p className="mt-2 text-sm leading-5 text-muted-foreground">Next: {goal.nextAction}</p>
         </div>
         <div className="flex min-h-11 items-center justify-between gap-3 border-t border-border/70 pt-3">
           <p className="text-xs text-muted-foreground">
             {goal.targetDate ? `Target ${formatDate(goal.targetDate)}` : "No deadline set"}
           </p>
-          <form action={deleteGoalAction}>
-            <input type="hidden" name="goalId" value={goal.id} />
-            <Button type="submit" variant="ghost" className="min-h-11 text-destructive">
-              <Trash2 className="size-4" aria-hidden />
-              Remove
-            </Button>
-          </form>
+          <div className="flex gap-2">
+            <GoalEditSheet goal={goal} />
+            <GoalDeleteDialog goal={goal} />
+          </div>
         </div>
       </div>
     ),
@@ -531,102 +443,6 @@ function SeasonPlanForm({ plan, idPrefix }: { plan: SeasonPlan; idPrefix: string
   );
 }
 
-function AddGoalForm({ idPrefix }: { idPrefix: string }) {
-  const id = (name: string) => `${idPrefix}-${name}`;
-
-  return (
-    <form action={addGoalAction} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <Field label="Goal type" htmlFor={id("type")}>
-        <select
-          id={id("type")}
-          name="type"
-          className="min-h-11 w-full rounded-md border bg-background px-3"
-          defaultValue="carry"
-        >
-          {goalTypes.map((type) => (
-            <option key={type} value={type}>
-              {goalTypeLabel(type)}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Goal title" htmlFor={id("title")} className="xl:col-span-2">
-        <Input
-          id={id("title")}
-          name="title"
-          placeholder="Driver carry 250 yards"
-          maxLength={100}
-          required
-        />
-      </Field>
-      <Field label="Club or context" htmlFor={id("club")}>
-        <Input id={id("club")} name="club" placeholder="Driver" maxLength={40} />
-      </Field>
-      <Field label="Starting value" htmlFor={id("starting-value")}>
-        <Input
-          id={id("starting-value")}
-          name="startingValue"
-          type="number"
-          inputMode="decimal"
-          step="0.1"
-          required
-        />
-      </Field>
-      <Field label="Current value" htmlFor={id("current-value")}>
-        <Input
-          id={id("current-value")}
-          name="currentValue"
-          type="number"
-          inputMode="decimal"
-          step="0.1"
-          required
-        />
-      </Field>
-      <Field label="Target value" htmlFor={id("target-value")}>
-        <Input
-          id={id("target-value")}
-          name="targetValue"
-          type="number"
-          inputMode="decimal"
-          step="0.1"
-          required
-        />
-      </Field>
-      <Field label="Unit" htmlFor={id("unit")}>
-        <Input id={id("unit")} name="unit" placeholder="yd" maxLength={20} required />
-      </Field>
-      <Field label="Target date" htmlFor={id("target-date")}>
-        <Input id={id("target-date")} name="goalTargetDate" type="date" />
-      </Field>
-      <Field label="Evidence source" htmlFor={id("evidence-source")} className="xl:col-span-2">
-        <Input
-          id={id("evidence-source")}
-          name="evidenceSource"
-          defaultValue="Imported session evidence"
-          maxLength={120}
-          required
-        />
-      </Field>
-      <Field
-        label="Recommended next action"
-        htmlFor={id("next-action")}
-        className="md:col-span-2 xl:col-span-3"
-      >
-        <Input
-          id={id("next-action")}
-          name="nextAction"
-          placeholder="Run a 15-shot measured driver set"
-          maxLength={180}
-          required
-        />
-      </Field>
-      <Button type="submit" className="premium-action min-h-11 self-end">
-        Add goal
-      </Button>
-    </form>
-  );
-}
-
 function GoalCard({ goal }: { goal: SeasonGoal }) {
   const progress = goalProgress(goal);
   const movement = Math.round((goal.currentValue - goal.startingValue) * 10) / 10;
@@ -653,16 +469,7 @@ function GoalCard({ goal }: { goal: SeasonGoal }) {
           <GoalMetric label="Target" value={`${goal.targetValue} ${goal.unit}`} />
         </div>
         <div>
-          <div
-            className="h-2 overflow-hidden rounded-full bg-secondary"
-            aria-label={`${progress}% progress`}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress}
-          >
-            <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
-          </div>
+          <Progress value={progress} aria-label={`${progress}% progress`} />
           <p className="mt-2 text-xs text-muted-foreground">
             {movement > 0 ? "+" : ""}
             {movement} {goal.unit} from baseline · {confidence} · {goal.evidenceSource}
@@ -676,13 +483,10 @@ function GoalCard({ goal }: { goal: SeasonGoal }) {
           <p className="text-xs text-muted-foreground">
             {goal.targetDate ? `Target ${formatDate(goal.targetDate)}` : "No deadline set"}
           </p>
-          <form action={deleteGoalAction}>
-            <input type="hidden" name="goalId" value={goal.id} />
-            <Button type="submit" variant="ghost" size="sm">
-              <Trash2 className="size-4" aria-hidden />
-              Remove
-            </Button>
-          </form>
+          <div className="flex gap-2">
+            <GoalEditSheet goal={goal} />
+            <GoalDeleteDialog goal={goal} />
+          </div>
         </div>
       </CardContent>
     </Card>

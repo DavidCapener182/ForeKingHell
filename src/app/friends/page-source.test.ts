@@ -18,7 +18,10 @@ describe("friends desktop manager", () => {
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('id="blocked-users"');
-    expect(source).toContain('aria-label="Friend invite rail"');
+    expect(source).toContain("FriendInviteDialog");
+    expect(source).toContain("FriendsTabs");
+    expect(source).toContain("FriendActionMenu");
+    expect(source).toContain("<Item");
     expect(source).toContain('aria-label="Friend discovery rail"');
     expect(source).toContain('aria-label="Friend safety rail"');
     expect(source).toContain('aria-label="Search public profiles by username"');

@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/analyse/compare/page.tsx"), "utf8");
+const provenanceSource = readFileSync(
+  join(process.cwd(), "src/app/analyse/compare/comparison-provenance-panel.tsx"),
+  "utf8",
+);
 
 describe("session comparison page", () => {
   it("supports explicit focus/baseline sessions and keeps the existing compare path", () => {
@@ -15,7 +19,10 @@ describe("session comparison page", () => {
     expect(source).toContain("data.benefit.summary");
     expect(source).toContain("confidenceLabel");
     expect(source).toContain('href="/practice"');
-    expect(source).toContain("Source and method");
+    expect(source).toContain("ComparisonProvenancePanel");
+    expect(provenanceSource).toContain("Method & provenance");
+    expect(provenanceSource).toContain("metric.source");
+    expect(provenanceSource).toContain("metric.method");
     expect(source).toContain('href="/shots"');
   });
 });

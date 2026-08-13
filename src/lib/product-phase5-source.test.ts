@@ -69,18 +69,15 @@ describe("Phase 5 product-page contract", () => {
   it("separates progress dimensions and does not equate volume with improvement", () => {
     const progress = source("src/app/(app)/progress/page.tsx");
 
-    for (const label of [
-      "Performance",
-      "Consistency",
-      "Strike quality",
-      "Direction control",
-      "Speed",
-      "Training volume",
-      "Confidence / sample",
+    for (const [value, label] of [
+      ["performance", "Performance"],
+      ["goals", "Goals"],
+      ["load", "Training load"],
+      ["timeline", "Timeline"],
     ]) {
-      expect(progress).toContain(`label: "${label}"`);
+      expect(progress).toContain(`<TabsTrigger value="${value}">${label}</TabsTrigger>`);
     }
-    expect(progress).toContain("more shots is not automatic improvement");
+    expect(progress).not.toContain('label: "Training volume"');
   });
 
   it("labels Handicap as unofficial and explains eligibility failures", () => {
@@ -101,7 +98,8 @@ describe("Phase 5 product-page contract", () => {
 
     expect(feed).toContain('{ id: "proof", label: "Proof" }');
     expect(feed).toContain('{ id: "privacy", label: "Privacy" }');
-    expect(feed).toContain("Your feed is automatic right now.");
+    expect(feed).toContain("StatusUpdateComposerSheet");
+    expect(feed).toContain("Privacy state");
     expect(feed).toContain("data.profile.feedVisibilityDefault");
     expect(feed).toContain("item.verificationLabel");
     expect(today).toContain("Social comparison is on demand");

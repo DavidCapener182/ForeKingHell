@@ -418,6 +418,31 @@ export async function joinChallenge(challengeId: string) {
   revalidateChallengePaths(challenge.id);
 }
 
+export async function leaveChallenge(challengeId: string) {
+  const userId = await requireCurrentUserId();
+  const challenge = await requireVisibleChallenge(userId, challengeId);
+
+  if (challenge.creatorUserId === userId) {
+    throw new Error("Challenge creators cannot leave their own challenge.");
+  }
+
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(challengeResults)
+      .where(
+        and(eq(challengeResults.challengeId, challengeId), eq(challengeResults.userId, userId)),
+      );
+    await tx
+      .delete(challengeEntries)
+      .where(
+        and(eq(challengeEntries.challengeId, challengeId), eq(challengeEntries.userId, userId)),
+      );
+  });
+
+  revalidateChallengePaths(challengeId);
+}
+
 export async function submitChallengeAttempt(input: {
   challengeId: string;
   metricValue: number;

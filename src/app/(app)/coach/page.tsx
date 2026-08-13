@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
+import { AiDesktopWorkbench } from "@/components/app/ai-desktop-workbench";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -49,6 +50,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import {
   Table,
@@ -372,151 +374,158 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
         </div>
       </div>
 
-      <DesktopWorkbenchLayout
-        scope="coach"
-        className="hidden lg:grid"
-        rail={
-          <DesktopInsightRail
-            title="AI coach rail"
-            description="Diagnosis, evidence and drill-plan controls stay available while reviewing the desk."
-            metrics={[
-              {
-                label: "Primary focus",
-                value: topClub ? topClub.clubName : "Baseline",
-                detail: topClub ? topClub.reason : coach.headline,
-                tone: topClub?.tone ?? "slate",
-              },
-              {
-                label: "Bag trust",
-                value: `${coach.summary.totals.averageTrust}%`,
-                detail: `${coach.summary.totals.clubs} clubs, ${coach.summary.totals.trackedCleanShots.toLocaleString(
-                  "en-GB",
-                )} clean shots in the coach model.`,
-                tone: coach.summary.totals.averageTrust >= 70 ? "green" : "amber",
-              },
-              {
-                label: "AI access",
-                value: canUseAiCoach ? "Available" : "Plan",
-                detail: canUseAiCoach
-                  ? "Coach AI tools can generate summaries and drill language."
-                  : "AI coaching remains gated by the active plan.",
-                tone: canUseAiCoach ? "green" : "amber",
-              },
-            ]}
-            evidence={[
-              topClub
-                ? `${topClub.clubName} is the current practice priority.`
-                : "No club has enough clean evidence for a priority yet.",
-              `${coach.sessionPlan.length} practice blocks are available in the generated plan.`,
-              "Uploaded shot data remains the source of truth for drill completion and trust.",
-            ]}
-            prompts={[...coachWorkbenchPrompts, ...commonAiPrompts("coach desk").slice(0, 2)]}
-            actions={[
-              {
-                label: "Open diagnosis",
-                href: "/coach/diagnosis",
-                detail: "Full club-by-club evidence report.",
-                icon: Brain,
-              },
-              {
-                label: "Practice planner",
-                href: "/practice",
-                detail: "Turn the coach plan into a session.",
-                icon: Crosshair,
-              },
-              {
-                label: "Data Chat",
-                href: "/data-chat",
-                detail: "Ask for a cited explanation.",
-                icon: MessageCircle,
-              },
-            ]}
-          />
-        }
-      >
-        <div
-          className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
-          style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
-        >
-          {data.clubs.length === 0 ? (
-            <CompactCoachEmptyState />
-          ) : (
-            <>
-              <CoachPracticeHero
-                coach={coach}
-                topClub={topClub}
-                primaryChallenge={drillChallenges[0] ?? null}
-                primaryStatus={
-                  drillChallenges[0] ? drillStatuses[drillChallenges[0].id] : undefined
-                }
-              />
-
-              <WhatChangedPanel signals={coach.signals} span={6} />
-
-              <AthleticDevelopmentCoachCard summary={speedCoachData.summary} span={6} />
-
-              <PracticeSessionBuilder
-                topClub={topClub}
-                drillChallenges={drillChallenges}
-                drillStatuses={drillStatuses}
-                span={7}
-              />
-              <RoundReadinessPanel
-                coach={coach}
-                featureData={featureData}
-                topClub={topClub}
-                span={5}
-              />
-
-              <TodaysPlan cards={coach.clubCards} span={8} />
-
-              <CoachSummaryPanel
-                coach={coach}
-                impacts={coach.trainingImpact.slice(0, 3)}
-                span={4}
-              />
+      <DesktopWorkbenchLayout scope="coach" className="hidden lg:grid">
+        <AiDesktopWorkbench
+          diagnosis={
+            <div
+              className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
+              style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+            >
+              {data.clubs.length === 0 ? (
+                <CompactCoachEmptyState />
+              ) : (
+                <>
+                  <CoachPracticeHero
+                    coach={coach}
+                    topClub={topClub}
+                    primaryChallenge={drillChallenges[0] ?? null}
+                    primaryStatus={
+                      drillChallenges[0] ? drillStatuses[drillChallenges[0].id] : undefined
+                    }
+                  />
+                  <WhatChangedPanel signals={coach.signals} span={6} />
+                  <AthleticDevelopmentCoachCard summary={speedCoachData.summary} span={6} />
+                  <PracticeSessionBuilder
+                    topClub={topClub}
+                    drillChallenges={drillChallenges}
+                    drillStatuses={drillStatuses}
+                    span={7}
+                  />
+                  <RoundReadinessPanel
+                    coach={coach}
+                    featureData={featureData}
+                    topClub={topClub}
+                    span={5}
+                  />
+                  <TodaysPlan cards={coach.clubCards} span={8} />
+                  <CoachSummaryPanel
+                    coach={coach}
+                    impacts={coach.trainingImpact.slice(0, 3)}
+                    span={4}
+                  />
+                </>
+              )}
+            </div>
+          }
+          evidence={
+            <div
+              className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
+              style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+            >
               <RecentSessionFeedback impacts={coach.trainingImpact.slice(0, 2)} span={6} />
-
               <DiagnosisPreview cards={coach.clubCards} span={6} />
-
               <CoachEvidenceTable cards={coach.clubCards} />
-
-              <AiCoachToolsPanel
-                canUseAiCoach={canUseAiCoach}
-                aiPayload={aiPayload}
-                className="coach-ai-grid-item"
-              />
-
-              <details
+              <Collapsible
                 id="coach-social-comparison"
                 className="group min-w-0 scroll-mt-28"
-                open={socialContext.loaded ? true : undefined}
-                style={bentoSpan(6)}
+                defaultOpen={socialContext.loaded}
+                style={bentoSpan(12)}
               >
-                <summary className="premium-card grid h-full cursor-pointer list-none gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
-                  <span>
-                    <span className="block text-lg font-semibold tracking-normal">
-                      Social comparison
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="premium-card grid w-full cursor-pointer gap-3 rounded-lg px-5 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                  >
+                    <span>
+                      <span className="block text-lg font-semibold tracking-normal">
+                        Social comparison
+                      </span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        Challenge context loads only when you ask for it.
+                      </span>
                     </span>
-                    <span className="mt-1 block text-sm text-muted-foreground">
-                      Challenge context loads only when you ask for it.
-                    </span>
-                  </span>
-                  <StatusPill tone={socialContext.loaded ? "green" : "amber"}>
-                    {socialContext.loaded ? "Loaded" : "On demand"}
-                  </StatusPill>
-                </summary>
-                <div className="mt-4">
+                    <StatusPill tone={socialContext.loaded ? "green" : "amber"}>
+                      {socialContext.loaded ? "Loaded" : "On demand"}
+                    </StatusPill>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4">
                   <CoachSocialPrompt
                     topClub={topClub}
                     socialContext={socialContext}
                     loadHref="/coach?social=1#coach-social-comparison"
                   />
-                </div>
-              </details>
-            </>
-          )}
-        </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          }
+          ask={
+            <div
+              className="grid auto-rows-auto items-stretch gap-4 lg:gap-5"
+              style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
+            >
+              <AiCoachToolsPanel canUseAiCoach={canUseAiCoach} aiPayload={aiPayload} span={12} />
+            </div>
+          }
+          context={
+            <DesktopInsightRail
+              title="AI coach context"
+              description="Diagnosis, evidence and drill-plan controls for the current focus."
+              metrics={[
+                {
+                  label: "Primary focus",
+                  value: topClub ? topClub.clubName : "Baseline",
+                  detail: topClub ? topClub.reason : coach.headline,
+                  tone: topClub?.tone ?? "slate",
+                },
+                {
+                  label: "Bag trust",
+                  value: `${coach.summary.totals.averageTrust}%`,
+                  detail: `${coach.summary.totals.clubs} clubs, ${coach.summary.totals.trackedCleanShots.toLocaleString(
+                    "en-GB",
+                  )} clean shots in the coach model.`,
+                  tone: coach.summary.totals.averageTrust >= 70 ? "green" : "amber",
+                },
+                {
+                  label: "AI access",
+                  value: canUseAiCoach ? "Available" : "Plan",
+                  detail: canUseAiCoach
+                    ? "Coach AI tools can generate summaries and drill language."
+                    : "AI coaching remains gated by the active plan.",
+                  tone: canUseAiCoach ? "green" : "amber",
+                },
+              ]}
+              evidence={[
+                topClub
+                  ? `${topClub.clubName} is the current practice priority.`
+                  : "No club has enough clean evidence for a priority yet.",
+                `${coach.sessionPlan.length} practice blocks are available in the generated plan.`,
+                "Uploaded shot data remains the source of truth for drill completion and trust.",
+              ]}
+              prompts={[...coachWorkbenchPrompts, ...commonAiPrompts("coach desk").slice(0, 2)]}
+              actions={[
+                {
+                  label: "Open diagnosis",
+                  href: "/coach/diagnosis",
+                  detail: "Full club-by-club evidence report.",
+                  icon: Brain,
+                },
+                {
+                  label: "Practice planner",
+                  href: "/practice",
+                  detail: "Turn the coach plan into a session.",
+                  icon: Crosshair,
+                },
+                {
+                  label: "Data Chat",
+                  href: "/data-chat",
+                  detail: "Ask for a cited explanation.",
+                  icon: MessageCircle,
+                },
+              ]}
+            />
+          }
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -1340,19 +1349,24 @@ function AiCoachToolsPanel({
 }) {
   return (
     <CoachBentoPanel className={className} span={span}>
-      <details className="group">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-emerald-50/35 [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-base font-semibold tracking-normal">AI coach tools</span>
-            <span className="block text-xs leading-5 text-muted-foreground">
-              Generate note / Ask coach
+      <Collapsible className="group">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-emerald-50/35"
+          >
+            <span className="min-w-0">
+              <span className="block text-base font-semibold tracking-normal">AI coach tools</span>
+              <span className="block text-xs leading-5 text-muted-foreground">
+                Generate note / Ask coach
+              </span>
             </span>
-          </span>
-          <StatusPill tone={canUseAiCoach ? "green" : "amber"}>
-            {canUseAiCoach ? "Available" : "Pro"}
-          </StatusPill>
-        </summary>
-        <div className="grid gap-3 border-t border-slate-200 p-3 [&>[data-slot=card-content]]:px-0">
+            <StatusPill tone={canUseAiCoach ? "green" : "amber"}>
+              {canUseAiCoach ? "Available" : "Pro"}
+            </StatusPill>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="grid gap-3 border-t border-slate-200 p-3 [&>[data-slot=card-content]]:px-0">
           {canUseAiCoach ? (
             <>
               <AiCoachCard payload={aiPayload} />
@@ -1367,8 +1381,8 @@ function AiCoachToolsPanel({
           ) : (
             <UpgradeAiCoachCard />
           )}
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
     </CoachBentoPanel>
   );
 }

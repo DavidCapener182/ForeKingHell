@@ -19,6 +19,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { MobileCompactPageHeader } from "@/components/premium";
 import {
@@ -431,18 +438,18 @@ function MobileRangePicker({
           Changes every number and visual below
         </span>
       </span>
-      <select
-        aria-label="Shot date range"
-        value={value}
-        onChange={(event) => onChange(event.target.value as ShotRange)}
-        className="min-h-11 max-w-[44%] rounded-lg border bg-background px-2 text-right text-sm font-semibold text-foreground"
-      >
-        {RANGE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as ShotRange)}>
+        <SelectTrigger aria-label="Shot date range" className="min-h-11 max-w-[44%]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {RANGE_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
 }

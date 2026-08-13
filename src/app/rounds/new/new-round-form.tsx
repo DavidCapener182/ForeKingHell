@@ -6,6 +6,15 @@ import { CalendarDays, ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { StickyMobileAction } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
@@ -112,26 +121,31 @@ export function NewRoundForm({
           )}
         >
           <span>Course / tee</span>
-          <select
+          <Select
             name="teeSetId"
             value={selectedTeeSet.id}
-            onChange={(event) => {
-              setSelectedTeeSetId(event.target.value);
+            onValueChange={(value) => {
+              setSelectedTeeSetId(value);
               setActiveHoleIndex(0);
               setScoreValues({});
             }}
-            className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            {courses.map((course) => (
-              <optgroup key={course.id} label={course.name}>
-                {course.teeSets.map((teeSet) => (
-                  <option key={teeSet.id} value={teeSet.id}>
-                    {course.name} - {teeSet.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            <SelectTrigger className="h-11 w-full min-w-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {courses.map((course) => (
+                <SelectGroup key={course.id}>
+                  <SelectLabel>{course.name}</SelectLabel>
+                  {course.teeSets.map((teeSet) => (
+                    <SelectItem key={teeSet.id} value={teeSet.id}>
+                      {course.name} - {teeSet.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <label
           className={cn(
@@ -155,15 +169,15 @@ export function NewRoundForm({
           )}
         >
           <span>Status</span>
-          <select
-            name="roundStatus"
-            value={roundStatus}
-            onChange={(event) => setRoundStatus(event.target.value)}
-            className="h-11 w-full min-w-0 rounded-xl border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="complete">Complete</option>
-            <option value="in_progress">In progress</option>
-          </select>
+          <Select name="roundStatus" value={roundStatus} onValueChange={setRoundStatus}>
+            <SelectTrigger className="h-11 w-full min-w-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="complete">Complete</SelectItem>
+              <SelectItem value="in_progress">In progress</SelectItem>
+            </SelectContent>
+          </Select>
         </label>
         <label
           className={cn(
@@ -508,16 +522,16 @@ function BooleanSelect({
   return (
     <label className="grid gap-1 text-xs font-medium text-muted-foreground">
       <span>{label}</span>
-      <select
-        name={name}
-        defaultValue={disabled ? "null" : "null"}
-        disabled={disabled}
-        className="h-11 min-w-0 rounded-xl border border-input bg-background px-2 text-base text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:bg-muted disabled:text-muted-foreground sm:h-9 sm:rounded-lg sm:text-sm"
-      >
-        <option value="null">-</option>
-        <option value="true">Hit</option>
-        <option value="false">Miss</option>
-      </select>
+      <Select name={name} defaultValue="null" disabled={disabled}>
+        <SelectTrigger className="h-11 min-w-0 sm:h-9">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="null">-</SelectItem>
+          <SelectItem value="true">Hit</SelectItem>
+          <SelectItem value="false">Miss</SelectItem>
+        </SelectContent>
+      </Select>
     </label>
   );
 }

@@ -1,5 +1,11 @@
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import {
+  Children,
+  isValidElement,
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import {
   Activity,
   CalendarDays,
@@ -18,7 +24,15 @@ import { createManualSpeedSessionAction, updateSpeedGoalsAction } from "@/app/sp
 import { ClubSpeedFocus } from "@/app/speed/club-speed-focus";
 import { FutureBagSlider } from "@/app/speed/future-bag-slider";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   DesktopTableWorkbenchControls,
@@ -361,11 +375,11 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                 </Button>
               </div>
 
-              <details className="rounded-lg border border-border/70 bg-white/65 p-3">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-950">
+              <Collapsible className="rounded-lg border border-border/70 bg-white/65 p-3">
+                <CollapsibleTrigger className="w-full cursor-pointer text-left text-sm font-semibold text-slate-950">
                   Optional per-club target overrides
-                </summary>
-                <div className="mt-3 grid gap-2">
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 grid gap-2">
                   {data.clubOptions.map((club) => (
                     <div
                       key={club.id}
@@ -395,8 +409,8 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                       />
                     </div>
                   ))}
-                </div>
-              </details>
+                </CollapsibleContent>
+              </Collapsible>
             </form>
           </DataPanel>
 
@@ -1092,18 +1106,18 @@ function MobileSpeedAnswer({
             <label className="sr-only" htmlFor="mobile-speed-club">
               Club focus
             </label>
-            <select
-              id="mobile-speed-club"
-              name="club"
-              defaultValue={selectedClubId ?? ""}
-              className="min-h-11 min-w-0 rounded-xl border border-input bg-background px-3 text-[16px] text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              {data.clubSpeedRows.map((row) => (
-                <option key={row.clubId ?? "unassigned"} value={row.clubId ?? ""}>
-                  {shortClubLabel(row)}
-                </option>
-              ))}
-            </select>
+            <Select name="club" defaultValue={selectedClubId ?? "__none__"}>
+              <SelectTrigger id="mobile-speed-club" className="min-h-11 min-w-0 text-[16px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {data.clubSpeedRows.map((row) => (
+                  <SelectItem key={row.clubId ?? "unassigned"} value={row.clubId ?? "__none__"}>
+                    {shortClubLabel(row)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button type="submit" variant="outline" className="min-h-11 rounded-xl px-4">
               View
             </Button>
@@ -2772,17 +2786,46 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function NativeSelect({ className, children, ...props }: ComponentProps<"select">) {
+function NativeSelect({
+  className,
+  children,
+  name,
+  defaultValue,
+  disabled,
+  required,
+  id,
+  "aria-label": ariaLabel,
+}: ComponentProps<"select">) {
+  const options = Children.toArray(children).filter(
+    (child): child is ReactElement<ComponentProps<"option">> =>
+      isValidElement<ComponentProps<"option">>(child) && child.type === "option",
+  );
+  const initialValue =
+    typeof defaultValue === "string" || typeof defaultValue === "number"
+      ? String(defaultValue)
+      : "";
+
   return (
-    <select
-      className={cn(
-        "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-        className,
-      )}
-      {...props}
+    <Select
+      name={name}
+      defaultValue={initialValue || "__none__"}
+      disabled={disabled}
+      required={required}
     >
-      {children}
-    </select>
+      <SelectTrigger id={id} aria-label={ariaLabel} className={cn("h-8 w-full", className)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option, index) => {
+          const value = String(option.props.value ?? "") || "__none__";
+          return (
+            <SelectItem key={`${value}:${index}`} value={value} disabled={option.props.disabled}>
+              {option.props.children}
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
   );
 }
 

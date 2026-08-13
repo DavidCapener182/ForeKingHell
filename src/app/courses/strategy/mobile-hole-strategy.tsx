@@ -1,10 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Cuboid, Save, Trash2 } from "lucide-react";
 
-import { IOSGroupedList, IOSInlineStatus, IOSListRow } from "@/components/app/ios-mobile";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
+import { Progress } from "@/components/ui/progress";
 import type { HoleStrategy } from "@/lib/course-strategy";
 
 export function MobileHoleStrategy({
@@ -79,6 +84,9 @@ export function MobileHoleStrategy({
       className="grid gap-3"
       data-mobile-one-hole-strategy
       data-hydrated={hydrated ? "true" : "false"}
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="Hole-by-hole course strategy"
     >
       <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
         <Button
@@ -93,7 +101,9 @@ export function MobileHoleStrategy({
           <ChevronLeft className="size-5" aria-hidden />
         </Button>
         <div className="text-center">
-          <p className="text-lg font-bold">Hole {strategy.holeNumber}</p>
+          <p className="text-lg font-bold">
+            Hole {strategy.holeNumber} of {strategies.length}
+          </p>
           <p className="text-xs text-muted-foreground">
             Par {strategy.par} · {strategy.yards} yd
           </p>
@@ -111,77 +121,86 @@ export function MobileHoleStrategy({
         </Button>
       </div>
 
-      <IOSGroupedList label={`Strategy for hole ${strategy.holeNumber}`}>
-        <IOSListRow
-          label="Recommended club"
-          value={strategy.recommendedClub}
-          detail={strategy.expectedCarryRange}
-          status={
-            <IOSInlineStatus
-              label={`${strategy.confidence} confidence`}
-              tone={
-                strategy.confidence === "High"
-                  ? "positive"
-                  : strategy.confidence === "Moderate"
-                    ? "info"
-                    : "attention"
-              }
-            />
-          }
-        />
-        <IOSListRow
-          label="Safe target"
-          value={strategy.safeTarget}
-          detail={`Common miss: ${strategy.commonMiss}`}
-        />
-        <IOSListRow label="Main hazard" detail={strategy.hazardWarning} />
-        <IOSListRow label="Conservative alternative" detail={strategy.conservativeAlternative} />
-        <IOSListRow
-          label="Expected leave"
-          value={strategy.expectedLeave}
-          detail={plannedSequence(strategy)}
-        />
-        {courseTwinAvailable ? (
-          <IOSListRow
-            icon={Cuboid}
-            label="View this hole in Course Twin"
-            detail="Open directly in Strategy mode"
-            href={`/play/${course.id}?mode=strategy&hole=${strategy.holeNumber}`}
+      <Progress
+        value={((index + 1) / strategies.length) * 100}
+        aria-label={`Hole ${strategy.holeNumber} of ${strategies.length}`}
+        className="h-1.5"
+      />
+
+      <Card
+        role="group"
+        aria-roledescription="slide"
+        aria-label={`Hole ${strategy.holeNumber} strategy`}
+      >
+        <CardHeader>
+          <CardTitle>Hole {strategy.holeNumber} strategy</CardTitle>
+          <CardAction>
+            <Badge variant={strategy.confidence === "Low" ? "outline" : "secondary"}>
+              {strategy.confidence} confidence
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="grid gap-2">
+          <StrategyItem
+            title="Recommended club"
+            value={strategy.recommendedClub}
+            description={strategy.expectedCarryRange}
           />
-        ) : (
-          <IOSListRow
-            icon={Cuboid}
-            label="Course Twin unavailable"
-            detail="This course has strategy data but no published 3D twin."
+          <StrategyItem
+            title="Safe target"
+            value={strategy.safeTarget}
+            description={`Common miss: ${strategy.commonMiss}`}
           />
-        )}
-      </IOSGroupedList>
+          <StrategyItem title="Main hazard" description={strategy.hazardWarning} />
+          <StrategyItem
+            title="Conservative alternative"
+            description={strategy.conservativeAlternative}
+          />
+          <StrategyItem
+            title="Expected leave"
+            value={strategy.expectedLeave}
+            description={plannedSequence(strategy)}
+          />
+          {courseTwinAvailable ? (
+            <Button asChild variant="outline" className="mt-1 min-h-11">
+              <Link href={`/play/${course.id}?mode=strategy&hole=${strategy.holeNumber}`}>
+                <Cuboid className="size-4" aria-hidden />
+                View this hole in Course Twin
+              </Link>
+            </Button>
+          ) : (
+            <Alert>
+              <Cuboid aria-hidden />
+              <AlertTitle>Course Twin unavailable</AlertTitle>
+              <AlertDescription>
+                This course has strategy data but no published 3D twin.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
 
       <p className="px-1 text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
 
       {savedAt ? (
-        <IOSGroupedList label="Saved strategy status">
-          <IOSListRow
-            label="Saved on this device"
-            value={savedAt.toLocaleDateString("en-GB", {
+        <Alert>
+          <Save aria-hidden />
+          <AlertTitle>
+            {savedCopyIsStale ? "Saved copy may be stale" : "Saved on this device"}
+          </AlertTitle>
+          <AlertDescription>
+            {savedAt.toLocaleDateString("en-GB", {
               day: "numeric",
               month: "short",
               hour: "2-digit",
               minute: "2-digit",
             })}
-            detail={
-              savedCopyIsStale
-                ? "This copy may be stale. Refresh it before the round. Course Twin still needs a connection."
-                : "Hole strategy can be read here from this device. Course Twin still needs a connection."
-            }
-            status={
-              <IOSInlineStatus
-                label={savedCopyIsStale ? "Stale" : "Saved"}
-                tone={savedCopyIsStale ? "attention" : "positive"}
-              />
-            }
-          />
-        </IOSGroupedList>
+            {" · "}
+            {savedCopyIsStale
+              ? "Refresh it before the round. Course Twin still needs a connection."
+              : "Hole strategy can be read here from this device. Course Twin still needs a connection."}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <Button
@@ -237,6 +256,30 @@ export function MobileHoleStrategy({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+function StrategyItem({
+  title,
+  value,
+  description,
+}: {
+  title: string;
+  value?: string;
+  description: string;
+}) {
+  return (
+    <Item variant="muted" size="sm">
+      <ItemContent>
+        <ItemTitle>{title}</ItemTitle>
+        <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+      </ItemContent>
+      {value ? (
+        <ItemActions>
+          <span className="max-w-32 text-right text-sm font-semibold">{value}</span>
+        </ItemActions>
+      ) : null}
+    </Item>
   );
 }
 

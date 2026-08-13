@@ -6,6 +6,13 @@ import { ChevronDown, Crosshair, Filter, Layers3 } from "lucide-react";
 import { IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
 import { StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import type { ShotPatternCluster, ShotPatternGrouping } from "@/lib/shot-pattern-clusters";
 
@@ -57,20 +64,24 @@ export function ShotPatternExplorer({
             <Filter className="size-4" aria-hidden />
             Group by
           </span>
-          <select
+          <Select
             value={groupBy}
-            onChange={(event) => {
-              setGroupBy(event.target.value as ShotPatternGrouping);
+            onValueChange={(value) => {
+              setGroupBy(value as ShotPatternGrouping);
               setSelected(null);
             }}
-            className="min-h-11 rounded-xl border bg-background px-3"
           >
-            {groupings.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="min-h-11 min-w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {groupings.map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
       </div>
       {clusters.length ? (

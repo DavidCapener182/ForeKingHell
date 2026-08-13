@@ -10,7 +10,6 @@ import {
   LogOut,
   PanelLeftIcon,
   Rows3,
-  Search,
   Settings,
   Upload,
   UserRound,
@@ -19,11 +18,7 @@ import {
 
 import { BrandMark } from "@/components/brand-mark";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
-import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome";
-import {
-  GlobalCommandCentre,
-  openGlobalCommandCentre,
-} from "@/components/app/global-command-centre";
+import { AppCommandTrigger } from "@/components/app/app-command-trigger";
 import type { MobileNavProfile } from "@/components/app/mobile-nav";
 import { buildDesktopNavGroups } from "@/components/app/nav-items";
 import { isMobileImmersiveRoute } from "@/components/app/route-metadata";
@@ -80,6 +75,21 @@ type ExpandedSidebarDensity = Exclude<SidebarDensity, "icon">;
 
 const MobileNav = dynamic(() =>
   import("@/components/app/mobile-nav").then((module) => module.MobileNav),
+);
+const DesktopWorkbenchChrome = dynamic(
+  () =>
+    import("@/components/app/desktop-workbench-chrome").then(
+      (module) => module.DesktopWorkbenchChrome,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="sticky top-0 z-40 h-[3.25rem] shrink-0 border-b border-border bg-background/95 backdrop-blur"
+        aria-hidden
+      />
+    ),
+  },
 );
 
 export function WorkbenchAppShell({
@@ -261,22 +271,11 @@ export function WorkbenchAppShell({
           </SidebarHeader>
 
           <SidebarContent>
-            <div className="px-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={openGlobalCommandCentre}
-                className="hidden min-h-10 w-full justify-between lg:flex"
-                aria-label="Search LM World Tour, Command K"
-              >
-                <span className="flex items-center gap-2">
-                  <Search className="size-4" /> Search
-                </span>
-                <kbd className="rounded border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  ⌘K
-                </kbd>
-              </Button>
-            </div>
+            <SidebarMenu className={cn("px-2 pt-2", isCompactSidebar && "px-1 pt-1")}>
+              <SidebarMenuItem>
+                <AppCommandTrigger compact={isCompactSidebar} />
+              </SidebarMenuItem>
+            </SidebarMenu>
             {desktopNavGroups.map((group) => (
               <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
                 <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
@@ -402,9 +401,6 @@ export function WorkbenchAppShell({
           </AppSurfaceLink>
         ) : null}
         {children}
-        {surface === "workbench" ? (
-          <GlobalCommandCentre isAdmin={isAdmin} enableKeyboardShortcut={false} />
-        ) : null}
       </div>
     </SidebarProvider>
   );

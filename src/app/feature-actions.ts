@@ -121,7 +121,10 @@ function requiredString(formData: FormData, key: string) {
 
 function optionalString(formData: FormData, key: string) {
   const value = formData.get(key);
-  return typeof value === "string" && value.trim() ? value.trim() : null;
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim();
+  return normalized && normalized !== "__all__" && normalized !== "__none__" ? normalized : null;
 }
 
 function optionalNumber(formData: FormData, key: string) {

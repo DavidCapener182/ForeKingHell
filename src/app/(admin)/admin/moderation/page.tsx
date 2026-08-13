@@ -15,6 +15,7 @@ import {
 } from "@/app/admin/actions";
 import { AdminBulkActionSubmit } from "@/app/admin/admin-bulk-action-submit";
 import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
+import { ModerationRowActions } from "@/app/admin/moderation-row-actions";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -41,6 +42,8 @@ import {
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
+import { StatusTimeline } from "@/components/app/status-timeline";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getAdminModerationData } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -156,6 +159,33 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
   const openReports = data.reports.filter((report) => report.status === "open");
   const openEvents = data.events.filter((event) => event.status === "open");
   const mobileView = parseAdminModerationMobileView(params?.view);
+  const moderationTimelineItems = [
+    ...data.reports.map((report) => ({
+      sortKey: (report.resolvedAt ?? report.createdAt).getTime(),
+      item: {
+        id: `report-${report.id}`,
+        timestamp: formatDateTime(report.resolvedAt ?? report.createdAt),
+        title: `Report: ${label(report.reason)}`,
+        description: report.details ?? `${report.targetType} · ${report.targetId}`,
+        status: label(report.status),
+        kind: report.status === "open" ? ("warning" as const) : ("reviewed" as const),
+      },
+    })),
+    ...data.events.map((event) => ({
+      sortKey: (event.resolvedAt ?? event.createdAt).getTime(),
+      item: {
+        id: `event-${event.id}`,
+        timestamp: formatDateTime(event.resolvedAt ?? event.createdAt),
+        title: `Event: ${label(event.eventType)}`,
+        description: event.reason ?? `${event.targetType} · ${event.targetId}`,
+        status: label(event.status),
+        kind: event.status === "open" ? ("warning" as const) : ("reviewed" as const),
+      },
+    })),
+  ]
+    .sort((left, right) => right.sortKey - left.sortKey)
+    .slice(0, 8)
+    .map(({ item }) => item);
 
   return (
     <PageShell>
@@ -325,14 +355,13 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                             data-column="select"
                             className="sticky left-0 z-20 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               name="reportId"
                               value={report.id}
                               form="admin-report-bulk-form"
                               disabled={report.status !== "open"}
                               aria-label={`Select report ${label(report.reason)}`}
-                              className="size-4 rounded border-border text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
+                              className="size-4 disabled:opacity-40"
                             />
                           </td>
                           <td data-column="status" className="px-3 py-3">
@@ -362,19 +391,18 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                             {formatDateTime(report.createdAt)}
                           </td>
                           <td data-column="action" className="px-3 py-3">
-                            {report.status === "open" ? (
-                              <form action={resolveSocialReportAction}>
-                                <input type="hidden" name="reportId" value={report.id} />
-                                <AdminConfirmSubmitButton
-                                  confirmMessage={`Resolve report ${label(report.reason)}? This closes the report and writes an admin audit entry.`}
-                                  size="sm"
-                                >
-                                  Resolve
-                                </AdminConfirmSubmitButton>
-                              </form>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Closed</span>
-                            )}
+                            <ModerationRowActions
+                              record={{
+                                kind: "report",
+                                id: report.id,
+                                label: label(report.reason),
+                                status: report.status,
+                                targetType: report.targetType,
+                                targetId: report.targetId,
+                                details: report.details ?? "No details supplied",
+                                createdLabel: formatDateTime(report.createdAt),
+                              }}
+                            />
                           </td>
                         </tr>
                       ))
@@ -498,14 +526,13 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                             data-column="select"
                             className="sticky left-0 z-20 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
                           >
-                            <input
-                              type="checkbox"
+                            <Checkbox
                               name="eventId"
                               value={event.id}
                               form="admin-event-bulk-form"
                               disabled={event.status !== "open"}
                               aria-label={`Select event ${label(event.eventType)}`}
-                              className="size-4 rounded border-border text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-40"
+                              className="size-4 disabled:opacity-40"
                             />
                           </td>
                           <td data-column="status" className="px-3 py-3">
@@ -538,19 +565,18 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                             {formatDateTime(event.createdAt)}
                           </td>
                           <td data-column="action" className="px-3 py-3">
-                            {event.status === "open" ? (
-                              <form action={resolveModerationEventAction}>
-                                <input type="hidden" name="eventId" value={event.id} />
-                                <AdminConfirmSubmitButton
-                                  confirmMessage={`Resolve moderation event ${label(event.eventType)}? This closes the event and writes an admin audit entry.`}
-                                  size="sm"
-                                >
-                                  Resolve
-                                </AdminConfirmSubmitButton>
-                              </form>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Closed</span>
-                            )}
+                            <ModerationRowActions
+                              record={{
+                                kind: "event",
+                                id: event.id,
+                                label: label(event.eventType),
+                                status: event.status,
+                                targetType: event.targetType,
+                                targetId: event.targetId,
+                                details: event.reason ?? "No reason supplied",
+                                createdLabel: formatDateTime(event.createdAt),
+                              }}
+                            />
                           </td>
                         </tr>
                       ))
@@ -561,6 +587,17 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
             </div>
           </AdminSection>
         </section>
+
+        <AdminSection
+          title="Moderation audit history"
+          description="Latest source-backed report and event records in chronological context."
+        >
+          <StatusTimeline
+            label="Moderation audit history"
+            items={moderationTimelineItems}
+            empty={<p className="text-sm text-muted-foreground">No moderation history yet.</p>}
+          />
+        </AdminSection>
       </DesktopWorkbenchLayout>
     </PageShell>
   );

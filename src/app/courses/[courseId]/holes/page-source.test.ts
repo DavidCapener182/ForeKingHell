@@ -52,6 +52,18 @@ describe("course holes desktop workspace", () => {
     expect(source).toContain("href={`/play/${courseId}`}");
     expect(source).toContain("Open Course Twin");
   });
+
+  it("organises course details with tabs, a mapping alert and a tee editor sheet", () => {
+    expect(source).toContain("data-course-detail-tabs");
+    expect(source).toContain('<TabsTrigger value="overview">');
+    expect(source).toContain('<TabsTrigger value="mapping">');
+    expect(source).toContain('<TabsTrigger value="tees">');
+    expect(source).toContain('<TabsTrigger value="holes">');
+    expect(source).toContain('<TabsTrigger value="records">');
+    expect(source).toContain("<Alert");
+    expect(source).toContain("ConnectedMetricBar");
+    expect(source).toContain("CourseTeeEditorSheet");
+  });
 });
 
 describe("course holes mobile editor", () => {

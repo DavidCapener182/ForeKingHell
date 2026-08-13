@@ -8,6 +8,7 @@ import {
   joinTournament,
   submitTournamentRound,
   tournamentFormats,
+  withdrawTournament,
   type TournamentFormat,
 } from "@/lib/tournaments";
 import {
@@ -81,6 +82,14 @@ export async function joinTournamentAction(formData: FormData) {
     version: TOURNAMENT_ENTRY_TERMS_VERSION,
   });
   redirect(`/tournaments/${tournamentId}?joined=1`);
+}
+
+export async function withdrawTournamentAction(formData: FormData) {
+  const tournamentId = formString(formData, "tournamentId");
+  if (!tournamentId) return;
+
+  await withdrawTournament(tournamentId);
+  redirect("/tournaments?tab=mine");
 }
 
 export async function submitTournamentRoundAction(formData: FormData) {

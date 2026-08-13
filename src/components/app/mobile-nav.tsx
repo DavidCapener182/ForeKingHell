@@ -12,8 +12,21 @@ import {
   type AppNavGroup,
 } from "@/components/app/nav-items";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { purgePrivateClientData } from "@/lib/service-worker-cache";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -224,9 +237,16 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                       <MobileNavGroup key={group.label} group={group} pathname={pathname} />
                     ))
                   ) : (
-                    <div className="ios-drawer-group p-4 text-sm text-muted-foreground">
-                      No matching pages.
-                    </div>
+                    <AppEmptyState
+                      title="No matching pages"
+                      description="Clear the search to see every companion destination."
+                      primaryAction={
+                        <Button type="button" size="sm" onClick={() => setQuery("")}>
+                          Clear search
+                        </Button>
+                      }
+                      className="p-4"
+                    />
                   )}
                 </div>
               </ScrollArea>
@@ -241,15 +261,38 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                     </AppSurfaceLink>
                   </SheetClose>
                 </Button>
-                <form
-                  action="/auth/sign-out"
-                  method="post"
-                  onSubmit={clearPrivateDataBeforeSignOut}
-                >
-                  <Button type="submit" variant="outline" className="min-h-11 w-full justify-start">
-                    Sign out
-                  </Button>
-                </form>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11 w-full justify-start"
+                    >
+                      Sign out
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Sign out of LM World Tour?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Private offline golf data will be cleared from this device before the
+                        session ends.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Stay signed in</AlertDialogCancel>
+                      <form
+                        action="/auth/sign-out"
+                        method="post"
+                        onSubmit={clearPrivateDataBeforeSignOut}
+                      >
+                        <AlertDialogAction type="submit" variant="destructive">
+                          Sign out
+                        </AlertDialogAction>
+                      </form>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </SheetContent>
           </Sheet>
@@ -378,18 +421,27 @@ function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: str
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "ios-drawer-link focus-aaa grid min-h-12 touch-manipulation grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-4 text-[15px] font-normal outline-none transition-colors duration-100 ease-out last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0",
-                  active ? "font-medium" : "text-foreground",
-                )}
+                className="focus-aaa outline-none"
               >
-                <Icon className="size-4" aria-hidden />
-                <span className="truncate">{item.label}</span>
-                {item.badge ? (
-                  <Badge variant="secondary" className="text-[10px]">
-                    {item.badge}
-                  </Badge>
-                ) : null}
+                <Item
+                  variant={active ? "muted" : "default"}
+                  size="sm"
+                  className="min-h-12 rounded-none border-x-0 border-t-0 last:border-b-0"
+                >
+                  <ItemMedia>
+                    <Icon className="size-4" aria-hidden />
+                  </ItemMedia>
+                  <ItemContent>
+                    <ItemTitle>{item.label}</ItemTitle>
+                  </ItemContent>
+                  {item.badge ? (
+                    <ItemActions>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {item.badge}
+                      </Badge>
+                    </ItemActions>
+                  ) : null}
+                </Item>
               </Link>
             </SheetClose>
           );

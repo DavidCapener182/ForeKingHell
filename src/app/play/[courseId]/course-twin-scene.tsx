@@ -2768,7 +2768,7 @@ export function CourseTwinScene({
           className={cn(
             mobileStyles.hudPanel,
             hudPanel === "analysis" ? "block" : "hidden",
-            "xl:max-h-[calc(100%-5.5rem)] xl:w-[350px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
+            "xl:ml-auto xl:max-h-[calc(100%-5.5rem)] xl:w-[350px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
             hudPanel === "analysis"
               ? "xl:pointer-events-auto xl:translate-x-0 xl:opacity-100"
               : "xl:pointer-events-none xl:translate-x-3 xl:opacity-0",
@@ -3203,7 +3203,10 @@ export function CourseTwinScene({
             }}
           />
         </div>
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 hidden items-center justify-between gap-2 lg:flex xl:hidden">
+        <div
+          data-course-twin-tablet-controls
+          className="pointer-events-none absolute inset-x-3 top-3 z-10 hidden items-center justify-between gap-2 lg:flex xl:hidden"
+        >
           <button
             type="button"
             className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-[#07150e]/80 px-2.5 py-2 text-left text-white shadow-xl backdrop-blur-2xl"
@@ -3239,7 +3242,10 @@ export function CourseTwinScene({
           </button>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-3 bottom-20 z-10 hidden lg:block xl:hidden">
+        <div
+          data-course-twin-tablet-controls
+          className="pointer-events-none absolute inset-x-3 bottom-20 z-10 hidden lg:block xl:hidden"
+        >
           <div className="mb-2 flex items-end justify-between">
             <div className="rounded-2xl border border-white/15 bg-[#07150e]/80 px-3 py-2 text-white shadow-xl backdrop-blur-2xl">
               <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#e7ff6a]/70">
@@ -3458,7 +3464,10 @@ export function CourseTwinScene({
             ) : null}
           </div>
 
-          <div className="pointer-events-auto absolute bottom-4 right-4 flex items-center gap-1 rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <div
+            data-course-twin-camera-controls
+            className="pointer-events-auto absolute bottom-4 right-4 flex items-center gap-1 rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl"
+          >
             <CameraControlButton
               label="Orbit camera left"
               onClick={() => issueCameraCommand("orbit-left")}
@@ -3476,7 +3485,10 @@ export function CourseTwinScene({
             </CameraControlButton>
           </div>
         </div>
-        <div className="pointer-events-none absolute bottom-4 left-4 hidden rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur lg:block xl:hidden">
+        <div
+          data-course-twin-tablet-controls
+          className="pointer-events-none absolute bottom-4 left-4 hidden rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur lg:block xl:hidden"
+        >
           {terrainError
             ? `Terrain unavailable · ${terrainError}`
             : sampleTerrain

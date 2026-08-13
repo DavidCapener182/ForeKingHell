@@ -1,6 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { Plus, TrendingUp } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { DataPair, DataPanel, PageHeader, PageShell, StatusPill } from "@/components/premium";
@@ -9,11 +8,11 @@ import {
   TrainingLoadRangeView,
 } from "@/components/training/TrainingLoadRangeView";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
 import { getTrainingOverTimeData, normalizeTrainingRange } from "@/lib/training/trainingData";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +35,6 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
     getPracticePlannerProgressSummary(userId),
   ]);
   const saved = Boolean(resolvedSearchParams.saved);
-  const latestForm = data.latest?.form ?? 0;
-  const latestFitness = data.latest?.fitness ?? 0;
   const latestFatigue = data.latest?.fatigue ?? 0;
 
   return (
@@ -75,34 +72,6 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
           eyebrow={<StatusPill tone="green">Training management</StatusPill>}
           title="Training Load"
           description="Golf Form, Training Fitness and Recent Load over time"
-          metrics={[
-            {
-              label: "Golf Form",
-              value: (
-                <MetricValue featured tone="sky">
-                  {formatMetric(latestForm)}
-                  <TrendingUp className="size-5" aria-hidden="true" />
-                </MetricValue>
-              ),
-              detail: data.status.label,
-              className: "border-sky-200 bg-sky-50/90 text-sky-950 ring-sky-100",
-            },
-            {
-              label: "Training Fitness",
-              value: <MetricValue tone="green">{formatMetric(latestFitness)}</MetricValue>,
-              detail: `${data.conditioningDays}-day golf workload`,
-            },
-            {
-              label: "Recent Load",
-              value: <MetricValue tone="amber">{formatMetric(latestFatigue)}</MetricValue>,
-              detail: recentLoadLabel(latestFatigue),
-            },
-            {
-              label: "Evidence Confidence",
-              value: <MetricValue tone="purple">{formatMetric(data.confidence.score)}</MetricValue>,
-              detail: data.confidence.label,
-            },
-          ]}
           actions={
             <Button asChild className="premium-action">
               <Link href="#log-load">
@@ -114,9 +83,11 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
         />
 
         {saved ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950">
-            Golf load saved. Golf Form, Training Fitness and Recent Load have been recalculated.
-          </div>
+          <Alert>
+            <AlertDescription>
+              Golf load saved. Golf Form, Training Fitness and Recent Load have been recalculated.
+            </AlertDescription>
+          </Alert>
         ) : null}
 
         <TrainingPracticePlannerPanel
@@ -171,53 +142,6 @@ function TrainingPracticePlannerPanel({
   );
 }
 
-function MetricValue({
-  tone,
-  featured = false,
-  children,
-}: {
-  tone: "green" | "amber" | "sky" | "purple";
-  featured?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2",
-        metricToneClass(tone),
-        featured ? "text-3xl sm:text-[2rem]" : "",
-      )}
-    >
-      {children}
-    </span>
-  );
-}
-
 function formatMetric(value: number) {
   return integerFormatter.format(Math.round(value));
-}
-
-function recentLoadLabel(value: number) {
-  if (value >= 120) {
-    return "Heavy week";
-  }
-
-  if (value >= 70) {
-    return "Above normal";
-  }
-
-  return "Normal week";
-}
-
-function metricToneClass(tone: "green" | "amber" | "sky" | "purple") {
-  switch (tone) {
-    case "green":
-      return "text-emerald-700";
-    case "amber":
-      return "text-amber-700";
-    case "sky":
-      return "text-sky-700";
-    case "purple":
-      return "text-violet-700";
-  }
 }

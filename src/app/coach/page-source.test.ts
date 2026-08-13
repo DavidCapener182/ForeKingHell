@@ -32,12 +32,16 @@ describe("coach desktop evidence workbench", () => {
     }
   });
 
-  it("keeps the contextual AI coach rail and prompt controls", () => {
+  it("keeps the contextual AI coach controls in the shared resizable workbench", () => {
+    expect(source).toContain("AiDesktopWorkbench");
     expect(source).toContain("DesktopInsightRail");
-    expect(source).toContain('title="AI coach rail"');
+    expect(source).toContain('title="AI coach context"');
     expect(source).toContain("coachWorkbenchPrompts");
     expect(source).not.toContain("railBreakpoint=");
-    expect(source).toContain("rail={");
+    expect(source).not.toContain("rail={");
+    expect(source).toContain("diagnosis={");
+    expect(source).toContain("evidence={");
+    expect(source).toContain("ask={");
   });
 
   it("loads social challenge context only when the coach desk asks for it", () => {
@@ -46,7 +50,8 @@ describe("coach desktop evidence workbench", () => {
     expect(source).toContain("socialLoaded ? getChallengesPageData() : Promise.resolve(null)");
     expect(source).toContain("const socialContext: CoachSocialContext");
     expect(source).toContain('id="coach-social-comparison"');
-    expect(source).toContain("open={socialContext.loaded ? true : undefined}");
+    expect(source).toContain("defaultOpen={socialContext.loaded}");
+    expect(source).toContain("<CollapsibleTrigger");
     expect(source).toContain("socialContext={socialContext}");
     expect(source).toContain('loadHref="/coach?social=1#coach-social-comparison"');
     expect(source).toContain("Social comparison is on demand");

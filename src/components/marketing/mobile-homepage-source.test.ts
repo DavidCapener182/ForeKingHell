@@ -67,7 +67,7 @@ describe("public homepage mobile design source contract", () => {
     expect(pageSource).not.toContain('import "./globals.css"');
     expect(pageSource).not.toContain("mobile-apple.css");
     expect(pageSource).toContain("<MarketingHeader />");
-    expect(pageSource).toContain("<CourseTwinShowcase />");
+    expect(pageSource).toContain("<LazyCourseTwinShowcase />");
     expect(pageSource).toContain('className={styles.page} id="product"');
   });
 });

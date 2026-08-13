@@ -3,10 +3,8 @@ import type { ComponentProps, ReactNode } from "react";
 import {
   ArrowLeft,
   Award,
-  Copy,
   ExternalLink,
   Plus,
-  QrCode,
   Settings,
   ShieldCheck,
   Target,
@@ -16,7 +14,11 @@ import {
 import { and, desc, eq } from "drizzle-orm";
 
 import { updateSocialProfileAction } from "@/app/profile/actions";
+import { ProfileEditSheet } from "@/app/profile/profile-edit-sheet";
+import { ProfileHeader } from "@/app/profile/profile-header";
 import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
+import { ProfileSectionTabs } from "@/app/profile/profile-section-tabs";
+import { ProfileShareDialog } from "@/app/profile/profile-share-dialog";
 import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { DataHealthFeaturePanel, ProfileFeaturePanel } from "@/components/features/feature-panels";
 import {
@@ -29,19 +31,12 @@ import {
   PBCard,
   ProgressCard,
 } from "@/components/mobile-sports";
-import {
-  DataPanel,
-  DataTableFrame,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { DataTableFrame, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { PublicSharePreviewPanel } from "@/components/product-polish";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -49,7 +44,15 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -59,6 +62,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db/client";
 import {
   courseRecordCategories,
@@ -73,13 +77,7 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { buildProfileHonoursRecords } from "@/lib/profile-honours";
 import { getProgressData } from "@/lib/progress-data";
 import { buildProgressSummary } from "@/lib/progress-summary";
-import {
-  getProductPreferences,
-  goalProgress,
-  goalTypeLabel,
-  type SeasonPlan,
-  type SeasonGoal,
-} from "@/lib/product-preferences";
+import { getProductPreferences, goalProgress } from "@/lib/product-preferences";
 import { getSiteOrigin } from "@/lib/site-origin";
 import {
   defaultProfileVisibilitySettings,
@@ -444,6 +442,8 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             ]}
           />
 
+          <ProfileSectionTabs />
+
           {params?.saved ? (
             <Alert>
               <ShieldCheck className="size-4" />
@@ -454,8 +454,11 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </Alert>
           ) : null}
 
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.62fr)_minmax(280px,0.38fr)]">
-            <article className="premium-card overflow-hidden">
+          <section
+            id="overview"
+            className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,0.62fr)_minmax(280px,0.38fr)]"
+          >
+            <ProfileHeader>
               <ProfileMediaEditor
                 displayName={profile.displayName}
                 username={profile.username}
@@ -487,7 +490,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
                   />
                 </div>
               </div>
-            </article>
+            </ProfileHeader>
 
             <aside aria-label="Profile completion rail" className="premium-card p-4">
               <div className="flex items-center justify-between gap-3">
@@ -523,190 +526,169 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             </aside>
           </section>
 
-          <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
-          <SeasonSummaryPanel
-            seasonPlan={productPreferences.seasonPlan}
-            goals={productPreferences.goals}
-          />
-          <DataHealthFeaturePanel data={featureData} />
+          <section id="sharing" className="scroll-mt-28">
+            <PublicSharePreviewPanel audiences={shareAudiences} actionHref="/settings" />
+          </section>
+          <ProfileWorkspaceLinks />
 
-          <ProfileEvidenceLedger
-            username={profile.username}
-            records={honours.records}
-            tournaments={honours.tournaments}
-          />
-
-          <ProfileFeaturePanel data={featureData} />
+          <div id="records" className="scroll-mt-28">
+            <ProfileEvidenceLedger
+              username={profile.username}
+              records={honours.records}
+              tournaments={honours.tournaments}
+            />
+          </div>
 
           <section className="grid gap-4 lg:grid-cols-[minmax(0,0.66fr)_minmax(280px,0.34fr)]">
-            <DataPanel id="identity-privacy">
-              <SectionHeader
-                title="Identity and privacy"
-                description="Detailed shot data stays private unless you explicitly change the visibility for generated cards."
-                action={<UserRound className="size-5 text-sky-600" />}
-              />
+            <Card id="identity-privacy">
+              <CardHeader>
+                <CardTitle>Identity and privacy</CardTitle>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Detailed shot data stays private unless you explicitly change the visibility for
+                  generated cards.
+                </p>
+              </CardHeader>
               <CardContent>
-                <form
-                  id={profileFormId}
-                  action={updateSocialProfileAction}
-                  aria-label="Identity and privacy settings"
-                  className="grid gap-5"
-                >
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      label="Username"
-                      name="username"
-                      defaultValue={profile.username}
-                      required
-                    />
-                    <FormField
-                      label="Display name"
-                      name="displayName"
-                      defaultValue={profile.displayName}
-                      required
-                    />
-                    <FormField
-                      label="Home course or venue"
-                      name="homeCourse"
-                      defaultValue={profile.homeCourse ?? ""}
-                    />
-                    <FormField
-                      label="Primary launch monitor"
-                      name="primaryLaunchMonitor"
-                      defaultValue={profile.primaryLaunchMonitor ?? ""}
-                    />
-                    <FormField
-                      label="Handicap band"
-                      name="handicapBand"
-                      defaultValue={profile.handicapBand ?? ""}
-                      placeholder="10-14, beginner, scratch"
-                    />
-                  </div>
-
-                  <label className="grid gap-2 text-sm font-medium">
-                    <span>Bio</span>
-                    <textarea
-                      name="bio"
-                      defaultValue={profile.bio ?? ""}
-                      rows={4}
-                      className="rounded-lg border bg-white px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <fieldset className="grid gap-3 rounded-lg border bg-white p-4">
-                    <legend className="px-1 text-sm font-semibold">Discovery</legend>
-                    <CheckboxField
-                      name="publicProfile"
-                      label="Show my profile in public username search"
-                      defaultChecked={profile.publicProfile}
-                    />
-                    <CheckboxField
-                      name="friendProfile"
-                      label="Let friends view my profile details"
-                      defaultChecked={profile.friendProfile}
-                    />
-                    <CheckboxField
-                      name="allowCompare"
-                      label="Allow eligible golfers to compare with my shared analysis"
-                      defaultChecked={profile.visibilitySettingsJson?.allowCompare === true}
-                    />
-                  </fieldset>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <SelectField
-                      label="Generated feed cards"
-                      name="feedVisibilityDefault"
-                      defaultValue={parseVisibility(profile.feedVisibilityDefault)}
-                    />
-                    <SelectField
-                      label="Leaderboard visibility"
-                      name="leaderboardVisibility"
-                      defaultValue={parseVisibility(profile.leaderboardVisibility)}
-                    />
-                  </div>
-
-                  <fieldset className="grid gap-4 rounded-lg border bg-white p-4">
-                    <legend className="px-1 text-sm font-semibold">What others can see</legend>
+                <ProfileEditSheet>
+                  <form
+                    id={profileFormId}
+                    action={updateSocialProfileAction}
+                    aria-label="Identity and privacy settings"
+                    className="grid gap-5"
+                  >
                     <div className="grid gap-4 md:grid-cols-2">
-                      <SelectField
-                        label="Rounds"
-                        name="roundsVisibility"
-                        defaultValue={parseVisibility(visibility.rounds)}
+                      <FormField
+                        label="Username"
+                        name="username"
+                        defaultValue={profile.username}
+                        required
                       />
-                      <SelectField
-                        label="PBs"
-                        name="pbsVisibility"
-                        defaultValue={parseVisibility(visibility.pbs, "friends")}
+                      <FormField
+                        label="Display name"
+                        name="displayName"
+                        defaultValue={profile.displayName}
+                        required
                       />
-                      <SelectField
-                        label="Bag"
-                        name="bagVisibility"
-                        defaultValue={parseVisibility(visibility.bag)}
+                      <FormField
+                        label="Home course or venue"
+                        name="homeCourse"
+                        defaultValue={profile.homeCourse ?? ""}
                       />
-                      <SelectField
-                        label="Achievements"
-                        name="achievementsVisibility"
-                        defaultValue={parseVisibility(visibility.achievements, "friends")}
+                      <FormField
+                        label="Primary launch monitor"
+                        name="primaryLaunchMonitor"
+                        defaultValue={profile.primaryLaunchMonitor ?? ""}
                       />
-                      <SelectField
-                        label="Handicap estimate"
-                        name="handicapVisibility"
-                        defaultValue={parseVisibility(visibility.handicap)}
-                      />
-                      <SelectField
-                        label="Practice activity"
-                        name="practiceVisibility"
-                        defaultValue={parseVisibility(visibility.practice, "friends")}
-                      />
-                      <SelectField
-                        label="Exact shot data"
-                        name="exactShotsVisibility"
-                        defaultValue={parseVisibility(visibility.exactShots)}
+                      <FormField
+                        label="Handicap band"
+                        name="handicapBand"
+                        defaultValue={profile.handicapBand ?? ""}
+                        placeholder="10-14, beginner, scratch"
                       />
                     </div>
-                  </fieldset>
 
-                  <Button
-                    type="submit"
-                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                  >
-                    <ShieldCheck className="size-4" />
-                    Save profile
-                  </Button>
-                </form>
+                    <label className="grid gap-2 text-sm font-medium">
+                      <span>Bio</span>
+                      <Textarea name="bio" defaultValue={profile.bio ?? ""} rows={4} />
+                    </label>
+
+                    <fieldset className="grid gap-3 rounded-lg border bg-white p-4">
+                      <legend className="px-1 text-sm font-semibold">Discovery</legend>
+                      <CheckboxField
+                        name="publicProfile"
+                        label="Show my profile in public username search"
+                        defaultChecked={profile.publicProfile}
+                      />
+                      <CheckboxField
+                        name="friendProfile"
+                        label="Let friends view my profile details"
+                        defaultChecked={profile.friendProfile}
+                      />
+                      <CheckboxField
+                        name="allowCompare"
+                        label="Allow eligible golfers to compare with my shared analysis"
+                        defaultChecked={profile.visibilitySettingsJson?.allowCompare === true}
+                      />
+                    </fieldset>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <SelectField
+                        label="Generated feed cards"
+                        name="feedVisibilityDefault"
+                        defaultValue={parseVisibility(profile.feedVisibilityDefault)}
+                      />
+                      <SelectField
+                        label="Leaderboard visibility"
+                        name="leaderboardVisibility"
+                        defaultValue={parseVisibility(profile.leaderboardVisibility)}
+                      />
+                    </div>
+
+                    <fieldset className="grid gap-4 rounded-lg border bg-white p-4">
+                      <legend className="px-1 text-sm font-semibold">What others can see</legend>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <SelectField
+                          label="Rounds"
+                          name="roundsVisibility"
+                          defaultValue={parseVisibility(visibility.rounds)}
+                        />
+                        <SelectField
+                          label="PBs"
+                          name="pbsVisibility"
+                          defaultValue={parseVisibility(visibility.pbs, "friends")}
+                        />
+                        <SelectField
+                          label="Bag"
+                          name="bagVisibility"
+                          defaultValue={parseVisibility(visibility.bag)}
+                        />
+                        <SelectField
+                          label="Achievements"
+                          name="achievementsVisibility"
+                          defaultValue={parseVisibility(visibility.achievements, "friends")}
+                        />
+                        <SelectField
+                          label="Handicap estimate"
+                          name="handicapVisibility"
+                          defaultValue={parseVisibility(visibility.handicap)}
+                        />
+                        <SelectField
+                          label="Practice activity"
+                          name="practiceVisibility"
+                          defaultValue={parseVisibility(visibility.practice, "friends")}
+                        />
+                        <SelectField
+                          label="Exact shot data"
+                          name="exactShotsVisibility"
+                          defaultValue={parseVisibility(visibility.exactShots)}
+                        />
+                      </div>
+                    </fieldset>
+
+                    <Button
+                      type="submit"
+                      className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
+                    >
+                      <ShieldCheck className="size-4" />
+                      Save profile
+                    </Button>
+                  </form>
+                </ProfileEditSheet>
               </CardContent>
-            </DataPanel>
+            </Card>
 
             <aside aria-label="Profile invite rail" className="min-w-0">
-              <DataPanel id="profile-invite">
-                <SectionHeader
-                  title="Invite link"
-                  description="Share your profile URL or QR code with Rapsodo friends."
-                  action={<QrCode className="size-5 text-emerald-600" />}
-                />
-                <CardContent className="grid gap-4">
-                  <div className="rounded-lg border bg-white p-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/friends/qr/${profile.username}`}
-                      alt={`QR invite for @${profile.username}`}
-                      className="mx-auto aspect-square w-full max-w-56"
-                    />
-                  </div>
-                  <div className="rounded-xl border bg-muted/50 p-3 text-sm">
-                    <p className="font-medium">Invite URL</p>
-                    <code className="mt-1 block break-all text-xs text-muted-foreground">
-                      {profileUrl}
-                    </code>
-                  </div>
-                  <Button asChild variant="outline" className="rounded-xl">
-                    <Link href={profileUrl} prefetch={false}>
-                      <Copy className="size-4" />
-                      Open invite page
-                    </Link>
-                  </Button>
-                </CardContent>
-              </DataPanel>
+              <Card id="profile-invite">
+                <CardHeader>
+                  <CardTitle>Share your profile</CardTitle>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Open a focused QR and copy-link Dialog when you are ready to invite someone.
+                  </p>
+                </CardHeader>
+                <CardFooter>
+                  <ProfileShareDialog username={profile.username} profileUrl={profileUrl} />
+                </CardFooter>
+              </Card>
             </aside>
           </section>
         </div>
@@ -899,14 +881,9 @@ function CheckboxField({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm">
-      <input
-        name={name}
-        type="checkbox"
-        defaultChecked={defaultChecked}
-        className="size-4 rounded border-input accent-[#0B7A3B]"
-      />
+    <label className="flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2 text-sm">
       <span>{label}</span>
+      <Switch name={name} defaultChecked={defaultChecked} aria-label={label} />
     </label>
   );
 }
@@ -923,17 +900,18 @@ function SelectField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        className="h-10 rounded-lg border bg-white px-3 text-sm"
-      >
-        {socialVisibilityOptions.map((option) => (
-          <option key={option} value={option}>
-            {titleCase(option)}
-          </option>
-        ))}
-      </select>
+      <Select name={name} defaultValue={defaultValue}>
+        <SelectTrigger className="w-full bg-background">
+          <SelectValue placeholder="Choose visibility" />
+        </SelectTrigger>
+        <SelectContent>
+          {socialVisibilityOptions.map((option) => (
+            <SelectItem key={option} value={option}>
+              {titleCase(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
 }
@@ -962,68 +940,41 @@ function ShowcaseRow({ icon, label, value }: { icon: ReactNode; label: string; v
   );
 }
 
-function SeasonSummaryPanel({
-  seasonPlan,
-  goals,
-}: {
-  seasonPlan: SeasonPlan;
-  goals: SeasonGoal[];
-}) {
+function ProfileWorkspaceLinks() {
+  const workspaces = [
+    { label: "Progress", detail: "Club trust and training trend", href: "/progress" },
+    { label: "Bag", detail: "Stock yardages and gapping", href: "/bag" },
+    { label: "Goals", detail: "Season plan and measurable targets", href: "/goals" },
+  ];
+
   return (
-    <section
-      className="grid gap-4 rounded-2xl border bg-card p-4 sm:p-5"
-      aria-labelledby="season-summary-title"
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-primary">Season summary</p>
-          <h2 id="season-summary-title" className="mt-1 text-2xl font-semibold">
-            {seasonPlan.outcome}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Focus: {seasonPlan.focus} · {seasonPlan.weeklySessions} measured session
-            {seasonPlan.weeklySessions === 1 ? "" : "s"} each week · success is{" "}
-            {seasonPlan.successMeasure.toLowerCase()}.
-          </p>
-        </div>
-        <Button asChild variant="outline" className="min-h-11 shrink-0">
-          <Link href="/goals" prefetch={false}>
-            Manage goals
-          </Link>
-        </Button>
-      </div>
-      {goals.length ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {goals.slice(0, 6).map((goal) => (
-            <article key={goal.id} className="rounded-xl border bg-background p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    {goalTypeLabel(goal.type)}
-                  </p>
-                  <h3 className="mt-1 font-semibold">{goal.title}</h3>
-                </div>
-                <StatusPill tone={goalProgress(goal) >= 75 ? "green" : "sky"}>
-                  {goalProgress(goal)}%
-                </StatusPill>
-              </div>
-              <Progress value={goalProgress(goal)} className="mt-3" />
-              <p className="mt-3 text-sm">
-                {goal.currentValue} {goal.unit} now · {goal.targetValue} {goal.unit} target
-              </p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                {goal.evidenceSource} · Next: {goal.nextAction}
-              </p>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-          No measurable season goals yet. Add a handicap, carry, dispersion, speed, practice,
-          course-record or tournament target.
-        </div>
-      )}
-    </section>
+    <Card id="achievements" className="scroll-mt-28">
+      <CardHeader>
+        <CardTitle>Your golf workspaces</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Profile stays focused on identity and evidence; use the dedicated workspaces for detail.
+        </p>
+      </CardHeader>
+      <CardContent className="grid gap-2 sm:grid-cols-3">
+        {workspaces.map((workspace) => (
+          <Button
+            key={workspace.href}
+            asChild
+            variant="outline"
+            className="h-auto justify-start p-3"
+          >
+            <Link href={workspace.href} prefetch={false}>
+              <span className="text-left">
+                <span className="block font-medium">{workspace.label}</span>
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  {workspace.detail}
+                </span>
+              </span>
+            </Link>
+          </Button>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

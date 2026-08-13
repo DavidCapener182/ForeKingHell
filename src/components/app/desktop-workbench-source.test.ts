@@ -29,18 +29,17 @@ describe("desktop workbench workflow layout", () => {
     expect(source).toContain('"hidden 2xl:block"');
   });
 
-  it("keeps the reusable wizard template as step rail, main workspace and help rail", () => {
+  it("keeps the reusable wizard template as a horizontal stepper, workspace and help rail", () => {
     expect(source).toContain("export function DesktopWorkflowLayout");
     expect(source).toContain('workflowRailBreakpoint = "lg"');
     expect(source).toContain('workflowRailBreakpoint?: "lg" | "2xl"');
     expect(source).toContain("data-desktop-workflow");
-    expect(source).toContain("lg:grid-cols-[minmax(0,1fr)]");
-    expect(source).toContain("lg:grid-cols-[17rem_minmax(0,1fr)]");
-    expect(source).toContain("2xl:grid-cols-[17rem_minmax(0,1fr)_20rem]");
-    expect(source).toContain('SectionHeader title="Workflow"');
+    expect(source).toContain("OperationStepper");
+    expect(source).toContain('label="Desktop workflow"');
+    expect(source).toContain('status: step.status ?? "upcoming"');
+    expect(source).toContain("2xl:grid-cols-[minmax(0,1fr)_20rem]");
     expect(source).toContain("[&>*]:min-w-0");
-    expect(source).toContain('workflowRailBreakpoint === "2xl" ? "2xl:grid" : "lg:grid"');
-    expect(source).toContain("hidden min-w-0 2xl:grid");
+    expect(source).toContain('workflowRailBreakpoint === "2xl" ? "2xl:grid" : "xl:grid"');
     expect(source).toContain("helpTitle");
     expect(source).toContain("helpDescription");
     expect(source).toContain("helpItems.map");

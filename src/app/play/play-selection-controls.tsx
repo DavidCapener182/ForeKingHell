@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 
 import { selectCompanionPlayContextAction } from "@/app/play/actions";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type SelectionItem = { id: string; name: string; detail?: string };
 
@@ -48,35 +57,43 @@ export function PlaySelectionControls({
   return (
     <div className="grid gap-3" aria-busy={isPending}>
       <SelectionField label="Course" detail="Strategy-ready and saved courses">
-        <select
+        <Select
           value={optimisticCourseId ?? ""}
           disabled={isPending}
-          onChange={(event) => select(event.target.value)}
-          className="focus-aaa min-h-12 w-full rounded-xl border bg-card px-3 text-[15px] font-semibold outline-none disabled:opacity-65"
+          onValueChange={(value) => select(value)}
         >
-          {courses.map((course) => (
-            <option key={course.id} value={course.id}>
-              {course.name}
-              {course.detail ? ` · ${course.detail}` : ""}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="min-h-12 w-full text-[15px] font-semibold">
+            <SelectValue placeholder="Choose a course" />
+          </SelectTrigger>
+          <SelectContent>
+            {courses.map((course) => (
+              <SelectItem key={course.id} value={course.id}>
+                {course.name}
+                {course.detail ? ` · ${course.detail}` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </SelectionField>
       {optimisticCourseId === selectedCourseId && tees.length > 0 ? (
         <SelectionField label="Tee" detail="Remembered separately for this course">
-          <select
+          <Select
             value={optimisticTeeId ?? ""}
             disabled={isPending}
-            onChange={(event) => select(selectedCourseId!, event.target.value)}
-            className="focus-aaa min-h-12 w-full rounded-xl border bg-card px-3 text-[15px] font-semibold outline-none disabled:opacity-65"
+            onValueChange={(value) => select(selectedCourseId!, value)}
           >
-            {tees.map((tee) => (
-              <option key={tee.id} value={tee.id}>
-                {tee.name}
-                {tee.detail ? ` · ${tee.detail}` : ""}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="min-h-12 w-full text-[15px] font-semibold">
+              <SelectValue placeholder="Choose a tee" />
+            </SelectTrigger>
+            <SelectContent>
+              {tees.map((tee) => (
+                <SelectItem key={tee.id} value={tee.id}>
+                  {tee.name}
+                  {tee.detail ? ` · ${tee.detail}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </SelectionField>
       ) : null}
       {isPending ? (
@@ -89,9 +106,9 @@ export function PlaySelectionControls({
         </p>
       ) : null}
       {error ? (
-        <p className="px-1 text-xs font-medium text-destructive" role="alert">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
     </div>
   );
@@ -107,12 +124,12 @@ function SelectionField({
   children: React.ReactNode;
 }) {
   return (
-    <label className="ios-grouped-list grid gap-2 bg-card p-3">
+    <div className="grid gap-2 rounded-xl border bg-card p-3">
       <span>
-        <span className="block text-sm font-semibold">{label}</span>
+        <Label className="block text-sm font-semibold">{label}</Label>
         <span className="mt-0.5 block text-xs text-muted-foreground">{detail}</span>
       </span>
       {children}
-    </label>
+    </div>
   );
 }

@@ -21,6 +21,14 @@ import { BottomSheet, MobileAppShell, MobileTopBar } from "@/components/mobile-s
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db/client";
 import { analysisSnapshots } from "@/db/schema";
 import { buildComparisonProvenance } from "@/lib/comparison-provenance";
@@ -39,9 +47,9 @@ export default async function EquipmentExperimentPage({
     ...defaultCompareFilters(),
     focus: "session" as const,
     baseline: "previous-session" as const,
-    sessionId: params?.sessionId ?? "",
-    baselineSessionId: params?.baselineSessionId ?? "",
-    clubId: params?.clubId ?? "",
+    sessionId: normalizeOptionalQuery(params?.sessionId),
+    baselineSessionId: normalizeOptionalQuery(params?.baselineSessionId),
+    clubId: normalizeOptionalQuery(params?.clubId),
   };
   const userId = await requireCurrentUserId();
   const [data, saved] = await Promise.all([
@@ -352,18 +360,19 @@ function ExperimentSelectionForm({
       />
       <label className="grid gap-1 text-sm font-semibold">
         Club
-        <select
-          name="clubId"
-          defaultValue={data.filters.clubId}
-          className="min-h-11 rounded-xl border bg-background px-3 text-base"
-        >
-          <option value="">All clubs</option>
-          {data.clubs.map((club) => (
-            <option key={club.id} value={club.id}>
-              {club.label} · {club.shotCount} shots
-            </option>
-          ))}
-        </select>
+        <Select name="clubId" defaultValue={data.filters.clubId || "__all__"}>
+          <SelectTrigger className="min-h-11 w-full text-base">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All clubs</SelectItem>
+            {data.clubs.map((club) => (
+              <SelectItem key={club.id} value={club.id}>
+                {club.label} · {club.shotCount} shots
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <Button type="submit" className="min-h-11 md:w-fit">
         <FlaskConical className="size-4" aria-hidden />
@@ -397,15 +406,16 @@ function ExperimentDecisionForm({
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Experiment type
-        <select
-          name="experimentType"
-          defaultValue="equipment_change"
-          className="min-h-11 rounded-xl border bg-background px-3 text-base"
-        >
-          <option value="equipment_change">Club change</option>
-          <option value="ball_change">Golf ball</option>
-          <option value="club_setting">Club setting</option>
-        </select>
+        <Select name="experimentType" defaultValue="equipment_change">
+          <SelectTrigger className="min-h-11 w-full text-base">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="equipment_change">Club change</SelectItem>
+            <SelectItem value="ball_change">Golf ball</SelectItem>
+            <SelectItem value="club_setting">Club setting</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
       <Field name="ball" label="Keep constant: ball" placeholder="Pro V1" />
       <Field name="location" label="Keep constant: location" placeholder="Bay 4" />
@@ -415,7 +425,7 @@ function ExperimentDecisionForm({
       <Field name="shaft" label="Shaft" placeholder="Model and flex" />
       <label className="grid gap-1 text-sm font-semibold sm:col-span-2">
         Notes and saved equipment decision
-        <textarea
+        <Textarea
           name="notes"
           rows={4}
           maxLength={4000}
@@ -540,20 +550,25 @@ function SessionSelect({
   return (
     <label className="grid gap-1 text-sm font-semibold">
       {label}
-      <select
-        name={name}
-        defaultValue={value}
-        className="min-h-11 rounded-xl border bg-background px-3 text-base"
-      >
-        <option value="">Automatic</option>
-        {sessions.map((session) => (
-          <option key={session.id} value={session.id}>
-            {session.dateLabel} · {session.label} · {session.shotCount} shots
-          </option>
-        ))}
-      </select>
+      <Select name={name} defaultValue={value || "__auto__"}>
+        <SelectTrigger className="min-h-11 w-full text-base">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__auto__">Automatic</SelectItem>
+          {sessions.map((session) => (
+            <SelectItem key={session.id} value={session.id}>
+              {session.dateLabel} · {session.label} · {session.shotCount} shots
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
+}
+
+function normalizeOptionalQuery(value: string | undefined) {
+  return value && value !== "__auto__" && value !== "__all__" ? value : "";
 }
 function Field({ name, label, placeholder }: { name: string; label: string; placeholder: string }) {
   return (

@@ -28,6 +28,10 @@ describe("latest practice desktop dashboard", () => {
     expect(companionSource).toContain("data-today-companion");
     expect(companionSource).toContain("TodayPrimaryAnswer");
     expect(primaryAnswerSource).toContain("data-primary-recommendation");
+    expect(primaryAnswerSource).toContain("data-today-sync-state");
+    expect(primaryAnswerSource).toContain("<Progress");
+    expect(primaryAnswerSource).toContain("<ButtonGroup");
+    expect(primaryAnswerSource).toContain("<DropdownMenu");
     expect(companionSource).toContain("Plan range session");
     expect(companionSource).toContain("Why this recommendation?");
     expect(companionSource).toContain('href="/quick-bag"');
@@ -49,7 +53,21 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain('label: "Open planner"');
   });
 
-  it("uses component-sized container layouts for desktop practice cards", () => {
+  it("uses a shadcn tab workspace to separate the desktop review modes", () => {
+    expect(source).toContain("data-desktop-today-tabs");
+    expect(source).toContain("data-today-hero-score-stack");
+    expect(source).toContain("<Tabs");
+    expect(source).toContain("<TabsList");
+    expect(source).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
+    expect(source).toContain('<TabsTrigger value="practice">Practice</TabsTrigger>');
+    expect(source).toContain('<TabsTrigger value="evidence">Evidence</TabsTrigger>');
+    expect(source).toContain('<TabsTrigger value="data-quality">Data quality</TabsTrigger>');
+    expect(source).toContain("<ConnectedMetricBar");
+    expect(source).toContain("todayConnectedMetrics(data, linkedPracticePlan)");
+    expect(source).not.toContain("TodayBentoItem");
+  });
+
+  it("keeps the focused practice workflow available inside its desktop tab", () => {
     expect(source).toContain("today-practice-grid-has-prescription");
     expect(source).toContain('"prescription mode"');
     expect(source).toContain('"plan plan"');
@@ -62,24 +80,21 @@ describe("latest practice desktop dashboard", () => {
     expect(source).not.toContain("today-practice-plan-rail");
   });
 
-  it("keeps every paired desktop region on a shared row edge", () => {
+  it("keeps the focused paired regions aligned within their tabs", () => {
     for (const row of [
-      "today-top",
       "today-signal",
       "today-practice",
       "today-highlights",
       "today-highlight-cards",
-      "today-footer",
     ]) {
       expect(source).toContain(`data-equal-height-row="${row}"`);
     }
 
-    expect(source).toContain("today-top-grid grid items-stretch");
     expect(source).toContain("today-signal-grid grid items-stretch");
     expect(source).toContain("today-practice-grid grid items-stretch");
     expect(source).toContain("today-highlights-grid grid items-stretch");
     expect(source).toContain("auto-rows-fr items-stretch");
-    expect(source).toContain("grid items-stretch gap-4 lg:grid-cols-2");
+    expect(source).toContain("grid items-start gap-5 xl:grid-cols-2");
   });
 
   it("keeps embedded latest-practice tables captioned and keyboardable", () => {

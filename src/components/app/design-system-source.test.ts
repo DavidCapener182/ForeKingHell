@@ -56,14 +56,17 @@ describe("composable analysis design primitives", () => {
     }
   });
 
-  it("uses one answer-first analytics layout with evidence and a next action", () => {
+  it("uses one answer-first analytics workspace with evidence and a next action", () => {
     const template = source("src/components/app/analysis-page-template.tsx");
     const analyse = source("src/app/(app)/analyse/page.tsx");
 
     expect(template).toContain("data-analysis-page-template");
     expect(template).toContain('aria-label="Answer and evidence quality"');
     expect(template).toContain("recommendation");
-    expect(analyse).toContain("<AnalysisPageTemplate");
+    expect(analyse).toContain("data-analyse-workspace-tabs");
+    expect(analyse).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
+    expect(analyse).toContain("<ConnectedMetricBar");
+    expect(analyse).toContain("<AnalyseProvenancePanel");
   });
 
   it("keeps app shells full-width and centralises semantic surface tokens", () => {

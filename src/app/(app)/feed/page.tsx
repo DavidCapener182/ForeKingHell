@@ -4,17 +4,18 @@ import {
   Award,
   BarChart3,
   Filter,
-  Lock,
   MessageCircle,
   Plus,
   Radio,
   Trophy,
-  Upload,
   Users,
   Zap,
 } from "lucide-react";
 
 import { FeedCardList } from "@/components/social/feed-card-list";
+import { StatusUpdateComposerSheet } from "@/app/feed/status-update-composer";
+import { FeedFilterControls } from "@/app/feed/feed-filter-controls";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { SocialFeaturePanel } from "@/components/features/feature-panels";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import {
@@ -404,46 +405,26 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               actionLabel="Preview sharing"
             />
 
-            <section className="premium-card p-4">
-              <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+            <section id="create-feed-post" className="scroll-mt-28 rounded-xl border bg-card p-4">
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
                 <SocialAvatar
                   displayName={data.profile.displayName}
                   username={data.profile.username}
                   avatarUrl={data.profile.avatarUrl}
                   href="/profile"
                 />
-                <div className="grid gap-3">
-                  <div className="rounded-xl border bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
-                    Your feed is automatic right now. Import a session, complete a round, or join a
-                    challenge to post a verified update.
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/import" prefetch={false}>
-                        <Upload className="size-4" />
-                        Import
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/rounds/new" prefetch={false}>
-                        <Radio className="size-4" />
-                        Log round
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/course-records" prefetch={false}>
-                        <Award className="size-4" />
-                        Submit record
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="sm">
-                      <Link href="/profile" prefetch={false}>
-                        <Lock className="size-4" />
-                        Privacy
-                      </Link>
-                    </Button>
-                  </div>
+                <div>
+                  <p className="font-semibold">Share a golf update</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Post a range note, round recap, swing feel or golf photo.
+                  </p>
                 </div>
+                <StatusUpdateComposerSheet
+                  displayName={data.profile.displayName}
+                  username={data.profile.username}
+                  avatarUrl={data.profile.avatarUrl}
+                  defaultVisibility={data.profile.feedVisibilityDefault}
+                />
               </div>
             </section>
 
@@ -469,29 +450,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               </section>
             ) : null}
 
-            <section className="premium-card p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1.5 px-1 text-sm font-semibold">
-                  <Filter className="size-4 text-slate-600" />
-                  Filter
-                </span>
-                {feedFilters.map((filter) => (
-                  <Button
-                    key={filter.key}
-                    asChild
-                    variant={filter.key === activeFilter ? "default" : "outline"}
-                    size="sm"
-                  >
-                    <Link
-                      href={filter.key === "all" ? "/feed" : `/feed?filter=${filter.key}`}
-                      prefetch={false}
-                    >
-                      {filter.label}
-                    </Link>
-                  </Button>
-                ))}
-              </div>
-            </section>
+            <FeedFilterControls activeFilter={activeFilter} filters={feedFilters} />
 
             <FeedActivityLedger activeFilter={activeFilter} items={filteredItems} />
 
@@ -843,8 +802,18 @@ function FeedActivityLedger({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
-                  No feed activity matches this filter yet.
+                <TableCell colSpan={9} className="p-4">
+                  <AppEmptyState
+                    title="No feed activity in this view"
+                    description="Choose another filter or create a golf update to start the conversation."
+                    primaryAction={
+                      <Button asChild variant="outline">
+                        <Link href="/feed" prefetch={false}>
+                          Show all activity
+                        </Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}

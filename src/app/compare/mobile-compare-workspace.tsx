@@ -20,6 +20,13 @@ import {
 } from "@/components/app/ios-mobile";
 import { BottomSheet, MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   ClubCompareData,
   ClubCompareSide,
@@ -508,16 +515,16 @@ function ClubPicker({ data }: { data: ClubCompareData }) {
         <input type="hidden" name="view" value="clubs" />
         <NativeSelect name="clubAId" label="Club A" defaultValue={data.filters.clubAId}>
           {data.clubs.map((club) => (
-            <option key={club.id} value={club.id}>
+            <SelectItem key={club.id} value={club.id}>
               {club.label} ({integerFormatter.format(club.shotCount)} shots)
-            </option>
+            </SelectItem>
           ))}
         </NativeSelect>
         <NativeSelect name="clubBId" label="Club B" defaultValue={data.filters.clubBId}>
           {data.clubs.map((club) => (
-            <option key={club.id} value={club.id}>
+            <SelectItem key={club.id} value={club.id}>
               {club.label} ({integerFormatter.format(club.shotCount)} shots)
-            </option>
+            </SelectItem>
           ))}
         </NativeSelect>
         <Button type="submit" className="min-h-11 rounded-xl">
@@ -547,16 +554,16 @@ function PlayerPicker({ data }: { data: PlayerCompareData }) {
         <input type="hidden" name="view" value="players" />
         <NativeSelect name="playerAId" label="Player A" defaultValue={data.filters.playerAId}>
           {data.players.map((player) => (
-            <option key={player.userId} value={player.userId}>
+            <SelectItem key={player.userId} value={player.userId}>
               {player.displayName} (@{player.username})
-            </option>
+            </SelectItem>
           ))}
         </NativeSelect>
         <NativeSelect name="playerBId" label="Player B" defaultValue={data.filters.playerBId}>
           {data.players.map((player) => (
-            <option key={player.userId} value={player.userId}>
+            <SelectItem key={player.userId} value={player.userId}>
               {player.displayName} (@{player.username})
-            </option>
+            </SelectItem>
           ))}
         </NativeSelect>
         <Button type="submit" className="min-h-11 rounded-xl">
@@ -581,13 +588,12 @@ function NativeSelect({
   return (
     <label className="grid gap-1.5 text-sm font-medium text-foreground">
       {label}
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        className="min-h-11 w-full rounded-xl border border-border bg-card px-3 text-base text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {children}
-      </select>
+      <Select name={name} defaultValue={defaultValue}>
+        <SelectTrigger className="min-h-11 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
     </label>
   );
 }

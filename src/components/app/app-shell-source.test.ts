@@ -70,9 +70,8 @@ describe("app shell desktop accessibility", () => {
 
   it("defers private mobile navigation on public routes", () => {
     expect(source).toContain('import("@/components/app/mobile-nav")');
-    expect(source).toContain(
-      'import { DesktopWorkbenchChrome } from "@/components/app/desktop-workbench-chrome"',
-    );
+    expect(source).toContain('import("@/components/app/desktop-workbench-chrome")');
+    expect(source).toContain("ssr: false");
     expect(source).toContain("if (isPublicRoute(pathname))");
   });
 

@@ -19,6 +19,15 @@ describe("practice planner desktop workflow", () => {
     expect(routeSource).toContain('await import("./practice-workbench-page")');
     expect(companionSource).toContain("Save & Start Practice");
     expect(companionSource).toContain("data-active-range-mode");
+    expect(companionSource).toContain("OperationStepper");
+    expect(companionSource).toContain('id: "plan"');
+    expect(companionSource).toContain('id: "range"');
+    expect(companionSource).toContain('id: "evidence"');
+    expect(companionSource).toContain('id: "review"');
+    expect(companionSource).toContain("<Progress");
+    expect(companionSource).toContain("<Drawer");
+    expect(companionSource).toContain("<AlertDialog");
+    expect(companionSource).toContain("Finish without evidence");
     expect(companionSource).toContain("w-40 shrink-0 snap-start");
     expect(companionSource).not.toContain("DesktopTableWorkbenchControls");
     expect(companionSource).not.toContain("PracticeLibrary");

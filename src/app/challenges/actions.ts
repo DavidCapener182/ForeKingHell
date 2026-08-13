@@ -7,6 +7,7 @@ import {
   createChallenge,
   inviteFriendToChallenge,
   joinChallenge,
+  leaveChallenge,
 } from "@/lib/challenges";
 import { parseVisibility } from "@/lib/social";
 
@@ -30,6 +31,12 @@ export async function joinChallengeAction(formData: FormData) {
   const challengeId = requiredString(formData, "challengeId");
   await joinChallenge(challengeId);
   redirect(`/challenges/${challengeId}`);
+}
+
+export async function leaveChallengeAction(formData: FormData) {
+  const challengeId = requiredString(formData, "challengeId");
+  await leaveChallenge(challengeId);
+  redirect("/challenges?tab=joined");
 }
 
 export async function addChallengeCommentAction(formData: FormData) {

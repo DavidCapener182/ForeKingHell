@@ -1,18 +1,14 @@
 import Link from "next/link";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { CalendarDays, Flag, ShieldCheck, Target } from "lucide-react";
+import { CalendarDays, ShieldAlert } from "lucide-react";
 
 import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
 import { TodayPrimaryAnswer } from "@/components/app/today-primary-answer";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+import { IOSDisclosureGroup, IOSMetricRow } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -31,12 +27,12 @@ export default async function TodayCompanionPage() {
       <PageShell>
         <MobileAppShell>
           <MobileTopBar title="Today" />
-          <section className="ios-grouped-list p-5">
-            <h1 className="text-xl font-bold">Connect your golf data</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+          <Alert>
+            <AlertTitle>Connect your golf data</AlertTitle>
+            <AlertDescription>
               A database connection is required before Today can build a recommendation.
-            </p>
-          </section>
+            </AlertDescription>
+          </Alert>
         </MobileAppShell>
       </PageShell>
     );
@@ -73,42 +69,34 @@ export default async function TodayCompanionPage() {
         />
 
         {patternPoints.length > 0 && context.latestPractice.sessionId ? (
-          <section className="grid gap-2.5" aria-label="Latest measured pattern">
-            <IOSSectionHeader title="Latest pattern" description={latestSessionDetail(context)} />
-            <Link
-              href={`/sessions/${context.latestPractice.sessionId}`}
-              className="focus-aaa block rounded-2xl"
-            >
-              <MobileShotPatternCharts
-                points={patternPoints}
-                preferredClub={recommendation.clubType}
-                compact
-              />
-            </Link>
-          </section>
+          <Card aria-label="Latest measured pattern" className="gap-3 py-3">
+            <CardHeader className="px-3">
+              <CardTitle>Latest pattern</CardTitle>
+              <CardDescription>{latestSessionDetail(context)}</CardDescription>
+            </CardHeader>
+            <CardContent className="px-3">
+              <Link
+                href={`/sessions/${context.latestPractice.sessionId}`}
+                className="focus-aaa block rounded-xl"
+              >
+                <MobileShotPatternCharts
+                  points={patternPoints}
+                  preferredClub={recommendation.clubType}
+                  compact
+                />
+              </Link>
+            </CardContent>
+          </Card>
         ) : null}
 
-        <section className="grid gap-2.5">
-          <IOSSectionHeader title="Quick actions" />
-          <IOSGroupedList label="Today quick actions">
-            <IOSListRow icon={Target} label="Plan practice" href="/practice" />
-            <IOSListRow icon={Flag} label="Prepare to play" href="/play" />
-            <IOSListRow icon={ShieldCheck} label="Quick Bag" href="/quick-bag" />
-          </IOSGroupedList>
-        </section>
-
         {context.bag.issues[0] ? (
-          <section className="grid gap-2.5">
-            <IOSSectionHeader title="Data health" />
-            <IOSGroupedList label="Data health">
-              <IOSListRow
-                icon={ShieldCheck}
-                label="One confidence warning"
-                detail={context.bag.issues[0]}
-                href="/quick-bag"
-              />
-            </IOSGroupedList>
-          </section>
+          <Alert>
+            <ShieldAlert aria-hidden />
+            <AlertTitle>One confidence warning</AlertTitle>
+            <AlertDescription>
+              {context.bag.issues[0]} <Link href="/quick-bag">Review Quick Bag.</Link>
+            </AlertDescription>
+          </Alert>
         ) : null}
 
         <IOSDisclosureGroup

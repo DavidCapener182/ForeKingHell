@@ -1,11 +1,28 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Replace, ShieldAlert } from "lucide-react";
+import { Replace, Settings2, ShieldAlert } from "lucide-react";
 
 import { StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { simulateBagChange, type BagSimulatorClub } from "@/lib/bag-simulator";
 
 export function BagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
@@ -50,56 +67,83 @@ export function BagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
           widths change course-distance coverage.
         </p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <label className="grid gap-1 text-sm font-semibold">
-          Remove club
-          <select
-            value={removeId}
-            onChange={(event) => setRemoveId(event.target.value)}
-            className="min-h-11 rounded-xl border bg-background px-3"
-          >
-            <option value="">Keep every club</option>
-            {clubs.map((club) => (
-              <option key={club.id} value={club.id}>
-                {club.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-semibold">
-          Candidate club
-          <Input
-            value={candidateLabel}
-            onChange={(event) => setCandidateLabel(event.target.value)}
-          />
-        </label>
-        <label className="grid gap-1 text-sm font-semibold">
-          Projected carry
-          <Input
-            type="number"
-            value={candidateCarry}
-            onChange={(event) => setCandidateCarry(Number(event.target.value))}
-          />
-        </label>
-        <label className="grid gap-1 text-sm font-semibold">
-          Projected miss width
-          <Input
-            type="number"
-            value={candidateDispersion}
-            onChange={(event) => setCandidateDispersion(Number(event.target.value))}
-          />
-        </label>
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="w-fit"
-        onClick={() => setIncludeCandidate((value) => !value)}
-        aria-pressed={includeCandidate}
-      >
-        <Plus className="size-4" aria-hidden />
-        {includeCandidate ? "Candidate included" : "Add candidate"}
-      </Button>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button type="button" variant="outline" className="w-fit">
+            <Settings2 aria-hidden />
+            Adjust bag change
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
+          <SheetHeader>
+            <SheetTitle>Bag simulator settings</SheetTitle>
+            <SheetDescription>
+              Test a removal and one candidate against your measured carry bands. Nothing is saved
+              to the real bag.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-4 px-4 pb-6">
+            <div className="grid gap-2">
+              <Label htmlFor="bag-simulator-remove">Remove club</Label>
+              <Select
+                value={removeId || "keep"}
+                onValueChange={(value) => setRemoveId(value === "keep" ? "" : value)}
+              >
+                <SelectTrigger id="bag-simulator-remove" className="min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="keep">Keep every club</SelectItem>
+                  {clubs.map((club) => (
+                    <SelectItem key={club.id} value={club.id}>
+                      {club.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border p-3">
+              <Label htmlFor="bag-simulator-include">Include candidate club</Label>
+              <Switch
+                id="bag-simulator-include"
+                checked={includeCandidate}
+                onCheckedChange={setIncludeCandidate}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="bag-simulator-candidate">Candidate club</Label>
+              <Input
+                id="bag-simulator-candidate"
+                value={candidateLabel}
+                onChange={(event) => setCandidateLabel(event.target.value)}
+                disabled={!includeCandidate}
+              />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="bag-simulator-carry">Projected carry</Label>
+                <Input
+                  id="bag-simulator-carry"
+                  type="number"
+                  value={candidateCarry}
+                  onChange={(event) => setCandidateCarry(Number(event.target.value))}
+                  disabled={!includeCandidate}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="bag-simulator-miss">Projected miss width</Label>
+                <Input
+                  id="bag-simulator-miss"
+                  type="number"
+                  value={candidateDispersion}
+                  onChange={(event) => setCandidateDispersion(Number(event.target.value))}
+                  disabled={!includeCandidate}
+                />
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
       <div className="grid gap-3 sm:grid-cols-3">
         <Metric label="Current coverage" value={`${result.currentCoverage}%`} />
         <Metric label="Projected coverage" value={`${result.projectedCoverage}%`} />

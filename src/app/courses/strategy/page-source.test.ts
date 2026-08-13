@@ -14,6 +14,10 @@ const routeSource = readFileSync(
   join(process.cwd(), "src/app/(app)/courses/strategy/page.tsx"),
   "utf8",
 );
+const mobileHoleSource = readFileSync(
+  join(process.cwd(), "src/app/courses/strategy/mobile-hole-strategy.tsx"),
+  "utf8",
+);
 
 describe("course strategy mode-aware mobile hierarchy", () => {
   it("loads the companion before the dashboard-backed workbench", () => {
@@ -24,7 +28,17 @@ describe("course strategy mode-aware mobile hierarchy", () => {
     expect(companionSource).toContain("<MobileHoleStrategy");
     expect(companionSource).toContain("courseTwinAvailable={courseTwinAvailable}");
     expect(companionSource).toContain("listAvailableCourseTwins(userId)");
+    expect(companionSource).toContain("PlaySetupDrawer");
     expect(companionSource).not.toContain("getDashboardData");
+  });
+
+  it("uses carousel semantics, compact progress and explicit hole controls", () => {
+    expect(mobileHoleSource).toContain('aria-roledescription="carousel"');
+    expect(mobileHoleSource).toContain('aria-roledescription="slide"');
+    expect(mobileHoleSource).toContain("<Progress");
+    expect(mobileHoleSource).toContain("Hole {strategy.holeNumber} of {strategies.length}");
+    expect(mobileHoleSource).toContain('aria-label="Previous hole"');
+    expect(mobileHoleSource).toContain('aria-label="Next hole"');
   });
 
   it("renders every pre-round planning surface only in pre mode", () => {
@@ -63,7 +77,8 @@ describe("course strategy mode-aware mobile hierarchy", () => {
 
     expect(mobile).toContain('label="Course selection"');
     expect(mobile).toContain('label="Supporting course evidence"');
-    expect(mobile).toContain('className="min-h-11 w-full rounded-xl border bg-background px-3"');
+    expect(mobile).toContain('<Select name="courseId"');
+    expect(mobile).toContain('<SelectTrigger className="min-h-11 w-full">');
     expect(mobile).toContain('className="min-h-11 w-full rounded-xl"');
   });
 

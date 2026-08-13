@@ -23,7 +23,8 @@ describe("Analyse native mobile information architecture", () => {
     expect(mobile).toContain("Evidence coverage");
     expect(mobile).toContain("Evidence tools");
     expect(mobile).toContain("IOSGroupedList");
-    expect(page).toContain("AnalysisPageTemplate");
+    expect(page).toContain("data-analyse-workspace-tabs");
+    expect(page).toContain("ConnectedMetricBar");
   });
 
   it("puts the comparison verdict ahead of its filter sheet and discloses provenance per metric", () => {

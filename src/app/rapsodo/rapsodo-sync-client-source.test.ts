@@ -80,6 +80,17 @@ describe("rapsodo desktop provider console", () => {
     expect(source).not.toContain("DesktopWorkbenchLayout");
   });
 
+  it("uses shadcn connection actions, responsive preview and disconnect confirmation", () => {
+    expect(source).toContain("data-rapsodo-connection-card");
+    expect(source).toContain("ConnectedMetricBar");
+    expect(source).toContain("DropdownMenu");
+    expect(source).toContain("ResponsiveDetailPanel");
+    expect(source).toContain("AlertDialog");
+    expect(source).toContain("disconnectConfirmationOpen");
+    expect(source).toContain("<Select");
+    expect(source).not.toContain("<select");
+  });
+
   it("keeps remote sessions exportable and configurable without adding an AI rail", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="rapsodo-sessions"');

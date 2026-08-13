@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { CalendarDays, Upload } from "lucide-react";
 
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { SessionTimeline } from "@/app/sessions/session-timeline";
@@ -33,27 +33,21 @@ export default async function SessionsPage() {
       {rows.length > 0 ? (
         <SessionTimeline sessions={rows} accountId={userId} />
       ) : (
-        <Card className="premium-card">
-          <CardContent className="grid place-items-center gap-3 py-12 text-center">
-            <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary">
-              <CalendarDays className="size-6" aria-hidden />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold">No sessions yet</h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Import launch-monitor data or add a round to create your review history.
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button asChild className="min-h-11 rounded-xl">
-                <Link href="/import">Import data</Link>
-              </Button>
-              <Button asChild variant="outline" className="min-h-11 rounded-xl">
-                <Link href="/rounds/new">Add round</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <AppEmptyState
+          icon={<CalendarDays className="size-6" aria-hidden />}
+          title="No sessions yet"
+          description="Import launch-monitor data or add a round to create your review history."
+          primaryAction={
+            <Button asChild className="min-h-11 rounded-xl">
+              <Link href="/import">Import data</Link>
+            </Button>
+          }
+          secondaryAction={
+            <Button asChild variant="outline" className="min-h-11 rounded-xl">
+              <Link href="/rounds/new">Add round</Link>
+            </Button>
+          }
+        />
       )}
     </PageShell>
   );

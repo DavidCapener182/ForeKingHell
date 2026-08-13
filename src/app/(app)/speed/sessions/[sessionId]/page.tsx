@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ComponentProps, ReactNode } from "react";
+import {
+  Children,
+  isValidElement,
+  type ComponentProps,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import { ArrowLeft, Gauge, Save, Trash2 } from "lucide-react";
 
 import { deleteSpeedSessionAction, updateSpeedSessionAction } from "@/app/speed/actions";
@@ -20,6 +26,13 @@ import {
 } from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -931,17 +944,46 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function NativeSelect({ className, children, ...props }: ComponentProps<"select">) {
+function NativeSelect({
+  className,
+  children,
+  name,
+  defaultValue,
+  disabled,
+  required,
+  id,
+  "aria-label": ariaLabel,
+}: ComponentProps<"select">) {
+  const options = Children.toArray(children).filter(
+    (child): child is ReactElement<ComponentProps<"option">> =>
+      isValidElement<ComponentProps<"option">>(child) && child.type === "option",
+  );
+  const initialValue =
+    typeof defaultValue === "string" || typeof defaultValue === "number"
+      ? String(defaultValue)
+      : "";
+
   return (
-    <select
-      className={cn(
-        "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-        className,
-      )}
-      {...props}
+    <Select
+      name={name}
+      defaultValue={initialValue || "__none__"}
+      disabled={disabled}
+      required={required}
     >
-      {children}
-    </select>
+      <SelectTrigger id={id} aria-label={ariaLabel} className={cn("h-8 w-full", className)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option, index) => {
+          const value = String(option.props.value ?? "") || "__none__";
+          return (
+            <SelectItem key={`${value}:${index}`} value={value} disabled={option.props.disabled}>
+              {option.props.children}
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
   );
 }
 

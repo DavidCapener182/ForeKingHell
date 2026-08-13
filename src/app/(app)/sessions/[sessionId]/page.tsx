@@ -3,17 +3,19 @@ import { notFound } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 
 import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { ResultHero } from "@/components/app/result-hero";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
-  IOSInlineStatus,
   IOSListRow,
   IOSMetricRow,
-  IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlanForSourceSessions } from "@/lib/practice-planner";
 import { buildShotPatternPoints, shotPatternConfidence } from "@/lib/shot-pattern-chart-data";
@@ -58,69 +60,63 @@ export default async function PracticeSessionReviewPage({
       <MobileAppShell className="gap-5" data-practice-session-review>
         <MobileTopBar title="Practice review" />
 
-        <section className="ios-grouped-list grid gap-4 p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                Session verdict
-              </p>
-              <h1 className="mt-1 text-2xl font-bold leading-7 tracking-tight">
-                {data.overall.title}
-              </h1>
-              <p className="mt-2 text-sm leading-5 text-muted-foreground">{data.overall.summary}</p>
-            </div>
-            <IOSInlineStatus
-              label={`${focusConfidence.label} confidence`}
-              tone={focusConfidence.label === "Low" ? "attention" : "positive"}
-            />
-          </div>
-        </section>
+        <ResultHero
+          eyebrow="Session verdict"
+          title={data.overall.title}
+          summary={data.overall.summary}
+          confidence={{
+            label: `${focusConfidence.label} confidence`,
+            tone: focusConfidence.label === "Low" ? "outline" : "secondary",
+          }}
+        />
 
-        <section className="grid gap-2.5">
-          <IOSSectionHeader
-            title="Shot pattern"
-            description="Dispersion first, with measured flight when apex data exists."
-          />
-          <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
-        </section>
+        <Card className="gap-3 py-3">
+          <CardHeader className="px-3">
+            <CardTitle>Shot pattern</CardTitle>
+            <CardDescription>
+              Dispersion first, with measured flight when apex data exists.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-3">
+            <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
+          </CardContent>
+        </Card>
 
-        <section className="grid gap-2.5">
-          <IOSSectionHeader title="What changed" />
-          <IOSGroupedList label="Practice changes">
-            <IOSListRow
-              label="What improved"
-              value={improved?.clubLabel ?? "Baseline built"}
-              detail={
-                improved?.summary ??
-                "There is no prior like-for-like baseline strong enough for an improvement claim."
-              }
-            />
-            <IOSListRow
-              label="What needs work"
-              value={remaining?.clubLabel ?? "Retest"}
-              detail={remaining?.summary ?? "Repeat the same measured block before changing focus."}
-            />
-          </IOSGroupedList>
-        </section>
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>What changed</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <Item variant="muted" size="sm">
+              <ItemContent>
+                <ItemTitle>What improved · {improved?.clubLabel ?? "Baseline built"}</ItemTitle>
+                <ItemDescription className="whitespace-normal">
+                  {improved?.summary ??
+                    "There is no prior like-for-like baseline strong enough for an improvement claim."}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
+            <Item variant="muted" size="sm">
+              <ItemContent>
+                <ItemTitle>What needs work · {remaining?.clubLabel ?? "Retest"}</ItemTitle>
+                <ItemDescription className="whitespace-normal">
+                  {remaining?.summary ?? "Repeat the same measured block before changing focus."}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
+          </CardContent>
+        </Card>
 
-        <section className="grid gap-2.5">
-          <IOSSectionHeader title="Four important numbers" />
-          <IOSGroupedList label="Important session metrics">
-            <IOSMetricRow label="Measured shots" value={String(shots.length)} />
-            <IOSMetricRow
-              label="Average carry"
-              value={formatYards(data.overall.today.carryAverageYd)}
-            />
-            <IOSMetricRow
-              label="Average offline"
-              value={formatYards(data.overall.today.offlineAverageYd)}
-            />
-            <IOSMetricRow
-              label="Playable rate"
-              value={formatPercent(data.overall.today.playableRate)}
-            />
-          </IOSGroupedList>
-        </section>
+        <ConnectedMetricBar
+          label="Four important numbers"
+          className="grid-cols-2 [&>div:nth-child(2)]:border-l [&>div:nth-child(2)]:border-t-0"
+          metrics={[
+            { label: "Measured shots", value: String(shots.length) },
+            { label: "Average carry", value: formatYards(data.overall.today.carryAverageYd) },
+            { label: "Average offline", value: formatYards(data.overall.today.offlineAverageYd) },
+            { label: "Playable rate", value: formatPercent(data.overall.today.playableRate) },
+          ]}
+        />
 
         <IOSDisclosureGroup
           label="Club summary"

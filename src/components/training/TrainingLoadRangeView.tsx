@@ -53,6 +53,7 @@ import { TrainingSummaryCards } from "@/components/training/TrainingSummaryCards
 import { BottomSheet } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -1017,30 +1018,35 @@ function LegendItem({
 function LogGolfLoadPanel({ rangeKey, today }: { rangeKey: TrainingRangeKey; today: string }) {
   return (
     <DataPanel id="log-load" className="overflow-hidden">
-      <details className="group">
-        <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-lg font-semibold tracking-normal text-foreground">
-              <Dumbbell className="size-5 text-emerald-700" aria-hidden="true" />
-              Log Training
+      <Collapsible className="group">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-lg font-semibold tracking-normal text-foreground">
+                <Dumbbell className="size-5 text-emerald-700" aria-hidden="true" />
+                Log Training
+              </div>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                Add a round, practice block, speed session or manual workload entry.
+              </p>
             </div>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              Add a round, practice block, speed session or manual workload entry.
-            </p>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm">
-            <Plus className="size-4" aria-hidden="true" />
-            Log Training
-            <ChevronDown
-              className="size-4 transition-transform group-open:rotate-180"
-              aria-hidden="true"
-            />
-          </span>
-        </summary>
-        <div className="border-t border-border/70">
+            <span className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm">
+              <Plus className="size-4" aria-hidden="true" />
+              Log Training
+              <ChevronDown
+                className="size-4 transition-transform group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </span>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t border-border/70">
           <TrainingSessionForm rangeKey={rangeKey} today={today} />
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
     </DataPanel>
   );
 }

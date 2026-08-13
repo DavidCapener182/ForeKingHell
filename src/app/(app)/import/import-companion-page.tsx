@@ -5,14 +5,21 @@ import { Cloud, FileClock, FileUp, PenLine, PlugZap } from "lucide-react";
 import { CompanionRangeImport } from "@/app/import/companion-range-import";
 import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import { CompanionSyncStatus } from "@/components/app/companion-sync-status";
-import {
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { StatusTimeline } from "@/components/app/status-timeline";
+import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -92,31 +99,46 @@ export default async function ImportCompanionPage({
               validPlan ? `Evidence for ${validPlan.title}` : "Choose one measured source"
             }
           />
-          <IOSGroupedList label="Import a session">
-            <IOSListRow
-              icon={Cloud}
-              label="Rapsodo R-Cloud"
-              detail={
-                connected
-                  ? "Recent unimported sessions are ready to load."
-                  : "Connect and import your newest measured session."
-              }
-              href={`/rapsodo${planQuery}`}
-              status={
-                <IOSInlineStatus
-                  label={connected ? "Connected" : "Connect"}
-                  tone={connected ? "positive" : "attention"}
-                />
-              }
-            />
-            <IOSListRow
-              icon={FileUp}
-              label="Choose CSV from Files"
-              detail="Pick one range export, confirm the summary, then save."
-              href={`/import${csvQuery}`}
-              status={<IOSInlineStatus label="Fast import" tone="info" />}
-            />
-          </IOSGroupedList>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Card size="sm">
+              <CardHeader>
+                <Cloud className="size-5 text-primary" aria-hidden />
+                <CardTitle>Rapsodo R-Cloud</CardTitle>
+                <CardDescription>
+                  {connected
+                    ? "Recent unimported sessions are ready to load."
+                    : "Connect and import your newest measured session."}
+                </CardDescription>
+                <CardAction>
+                  <Badge variant={connected ? "default" : "outline"}>
+                    {connected ? "Connected" : "Connect"}
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="w-full">
+                  <Link href={`/rapsodo${planQuery}`}>Open R-Cloud</Link>
+                </Button>
+              </CardContent>
+            </Card>
+            <Card size="sm">
+              <CardHeader>
+                <FileUp className="size-5 text-primary" aria-hidden />
+                <CardTitle>Choose CSV from Files</CardTitle>
+                <CardDescription>
+                  Pick one range export, confirm the summary, then save.
+                </CardDescription>
+                <CardAction>
+                  <Badge variant="secondary">Fast import</Badge>
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                <Button asChild className="w-full">
+                  <Link href={`/import${csvQuery}`}>Choose CSV</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         <section className="grid gap-2.5">
@@ -141,22 +163,35 @@ export default async function ImportCompanionPage({
         {recent.length > 0 ? (
           <section id="recent-imports" className="grid gap-2.5 scroll-mt-20">
             <IOSSectionHeader title="Recent imports" />
-            <IOSGroupedList label="Recent imports">
-              {recent.map((session) => (
-                <IOSListRow
-                  key={session.id}
-                  label={session.courseName ?? session.fileName ?? "Measured session"}
-                  detail={new Intl.DateTimeFormat("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  }).format(session.date)}
-                  href={companionReviewRoute(session)}
-                />
-              ))}
-            </IOSGroupedList>
+            <div className="ios-grouped-list p-4">
+              <StatusTimeline
+                label="Recent import timeline"
+                items={recent.map((session) => ({
+                  id: session.id,
+                  title: session.courseName ?? session.fileName ?? "Measured session",
+                  timestamp: formatRecentImportDate(session.date),
+                  description:
+                    session.type === "round"
+                      ? "Round evidence imported"
+                      : "Practice evidence imported",
+                  status: session.type === "round" ? "Round" : "Practice",
+                  kind: session.type === "round" ? "round" : "import",
+                  href: companionReviewRoute(session),
+                }))}
+              />
+            </div>
           </section>
-        ) : null}
+        ) : (
+          <AppEmptyState
+            title="No recent imports"
+            description="Choose R-Cloud or a CSV above to add your first measured session."
+            primaryAction={
+              <Button asChild size="sm">
+                <Link href={`/import${csvQuery}`}>Choose CSV</Link>
+              </Button>
+            }
+          />
+        )}
 
         <Link
           href="/settings#offline-storage"
@@ -167,4 +202,14 @@ export default async function ImportCompanionPage({
       </MobileAppShell>
     </PageShell>
   );
+}
+
+function formatRecentImportDate(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(value);
 }

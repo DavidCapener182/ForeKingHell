@@ -17,6 +17,7 @@ import {
   label,
   StatusBadge,
 } from "@/app/admin/admin-components";
+import { AdminChallengeActions } from "@/app/admin/admin-challenge-actions";
 import { MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
 import {
   IOSDisclosureGroup,
@@ -287,9 +288,18 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
                           {formatDateTime(challenge.endsAt)}
                         </td>
                         <td data-column="action" className="px-3 py-3">
-                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/challenges/${challenge.id}`}>Open</Link>
-                          </Button>
+                          <AdminChallengeActions
+                            challenge={{
+                              id: challenge.id,
+                              title: challenge.title,
+                              templateName: challenge.templateName,
+                              status: challenge.status,
+                              visibility: challenge.visibility,
+                              owner: challenge.creatorDisplayName,
+                              participation: `${challenge.entryCount} entries · ${challenge.attemptCount} attempts · ${challenge.resultCount} results`,
+                              endsLabel: formatDateTime(challenge.endsAt),
+                            }}
+                          />
                         </td>
                       </tr>
                     ))}

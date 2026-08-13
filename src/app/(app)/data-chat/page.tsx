@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 
 import { DataChatPanel } from "@/app/data-chat/data-chat-panel";
+import { AiDesktopWorkbench } from "@/components/app/ai-desktop-workbench";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import {
   IOSGroupedList,
   IOSInlineStatus,
@@ -24,15 +26,10 @@ import {
   DesktopWorkbenchLayout,
   commonAiPrompts,
 } from "@/components/app/desktop-workbench";
-import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
-import {
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileTopBar,
-  ProgressCard,
-} from "@/components/mobile-sports";
+import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { MobileAppShell, MobileRouteTabs, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getAiFeatureEntitlement } from "@/lib/ai/usage";
 import { planAllowsAiFeature } from "@/lib/ai/features";
@@ -124,139 +121,146 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
         )}
       </MobileAppShell>
 
-      <DesktopWorkbenchLayout
-        scope="data-chat"
-        className="hidden lg:grid"
-        rail={
-          <DesktopInsightRail
-            title="AI data rail"
-            description="Use the assistant for cited explanations, comparisons, saved answers and practice-plan drafts."
-            metrics={[
-              {
-                label: "Access",
-                value: canUseDataChat ? "Live" : "Locked",
-                detail: canUseDataChat
-                  ? "Data Chat can answer from your records."
-                  : "Upgrade before asking.",
-                tone: canUseDataChat ? "green" : "amber",
-              },
-              {
-                label: "Credits",
-                value: entitlement.monthlyRemaining.toLocaleString("en-GB"),
-                detail: `${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly credits available.`,
-              },
-              {
-                label: "Write access",
-                value: "None",
-                detail: "Answers and drills cannot change handicap, yardages, billing or records.",
-              },
-            ]}
-            evidence={[
-              "Saved shots, rounds, bag and practice records",
-              "Linked citations returned with each answer",
-              "Visible prompt text before any AI request is sent",
-            ]}
-            prompts={dataChatPrompts.slice(0, 5)}
-            actions={[
-              {
-                label: "Coach desk",
-                href: "/coach",
-                detail: "Turn findings into drills and progress tracking.",
-                icon: Brain,
-              },
-              {
-                label: "Shot explorer",
-                href: "/shots",
-                detail: "Inspect the records behind an answer.",
-                icon: Database,
-              },
-            ]}
-          />
-        }
-      >
-        <PageHeader
-          eyebrow={<StatusPill tone={canUseDataChat ? "green" : "amber"}>AI assistant</StatusPill>}
-          title="Data Chat"
-          description="Ask from your LM World Tour activity, bag, rounds, speed work, practice plans and achievements."
-          visual={<PageArtwork variant="dataChat" alt="" className="h-full min-h-36" priority />}
-          actions={
-            canUseDataChat ? (
-              <Button asChild variant="outline">
-                <Link href="/coach" prefetch={false}>
-                  <Brain className="size-4" />
-                  Coach
-                </Link>
-              </Button>
-            ) : (
-              <Button asChild>
-                <Link href="/billing" prefetch={false}>
-                  <CreditCard className="size-4" />
-                  Upgrade
-                </Link>
-              </Button>
-            )
-          }
-          metrics={[
-            {
-              label: "Access",
-              value: canUseDataChat ? "Available" : "Pro+",
-              detail: canUseDataChat ? "Included in your plan" : "Paid AI feature",
-            },
-            {
-              label: "Credits left",
-              value: entitlement.monthlyRemaining.toLocaleString("en-GB"),
-              detail: `${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly credits`,
-            },
-            {
-              label: "Per answer",
-              value: "1 credit",
-              detail: "Logged against monthly AI usage",
-            },
-            {
-              label: "Data mode",
-              value: "Read-only",
-              detail: "Advice and drills only",
-            },
-          ]}
-        />
-
-        <DataPanel>
-          <SectionHeader
-            title="Ask LM World Tour"
-            description="Answers are grounded in your saved golf data and linked back to cited app records."
-            action={<Database className="size-5 text-primary" />}
-          />
-          <CardContent className="p-5" data-data-chat-panel="desktop">
-            {canUseDataChat ? (
-              <DataChatPanel
-                monthlyRemaining={entitlement.monthlyRemaining}
-                questionId="desktop-data-chat-question"
-                initialQuestion={initialPrompt}
-                savedAnswerWorkbench
+      <DesktopWorkbenchLayout scope="data-chat" className="hidden lg:grid">
+        <AiDesktopWorkbench
+          defaultTab="ask"
+          diagnosis={
+            <>
+              <PageHeader
+                eyebrow={
+                  <StatusPill tone={canUseDataChat ? "green" : "amber"}>AI assistant</StatusPill>
+                }
+                title="Data Chat"
+                description="Ask from your LM World Tour activity, bag, rounds, speed work, practice plans and achievements."
+                visual={
+                  <PageArtwork variant="dataChat" alt="" className="h-full min-h-36" priority />
+                }
+                actions={
+                  canUseDataChat ? (
+                    <Button asChild variant="outline">
+                      <Link href="/coach" prefetch={false}>
+                        <Brain className="size-4" />
+                        Coach
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button asChild>
+                      <Link href="/billing" prefetch={false}>
+                        <CreditCard className="size-4" />
+                        Upgrade
+                      </Link>
+                    </Button>
+                  )
+                }
               />
-            ) : (
-              <LockedDataChatPanel />
-            )}
-          </CardContent>
-        </DataPanel>
-
-        <section className="grid gap-4 xl:grid-cols-3">
-          <ProgressCard
-            title="Context"
-            value="Bag, rounds, shots"
-            detail="Also includes speed, practice, challenge and achievement signals."
-          />
-          <ProgressCard
-            title="Safeguard"
-            value="No write-back"
-            detail="The assistant cannot save yardages, records, handicap or billing changes."
-          />
-          <ProgressCard
-            title="Useful asks"
-            value="Tips and drills"
-            detail="Best for priorities, weak clubs, round prep and practice plans."
-          />
-        </section>
+              <Alert className="border-primary/20 bg-primary/5 p-4">
+                <ShieldCheck className="size-4" aria-hidden />
+                <AlertTitle>Read-only golf advice</AlertTitle>
+                <AlertDescription>
+                  Answers can cite your records, but cannot change yardages, handicap, billing or
+                  saved evidence.
+                </AlertDescription>
+              </Alert>
+            </>
+          }
+          evidence={
+            <>
+              <ConnectedMetricBar
+                label="Data Chat evidence and access"
+                metrics={[
+                  {
+                    label: "Access",
+                    value: canUseDataChat ? "Available" : "Pro+",
+                    detail: canUseDataChat ? "Included in your plan" : "Paid AI feature",
+                  },
+                  {
+                    label: "Credits left",
+                    value: entitlement.monthlyRemaining.toLocaleString("en-GB"),
+                    detail: `${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly credits`,
+                  },
+                  { label: "Per answer", value: "1 credit", detail: "Logged to monthly usage" },
+                  { label: "Data mode", value: "Read-only", detail: "Advice and drills only" },
+                ]}
+              />
+              <Alert className="p-4">
+                <Database className="size-4" aria-hidden />
+                <AlertTitle>Evidence scope</AlertTitle>
+                <AlertDescription>
+                  Saved shots, rounds, bag, speed and practice records are available. Each answer
+                  must return linked citations and disclose gaps.
+                </AlertDescription>
+              </Alert>
+            </>
+          }
+          ask={
+            <section data-data-chat-panel="desktop" aria-labelledby="desktop-data-chat-heading">
+              <div className="mb-4">
+                <h2 id="desktop-data-chat-heading" className="text-xl font-semibold">
+                  Ask LM World Tour
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Answers use saved golf data and link back to cited app records.
+                </p>
+              </div>
+              {canUseDataChat ? (
+                <DataChatPanel
+                  monthlyRemaining={entitlement.monthlyRemaining}
+                  questionId="desktop-data-chat-question"
+                  initialQuestion={initialPrompt}
+                  savedAnswerWorkbench
+                />
+              ) : (
+                <LockedDataChatPanel />
+              )}
+            </section>
+          }
+          context={
+            <DesktopInsightRail
+              title="AI data context"
+              description="Cited explanations, comparisons, saved answers and practice-plan drafts."
+              metrics={[
+                {
+                  label: "Access",
+                  value: canUseDataChat ? "Live" : "Locked",
+                  detail: canUseDataChat
+                    ? "Data Chat can answer from your records."
+                    : "Upgrade before asking.",
+                  tone: canUseDataChat ? "green" : "amber",
+                },
+                {
+                  label: "Credits",
+                  value: entitlement.monthlyRemaining.toLocaleString("en-GB"),
+                  detail: `${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly credits.`,
+                },
+                {
+                  label: "Write access",
+                  value: "None",
+                  detail: "Answers cannot change golf or billing records.",
+                },
+              ]}
+              evidence={[
+                "Saved shots, rounds, bag and practice records",
+                "Linked citations returned with each answer",
+                "Visible prompt text before any AI request is sent",
+              ]}
+              prompts={dataChatPrompts.slice(0, 5)}
+              actions={[
+                {
+                  label: "Coach desk",
+                  href: "/coach",
+                  detail: "Turn findings into drills and progress tracking.",
+                  icon: Brain,
+                },
+                {
+                  label: "Shot explorer",
+                  href: "/shots",
+                  detail: "Inspect the records behind an answer.",
+                  icon: Database,
+                },
+              ]}
+            />
+          }
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );

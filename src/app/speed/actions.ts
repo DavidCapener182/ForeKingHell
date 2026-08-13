@@ -475,7 +475,10 @@ function normalizeAllowedValue(value: string, allowed: Set<string>, fallback: st
 
 function formValue(formData: FormData, name: string) {
   const value = formData.get(name);
-  return typeof value === "string" ? value.trim() : "";
+  if (typeof value !== "string") return "";
+
+  const normalized = value.trim();
+  return normalized === "__none__" ? "" : normalized;
 }
 
 function emptyToNull(value: string) {

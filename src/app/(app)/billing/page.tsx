@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Check, CreditCard, Sparkles, Trophy, Zap } from "lucide-react";
 
 import { createCheckoutAction, openCustomerPortalAction } from "@/app/billing/actions";
+import { BillingManageDialog } from "@/app/billing/billing-manage-dialog";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -18,6 +19,8 @@ import {
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   Table,
@@ -28,6 +31,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getBillingPageData, type BillingPlan } from "@/lib/billing";
 
 export const dynamic = "force-dynamic";
@@ -115,12 +125,13 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           </header>
 
           {params?.checkout || params?.portal ? (
-            <div
-              className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
-              role="status"
-            >
-              {billingStatusMessage(params.checkout, params.portal, params.plan)}
-            </div>
+            <Alert>
+              <CreditCard className="size-4" />
+              <AlertTitle>Billing update</AlertTitle>
+              <AlertDescription>
+                {billingStatusMessage(params.checkout, params.portal, params.plan)}
+              </AlertDescription>
+            </Alert>
           ) : null}
 
           <section className="grid gap-3" aria-label="Current membership">
@@ -303,9 +314,13 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
               </div>
             </div>
             {params?.checkout || params?.portal ? (
-              <div className="mt-4 rounded-lg border bg-[#F5F6F4] px-4 py-3 text-sm text-muted-foreground">
-                {billingStatusMessage(params.checkout, params.portal, params.plan)}
-              </div>
+              <Alert className="mt-4">
+                <CreditCard className="size-4" />
+                <AlertTitle>Billing update</AlertTitle>
+                <AlertDescription>
+                  {billingStatusMessage(params.checkout, params.portal, params.plan)}
+                </AlertDescription>
+              </Alert>
             ) : null}
           </header>
 
@@ -325,32 +340,30 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             </section>
 
             <section className="grid gap-4 lg:sticky lg:top-28">
-              <section className="premium-card p-4">
-                <p className="text-sm font-semibold">Current plan</p>
-                <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
-                  <p className="text-2xl font-semibold tracking-normal">
-                    {planLabel(data.plans, data.activePlanKey)}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {data.activePlanKey === "full"
-                      ? "Lifetime full access."
-                      : data.latestSubscription
-                        ? `${data.latestSubscription.status} subscription`
-                        : "No paid subscription yet."}
-                  </p>
-                </div>
-                <form action={openCustomerPortalAction} className="mt-3">
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="w-full"
+              <Card>
+                <CardHeader>
+                  <CardTitle>Current plan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="rounded-lg bg-muted/60 p-4">
+                    <p className="text-2xl font-semibold tracking-normal">
+                      {planLabel(data.plans, data.activePlanKey)}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {data.activePlanKey === "full"
+                        ? "Lifetime full access."
+                        : data.latestSubscription
+                          ? `${data.latestSubscription.status} subscription`
+                          : "No paid subscription yet."}
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <BillingManageDialog
                     disabled={!data.stripeConfigured || !data.billingCustomer?.stripeCustomerId}
-                  >
-                    <CreditCard className="size-4" />
-                    Customer portal
-                  </Button>
-                </form>
-              </section>
+                  />
+                </CardFooter>
+              </Card>
 
               <section className="premium-card p-4">
                 <p className="text-sm font-semibold">Upgrade prompts</p>
@@ -397,6 +410,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             plans={visiblePlans}
             activePlanKey={data.activePlanKey}
           />
+          <BillingHistoryTable history={data.subscriptionHistory} plans={data.plans} />
         </div>
       </DesktopWorkbenchLayout>
     </PageShell>
@@ -505,6 +519,75 @@ function BillingLimitsTable({
   );
 }
 
+function BillingHistoryTable({
+  history,
+  plans,
+}: {
+  history: BillingPageData["subscriptionHistory"];
+  plans: BillingPlan[];
+}) {
+  const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Billing history</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Source-backed subscription periods recorded for this account. Invoice data is not invented
+          when Stripe has not supplied it.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableCaption className="sr-only">
+            Subscription history showing plan, status, period and cancellation state.
+          </TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Plan</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead>Renewal</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {history.length > 0 ? (
+              history.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell className="font-medium">{planLabel(plans, entry.planKey)}</TableCell>
+                  <TableCell>
+                    <Badge variant={entry.status === "active" ? "secondary" : "outline"}>
+                      {label(entry.status)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {entry.currentPeriodStart && entry.currentPeriodEnd
+                      ? `${dateFormatter.format(entry.currentPeriodStart)} – ${dateFormatter.format(entry.currentPeriodEnd)}`
+                      : dateFormatter.format(entry.createdAt)}
+                  </TableCell>
+                  <TableCell>
+                    {entry.cancelAtPeriodEnd ? "Ends after period" : "Continues"}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                  No paid subscription history is recorded for this account.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
 function PlanCard({
   plan,
   active,
@@ -518,8 +601,8 @@ function PlanCard({
   limits: Array<{ id: string; limitKey: string; limitValueJson: Record<string, unknown> }>;
   embedded?: boolean;
 }) {
-  return (
-    <article className={embedded ? "grid gap-4" : "premium-card p-5"}>
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div>
           <Badge variant={active ? "secondary" : "outline"}>
@@ -562,15 +645,15 @@ function PlanCard({
         className={embedded ? "grid gap-2" : "mt-5 grid gap-2 sm:grid-cols-[1fr_auto]"}
       >
         <input type="hidden" name="planKey" value={plan.key} />
-        <select
-          name="interval"
-          aria-label={`${plan.name} billing interval`}
-          className="min-h-11 rounded-lg border bg-background px-3 text-sm"
-          disabled={plan.key === "free"}
-        >
-          <option value="monthly">Monthly</option>
-          <option value="yearly">Yearly</option>
-        </select>
+        <Select name="interval" defaultValue="monthly" disabled={plan.key === "free"}>
+          <SelectTrigger className="min-h-11 w-full" aria-label={`${plan.name} billing interval`}>
+            <SelectValue placeholder="Billing interval" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="yearly">Yearly</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           type="submit"
           className="min-h-11"
@@ -585,7 +668,17 @@ function PlanCard({
                 : "Checkout"}
         </Button>
       </form>
-    </article>
+    </>
+  );
+
+  if (embedded) {
+    return <div className="grid gap-4">{content}</div>;
+  }
+
+  return (
+    <Card>
+      <CardContent className="grid gap-4">{content}</CardContent>
+    </Card>
   );
 }
 

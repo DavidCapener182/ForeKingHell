@@ -2,10 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, FolderClock, MoreHorizontal } from "lucide-react";
 
-import { IOSInlineStatus } from "@/components/app/ios-mobile";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Progress } from "@/components/ui/progress";
 import { listOfflineActions, type OfflineActionRecord } from "@/lib/offline-queue";
 import { getTodaySyncOverride, type TodayPrimaryState } from "@/lib/today-sync-state";
 
@@ -49,8 +66,9 @@ export function TodayPrimaryAnswer({
     : facts;
 
   return (
-    <section
-      className="ios-grouped-list relative isolate grid gap-2 overflow-hidden p-3"
+    <Card
+      size="sm"
+      className="relative isolate gap-2 overflow-hidden py-3"
       data-primary-recommendation
     >
       <div
@@ -61,35 +79,99 @@ export function TodayPrimaryAnswer({
         className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-card via-card/90 to-card/60"
         aria-hidden
       />
-      <div className="flex items-start justify-between gap-3 pr-1">
+      <CardHeader className="gap-1 pr-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
             {state.eyebrow}
           </p>
-          <h1 className="mt-1 text-xl font-bold leading-6 tracking-tight">{state.title}</h1>
+          <CardTitle className="mt-1 text-xl font-bold leading-6 tracking-tight">
+            {state.title}
+          </CardTitle>
         </div>
-        <IOSInlineStatus label={state.status} tone={state.tone} />
-      </div>
+        <CardAction>
+          <Badge variant={state.tone === "attention" ? "outline" : "secondary"}>
+            {state.status}
+          </Badge>
+        </CardAction>
+      </CardHeader>
 
-      <p className="max-w-[92%] text-sm leading-5 text-muted-foreground">{state.reason}</p>
+      <CardContent className="grid gap-2">
+        <p className="max-w-[92%] text-sm leading-5 text-muted-foreground">{state.reason}</p>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border/70 py-2">
-        {displayedFacts.map((fact) => (
-          <div key={fact.label}>
-            <p className="text-xs text-muted-foreground">{fact.label}</p>
-            <p className="mt-0.5 text-sm font-semibold">{fact.value}</p>
-          </div>
-        ))}
-      </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border/70 py-2">
+          {displayedFacts.map((fact) => (
+            <div key={fact.label}>
+              <p className="text-xs text-muted-foreground">{fact.label}</p>
+              <p className="mt-0.5 text-sm font-semibold">{fact.value}</p>
+            </div>
+          ))}
+        </div>
 
-      <Button asChild className="min-h-12 rounded-xl text-base">
-        <Link href={state.href}>
-          {state.action}
-          <ArrowRight className="ml-2 size-4" aria-hidden />
-        </Link>
-      </Button>
-    </section>
+        {syncState ? (
+          <Alert
+            className="gap-y-1 border-primary/20 bg-background/75 py-2.5"
+            data-today-sync-state
+          >
+            <AlertTitle className="text-sm">{syncState.status}</AlertTitle>
+            <AlertDescription className="grid gap-2 text-xs">
+              <span>{syncState.reason}</span>
+              <Progress
+                value={syncProgress(syncState.status)}
+                aria-label={`${syncState.status}: ${syncProgress(syncState.status)}%`}
+                className="h-1.5"
+              />
+            </AlertDescription>
+          </Alert>
+        ) : null}
+      </CardContent>
+
+      <CardFooter className="bg-background/70 px-3 py-3">
+        <ButtonGroup className="w-full" aria-label="Today actions">
+          <Button asChild className="min-h-12 flex-1 rounded-l-xl text-base">
+            <Link href={state.href}>
+              {state.action}
+              <ArrowRight className="ml-2 size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="icon" className="min-h-12 min-w-12">
+            <Link href="/sessions" aria-label="Open session history">
+              <FolderClock className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="min-h-12 min-w-12 rounded-r-xl"
+                aria-label="More Today actions"
+              >
+                <MoreHorizontal className="size-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/import">Import a session</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/quick-bag">Open Quick Bag</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/play">Prepare to play</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </ButtonGroup>
+      </CardFooter>
+    </Card>
   );
+}
+
+function syncProgress(status: string) {
+  if (status === "Syncing") return 70;
+  if (status === "Needs attention") return 100;
+  return 20;
 }
 
 function syncFacts(

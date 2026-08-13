@@ -1,18 +1,14 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
 import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
   ArrowUpDown,
   CalendarDays,
-  Flag,
-  Globe2,
   Medal,
   ShieldCheck,
   Target,
   Trophy,
-  Users,
 } from "lucide-react";
 import { and, desc, eq, gte, inArray, lt, or, sql } from "drizzle-orm";
 
@@ -48,6 +44,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
   type DesktopSavedViewSuggestion,
@@ -80,6 +83,11 @@ import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import {
+  LeaderboardPlayerControls,
+  LeaderboardTypeTabs,
+} from "@/app/leaderboard/leaderboard-controls";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 
 export const dynamic = "force-dynamic";
 
@@ -340,29 +348,31 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                   <input type="hidden" name="dir" value={playerSort.dir} />
                   <label className="grid gap-1 text-sm font-medium">
                     Shot source
-                    <select
-                      name="provider"
-                      defaultValue={filters.provider}
-                      className="h-11 rounded-lg border bg-white px-3 text-sm"
-                    >
-                      <option value="all">All sources</option>
-                      <option value="espn">ESPN</option>
-                      <option value="rapsodo">Rapsodo file</option>
-                      <option value="rapsodo_cloud">Rapsodo Cloud</option>
-                      <option value="manual">Manual</option>
-                    </select>
+                    <Select name="provider" defaultValue={filters.provider}>
+                      <SelectTrigger className="h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All sources</SelectItem>
+                        <SelectItem value="espn">ESPN</SelectItem>
+                        <SelectItem value="rapsodo">Rapsodo file</SelectItem>
+                        <SelectItem value="rapsodo_cloud">Rapsodo Cloud</SelectItem>
+                        <SelectItem value="manual">Manual</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </label>
                   <label className="grid gap-1 text-sm font-medium">
                     Shot verification
-                    <select
-                      name="verification"
-                      defaultValue={filters.verification}
-                      className="h-11 rounded-lg border bg-white px-3 text-sm"
-                    >
-                      <option value="all">All proof states</option>
-                      <option value="verified">Verified only</option>
-                      <option value="manual">Manual only</option>
-                    </select>
+                    <Select name="verification" defaultValue={filters.verification}>
+                      <SelectTrigger className="h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All proof states</SelectItem>
+                        <SelectItem value="verified">Verified only</SelectItem>
+                        <SelectItem value="manual">Manual only</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </label>
                   <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
                     Apply filters
@@ -572,88 +582,15 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             />
           </section>
 
-          <div className="flex flex-wrap gap-2">
-            <TabLink
-              tab="friends"
-              activeTab={activeTab}
-              icon={<Users className="size-4" />}
-              label="Friends"
-            />
-            <TabLink
-              tab="monthly"
-              activeTab={activeTab}
-              icon={<CalendarDays className="size-4" />}
-              label="Monthly"
-            />
-            <TabLink
-              tab="courses"
-              activeTab={activeTab}
-              icon={<Medal className="size-4" />}
-              label="Course Champions"
-            />
-            <TabLink
-              tab="challenges"
-              activeTab={activeTab}
-              icon={<Trophy className="size-4" />}
-              label="Challenges"
-            />
-            <TabLink
-              tab="tournaments"
-              activeTab={activeTab}
-              icon={<Flag className="size-4" />}
-              label="Tournaments"
-            />
-            <TabLink
-              tab="public"
-              activeTab={activeTab}
-              icon={<Globe2 className="size-4" />}
-              label="Public opt-in"
-            />
-          </div>
+          <LeaderboardTypeTabs activeTab={activeTab} />
 
           {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
-            <section className="premium-card p-3">
-              <form className="flex flex-wrap items-end gap-2" action="/leaderboard">
-                <input type="hidden" name="tab" value={activeTab} />
-                <label className="grid gap-1 text-xs font-medium">
-                  <span>Source</span>
-                  <select
-                    name="provider"
-                    defaultValue={filters.provider}
-                    className="h-9 rounded-lg border bg-white px-2 text-sm"
-                  >
-                    <option value="all">All</option>
-                    <option value="espn">ESPN</option>
-                    <option value="rapsodo">Rapsodo file</option>
-                    <option value="rapsodo_cloud">Rapsodo Cloud</option>
-                    <option value="manual">Manual</option>
-                  </select>
-                </label>
-                <label className="grid gap-1 text-xs font-medium">
-                  <span>Verification</span>
-                  <select
-                    name="verification"
-                    defaultValue={filters.verification}
-                    className="h-9 rounded-lg border bg-white px-2 text-sm"
-                  >
-                    <option value="all">All</option>
-                    <option value="verified">Verified only</option>
-                    <option value="manual">Manual only</option>
-                  </select>
-                </label>
-                <input type="hidden" name="sort" value={playerSort.metric} />
-                <input type="hidden" name="dir" value={playerSort.dir} />
-                <Button type="submit" variant="outline" size="sm">
-                  Apply filters
-                </Button>
-                <Badge variant="outline" className="px-3 py-1.5">
-                  Scope: {titleCase(activeTab)}
-                </Badge>
-                <Badge variant="outline" className="px-3 py-1.5">
-                  Month: {formatMonth(data.monthStart)}
-                </Badge>
-              </form>
-            </section>
+            <LeaderboardPlayerControls
+              activeTab={activeTab}
+              monthLabel={formatMonth(data.monthStart)}
+              provider={filters.provider}
+              verification={filters.verification}
+            />
           ) : null}
 
           {activeTab === "challenges" ? (
@@ -1164,7 +1101,22 @@ function PlayerLeaderboard({
                           >
                             {player.displayName}
                           </Link>
-                          <p className="text-xs text-muted-foreground">{player.relationship}</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <p className="text-xs text-muted-foreground">{player.relationship}</p>
+                            {activeTab === "monthly" && player.previousMonthlyXp > 0 ? (
+                              <Badge
+                                variant={
+                                  player.monthlyXp > player.previousMonthlyXp
+                                    ? "default"
+                                    : player.monthlyXp < player.previousMonthlyXp
+                                      ? "secondary"
+                                      : "outline"
+                                }
+                              >
+                                {monthlyMovementShortLabel(player)}
+                              </Badge>
+                            ) : null}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell data-column="total-xp" className="text-right">
@@ -1192,8 +1144,18 @@ function PlayerLeaderboard({
                 })}
                 {tablePlayers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      No opted-in players in this scope yet.
+                    <TableCell colSpan={8} className="p-4">
+                      <AppEmptyState
+                        title="No ranked entries yet"
+                        description="No opted-in players match this audience and evidence filter."
+                        primaryAction={
+                          <Button asChild variant="outline">
+                            <Link href="/profile" prefetch={false}>
+                              Review leaderboard privacy
+                            </Link>
+                          </Button>
+                        }
+                      />
                     </TableCell>
                   </TableRow>
                 ) : null}
@@ -2022,27 +1984,6 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
   );
 }
 
-function TabLink({
-  tab,
-  activeTab,
-  label,
-  icon,
-}: {
-  tab: LeaderboardTab;
-  activeTab: LeaderboardTab;
-  label: string;
-  icon: ReactNode;
-}) {
-  return (
-    <Button asChild variant={tab === activeTab ? "default" : "outline"}>
-      <Link href={`/leaderboard?tab=${tab}`} prefetch={false}>
-        {icon}
-        {label}
-      </Link>
-    </Button>
-  );
-}
-
 function allowsLeaderboard(
   profile: {
     id: string;
@@ -2189,6 +2130,14 @@ function movementLabel(player: PlayerRow) {
   }
 
   return "Movement since last month: level with your previous monthly pace.";
+}
+
+function monthlyMovementShortLabel(player: PlayerRow) {
+  const delta = player.monthlyXp - player.previousMonthlyXp;
+
+  if (delta > 0) return `+${integerFormatter.format(delta)} XP`;
+  if (delta < 0) return `${integerFormatter.format(delta)} XP`;
+  return "Level";
 }
 
 function verificationLabelForSource(source: string) {

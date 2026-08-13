@@ -31,6 +31,14 @@ import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db/client";
 import {
   accountMemberships,
@@ -293,18 +301,19 @@ export default async function CoachWorkspacePage({
                   <input type="hidden" name="playerUserId" value={data.selected.id} />
                   <label className="grid gap-1 text-sm font-semibold">
                     Type and visibility
-                    <select
-                      name="interactionType"
-                      className="min-h-11 rounded-xl border bg-background px-3"
-                      defaultValue="practice_assignment"
-                    >
-                      {coachInteractionTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {coachInteractionTypeLabels[type]} ·{" "}
-                          {type === "private_note" ? "Coach only" : "Player visible"}
-                        </option>
-                      ))}
-                    </select>
+                    <Select name="interactionType" defaultValue="practice_assignment">
+                      <SelectTrigger className="min-h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {coachInteractionTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {coachInteractionTypeLabels[type]} ·{" "}
+                            {type === "private_note" ? "Coach only" : "Player visible"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                   <label className="grid gap-1 text-sm font-semibold">
                     Title
@@ -317,12 +326,12 @@ export default async function CoachWorkspacePage({
                   </label>
                   <label className="grid gap-1 text-sm font-semibold">
                     Detail
-                    <textarea
+                    <Textarea
                       name="body"
                       rows={5}
                       maxLength={8000}
                       required
-                      className="rounded-xl border bg-background p-3"
+                      className="min-h-32"
                       placeholder="What the player should do, why, and what evidence will count"
                     />
                   </label>
@@ -333,46 +342,52 @@ export default async function CoachWorkspacePage({
                     </label>
                     <label className="grid gap-1 text-sm font-semibold">
                       Goal reference
-                      <select
-                        name="goalReference"
-                        className="min-h-10 rounded-md border bg-background px-3"
-                      >
-                        <option value="">No goal link</option>
-                        {data.playerDetail.goals.map((goal) => (
-                          <option key={goal.id} value={goal.id}>
-                            {goal.title}
-                          </option>
-                        ))}
-                      </select>
+                      <Select name="goalReference" defaultValue="__none__">
+                        <SelectTrigger className="min-h-10 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">No goal link</SelectItem>
+                          {data.playerDetail.goals.map((goal) => (
+                            <SelectItem key={goal.id} value={goal.id}>
+                              {goal.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </label>
                   </div>
                   <label className="grid gap-1 text-sm font-semibold">
                     Session evidence
-                    <select
-                      name="sessionId"
-                      className="min-h-10 rounded-md border bg-background px-3"
-                    >
-                      <option value="">No session link</option>
-                      {data.playerDetail.sessions.map((session) => (
-                        <option key={session.id} value={session.id}>
-                          {formatDate(session.date)} · {formatSessionType(session.type)}
-                        </option>
-                      ))}
-                    </select>
+                    <Select name="sessionId" defaultValue="__none__">
+                      <SelectTrigger className="min-h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No session link</SelectItem>
+                        {data.playerDetail.sessions.map((session) => (
+                          <SelectItem key={session.id} value={session.id}>
+                            {formatDate(session.date)} · {formatSessionType(session.type)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                   <label className="grid gap-1 text-sm font-semibold">
                     Practice plan
-                    <select
-                      name="practicePlanId"
-                      className="min-h-10 rounded-md border bg-background px-3"
-                    >
-                      <option value="">No plan link</option>
-                      {data.playerDetail.plans.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.title} · {plan.status}
-                        </option>
-                      ))}
-                    </select>
+                    <Select name="practicePlanId" defaultValue="__none__">
+                      <SelectTrigger className="min-h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No plan link</SelectItem>
+                        {data.playerDetail.plans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            {plan.title} · {plan.status}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                   <Button type="submit" className="min-h-11 sm:w-fit">
                     <MessageSquareText className="size-4" aria-hidden />
@@ -662,18 +677,19 @@ function MobileCoachInteractionForm({
       <input type="hidden" name="playerUserId" value={selected.id} />
       <label className="grid gap-1 text-sm font-semibold">
         Type and visibility
-        <select
-          name="interactionType"
-          className="min-h-11 rounded-lg border bg-background px-3"
-          defaultValue="practice_assignment"
-        >
-          {coachInteractionTypes.map((type) => (
-            <option key={type} value={type}>
-              {coachInteractionTypeLabels[type]} ·{" "}
-              {type === "private_note" ? "Coach only" : "Player visible"}
-            </option>
-          ))}
-        </select>
+        <Select name="interactionType" defaultValue="practice_assignment">
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {coachInteractionTypes.map((type) => (
+              <SelectItem key={type} value={type}>
+                {coachInteractionTypeLabels[type]} ·{" "}
+                {type === "private_note" ? "Coach only" : "Player visible"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Title
@@ -687,12 +703,12 @@ function MobileCoachInteractionForm({
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Detail
-        <textarea
+        <Textarea
           name="body"
           rows={5}
           maxLength={8000}
           required
-          className="min-h-28 rounded-lg border bg-background p-3"
+          className="min-h-28"
           placeholder="What the player should do, why, and what evidence will count"
         />
       </label>
@@ -702,36 +718,51 @@ function MobileCoachInteractionForm({
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Goal reference
-        <select name="goalReference" className="min-h-11 rounded-lg border bg-background px-3">
-          <option value="">No goal link</option>
-          {detail.goals.map((goal) => (
-            <option key={goal.id} value={goal.id}>
-              {goal.title}
-            </option>
-          ))}
-        </select>
+        <Select name="goalReference" defaultValue="__none__">
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No goal link</SelectItem>
+            {detail.goals.map((goal) => (
+              <SelectItem key={goal.id} value={goal.id}>
+                {goal.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Session evidence
-        <select name="sessionId" className="min-h-11 rounded-lg border bg-background px-3">
-          <option value="">No session link</option>
-          {detail.sessions.map((session) => (
-            <option key={session.id} value={session.id}>
-              {formatDate(session.date)} · {formatSessionType(session.type)}
-            </option>
-          ))}
-        </select>
+        <Select name="sessionId" defaultValue="__none__">
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No session link</SelectItem>
+            {detail.sessions.map((session) => (
+              <SelectItem key={session.id} value={session.id}>
+                {formatDate(session.date)} · {formatSessionType(session.type)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Practice plan
-        <select name="practicePlanId" className="min-h-11 rounded-lg border bg-background px-3">
-          <option value="">No plan link</option>
-          {detail.plans.map((plan) => (
-            <option key={plan.id} value={plan.id}>
-              {plan.title} · {plan.status}
-            </option>
-          ))}
-        </select>
+        <Select name="practicePlanId" defaultValue="__none__">
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">No plan link</SelectItem>
+            {detail.plans.map((plan) => (
+              <SelectItem key={plan.id} value={plan.id}>
+                {plan.title} · {plan.status}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <Button type="submit" className="min-h-12 w-full rounded-lg">
         <MessageSquareText className="size-4" aria-hidden />

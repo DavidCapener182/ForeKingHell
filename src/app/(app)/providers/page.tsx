@@ -44,6 +44,13 @@ import {
 } from "@/components/ui/table";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getProviderIntegrationsPageData } from "@/lib/provider-integrations";
+import { ProviderConnectionActions } from "@/app/providers/provider-connection-actions";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { OperationStepper } from "@/components/app/operation-stepper";
+import { StatusTimeline } from "@/components/app/status-timeline";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +63,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 type ProviderIntegrationsPageData = Awaited<ReturnType<typeof getProviderIntegrationsPageData>>;
 type ProviderSession = ProviderIntegrationsPageData["sessions"][number];
+type ProviderAdapter = ProviderIntegrationsPageData["providers"][number];
 
 const providerSessionColumns: DesktopWorkbenchColumn[] = [
   { id: "session", label: "Session", locked: true },
@@ -126,152 +134,207 @@ export default async function ProvidersPage() {
           </div>
         </header>
 
-        <section id="provider-adapters" className="grid scroll-mt-28 gap-4 md:grid-cols-3">
-          {data.providers.map((provider, index) => (
-            <article key={provider.providerKind} className="premium-card p-4">
-              <PageArtwork
-                variant={providerArtwork(provider.providerKind)}
-                alt=""
-                className="mb-3 block h-28 min-h-0 rounded-lg"
-                sizes="(min-width: 768px) 33vw, 100vw"
-                priority={index === 0}
+        <Tabs defaultValue="connections" className="min-w-0 gap-5" data-provider-workbench-tabs>
+          <TabsList variant="line" aria-label="Provider workbench sections">
+            <TabsTrigger value="connections">Connections</TabsTrigger>
+            <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="connections" className="grid min-w-0 gap-5">
+            {data.providers.length > 0 ? (
+              <section id="provider-adapters" className="grid scroll-mt-28 gap-4 md:grid-cols-3">
+                {data.providers.map((provider, index) => (
+                  <Card key={provider.providerKind} className="overflow-hidden">
+                    <CardContent className="grid gap-4 p-4">
+                      <PageArtwork
+                        variant={providerArtwork(provider.providerKind)}
+                        alt=""
+                        className="block h-28 min-h-0 rounded-lg"
+                        sizes="(min-width: 768px) 33vw, 100vw"
+                        priority={index === 0}
+                      />
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <Badge variant={provider.status === "live" ? "secondary" : "outline"}>
+                            {providerStatusLabel(provider.status)}
+                          </Badge>
+                          <h2 className="mt-2 text-xl font-semibold tracking-normal">
+                            {provider.label}
+                          </h2>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {provider.status === "live" ? (
+                            <CheckCircle2 className="size-5 text-primary" />
+                          ) : (
+                            <FlaskConical className="size-5 text-amber-600 dark:text-amber-300" />
+                          )}
+                          <ProviderConnectionActions
+                            providerKind={provider.providerKind}
+                            connected={provider.accountCount > 0}
+                            live={provider.status === "live"}
+                          />
+                        </div>
+                      </div>
+                      <ConnectedMetricBar
+                        className="shadow-none xl:grid-cols-3"
+                        label={`${provider.label} connection metrics`}
+                        metrics={[
+                          { label: "Accounts", value: provider.accountCount },
+                          { label: "Sessions", value: provider.sessionCount },
+                          { label: "Jobs", value: provider.jobCount },
+                        ]}
+                      />
+                      <div
+                        className="grid gap-2 rounded-lg border bg-muted/35 p-3 text-sm"
+                        data-provider-import-health
+                      >
+                        <p className="font-semibold">Provider import health</p>
+                        <ProviderHealthRow
+                          label="Last sync"
+                          value={formatProviderDate(provider.lastSyncAt)}
+                          tone={provider.lastSyncAt ? "green" : "amber"}
+                        />
+                        <ProviderHealthRow
+                          label="Import failures"
+                          value={
+                            provider.failureCount > 0
+                              ? `${provider.failureCount} ${provider.latestFailureMessage ?? "needs review"}`
+                              : provider.jobCount > 0
+                                ? `${provider.jobCount} jobs checked · none flagged`
+                                : "No import jobs observed"
+                          }
+                          tone={
+                            provider.failureCount > 0 || provider.jobCount === 0 ? "amber" : "green"
+                          }
+                        />
+                      </div>
+                      <OperationStepper
+                        compact
+                        label={`${provider.label} integration progress`}
+                        steps={providerWorkflowSteps(provider)}
+                      />
+                      <Button
+                        asChild
+                        variant={provider.status === "live" ? "default" : "outline"}
+                        className="w-full"
+                      >
+                        <Link
+                          href={provider.status === "live" ? "/rapsodo" : "/billing"}
+                          prefetch={false}
+                        >
+                          {provider.status === "live" ? (
+                            <Upload className="size-4" />
+                          ) : (
+                            <GitCompareArrows className="size-4" />
+                          )}
+                          {provider.status === "live"
+                            ? provider.accountCount > 0
+                              ? "Open provider inbox"
+                              : "Connect provider"
+                            : "View adapter access"}
+                        </Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </section>
+            ) : (
+              <AppEmptyState
+                icon={<Cable className="size-5" />}
+                title="No provider connections"
+                description="Connect R-Cloud or import a measured file to create provider evidence."
+                primaryAction={
+                  <Button asChild>
+                    <Link href="/rapsodo">Connect R-Cloud</Link>
+                  </Button>
+                }
+                secondaryAction={
+                  <Button asChild variant="outline">
+                    <Link href="/import">Import CSV</Link>
+                  </Button>
+                }
               />
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <Badge variant={provider.status === "live" ? "secondary" : "outline"}>
-                    {providerStatusLabel(provider.status)}
-                  </Badge>
-                  <h2 className="mt-3 text-xl font-semibold tracking-normal">{provider.label}</h2>
-                </div>
-                {provider.status === "live" ? (
-                  <CheckCircle2 className="size-5 text-emerald-600" />
-                ) : (
-                  <FlaskConical className="size-5 text-amber-600" />
-                )}
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                <Mini label="Accounts" value={provider.accountCount} />
-                <Mini label="Sessions" value={provider.sessionCount} />
-                <Mini label="Jobs" value={provider.jobCount} />
-              </div>
-              <div
-                className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 text-sm"
-                data-provider-import-health
-              >
-                <p className="font-semibold text-[#050505]">Provider import health</p>
-                <ProviderHealthRow
-                  label="Last sync"
-                  value={formatProviderDate(provider.lastSyncAt)}
-                  tone={provider.lastSyncAt ? "green" : "amber"}
-                />
-                <ProviderHealthRow
-                  label="Import failures"
-                  value={
-                    provider.failureCount > 0
-                      ? `${provider.failureCount} ${provider.latestFailureMessage ?? "needs review"}`
-                      : provider.jobCount > 0
-                        ? `${provider.jobCount} jobs checked · none flagged`
-                        : "No import jobs observed"
-                  }
-                  tone={provider.failureCount > 0 || provider.jobCount === 0 ? "amber" : "green"}
-                />
-              </div>
-              <div className="mt-4 grid gap-2 text-sm">
-                <ProviderStep done={provider.accountCount > 0} label="Connect" />
-                <ProviderStep done={provider.fileCount > 0} label="Import file" />
-                <ProviderStep done={provider.mappingCount > 0} label="Map fields" />
-                <ProviderStep done={provider.sessionCount > 0} label="Review sessions" />
-                <ProviderStep done={provider.sessionCount > 0} label="Normalise metrics" />
-              </div>
-              <Button
-                asChild
-                variant={provider.status === "live" ? "default" : "outline"}
-                className="mt-4 w-full"
-              >
-                <Link href={provider.status === "live" ? "/rapsodo" : "/billing"} prefetch={false}>
-                  {provider.status === "live" ? (
-                    <Upload className="size-4" />
-                  ) : (
-                    <GitCompareArrows className="size-4" />
-                  )}
-                  {provider.status === "live"
-                    ? provider.accountCount > 0
-                      ? "Open provider inbox"
-                      : "Connect provider"
-                    : "View adapter access"}
-                </Link>
-              </Button>
-            </article>
-          ))}
-        </section>
+            )}
 
-        <div id="provider-health" className="scroll-mt-28">
-          <ProviderHealthFeaturePanel data={featureData} />
-        </div>
+            <ProviderSessionsTable sessions={data.sessions} />
+          </TabsContent>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-          <ProviderSessionsTable sessions={data.sessions} />
-
-          <section id="provider-jobs" className="grid scroll-mt-28 gap-4 lg:sticky lg:top-28">
-            <section className="premium-card p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <FileSpreadsheet className="size-4 text-emerald-600" />
-                Source files
-              </p>
-              <div className="mt-3 grid gap-2">
-                {data.files.slice(0, 8).map((file) => (
-                  <div key={file.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                    <p className="truncate font-medium">{file.fileName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {file.providerKind} · {file.status}
-                    </p>
-                  </div>
-                ))}
-                {data.files.length === 0 ? (
-                  <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                    No source files yet.
+          <TabsContent value="diagnostics" className="grid min-w-0 gap-5">
+            <div id="provider-health" className="scroll-mt-28">
+              <ProviderHealthFeaturePanel data={featureData} />
+            </div>
+            <section
+              id="provider-jobs"
+              className="grid scroll-mt-28 gap-4 lg:grid-cols-2 lg:items-start"
+            >
+              <Card>
+                <CardContent className="p-4">
+                  <p className="mb-4 flex items-center gap-2 text-sm font-semibold">
+                    <FileSpreadsheet className="size-4 text-primary" />
+                    Source files
                   </p>
-                ) : null}
-              </div>
-            </section>
+                  <StatusTimeline
+                    label="Provider source files"
+                    items={data.files.slice(0, 8).map((file) => ({
+                      id: file.id,
+                      title: file.fileName,
+                      description: providerKindLabel(file.providerKind),
+                      status: providerStatusLabel(file.status),
+                      kind: "import" as const,
+                    }))}
+                    empty={
+                      <AppEmptyState
+                        icon={<FileSpreadsheet className="size-5" />}
+                        title="No source files"
+                        description="Import a provider file to create source evidence."
+                        primaryAction={
+                          <Button asChild size="sm">
+                            <Link href="/import">Import file</Link>
+                          </Button>
+                        }
+                      />
+                    }
+                  />
+                </CardContent>
+              </Card>
 
-            <section className="premium-card p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <FlaskConical className="size-4 text-amber-600" />
-                Import job status
-              </p>
-              <div className="mt-3 grid gap-2">
-                {data.jobs.slice(0, 6).map((job) => (
-                  <div key={job.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                    <p className="font-medium">
-                      {job.providerKind} · {job.status}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {job.detectedProviderKind ?? "No detected provider"}
-                      {job.errorMessage ? ` · ${job.errorMessage}` : ""}
-                    </p>
-                  </div>
-                ))}
-                {data.jobs.length === 0 ? (
-                  <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-                    No import jobs yet.
+              <Card>
+                <CardContent className="p-4">
+                  <p className="mb-4 flex items-center gap-2 text-sm font-semibold">
+                    <FlaskConical className="size-4 text-amber-600 dark:text-amber-300" />
+                    Import job status
                   </p>
-                ) : null}
-              </div>
+                  <StatusTimeline
+                    label="Provider import jobs"
+                    items={data.jobs.slice(0, 8).map((job) => ({
+                      id: job.id,
+                      title: `${providerKindLabel(job.providerKind)} · ${providerStatusLabel(job.status)}`,
+                      description:
+                        job.errorMessage ??
+                        (job.detectedProviderKind
+                          ? `Detected ${providerKindLabel(job.detectedProviderKind)}`
+                          : "No detected provider recorded"),
+                      status: job.errorMessage ? "Review" : "Observed",
+                      kind: job.errorMessage ? ("warning" as const) : ("reviewed" as const),
+                    }))}
+                    empty={
+                      <AppEmptyState
+                        icon={<FlaskConical className="size-5" />}
+                        title="No import jobs"
+                        description="A provider job will appear after the first connection or file import."
+                        primaryAction={
+                          <Button asChild size="sm">
+                            <Link href="/import">Start an import</Link>
+                          </Button>
+                        }
+                      />
+                    }
+                  />
+                </CardContent>
+              </Card>
             </section>
-
-            <section className="premium-card p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <Cable className="size-4 text-slate-700" />
-                Import health
-              </p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Each connected source reports mapping, review and sync status before new shots enter
-                your performance history.
-              </p>
-            </section>
-          </section>
-        </section>
+          </TabsContent>
+        </Tabs>
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -608,8 +671,22 @@ function ProviderSessionsTable({ sessions }: { sessions: ProviderSession[] }) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  No provider sessions recorded yet.
+                <TableCell colSpan={6} className="p-4">
+                  <AppEmptyState
+                    icon={<Database className="size-5" />}
+                    title="No provider sessions"
+                    description="Connect a provider or import a measured file to begin the session inbox."
+                    primaryAction={
+                      <Button asChild size="sm">
+                        <Link href="/rapsodo">Connect R-Cloud</Link>
+                      </Button>
+                    }
+                    secondaryAction={
+                      <Button asChild size="sm" variant="outline">
+                        <Link href="/import">Import CSV</Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -617,26 +694,6 @@ function ProviderSessionsTable({ sessions }: { sessions: ProviderSession[] }) {
         </Table>
       </DataTableFrame>
     </section>
-  );
-}
-
-function Mini({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border bg-[#F5F6F4] px-2 py-2">
-      <p className="text-lg font-semibold tracking-normal">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function ProviderStep({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={done ? "font-medium text-emerald-700" : "font-medium text-amber-700"}>
-        {done ? "Observed" : "No evidence"}
-      </span>
-    </div>
   );
 }
 
@@ -650,19 +707,40 @@ function ProviderHealthRow({
   tone: "green" | "amber";
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-md bg-white px-2 py-1.5">
+    <div className="flex items-start justify-between gap-3 rounded-md bg-background px-2 py-1.5">
       <span className="text-muted-foreground">{label}</span>
       <span
         className={
           tone === "green"
-            ? "text-right font-medium text-emerald-700"
-            : "text-right font-medium text-amber-700"
+            ? "text-right font-medium text-primary"
+            : "text-right font-medium text-amber-700 dark:text-amber-300"
         }
       >
         {value}
       </span>
     </div>
   );
+}
+
+function providerWorkflowSteps(provider: ProviderAdapter) {
+  const observations = [
+    { id: "connect", label: "Connect", complete: provider.accountCount > 0 },
+    { id: "file", label: "Import", complete: provider.fileCount > 0 },
+    { id: "mapping", label: "Map", complete: provider.mappingCount > 0 },
+    { id: "review", label: "Review", complete: provider.sessionCount > 0 },
+    { id: "normalise", label: "Normalise", complete: provider.sessionCount > 0 },
+  ];
+  const firstIncomplete = observations.findIndex((step) => !step.complete);
+
+  return observations.map((step, index) => ({
+    id: step.id,
+    label: step.label,
+    status: step.complete
+      ? ("complete" as const)
+      : index === firstIncomplete
+        ? ("current" as const)
+        : ("upcoming" as const),
+  }));
 }
 
 function providerStatusLabel(status: string) {

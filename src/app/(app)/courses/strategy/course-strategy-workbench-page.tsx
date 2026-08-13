@@ -23,6 +23,13 @@ import {
 import { PageHeader, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { savePostRoundReviewAction } from "@/app/courses/strategy/actions";
 import { MobileHoleStrategy } from "@/app/courses/strategy/mobile-hole-strategy";
 import { getDashboardData } from "@/app/dashboard/dashboard-data";
@@ -106,17 +113,18 @@ export default async function CourseStrategyPage({
               <input type="hidden" name="mode" value={mode} />
               <label className="grid gap-1 text-sm font-semibold">
                 Course
-                <select
-                  name="courseId"
-                  defaultValue={strategyData.selectedCourse?.id ?? ""}
-                  className="min-h-11 min-w-64 rounded-xl border bg-background px-3"
-                >
-                  {strategyData.courseOptions.map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.name}
-                    </option>
-                  ))}
-                </select>
+                <Select name="courseId" defaultValue={strategyData.selectedCourse?.id}>
+                  <SelectTrigger className="min-h-11 min-w-64">
+                    <SelectValue placeholder="Choose a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {strategyData.courseOptions.map((course) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
               <Button type="submit" variant="outline" className="min-h-11 self-end">
                 Load strategy
@@ -339,17 +347,18 @@ export default async function CourseStrategyPage({
                 <input type="hidden" name="mode" value="post" />
                 <label className="grid gap-1 text-sm font-semibold">
                   Round to review
-                  <select
-                    name="roundId"
-                    defaultValue={postRoundData.selectedRound?.id ?? ""}
-                    className="min-h-11 min-w-64 rounded-xl border bg-background px-3"
-                  >
-                    {postRoundData.rounds.map((round) => (
-                      <option key={round.id} value={round.id}>
-                        {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="roundId" defaultValue={postRoundData.selectedRound?.id}>
+                    <SelectTrigger className="min-h-11 min-w-64">
+                      <SelectValue placeholder="Choose a round" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {postRoundData.rounds.map((round) => (
+                        <SelectItem key={round.id} value={round.id}>
+                          {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 <Button type="submit" variant="outline" className="min-h-11">
                   Load round
@@ -599,17 +608,18 @@ function MobilePreRoundStrategy({
               <form action="/courses/strategy" className="grid gap-3">
                 <label className="grid gap-2 text-sm font-semibold text-foreground">
                   Course
-                  <select
-                    name="courseId"
-                    defaultValue={strategyData.selectedCourse?.id ?? ""}
-                    className="min-h-11 w-full rounded-xl border bg-background px-3"
-                  >
-                    {strategyData.courseOptions.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="courseId" defaultValue={strategyData.selectedCourse?.id}>
+                    <SelectTrigger className="min-h-11 w-full">
+                      <SelectValue placeholder="Choose a course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {strategyData.courseOptions.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
                   Load strategy
@@ -827,17 +837,18 @@ function MobilePostRoundStrategy({
                 <input type="hidden" name="mode" value="post" />
                 <label className="grid gap-2 text-sm font-semibold text-foreground">
                   Round to review
-                  <select
-                    name="roundId"
-                    defaultValue={selectedRound.id}
-                    className="min-h-11 w-full min-w-0 rounded-xl border bg-background px-3"
-                  >
-                    {postRoundData.rounds.map((round) => (
-                      <option key={round.id} value={round.id}>
-                        {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="roundId" defaultValue={selectedRound.id}>
+                    <SelectTrigger className="min-h-11 w-full min-w-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {postRoundData.rounds.map((round) => (
+                        <SelectItem key={round.id} value={round.id}>
+                          {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </label>
                 <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
                   Load round

@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { ArrowRight, CheckCircle2, Database, Target } from "lucide-react";
 
 import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
+import { ResultHero } from "@/components/app/result-hero";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
-  IOSInlineStatus,
   IOSListRow,
   IOSMetricRow,
   IOSSectionHeader,
@@ -31,46 +31,49 @@ export default async function ImportResultCompanionPage({
       <MobileAppShell className="gap-4" data-companion-import-result>
         <MobileTopBar title="Import complete" />
 
-        <section className="ios-grouped-list grid gap-3 p-5" data-session-verdict>
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                <CheckCircle2 className="size-4" aria-hidden /> Import complete
-              </p>
-              <h1 className="mt-1 text-2xl font-bold leading-7 tracking-tight">
-                {result.verdict.title}
-              </h1>
-            </div>
-            <IOSInlineStatus
-              label={`${result.confidence.label} confidence`}
-              tone={result.confidence.label === "Low" ? "attention" : "positive"}
-            />
-          </div>
-          <p className="text-sm leading-5 text-muted-foreground">{result.verdict.summary}</p>
-          <div className="grid grid-cols-2 gap-2">
-            <IOSMetricRow label="Measured shots" value={String(result.shotCount)} />
-            <IOSMetricRow label="Clubs" value={String(result.clubCount)} />
-          </div>
-          {result.practiceReview ? (
-            <div className="rounded-xl bg-primary/10 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                Plan versus actual
-              </p>
-              <p className="mt-1 text-lg font-bold">
-                {result.practiceReview.score}/100 · {result.practiceReview.verdict}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                {result.practiceReview.nextAction}
-              </p>
-            </div>
-          ) : null}
-          <Button asChild className="min-h-12 rounded-xl text-base">
-            <Link href={result.reviewHref}>
-              {result.isRound ? "Review this round" : "Review this session"}
-              <ArrowRight className="ml-2 size-4" aria-hidden />
-            </Link>
-          </Button>
-        </section>
+        <div data-session-verdict>
+          <ResultHero
+            eyebrow="Import complete"
+            title={result.verdict.title}
+            summary={
+              <div className="grid gap-3">
+                <p>{result.verdict.summary}</p>
+                {result.practiceReview ? (
+                  <div className="rounded-xl bg-primary/10 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                      Plan versus actual
+                    </p>
+                    <p className="mt-1 text-lg font-bold">
+                      {result.practiceReview.score}/100 · {result.practiceReview.verdict}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {result.practiceReview.nextAction}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            }
+            confidence={{
+              label: `${result.confidence.label} confidence`,
+              tone: result.confidence.label === "Low" ? "destructive" : "secondary",
+            }}
+            metrics={[
+              { label: "Measured shots", value: result.shotCount },
+              { label: "Clubs", value: result.clubCount },
+              ...(result.practiceReview
+                ? [{ label: "Practice score", value: `${result.practiceReview.score}/100` }]
+                : []),
+            ]}
+            action={
+              <Button asChild className="min-h-12 rounded-xl text-base">
+                <Link href={result.reviewHref}>
+                  {result.isRound ? "Review this round" : "Review this session"}
+                  <ArrowRight className="ml-2 size-4" aria-hidden />
+                </Link>
+              </Button>
+            }
+          />
+        </div>
 
         {!result.isRound ? (
           <section className="grid gap-2.5">

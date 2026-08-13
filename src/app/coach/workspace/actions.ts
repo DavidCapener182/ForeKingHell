@@ -130,7 +130,7 @@ function requiredText(formData: FormData, name: string, maxLength: number) {
 
 function optionalText(value: FormDataEntryValue | null, maxLength: number) {
   const text = typeof value === "string" ? value.trim().slice(0, maxLength) : "";
-  return text || null;
+  return text && text !== "__none__" ? text : null;
 }
 
 function parseDate(value: FormDataEntryValue | null) {

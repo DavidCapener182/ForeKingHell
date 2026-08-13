@@ -26,7 +26,15 @@ import {
 } from "@/app/feature-actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DataPanel,
   DataPair,
@@ -439,58 +447,62 @@ export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
             </Link>
           ))}
         </div>
-        <details className="apple-panel-strong group overflow-hidden">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+        <Collapsible className="apple-panel-strong group overflow-hidden">
+          <CollapsibleTrigger className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm font-semibold">
             <span>Save the current filters as a view</span>
-            <span className="text-xs font-medium text-muted-foreground group-open:hidden">
+            <span className="text-xs font-medium text-muted-foreground group-data-[state=open]:hidden">
               Open
             </span>
-            <span className="hidden text-xs font-medium text-muted-foreground group-open:inline">
+            <span className="hidden text-xs font-medium text-muted-foreground group-data-[state=open]:inline">
               Close
             </span>
-          </summary>
-          <form action={saveShotViewAction} className="border-t border-border/70 p-3">
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-              <Input name="name" placeholder="My tournament attempts" required />
-              <Input name="description" placeholder="What this view is for" />
-              <select
-                aria-label="Saved view club filter"
-                name="club"
-                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-              >
-                <option value="">All clubs</option>
-                {data.savedViewOptions.clubs.map((club) => (
-                  <option key={club.value} value={club.value}>
-                    {club.label}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label="Saved view category filter"
-                name="category"
-                className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-              >
-                <option value="">All categories</option>
-                {data.savedViewOptions.categories.map((category) => (
-                  <option key={category.value} value={category.value}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-              <Input name="from" type="date" aria-label="Saved view start date" />
-              <Input name="to" type="date" aria-label="Saved view end date" />
-              <Input name="q" placeholder="Search term or note" />
-              <label className="flex min-h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm text-muted-foreground">
-                <Checkbox name="pinned" />
-                Pin view
-              </label>
-            </div>
-            <Button type="submit" className="mt-3 bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-              <ListFilter className="size-4" />
-              Save view
-            </Button>
-          </form>
-        </details>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <form action={saveShotViewAction} className="border-t border-border/70 p-3">
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <Input name="name" placeholder="My tournament attempts" required />
+                <Input name="description" placeholder="What this view is for" />
+                <Select name="club" defaultValue="__all__">
+                  <SelectTrigger aria-label="Saved view club filter" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All clubs</SelectItem>
+                    {data.savedViewOptions.clubs.map((club) => (
+                      <SelectItem key={club.value} value={club.value}>
+                        {club.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select name="category" defaultValue="__all__">
+                  <SelectTrigger aria-label="Saved view category filter" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All categories</SelectItem>
+                    {data.savedViewOptions.categories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input name="from" type="date" aria-label="Saved view start date" />
+                <Input name="to" type="date" aria-label="Saved view end date" />
+                <Input name="q" placeholder="Search term or note" />
+                <label className="flex min-h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm text-muted-foreground">
+                  <Checkbox name="pinned" />
+                  Pin view
+                </label>
+              </div>
+              <Button type="submit" className="mt-3 bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+                <ListFilter className="size-4" />
+                Save view
+              </Button>
+            </form>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </DataPanel>
   );
@@ -823,32 +835,33 @@ export function CourseRecordFeaturePanel({ data }: { data: FeatureIdeasData }) {
             action={upsertCourseRecordGoalAction}
             className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_10rem_auto]"
           >
-            <select
-              aria-label="Course record board"
-              name="recordId"
-              defaultValue={recordId}
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-            >
-              {data.courseRecordTargets.map((target) => (
-                <option key={target.id} value={target.id}>
-                  {target.label}
-                </option>
-              ))}
-            </select>
+            <Select name="recordId" defaultValue={recordId}>
+              <SelectTrigger aria-label="Course record board" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {data.courseRecordTargets.map((target) => (
+                  <SelectItem key={target.id} value={target.id}>
+                    {target.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Input name="targetLabel" placeholder="Beat this board by 2 shots" />
             <Input name="targetValue" type="number" step="0.1" placeholder="Target" />
-            <select
-              aria-label="Friend target"
-              name="targetUserId"
-              className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm"
-            >
-              <option value="">No friend target</option>
-              {data.friendTargets.map((friend) => (
-                <option key={friend.userId} value={friend.userId}>
-                  {friend.label}
-                </option>
-              ))}
-            </select>
+            <Select name="targetUserId" defaultValue="__none__">
+              <SelectTrigger aria-label="Friend target" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No friend target</SelectItem>
+                {data.friendTargets.map((friend) => (
+                  <SelectItem key={friend.userId} value={friend.userId}>
+                    {friend.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <label className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-3">
               <input type="hidden" name="notifyWhenBeaten" value="off" />
               <Checkbox name="notifyWhenBeaten" defaultChecked />

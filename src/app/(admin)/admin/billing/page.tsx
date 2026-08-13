@@ -10,6 +10,8 @@ import {
 
 import { grantLifetimeFullAction } from "@/app/admin/actions";
 import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
+import { AdminBillingActions } from "@/app/admin/admin-billing-actions";
+import { StatusTimeline } from "@/components/app/status-timeline";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -48,6 +50,7 @@ const adminBillingColumns: DesktopWorkbenchColumn[] = [
   { id: "status", label: "Status" },
   { id: "renews", label: "Renews" },
   { id: "created", label: "Created" },
+  { id: "action", label: "Action", locked: true },
 ];
 
 const adminBillingSuggestedViews: DesktopSavedViewSuggestion[] = [
@@ -282,6 +285,9 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                         metric="plan"
                         sortState={sortState}
                       />
+                      <th data-column="action" className="px-3 py-2 font-medium">
+                        Action
+                      </th>
                       <SortableAdminBillingHead
                         columnId="status"
                         metric="status"
@@ -336,6 +342,21 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                         >
                           {formatDateTime(subscription.createdAt)}
                         </td>
+                        <td data-column="action" className="px-3 py-3">
+                          <AdminBillingActions
+                            subscription={{
+                              displayName: subscription.displayName,
+                              email: subscription.email,
+                              plan: subscription.planKey,
+                              status: subscription.status,
+                              renewal: subscription.currentPeriodEnd
+                                ? formatDateTime(subscription.currentPeriodEnd)
+                                : "No renewal",
+                              created: formatDateTime(subscription.createdAt),
+                              cancels: subscription.cancelAtPeriodEnd,
+                            }}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -344,28 +365,21 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
             </AdminSection>
 
             <AdminSection title="Recent entitlements">
-              <div className="grid gap-2">
-                {data.entitlements.slice(0, 40).map((entitlement) => (
-                  <div
-                    key={entitlement.id}
-                    className="grid gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-center"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{entitlement.displayName}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {entitlement.email ?? "No email"}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{label(entitlement.entitlementKey)}</p>
-                      <p className="truncate font-mono text-xs text-muted-foreground">
-                        {JSON.stringify(entitlement.valueJson)}
-                      </p>
-                    </div>
-                    <StatusBadge status={entitlement.source} />
-                  </div>
-                ))}
-              </div>
+              <StatusTimeline
+                label="Entitlement audit history"
+                items={data.entitlements.slice(0, 40).map((entitlement) => ({
+                  id: entitlement.id,
+                  timestamp: formatDateTime(entitlement.updatedAt),
+                  title: `${entitlement.displayName} · ${label(entitlement.entitlementKey)}`,
+                  description: entitlement.email ?? "No email",
+                  meta: JSON.stringify(entitlement.valueJson),
+                  status: label(entitlement.source),
+                  kind: "reviewed",
+                }))}
+                empty={
+                  <p className="text-sm text-muted-foreground">No entitlement audit rows yet.</p>
+                }
+              />
             </AdminSection>
           </section>
         </section>

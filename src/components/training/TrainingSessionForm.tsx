@@ -5,6 +5,15 @@ import { createGolfTrainingSessionAction } from "@/app/stats/training-over-time/
 import { RpeSelector } from "@/components/training/RpeSelector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 type TrainingSessionFormProps = {
@@ -23,18 +32,19 @@ export function TrainingSessionForm({
       <input type="hidden" name="range" value={rangeKey} />
       <div className="grid gap-3 lg:grid-cols-[180px_180px_minmax(0,1fr)]">
         <Field label="Activity type">
-          <select
-            name="activityType"
-            defaultValue="range"
-            className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="round">Round</option>
-            <option value="range">Range</option>
-            <option value="short_game">Short game</option>
-            <option value="putting">Putting</option>
-            <option value="gym_speed">Gym / speed</option>
-            <option value="manual">Manual</option>
-          </select>
+          <Select name="activityType" defaultValue="range">
+            <SelectTrigger className="min-h-11 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="round">Round</SelectItem>
+              <SelectItem value="range">Range</SelectItem>
+              <SelectItem value="short_game">Short game</SelectItem>
+              <SelectItem value="putting">Putting</SelectItem>
+              <SelectItem value="gym_speed">Gym / speed</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Date">
           <Input
@@ -79,52 +89,54 @@ export function TrainingSessionForm({
           <Input name="puttingSwings" inputMode="numeric" placeholder="30" className="min-h-11" />
         </Field>
         <Field label="Round movement">
-          <select
-            name="movement"
-            defaultValue=""
-            className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="">Not relevant</option>
-            <option value="walked">Walked</option>
-            <option value="cart">Cart</option>
-          </select>
+          <Select name="movement">
+            <SelectTrigger className="min-h-11 w-full">
+              <SelectValue placeholder="Not relevant" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="walked">Walked</SelectItem>
+              <SelectItem value="cart">Cart</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
         <Field label="Pressure">
-          <select
-            name="mentalPressure"
-            defaultValue=""
-            className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <option value="">Optional</option>
-            {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+          <Select name="mentalPressure">
+            <SelectTrigger className="min-h-11 w-full">
+              <SelectValue placeholder="Optional" />
+            </SelectTrigger>
+            <SelectContent>
+              {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
+                <SelectItem key={value} value={String(value)}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
         <RpeSelector idPrefix={`${idPrefix}-rpe`} defaultValue={5} />
         <div className="grid content-start gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground">
-          <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
-            <input type="checkbox" name="competition" className="size-4" />
-            Competition or high-consequence practice
-          </label>
+          <div className="flex min-h-11 items-center gap-2">
+            <Switch id={`${idPrefix}-competition`} name="competition" />
+            <Label htmlFor={`${idPrefix}-competition`}>
+              Competition or high-consequence practice
+            </Label>
+          </div>
           <Field label="Physical demand">
-            <select
-              name="physicalDemand"
-              defaultValue=""
-              className="min-h-11 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              <option value="">Optional</option>
-              {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
+            <Select name="physicalDemand">
+              <SelectTrigger className="min-h-11 w-full">
+                <SelectValue placeholder="Optional" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
+                  <SelectItem key={value} value={String(value)}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
           <p className="text-xs leading-5 text-muted-foreground">
             The app calculates session load from volume, RPE and golf context. It may suggest when

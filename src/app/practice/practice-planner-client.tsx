@@ -41,9 +41,21 @@ import {
 } from "@/components/app/ios-mobile";
 import { DataTableFrame, MobileFilterSheet } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -51,8 +63,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -1618,13 +1645,17 @@ function PracticeSetupBar({
         </Button>
       </div>
 
-      <details className="group mt-2">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-muted-foreground">
-          <SlidersHorizontal className="size-4" />
-          Adjust setup
-          <span className="text-xs group-open:hidden">Facility options and custom balls</span>
-        </summary>
-        <div className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 md:grid-cols-3">
+      <Collapsible className="group mt-2">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground">
+            <SlidersHorizontal className="size-4" />
+            Adjust setup
+            <span className="text-xs group-data-[state=open]:hidden">
+              Facility options and custom balls
+            </span>
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 md:grid-cols-3">
           {showBalls ? (
             <label className="grid gap-1 text-sm font-medium">
               Custom balls
@@ -1709,8 +1740,8 @@ function PracticeSetupBar({
               </label>
             </ToggleGroup>
           ) : null}
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
     </section>
   );
 }
@@ -1749,18 +1780,19 @@ function PracticeSessionImportBar({
           <>
             <label className="grid min-w-0 flex-[1_1_18rem] gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Uploaded session
-              <select
-                className="h-9 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground"
-                value={selectedImportId}
-                onChange={(event) => onSelect(event.target.value)}
-              >
-                {importOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.dateLabel} | {option.shotCount} shots |{" "}
-                    {formatSessionOptionType(option.sessionType)} | {option.label}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedImportId} onValueChange={onSelect}>
+                <SelectTrigger className="h-9 w-full min-w-0 max-w-full normal-case tracking-normal">
+                  <SelectValue placeholder="Choose uploaded session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {importOptions.map((option) => (
+                    <SelectItem key={option.id} value={option.id}>
+                      {option.dateLabel} | {option.shotCount} shots |{" "}
+                      {formatSessionOptionType(option.sessionType)} | {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <div className="grid min-w-[11rem] gap-1 rounded-lg border bg-muted/20 px-3 py-2 text-xs">
               <span className="font-semibold text-foreground">
@@ -2173,23 +2205,26 @@ function PracticeBlockEditControls({
       <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_13rem]">
         <label className="grid min-w-0 gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Swap drill
-          <select
-            className="h-9 min-w-0 rounded-lg border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground"
+          <Select
             value={currentOptionId}
-            onChange={(event) => {
-              if (event.target.value) {
-                onSwapDrill(event.target.value);
+            onValueChange={(value) => {
+              if (value) {
+                onSwapDrill(value);
               }
             }}
             disabled={disabled}
           >
-            {currentOptionId ? null : <option value="">Current custom drill</option>}
-            {options.map((suggestion) => (
-              <option key={suggestion.id} value={suggestion.id}>
-                {suggestion.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-9 min-w-0 normal-case tracking-normal">
+              <SelectValue placeholder="Current custom drill" />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((suggestion) => (
+                <SelectItem key={suggestion.id} value={suggestion.id}>
+                  {suggestion.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         <div className="grid gap-1">
@@ -2371,14 +2406,28 @@ function SessionControlPanel({
             ) : null}
             {(status === "planned" || status === "awaiting_import" || status === "match_found") &&
             !hasImport ? (
-              <Button
-                variant="ghost"
-                className="rounded-lg"
-                onClick={onAbandon}
-                disabled={isPending}
-              >
-                Mark abandoned
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" className="rounded-lg" disabled={isPending}>
+                    Mark abandoned
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Abandon this practice plan?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      The plan will remain in history, but it will no longer wait for uploaded
+                      evidence.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep plan</AlertDialogCancel>
+                    <AlertDialogAction variant="destructive" onClick={onAbandon}>
+                      Mark abandoned
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             ) : null}
           </div>
         </CardHeader>
@@ -2607,18 +2656,26 @@ function PracticeLibrary({
   onLoadSavedPlan: (plan: SavedPracticePlan) => void;
 }) {
   return (
-    <details className="rounded-xl border bg-white/80 p-3 shadow-sm ring-1 ring-emerald-950/5">
-      <summary className="cursor-pointer list-none text-sm font-semibold">
-        Templates and saved practice plans
-        <span className="ml-2 font-normal text-muted-foreground">
-          Reuse a plan when you are not building today from the latest data.
-        </span>
-      </summary>
-      <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        <TemplatesPanel templates={templates} onUseTemplate={onUseTemplate} />
-        <SavedPlansPanel plans={savedPlans} onLoad={onLoadSavedPlan} />
-      </div>
-    </details>
+    <Drawer direction="right">
+      <DrawerTrigger asChild>
+        <Button variant="outline" className="min-h-11 justify-between">
+          Templates and saved practice plans
+          <Badge variant="secondary">{templates.length + savedPlans.length}</Badge>
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent className="inset-y-0 right-0 left-auto mt-0 h-full w-full max-w-2xl rounded-none">
+        <DrawerHeader>
+          <DrawerTitle>Templates and saved practice plans</DrawerTitle>
+          <DrawerDescription>
+            Reuse a plan when you are not building today from the latest data.
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="grid gap-4 overflow-y-auto px-4 pb-6 lg:grid-cols-2">
+          <TemplatesPanel templates={templates} onUseTemplate={onUseTemplate} />
+          <SavedPlansPanel plans={savedPlans} onLoad={onLoadSavedPlan} />
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -2706,17 +2763,18 @@ function CompactSelect({
   return (
     <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
-      <select
-        className="h-9 min-w-28 rounded-lg border bg-background px-3 text-sm font-medium normal-case tracking-normal text-foreground"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-9 min-w-28 normal-case tracking-normal">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
 }

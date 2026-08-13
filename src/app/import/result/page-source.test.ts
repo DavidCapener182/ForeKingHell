@@ -29,6 +29,9 @@ describe("surface-specific import result", () => {
 
   it("renders the golf answer and charts before collapsed audit detail", () => {
     expect(companion).toContain("data-session-verdict");
+    expect(companion).toContain("ResultHero");
+    expect(companion).toContain('eyebrow="Import complete"');
+    expect(companion).toContain("result.reviewHref");
     expect(companion).toContain("MobileShotPatternCharts");
     expect(companion).toContain("What improved");
     expect(companion).toContain("What still needs work");

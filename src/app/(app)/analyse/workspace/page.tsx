@@ -8,8 +8,17 @@ import {
   saveAnalysisAnnotationAction,
   saveAnalysisSnapshotAction,
 } from "@/app/analyse/workspace/actions";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
@@ -267,28 +276,25 @@ function MobileAnnotationWorkspace({ data }: { data: AnalysisWorkspaceData }) {
       >
         <form action={saveAnalysisAnnotationAction} className="grid gap-4 pb-2">
           <FormLabel label="Type">
-            <select
+            <AnalysisSelect
               name="annotationType"
-              required
               disabled={!data.storageAvailable}
-              className={fieldClass}
-            >
-              {analysisAnnotationTypes.map((type) => (
-                <option key={type} value={type}>
-                  {formatLabel(type)}
-                </option>
-              ))}
-            </select>
+              options={analysisAnnotationTypes.map((type) => ({
+                value: type,
+                label: formatLabel(type),
+              }))}
+            />
           </FormLabel>
           <FormLabel label="Session (optional)">
-            <select name="sessionId" disabled={!data.storageAvailable} className={fieldClass}>
-              <option value="">Date range only</option>
-              {data.sessionOptions.map((session) => (
-                <option key={session.id} value={session.id}>
-                  {dateFormatter.format(session.date)} · {session.label}
-                </option>
-              ))}
-            </select>
+            <AnalysisSelect
+              name="sessionId"
+              disabled={!data.storageAvailable}
+              placeholder="Date range only"
+              options={data.sessionOptions.map((session) => ({
+                value: session.id,
+                label: `${dateFormatter.format(session.date)} · ${session.label}`,
+              }))}
+            />
           </FormLabel>
           <FormLabel label="Title">
             <input
@@ -317,14 +323,15 @@ function MobileAnnotationWorkspace({ data }: { data: AnalysisWorkspaceData }) {
             />
           </FormLabel>
           <FormLabel label="Environment">
-            <select name="environment" disabled={!data.storageAvailable} className={fieldClass}>
-              <option value="">Not specified</option>
-              {["range", "simulator", "course", "mat", "grass"].map((value) => (
-                <option key={value} value={value}>
-                  {formatLabel(value)}
-                </option>
-              ))}
-            </select>
+            <AnalysisSelect
+              name="environment"
+              disabled={!data.storageAvailable}
+              placeholder="Not specified"
+              options={["range", "simulator", "course", "mat", "grass"].map((value) => ({
+                value,
+                label: formatLabel(value),
+              }))}
+            />
           </FormLabel>
           <FormLabel label="Note">
             <textarea
@@ -360,15 +367,17 @@ function MobileAnnotationWorkspace({ data }: { data: AnalysisWorkspaceData }) {
                 </div>
                 <form action={deleteAnalysisAnnotationAction}>
                   <input type="hidden" name="annotationId" value={annotation.id} />
-                  <Button
-                    type="submit"
+                  <ConfirmSubmitButton
                     variant="ghost"
                     size="icon"
                     className="size-11 shrink-0"
                     aria-label={`Delete ${annotation.title}`}
+                    confirmTitle="Delete this annotation?"
+                    confirmMessage="This saved evidence note will be permanently removed."
+                    confirmActionLabel="Delete annotation"
                   >
                     <Trash2 className="size-4" aria-hidden />
-                  </Button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
             </article>
@@ -487,13 +496,14 @@ function MobileSnapshotWorkspace({ data }: { data: AnalysisWorkspaceData }) {
             <input type="date" name="to" disabled={!data.storageAvailable} className={fieldClass} />
           </FormLabel>
           <FormLabel label="Chart view">
-            <select name="chartView" disabled={!data.storageAvailable} className={fieldClass}>
-              {["dispersion", "flight", "trend", "table"].map((value) => (
-                <option key={value} value={value}>
-                  {formatLabel(value)}
-                </option>
-              ))}
-            </select>
+            <AnalysisSelect
+              name="chartView"
+              disabled={!data.storageAvailable}
+              options={["dispersion", "flight", "trend", "table"].map((value) => ({
+                value,
+                label: formatLabel(value),
+              }))}
+            />
           </FormLabel>
           <fieldset className="grid gap-2">
             <legend className="text-sm font-medium">Metrics</legend>
@@ -504,12 +514,7 @@ function MobileSnapshotWorkspace({ data }: { data: AnalysisWorkspaceData }) {
                     key={metric}
                     className="flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-3 text-sm"
                   >
-                    <input
-                      type="checkbox"
-                      name="metrics"
-                      value={metric}
-                      disabled={!data.storageAvailable}
-                    />
+                    <Checkbox name="metrics" value={metric} disabled={!data.storageAvailable} />
                     {formatLabel(metric)}
                   </label>
                 ),
@@ -548,15 +553,17 @@ function MobileSnapshotWorkspace({ data }: { data: AnalysisWorkspaceData }) {
                 </div>
                 <form action={deleteAnalysisSnapshotAction}>
                   <input type="hidden" name="snapshotId" value={snapshot.id} />
-                  <Button
-                    type="submit"
+                  <ConfirmSubmitButton
                     variant="ghost"
                     size="icon"
                     className="size-11 shrink-0"
                     aria-label={`Delete ${snapshot.name}`}
+                    confirmTitle="Delete this snapshot?"
+                    confirmMessage="This frozen analysis snapshot will be permanently removed."
+                    confirmActionLabel="Delete snapshot"
                   >
                     <Trash2 className="size-4" aria-hidden />
-                  </Button>
+                  </ConfirmSubmitButton>
                 </form>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 border-t border-border/70 pt-2">
@@ -690,28 +697,25 @@ function AnnotationWorkspace({
           <CardContent>
             <form action={saveAnalysisAnnotationAction} className="grid gap-3">
               <FormLabel label="Type">
-                <select
+                <AnalysisSelect
                   name="annotationType"
-                  required
                   disabled={!storageAvailable}
-                  className={fieldClass}
-                >
-                  {analysisAnnotationTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {formatLabel(type)}
-                    </option>
-                  ))}
-                </select>
+                  options={analysisAnnotationTypes.map((type) => ({
+                    value: type,
+                    label: formatLabel(type),
+                  }))}
+                />
               </FormLabel>
               <FormLabel label="Session (optional)">
-                <select name="sessionId" disabled={!storageAvailable} className={fieldClass}>
-                  <option value="">Date range only</option>
-                  {sessionOptions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {dateFormatter.format(session.date)} · {session.label}
-                    </option>
-                  ))}
-                </select>
+                <AnalysisSelect
+                  name="sessionId"
+                  disabled={!storageAvailable}
+                  placeholder="Date range only"
+                  options={sessionOptions.map((session) => ({
+                    value: session.id,
+                    label: `${dateFormatter.format(session.date)} · ${session.label}`,
+                  }))}
+                />
               </FormLabel>
               <FormLabel label="Title">
                 <input
@@ -741,14 +745,15 @@ function AnnotationWorkspace({
                 </FormLabel>
               </div>
               <FormLabel label="Environment">
-                <select name="environment" disabled={!storageAvailable} className={fieldClass}>
-                  <option value="">Not specified</option>
-                  {["range", "simulator", "course", "mat", "grass"].map((value) => (
-                    <option key={value} value={value}>
-                      {formatLabel(value)}
-                    </option>
-                  ))}
-                </select>
+                <AnalysisSelect
+                  name="environment"
+                  disabled={!storageAvailable}
+                  placeholder="Not specified"
+                  options={["range", "simulator", "course", "mat", "grass"].map((value) => ({
+                    value,
+                    label: formatLabel(value),
+                  }))}
+                />
               </FormLabel>
               <FormLabel label="Note">
                 <textarea
@@ -779,14 +784,16 @@ function AnnotationWorkspace({
                   </div>
                   <form action={deleteAnalysisAnnotationAction}>
                     <input type="hidden" name="annotationId" value={annotation.id} />
-                    <Button
-                      type="submit"
+                    <ConfirmSubmitButton
                       variant="ghost"
                       size="icon"
                       aria-label={`Delete ${annotation.title}`}
+                      confirmTitle="Delete this annotation?"
+                      confirmMessage="This saved evidence note will be permanently removed."
+                      confirmActionLabel="Delete annotation"
                     >
                       <Trash2 className="size-4" aria-hidden />
-                    </Button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{annotation.body}</p>
@@ -946,13 +953,14 @@ function SnapshotWorkspace({
                 </FormLabel>
               </div>
               <FormLabel label="Chart view">
-                <select name="chartView" disabled={!storageAvailable} className={fieldClass}>
-                  {["dispersion", "flight", "trend", "table"].map((value) => (
-                    <option key={value} value={value}>
-                      {formatLabel(value)}
-                    </option>
-                  ))}
-                </select>
+                <AnalysisSelect
+                  name="chartView"
+                  disabled={!storageAvailable}
+                  options={["dispersion", "flight", "trend", "table"].map((value) => ({
+                    value,
+                    label: formatLabel(value),
+                  }))}
+                />
               </FormLabel>
               <fieldset className="grid gap-2">
                 <legend className="text-sm font-medium">Metrics</legend>
@@ -963,12 +971,7 @@ function SnapshotWorkspace({
                         key={metric}
                         className="flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-3 text-sm"
                       >
-                        <input
-                          type="checkbox"
-                          name="metrics"
-                          value={metric}
-                          disabled={!storageAvailable}
-                        />
+                        <Checkbox name="metrics" value={metric} disabled={!storageAvailable} />
                         {formatLabel(metric)}
                       </label>
                     ),
@@ -1007,14 +1010,16 @@ function SnapshotWorkspace({
                   </div>
                   <form action={deleteAnalysisSnapshotAction}>
                     <input type="hidden" name="snapshotId" value={snapshot.id} />
-                    <Button
-                      type="submit"
+                    <ConfirmSubmitButton
                       variant="ghost"
                       size="icon"
                       aria-label={`Delete ${snapshot.name}`}
+                      confirmTitle="Delete this snapshot?"
+                      confirmMessage="This frozen analysis snapshot will be permanently removed."
+                      confirmActionLabel="Delete snapshot"
                     >
                       <Trash2 className="size-4" aria-hidden />
-                    </Button>
+                    </ConfirmSubmitButton>
                   </form>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
@@ -1269,6 +1274,38 @@ function FormLabel({ label, children }: { label: string; children: React.ReactNo
       {label}
       {children}
     </label>
+  );
+}
+
+function AnalysisSelect({
+  name,
+  disabled,
+  placeholder,
+  options,
+}: {
+  name: string;
+  disabled?: boolean;
+  placeholder?: string;
+  options: Array<{ value: string; label: string }>;
+}) {
+  return (
+    <Select
+      name={name}
+      defaultValue={placeholder ? "__none__" : options[0]?.value}
+      disabled={disabled}
+    >
+      <SelectTrigger className="min-h-11 w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {placeholder ? <SelectItem value="__none__">{placeholder}</SelectItem> : null}
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

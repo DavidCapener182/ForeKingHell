@@ -22,6 +22,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCaption,
@@ -125,9 +132,9 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
           >
             <SelectField label="Club A" value={draftClubAId} onChange={setDraftClubAId}>
               {data.clubs.map((club) => (
-                <option key={club.id} value={club.id}>
+                <SelectItem key={club.id} value={club.id}>
                   {club.label} ({integerFormatter.format(club.shotCount)})
-                </option>
+                </SelectItem>
               ))}
             </SelectField>
             <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">
@@ -135,9 +142,9 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
             </div>
             <SelectField label="Club B" value={draftClubBId} onChange={setDraftClubBId}>
               {data.clubs.map((club) => (
-                <option key={club.id} value={club.id}>
+                <SelectItem key={club.id} value={club.id}>
                   {club.label} ({integerFormatter.format(club.shotCount)})
-                </option>
+                </SelectItem>
               ))}
             </SelectField>
             <div className="flex gap-2">
@@ -285,13 +292,12 @@ function SelectField({
   return (
     <label className="grid gap-1 text-sm font-medium">
       {label}
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
-      >
-        {children}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-10 w-full bg-white/90">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
     </label>
   );
 }

@@ -49,6 +49,20 @@ describe("surface-specific import centre", () => {
     expect(companionRangeImport).toContain("}, [rawCsvText]);");
   });
 
+  it("uses a compact five-step import flow and only asks for uncertain mappings", () => {
+    expect(companionRangeImport).toContain("OperationStepper");
+    expect(companionRangeImport).toContain('id: "file"');
+    expect(companionRangeImport).toContain('id: "validate"');
+    expect(companionRangeImport).toContain('id: "mapping"');
+    expect(companionRangeImport).toContain('id: "save"');
+    expect(companionRangeImport).toContain('id: "review"');
+    expect(companionRangeImport).toContain("data-uncertain-club-mappings");
+    expect(companionRangeImport).toContain("Correct matches were skipped");
+    expect(companionRangeImport).toContain("data-validation-alert");
+    expect(companionRangeImport).toContain("data-import-sticky-footer");
+    expect(companionRangeImport).toContain("OperationStatus");
+  });
+
   it("preserves the exportable configurable workbench library", () => {
     expect(workbench).toContain("DesktopWorkflowLayout");
     expect(workbench).toContain("DesktopTableWorkbenchControls");

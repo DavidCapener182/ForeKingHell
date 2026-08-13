@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CheckCircle2, FileUp, LoaderCircle, RotateCcw } from "lucide-react";
+import { ChevronDown, FileUp } from "lucide-react";
 
 import { saveRapsodoImportAction } from "@/app/import/actions";
 import { useImportFiles } from "@/app/import/use-import-files";
+import { OperationStatus } from "@/components/app/operation-status";
+import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
 import {
   IOSGroupedList,
   IOSInlineStatus,
@@ -12,6 +14,15 @@ import {
   IOSMetricRow,
 } from "@/components/app/ios-mobile";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatClubType, formatCompanionClubType } from "@/lib/club-format";
 import { MAX_IMPORT_CSV_BYTES, formatMegabytes } from "@/lib/imports/import-limits";
 import type { RapsodoShotOverride } from "@/lib/imports/save-rapsodo-import";
@@ -226,8 +237,23 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
           <FileUp className="size-5" aria-hidden />
           Choose CSV from Files
         </Button>
-        {readProgress ? <p role="status">Reading {readProgress.fileName}…</p> : null}
-        {message ? <p className="text-sm text-destructive">{message}</p> : null}
+        {readProgress ? (
+          <OperationStatus
+            status="working"
+            title={`Reading ${readProgress.fileName}`}
+            description="Checking the selected file on this phone."
+            progress={
+              readProgress.total > 0 ? (readProgress.loaded / readProgress.total) * 100 : undefined
+            }
+          />
+        ) : null}
+        {message ? (
+          <OperationStatus
+            status="error"
+            title="This file cannot be imported"
+            description={message}
+          />
+        ) : null}
       </section>
     );
   }
@@ -242,9 +268,15 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
     ),
   ];
   const excludedRows = Math.max(0, file.parsed.rowCount - file.parsed.shotCount - 1);
+  const workflowSteps = importWorkflowSteps({
+    duplicateChecked: duplicate.checked,
+    mappingsComplete,
+    progress,
+  });
 
   return (
     <div className="grid gap-4" data-companion-csv-confirmation>
+      <OperationStepper steps={workflowSteps} label="CSV import progress" compact />
       <section className="ios-grouped-list grid gap-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -293,17 +325,21 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
           />
         </IOSGroupedList>
         {file.parsed.detectedDistanceUnit === "unknown" ? (
-          <label className="grid gap-2 text-sm font-semibold">
-            Distance unit
-            <select
-              className="min-h-11 rounded-xl border bg-background px-3"
+          <div className="grid gap-2 text-sm font-semibold">
+            <span>Distance unit</span>
+            <Select
               value={distanceUnit}
-              onChange={(event) => setDistanceUnit(event.target.value as "yards" | "meters")}
+              onValueChange={(value) => setDistanceUnit(value as "yards" | "meters")}
             >
-              <option value="yards">Yards</option>
-              <option value="meters">Metres</option>
-            </select>
-          </label>
+              <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yards">Yards</SelectItem>
+                <SelectItem value="meters">Metres</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         ) : null}
       </section>
 
@@ -316,71 +352,87 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             </p>
           </div>
           {unknownGroups.map((group) => (
-            <label key={group.label} className="grid gap-1.5 text-sm font-semibold">
-              {group.label} · {group.rowNumbers.length} shots
-              <select
-                className="min-h-11 rounded-xl border bg-background px-3"
+            <div key={group.label} className="grid gap-1.5 text-sm font-semibold">
+              <span>
+                {group.label} · {group.rowNumbers.length} shots
+              </span>
+              <Select
                 value={clubMappings[group.label] ?? ""}
-                onChange={(event) =>
-                  setClubMappings((current) => ({ ...current, [group.label]: event.target.value }))
+                onValueChange={(value) =>
+                  setClubMappings((current) => ({ ...current, [group.label]: value }))
                 }
               >
-                <option value="">Choose club</option>
-                {clubOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {formatClubType(option)}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger className="h-11 w-full rounded-xl bg-background">
+                  <SelectValue placeholder="Choose club" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clubOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {formatClubType(option)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ))}
         </section>
       ) : null}
 
       {file.parsed.warnings.length > 0 ? (
-        <details className="ios-grouped-list px-4 py-3">
-          <summary className="focus-aaa min-h-11 cursor-pointer py-3 text-sm font-semibold">
+        <Collapsible className="ios-grouped-list px-4 py-2" data-validation-alert>
+          <CollapsibleTrigger className="focus-aaa flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-sm font-semibold outline-none">
             Questionable rows ({file.parsed.warnings.length})
-          </summary>
-          <ul className="list-disc space-y-1 pb-2 pl-5 text-xs leading-5 text-muted-foreground">
-            {file.parsed.warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-          </ul>
-        </details>
+            <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <OperationStatus
+              status="warning"
+              title="Some rows need a cautious read"
+              description={
+                <ul className="list-disc space-y-1 pl-5 text-xs leading-5">
+                  {file.parsed.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              }
+              className="mb-2"
+            />
+          </CollapsibleContent>
+        </Collapsible>
       ) : null}
 
-      <section className="grid gap-2" aria-live="polite">
+      <section
+        className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-20 grid gap-2 rounded-xl border bg-background/95 p-2 shadow-lg backdrop-blur"
+        aria-live="polite"
+        data-import-sticky-footer
+      >
         {progress !== "idle" ? (
-          <div className="ios-grouped-list flex items-center gap-3 p-4 text-sm font-medium">
-            {progress === "queued" ? (
-              <CheckCircle2 className="size-5 text-primary" />
-            ) : progress === "error" ? (
-              <RotateCcw className="size-5 text-destructive" />
-            ) : (
-              <LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" />
-            )}
-            {progressLabel(progress)}
-          </div>
+          <OperationStatus
+            status={progress === "error" ? "error" : progress === "queued" ? "success" : "working"}
+            title={progressLabel(progress)}
+            description={message ?? progressDescription(progress)}
+            progress={progressPercent(progress)}
+          />
         ) : null}
-        {message ? <p className="px-1 text-sm leading-5 text-muted-foreground">{message}</p> : null}
-        <Button
-          type="button"
-          className="min-h-12 rounded-xl text-base"
-          onClick={save}
-          disabled={!mappingsComplete || pending || !duplicate.checked}
-        >
-          {duplicate.duplicate ? "Open saved review" : "Save and build review"}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="min-h-11"
-          onClick={reset}
-          disabled={pending}
-        >
-          Choose a different file
-        </Button>
+        <ButtonGroup className="w-full">
+          <Button
+            type="button"
+            className="min-h-12 flex-1 rounded-xl text-base"
+            onClick={save}
+            disabled={!mappingsComplete || pending || !duplicate.checked}
+          >
+            {duplicate.duplicate ? "Open saved review" : "Save and build review"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-12 shrink-0"
+            onClick={reset}
+            disabled={pending}
+          >
+            Change file
+          </Button>
+        </ButtonGroup>
       </section>
     </div>
   );
@@ -415,4 +467,58 @@ function progressLabel(progress: SaveProgress) {
   if (progress === "queued") return "Upload queued on this phone";
   if (progress === "error") return "Import needs attention";
   return "Ready";
+}
+
+function progressDescription(progress: SaveProgress) {
+  if (progress === "checking") return "Confirming duplicate state before any write.";
+  if (progress === "saving") return "Writing the measured rows and updating club evidence.";
+  if (progress === "building") return "Preparing the immediate session review.";
+  if (progress === "queued") return "Analysis will appear after this phone reconnects.";
+  return undefined;
+}
+
+function progressPercent(progress: SaveProgress) {
+  if (progress === "checking") return 30;
+  if (progress === "saving") return 65;
+  if (progress === "building") return 90;
+  if (progress === "queued") return 100;
+  return undefined;
+}
+
+function importWorkflowSteps({
+  duplicateChecked,
+  mappingsComplete,
+  progress,
+}: {
+  duplicateChecked: boolean;
+  mappingsComplete: boolean;
+  progress: SaveProgress;
+}): OperationStep[] {
+  const saving = progress === "checking" || progress === "saving";
+  const building = progress === "building";
+  const failed = progress === "error";
+  const queued = progress === "queued";
+  return [
+    { id: "file", label: "File", status: "complete" },
+    {
+      id: "validate",
+      label: "Validate",
+      status: duplicateChecked ? "complete" : failed ? "error" : "current",
+    },
+    {
+      id: "mapping",
+      label: "Map",
+      status: mappingsComplete ? "complete" : "current",
+    },
+    {
+      id: "save",
+      label: "Save",
+      status: building || queued ? "complete" : failed ? "error" : saving ? "current" : "upcoming",
+    },
+    {
+      id: "review",
+      label: "Review",
+      status: building ? "current" : "upcoming",
+    },
+  ];
 }

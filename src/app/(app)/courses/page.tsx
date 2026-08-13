@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   Trophy,
+  MoreHorizontal,
 } from "lucide-react";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 
@@ -23,7 +24,6 @@ import {
   DataPair,
   DataPanel,
   DataTableFrame,
-  MetricCard,
   MobileDataCard,
   MobileDataList,
   MobileFilterSheet,
@@ -52,7 +52,7 @@ import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -84,6 +84,17 @@ import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getCourseFollowFeatureData } from "@/lib/feature-ideas";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { CourseDirectoryToolbar } from "@/app/courses/course-directory-toolbar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -205,6 +216,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Sear
 async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
   const query = first(params.q).trim().slice(0, 80);
   const activeTab = parseCourseTab(first(params.tab));
+  const directoryView = parseCourseDirectoryView(first(params.view));
   const courseSort: CourseSortState = {
     metric: parseCourseSortMetric(first(params.sort)),
     dir: parseCourseSortDirection(first(params.dir)),
@@ -642,58 +654,43 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
             <ActiveFilterChips items={query ? [{ label: `${query} x`, href: "/courses" }] : []} />
           </div>
 
-          <DataPanel className="hidden sm:block">
-            <CardContent className="pt-4">
-              <form className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-                <label className="grid gap-1 text-sm font-medium">
-                  Course search
-                  <input
-                    name="q"
-                    defaultValue={query}
-                    placeholder="Search course, country, or provider"
-                    className="h-11 rounded-xl border bg-white px-3 text-sm"
-                  />
-                </label>
-                <Button
-                  type="submit"
-                  className="rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                >
-                  Search
-                </Button>
-                <Button asChild variant="outline" className="rounded-xl">
-                  <Link href="/courses" prefetch={false}>
-                    Reset
-                  </Link>
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
+          <CourseDirectoryToolbar
+            query={query}
+            activeTab={activeTab}
+            view={directoryView}
+            resultLabel={`${integerFormatter.format(sortedDisplayedCourses.length)} courses`}
+            courses={data.courses.map((course) => ({
+              value: course.id,
+              label: course.name,
+              description: course.country ?? course.sourceLabel,
+            }))}
+          />
 
-          <section className="hidden gap-4 sm:grid md:grid-cols-3">
-            <MetricCard
-              label="Course champions"
-              value={integerFormatter.format(data.championCount)}
-              detail="Verified leaders across all visible course boards."
-              icon={MapPinned}
-              tone="green"
-              href="/course-records"
-            />
-            <MetricCard
-              label="Handicap quality"
-              value={integerFormatter.format(data.ratedTeeSetCount)}
-              detail="Tee sets with both course rating and slope."
-              icon={Trophy}
-              tone="amber"
-              href="/handicap"
-            />
-            <MetricCard
-              label="Known seeds"
-              value="TPC / Bootle / Mountain"
-              detail="Use Seed known to restore built-in course geometry."
-              icon={Route}
-              tone="sky"
-            />
-          </section>
+          <ConnectedMetricBar
+            label="Course directory metrics"
+            metrics={[
+              {
+                label: "Course champions",
+                value: integerFormatter.format(data.championCount),
+                detail: "Verified leaders across visible course boards.",
+              },
+              {
+                label: "Handicap quality",
+                value: integerFormatter.format(data.ratedTeeSetCount),
+                detail: "Tee sets with rating and slope.",
+              },
+              {
+                label: "Mapped courses",
+                value: integerFormatter.format(mappedCourses.length),
+                detail: "Courses with saved hole geometry.",
+              },
+              {
+                label: "Linked rounds",
+                value: integerFormatter.format(data.roundCount),
+                detail: `${integerFormatter.format(roundLinkedCourses.length)} courses used by rounds.`,
+              },
+            ]}
+          />
 
           <CourseDataQualityPanel courses={displayedCourses} />
 
@@ -743,289 +740,420 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
             ))}
           </MobileHorizontalRail>
 
-          <DataPanel id="course-library">
-            <SectionHeader
-              title="Course library"
-              description="Click a course name to view its tee sets and saved holes. Records opens the player hub."
-              action={
-                <Badge variant="outline">
-                  {integerFormatter.format(displayedCourses.length)} courses
-                </Badge>
-              }
+          {directoryView === "grid" ? (
+            <CourseDirectoryGrid
+              courses={sortedDisplayedCourses}
+              shotPatternEnabled={shotPatternEnabled}
             />
-            <CardContent>
-              <DesktopTableWorkbenchControls
-                viewKey="courses"
-                scope="courses"
-                currentViewLabel={courseCurrentViewLabel}
-                resultLabel={`${integerFormatter.format(displayedCourses.length)} courses`}
-                columns={courseWorkbenchColumns}
-                suggestedViews={courseSuggestedViews}
-                exportTableId="courses"
-                exportFileName="forekinghell-courses-view.csv"
-                className="mb-3"
-              />
-              <DataTableFrame
-                mainTable
-                mainTableLabel="Course library table"
-                stickyFirstColumn
-                mobile={
-                  <MobileDataList>
-                    {sortedDisplayedCourses.length > 0 ? (
-                      sortedDisplayedCourses.map((course) => (
-                        <MobileDataCard
-                          key={course.id}
-                          title={course.name}
-                          subtitle={course.country ?? "Country not set"}
-                          action={
-                            <Badge variant={course.provider === "manual" ? "outline" : "secondary"}>
-                              {course.sourceLabel}
-                            </Badge>
-                          }
-                        >
-                          <PageArtwork
-                            variant={courseArtworkVariant(course)}
-                            alt=""
-                            crop={courseArtworkCrop(course)}
-                            cropKey={course.id}
-                            className="block h-20 min-h-0 rounded-xl"
-                            sizes="calc(100vw - 2rem)"
-                          />
-                          <DataPair
-                            label="Thumbnail"
-                            value={course.holeCount > 0 ? "Saved geometry" : "Illustrative layout"}
-                          />
-                          <DataPair label="Records" value={course.recordCount} />
-                          <DataPair label="Champion" value={course.champion?.displayName ?? "--"} />
-                          <DataPair label="Tee sets" value={course.teeSetCount} />
-                          <DataPair
-                            label="Mapped holes"
-                            value={
-                              <span
-                                className={
-                                  course.holeCount >= 18 ? "text-emerald-700" : "text-amber-700"
-                                }
-                              >
-                                {course.holeCount}
-                              </span>
-                            }
-                          />
-                          <DataPair label="Data quality" value={courseQualitySummary(course)} />
-                          <DataPair label="Rounds" value={course.roundCount} />
-                          <Button asChild variant="outline" size="sm" className="mt-1 w-full">
-                            <Link href={`/courses/${course.id}/records`} prefetch={false}>
-                              <Trophy className="size-4" />
-                              Open records
-                            </Link>
-                          </Button>
-                          <Button asChild variant="ghost" size="sm" className="mt-1 w-full">
-                            <Link href={`/courses/${course.id}/holes`} prefetch={false}>
-                              <Settings className="size-4" />
-                              Manage
-                            </Link>
-                          </Button>
-                          {shotPatternEnabled && course.holeCount > 0 ? (
-                            <Button asChild size="sm" className="mt-1 w-full">
-                              <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
-                                <MapPinned className="size-4" />
-                                Pattern
-                              </Link>
-                            </Button>
-                          ) : null}
-                        </MobileDataCard>
-                      ))
-                    ) : (
-                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                        No courses yet. Seed known courses or create one manually.
-                      </div>
-                    )}
-                  </MobileDataList>
+          ) : null}
+
+          {directoryView === "table" ? (
+            <DataPanel id="course-library">
+              <SectionHeader
+                title="Course library"
+                description="Click a course name to view its tee sets and saved holes. Records opens the player hub."
+                action={
+                  <Badge variant="outline">
+                    {integerFormatter.format(displayedCourses.length)} courses
+                  </Badge>
                 }
-              >
-                <Table
-                  className="min-w-[980px]"
-                  data-workbench-scope="courses"
-                  data-workbench-export-table="courses"
-                  aria-describedby="courses-table-summary"
-                >
-                  <TableCaption id="courses-table-summary" className="sr-only">
-                    Course library with provider source, data quality, record boards, champions, tee
-                    sets, mapped holes, linked rounds and management actions.
-                  </TableCaption>
-                  <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                    <TableRow>
-                      <TableHead
-                        data-column="course"
-                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                        aria-sort={
-                          courseSort.metric === "course" ? sortAriaValue(courseSort.dir) : "none"
-                        }
-                      >
-                        <SortableCourseHeadLink
-                          activeTab={activeTab}
-                          metric="course"
-                          query={query}
-                          sortState={courseSort}
-                        />
-                      </TableHead>
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="provider"
-                        metric="provider"
-                        query={query}
-                        sortState={courseSort}
-                      />
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="quality"
-                        metric="quality"
-                        query={query}
-                        sortState={courseSort}
-                      />
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="records"
-                        metric="records"
-                        query={query}
-                        sortState={courseSort}
-                        align="right"
-                      />
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="champion"
-                        metric="champion"
-                        query={query}
-                        sortState={courseSort}
-                      />
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="tees"
-                        metric="tees"
-                        query={query}
-                        sortState={courseSort}
-                        align="right"
-                      />
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="holes"
-                        metric="holes"
-                        query={query}
-                        sortState={courseSort}
-                        align="right"
-                      />
-                      <SortableCourseHead
-                        activeTab={activeTab}
-                        columnId="rounds"
-                        metric="rounds"
-                        query={query}
-                        sortState={courseSort}
-                        align="right"
-                      />
-                      <TableHead data-column="actions" className="text-right">
-                        Action
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedDisplayedCourses.map((course) => (
-                      <TableRow key={course.id} tabIndex={0} className="focus-aaa outline-none">
-                        <TableCell
-                          data-column="course"
-                          className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                        >
-                          <div>
-                            <Link
-                              href={`/courses/${course.id}/holes`}
-                              prefetch={false}
-                              className="font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
-                            >
-                              {course.name}
-                            </Link>
-                            <p className="text-sm text-muted-foreground">
-                              {course.country ?? "Country not set"}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell data-column="provider">
-                          <Badge variant={course.provider === "manual" ? "outline" : "secondary"}>
-                            {course.sourceLabel}
-                          </Badge>
-                        </TableCell>
-                        <TableCell data-column="quality">
-                          <span className="text-sm text-muted-foreground">
-                            {courseQualitySummary(course)}
-                          </span>
-                        </TableCell>
-                        <TableCell data-column="records" className="text-right">
-                          {course.recordCount}
-                        </TableCell>
-                        <TableCell data-column="champion">
-                          {course.champion ? (
-                            <span className="text-sm font-medium">
-                              {course.champion.displayName}
-                            </span>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Open</span>
-                          )}
-                        </TableCell>
-                        <TableCell data-column="tees" className="text-right">
-                          {course.teeSetCount}
-                        </TableCell>
-                        <TableCell data-column="holes" className="text-right">
-                          <span
-                            className={
-                              course.holeCount >= 18
-                                ? "font-semibold text-emerald-700"
-                                : "font-semibold text-amber-700"
+              />
+              <CardContent>
+                <DesktopTableWorkbenchControls
+                  viewKey="courses"
+                  scope="courses"
+                  currentViewLabel={courseCurrentViewLabel}
+                  resultLabel={`${integerFormatter.format(displayedCourses.length)} courses`}
+                  columns={courseWorkbenchColumns}
+                  suggestedViews={courseSuggestedViews}
+                  exportTableId="courses"
+                  exportFileName="forekinghell-courses-view.csv"
+                  className="mb-3"
+                />
+                <DataTableFrame
+                  mainTable
+                  mainTableLabel="Course library table"
+                  stickyFirstColumn
+                  mobile={
+                    <MobileDataList>
+                      {sortedDisplayedCourses.length > 0 ? (
+                        sortedDisplayedCourses.map((course) => (
+                          <MobileDataCard
+                            key={course.id}
+                            title={course.name}
+                            subtitle={course.country ?? "Country not set"}
+                            action={
+                              <Badge
+                                variant={course.provider === "manual" ? "outline" : "secondary"}
+                              >
+                                {course.sourceLabel}
+                              </Badge>
                             }
                           >
-                            {course.holeCount}
-                          </span>
-                        </TableCell>
-                        <TableCell data-column="rounds" className="text-right">
-                          {course.roundCount}
-                        </TableCell>
-                        <TableCell data-column="actions" className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button asChild variant="outline" size="sm">
+                            <PageArtwork
+                              variant={courseArtworkVariant(course)}
+                              alt=""
+                              crop={courseArtworkCrop(course)}
+                              cropKey={course.id}
+                              className="block h-20 min-h-0 rounded-xl"
+                              sizes="calc(100vw - 2rem)"
+                            />
+                            <DataPair
+                              label="Thumbnail"
+                              value={
+                                course.holeCount > 0 ? "Saved geometry" : "Illustrative layout"
+                              }
+                            />
+                            <DataPair label="Records" value={course.recordCount} />
+                            <DataPair
+                              label="Champion"
+                              value={course.champion?.displayName ?? "--"}
+                            />
+                            <DataPair label="Tee sets" value={course.teeSetCount} />
+                            <DataPair
+                              label="Mapped holes"
+                              value={
+                                <span
+                                  className={
+                                    course.holeCount >= 18 ? "text-emerald-700" : "text-amber-700"
+                                  }
+                                >
+                                  {course.holeCount}
+                                </span>
+                              }
+                            />
+                            <DataPair label="Data quality" value={courseQualitySummary(course)} />
+                            <DataPair label="Rounds" value={course.roundCount} />
+                            <Button asChild variant="outline" size="sm" className="mt-1 w-full">
                               <Link href={`/courses/${course.id}/records`} prefetch={false}>
                                 <Trophy className="size-4" />
-                                Records
+                                Open records
                               </Link>
                             </Button>
-                            <Button asChild variant="ghost" size="sm">
+                            <Button asChild variant="ghost" size="sm" className="mt-1 w-full">
                               <Link href={`/courses/${course.id}/holes`} prefetch={false}>
                                 <Settings className="size-4" />
                                 Manage
                               </Link>
                             </Button>
                             {shotPatternEnabled && course.holeCount > 0 ? (
-                              <Button asChild size="sm">
+                              <Button asChild size="sm" className="mt-1 w-full">
                                 <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
                                   <MapPinned className="size-4" />
                                   Pattern
                                 </Link>
                               </Button>
                             ) : null}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {sortedDisplayedCourses.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                          </MobileDataCard>
+                        ))
+                      ) : (
+                        <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
                           No courses yet. Seed known courses or create one manually.
-                        </TableCell>
+                        </div>
+                      )}
+                    </MobileDataList>
+                  }
+                >
+                  <Table
+                    className="min-w-[980px]"
+                    data-workbench-scope="courses"
+                    data-workbench-export-table="courses"
+                    aria-describedby="courses-table-summary"
+                  >
+                    <TableCaption id="courses-table-summary" className="sr-only">
+                      Course library with provider source, data quality, record boards, champions,
+                      tee sets, mapped holes, linked rounds and management actions.
+                    </TableCaption>
+                    <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                      <TableRow>
+                        <TableHead
+                          data-column="course"
+                          className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                          aria-sort={
+                            courseSort.metric === "course" ? sortAriaValue(courseSort.dir) : "none"
+                          }
+                        >
+                          <SortableCourseHeadLink
+                            activeTab={activeTab}
+                            metric="course"
+                            query={query}
+                            sortState={courseSort}
+                          />
+                        </TableHead>
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="provider"
+                          metric="provider"
+                          query={query}
+                          sortState={courseSort}
+                        />
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="quality"
+                          metric="quality"
+                          query={query}
+                          sortState={courseSort}
+                        />
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="records"
+                          metric="records"
+                          query={query}
+                          sortState={courseSort}
+                          align="right"
+                        />
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="champion"
+                          metric="champion"
+                          query={query}
+                          sortState={courseSort}
+                        />
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="tees"
+                          metric="tees"
+                          query={query}
+                          sortState={courseSort}
+                          align="right"
+                        />
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="holes"
+                          metric="holes"
+                          query={query}
+                          sortState={courseSort}
+                          align="right"
+                        />
+                        <SortableCourseHead
+                          activeTab={activeTab}
+                          columnId="rounds"
+                          metric="rounds"
+                          query={query}
+                          sortState={courseSort}
+                          align="right"
+                        />
+                        <TableHead data-column="actions" className="text-right">
+                          Action
+                        </TableHead>
                       </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-              </DataTableFrame>
-            </CardContent>
-          </DataPanel>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedDisplayedCourses.map((course) => (
+                        <TableRow key={course.id} tabIndex={0} className="focus-aaa outline-none">
+                          <TableCell
+                            data-column="course"
+                            className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                          >
+                            <div>
+                              <Link
+                                href={`/courses/${course.id}/holes`}
+                                prefetch={false}
+                                className="font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                              >
+                                {course.name}
+                              </Link>
+                              <p className="text-sm text-muted-foreground">
+                                {course.country ?? "Country not set"}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell data-column="provider">
+                            <Badge variant={course.provider === "manual" ? "outline" : "secondary"}>
+                              {course.sourceLabel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell data-column="quality">
+                            <span className="text-sm text-muted-foreground">
+                              {courseQualitySummary(course)}
+                            </span>
+                          </TableCell>
+                          <TableCell data-column="records" className="text-right">
+                            {course.recordCount}
+                          </TableCell>
+                          <TableCell data-column="champion">
+                            {course.champion ? (
+                              <span className="text-sm font-medium">
+                                {course.champion.displayName}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Open</span>
+                            )}
+                          </TableCell>
+                          <TableCell data-column="tees" className="text-right">
+                            {course.teeSetCount}
+                          </TableCell>
+                          <TableCell data-column="holes" className="text-right">
+                            <span
+                              className={
+                                course.holeCount >= 18
+                                  ? "font-semibold text-emerald-700"
+                                  : "font-semibold text-amber-700"
+                              }
+                            >
+                              {course.holeCount}
+                            </span>
+                          </TableCell>
+                          <TableCell data-column="rounds" className="text-right">
+                            {course.roundCount}
+                          </TableCell>
+                          <TableCell data-column="actions" className="text-right">
+                            <CourseActionsMenu
+                              course={course}
+                              shotPatternEnabled={shotPatternEnabled}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {sortedDisplayedCourses.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="p-4">
+                            <AppEmptyState
+                              icon={<MapPinned className="size-5" />}
+                              title="No courses"
+                              description="Seed the known course library or create a course manually."
+                              primaryAction={
+                                <Button asChild size="sm">
+                                  <Link href="/courses/new">Create course</Link>
+                                </Button>
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </TableBody>
+                  </Table>
+                </DataTableFrame>
+              </CardContent>
+            </DataPanel>
+          ) : null}
         </div>
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function CourseDirectoryGrid({
+  courses,
+  shotPatternEnabled,
+}: {
+  courses: CourseDirectoryCourse[];
+  shotPatternEnabled: boolean;
+}) {
+  if (courses.length === 0) {
+    return (
+      <AppEmptyState
+        icon={<MapPinned className="size-5" />}
+        title="No courses"
+        description="Seed the known course library or create a course manually."
+        primaryAction={
+          <Button asChild>
+            <Link href="/courses/new">Create course</Link>
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" data-course-directory-grid>
+      {courses.map((course, index) => (
+        <Card key={course.id} className="overflow-hidden">
+          <PageArtwork
+            variant={courseArtworkVariant(course)}
+            alt=""
+            crop={courseArtworkCrop(course)}
+            cropKey={course.id}
+            className="block h-32 min-h-0 rounded-none border-0"
+            sizes="(min-width: 1280px) 30vw, (min-width: 768px) 45vw, 100vw"
+            priority={index === 0}
+          />
+          <CardHeader className="gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Badge variant={course.holeCount > 0 ? "secondary" : "outline"}>
+                  {course.holeCount > 0 ? `${course.holeCount} holes mapped` : "Mapping needed"}
+                </Badge>
+                <CardTitle className="mt-2 truncate text-lg">{course.name}</CardTitle>
+                <p className="mt-1 truncate text-sm text-muted-foreground">
+                  {course.country ?? "Country not set"} · {course.sourceLabel}
+                </p>
+              </div>
+              <CourseActionsMenu course={course} shotPatternEnabled={shotPatternEnabled} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-3 divide-x rounded-lg border bg-muted/25 text-center">
+              <CourseGridMetric label="Records" value={course.recordCount} />
+              <CourseGridMetric label="Tee sets" value={course.teeSetCount} />
+              <CourseGridMetric label="Rounds" value={course.roundCount} />
+            </dl>
+            <p className="mt-3 text-sm text-muted-foreground">{courseQualitySummary(course)}</p>
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full">
+              <Link href={`/courses/${course.id}/holes`} prefetch={false}>
+                <Settings className="size-4" />
+                Open course
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      ))}
+    </section>
+  );
+}
+
+function CourseGridMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-0 p-3">
+      <dt className="truncate text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-lg font-semibold tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function CourseActionsMenu({
+  course,
+  shotPatternEnabled,
+}: {
+  course: CourseDirectoryCourse;
+  shotPatternEnabled: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon-sm" aria-label={`Actions for ${course.name}`}>
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>Course actions</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link href={`/courses/${course.id}/records`} prefetch={false}>
+            <Trophy className="size-4" />
+            Records
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/courses/${course.id}/holes`} prefetch={false}>
+            <Settings className="size-4" />
+            Manage course
+          </Link>
+        </DropdownMenuItem>
+        {shotPatternEnabled && course.holeCount > 0 ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
+                <MapPinned className="size-4" />
+                Shot pattern
+              </Link>
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -1643,4 +1771,8 @@ function parseCourseTab(value: string) {
   }
 
   return "records";
+}
+
+function parseCourseDirectoryView(value: string): "grid" | "table" {
+  return value === "grid" ? "grid" : "table";
 }

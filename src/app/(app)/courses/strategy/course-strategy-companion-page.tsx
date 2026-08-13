@@ -2,16 +2,21 @@ import Link from "next/link";
 import { Flag, MapPinned, ShieldCheck } from "lucide-react";
 
 import { MobileHoleStrategy } from "@/app/courses/strategy/mobile-hole-strategy";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+import { PlaySetupDrawer } from "@/app/play/play-setup-drawer";
+import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -50,8 +55,8 @@ export default async function CourseStrategyCompanionPage({
       <MobileAppShell className="gap-5" data-course-strategy-companion>
         <MobileTopBar title="Course Strategy" />
 
-        <section className="ios-grouped-list grid gap-4 p-5">
-          <div className="flex items-start justify-between gap-3">
+        <Card>
+          <CardHeader>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Overall game plan
@@ -66,94 +71,89 @@ export default async function CourseStrategyCompanionPage({
                   : ""}
               </p>
             </div>
-            <IOSInlineStatus
-              label={data.strategies.length > 0 ? "Plan ready" : "Setup needed"}
-              tone={data.strategies.length > 0 ? "positive" : "attention"}
-            />
-          </div>
-          <IOSGroupedList label="Round strategy summary" className="bg-card">
-            <IOSListRow
-              icon={ShieldCheck}
-              label="Club to trust"
-              value={pressureClub?.label ?? "Building"}
-              detail={
-                pressureClub
-                  ? `${Math.round(pressureClub.minCarryYd)}–${Math.round(pressureClub.maxCarryYd)} yd measured range`
-                  : "Build a measured bag baseline."
-              }
-            />
-            <IOSListRow
-              label="Low-confidence warning"
-              value={warningClub?.label ?? "No clear warning"}
-              detail={
-                warningClub
-                  ? `${Math.round(warningClub.confidence * 100)}% confidence from ${warningClub.sampleSize} shots · choose a conservative alternative when this club is required`
-                  : "No low-confidence club is separated."
-              }
-            />
-            <IOSListRow
-              label="First-hole plan"
-              value={firstHole?.recommendedClub ?? "Not ready"}
-              detail={
-                firstHole
-                  ? `${firstHole.safeTarget} · ${firstHole.expectedCarryRange}`
-                  : "Map a tee set and trusted bag values."
-              }
-            />
-          </IOSGroupedList>
-          <Button asChild className="min-h-12 rounded-xl">
-            <Link href="/rounds/new">
-              <Flag className="size-4" />
-              Start round
-            </Link>
-          </Button>
-        </section>
+            <CardAction>
+              <Badge variant={data.strategies.length > 0 ? "default" : "outline"}>
+                {data.strategies.length > 0 ? "Plan ready" : "Setup needed"}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <IOSGroupedList label="Round strategy summary" className="bg-card">
+              <IOSListRow
+                icon={ShieldCheck}
+                label="Club to trust"
+                value={pressureClub?.label ?? "Building"}
+                detail={
+                  pressureClub
+                    ? `${Math.round(pressureClub.minCarryYd)}–${Math.round(pressureClub.maxCarryYd)} yd measured range`
+                    : "Build a measured bag baseline."
+                }
+              />
+              <IOSListRow
+                label="Low-confidence warning"
+                value={warningClub?.label ?? "No clear warning"}
+                detail={
+                  warningClub
+                    ? `${Math.round(warningClub.confidence * 100)}% confidence from ${warningClub.sampleSize} shots · choose a conservative alternative when this club is required`
+                    : "No low-confidence club is separated."
+                }
+              />
+              <IOSListRow
+                label="First-hole plan"
+                value={firstHole?.recommendedClub ?? "Not ready"}
+                detail={
+                  firstHole
+                    ? `${firstHole.safeTarget} · ${firstHole.expectedCarryRange}`
+                    : "Map a tee set and trusted bag values."
+                }
+              />
+            </IOSGroupedList>
+          </CardContent>
+          <CardFooter className="bg-background/70 p-3">
+            <Button asChild className="min-h-12 w-full rounded-xl">
+              <Link href="/rounds/new">
+                <Flag className="size-4" />
+                Start round
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
 
-        <IOSDisclosureGroup
-          label="Course selection"
-          items={[
-            {
-              value: "course",
-              title: "Change course",
-              summary: data.selectedCourse?.name ?? "Choose",
-              content: (
-                <form action="/play/select" className="grid gap-3">
-                  <input type="hidden" name="destination" value="strategy" />
-                  <select
-                    name="courseId"
-                    defaultValue={data.selectedCourse?.id ?? ""}
-                    className="min-h-11 w-full rounded-xl border bg-background px-3"
-                    aria-label="Course"
-                  >
-                    {data.courseOptions.map((course) => (
-                      <option key={course.id} value={course.id}>
-                        {course.name}
-                      </option>
-                    ))}
-                  </select>
-                  {data.teeOptions.length > 0 ? (
-                    <select
-                      name="teeSetId"
-                      defaultValue={data.selectedTee?.id ?? ""}
-                      className="min-h-11 w-full rounded-xl border bg-background px-3"
-                      aria-label="Tee"
-                    >
-                      {data.teeOptions.map((tee) => (
-                        <option key={tee.id} value={tee.id}>
-                          {tee.name}
-                          {tee.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  <Button type="submit" variant="outline" className="min-h-11">
-                    Load strategy
-                  </Button>
-                </form>
-              ),
-            },
-          ]}
-        />
+        <PlaySetupDrawer label="Change course or tee">
+          <form action="/play/select" className="grid gap-3">
+            <input type="hidden" name="destination" value="strategy" />
+            <Select name="courseId" defaultValue={data.selectedCourse?.id ?? ""}>
+              <SelectTrigger className="min-h-11 w-full" aria-label="Course">
+                <SelectValue placeholder="Choose a course" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.courseOptions.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
+                    {course.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {data.teeOptions.length > 0 ? (
+              <Select name="teeSetId" defaultValue={data.selectedTee?.id ?? ""}>
+                <SelectTrigger className="min-h-11 w-full" aria-label="Tee">
+                  <SelectValue placeholder="Choose a tee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.teeOptions.map((tee) => (
+                    <SelectItem key={tee.id} value={tee.id}>
+                      {tee.name}
+                      {tee.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            <Button type="submit" className="min-h-11 rounded-xl">
+              Load strategy
+            </Button>
+          </form>
+        </PlaySetupDrawer>
 
         <section className="grid gap-2.5">
           <IOSSectionHeader title="Hole plan" description="One decision at a time." />
@@ -167,14 +167,14 @@ export default async function CourseStrategyCompanionPage({
               courseTwinAvailable={courseTwinAvailable}
             />
           ) : (
-            <IOSGroupedList label="Hole strategy unavailable">
-              <IOSListRow
-                icon={MapPinned}
-                label="Strategy not ready"
-                detail="A mapped tee set and trusted measured bag values are required."
-                href="/play"
-              />
-            </IOSGroupedList>
+            <Alert>
+              <MapPinned aria-hidden />
+              <AlertTitle>Strategy not ready</AlertTitle>
+              <AlertDescription>
+                A mapped tee set and trusted measured bag values are required.{" "}
+                <Link href="/play">Complete play setup.</Link>
+              </AlertDescription>
+            </Alert>
           )}
         </section>
       </MobileAppShell>

@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { ArrowLeft, Cuboid, Flag, MapPinned, Save, Trophy } from "lucide-react";
 import { and, asc, eq, or } from "drizzle-orm";
 
-import { updateTeeSetAction, upsertHoleAction } from "@/app/courses/actions";
+import { upsertHoleAction } from "@/app/courses/actions";
 import {
   DataTableFrame,
   DataPanel,
@@ -44,6 +44,10 @@ import { ensureCourseAutoImport, type CourseAutoImportResult } from "@/lib/cours
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 import { CourseHoleMapEditor } from "@/app/courses/[courseId]/holes/course-hole-map-editor";
 import { GoogleCourseContextPanel } from "@/app/courses/[courseId]/holes/google-course-context-panel";
+import { CourseTeeEditorSheet } from "@/app/courses/[courseId]/holes/course-tee-editor-sheet";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -231,306 +235,379 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           </p>
         </section>
 
-        {data.course.latitude !== null && data.course.longitude !== null ? (
-          <div className="hidden lg:block">
-            <GoogleCourseContextPanel
-              address={data.course.address}
-              googleRating={data.course.googleRating}
-              latitude={data.course.latitude}
-              longitude={data.course.longitude}
-              name={data.course.name}
-              reviewCount={data.course.googleUserRatingsTotal}
-              websiteUrl={data.course.websiteUrl}
-            />
-          </div>
-        ) : null}
+        <Tabs defaultValue="overview" className="min-w-0 gap-5" data-course-detail-tabs>
+          <TabsList
+            variant="line"
+            aria-label="Course detail sections"
+            className="max-w-full overflow-x-auto"
+          >
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="mapping">Mapping</TabsTrigger>
+            <TabsTrigger value="tees">Tee sets</TabsTrigger>
+            <TabsTrigger value="holes">Holes</TabsTrigger>
+            <TabsTrigger value="records">Records & rounds</TabsTrigger>
+          </TabsList>
 
-        {!primaryTeeSet ? (
-          <DataPanel>
-            <SectionHeader
-              title="No tee set"
-              description="This course needs a tee set before holes can be mapped."
-            />
-            <CardContent>
-              {usesAutomaticCourseData ? (
-                <AutoImportStatusContent autoImport={data.autoImport} />
-              ) : (
-                <Button asChild>
-                  <Link href="/courses/new" prefetch={false}>
-                    Create a new course instead
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </DataPanel>
-        ) : allowManualHoleEditing ? (
-          <DataPanel>
-            <div className="hidden lg:block">
-              <SectionHeader
-                title="Visual hole editor"
-                description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
-                action={<MapPinned className="size-5 text-sky-600" />}
-              />
-            </div>
-            <CardContent>
-              <CourseHoleMapEditor
-                courseId={data.course.id}
-                teeSetId={primaryTeeSet.id}
-                teeSetName={primaryTeeSet.name}
-                holes={holesForPrimaryTeeSet.map((hole) => ({
-                  id: hole.id,
-                  holeNumber: hole.holeNumber,
-                  par: hole.par,
-                  strokeIndex: hole.strokeIndex,
-                  yards: hole.yards,
-                  teeLat: hole.teeLat,
-                  teeLng: hole.teeLng,
-                  greenLat: hole.greenLat,
-                  greenLng: hole.greenLng,
-                }))}
-                holeCount={holeSlots.length}
-                saveHoleAction={upsertHoleAction}
-              />
-            </CardContent>
-          </DataPanel>
-        ) : usesAutomaticCourseData && !hasMappedGeometry ? (
-          <DataPanel>
-            <SectionHeader
-              title="Automatic course import"
-              description="Course details are pulled from Google Places and mapped hole data is pulled from available course geometry sources."
-              action={<MapPinned className="size-5 text-sky-600" />}
-            />
-            <CardContent>
-              <AutoImportStatusContent autoImport={data.autoImport} />
-            </CardContent>
-          </DataPanel>
-        ) : (
-          <DataPanel>
-            <SectionHeader
-              title="Read-only course geometry"
-              description="This map is read-only for your account. Import or create a course if you need custom tee or green points."
-              action={<MapPinned className="size-5 text-sky-600" />}
-            />
-            <CardContent>
-              <p className="text-sm leading-6 text-muted-foreground">
-                Reference courses can be selected for rounds and used in overlays. Editing stays
-                limited to courses you own.
-              </p>
-            </CardContent>
-          </DataPanel>
-        )}
+          <TabsContent value="overview" className="grid min-w-0 gap-4">
+            {data.course.latitude !== null && data.course.longitude !== null ? (
+              <div className="hidden lg:block">
+                <GoogleCourseContextPanel
+                  address={data.course.address}
+                  googleRating={data.course.googleRating}
+                  latitude={data.course.latitude}
+                  longitude={data.course.longitude}
+                  name={data.course.name}
+                  reviewCount={data.course.googleUserRatingsTotal}
+                  websiteUrl={data.course.websiteUrl}
+                />
+              </div>
+            ) : null}
 
-        <section className="grid gap-2 lg:hidden">
-          <IOSSectionHeader
-            title="Course options"
-            description="Reference details and secondary destinations"
-          />
-          <IOSDisclosureGroup
-            label="Course details and tools"
-            items={[
-              {
-                value: "course-details",
-                title: "Course details",
-                summary: data.course.country ?? data.course.provider,
-                description: data.course.address ?? "Provider and map reference",
-                content: (
-                  <dl className="grid gap-3 text-sm">
-                    <MobileDetailRow label="Provider" value={data.course.provider} />
-                    <MobileDetailRow label="Country" value={data.course.country ?? "Not set"} />
-                    {data.course.googleRating !== null ? (
-                      <MobileDetailRow
-                        label="Google rating"
-                        value={`${data.course.googleRating.toFixed(1)} · ${integerFormatter.format(data.course.googleUserRatingsTotal ?? 0)} reviews`}
-                      />
-                    ) : null}
-                    {data.course.latitude !== null && data.course.longitude !== null ? (
-                      <MobileDetailRow
-                        label="Map centre"
-                        value={`${coordinateFormatter.format(data.course.latitude)}, ${coordinateFormatter.format(data.course.longitude)}`}
-                      />
-                    ) : null}
-                  </dl>
-                ),
-              },
-              {
-                value: "course-tools",
-                title: "Related tools",
-                summary: "Rounds & overlays",
-                description: "Open another course task",
-                content: (
-                  <div className="grid gap-2">
-                    <Button asChild variant="outline" className="min-h-11 justify-start">
-                      <Link href="/rounds" prefetch={false}>
-                        <Flag className="size-4" aria-hidden />
-                        Rounds
-                      </Link>
-                    </Button>
-                    {hasCourseTwinPilot ? (
-                      <Button asChild variant="outline" className="min-h-11 justify-start">
-                        <Link href={`/play/${courseId}`} prefetch={false}>
-                          <Cuboid className="size-4" aria-hidden />
-                          Open Course Twin
-                        </Link>
-                      </Button>
-                    ) : null}
-                    {shotPatternEnabled ? (
-                      <Button asChild variant="outline" className="min-h-11 justify-start">
-                        <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
-                          <MapPinned className="size-4" aria-hidden />
-                          Shot pattern
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </section>
+            <Alert
+              className={
+                mapStatus === "Ready"
+                  ? "border-primary/30 bg-primary/5"
+                  : "border-amber-500/40 bg-amber-500/5"
+              }
+            >
+              <MapPinned className="size-4" />
+              <AlertTitle>Course mapping: {mapStatus}</AlertTitle>
+              <AlertDescription>
+                {mappedHoleCount === 0
+                  ? "No saved tee-to-green geometry is available yet. Open Mapping to review automatic import or place points manually."
+                  : `${mappedHoleCount} mapped holes are available for round overlays and Course Twin review.`}
+              </AlertDescription>
+            </Alert>
 
-        {primaryTeeSet && showTeeSetTools ? (
-          <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-            <div className="grid gap-4">
+            <ConnectedMetricBar
+              label="Course detail metrics"
+              metrics={[
+                {
+                  label: "Provider",
+                  value: data.course.provider,
+                  detail: data.course.country ?? "Country not set",
+                },
+                { label: "Tee sets", value: data.teeSets.length, detail: "Saved course setups" },
+                {
+                  label: "Mapped holes",
+                  value: mappedHoleCount,
+                  detail: `${holeSlots.length} expected`,
+                },
+                {
+                  label: "Editing",
+                  value: data.isEditable ? "Available" : "Reference",
+                  detail: data.isEditable ? "Owned course data" : "Provider-managed course",
+                },
+              ]}
+            />
+          </TabsContent>
+
+          <TabsContent value="mapping" className="grid min-w-0 gap-4">
+            {!primaryTeeSet ? (
               <DataPanel>
                 <SectionHeader
-                  title="Tee set"
-                  description="Rating and slope improve handicap calculations. Yardage and par drive the round context."
-                  action={<Trophy className="size-5 text-amber-500" />}
+                  title="No tee set"
+                  description="This course needs a tee set before holes can be mapped."
                 />
                 <CardContent>
-                  {data.isEditable ? (
-                    <form action={updateTeeSetAction} className="grid gap-4">
-                      <input type="hidden" name="courseId" value={data.course.id} />
-                      <input type="hidden" name="teeSetId" value={primaryTeeSet.id} />
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <FormField
-                          label="Tee set"
-                          name="name"
-                          defaultValue={primaryTeeSet.name}
-                          required
-                        />
-                        <FormField
-                          label="Par"
-                          name="par"
-                          type="number"
-                          defaultValue={primaryTeeSet.par}
-                          required
-                        />
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <FormField
-                          label="Course rating"
-                          name="courseRating"
-                          type="number"
-                          step="0.1"
-                          defaultValue={primaryTeeSet.courseRating ?? undefined}
-                        />
-                        <FormField
-                          label="Slope"
-                          name="slopeRating"
-                          type="number"
-                          defaultValue={primaryTeeSet.slopeRating ?? undefined}
-                        />
-                        <FormField
-                          label="Yards"
-                          name="yards"
-                          type="number"
-                          defaultValue={primaryTeeSet.yards ?? undefined}
-                        />
-                      </div>
-                      <Button
-                        type="submit"
-                        className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                      >
-                        <Save className="size-4" />
-                        Save tee set
-                      </Button>
-                    </form>
+                  {usesAutomaticCourseData ? (
+                    <AutoImportStatusContent autoImport={data.autoImport} />
                   ) : (
-                    <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                      <ReadonlyValue label="Tee set" value={primaryTeeSet.name} />
-                      <ReadonlyValue label="Par" value={String(primaryTeeSet.par)} />
-                      <ReadonlyValue
-                        label="Course rating"
-                        value={formatOptionalNumber(primaryTeeSet.courseRating)}
-                      />
-                      <ReadonlyValue
-                        label="Slope"
-                        value={primaryTeeSet.slopeRating?.toString() ?? "--"}
-                      />
-                      <ReadonlyValue
-                        label="Yards"
-                        value={primaryTeeSet.yards?.toString() ?? "--"}
-                      />
-                    </dl>
+                    <Button asChild>
+                      <Link href="/courses/new" prefetch={false}>
+                        Create a new course instead
+                      </Link>
+                    </Button>
                   )}
                 </CardContent>
               </DataPanel>
-
-              <section className="hidden gap-3 sm:grid sm:grid-cols-2">
-                <MetricCard
-                  label="Course rating"
-                  value={formatOptionalNumber(primaryTeeSet.courseRating)}
-                  detail="Used directly by the WHS-style differential."
-                  icon={Trophy}
-                  tone="amber"
+            ) : allowManualHoleEditing ? (
+              <DataPanel>
+                <div className="hidden lg:block">
+                  <SectionHeader
+                    title="Visual hole editor"
+                    description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
+                    action={<MapPinned className="size-5 text-sky-600" />}
+                  />
+                </div>
+                <CardContent>
+                  <CourseHoleMapEditor
+                    courseId={data.course.id}
+                    teeSetId={primaryTeeSet.id}
+                    teeSetName={primaryTeeSet.name}
+                    holes={holesForPrimaryTeeSet.map((hole) => ({
+                      id: hole.id,
+                      holeNumber: hole.holeNumber,
+                      par: hole.par,
+                      strokeIndex: hole.strokeIndex,
+                      yards: hole.yards,
+                      teeLat: hole.teeLat,
+                      teeLng: hole.teeLng,
+                      greenLat: hole.greenLat,
+                      greenLng: hole.greenLng,
+                    }))}
+                    holeCount={holeSlots.length}
+                    saveHoleAction={upsertHoleAction}
+                  />
+                </CardContent>
+              </DataPanel>
+            ) : usesAutomaticCourseData && !hasMappedGeometry ? (
+              <DataPanel>
+                <SectionHeader
+                  title="Automatic course import"
+                  description="Course details are pulled from Google Places and mapped hole data is pulled from available course geometry sources."
+                  action={<MapPinned className="size-5 text-sky-600" />}
                 />
-                <MetricCard
-                  label="Overlay geometry"
-                  value={`${holesForPrimaryTeeSet.length}/${holeSlots.length}`}
-                  detail="Saved holes for this tee set."
-                  icon={MapPinned}
-                  tone="green"
+                <CardContent>
+                  <AutoImportStatusContent autoImport={data.autoImport} />
+                </CardContent>
+              </DataPanel>
+            ) : (
+              <DataPanel>
+                <SectionHeader
+                  title="Read-only course geometry"
+                  description="This map is read-only for your account. Import or create a course if you need custom tee or green points."
+                  action={<MapPinned className="size-5 text-sky-600" />}
                 />
-              </section>
-            </div>
+                <CardContent>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Reference courses can be selected for rounds and used in overlays. Editing stays
+                    limited to courses you own.
+                  </p>
+                </CardContent>
+              </DataPanel>
+            )}
+          </TabsContent>
 
-            <DataPanel id="geometry-preview">
-              <SectionHeader
-                title="Geometry preview"
-                description="A lightweight check that the course lines point in the right direction."
-                action={<Badge variant="outline">{primaryTeeSet.name}</Badge>}
-              />
-              <CardContent>
-                <CourseGeometryPreview holes={holesForPrimaryTeeSet} />
-              </CardContent>
-            </DataPanel>
-          </section>
-        ) : null}
-
-        {primaryTeeSet ? (
-          <HoleGeometryTable
-            courseId={data.course.id}
-            teeSetName={primaryTeeSet.name}
-            holes={holeSlots.map((holeNumber) => ({
-              holeNumber,
-              hole: holeByNumber.get(holeNumber) ?? null,
-            }))}
-            editable={allowManualHoleEditing}
-          />
-        ) : null}
-
-        {primaryTeeSet && allowManualHoleEditing ? (
-          <DataPanel className="hidden lg:block">
-            <SectionHeader
-              title="Hole geometry"
-              description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
-              action={<Badge variant="outline">{holeSlots.length} holes</Badge>}
+          <section className="grid gap-2 lg:hidden">
+            <IOSSectionHeader
+              title="Course options"
+              description="Reference details and secondary destinations"
             />
-            <CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-              {holeSlots.map((holeNumber) => (
-                <HoleForm
-                  key={holeNumber}
-                  courseId={data.course.id}
-                  teeSetId={primaryTeeSet.id}
-                  holeNumber={holeNumber}
-                  hole={holeByNumber.get(holeNumber) ?? null}
-                  formId={`desktop-hole-form-${holeNumber}`}
+            <IOSDisclosureGroup
+              label="Course details and tools"
+              items={[
+                {
+                  value: "course-details",
+                  title: "Course details",
+                  summary: data.course.country ?? data.course.provider,
+                  description: data.course.address ?? "Provider and map reference",
+                  content: (
+                    <dl className="grid gap-3 text-sm">
+                      <MobileDetailRow label="Provider" value={data.course.provider} />
+                      <MobileDetailRow label="Country" value={data.course.country ?? "Not set"} />
+                      {data.course.googleRating !== null ? (
+                        <MobileDetailRow
+                          label="Google rating"
+                          value={`${data.course.googleRating.toFixed(1)} · ${integerFormatter.format(data.course.googleUserRatingsTotal ?? 0)} reviews`}
+                        />
+                      ) : null}
+                      {data.course.latitude !== null && data.course.longitude !== null ? (
+                        <MobileDetailRow
+                          label="Map centre"
+                          value={`${coordinateFormatter.format(data.course.latitude)}, ${coordinateFormatter.format(data.course.longitude)}`}
+                        />
+                      ) : null}
+                    </dl>
+                  ),
+                },
+                {
+                  value: "course-tools",
+                  title: "Related tools",
+                  summary: "Rounds & overlays",
+                  description: "Open another course task",
+                  content: (
+                    <div className="grid gap-2">
+                      <Button asChild variant="outline" className="min-h-11 justify-start">
+                        <Link href="/rounds" prefetch={false}>
+                          <Flag className="size-4" aria-hidden />
+                          Rounds
+                        </Link>
+                      </Button>
+                      {hasCourseTwinPilot ? (
+                        <Button asChild variant="outline" className="min-h-11 justify-start">
+                          <Link href={`/play/${courseId}`} prefetch={false}>
+                            <Cuboid className="size-4" aria-hidden />
+                            Open Course Twin
+                          </Link>
+                        </Button>
+                      ) : null}
+                      {shotPatternEnabled ? (
+                        <Button asChild variant="outline" className="min-h-11 justify-start">
+                          <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
+                            <MapPinned className="size-4" aria-hidden />
+                            Shot pattern
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </section>
+
+          <TabsContent value="tees" className="grid min-w-0 gap-4">
+            {primaryTeeSet && showTeeSetTools ? (
+              <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="grid gap-4">
+                  <DataPanel>
+                    <SectionHeader
+                      title="Tee set"
+                      description="Rating and slope improve handicap calculations. Yardage and par drive the round context."
+                      action={<Trophy className="size-5 text-amber-500" />}
+                    />
+                    <CardContent>
+                      {data.isEditable ? (
+                        <div className="grid gap-4">
+                          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                            <ReadonlyValue label="Tee set" value={primaryTeeSet.name} />
+                            <ReadonlyValue label="Par" value={String(primaryTeeSet.par)} />
+                            <ReadonlyValue
+                              label="Course rating"
+                              value={formatOptionalNumber(primaryTeeSet.courseRating)}
+                            />
+                            <ReadonlyValue
+                              label="Slope"
+                              value={primaryTeeSet.slopeRating?.toString() ?? "--"}
+                            />
+                            <ReadonlyValue
+                              label="Yards"
+                              value={primaryTeeSet.yards?.toString() ?? "--"}
+                            />
+                          </dl>
+                          <CourseTeeEditorSheet courseId={data.course.id} teeSet={primaryTeeSet} />
+                        </div>
+                      ) : (
+                        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                          <ReadonlyValue label="Tee set" value={primaryTeeSet.name} />
+                          <ReadonlyValue label="Par" value={String(primaryTeeSet.par)} />
+                          <ReadonlyValue
+                            label="Course rating"
+                            value={formatOptionalNumber(primaryTeeSet.courseRating)}
+                          />
+                          <ReadonlyValue
+                            label="Slope"
+                            value={primaryTeeSet.slopeRating?.toString() ?? "--"}
+                          />
+                          <ReadonlyValue
+                            label="Yards"
+                            value={primaryTeeSet.yards?.toString() ?? "--"}
+                          />
+                        </dl>
+                      )}
+                    </CardContent>
+                  </DataPanel>
+
+                  <section className="hidden gap-3 sm:grid sm:grid-cols-2">
+                    <MetricCard
+                      label="Course rating"
+                      value={formatOptionalNumber(primaryTeeSet.courseRating)}
+                      detail="Used directly by the WHS-style differential."
+                      icon={Trophy}
+                      tone="amber"
+                    />
+                    <MetricCard
+                      label="Overlay geometry"
+                      value={`${holesForPrimaryTeeSet.length}/${holeSlots.length}`}
+                      detail="Saved holes for this tee set."
+                      icon={MapPinned}
+                      tone="green"
+                    />
+                  </section>
+                </div>
+
+                <DataPanel id="geometry-preview">
+                  <SectionHeader
+                    title="Geometry preview"
+                    description="A lightweight check that the course lines point in the right direction."
+                    action={<Badge variant="outline">{primaryTeeSet.name}</Badge>}
+                  />
+                  <CardContent>
+                    <CourseGeometryPreview holes={holesForPrimaryTeeSet} />
+                  </CardContent>
+                </DataPanel>
+              </section>
+            ) : null}
+          </TabsContent>
+
+          <TabsContent value="holes" className="grid min-w-0 gap-4">
+            {primaryTeeSet ? (
+              <HoleGeometryTable
+                courseId={data.course.id}
+                teeSetName={primaryTeeSet.name}
+                holes={holeSlots.map((holeNumber) => ({
+                  holeNumber,
+                  hole: holeByNumber.get(holeNumber) ?? null,
+                }))}
+                editable={allowManualHoleEditing}
+              />
+            ) : null}
+
+            {primaryTeeSet && allowManualHoleEditing ? (
+              <DataPanel className="hidden lg:block">
+                <SectionHeader
+                  title="Hole geometry"
+                  description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
+                  action={<Badge variant="outline">{holeSlots.length} holes</Badge>}
                 />
-              ))}
-            </CardContent>
-          </DataPanel>
-        ) : null}
+                <CardContent className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+                  {holeSlots.map((holeNumber) => (
+                    <HoleForm
+                      key={holeNumber}
+                      courseId={data.course.id}
+                      teeSetId={primaryTeeSet.id}
+                      holeNumber={holeNumber}
+                      hole={holeByNumber.get(holeNumber) ?? null}
+                      formId={`desktop-hole-form-${holeNumber}`}
+                    />
+                  ))}
+                </CardContent>
+              </DataPanel>
+            ) : null}
+          </TabsContent>
+
+          <TabsContent value="records" className="grid min-w-0 gap-4">
+            <Tabs defaultValue="records" className="min-w-0 gap-4">
+              <TabsList aria-label="Course record and round destinations">
+                <TabsTrigger value="records">Records</TabsTrigger>
+                <TabsTrigger value="rounds">Rounds</TabsTrigger>
+              </TabsList>
+              <TabsContent value="records">
+                <DataPanel>
+                  <SectionHeader
+                    title="Course records"
+                    description="Open the verified record boards and attempts for this course."
+                  />
+                  <CardContent>
+                    <Button asChild>
+                      <Link href={`/courses/${courseId}/records`} prefetch={false}>
+                        <Trophy className="size-4" />
+                        Open course records
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </DataPanel>
+              </TabsContent>
+              <TabsContent value="rounds">
+                <DataPanel>
+                  <SectionHeader
+                    title="Linked rounds"
+                    description="Review saved scorecards and shot evidence associated with this course."
+                  />
+                  <CardContent>
+                    <Button asChild>
+                      <Link href="/rounds" prefetch={false}>
+                        <Flag className="size-4" />
+                        Open rounds
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </DataPanel>
+              </TabsContent>
+            </Tabs>
+          </TabsContent>
+        </Tabs>
       </DesktopWorkbenchLayout>
     </PageShell>
   );

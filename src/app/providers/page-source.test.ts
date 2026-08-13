@@ -55,6 +55,17 @@ describe("providers desktop workbench", () => {
     expect(source).not.toContain("coming soon");
   });
 
+  it("uses integration cards, action menus, confirmation and isolated diagnostics tabs", () => {
+    expect(source).toContain("data-provider-workbench-tabs");
+    expect(source).toContain('<TabsTrigger value="connections">');
+    expect(source).toContain('<TabsTrigger value="diagnostics">');
+    expect(source).toContain("ProviderConnectionActions");
+    expect(source).toContain("ConnectedMetricBar");
+    expect(source).toContain("OperationStepper");
+    expect(source).toContain("StatusTimeline");
+    expect(source).toContain("AppEmptyState");
+  });
+
   it("does not add the contextual AI rail to the provider console", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");

@@ -1,12 +1,27 @@
 "use client";
 
 import { type ChangeEvent, useActionState, useRef, useState } from "react";
-import { ImagePlus, Loader2, Send, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, Plus, Send, Trash2 } from "lucide-react";
 
 import { createStatusUpdateAction } from "@/app/feed/actions";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 type VisibilityOption = "private" | "friends" | "public";
@@ -26,6 +41,46 @@ const MAX_BODY_LENGTH = 800;
 const MAX_SOURCE_IMAGE_BYTES = 12_000_000;
 const MAX_STATUS_IMAGE_EDGE = 1280;
 const MAX_DATA_URL_LENGTH = 650_000;
+
+export function StatusUpdateComposerSheet({
+  displayName,
+  username,
+  avatarUrl,
+  defaultVisibility,
+}: {
+  displayName: string;
+  username: string;
+  avatarUrl?: string | null;
+  defaultVisibility: VisibilityOption;
+}) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button type="button">
+          <Plus className="size-4" />
+          Create post
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>Create a feed post</SheetTitle>
+          <SheetDescription>
+            Choose the audience and share a range note, recap or photo.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="px-4 pb-4">
+          <StatusUpdateComposer
+            displayName={displayName}
+            username={username}
+            avatarUrl={avatarUrl}
+            defaultVisibility={defaultVisibility}
+            className="border-0 shadow-none"
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
 export function StatusUpdateComposer({
   displayName,
@@ -197,17 +252,18 @@ function StatusUpdateComposerFields({
               </Button>
               <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <span>Visibility</span>
-                <select
-                  name="visibility"
-                  defaultValue={defaultVisibility}
-                  className="h-9 rounded-lg border bg-white px-2 text-xs text-foreground"
-                >
-                  {visibilityOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {titleCase(option)}
-                    </option>
-                  ))}
-                </select>
+                <Select name="visibility" defaultValue={defaultVisibility}>
+                  <SelectTrigger size="sm" aria-label="Post visibility">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {visibilityOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {titleCase(option)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
             </div>
             <div className="flex items-center gap-2">

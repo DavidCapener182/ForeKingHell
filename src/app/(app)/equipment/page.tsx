@@ -50,7 +50,15 @@ import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -936,8 +944,8 @@ function EquipmentMobileDisclosure({
   children: ReactNode;
 }) {
   return (
-    <details className="group sm:contents">
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-sm shadow-sm sm:hidden [&::-webkit-details-marker]:hidden">
+    <Collapsible className="group sm:contents">
+      <CollapsibleTrigger className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-left text-sm shadow-sm sm:hidden">
         <span className="min-w-0">
           <span className="block truncate font-semibold tracking-normal">{title}</span>
           {description ? (
@@ -945,12 +953,14 @@ function EquipmentMobileDisclosure({
           ) : null}
         </span>
         <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
           aria-hidden
         />
-      </summary>
-      <div className="hidden group-open:block sm:contents">{children}</div>
-    </details>
+      </CollapsibleTrigger>
+      <CollapsibleContent forceMount className="hidden group-data-[state=open]:block sm:!contents">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -2615,18 +2625,23 @@ function SelectField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <select
+      <Select
         name={name}
+        defaultValue={optionalLabel ? "__none__" : values[0]?.value}
         required={!optionalLabel}
-        className="min-h-11 rounded-xl border bg-white px-3 text-sm"
       >
-        {optionalLabel ? <option value="">{optionalLabel}</option> : null}
-        {values.map((value) => (
-          <option key={value.value} value={value.value}>
-            {value.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="min-h-11 w-full bg-white">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {optionalLabel ? <SelectItem value="__none__">{optionalLabel}</SelectItem> : null}
+          {values.map((value) => (
+            <SelectItem key={value.value} value={value.value}>
+              {value.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </label>
   );
 }

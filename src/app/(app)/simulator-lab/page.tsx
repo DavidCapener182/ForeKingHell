@@ -49,6 +49,7 @@ import {
 } from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -314,12 +315,14 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
             action={<Flame className="size-5 text-rose-500" />}
           />
           <CardContent>
-            <details className="rounded-lg border bg-white/70 p-3">
-              <summary className="cursor-pointer text-sm font-semibold">Roast draft</summary>
-              <div className="mt-3">
+            <Collapsible className="rounded-lg border bg-white/70 p-3">
+              <CollapsibleTrigger className="w-full cursor-pointer text-left text-sm font-semibold">
+                Roast draft
+              </CollapsibleTrigger>
+              <CollapsibleContent forceMount className="mt-3 data-[state=closed]:hidden">
                 <SessionRoastPanel session={data.latestSession} facts={data.roastFacts} />
-              </div>
-            </details>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </DataPanel>
       </DesktopWorkbenchLayout>
@@ -740,13 +743,15 @@ function RangeRealityCockpit({
                   </p>
                 </div>
               </div>
-              <details className="mt-4 rounded-lg border bg-white/70 p-3 text-sm">
-                <summary className="flex cursor-pointer items-center gap-2 font-medium">
+              <Collapsible className="mt-4 rounded-lg border bg-white/70 p-3 text-sm">
+                <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 text-left font-medium">
                   <Info className="size-4 text-emerald-700" />
                   How is this calculated?
-                </summary>
-                <p className="mt-2 leading-6 text-muted-foreground">{estimate.methodLabel}</p>
-              </details>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 leading-6 text-muted-foreground">
+                  {estimate.methodLabel}
+                </CollapsibleContent>
+              </Collapsible>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   asChild
@@ -768,16 +773,16 @@ function RangeRealityCockpit({
             </div>
             <CoachSummaryCard reality={reality} />
             {estimate.caveats.length > 0 ? (
-              <details className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950/80">
-                <summary className="cursor-pointer font-medium">
+              <Collapsible className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950/80">
+                <CollapsibleTrigger className="w-full cursor-pointer text-left font-medium">
                   Estimate caveats ({estimate.caveats.length})
-                </summary>
-                <div className="mt-2 grid gap-1.5 leading-6">
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 grid gap-1.5 leading-6">
                   {estimate.caveats.slice(0, 3).map((caveat) => (
                     <p key={caveat}>{caveat}</p>
                   ))}
-                </div>
-              </details>
+                </CollapsibleContent>
+              </Collapsible>
             ) : null}
           </div>
           <div className="grid gap-3">

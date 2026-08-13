@@ -25,6 +25,16 @@ describe("round detail desktop workspace source", () => {
     expect(layoutBlock).toContain("Shot corrections");
   });
 
+  it("uses shadcn tabs to separate the desktop round review into focused views", () => {
+    expect(source).toContain("<LazyRoundReviewTabs value={view} sessionId={sessionId} />");
+    expect(source).toContain('view === "summary"');
+    expect(source).toContain('view === "scorecard"');
+    expect(source).toContain('view === "map"');
+    expect(source).toContain('view === "evidence"');
+    expect(source).toContain('view === "corrections"');
+    expect(source).toContain("parseRoundReviewView");
+  });
+
   it("keeps round shot corrections as a controlled exportable table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("roundShotCorrectionColumns");
@@ -108,7 +118,7 @@ describe("round detail desktop workspace source", () => {
     expect(mobileDetail).not.toContain("<MobileRoundProof");
     expect(mobileDetail).toContain("Corrections & proof");
     expect(mobileDetail).toContain("Open Full Site");
-    expect(source).toContain("<RoundShotMap");
+    expect(source).toContain("<LazyRoundShotMap");
     expect(source).toContain('id="mobile-round-review"');
   });
 });

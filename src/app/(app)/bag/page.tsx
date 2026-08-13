@@ -43,6 +43,7 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { FacePathDeliveryChart } from "@/components/visuals/face-path-delivery-chart";
@@ -57,7 +58,6 @@ import {
   MobileBentoSummary,
   MobileDataCard,
   MobileDataList,
-  MobileSectionChips,
   PageShell,
   SectionHeader,
   StatusPill,
@@ -70,6 +70,7 @@ import {
   NativeListSection,
 } from "@/components/mobile-sports";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -699,111 +700,6 @@ export default async function BagPage({ searchParams }: PageProps) {
           trend={bagScoreTrend}
         />
 
-        {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
-
-        <MobileSectionChips
-          items={[
-            { label: "Health", href: "#bag-health" },
-            { label: "Core", href: "#core-intelligence" },
-            { label: "Club", href: "#club-intelligence" },
-            { label: "Analytics", href: "#advanced-analytics" },
-            { label: "Equipment", href: "#equipment-development" },
-            { label: "Reference", href: "#reference-data" },
-          ]}
-        />
-
-        <BagStickySummary rows={gappingRows} />
-
-        <section id="core-intelligence" className="grid min-w-0 scroll-mt-28 gap-4">
-          <BagZoneHeader
-            eyebrow="Core bag intelligence"
-            title="How healthy is the bag?"
-            description="Confidence, gapping and movement sit together so the first screen explains the bag rather than sending you club by club."
-          />
-          <BagConfidenceLadder
-            rows={gappingRows}
-            maxCarryYd={maxDisplayCarry}
-            findings={bagDoctorFindings}
-          />
-          <ClubEvolutionPanel clubs={bag} />
-        </section>
-
-        <ClubIntelligencePanel
-          clubs={clubIntelligenceItems}
-          initialClubId={bestClub?.id ?? bag[0]?.id}
-        />
-
-        <section id="advanced-analytics" className="grid min-w-0 scroll-mt-28 gap-4">
-          <BagZoneHeader
-            eyebrow="Advanced analytics"
-            title="Why does the bag behave like this?"
-            description="The diagnostic modules now live together: confidence windows, face-to-path, pattern overlays and personal strokes gained."
-          />
-          <div className="grid gap-4">
-            <div className="grid gap-4 xl:grid-cols-2">
-              <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
-              <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
-            </div>
-            <PathTrendPanel trend={pathTrend} />
-            <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
-          </div>
-        </section>
-
-        <section id="equipment-development" className="grid min-w-0 scroll-mt-28 gap-4">
-          <BagZoneHeader
-            eyebrow="Equipment development"
-            title="What should change next?"
-            description="Gap-wedge integration, wedge windows and equipment decisions are grouped as development work, not scattered through the readout."
-          />
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-            <SmartBagBuilderPanel model={smartBagBuilder} />
-            <WedgeMatrixPanel matrix={wedgeMatrix} />
-          </div>
-          <BagSimulator
-            clubs={bag.flatMap((club) => {
-              const carry = clubPrimaryCarryYd(club);
-              if (carry === null) return [];
-              return [
-                {
-                  id: club.id,
-                  label: formatClubType(club.type),
-                  carryYd: carry,
-                  p25Yd: club.stock.latestReliableCarryP25Yd ?? carry - 6,
-                  p75Yd: club.stock.latestReliableCarryP75Yd ?? carry + 6,
-                  leftYd: Math.abs(club.stock.dispersionLeftYd ?? 0),
-                  rightYd: Math.abs(club.stock.dispersionRightYd ?? 0),
-                  confidence: club.stock.confidenceScore,
-                },
-              ];
-            })}
-          />
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <AiCaddiePanel cards={aiCaddieCards} />
-            <BagFeaturePanel data={featureData} />
-          </div>
-          {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
-        </section>
-
-        <section id="reference-data" className="grid min-w-0 scroll-mt-28 gap-4">
-          <BagZoneHeader
-            eyebrow="Reference data"
-            title="Useful detail, kept out of the first read"
-            description="Personal bests, target lookup, benchmarks, gapping tables and course reminders are still here, but they no longer dominate the bag readout."
-          />
-          <PersonalBestSnapshotPanel clubs={bag} />
-          <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-          {benchmarkRows.length > 0 ? (
-            <BenchmarkReferencePanel
-              rows={benchmarkRows}
-              peerSummary={peerBenchmarkSummary}
-              peerBenchmarksLoaded={peerBenchmarksLoaded}
-            />
-          ) : null}
-          {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
-          <CourseDecisionPanel advice={courseAdvice} />
-          {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
-        </section>
-
         {bag.length === 0 ? (
           <Card className="premium-card">
             <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
@@ -816,18 +712,92 @@ export default async function BagPage({ searchParams }: PageProps) {
               </div>
             </CardContent>
           </Card>
-        ) : null}
+        ) : (
+          <Tabs defaultValue="distances" className="min-w-0 gap-5" data-bag-workspace>
+            <TabsList variant="line" aria-label="Bag workspace">
+              <TabsTrigger value="distances">Distances</TabsTrigger>
+              <TabsTrigger value="clubs">Clubs</TabsTrigger>
+              <TabsTrigger value="scoring">Scoring</TabsTrigger>
+              <TabsTrigger value="fitting">Fitting</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+            </TabsList>
 
-        <BagSocialComparison
-          bestClub={bestClub}
-          leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
-          challenges={challengeData.active}
-        />
-        <StickyMobileAction>
-          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Link href="#clubs">Find club</Link>
-          </Button>
-        </StickyMobileAction>
+            <TabsContent value="distances" className="grid min-w-0 gap-5">
+              {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
+              <BagStickySummary rows={gappingRows} />
+              <BagConfidenceLadder
+                rows={gappingRows}
+                maxCarryYd={maxDisplayCarry}
+                findings={bagDoctorFindings}
+              />
+              {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
+            </TabsContent>
+
+            <TabsContent value="clubs" className="grid min-w-0 gap-5">
+              <ClubIntelligencePanel
+                clubs={clubIntelligenceItems}
+                initialClubId={bestClub?.id ?? bag[0]?.id}
+              />
+              <PersonalBestSnapshotPanel clubs={bag} />
+              <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
+              {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
+            </TabsContent>
+
+            <TabsContent value="scoring" className="grid min-w-0 gap-5">
+              <div className="grid gap-5 xl:grid-cols-2">
+                <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
+                <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
+              </div>
+              <PathTrendPanel trend={pathTrend} />
+              <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
+              <WedgeMatrixPanel matrix={wedgeMatrix} />
+              <CourseDecisionPanel advice={courseAdvice} />
+            </TabsContent>
+
+            <TabsContent value="fitting" className="grid min-w-0 gap-5">
+              <SmartBagBuilderPanel model={smartBagBuilder} />
+              <BagSimulator
+                clubs={bag.flatMap((club) => {
+                  const carry = clubPrimaryCarryYd(club);
+                  if (carry === null) return [];
+                  return [
+                    {
+                      id: club.id,
+                      label: formatClubType(club.type),
+                      carryYd: carry,
+                      p25Yd: club.stock.latestReliableCarryP25Yd ?? carry - 6,
+                      p75Yd: club.stock.latestReliableCarryP75Yd ?? carry + 6,
+                      leftYd: Math.abs(club.stock.dispersionLeftYd ?? 0),
+                      rightYd: Math.abs(club.stock.dispersionRightYd ?? 0),
+                      confidence: club.stock.confidenceScore,
+                    },
+                  ];
+                })}
+              />
+              <div className="grid gap-5 xl:grid-cols-2">
+                <AiCaddiePanel cards={aiCaddieCards} />
+                <BagFeaturePanel data={featureData} />
+              </div>
+              {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
+            </TabsContent>
+
+            <TabsContent value="history" className="grid min-w-0 gap-5">
+              <ClubEvolutionPanel clubs={bag} />
+              {benchmarkRows.length > 0 ? (
+                <BenchmarkReferencePanel
+                  rows={benchmarkRows}
+                  peerSummary={peerBenchmarkSummary}
+                  peerBenchmarksLoaded={peerBenchmarksLoaded}
+                />
+              ) : null}
+              <BagSocialComparison
+                bestClub={bestClub}
+                leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+                challenges={challengeData.active}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -1746,28 +1716,6 @@ function BagScoreTrendPanel({
   );
 }
 
-function BagZoneHeader({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div className="max-w-4xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-          {eyebrow}
-        </p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">{title}</h2>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
 function parsePersonalBestMetric(value: string | string[] | undefined): PersonalBestMetric {
   const rawValue = Array.isArray(value) ? value[0] : value;
 
@@ -2165,14 +2113,19 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
           />
         )}
         {trend.recentShots.length > 0 ? (
-          <details className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-950 marker:hidden">
-              <span>Expand shot-by-shot diagrams</span>
-              <span className="text-xs font-medium text-muted-foreground">
-                {trend.recentShots.length} recent shots
-              </span>
-            </summary>
-            <div className="mt-3 grid gap-3 xl:grid-cols-2">
+          <Collapsible className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                className="flex h-auto w-full justify-between px-0 text-slate-950"
+              >
+                <span>Expand shot-by-shot diagrams</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {trend.recentShots.length} recent shots
+                </span>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 grid gap-3 xl:grid-cols-2">
               {trend.recentShots.map((shot) => (
                 <div key={shot.key} className="rounded-lg border border-slate-200 bg-white p-3">
                   <div>
@@ -2197,8 +2150,8 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                   />
                 </div>
               ))}
-            </div>
-          </details>
+            </CollapsibleContent>
+          </Collapsible>
         ) : null}
       </CardContent>
     </DataPanel>
@@ -2522,29 +2475,36 @@ function BagStickySummary({ rows }: { rows: GappingRow[] }) {
 function StockFilterPanel({ clubs }: { clubs: BagClub[] }) {
   return (
     <DataPanel id="best-stock-filters" className="scroll-mt-28">
-      <details className="group">
-        <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-4 py-3 transition-colors hover:bg-slate-50/70 group-open:border-border [&::-webkit-details-marker]:hidden">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <Database className="size-5 text-sky-600" />
-              <h2 className="text-lg font-semibold tracking-normal text-[#111611] sm:text-xl">
-                Best-stock filters
-              </h2>
+      <Collapsible className="group">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-4 py-3 text-left transition-colors hover:bg-slate-50/70 group-data-[state=open]:border-border"
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Database className="size-5 text-sky-600" />
+                <h2 className="text-lg font-semibold tracking-normal text-[#111611] sm:text-xl">
+                  Best-stock filters
+                </h2>
+              </div>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Shows why rows did not feed the Best Stock median. Personal Best is tracked
+                separately so one long clean shot still appears.
+              </p>
             </div>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Shows why rows did not feed the Best Stock median. Personal Best is tracked separately
-              so one long clean shot still appears.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <StatusPill tone="sky">Secondary</StatusPill>
-            <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
-          </div>
-        </summary>
-        <CardContent>
-          <StockFilterCards clubs={clubs} />
-        </CardContent>
-      </details>
+            <div className="flex items-center gap-3">
+              <StatusPill tone="sky">Secondary</StatusPill>
+              <ChevronDown className="size-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </div>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent asChild>
+          <CardContent>
+            <StockFilterCards clubs={clubs} />
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </DataPanel>
   );
 }
@@ -3979,151 +3939,145 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
             ))}
           </MobileDataList>
         </MobileAccordionSection>
-        <details
-          open
-          className="group hidden min-w-0 overflow-hidden sm:block"
-          data-bag-gapping-table
-        >
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-sky-300 [&::-webkit-details-marker]:hidden">
+        <div className="hidden min-w-0 overflow-hidden sm:block" data-bag-gapping-table>
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
             <span>Full gapping table</span>
-            <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="mt-3">
-            <DesktopTableWorkbenchControls
-              viewKey="bag-gapping"
-              scope="bag"
-              currentViewLabel="Full bag gapping reference"
-              resultLabel={`${numberFormatter.format(rows.length)} clubs`}
-              columns={bagGappingColumns}
-              suggestedViews={bagGappingSuggestedViews}
-              exportTableId="bag-gapping"
-              exportFileName="forekinghell-bag-gapping-view.csv"
-              className="mb-3"
-            />
-            <DataTableFrame mainTable mainTableLabel="Full bag gapping table" stickyFirstColumn>
-              <Table
-                className="min-w-[1220px]"
-                data-workbench-scope="bag"
-                data-workbench-export-table="bag-gapping"
-                aria-describedby="bag-gapping-table-summary"
-              >
-                <TableCaption id="bag-gapping-table-summary" className="sr-only">
-                  Full bag gapping table with stock carry, latest reliable carry, recommended
-                  number, personal best, target gap, sample size and decision confidence.
-                </TableCaption>
-                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                  <TableRow>
-                    <TableHead
-                      data-column="club"
-                      className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                    >
-                      Club
-                    </TableHead>
-                    <TableHead data-column="model">Model</TableHead>
-                    <TableHead data-column="best-stock" className="text-right">
-                      Best stock
-                    </TableHead>
-                    <TableHead data-column="latest-reliable" className="text-right">
-                      Latest reliable
-                    </TableHead>
-                    <TableHead data-column="recommended" className="text-right">
-                      Recommended
-                    </TableHead>
-                    <TableHead data-column="personal-best" className="text-right">
-                      Personal best
-                    </TableHead>
-                    <TableHead data-column="gap" className="text-right">
-                      Gap
-                    </TableHead>
-                    <TableHead data-column="target" className="text-right">
-                      Target
-                    </TableHead>
-                    <TableHead data-column="work-on" className="text-right">
-                      Work on
-                    </TableHead>
-                    <TableHead data-column="sample" className="text-right">
-                      Sample
-                    </TableHead>
-                    <TableHead data-column="decision" className="text-right">
-                      Decision
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row) => (
-                    <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
-                      <TableCell
-                        data-column="club"
-                        className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                      >
-                        <Link
-                          href={`/bag/${row.id}`}
-                          className="font-semibold text-foreground underline-offset-4 hover:underline"
-                        >
-                          {formatClubType(row.clubType)}
-                        </Link>
-                      </TableCell>
-                      <TableCell
-                        data-column="model"
-                        className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground"
-                      >
-                        {row.brandModel}
-                      </TableCell>
-                      <TableCell data-column="best-stock" className="text-right font-semibold">
-                        {formatMetric(row.carryYd)}
-                        {row.carryYd === null ? "" : " yd"}
-                      </TableCell>
-                      <TableCell data-column="latest-reliable" className="text-right">
-                        <span className="font-medium">
-                          {formatMetric(row.latestReliableCarryYd)}
-                          {row.latestReliableCarryYd === null ? "" : " yd"}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {formatCarryRange(
-                            row.latestReliableCarryP25Yd,
-                            row.latestReliableCarryP75Yd,
-                          )}
-                        </span>
-                      </TableCell>
-                      <TableCell data-column="recommended" className="text-right">
-                        {formatMetric(row.playNumberYd)}
-                        {row.playNumberYd === null ? "" : " yd"}
-                      </TableCell>
-                      <TableCell data-column="personal-best" className="text-right">
-                        {formatMetric(row.personalBestCarryYd)}
-                        {row.personalBestCarryYd === null ? "" : " yd"}
-                      </TableCell>
-                      <TableCell data-column="gap" className="text-right">
-                        <GapBadge row={row} />
-                      </TableCell>
-                      <TableCell data-column="target" className="text-right">
-                        <span className="font-medium">
-                          {formatMetric(row.targetCarryYd)}
-                          {row.targetCarryYd === null ? "" : " yd"}
-                        </span>
-                        {row.targetPlayNumberYd === null ? null : (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {row.targetPlayNumberYd} play
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell data-column="work-on" className="text-right">
-                        <WorkOnBadge row={row} />
-                      </TableCell>
-                      <TableCell data-column="sample" className="text-right">
-                        {row.sampleSize}
-                      </TableCell>
-                      <TableCell data-column="decision" className="text-right">
-                        <span className="font-medium">{row.confidenceScore}%</span>
-                        <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </DataTableFrame>
+            <StatusPill tone="sky">{rows.length} clubs</StatusPill>
           </div>
-        </details>
+          <DesktopTableWorkbenchControls
+            viewKey="bag-gapping"
+            scope="bag"
+            currentViewLabel="Full bag gapping reference"
+            resultLabel={`${numberFormatter.format(rows.length)} clubs`}
+            columns={bagGappingColumns}
+            suggestedViews={bagGappingSuggestedViews}
+            exportTableId="bag-gapping"
+            exportFileName="forekinghell-bag-gapping-view.csv"
+            className="mb-3"
+          />
+          <DataTableFrame mainTable mainTableLabel="Full bag gapping table" stickyFirstColumn>
+            <Table
+              className="min-w-[1220px]"
+              data-workbench-scope="bag"
+              data-workbench-export-table="bag-gapping"
+              aria-describedby="bag-gapping-table-summary"
+            >
+              <TableCaption id="bag-gapping-table-summary" className="sr-only">
+                Full bag gapping table with stock carry, latest reliable carry, recommended number,
+                personal best, target gap, sample size and decision confidence.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                <TableRow>
+                  <TableHead
+                    data-column="club"
+                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  >
+                    Club
+                  </TableHead>
+                  <TableHead data-column="model">Model</TableHead>
+                  <TableHead data-column="best-stock" className="text-right">
+                    Best stock
+                  </TableHead>
+                  <TableHead data-column="latest-reliable" className="text-right">
+                    Latest reliable
+                  </TableHead>
+                  <TableHead data-column="recommended" className="text-right">
+                    Recommended
+                  </TableHead>
+                  <TableHead data-column="personal-best" className="text-right">
+                    Personal best
+                  </TableHead>
+                  <TableHead data-column="gap" className="text-right">
+                    Gap
+                  </TableHead>
+                  <TableHead data-column="target" className="text-right">
+                    Target
+                  </TableHead>
+                  <TableHead data-column="work-on" className="text-right">
+                    Work on
+                  </TableHead>
+                  <TableHead data-column="sample" className="text-right">
+                    Sample
+                  </TableHead>
+                  <TableHead data-column="decision" className="text-right">
+                    Decision
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="club"
+                      className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    >
+                      <Link
+                        href={`/bag/${row.id}`}
+                        className="font-semibold text-foreground underline-offset-4 hover:underline"
+                      >
+                        {formatClubType(row.clubType)}
+                      </Link>
+                    </TableCell>
+                    <TableCell
+                      data-column="model"
+                      className="max-w-[220px] overflow-hidden text-ellipsis text-muted-foreground"
+                    >
+                      {row.brandModel}
+                    </TableCell>
+                    <TableCell data-column="best-stock" className="text-right font-semibold">
+                      {formatMetric(row.carryYd)}
+                      {row.carryYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell data-column="latest-reliable" className="text-right">
+                      <span className="font-medium">
+                        {formatMetric(row.latestReliableCarryYd)}
+                        {row.latestReliableCarryYd === null ? "" : " yd"}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {formatCarryRange(
+                          row.latestReliableCarryP25Yd,
+                          row.latestReliableCarryP75Yd,
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell data-column="recommended" className="text-right">
+                      {formatMetric(row.playNumberYd)}
+                      {row.playNumberYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell data-column="personal-best" className="text-right">
+                      {formatMetric(row.personalBestCarryYd)}
+                      {row.personalBestCarryYd === null ? "" : " yd"}
+                    </TableCell>
+                    <TableCell data-column="gap" className="text-right">
+                      <GapBadge row={row} />
+                    </TableCell>
+                    <TableCell data-column="target" className="text-right">
+                      <span className="font-medium">
+                        {formatMetric(row.targetCarryYd)}
+                        {row.targetCarryYd === null ? "" : " yd"}
+                      </span>
+                      {row.targetPlayNumberYd === null ? null : (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          {row.targetPlayNumberYd} play
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell data-column="work-on" className="text-right">
+                      <WorkOnBadge row={row} />
+                    </TableCell>
+                    <TableCell data-column="sample" className="text-right">
+                      {row.sampleSize}
+                    </TableCell>
+                    <TableCell data-column="decision" className="text-right">
+                      <span className="font-medium">{row.confidenceScore}%</span>
+                      <span className="ml-2 text-muted-foreground">{row.decisionLabel}</span>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
       </CardContent>
     </Card>
   );
@@ -4657,12 +4611,17 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
           })}
         </div>
         {driverContext ? <DriverEvolutionContextCard context={driverContext} /> : null}
-        <details className="group mt-3">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-emerald-300 [&::-webkit-details-marker]:hidden">
-            <span>Expand evolution notes</span>
-            <ChevronDown className="size-5 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Collapsible className="group mt-3">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-emerald-300"
+            >
+              <span>Expand evolution notes</span>
+              <ChevronDown className="size-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {clubLines.map(({ club, measuredPoints }) => {
               const readout = clubEvolutionReadout(club, measuredPoints);
 
@@ -4676,8 +4635,8 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
                 </div>
               );
             })}
-          </div>
-        </details>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </DataPanel>
   );

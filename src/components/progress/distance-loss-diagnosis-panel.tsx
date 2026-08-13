@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Activity, BarChart3 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DataPanel, SectionHeader, StatusPill } from "@/components/premium";
 import type { DistanceLossDiagnosis, DistanceLossFactor } from "@/lib/distance-loss-diagnosis";
 import { cn } from "@/lib/utils";
@@ -26,15 +28,17 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
       />
       <div className="grid gap-4 p-4">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <div className="rounded-xl border border-border/70 bg-white/70 p-4">
+          <Alert className="bg-white/70 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
               Current read
             </p>
-            <h2 className="mt-2 text-xl font-bold leading-7 tracking-normal text-slate-950">
+            <AlertTitle className="mt-2 text-xl font-bold leading-7 tracking-normal text-slate-950">
               {diagnosis.headline}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{diagnosis.summary}</p>
-          </div>
+            </AlertTitle>
+            <AlertDescription className="mt-2 text-sm leading-6">
+              {diagnosis.summary}
+            </AlertDescription>
+          </Alert>
           <div className="grid grid-cols-2 gap-2">
             <DiagnosisMetric
               label="Carry"
@@ -128,16 +132,24 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
                 View training load
               </Link>
             </Button>
-            <details className="rounded-xl border border-border/70 bg-white/70 p-3">
-              <summary className="cursor-pointer text-sm font-semibold text-slate-950">
-                Evidence limits
-              </summary>
-              <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-muted-foreground">
-                {diagnosis.caveats.map((caveat) => (
-                  <li key={caveat}>• {caveat}</li>
-                ))}
-              </ul>
-            </details>
+            <Collapsible className="rounded-xl border border-border/70 bg-white/70 p-3">
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start px-0 text-slate-950"
+                >
+                  Evidence limits
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent asChild>
+                <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-muted-foreground">
+                  {diagnosis.caveats.map((caveat) => (
+                    <li key={caveat}>• {caveat}</li>
+                  ))}
+                </ul>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       </div>

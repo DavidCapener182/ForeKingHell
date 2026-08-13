@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { Globe2, Lock, Plus, Radio, Search, Settings, Trophy, Users } from "lucide-react";
 
-import {
-  createGroupAction,
-  joinGroupAction,
-  joinGroupByInviteCodeAction,
-} from "@/app/groups/actions";
+import { joinGroupAction, joinGroupByInviteCodeAction } from "@/app/groups/actions";
+import { GroupCreateForm, GroupCreateSheet } from "@/app/groups/group-create-sheet";
+import { GroupSectionTabs } from "@/app/groups/group-section-tabs";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { GroupDigestFeaturePanel } from "@/components/features/feature-panels";
 import {
   BottomSheet,
@@ -25,9 +24,10 @@ import {
 } from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { SocialAvatar } from "@/components/social/social-avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   DesktopTableWorkbenchControls,
@@ -46,7 +46,6 @@ import {
 } from "@/components/ui/table";
 import { getGroupsPageData, type GroupLinkedChallengeItem, type GroupListItem } from "@/lib/groups";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
-import { socialVisibilityOptions } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +55,8 @@ type GroupsPageProps = {
     joined?: string;
     invite?: string;
     tab?: string;
+    left?: string;
+    deleted?: string;
   }>;
 };
 
@@ -139,51 +140,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               }
               title="Create group"
             >
-              <form action={createGroupAction} className="grid gap-3">
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Name</span>
-                  <Input
-                    name="name"
-                    placeholder="LM World Tour Launch Monitor League"
-                    className="h-11 rounded-lg bg-white"
-                    required
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Type</span>
-                  <select name="groupType" className="h-11 rounded-lg border bg-white px-3 text-sm">
-                    {data.groupTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {label(type)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Visibility</span>
-                  <select
-                    name="visibility"
-                    defaultValue="private"
-                    className="h-11 rounded-lg border bg-white px-3 text-sm"
-                  >
-                    {socialVisibilityOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {label(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <textarea
-                  name="description"
-                  rows={3}
-                  placeholder="Description"
-                  className="rounded-lg border bg-white px-3 py-2 text-sm"
-                />
-                <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
-                  <Plus className="size-4" />
-                  Create group
-                </Button>
-              </form>
+              <GroupCreateForm groupTypes={data.groupTypes} />
             </BottomSheet>
           }
         />
@@ -250,63 +207,21 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               </div>
             </section>
 
-            <section id="create-group" className="premium-card scroll-mt-28 p-4">
-              <p className="text-sm font-semibold">Create group</p>
-              <form action={createGroupAction} className="mt-3 grid gap-3">
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Name</span>
-                  <Input
-                    name="name"
-                    placeholder="LM World Tour Launch Monitor League"
-                    className="h-9 rounded-lg bg-white"
-                    required
-                  />
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Type</span>
-                  <select name="groupType" className="h-9 rounded-lg border bg-white px-3 text-sm">
-                    {data.groupTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {label(type)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Visibility</span>
-                  <select
-                    name="visibility"
-                    defaultValue="private"
-                    className="h-9 rounded-lg border bg-white px-3 text-sm"
-                  >
-                    {socialVisibilityOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {label(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-medium">
-                  <span>Description</span>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    className="rounded-lg border bg-white px-3 py-2 text-sm"
-                  />
-                </label>
-                <Button
-                  type="submit"
-                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                >
-                  <Plus className="size-4" />
-                  Create group
-                </Button>
-              </form>
-            </section>
+            <Card id="create-group" className="scroll-mt-28">
+              <CardHeader>
+                <CardTitle>Build a league</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Create the group in a focused side panel without losing this board.
+                </p>
+              </CardHeader>
+              <CardFooter>
+                <GroupCreateSheet groupTypes={data.groupTypes} />
+              </CardFooter>
+            </Card>
           </aside>
 
           <section className="order-1 grid gap-4 lg:order-none" aria-labelledby="groups-heading">
-            <header className="premium-hero p-5">
+            <header id="overview" className="premium-hero scroll-mt-28 p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <StatusPill tone="green">Groups and leagues</StatusPill>
@@ -340,12 +255,14 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                   </Button>
                 </div>
               </div>
-              {params?.created || params?.joined ? (
+              {params?.created || params?.joined || params?.left || params?.deleted ? (
                 <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
                   Group network updated.
                 </div>
               ) : null}
             </header>
+
+            <GroupSectionTabs />
 
             {params?.invite ? (
               <section className="premium-card p-4">
@@ -389,7 +306,7 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               totalCount={data.groups.length}
             />
 
-            <section id="discoverable-groups" className="premium-card scroll-mt-28 p-4">
+            <section id="members" className="premium-card scroll-mt-28 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold">My groups</p>
@@ -399,7 +316,11 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
                 </div>
                 <Badge variant="secondary">{data.mine.length} joined</Badge>
               </div>
-              <GroupGrid groups={data.mine} empty="You have not joined a group yet." />
+              <GroupGrid
+                groups={data.mine}
+                empty="You have not joined a group yet."
+                groupTypes={data.groupTypes}
+              />
             </section>
 
             <section className="premium-card p-4">
@@ -415,10 +336,15 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
               <GroupGrid
                 groups={data.discoverable}
                 empty="No public groups yet. Create the first golf league."
+                groupTypes={data.groupTypes}
               />
             </section>
 
-            <aside aria-label="Group activity digest rail" className="min-w-0">
+            <aside
+              id="activity"
+              aria-label="Group activity digest rail"
+              className="scroll-mt-28 min-w-0"
+            >
               <GroupDigestFeaturePanel data={featureData} />
             </aside>
           </section>
@@ -602,31 +528,50 @@ function GroupBoardAction({ group }: { group: GroupListItem }) {
   );
 }
 
-function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }) {
+function GroupGrid({
+  groups,
+  empty,
+  groupTypes,
+}: {
+  groups: GroupListItem[];
+  empty: string;
+  groupTypes: readonly string[];
+}) {
   if (groups.length === 0) {
     return (
-      <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        {empty}
-      </p>
+      <AppEmptyState
+        className="mt-4"
+        icon={<Users className="size-5" />}
+        title="No groups in this section"
+        description={empty}
+        primaryAction={<GroupCreateSheet groupTypes={groupTypes} />}
+      />
     );
   }
 
   return (
     <div className="mt-4 grid gap-3 md:grid-cols-2">
       {groups.map((group) => (
-        <article key={group.id} className="rounded-lg border bg-[#F5F6F4] p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href={`/groups/${group.slug}`}
-                prefetch={false}
-                className="font-semibold hover:underline"
-              >
-                {group.name}
-              </Link>
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                {group.description ?? "No group description yet."}
-              </p>
+        <Card key={group.id} className="gap-3">
+          <CardHeader className="flex-row items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-3">
+              <Avatar className="size-10 border bg-emerald-950 text-white">
+                <AvatarFallback className="bg-emerald-950 text-white">
+                  {group.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <Link
+                  href={`/groups/${group.slug}`}
+                  prefetch={false}
+                  className="font-semibold hover:underline"
+                >
+                  {group.name}
+                </Link>
+                <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                  {group.description ?? "No group description yet."}
+                </p>
+              </div>
             </div>
             <Badge variant="outline" className="gap-1">
               {group.visibility === "public" ? (
@@ -636,8 +581,8 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
               )}
               {label(group.visibility)}
             </Badge>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="gap-1">
               <Users className="size-3" />
               {group.memberCount}
@@ -651,8 +596,8 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
               {group.challengeCount}
             </Badge>
             <Badge variant="outline">{label(group.groupType)}</Badge>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          </CardContent>
+          <CardFooter className="flex-wrap gap-2">
             <Button asChild variant="outline" size="sm">
               <Link href={`/groups/${group.slug}`} prefetch={false}>
                 Open
@@ -668,8 +613,8 @@ function GroupGrid({ groups, empty }: { groups: GroupListItem[]; empty: string }
             ) : group.viewerRole ? (
               <Badge variant="secondary">{label(group.viewerRole)}</Badge>
             ) : null}
-          </div>
-        </article>
+          </CardFooter>
+        </Card>
       ))}
     </div>
   );

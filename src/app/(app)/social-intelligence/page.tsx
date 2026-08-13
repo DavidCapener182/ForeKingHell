@@ -30,6 +30,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCaption,
@@ -390,26 +397,32 @@ function GenerateSummaryForm() {
     <form action={generateSocialSummaryAction} className="grid gap-3">
       <label className="grid gap-1 text-sm font-medium">
         Summary type
-        <select name="summaryType" className="h-11 rounded-xl border bg-background px-3 text-base">
-          <option value="import_recap">Import recap</option>
-          <option value="friend_comparison">Friend comparison</option>
-          <option value="challenge_coach">Challenge coach</option>
-          <option value="tournament_recap">Tournament recap</option>
-        </select>
+        <Select name="summaryType" defaultValue="import_recap">
+          <SelectTrigger className="h-11 w-full text-base">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="import_recap">Import recap</SelectItem>
+            <SelectItem value="friend_comparison">Friend comparison</SelectItem>
+            <SelectItem value="challenge_coach">Challenge coach</SelectItem>
+            <SelectItem value="tournament_recap">Tournament recap</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Visibility
-        <select
-          name="visibility"
-          defaultValue="private"
-          className="h-11 rounded-xl border bg-background px-3 text-base"
-        >
-          {socialVisibilityOptions.map((option) => (
-            <option key={option} value={option}>
-              {label(option)}
-            </option>
-          ))}
-        </select>
+        <Select name="visibility" defaultValue="private">
+          <SelectTrigger className="h-11 w-full text-base">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {socialVisibilityOptions.map((option) => (
+              <SelectItem key={option} value={option}>
+                {label(option)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <Button type="submit" className="min-h-11 rounded-xl bg-[#111827] text-white">
         <Brain className="size-4" />
@@ -424,14 +437,19 @@ function SocialReportForm() {
     <form action={reportSocialTargetAction} className="grid gap-3">
       <label className="grid gap-1 text-sm font-medium">
         Content type
-        <select name="targetType" className="h-11 rounded-xl border bg-background px-3 text-base">
-          <option value="feed_item">Feed item</option>
-          <option value="comment">Comment</option>
-          <option value="challenge_result">Challenge result</option>
-          <option value="course_record_attempt">Course record attempt</option>
-          <option value="tournament_submission">Tournament submission</option>
-          <option value="profile">Profile</option>
-        </select>
+        <Select name="targetType" defaultValue="feed_item">
+          <SelectTrigger className="h-11 w-full text-base">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="feed_item">Feed item</SelectItem>
+            <SelectItem value="comment">Comment</SelectItem>
+            <SelectItem value="challenge_result">Challenge result</SelectItem>
+            <SelectItem value="course_record_attempt">Course record attempt</SelectItem>
+            <SelectItem value="tournament_submission">Tournament submission</SelectItem>
+            <SelectItem value="profile">Profile</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Content ID

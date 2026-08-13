@@ -16,6 +16,20 @@ describe("companion identity and navigation feedback", () => {
     );
   });
 
+  it("uses a launch-angle-driven golf tracer instead of a circular loading arc", () => {
+    const brand = read("src/components/app/companion-brand.tsx");
+    const styles = read("src/app/globals.css");
+
+    expect(brand).toContain('data-launch-angle-deg="14"');
+    expect(brand).toContain("M 46 184 C 128 164 190 104 270 82");
+    expect(brand).toContain('className="companion-launch-trace-rail"');
+    expect(brand).not.toContain("M42 180 C 110 20, 240 20, 318 176");
+    expect(brand).not.toContain('fill="#ef4444"');
+    expect(styles).toContain("animation: companion-launch-reveal 1.8s linear infinite");
+    expect(styles).toContain(".companion-launch-trace-flight");
+    expect(styles).not.toContain("stroke-dashoffset: 620");
+  });
+
   it("prefetches companion tabs and shared mobile links", () => {
     const shell = read("src/components/app/companion-app-shell.tsx");
     expect(shell).toContain("router.prefetch(href)");

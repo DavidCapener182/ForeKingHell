@@ -36,6 +36,15 @@ import { MobileRouteTabs } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -1886,8 +1895,8 @@ function RecentShotEventsPanel({
 }) {
   return (
     <DataPanel id="events">
-      <details open={activeFilterChips.length > 0} className="group">
-        <summary className="ios-grouped-row flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-16 lg:gap-4 lg:py-3 [&::-webkit-details-marker]:hidden">
+      <Collapsible defaultOpen={activeFilterChips.length > 0} className="group">
+        <CollapsibleTrigger className="ios-grouped-row flex min-h-14 w-full cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring lg:min-h-16 lg:gap-4 lg:py-3">
           <span className="min-w-0">
             <span className="block text-[15px] font-medium leading-5 text-foreground lg:text-lg lg:font-semibold">
               Recent shot events
@@ -1906,26 +1915,28 @@ function RecentShotEventsPanel({
               aria-hidden
             />
           </span>
-        </summary>
-        <CardContent className="grid min-w-0 gap-4 border-t border-border p-3 lg:p-6">
-          <QuickFilters filters={filters} />
-          <StrokesGainedFilterForm filters={filters} options={filterOptions} />
-          {activeFilterChips.length > 0 ? <ActiveFilterChips items={activeFilterChips} /> : null}
-          <div className="hidden lg:block">
-            <DesktopTableWorkbenchControls
-              viewKey="strokes-gained-events"
-              scope="strokes-gained"
-              currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
-              resultLabel={`${integerFormatter.format(events.length)} rows`}
-              columns={strokesGainedEventColumns}
-              suggestedViews={strokesGainedSuggestedViews}
-              exportTableId="strokes-gained-events"
-              exportFileName="forekinghell-strokes-gained-events.csv"
-            />
-          </div>
-          <StrokesGainedEventTable events={events} />
-        </CardContent>
-      </details>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="grid min-w-0 gap-4 border-t border-border p-3 lg:p-6">
+            <QuickFilters filters={filters} />
+            <StrokesGainedFilterForm filters={filters} options={filterOptions} />
+            {activeFilterChips.length > 0 ? <ActiveFilterChips items={activeFilterChips} /> : null}
+            <div className="hidden lg:block">
+              <DesktopTableWorkbenchControls
+                viewKey="strokes-gained-events"
+                scope="strokes-gained"
+                currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
+                resultLabel={`${integerFormatter.format(events.length)} rows`}
+                columns={strokesGainedEventColumns}
+                suggestedViews={strokesGainedSuggestedViews}
+                exportTableId="strokes-gained-events"
+                exportFileName="forekinghell-strokes-gained-events.csv"
+              />
+            </div>
+            <StrokesGainedEventTable events={events} />
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </DataPanel>
   );
 }
@@ -2007,8 +2018,7 @@ function StrokesGainedFilterForm({
   filters: StrokesGainedFilters;
   options: FilterOptions;
 }) {
-  const inputClassName =
-    "min-h-11 w-full min-w-0 max-w-full rounded-lg border border-input bg-background px-3 py-2 text-base sm:text-sm lg:min-h-0";
+  const controlClassName = "min-h-11 w-full min-w-0 max-w-full lg:min-h-8";
 
   return (
     <form
@@ -2017,85 +2027,120 @@ function StrokesGainedFilterForm({
     >
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Round
-        <select name="sessionId" defaultValue={filters.sessionId} className={inputClassName}>
-          <option value="">All rounds</option>
-          {options.sessions.map((session) => (
-            <option key={session.id} value={session.id}>
-              {session.label}
-            </option>
-          ))}
-        </select>
+        <Select name="sessionId" defaultValue={filters.sessionId || "__all__"}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All rounds</SelectItem>
+            {options.sessions.map((session) => (
+              <SelectItem key={session.id} value={session.id}>
+                {session.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Category
-        <select name="category" defaultValue={filters.category} className={inputClassName}>
-          <option value="">All categories</option>
-          {options.categories.map((category) => (
-            <option key={category.value} value={category.value}>
-              {category.label}
-            </option>
-          ))}
-        </select>
+        <Select name="category" defaultValue={filters.category || "__all__"}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All categories</SelectItem>
+            {options.categories.map((category) => (
+              <SelectItem key={category.value} value={category.value}>
+                {category.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Hole
-        <select name="hole" defaultValue={filters.hole} className={inputClassName}>
-          <option value="">All holes</option>
-          {options.holes.map((hole) => (
-            <option key={hole} value={hole.toString()}>
-              Hole {hole}
-            </option>
-          ))}
-        </select>
+        <Select name="hole" defaultValue={filters.hole || "__all__"}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All holes</SelectItem>
+            {options.holes.map((hole) => (
+              <SelectItem key={hole} value={hole.toString()}>
+                Hole {hole}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Start lie
-        <select name="startLie" defaultValue={filters.startLie} className={inputClassName}>
-          <option value="">Any start lie</option>
-          {options.startLies.map((lie) => (
-            <option key={lie} value={lie}>
-              {titleCase(lie)}
-            </option>
-          ))}
-        </select>
+        <Select name="startLie" defaultValue={filters.startLie || "__all__"}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Any start lie</SelectItem>
+            {options.startLies.map((lie) => (
+              <SelectItem key={lie} value={lie}>
+                {titleCase(lie)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         End lie
-        <select name="endLie" defaultValue={filters.endLie} className={inputClassName}>
-          <option value="">Any end lie</option>
-          {options.endLies.map((lie) => (
-            <option key={lie} value={lie}>
-              {titleCase(lie)}
-            </option>
-          ))}
-        </select>
+        <Select name="endLie" defaultValue={filters.endLie || "__all__"}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Any end lie</SelectItem>
+            {options.endLies.map((lie) => (
+              <SelectItem key={lie} value={lie}>
+                {titleCase(lie)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         SG result
-        <select name="sg" defaultValue={filters.sg} className={inputClassName}>
-          <option value="">All SG results</option>
-          <option value="gain">Gains only</option>
-          <option value="loss">Losses only</option>
-          <option value="pending">Not calculated</option>
-        </select>
+        <Select name="sg" defaultValue={filters.sg || "__all__"}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All SG results</SelectItem>
+            <SelectItem value="gain">Gains only</SelectItem>
+            <SelectItem value="loss">Losses only</SelectItem>
+            <SelectItem value="pending">Not calculated</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         From
-        <input type="date" name="from" defaultValue={filters.from} className={inputClassName} />
+        <Input type="date" name="from" defaultValue={filters.from} className={controlClassName} />
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         To
-        <input type="date" name="to" defaultValue={filters.to} className={inputClassName} />
+        <Input type="date" name="to" defaultValue={filters.to} className={controlClassName} />
       </label>
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Sort
-        <select name="sort" defaultValue={filters.sort} className={inputClassName}>
-          <option value="recent">Most recent</option>
-          <option value="gains">Biggest gains</option>
-          <option value="losses">Biggest losses</option>
-          <option value="hole">By hole</option>
-          <option value="category">By category</option>
-        </select>
+        <Select name="sort" defaultValue={filters.sort}>
+          <SelectTrigger className={controlClassName}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="recent">Most recent</SelectItem>
+            <SelectItem value="gains">Biggest gains</SelectItem>
+            <SelectItem value="losses">Biggest losses</SelectItem>
+            <SelectItem value="hole">By hole</SelectItem>
+            <SelectItem value="category">By category</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
       <div className="col-span-2 grid grid-cols-2 items-end gap-2 md:col-span-3 md:flex xl:col-span-6">
         <Button type="submit" className="min-h-11">
@@ -2729,19 +2774,23 @@ function compareEvents(a: StrokesGainedEvent, b: StrokesGainedEvent, sort: SortM
 
 function parseFilters(params: Awaited<SearchParams>): StrokesGainedFilters {
   const sort = first(params.sort);
-  const sg = first(params.sg);
+  const sg = optionalFilterParam(first(params.sg));
 
   return {
-    sessionId: uuidParam(first(params.sessionId)),
-    category: first(params.category),
-    hole: integerParam(first(params.hole)),
-    startLie: first(params.startLie),
-    endLie: first(params.endLie),
+    sessionId: uuidParam(optionalFilterParam(first(params.sessionId))),
+    category: optionalFilterParam(first(params.category)),
+    hole: integerParam(optionalFilterParam(first(params.hole))),
+    startLie: optionalFilterParam(first(params.startLie)),
+    endLie: optionalFilterParam(first(params.endLie)),
     from: dateParam(first(params.from)),
     to: dateParam(first(params.to)),
     sg: SG_RESULT_FILTERS.includes(sg as SgResultFilter) ? (sg as SgResultFilter) : "",
     sort: SORT_MODES.includes(sort as SortMode) ? (sort as SortMode) : "recent",
   };
+}
+
+function optionalFilterParam(value: string) {
+  return value === "__all__" ? "" : value;
 }
 
 function buildActiveFilterChips(

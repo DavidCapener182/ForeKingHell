@@ -12,7 +12,8 @@ describe("bag order form desktop layout", () => {
 
   it("provides practical touch and non-drag reorder controls", () => {
     expect(source).toContain("data-bag-order-non-drag");
-    expect(source).toContain("moveToSection(club.id, event.target.value)");
+    expect(source).toContain("onValueChange={(value) => moveToSection(club.id, value)}");
+    expect(source).toContain("<SelectTrigger");
     expect(source).toContain("Move ${club.label} to bag section");
     expect(source).toContain('className="grid size-11');
     expect(source).toContain('type="button"');

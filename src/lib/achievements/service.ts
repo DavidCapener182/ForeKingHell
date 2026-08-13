@@ -22,7 +22,12 @@ import {
   isTrackedClubType,
 } from "@/lib/club-format";
 import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
-import { ACHIEVEMENT_REGISTRY_VERSION, ACHIEVEMENTS, getAchievement } from "./registry";
+import {
+  ACHIEVEMENT_REGISTRY_VERSION,
+  ACHIEVEMENTS,
+  GENERATED_CLUB_METRIC_ACHIEVEMENTS,
+  getAchievement,
+} from "./registry";
 import { evaluateAllAchievementCandidates } from "./evaluator";
 import type {
   Achievement,
@@ -40,6 +45,10 @@ import type {
   AchievementUnlockNotification,
 } from "./types";
 import { calculateUserLevel, capActionXpForDay, xpForAchievement } from "./xp";
+
+const GENERATED_CLUB_METRIC_IDS = new Set(
+  GENERATED_CLUB_METRIC_ACHIEVEMENTS.map((achievement) => achievement.id),
+);
 
 export type AchievementSourceStat = {
   label: string;
@@ -1525,9 +1534,10 @@ function progressLabelFromMetadata(
   return `${formatNumber(progressValue)} / ${formatNumber(targetValue)}`;
 }
 
-function shouldPersistProgressCandidate(candidate: AchievementProgressCandidate) {
+export function shouldPersistProgressCandidate(candidate: AchievementProgressCandidate) {
   return (
     !candidate.achievementId.startsWith("club_") ||
+    GENERATED_CLUB_METRIC_IDS.has(candidate.achievementId) ||
     candidate.achievementId.includes("_miles_") ||
     candidate.achievementId.includes("_benchmark_")
   );

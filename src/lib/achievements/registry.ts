@@ -7,7 +7,7 @@ import type {
   AchievementTriggerType,
 } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-07-08-practice-drills-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-08-13-club-metric-progress-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,

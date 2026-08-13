@@ -5,7 +5,6 @@ import {
   Bot,
   Brain,
   CheckCircle2,
-  Circle,
   FileText,
   Lightbulb,
   Sparkles,
@@ -19,6 +18,7 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench-controls";
 import { DesktopSaveInsightButton } from "@/components/app/desktop-save-insight-button";
+import { OperationStepper } from "@/components/app/operation-stepper";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -143,82 +143,47 @@ export function DesktopWorkflowLayout({
   className?: string;
 }) {
   return (
-    <section
-      data-desktop-workflow
-      className={cn(
-        workflowRailBreakpoint === "2xl"
-          ? "grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(0,1fr)_20rem] 2xl:items-start"
-          : "grid min-w-0 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(0,1fr)_20rem] 2xl:items-start",
-        className,
-      )}
-    >
-      <aside
-        className={cn("hidden min-w-0", workflowRailBreakpoint === "2xl" ? "2xl:grid" : "lg:grid")}
+    <section data-desktop-workflow className={cn("grid min-w-0 gap-4", className)}>
+      <OperationStepper
+        label="Desktop workflow"
+        className="hidden lg:grid"
+        steps={steps.map((step, index) => ({
+          id: `${index + 1}-${step.title}`,
+          label: step.title,
+          description: step.value ? `${step.value}. ${step.detail}` : step.detail,
+          status: step.status ?? "upcoming",
+        }))}
+      />
+
+      <div
+        className={cn(
+          "grid min-w-0 gap-4",
+          workflowRailBreakpoint === "2xl"
+            ? "2xl:grid-cols-[minmax(0,1fr)_20rem] 2xl:items-start"
+            : "xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start",
+        )}
       >
-        <DataPanel className="sticky top-[4.75rem] gap-0 py-0">
-          <SectionHeader title="Workflow" description="Desktop entry path" />
-          <CardContent className="grid gap-2 p-3">
-            {steps.map((step, index) => {
-              const status = step.status ?? "upcoming";
-              const Icon = status === "complete" ? CheckCircle2 : Circle;
+        <div className="grid min-w-0 gap-4 [&>*]:min-w-0">{children}</div>
 
-              return (
-                <div
-                  key={`${step.title}-${index}`}
-                  data-workflow-status={status}
-                  className={cn(
-                    "rounded-lg border p-3",
-                    status === "current"
-                      ? "border-primary/30 bg-primary/5"
-                      : status === "complete"
-                        ? "border-primary/15 bg-card/85"
-                        : "border-border bg-card/60",
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <Icon
-                      className={cn(
-                        "mt-0.5 size-4 shrink-0",
-                        status === "current" || status === "complete"
-                          ? "text-primary"
-                          : "text-muted-foreground",
-                      )}
-                      aria-hidden
-                    />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold leading-5 text-foreground">
-                        {step.title}
-                      </p>
-                      {step.value ? (
-                        <p className="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-primary">
-                          {step.value}
-                        </p>
-                      ) : null}
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.detail}</p>
-                    </div>
-                  </div>
+        <aside
+          className={cn(
+            "hidden min-w-0",
+            workflowRailBreakpoint === "2xl" ? "2xl:grid" : "xl:grid",
+          )}
+        >
+          <DataPanel className="sticky top-[4.75rem] gap-0 py-0">
+            <SectionHeader title={helpTitle} description={helpDescription} />
+            <CardContent className="grid gap-2 p-3">
+              {helpItems.map((item) => (
+                <div key={item.title} className="border-b border-border px-1 py-3 last:border-b-0">
+                  <p className="text-sm font-semibold leading-5 text-foreground">{item.title}</p>
+                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
                 </div>
-              );
-            })}
-          </CardContent>
-        </DataPanel>
-      </aside>
-
-      <div className="grid min-w-0 gap-4 [&>*]:min-w-0">{children}</div>
-
-      <aside className="hidden min-w-0 2xl:grid">
-        <DataPanel className="sticky top-[4.75rem] gap-0 py-0">
-          <SectionHeader title={helpTitle} description={helpDescription} />
-          <CardContent className="grid gap-2 p-3">
-            {helpItems.map((item) => (
-              <div key={item.title} className="rounded-lg border border-border bg-card/78 p-3">
-                <p className="text-sm font-semibold leading-5 text-foreground">{item.title}</p>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
-              </div>
-            ))}
-          </CardContent>
-        </DataPanel>
-      </aside>
+              ))}
+            </CardContent>
+          </DataPanel>
+        </aside>
+      </div>
     </section>
   );
 }

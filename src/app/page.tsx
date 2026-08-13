@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 
 import { AnimatedSection } from "@/components/marketing/animated-section";
 import { BetaAccessSection } from "@/components/marketing/beta-access-section";
-import { CourseTwinShowcase } from "@/components/marketing/course-twin-showcase";
 import { FeatureShowcase } from "@/components/marketing/feature-showcase";
 import { HeroProductStage } from "@/components/marketing/hero-product-stage";
-import { MarketingFaq } from "@/components/marketing/marketing-faq";
+import {
+  LazyCourseTwinShowcase,
+  LazyMarketingFaq,
+  LazySampleProductTour,
+} from "@/components/marketing/lazy-marketing-sections";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { MobileProductShowcase } from "@/components/marketing/mobile-product-showcase";
 import { PrivacyTrustSection } from "@/components/marketing/privacy-trust-section";
-import { SampleProductTour } from "@/components/marketing/sample-product-tour";
 import { ScrollProductStory } from "@/components/marketing/scroll-product-story";
 import { TrustStrip } from "@/components/marketing/trust-strip";
 import { marketingFaqs } from "@/lib/marketing-demo-data";
@@ -79,10 +81,10 @@ export default function HomePage() {
         <FeatureShowcase />
       </AnimatedSection>
       <AnimatedSection type="scale-focus">
-        <SampleProductTour />
+        <LazySampleProductTour />
       </AnimatedSection>
       <AnimatedSection type="zoom-out">
-        <CourseTwinShowcase />
+        <LazyCourseTwinShowcase />
       </AnimatedSection>
       <AnimatedSection type="fade-up">
         <MobileProductShowcase />
@@ -94,7 +96,7 @@ export default function HomePage() {
         <BetaAccessSection />
       </AnimatedSection>
       <AnimatedSection type="fade-up">
-        <MarketingFaq />
+        <LazyMarketingFaq />
       </AnimatedSection>
       <MarketingFooter />
       <script

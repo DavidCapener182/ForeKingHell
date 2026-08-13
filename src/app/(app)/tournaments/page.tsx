@@ -18,11 +18,14 @@ import {
   TournamentCard as MobileTournamentCard,
 } from "@/components/mobile-sports";
 import { CompetitionFeaturePanel } from "@/components/features/feature-panels";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { DataFirstFlowPanel, ProofChecklistPanel } from "@/components/product-polish";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -536,11 +539,18 @@ function TournamentHubEventTable({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    className="py-8 text-center text-sm text-muted-foreground"
-                  >
-                    No tournaments match this view.
+                  <TableCell colSpan={10} className="p-4">
+                    <AppEmptyState
+                      title="No tournaments in this view"
+                      description="Try another event section or return to the live tournament schedule."
+                      primaryAction={
+                        <Button asChild variant="outline">
+                          <Link href="/tournaments" prefetch={false}>
+                            Browse live tournaments
+                          </Link>
+                        </Button>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -567,27 +577,22 @@ function TournamentHubFilterTabs({
   ];
 
   return (
-    <nav aria-label="Tournament board views" className="mt-4 flex flex-wrap gap-2">
-      {tabs.map((tab) => {
-        const active = activeTab === tab.key;
-
-        return (
-          <Link
-            key={tab.key}
-            href={tab.href}
-            prefetch={false}
-            aria-current={active ? "page" : undefined}
-            className={
-              active
-                ? "inline-flex min-h-10 items-center rounded-xl bg-[#0B7A3B] px-3 text-sm font-semibold text-white"
-                : "inline-flex min-h-10 items-center rounded-xl border bg-white px-3 text-sm font-semibold text-foreground hover:bg-[#F5F6F4]"
-            }
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <Tabs
+      value={activeTab}
+      aria-label="Tournament board views"
+      className="mt-4"
+      data-tournament-section-tabs
+    >
+      <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
+        {tabs.map((tab) => (
+          <TabsTrigger key={tab.key} value={tab.key} asChild>
+            <Link href={tab.href} prefetch={false}>
+              {tab.label}
+            </Link>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -606,7 +611,7 @@ function ScheduledTournamentCard({
         : "border-emerald-200 bg-emerald-50/70";
 
   return (
-    <article className={`rounded-xl border p-4 shadow-sm ${tone}`}>
+    <Card className={`p-4 ${tone}`} data-tournament-event-card>
       <PageArtwork
         variant="tourCover"
         alt=""
@@ -670,7 +675,7 @@ function ScheduledTournamentCard({
           </Badge>
         ) : null}
       </div>
-    </article>
+    </Card>
   );
 }
 

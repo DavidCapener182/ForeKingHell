@@ -5,6 +5,13 @@ import { RotateCcw, ShieldCheck, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   IOSDisclosureGroup,
   IOSGroupedList,
   IOSInlineStatus,
@@ -178,21 +185,22 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
             </fieldset>
             <label className="grid gap-1.5 text-sm font-medium">
               Test one shot
-              <select
-                value={selectedShotId}
-                onChange={(event) => setSelectedShotId(event.target.value)}
-                className="focus-aaa min-h-11 rounded-xl border border-input bg-background px-3 text-sm"
-              >
-                {shots.map((shot, index) => (
-                  <option key={shot.id} value={shot.id}>
-                    Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
-                    {formatValue(
-                      metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
-                      "yd",
-                    )}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedShotId} onValueChange={setSelectedShotId}>
+                <SelectTrigger className="focus-aaa min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {shots.map((shot, index) => (
+                    <SelectItem key={shot.id} value={shot.id}>
+                      Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
+                      {formatValue(
+                        metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
+                        "yd",
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <Button
               type="button"
@@ -266,21 +274,22 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
         <div className="grid gap-2 rounded-xl bg-secondary/55 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <label className="grid gap-1.5 text-sm font-medium">
             Test one shot
-            <select
-              value={selectedShotId}
-              onChange={(event) => setSelectedShotId(event.target.value)}
-              className="focus-aaa min-h-11 rounded-xl border border-input bg-background px-3 text-sm"
-            >
-              {shots.map((shot, index) => (
-                <option key={shot.id} value={shot.id}>
-                  Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
-                  {formatValue(
-                    metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
-                    "yd",
-                  )}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedShotId} onValueChange={setSelectedShotId}>
+              <SelectTrigger className="focus-aaa min-h-11 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {shots.map((shot, index) => (
+                  <SelectItem key={shot.id} value={shot.id}>
+                    Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
+                    {formatValue(
+                      metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
+                      "yd",
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <Button
             type="button"

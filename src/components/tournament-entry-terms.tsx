@@ -5,6 +5,7 @@ import {
   TOURNAMENT_ENTRY_TERMS_VERSION_FIELD,
   TOURNAMENT_SETUP_TERMS,
 } from "@/lib/tournament-entry-terms";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 type TournamentEntryTermsProps = {
@@ -51,13 +52,12 @@ export function TournamentEntryTerms({
         </div>
       ) : null}
       <label htmlFor={controlId} className="mt-2 flex items-start gap-2 text-slate-800">
-        <input
+        <Checkbox
           id={controlId}
-          type="checkbox"
           name={TOURNAMENT_ENTRY_TERMS_ACCEPT_FIELD}
           value="accepted"
           required
-          className="mt-0.5 size-4 shrink-0 accent-[#111827]"
+          className="mt-0.5 shrink-0"
         />
         <span>
           I accept {compact ? "the terms and conditions of entry" : "these terms and conditions"}.

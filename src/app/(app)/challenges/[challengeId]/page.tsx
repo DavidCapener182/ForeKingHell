@@ -15,6 +15,9 @@ import {
   inviteFriendToChallengeAction,
   joinChallengeAction,
 } from "@/app/challenges/actions";
+import { ChallengeJoinDialog } from "@/app/challenges/challenge-join-dialog";
+import { ChallengeLeaveDialog } from "@/app/challenges/challenge-leave-dialog";
+import { StatusTimeline } from "@/components/app/status-timeline";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -47,6 +50,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -358,7 +376,34 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Challenge views">
           <Anchor href="#board" label="Board" />
           <Anchor href="#challenge-command" label="Command board" />
-          <Anchor href="#rules" label="Rules" />
+          <Sheet>
+            <span id="rules" className="scroll-mt-28">
+              <SheetTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="min-h-11 rounded-xl">
+                  <ShieldCheck className="size-4" />
+                  Rules
+                </Button>
+              </SheetTrigger>
+            </span>
+            <SheetContent className="overflow-y-auto sm:max-w-lg">
+              <SheetHeader>
+                <SheetTitle>Challenge rules</SheetTitle>
+                <SheetDescription>{data.challenge.rulesSummary}</SheetDescription>
+              </SheetHeader>
+              <div className="grid gap-3 px-4 pb-4">
+                {data.challenge.rulesBullets.map((rule) => (
+                  <div key={rule} className="rounded-lg border bg-card p-3 text-sm leading-5">
+                    {rule}
+                  </div>
+                ))}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">Imported shots only</Badge>
+                  <Badge variant="outline">Active window only</Badge>
+                  <Badge variant="outline">Auto-scored board</Badge>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
           <Anchor href="#imported-shots" label="Imported shots" />
           <Anchor href="#chat" label="Chat" />
           {data.challenge.creatorUserId === data.viewerUserId ? (
@@ -427,19 +472,23 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             )}
             <div className="mt-3 flex flex-wrap gap-2">
               {!data.challenge.viewerJoined ? (
-                <form action={joinChallengeAction}>
-                  <input type="hidden" name="challengeId" value={data.challenge.id} />
-                  <Button type="submit">
-                    <Plus className="size-4" />
-                    Join
-                  </Button>
-                </form>
+                <ChallengeJoinDialog
+                  challengeId={data.challenge.id}
+                  challengeTitle={data.challenge.title}
+                  size="default"
+                />
               ) : null}
               <Button asChild variant="outline">
                 <Link href="/import" prefetch={false}>
                   Import data
                 </Link>
               </Button>
+              {data.challenge.viewerJoined && data.challenge.creatorUserId !== data.viewerUserId ? (
+                <ChallengeLeaveDialog
+                  challengeId={data.challenge.id}
+                  challengeTitle={data.challenge.title}
+                />
+              ) : null}
             </div>
           </article>
         </section>
@@ -479,29 +528,6 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               </CardContent>
             </DataPanel>
 
-            <DataPanel id="rules">
-              <SectionHeader
-                title="Rules"
-                description="Plain-language scoring requirements for this challenge."
-                action={<ShieldCheck className="size-5 text-emerald-600" />}
-              />
-              <CardContent className="grid gap-2">
-                {data.challenge.rulesBullets.map((rule) => (
-                  <div
-                    key={rule}
-                    className="rounded-lg border bg-white px-3 py-2 text-sm leading-5"
-                  >
-                    {rule}
-                  </div>
-                ))}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Badge variant="outline">Imported shots only</Badge>
-                  <Badge variant="outline">Active window only</Badge>
-                  <Badge variant="outline">Auto-scored board</Badge>
-                </div>
-              </CardContent>
-            </DataPanel>
-
             <DataPanel>
               <SectionHeader
                 title="Invite friends"
@@ -512,16 +538,18 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
                 {data.friendOptions.length > 0 ? (
                   <form action={inviteFriendToChallengeAction} className="grid gap-3">
                     <input type="hidden" name="challengeId" value={data.challenge.id} />
-                    <select
-                      name="inviteeUserId"
-                      className="h-10 rounded-xl border bg-white px-3 text-sm"
-                    >
-                      {data.friendOptions.map((friend) => (
-                        <option key={friend.userId} value={friend.userId}>
-                          {friend.displayName} (@{friend.username})
-                        </option>
-                      ))}
-                    </select>
+                    <Select name="inviteeUserId" defaultValue={data.friendOptions[0]?.userId}>
+                      <SelectTrigger className="h-10 w-full" aria-label="Friend to invite">
+                        <SelectValue placeholder="Select a friend" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.friendOptions.map((friend) => (
+                          <SelectItem key={friend.userId} value={friend.userId}>
+                            {friend.displayName} (@{friend.username})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button type="submit" variant="outline">
                       <Send className="size-4" />
                       Invite
@@ -600,16 +628,18 @@ function ChallengeInviteSheet({ data }: { data: ChallengeDetail }) {
           <input type="hidden" name="challengeId" value={data.challenge.id} />
           <label className="grid gap-1.5 text-sm font-semibold">
             Friend
-            <select
-              name="inviteeUserId"
-              className="min-h-11 rounded-xl border bg-card px-3 text-base"
-            >
-              {data.friendOptions.map((friend) => (
-                <option key={friend.userId} value={friend.userId}>
-                  {friend.displayName} (@{friend.username})
-                </option>
-              ))}
-            </select>
+            <Select name="inviteeUserId" defaultValue={data.friendOptions[0]?.userId}>
+              <SelectTrigger className="min-h-11 w-full" aria-label="Friend to invite">
+                <SelectValue placeholder="Select a friend" />
+              </SelectTrigger>
+              <SelectContent>
+                {data.friendOptions.map((friend) => (
+                  <SelectItem key={friend.userId} value={friend.userId}>
+                    {friend.displayName} (@{friend.username})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <Button type="submit" className="min-h-11 rounded-xl">
             <Send className="size-4" aria-hidden />
@@ -660,6 +690,31 @@ function ChallengeCommandTables({
       </div>
 
       <ChallengeLeaderboardTable data={data} verificationMode={verificationMode} />
+      <section className="rounded-xl border bg-card p-4" data-challenge-attempt-timeline>
+        <div className="mb-4">
+          <p className="font-semibold">Attempt history</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Recent qualifying imports in chronological context.
+          </p>
+        </div>
+        <StatusTimeline
+          label="Challenge attempt history"
+          items={data.attempts.slice(0, 8).map((row) => ({
+            id: row.attempt.id,
+            timestamp: challengeDateTimeFormatter.format(row.attempt.attemptedAt),
+            title: `${row.profile.displayName} · ${attemptScoreLabel(row.attempt)}`,
+            description: `${titleCase(row.attempt.sourceType)} · ${attemptMetadataLabel(row.attempt.metadataJson)}`,
+            status: row.attempt.verificationLabel,
+            kind: "import" as const,
+            href: `/profile/${row.profile.username}`,
+          }))}
+          empty={
+            <p className="text-sm text-muted-foreground">
+              No qualifying attempts have arrived yet.
+            </p>
+          }
+        />
+      </section>
       <ChallengeAttemptEvidenceTable data={data} />
     </section>
   );

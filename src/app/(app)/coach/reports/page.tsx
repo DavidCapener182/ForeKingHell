@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { ArrowLeft, ExternalLink, FileLock2, Link2, ShieldCheck } from "lucide-react";
 
 import { createCoachReportAction, revokeCoachReportAction } from "@/app/coach/reports/actions";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
@@ -14,8 +15,17 @@ import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { getDb } from "@/db/client";
 import { contentExports, shareLinks } from "@/db/schema";
 import { coachReportSectionIds, type CoachReportSectionId } from "@/lib/coach-report";
@@ -197,18 +207,18 @@ export default async function CoachReportsPage({
               <form action={createCoachReportAction} className="grid gap-4">
                 <div className="grid gap-2 sm:max-w-md">
                   <Label htmlFor="template">Report template</Label>
-                  <select
-                    id="template"
-                    name="template"
-                    defaultValue="coach"
-                    className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
-                  >
-                    {coachReportTemplates.map((template) => (
-                      <option key={template.value} value={template.value}>
-                        {template.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="template" defaultValue="coach">
+                    <SelectTrigger id="template" className="h-11 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {coachReportTemplates.map((template) => (
+                        <SelectItem key={template.value} value={template.value}>
+                          {template.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <fieldset className="grid gap-3 sm:grid-cols-2">
                   <legend className="mb-2 font-semibold">Include these sections</legend>
@@ -219,15 +229,14 @@ export default async function CoachReportsPage({
                         key={section}
                         className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-secondary/35 p-4"
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           name="sections"
                           value={section}
                           defaultChecked={
                             copy.checked ||
                             (section === "saved_comparisons" && params.include === "comparisons")
                           }
-                          className="mt-1 size-4 accent-primary"
+                          className="mt-1"
                         />
                         <span>
                           <span className="block font-semibold">{copy.title}</span>
@@ -242,16 +251,16 @@ export default async function CoachReportsPage({
 
                 <div className="grid gap-2 sm:max-w-xs">
                   <Label htmlFor="expiryDays">Link expires after</Label>
-                  <select
-                    id="expiryDays"
-                    name="expiryDays"
-                    defaultValue="14"
-                    className="h-11 rounded-xl border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="7">7 days</option>
-                    <option value="14">14 days</option>
-                    <option value="30">30 days</option>
-                  </select>
+                  <Select name="expiryDays" defaultValue="14">
+                    <SelectTrigger id="expiryDays" className="h-11 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 days</SelectItem>
+                      <SelectItem value="14">14 days</SelectItem>
+                      <SelectItem value="30">30 days</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid gap-3 rounded-2xl border border-border bg-secondary/35 p-4 sm:grid-cols-2">
@@ -345,9 +354,15 @@ export default async function CoachReportsPage({
                       {!link.revokedAt && !expired ? (
                         <form action={revokeCoachReportAction}>
                           <input type="hidden" name="shareLinkId" value={link.id} />
-                          <Button type="submit" variant="outline" className="min-h-11 rounded-xl">
+                          <ConfirmSubmitButton
+                            variant="outline"
+                            className="min-h-11 rounded-xl"
+                            confirmTitle="Revoke this report link?"
+                            confirmMessage="Anyone using this private link will immediately lose access to the frozen report."
+                            confirmActionLabel="Revoke link"
+                          >
                             Revoke link
-                          </Button>
+                          </ConfirmSubmitButton>
                         </form>
                       ) : (
                         <StatusPill tone="slate">{status}</StatusPill>
@@ -424,18 +439,18 @@ function MobileCoachReports({
                   Frozen at the moment you generate it
                 </span>
               </span>
-              <select
-                name="template"
-                defaultValue="coach"
-                aria-label="Report template"
-                className="min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              >
-                {coachReportTemplates.map((template) => (
-                  <option key={template.value} value={template.value}>
-                    {template.label}
-                  </option>
-                ))}
-              </select>
+              <Select name="template" defaultValue="coach">
+                <SelectTrigger aria-label="Report template" className="min-h-11 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {coachReportTemplates.map((template) => (
+                    <SelectItem key={template.value} value={template.value}>
+                      {template.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
           </IOSGroupedList>
         </section>
@@ -545,16 +560,16 @@ function MobileCoachReports({
                   You can revoke it sooner from history
                 </span>
               </span>
-              <select
-                name="expiryDays"
-                defaultValue="14"
-                aria-label="Link expiry"
-                className="min-h-11 rounded-lg border border-input bg-background px-3 text-sm"
-              >
-                <option value="7">7 days</option>
-                <option value="14">14 days</option>
-                <option value="30">30 days</option>
-              </select>
+              <Select name="expiryDays" defaultValue="14">
+                <SelectTrigger aria-label="Link expiry" className="min-h-11 w-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="14">14 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
             <IOSListRow
               label="Access"
@@ -618,12 +633,11 @@ function MobileReportSectionOption({
   const copy = sectionCopy[section];
   return (
     <label className="ios-grouped-row flex min-h-14 cursor-pointer items-start gap-3 px-4 py-3">
-      <input
-        type="checkbox"
+      <Checkbox
         name="sections"
         value={section}
         defaultChecked={checked}
-        className="mt-0.5 size-5 shrink-0 accent-primary"
+        className="mt-0.5 size-5 shrink-0"
       />
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-medium">{copy.title}</span>
@@ -654,16 +668,7 @@ function MobilePrivacyToggle({
           {detail}
         </span>
       </span>
-      <span className="relative inline-flex h-[31px] w-[51px] shrink-0 items-center">
-        <input
-          type="checkbox"
-          name={name}
-          defaultChecked={defaultChecked}
-          className="peer sr-only"
-        />
-        <span className="absolute inset-0 rounded-full bg-muted-foreground/25 transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 motion-reduce:transition-none" />
-        <span className="absolute left-0.5 size-[27px] rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5 motion-reduce:transition-none" />
-      </span>
+      <Switch name={name} defaultChecked={defaultChecked} />
     </label>
   );
 }
@@ -737,9 +742,15 @@ function MobileReportHistoryRow({ link, now }: { link: CoachReportHistoryItem; n
       {!link.revokedAt && !expired ? (
         <form action={revokeCoachReportAction}>
           <input type="hidden" name="shareLinkId" value={link.id} />
-          <Button type="submit" variant="outline" className="min-h-11 w-full rounded-lg">
+          <ConfirmSubmitButton
+            variant="outline"
+            className="min-h-11 w-full rounded-lg"
+            confirmTitle="Revoke this report link?"
+            confirmMessage="Anyone using this private link will immediately lose access to the frozen report."
+            confirmActionLabel="Revoke link"
+          >
             Revoke link
-          </Button>
+          </ConfirmSubmitButton>
         </form>
       ) : null}
     </article>
@@ -759,12 +770,7 @@ function PrivacyCheck({
 }) {
   return (
     <label className="flex items-start gap-3 rounded-xl bg-background p-3">
-      <input
-        type="checkbox"
-        name={name}
-        defaultChecked={defaultChecked}
-        className="mt-1 size-4 accent-primary"
-      />
+      <Checkbox name={name} defaultChecked={defaultChecked} className="mt-1" />
       <span>
         <span className="block font-semibold">{title}</span>
         <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">

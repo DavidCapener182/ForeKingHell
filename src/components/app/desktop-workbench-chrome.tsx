@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import {
   useCallback,
@@ -63,6 +64,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Sheet,
   SheetContent,
@@ -77,20 +79,28 @@ import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher
 import { cn } from "@/lib/utils";
 import { commandRoutes, productAreaLabel } from "@/navigation/route-registry";
 
+const DesktopCommandPalette = dynamic(
+  () =>
+    import("@/components/app/desktop-command-palette").then(
+      (module) => module.DesktopCommandPalette,
+    ),
+  { ssr: false },
+);
+
 type DesktopWorkbenchChromeProps = {
   navGroups: AppNavGroup[];
   isAdmin: boolean;
   accountMenu?: ReactNode;
 };
 
-type WorkbenchLink = {
+export type WorkbenchLink = {
   title: string;
   href: string;
   detail: string;
   group?: string;
 };
 
-type CommandItem = WorkbenchLink & {
+export type CommandItem = WorkbenchLink & {
   keywords: string;
   icon: LucideIcon;
   type: "page" | "club" | "round" | "course" | "session" | "friend" | "action" | "workspace";
@@ -361,6 +371,11 @@ export function DesktopWorkbenchChrome({
     setActiveCommandIndex(0);
     setCommandOpen(true);
   }, []);
+
+  useEffect(() => {
+    window.addEventListener("fkh:open-command-centre", openCommandPalette);
+    return () => window.removeEventListener("fkh:open-command-centre", openCommandPalette);
+  }, [openCommandPalette]);
 
   const closeCommandAndNavigate = useCallback(
     (href: string) => {
@@ -805,112 +820,28 @@ export function DesktopWorkbenchChrome({
         </div>
       </header>
 
-      <Dialog open={commandOpen} onOpenChange={setCommandOpen}>
-        <DialogContent
-          className="max-h-[min(44rem,calc(100vh-2rem))] overflow-hidden p-0 sm:max-w-4xl"
-          showCloseButton={false}
-        >
-          <DialogHeader className="sr-only">
-            <DialogTitle>Command palette</DialogTitle>
-            <DialogDescription>
-              Search ForeKingHell pages, clubs, rounds and actions.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="border-b border-border bg-background p-4">
-            <label className="grid h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-card px-3 shadow-sm">
-              <Search className="size-4 text-muted-foreground" aria-hidden />
-              <span className="sr-only">Search command palette</span>
-              <input
-                ref={commandInputRef}
-                type="search"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setActiveCommandIndex(0);
-                }}
-                onKeyDown={handleCommandInputKeyDown}
-                placeholder="Search driver, latest round, 7 iron, friends, courses..."
-                role="combobox"
-                aria-expanded={commandOpen}
-                aria-controls="command-palette-results"
-                aria-activedescendant={
-                  activeCommand ? commandOptionId(safeActiveCommandIndex) : undefined
-                }
-                className="min-w-0 bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground"
-              />
-              <span className="text-xs font-semibold text-muted-foreground">Esc</span>
-            </label>
-          </div>
-          <div className="grid min-h-0 gap-0 md:grid-cols-[minmax(0,1fr)_18rem]">
-            <ScrollArea className="max-h-[29rem]">
-              <div
-                id="command-palette-results"
-                className="grid gap-2 p-3"
-                role="listbox"
-                aria-label="Command palette results"
-                data-command-results
-              >
-                {filteredCommands.length > 0 ? (
-                  filteredCommands.map((command, index) => (
-                    <CommandLink
-                      key={`${command.type}-${command.title}-${command.href}`}
-                      command={command}
-                      index={index}
-                      active={index === safeActiveCommandIndex}
-                      pinned={pinnedLinks.some((link) => link.href === command.href)}
-                      onSelect={selectCommand}
-                      onTogglePinned={togglePinnedWorkspaceLink}
-                      onPreview={() => setActiveCommandIndex(index)}
-                    />
-                  ))
-                ) : (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-                    No matching command. Try a page, club, course, friend, round or import action.
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-            <aside className="hidden min-h-0 border-l border-border bg-muted/25 p-3 md:grid md:content-start md:gap-4">
-              <QuickLinkSection
-                title="Pinned workspace"
-                icon={Pin}
-                links={pinnedLinks}
-                onNavigate={closeCommandAndNavigate}
-              />
-              <QuickLinkSection
-                title="Saved table views"
-                icon={SlidersHorizontal}
-                links={savedViewCommands}
-                empty="Saved filters appear here."
-                onNavigate={closeCommandAndNavigate}
-              />
-              <QuickLinkSection
-                title="Saved insights"
-                icon={Sparkles}
-                links={savedInsightLinks}
-                empty="Saved AI insights appear here."
-                onNavigate={closeCommandAndNavigate}
-              />
-              <QuickLinkSection
-                title="Recent items"
-                icon={Clock3}
-                links={recentLinks}
-                empty="Recent pages appear here."
-                onNavigate={closeCommandAndNavigate}
-              />
-              <button
-                type="button"
-                onClick={() => setShortcutsOpen(true)}
-                className="focus-aaa grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-white/72 px-3 py-2 text-left text-sm font-semibold outline-none hover:border-emerald-300"
-              >
-                <Keyboard className="size-4 text-emerald-700" aria-hidden />
-                <span>Keyboard shortcuts</span>
-                <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
-              </button>
-            </aside>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DesktopCommandPalette
+        open={commandOpen}
+        onOpenChange={setCommandOpen}
+        inputRef={commandInputRef}
+        query={query}
+        onQueryChange={(value) => {
+          setQuery(value);
+          setActiveCommandIndex(0);
+        }}
+        onInputKeyDown={handleCommandInputKeyDown}
+        commands={filteredCommands}
+        activeIndex={safeActiveCommandIndex}
+        pinnedLinks={pinnedLinks}
+        savedViewLinks={savedViewCommands}
+        savedInsightLinks={savedInsightLinks}
+        recentLinks={recentLinks}
+        onSelect={selectCommand}
+        onTogglePinned={togglePinnedWorkspaceLink}
+        onPreview={setActiveCommandIndex}
+        onNavigate={closeCommandAndNavigate}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+      />
 
       <Sheet open={assistantSheetOpen} onOpenChange={setAssistantOpen}>
         <SheetContent className="w-[min(100vw,30rem)] gap-0 p-0 sm:max-w-[30rem]">
@@ -1074,97 +1005,6 @@ function WorkspaceLinksMenu({
   );
 }
 
-function CommandLink({
-  command,
-  index,
-  active,
-  pinned,
-  onSelect,
-  onTogglePinned,
-  onPreview,
-}: {
-  command: CommandItem;
-  index: number;
-  active: boolean;
-  pinned: boolean;
-  onSelect: (command: CommandItem) => void;
-  onTogglePinned: (command: CommandItem) => void;
-  onPreview: () => void;
-}) {
-  const Icon = command.icon;
-
-  function handleClick(event: MouseEvent<HTMLAnchorElement>) {
-    if (shouldLetBrowserHandleLink(event)) {
-      return;
-    }
-
-    event.preventDefault();
-    onSelect(command);
-  }
-
-  return (
-    <div
-      id={commandOptionId(index)}
-      role="option"
-      aria-selected={active}
-      className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-white/72 transition-[border-color,background-color,box-shadow] hover:border-emerald-300 hover:bg-white",
-        active
-          ? "border-emerald-400 bg-emerald-50/75 shadow-[0_0_0_1px_rgba(5,150,105,0.22)]"
-          : "border-border",
-      )}
-      data-command-active={active ? "true" : undefined}
-    >
-      <Link
-        href={command.href}
-        prefetch={false}
-        onClick={handleClick}
-        onMouseEnter={onPreview}
-        className="focus-aaa group grid min-h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-l-lg px-3 py-2 text-left outline-none"
-      >
-        <span className="grid size-8 place-items-center rounded-md bg-emerald-50 text-emerald-800">
-          <Icon className="size-4" aria-hidden />
-        </span>
-        <span className="min-w-0">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-semibold text-foreground">{command.title}</span>
-            {command.group ? (
-              <Badge
-                variant="outline"
-                className="hidden h-5 shrink-0 px-1.5 text-[10px] sm:inline-flex"
-              >
-                {command.group}
-              </Badge>
-            ) : null}
-          </span>
-          <span className="block truncate text-xs leading-5 text-muted-foreground">
-            {command.detail}
-          </span>
-        </span>
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="hidden md:inline">{index + 1}</span>
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700" />
-        </span>
-      </Link>
-      <button
-        type="button"
-        onClick={() => onTogglePinned(command)}
-        className={cn(
-          "focus-aaa grid min-h-14 w-12 place-items-center rounded-r-lg border-l border-border outline-none transition-colors hover:bg-emerald-50",
-          pinned ? "text-emerald-700" : "text-muted-foreground",
-        )}
-        aria-label={pinned ? `Unpin ${command.title}` : `Pin ${command.title}`}
-      >
-        {pinned ? <Check className="size-4" aria-hidden /> : <Pin className="size-4" aria-hidden />}
-      </button>
-    </div>
-  );
-}
-
-function commandOptionId(index: number) {
-  return `command-palette-option-${index}`;
-}
-
 function QuickLinkSection({
   title,
   icon: Icon,
@@ -1312,11 +1152,7 @@ function AssistantPanel({
 }
 
 function ShortcutKey({ children }: { children: ReactNode }) {
-  return (
-    <kbd className="inline-flex min-w-6 items-center justify-center rounded-md border border-border bg-white px-1.5 py-0.5 text-[11px] font-bold leading-4 text-muted-foreground shadow-sm">
-      {children}
-    </kbd>
-  );
+  return <Kbd className="min-w-6 bg-white font-bold leading-4">{children}</Kbd>;
 }
 
 function buildCommandItems(

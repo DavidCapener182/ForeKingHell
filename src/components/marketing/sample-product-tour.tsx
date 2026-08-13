@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useMemo, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import { marketingDemoClubs, type MarketingDemoClub } from "@/lib/marketing-demo-data";
 import { marketingJoinBetaHref } from "@/lib/marketing-links";
@@ -63,64 +65,60 @@ export function SampleProductTour() {
         <div className={styles.tourControls}>
           <fieldset>
             <legend>Choose demo club</legend>
-            <div className={styles.segmentedControl}>
+            <ToggleGroup
+              type="single"
+              value={clubKey}
+              variant="outline"
+              className={styles.segmentedControl}
+              onValueChange={(value) => {
+                if (!value) return;
+                markStarted();
+                setClubKey(value as MarketingDemoClub["key"]);
+              }}
+            >
               {marketingDemoClubs.map((candidate) => (
-                <button
-                  type="button"
-                  key={candidate.key}
-                  aria-pressed={candidate.key === clubKey}
-                  onClick={() => {
-                    markStarted();
-                    setClubKey(candidate.key);
-                  }}
-                >
+                <ToggleGroupItem key={candidate.key} value={candidate.key}>
                   {candidate.label}
-                </button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </fieldset>
           <fieldset>
             <legend>Evidence view</legend>
-            <div className={styles.segmentedControl}>
-              <button
-                type="button"
-                aria-pressed={!trusted}
-                onClick={() => {
-                  markStarted();
-                  setTrusted(false);
-                }}
-              >
-                Raw shots
-              </button>
-              <button
-                type="button"
-                aria-pressed={trusted}
-                onClick={() => {
-                  markStarted();
-                  setTrusted(true);
-                }}
-              >
-                Trusted sample
-              </button>
-            </div>
+            <ToggleGroup
+              type="single"
+              value={trusted ? "trusted" : "raw"}
+              variant="outline"
+              className={styles.segmentedControl}
+              onValueChange={(value) => {
+                if (!value) return;
+                markStarted();
+                setTrusted(value === "trusted");
+              }}
+            >
+              <ToggleGroupItem value="raw">Raw shots</ToggleGroupItem>
+              <ToggleGroupItem value="trusted">Trusted sample</ToggleGroupItem>
+            </ToggleGroup>
           </fieldset>
           <fieldset>
             <legend>Practice time</legend>
-            <div className={styles.segmentedControl}>
+            <ToggleGroup
+              type="single"
+              value={String(minutes)}
+              variant="outline"
+              className={styles.segmentedControl}
+              onValueChange={(value) => {
+                if (!value) return;
+                markStarted();
+                setMinutes(Number(value));
+              }}
+            >
               {[15, 30, 45].map((duration) => (
-                <button
-                  type="button"
-                  key={duration}
-                  aria-pressed={duration === minutes}
-                  onClick={() => {
-                    markStarted();
-                    setMinutes(duration);
-                  }}
-                >
+                <ToggleGroupItem key={duration} value={String(duration)}>
                   {duration} min
-                </button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </fieldset>
         </div>
         <div className={styles.tourStage}>
@@ -130,25 +128,26 @@ export function SampleProductTour() {
               {step + 1} / {tourSteps.length}
             </span>
           </div>
-          <div className={styles.tourTabs} role="tablist" aria-label="Sample tour chapters">
-            {tourSteps.map((label, index) => (
-              <button
-                type="button"
-                role="tab"
-                key={label}
-                aria-selected={index === step}
-                onClick={() => {
-                  markStarted();
-                  setStep(index);
-                }}
-              >
-                {label}
-              </button>
+          <Tabs
+            value={tourSteps[step]}
+            onValueChange={(value) => {
+              markStarted();
+              setStep(tourSteps.indexOf(value as (typeof tourSteps)[number]));
+            }}
+          >
+            <TabsList className={styles.tourTabs} aria-label="Sample tour chapters">
+              {tourSteps.map((label) => (
+                <TabsTrigger key={label} value={label}>
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            {tourSteps.map((label) => (
+              <TabsContent key={label} value={label} className={styles.tourView}>
+                {view[label]}
+              </TabsContent>
             ))}
-          </div>
-          <div className={styles.tourView} role="tabpanel" aria-label={`${tourSteps[step]} demo`}>
-            {view[tourSteps[step]]}
-          </div>
+          </Tabs>
           <div className={styles.tourNext}>
             {completed ? (
               <div>

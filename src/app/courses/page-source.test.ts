@@ -71,4 +71,15 @@ describe("courses desktop workspace source", () => {
       expect(source).toContain(`data-column="${column}"`);
     }
   });
+
+  it("adds the shadcn directory toolbar, view toggle, course cards and action menus", () => {
+    expect(source).toContain("CourseDirectoryToolbar");
+    expect(source).toContain("ConnectedMetricBar");
+    expect(source).toContain("CourseDirectoryGrid");
+    expect(source).toContain("data-course-directory-grid");
+    expect(source).toContain("CourseActionsMenu");
+    expect(source).toContain("DropdownMenu");
+    expect(source).toContain("AppEmptyState");
+    expect(source).toContain("parseCourseDirectoryView");
+  });
 });

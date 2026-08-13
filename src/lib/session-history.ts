@@ -11,6 +11,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 export async function getRecentSessionHistory(
   userId: string,
@@ -48,6 +52,7 @@ export async function getRecentSessionHistory(
     isRound: row.type === "round" || row.type === "real_round",
     title: row.courseName ?? row.fileName ?? formatLabel(row.type),
     dateLabel: dateFormatter.format(row.date),
+    timeLabel: timeFormatter.format(row.date),
     shotCount: Number(row.shotCount ?? 0),
     typeLabel: formatLabel(row.type),
     sourceLabel: formatLabel(row.source),

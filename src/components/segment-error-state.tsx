@@ -2,7 +2,9 @@
 
 import { useEffect } from "react";
 
-import { RouteErrorState } from "@/components/route-state";
+import { AppErrorState } from "@/components/app/app-error-state";
+import { PageShell } from "@/components/premium";
+import { Button } from "@/components/ui/button";
 
 export function SegmentErrorState({
   error,
@@ -15,5 +17,17 @@ export function SegmentErrorState({
     console.error(error);
   }, [error]);
 
-  return <RouteErrorState onRetry={unstable_retry} />;
+  return (
+    <PageShell>
+      <AppErrorState
+        title="This view could not be loaded"
+        description="Your data has not been changed. Retry this view, or return to it from the command menu."
+        action={
+          <Button type="button" variant="outline" onClick={unstable_retry}>
+            Retry
+          </Button>
+        }
+      />
+    </PageShell>
+  );
 }

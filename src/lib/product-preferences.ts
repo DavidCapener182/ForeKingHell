@@ -2,40 +2,21 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { userFeaturePreferences } from "@/db/schema";
+import {
+  goalTypeLabel,
+  goalTypes,
+  type GoalType,
+  type SeasonGoal,
+  type SeasonPlan,
+} from "@/lib/product-preferences-model";
 
-export type SeasonPlan = {
-  outcome: string;
-  targetDate: string;
-  focus: string;
-  weeklySessions: number;
-  successMeasure: string;
-};
-
-export const goalTypes = [
-  "handicap",
-  "carry",
-  "dispersion",
-  "speed",
-  "practice_frequency",
-  "course_record",
-  "tournament",
-] as const;
-
-export type GoalType = (typeof goalTypes)[number];
-
-export type SeasonGoal = {
-  id: string;
-  type: GoalType;
-  title: string;
-  club: string;
-  startingValue: number;
-  currentValue: number;
-  targetValue: number;
-  unit: string;
-  targetDate: string;
-  evidenceSource: string;
-  nextAction: string;
-};
+export {
+  goalTypeLabel,
+  goalTypes,
+  type GoalType,
+  type SeasonGoal,
+  type SeasonPlan,
+} from "@/lib/product-preferences-model";
 
 export const notificationCategories = [
   "dataQuality",
@@ -204,18 +185,6 @@ export function goalProgress(goal: SeasonGoal) {
   return Math.round(
     Math.min(100, Math.max(0, ((goal.currentValue - goal.startingValue) / distance) * 100)),
   );
-}
-
-export function goalTypeLabel(type: GoalType) {
-  return {
-    handicap: "Handicap target",
-    carry: "Carry target",
-    dispersion: "Dispersion target",
-    speed: "Speed target",
-    practice_frequency: "Practice-frequency target",
-    course_record: "Course-record target",
-    tournament: "Tournament target",
-  }[type];
 }
 
 function defaultGoalUnit(type: GoalType) {

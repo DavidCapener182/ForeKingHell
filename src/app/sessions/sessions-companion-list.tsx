@@ -1,17 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Database, Flag } from "lucide-react";
 
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { SegmentedControl } from "@/components/app/segmented-control";
 import type { SessionTimelineItem } from "@/app/sessions/session-timeline";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { StatusTimeline } from "@/components/app/status-timeline";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Filter = "all" | "practice" | "round";
 
@@ -30,8 +25,6 @@ export function SessionsCompanionList({
       ),
     [filter, sessions],
   );
-  const recent = visible.slice(0, 10);
-  const older = visible.slice(10);
 
   useEffect(() => {
     try {
@@ -50,79 +43,46 @@ export function SessionsCompanionList({
 
   return (
     <div className="grid gap-3">
-      <SegmentedControl
-        label="Session type"
-        value={filter}
-        options={[
-          { label: "All", value: "all" },
-          { label: "Practice", value: "practice" },
-          { label: "Rounds", value: "round" },
-        ]}
-        onChange={(value) => setFilter(value as Filter)}
-      />
-      <IOSSectionHeader
-        title="Recent sessions"
-        description={`${visible.length} ${filter === "all" ? "sessions and rounds" : filter}`}
-      />
-      <IOSGroupedList label="Session history">
-        {recent.length > 0 ? (
-          sessionRows(recent)
-        ) : (
-          <IOSListRow
-            label="No sessions in this view"
-            detail="Choose another type or import measured data."
-          />
-        )}
-      </IOSGroupedList>
-      {older.length > 0 ? (
-        <IOSDisclosureGroup
-          label="Older sessions"
-          items={[
-            {
-              value: "older",
-              title: "Older sessions",
-              summary: String(older.length),
-              description: "Continue through recent history",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <IOSGroupedList label="Older sessions" className="border-0">
-                  {sessionRows(older)}
-                </IOSGroupedList>
-              ),
-            },
-          ]}
+      <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
+        <TabsList className="grid w-full grid-cols-3" aria-label="Session type">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="practice">Practice</TabsTrigger>
+          <TabsTrigger value="round">Rounds</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <section className="ios-grouped-list p-4" aria-label="Session history">
+        <StatusTimeline
+          label="Session timeline"
+          empty={
+            <AppEmptyState
+              title="No sessions in this view"
+              description="Choose another session type or import measured data."
+              primaryAction={
+                <Button type="button" size="sm" onClick={() => setFilter("all")}>
+                  Show all sessions
+                </Button>
+              }
+              className="border-0 bg-transparent p-4 shadow-none"
+            />
+          }
+          items={visible.map((session) => ({
+            id: session.id,
+            dateGroup: session.dateLabel,
+            timestamp: session.timeLabel,
+            title: session.title,
+            description: `${session.typeLabel} · ${session.shotCount} shot${session.shotCount === 1 ? "" : "s"}`,
+            meta: `${session.verdict}${session.planLinked ? " · Plan linked" : ""}`,
+            status: `${session.evidenceConfidence} confidence`,
+            kind:
+              session.evidenceConfidence === "Low"
+                ? "warning"
+                : session.isRound
+                  ? "round"
+                  : "practice",
+            href: session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`,
+          }))}
         />
-      ) : null}
+      </section>
     </div>
   );
-}
-
-function sessionRows(sessions: SessionTimelineItem[]) {
-  return sessions.map((session) => {
-    const href = session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`;
-    const Icon = session.isRound ? Flag : Database;
-
-    return (
-      <Link
-        key={session.id}
-        href={href}
-        className="ios-grouped-row focus-aaa flex min-h-[4.75rem] min-w-0 items-center gap-3 px-4 py-2.5 outline-none active:bg-secondary"
-      >
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="size-[1.125rem]" aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="line-clamp-2 text-[15px] font-medium leading-5">{session.title}</span>
-          <span className="mt-0.5 block text-[13px] text-muted-foreground">
-            {session.dateLabel} · {session.typeLabel} · {session.shotCount} shots
-          </span>
-          <span className="mt-0.5 block text-xs font-medium">
-            {session.verdict} · {session.evidenceConfidence} confidence
-            {session.planLinked ? " · Plan linked" : ""}
-          </span>
-        </span>
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      </Link>
-    );
-  });
 }

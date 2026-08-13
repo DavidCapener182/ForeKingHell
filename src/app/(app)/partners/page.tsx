@@ -36,6 +36,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   Table,
@@ -172,40 +180,41 @@ export default async function PartnersPage({
             <section className="rounded-xl border bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold">Create offer</p>
               <form action={createPartnerOfferAction} className="mt-3 grid gap-3">
-                <select
-                  name="sponsorId"
-                  aria-label="Sponsor"
-                  className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
-                  required
-                >
-                  {data.ownedSponsors.map((sponsor) => (
-                    <option key={sponsor.id} value={sponsor.id}>
-                      {sponsor.name}
-                    </option>
-                  ))}
-                </select>
+                <Select name="sponsorId" defaultValue={data.ownedSponsors[0]?.id} required>
+                  <SelectTrigger aria-label="Sponsor" className="h-9 w-full bg-slate-50">
+                    <SelectValue placeholder="Choose sponsor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {data.ownedSponsors.map((sponsor) => (
+                      <SelectItem key={sponsor.id} value={sponsor.id}>
+                        {sponsor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   name="title"
                   placeholder="Winter range credit"
                   className="h-9 rounded-xl bg-slate-50"
                   required
                 />
-                <textarea
+                <Textarea
                   name="description"
                   rows={3}
                   className="rounded-xl border bg-slate-50 px-3 py-2 text-sm"
                   placeholder="Short labelled offer copy"
                 />
-                <select
-                  name="offerType"
-                  aria-label="Offer type"
-                  className="h-9 rounded-xl border bg-slate-50 px-3 text-sm"
-                >
-                  <option value="affiliate">Affiliate</option>
-                  <option value="discount">Discount</option>
-                  <option value="prize">Prize</option>
-                  <option value="range_credit">Range credit</option>
-                </select>
+                <Select name="offerType" defaultValue="affiliate">
+                  <SelectTrigger aria-label="Offer type" className="h-9 w-full bg-slate-50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="affiliate">Affiliate</SelectItem>
+                    <SelectItem value="discount">Discount</SelectItem>
+                    <SelectItem value="prize">Prize</SelectItem>
+                    <SelectItem value="range_credit">Range credit</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   name="targetContext"
                   placeholder="spin_missing, wedge, challenge"
@@ -548,13 +557,18 @@ function MobilePartnerOfferForm({ sponsors }: { sponsors: PartnersPageData["owne
     <form action={createPartnerOfferAction} className="grid gap-3">
       <label className="grid gap-1 text-sm font-medium">
         Sponsor
-        <select name="sponsorId" className="min-h-11 rounded-lg border px-3" required>
-          {sponsors.map((sponsor) => (
-            <option key={sponsor.id} value={sponsor.id}>
-              {sponsor.name}
-            </option>
-          ))}
-        </select>
+        <Select name="sponsorId" defaultValue={sponsors[0]?.id} required>
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sponsors.map((sponsor) => (
+              <SelectItem key={sponsor.id} value={sponsor.id}>
+                {sponsor.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Offer title
@@ -562,20 +576,21 @@ function MobilePartnerOfferForm({ sponsors }: { sponsors: PartnersPageData["owne
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Description
-        <textarea name="description" rows={3} className="rounded-lg border px-3 py-2 text-sm" />
+        <Textarea name="description" rows={3} />
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Offer type
-        <select
-          name="offerType"
-          defaultValue="affiliate"
-          className="min-h-11 rounded-lg border px-3"
-        >
-          <option value="affiliate">Affiliate</option>
-          <option value="discount">Discount</option>
-          <option value="prize">Prize</option>
-          <option value="range_credit">Range credit</option>
-        </select>
+        <Select name="offerType" defaultValue="affiliate">
+          <SelectTrigger className="min-h-11 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="affiliate">Affiliate</SelectItem>
+            <SelectItem value="discount">Discount</SelectItem>
+            <SelectItem value="prize">Prize</SelectItem>
+            <SelectItem value="range_credit">Range credit</SelectItem>
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Golf context

@@ -405,26 +405,33 @@ describe("desktop workbench chrome source", () => {
     expect(dialogBlock).toContain("<ShortcutKey");
   });
 
-  it("exposes command-palette results as a keyboard-readable listbox", () => {
+  it("uses the shadcn command composition for keyboard-readable results", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
     );
-    const dialogBlock =
-      source.match(/<Dialog open={commandOpen}[\s\S]*?<Sheet open={assistantSheetOpen}/)?.[0] ?? "";
+    const paletteSource = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-command-palette.tsx"),
+      "utf8",
+    );
+    const dialogBlock = paletteSource.match(/<CommandDialog[\s\S]*?<\/CommandDialog>/)?.[0] ?? "";
     const commandLinkBlock =
-      source.match(/function CommandLink\([\s\S]*?function commandOptionId/)?.[0] ?? "";
+      paletteSource.match(/function CommandLink\([\s\S]*?function QuickLinkSection/)?.[0] ?? "";
 
-    expect(dialogBlock).toContain('role="combobox"');
-    expect(dialogBlock).toContain('aria-controls="command-palette-results"');
-    expect(dialogBlock).toContain("aria-activedescendant");
-    expect(dialogBlock).toContain("commandOptionId(safeActiveCommandIndex)");
-    expect(dialogBlock).not.toContain("commandOptionId(activeCommandIndex)");
-    expect(dialogBlock).toContain('role="listbox"');
+    expect(source).toContain("dynamic(");
+    expect(source).toContain('import("@/components/app/desktop-command-palette")');
+    expect(source).toContain("<DesktopCommandPalette");
+    expect(dialogBlock).toContain("<CommandDialog");
+    expect(dialogBlock).toContain("<CommandInput");
+    expect(dialogBlock).toContain("<CommandList");
+    expect(dialogBlock).toContain("<CommandEmpty>");
+    expect(dialogBlock).toContain("<CommandGroup");
     expect(dialogBlock).toContain('aria-label="Command palette results"');
-    expect(commandLinkBlock).toContain("id={commandOptionId(index)}");
-    expect(commandLinkBlock).toContain('role="option"');
+    expect(commandLinkBlock).toContain("id={`command-palette-option-${index}`}");
+    expect(commandLinkBlock).toContain("<CommandMenuItem");
     expect(commandLinkBlock).toContain("aria-selected={active}");
+    expect(dialogBlock).not.toContain('role="listbox"');
+    expect(commandLinkBlock).not.toContain('role="option"');
   });
 
   it("gives labelled top-bar controls enough width without overlapping neighbours", () => {
@@ -432,7 +439,7 @@ describe("desktop workbench chrome source", () => {
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
       "utf8",
     );
-    const topbarBlock = source.match(/<header[\s\S]*?<Dialog open={commandOpen}/)?.[0] ?? "";
+    const topbarBlock = source.match(/<header[\s\S]*?<DesktopCommandPalette/)?.[0] ?? "";
     const workspaceMenuBlock =
       source.match(/function WorkspaceLinksMenu\([\s\S]*?<DropdownMenuContent/)?.[0] ?? "";
 

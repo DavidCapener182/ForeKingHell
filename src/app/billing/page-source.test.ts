@@ -51,7 +51,8 @@ describe("billing desktop plan limits ledger", () => {
   });
 
   it("keeps mobile checkout controls at a practical touch size", () => {
-    expect(source).toContain('className="min-h-11 rounded-lg border bg-background px-3 text-sm"');
+    expect(source).toContain('<Select name="interval"');
+    expect(source).toContain('className="min-h-11 w-full"');
     expect(source).toContain('className="min-h-11"');
     expect(source).not.toContain("ready for desktop review");
   });

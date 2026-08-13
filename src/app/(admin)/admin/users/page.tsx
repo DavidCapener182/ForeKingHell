@@ -6,6 +6,7 @@ import {
   grantLifetimeFullAction,
 } from "@/app/admin/actions";
 import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
+import { AdminUserActions } from "@/app/admin/admin-user-actions";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -35,6 +36,13 @@ import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getAdminUsers, requireAdminUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -228,15 +236,15 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   className="h-10 rounded-xl bg-slate-50"
                   required
                 />
-                <select
-                  name="role"
-                  aria-label="Admin role"
-                  defaultValue="operator"
-                  className="h-10 rounded-xl border bg-slate-50 px-3 text-sm"
-                >
-                  <option value="operator">Operator</option>
-                  {canManageOwners ? <option value="owner">Owner</option> : null}
-                </select>
+                <Select name="role" defaultValue="operator">
+                  <SelectTrigger className="w-full bg-slate-50" aria-label="Admin role">
+                    <SelectValue placeholder="Choose admin role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="operator">Operator</SelectItem>
+                    {canManageOwners ? <SelectItem value="owner">Owner</SelectItem> : null}
+                  </SelectContent>
+                </Select>
                 <AdminConfirmSubmitButton
                   type="submit"
                   variant="outline"
@@ -358,20 +366,20 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                         {formatDateTime(user.createdAt)}
                       </td>
                       <td data-column="action" className="px-3 py-3">
-                        {user.adminRole ? (
-                          <form action={deactivateAdminAccessAction}>
-                            <input type="hidden" name="userId" value={user.id} />
-                            <AdminConfirmSubmitButton
-                              confirmMessage={`Deactivate admin access for ${user.displayName}? This removes their active admin role and writes an audit entry.`}
-                              variant="outline"
-                              size="sm"
-                            >
-                              Deactivate
-                            </AdminConfirmSubmitButton>
-                          </form>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Use form</span>
-                        )}
+                        <AdminUserActions
+                          user={{
+                            id: user.id,
+                            displayName: user.displayName,
+                            email: user.email,
+                            username: user.username,
+                            activePlan: user.activePlan,
+                            sessionCount: user.sessionCount,
+                            feedCount: user.feedCount,
+                            adminRole: user.adminRole,
+                            adminStatus: user.adminStatus,
+                            createdLabel: formatDateTime(user.createdAt),
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -586,10 +594,15 @@ function MobileUserTools({ canManageOwners }: { canManageOwners: boolean }) {
           </label>
           <label className="grid gap-1 text-sm font-medium">
             Admin role
-            <select name="role" defaultValue="operator" className="min-h-11 rounded-lg border px-3">
-              <option value="operator">Operator</option>
-              {canManageOwners ? <option value="owner">Owner</option> : null}
-            </select>
+            <Select name="role" defaultValue="operator">
+              <SelectTrigger className="min-h-11 w-full" aria-label="Admin role">
+                <SelectValue placeholder="Choose admin role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="operator">Operator</SelectItem>
+                {canManageOwners ? <SelectItem value="owner">Owner</SelectItem> : null}
+              </SelectContent>
+            </Select>
           </label>
           <AdminConfirmSubmitButton
             type="submit"

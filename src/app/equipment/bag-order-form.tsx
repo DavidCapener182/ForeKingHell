@@ -12,6 +12,13 @@ import {
   type BagOrderClubItem,
 } from "@/app/equipment/bag-order-state";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export type { BagOrderClubItem } from "@/app/equipment/bag-order-state";
@@ -108,18 +115,24 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
                       data-bag-order-non-drag
                     >
                       <span>Bag section</span>
-                      <select
+                      <Select
                         value={club.bagSection}
-                        onChange={(event) => moveToSection(club.id, event.target.value)}
-                        aria-label={`Move ${club.label} to bag section`}
-                        className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+                        onValueChange={(value) => moveToSection(club.id, value)}
                       >
-                        {BAG_SECTIONS.map((option) => (
-                          <option key={option.key} value={option.key}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          aria-label={`Move ${club.label} to bag section`}
+                          className="min-h-11 w-full"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BAG_SECTIONS.map((option) => (
+                            <SelectItem key={option.key} value={option.key}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </label>
                     <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span>{club.carryLabel}</span>

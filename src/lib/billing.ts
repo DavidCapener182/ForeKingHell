@@ -203,17 +203,21 @@ export async function getBillingPageData() {
     .from(billingCustomers)
     .where(eq(billingCustomers.userId, userId))
     .limit(1);
-  const [latestSubscription] = await db
+  const subscriptionHistory = await db
     .select({
       id: subscriptions.id,
       planKey: subscriptions.planKey,
       status: subscriptions.status,
+      currentPeriodStart: subscriptions.currentPeriodStart,
+      currentPeriodEnd: subscriptions.currentPeriodEnd,
+      cancelAtPeriodEnd: subscriptions.cancelAtPeriodEnd,
       createdAt: subscriptions.createdAt,
     })
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt))
-    .limit(1);
+    .limit(24);
+  const latestSubscription = subscriptionHistory[0] ?? null;
   const entitlementRows = await db
     .select()
     .from(entitlements)
@@ -235,6 +239,7 @@ export async function getBillingPageData() {
     plans: billingPlans,
     activePlanKey,
     latestSubscription,
+    subscriptionHistory,
     entitlements: entitlementRows,
     planLimits: withDefaultAiPlanLimits(limitRows),
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),

@@ -4,6 +4,10 @@ import { Copy, Globe2, Lock, MessageCircle, Plus, Trophy, Users } from "lucide-r
 import { notFound } from "next/navigation";
 
 import { createGroupPostAction } from "@/app/groups/actions";
+import { GroupDangerActions } from "@/app/groups/group-danger-actions";
+import { GroupMembersDialog } from "@/app/groups/group-members-dialog";
+import { GroupSectionTabs } from "@/app/groups/group-section-tabs";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -57,15 +61,6 @@ const weekDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
 });
-
-const groupTabs = [
-  { label: "Feed", href: "#feed" },
-  { label: "Leaderboard", href: "#leaderboard" },
-  { label: "Operations", href: "#group-operations" },
-  { label: "Challenges", href: "#challenges" },
-  { label: "Members", href: "#members" },
-  { label: "Access", href: "#access" },
-];
 
 const groupMemberColumns: DesktopWorkbenchColumn[] = [
   { id: "member", label: "Member", locked: true },
@@ -159,7 +154,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
       <DesktopWorkbenchLayout scope="group-detail" className="hidden lg:grid">
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <section className="grid gap-4">
-            <header className="premium-hero overflow-hidden">
+            <header id="overview" className="premium-hero scroll-mt-28 overflow-hidden">
               <div className="h-36 bg-[linear-gradient(135deg,#111827,#047857_52%,#38bdf8)]" />
               <div className="grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <div>
@@ -190,11 +185,14 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                     </Badge>
                   </div>
                 </div>
-                <Button asChild variant="outline">
-                  <Link href="/groups" prefetch={false}>
-                    All groups
-                  </Link>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <GroupMembersDialog members={data.members} />
+                  <Button asChild variant="outline">
+                    <Link href="/groups" prefetch={false}>
+                      All groups
+                    </Link>
+                  </Button>
+                </div>
               </div>
               {flags?.created || flags?.posted ? (
                 <div className="mx-5 mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
@@ -203,17 +201,7 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               ) : null}
             </header>
 
-            <nav className="premium-card flex flex-wrap gap-2 p-3" aria-label="Group sections">
-              {groupTabs.map((tab) => (
-                <a
-                  key={tab.href}
-                  href={tab.href}
-                  className="rounded-lg border bg-[#F5F6F4] px-3 py-1.5 text-sm font-medium hover:bg-white"
-                >
-                  {tab.label}
-                </a>
-              ))}
-            </nav>
+            <GroupSectionTabs />
 
             <section id="leaderboard" className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
               <SquadLeaderboardPanel rivalry={data.rivalry} />
@@ -228,11 +216,18 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               </section>
             ) : null}
 
-            <section className="grid gap-3">
+            <section id="activity" className="grid scroll-mt-28 gap-3">
               {data.posts.length === 0 ? (
-                <p className="rounded-xl border border-dashed bg-white p-5 text-sm text-muted-foreground">
-                  No group posts yet.
-                </p>
+                <AppEmptyState
+                  icon={<MessageCircle className="size-5" />}
+                  title="No group posts yet"
+                  description="The first group update will appear here for members."
+                  primaryAction={
+                    <Button asChild variant="outline" size="sm">
+                      <a href="#feed">Create first post</a>
+                    </Button>
+                  }
+                />
               ) : (
                 data.posts.map((post) => (
                   <article key={post.id} className="premium-card p-4">
@@ -268,38 +263,15 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
               )}
             </section>
 
-            <section id="members" className="premium-card p-4">
+            <section id="members" className="premium-card scroll-mt-28 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold">Members</p>
-                <Badge variant="secondary">{data.members.length}</Badge>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {data.members.map((member) => (
-                  <div
-                    key={member.userId}
-                    className="flex items-center gap-3 rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm"
-                  >
-                    <SocialAvatar
-                      displayName={member.displayName}
-                      username={member.username}
-                      avatarUrl={member.avatarUrl}
-                      href={`/profile/${member.username}`}
-                      size="sm"
-                    />
-                    <div className="min-w-0">
-                      <Link
-                        href={`/profile/${member.username}`}
-                        prefetch={false}
-                        className="truncate font-medium hover:underline"
-                      >
-                        {member.displayName}
-                      </Link>
-                      <p className="truncate text-xs text-muted-foreground">
-                        @{member.username} · {label(member.role)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                <div>
+                  <p className="text-sm font-semibold">Member roster</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Open the focused roster to review active golfers and roles.
+                  </p>
+                </div>
+                <GroupMembersDialog members={data.members} />
               </div>
             </section>
           </section>
@@ -322,6 +294,21 @@ export default async function GroupDetailPage({ params, searchParams }: GroupDet
                   icon={<Trophy className="size-4 text-amber-600" />}
                   label="Challenges"
                   value={data.group.challengeCount}
+                />
+              </div>
+            </section>
+
+            <section className="premium-card p-4">
+              <p className="text-sm font-semibold">Membership controls</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Leaving removes member-only access. Deleting is available only to the group owner.
+              </p>
+              <div className="mt-3">
+                <GroupDangerActions
+                  groupId={data.group.id}
+                  groupName={data.group.name}
+                  isOwner={data.isOwner}
+                  isMember={Boolean(data.group.viewerRole)}
                 />
               </div>
             </section>

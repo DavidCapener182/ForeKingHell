@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import {
   createGroup,
   createGroupPost,
+  deleteGroup,
   groupTypes,
   joinGroup,
   joinGroupByInviteCode,
+  leaveGroup,
 } from "@/lib/groups";
 import { parseVisibility } from "@/lib/social";
 
@@ -41,6 +43,16 @@ export async function createGroupPostAction(formData: FormData) {
     requiredString(formData, "body"),
   );
   redirect(`/groups/${slug}?posted=1`);
+}
+
+export async function leaveGroupAction(formData: FormData) {
+  await leaveGroup(requiredString(formData, "groupId"));
+  redirect("/groups?left=1");
+}
+
+export async function deleteGroupAction(formData: FormData) {
+  await deleteGroup(requiredString(formData, "groupId"));
+  redirect("/groups?deleted=1");
 }
 
 function parseGroupType(value: string | null) {

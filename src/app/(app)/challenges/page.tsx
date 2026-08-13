@@ -3,6 +3,8 @@ import Image from "next/image";
 import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
+import { ChallengeJoinDialog } from "@/app/challenges/challenge-join-dialog";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   IOSGroupedList,
   IOSInlineStatus,
@@ -32,6 +34,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -55,6 +65,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getBillingPageData } from "@/lib/billing";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
@@ -252,16 +264,18 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                   />
                   <label className="grid gap-1 text-sm font-medium">
                     Template
-                    <select
-                      name="templateId"
-                      className="h-11 rounded-lg border bg-background px-3 text-sm"
-                    >
-                      {data.templates.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}
-                        </option>
-                      ))}
-                    </select>
+                    <Select name="templateId" defaultValue={data.templates[0]?.id}>
+                      <SelectTrigger className="h-11 w-full" aria-label="Challenge template">
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data.templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                   <Input
                     name="title"
@@ -269,7 +283,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                     className="h-11 rounded-lg bg-background"
                     required
                   />
-                  <textarea
+                  <Textarea
                     name="description"
                     rows={3}
                     placeholder="Description"
@@ -280,17 +294,18 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                     title="Choose who can enter"
                     detail="Visibility controls discovery; exact shot rows remain private."
                   />
-                  <select
-                    name="visibility"
-                    defaultValue="friends"
-                    className="h-11 rounded-lg border bg-background px-3 text-sm"
-                  >
-                    {socialVisibilityOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {titleCase(option)}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="visibility" defaultValue="friends">
+                    <SelectTrigger className="h-11 w-full" aria-label="Challenge visibility">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {socialVisibilityOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {titleCase(option)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <BuilderStep
                     number="3"
                     title="Set the evidence window"
@@ -510,12 +525,11 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                       </Link>
                     </Button>
                     {!featured.viewerJoined ? (
-                      <form action={joinChallengeAction}>
-                        <input type="hidden" name="challengeId" value={featured.id} />
-                        <Button type="submit" variant="outline">
-                          Join challenge
-                        </Button>
-                      </form>
+                      <ChallengeJoinDialog
+                        challengeId={featured.id}
+                        challengeTitle={featured.title}
+                        size="default"
+                      />
                     ) : null}
                   </div>
                 </div>
@@ -672,16 +686,21 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                           />
                           <label className="grid gap-2 text-sm font-medium">
                             <span>Template</span>
-                            <select
-                              name="templateId"
-                              className="h-10 rounded-lg border bg-background px-3 text-sm"
-                            >
-                              {data.templates.map((template) => (
-                                <option key={template.id} value={template.id}>
-                                  {template.name}
-                                </option>
-                              ))}
-                            </select>
+                            <Select name="templateId" defaultValue={data.templates[0]?.id}>
+                              <SelectTrigger
+                                className="h-10 w-full"
+                                aria-label="Challenge template"
+                              >
+                                <SelectValue placeholder="Select a template" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {data.templates.map((template) => (
+                                  <SelectItem key={template.id} value={template.id}>
+                                    {template.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </label>
                           <label className="grid gap-2 text-sm font-medium">
                             <span>Title</span>
@@ -694,7 +713,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                           </label>
                           <label className="grid gap-2 text-sm font-medium">
                             <span>Description</span>
-                            <textarea
+                            <Textarea
                               name="description"
                               rows={3}
                               className="rounded-lg border bg-background px-3 py-2 text-sm"
@@ -707,17 +726,21 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
                           />
                           <label className="grid gap-2 text-sm font-medium">
                             <span>Visibility</span>
-                            <select
-                              name="visibility"
-                              defaultValue="friends"
-                              className="h-10 rounded-lg border bg-background px-3 text-sm"
-                            >
-                              {socialVisibilityOptions.map((option) => (
-                                <option key={option} value={option}>
-                                  {titleCase(option)}
-                                </option>
-                              ))}
-                            </select>
+                            <Select name="visibility" defaultValue="friends">
+                              <SelectTrigger
+                                className="h-10 w-full"
+                                aria-label="Challenge visibility"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {socialVisibilityOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {titleCase(option)}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </label>
                           <BuilderStep
                             number="3"
@@ -894,8 +917,18 @@ function ChallengeBoardTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
-                  No challenge rows match this view.
+                <TableCell colSpan={9} className="p-4">
+                  <AppEmptyState
+                    title="No challenge rows in this view"
+                    description="Browse available challenges or start a measured private board."
+                    primaryAction={
+                      <Button asChild variant="outline">
+                        <Link href="/challenges" prefetch={false}>
+                          Browse available challenges
+                        </Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -908,35 +941,25 @@ function ChallengeBoardTable({
 
 function ChallengeBoardFilterTabs({ activeTab }: { activeTab: ChallengeHubTab }) {
   const tabs: Array<{ key: ChallengeHubTab; label: string; href: string }> = [
-    { key: "live", label: "Live", href: "/challenges" },
-    { key: "joined", label: "Joined", href: "/challenges?tab=joined" },
+    { key: "live", label: "Available", href: "/challenges" },
+    { key: "joined", label: "Active", href: "/challenges?tab=joined" },
     { key: "seasons", label: "Seasons", href: "/challenges?tab=seasons" },
     { key: "templates", label: "Templates", href: "/challenges?tab=templates" },
-    { key: "past", label: "Past", href: "/challenges?tab=past" },
+    { key: "past", label: "Completed", href: "/challenges?tab=past" },
   ];
 
   return (
-    <nav aria-label="Challenge board views" className="flex flex-wrap gap-2">
-      {tabs.map((tab) => {
-        const active = activeTab === tab.key;
-
-        return (
-          <Link
-            key={tab.key}
-            href={tab.href}
-            prefetch={false}
-            aria-current={active ? "page" : undefined}
-            className={
-              active
-                ? "inline-flex min-h-10 items-center rounded-xl bg-[#0B7A3B] px-3 text-sm font-semibold text-white"
-                : "inline-flex min-h-10 items-center rounded-xl border bg-white px-3 text-sm font-semibold text-foreground hover:bg-[#F5F6F4]"
-            }
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <Tabs value={activeTab} aria-label="Challenge board views" data-challenge-section-tabs>
+      <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
+        {tabs.map((tab) => (
+          <TabsTrigger key={tab.key} value={tab.key} asChild>
+            <Link href={tab.href} prefetch={false}>
+              {tab.label}
+            </Link>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -987,12 +1010,7 @@ function ChallengeBoardAction({ row }: { row: ChallengeBoardRow }) {
             Open
           </Link>
         </Button>
-        <form action={joinChallengeAction}>
-          <input type="hidden" name="challengeId" value={row.challenge.id} />
-          <Button type="submit" size="sm">
-            Join
-          </Button>
-        </form>
+        <ChallengeJoinDialog challengeId={row.challenge.id} challengeTitle={row.challenge.title} />
       </div>
     );
   }
@@ -1413,7 +1431,17 @@ function ChallengeGrid({
 }) {
   if (challenges.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">{empty}</p>
+      <AppEmptyState
+        title="No challenges here yet"
+        description={empty}
+        primaryAction={
+          <Button asChild variant="outline">
+            <Link href="/challenges" prefetch={false}>
+              Browse available challenges
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 
@@ -1421,12 +1449,14 @@ function ChallengeGrid({
     <div className="grid gap-3 md:grid-cols-2">
       {challenges.map((challenge) => (
         <Card key={challenge.id} className="premium-card" size="sm">
-          <div
-            data-media-container
-            className="relative mx-3 mt-3 aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]"
-          >
-            <ChallengeBadgeImage challenge={challenge} />
-          </div>
+          {!challenge.viewerJoined ? (
+            <div
+              data-media-container
+              className="relative mx-3 mt-3 aspect-[16/9] overflow-hidden rounded-lg bg-muted"
+            >
+              <ChallengeBadgeImage challenge={challenge} />
+            </div>
+          ) : null}
           <CardHeader>
             <CardTitle>{challenge.title}</CardTitle>
             <CardDescription>{challenge.templateName}</CardDescription>
@@ -1448,6 +1478,20 @@ function ChallengeGrid({
                 </Badge>
               ) : null}
             </div>
+            {challenge.viewerJoined ? (
+              <div className="grid gap-1.5">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="font-medium">Challenge window</span>
+                  <span className="text-muted-foreground">
+                    {challengeWindowProgress(challenge)}% elapsed
+                  </span>
+                </div>
+                <Progress
+                  value={challengeWindowProgress(challenge)}
+                  aria-label={`${challenge.title} challenge window progress`}
+                />
+              </div>
+            ) : null}
             {challenge.leader ? (
               <div className="rounded-lg border bg-white p-3 text-sm">
                 <p className="font-medium">Leader: {challenge.leader.displayName}</p>
@@ -1463,12 +1507,7 @@ function ChallengeGrid({
                 </Link>
               </Button>
               {!challenge.viewerJoined ? (
-                <form action={joinChallengeAction}>
-                  <input type="hidden" name="challengeId" value={challenge.id} />
-                  <Button type="submit" size="sm">
-                    Join
-                  </Button>
-                </form>
+                <ChallengeJoinDialog challengeId={challenge.id} challengeTitle={challenge.title} />
               ) : (
                 <Badge variant="secondary">
                   Joined{challenge.viewerRank ? ` · #${challenge.viewerRank}` : ""}
@@ -1480,6 +1519,16 @@ function ChallengeGrid({
       ))}
     </div>
   );
+}
+
+function challengeWindowProgress(challenge: Pick<ChallengeListItem, "startsAt" | "endsAt">) {
+  if (!challenge.endsAt) return 0;
+
+  const start = challenge.startsAt.getTime();
+  const end = challenge.endsAt.getTime();
+  if (end <= start) return 100;
+
+  return Math.max(0, Math.min(100, Math.round(((Date.now() - start) / (end - start)) * 100)));
 }
 
 function formatDate(value: Date) {

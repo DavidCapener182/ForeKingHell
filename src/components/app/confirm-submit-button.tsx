@@ -5,12 +5,16 @@ import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ConfirmSubmitButtonProps = ComponentProps<typeof Button> & {
   confirmMessage: string;
@@ -65,29 +69,23 @@ export function ConfirmSubmitButton({
           setOpen(true);
         }}
       />
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-start gap-3">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-100 text-amber-800">
-                <AlertTriangle className="size-5" aria-hidden />
-              </span>
-              <div className="min-w-0 text-left">
-                <DialogTitle>{confirmTitle}</DialogTitle>
-                <DialogDescription className="mt-2 leading-6">{confirmMessage}</DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {cancelLabel}
-            </Button>
-            <Button type="button" variant="destructive" onClick={submitConfirmedAction}>
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <AlertTriangle className="size-5" aria-hidden />
+            </AlertDialogMedia>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={submitConfirmedAction}>
               {confirmActionLabel}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

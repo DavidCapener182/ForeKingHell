@@ -9,6 +9,13 @@ import { DataPanel, SectionHeader, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -79,9 +86,9 @@ export function PlayerCompareClient({ data }: { data: PlayerCompareData }) {
           >
             <SelectField label="Player A" value={draftPlayerAId} onChange={setDraftPlayerAId}>
               {data.players.map((player) => (
-                <option key={player.userId} value={player.userId}>
+                <SelectItem key={player.userId} value={player.userId}>
                   {playerOptionLabel(player)}
-                </option>
+                </SelectItem>
               ))}
             </SelectField>
             <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">
@@ -89,9 +96,9 @@ export function PlayerCompareClient({ data }: { data: PlayerCompareData }) {
             </div>
             <SelectField label="Player B" value={draftPlayerBId} onChange={setDraftPlayerBId}>
               {data.players.map((player) => (
-                <option key={player.userId} value={player.userId}>
+                <SelectItem key={player.userId} value={player.userId}>
                   {playerOptionLabel(player)}
-                </option>
+                </SelectItem>
               ))}
             </SelectField>
             <div className="flex gap-2">
@@ -166,13 +173,12 @@ function SelectField({
   return (
     <label className="grid gap-1 text-sm font-medium">
       {label}
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 rounded-lg border bg-white/90 px-3 text-sm"
-      >
-        {children}
-      </select>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-10 w-full bg-white/90">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>{children}</SelectContent>
+      </Select>
     </label>
   );
 }

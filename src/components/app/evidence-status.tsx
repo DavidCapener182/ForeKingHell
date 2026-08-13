@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, CircleDot } from "lucide-react";
 
 import { StatusPill, type Tone } from "@/components/premium";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 export type EvidenceConfidence = "early signal" | "developing" | "reliable" | "strong evidence";
@@ -78,10 +79,10 @@ export function MetricEvidenceDrawer({
   ].filter((pair): pair is [string, string] => pair !== null);
 
   return (
-    <details
+    <Collapsible
       className={cn("group rounded-2xl border border-border/70 bg-card/70 open:bg-card", className)}
     >
-      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 rounded-2xl px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+      <CollapsibleTrigger className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-4 rounded-2xl px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
         <span className="min-w-0">
           <span className="block text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
             {label}
@@ -93,12 +94,12 @@ export function MetricEvidenceDrawer({
         <span className="flex shrink-0 items-center gap-2">
           <ConfidenceIndicator label={confidence} />
           <ChevronDown
-            className="size-4 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+            className="size-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
             aria-hidden
           />
         </span>
-      </summary>
-      <div className="border-t border-border/70 px-4 py-4">
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t border-border/70 px-4 py-4">
         <dl className="grid gap-3 sm:grid-cols-2">
           {pairs.map(([term, description]) => (
             <div key={term} className="rounded-xl bg-muted/45 px-3 py-2">
@@ -113,8 +114,8 @@ export function MetricEvidenceDrawer({
             <p>{evidence.explanation}</p>
           </div>
         ) : null}
-      </div>
-    </details>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

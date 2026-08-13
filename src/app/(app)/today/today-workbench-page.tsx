@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   Award,
@@ -42,6 +42,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -60,6 +70,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TodayShotCharts,
   type TodayChartClubStatus,
@@ -275,8 +286,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const [data, challengeData] = await Promise.all([
     getTodayPracticeData({
       date: first(params.date),
-      sessionId: first(params.session),
-      club: first(params.club),
+      sessionId: normaliseAllValue(first(params.session)),
+      club: normaliseAllValue(first(params.club)),
     }),
     socialLoaded ? getChallengesPageData() : Promise.resolve(null),
   ]);
@@ -945,30 +956,6 @@ function TodayReviewControlRow({ label, value }: { label: string; value: string 
   );
 }
 
-type TodayBentoSpan = 4 | 5 | 6 | 7 | 8 | 12;
-
-function todayBentoSpan(span: TodayBentoSpan): CSSProperties {
-  return { gridColumn: `span ${span} / span ${span}` };
-}
-
-function TodayBentoItem({
-  children,
-  className = "",
-  id,
-  span,
-}: {
-  children: ReactNode;
-  className?: string;
-  id?: string;
-  span: TodayBentoSpan;
-}) {
-  return (
-    <div id={id} className={`min-w-0 self-start ${className}`} style={todayBentoSpan(span)}>
-      {children}
-    </div>
-  );
-}
-
 function TodayDesktopDashboard({
   data,
   socialContext,
@@ -1023,11 +1010,8 @@ function TodayDesktopDashboard({
         />
       }
     >
-      <div
-        className="grid auto-rows-auto items-start gap-4 lg:gap-5"
-        style={{ gridTemplateColumns: "repeat(12, minmax(0, 1fr))" }}
-      >
-        <div className="flex items-center justify-between gap-4" style={todayBentoSpan(12)}>
+      <div className="grid min-w-0 gap-5" data-desktop-today-workspace>
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowRight className="size-4 rotate-180" />
@@ -1049,115 +1033,111 @@ function TodayDesktopDashboard({
             </Button>
           </div>
         </div>
+        <Tabs defaultValue="overview" className="min-w-0 gap-5" data-desktop-today-tabs>
+          <TabsList variant="line" aria-label="Latest practice workspace" className="flex-wrap">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="practice">Practice</TabsTrigger>
+            <TabsTrigger value="evidence">Evidence</TabsTrigger>
+            <TabsTrigger value="data-quality">Data quality</TabsTrigger>
+          </TabsList>
 
-        <TodayBentoItem span={12}>
-          <div className="@container/today-top">
-            <div
-              data-equal-height-row="today-top"
-              className="today-top-grid grid items-stretch gap-4 lg:gap-5"
-            >
-              <div className="today-summary-stack @container/today-summary grid min-w-0 gap-4 lg:gap-5">
-                <TodayVerdictHero
-                  data={data}
-                  linkedPracticePlan={linkedPracticePlan}
-                  className="h-full"
-                />
-                <WhatChangedCard items={whatChangedItems(data)} className="h-full" />
-              </div>
-              <TodayScoreStack
-                data={data}
-                linkedPracticePlan={linkedPracticePlan}
-                className="h-full"
-              />
-            </div>
-          </div>
-        </TodayBentoItem>
-        <TodayBentoItem span={12}>
-          <DriverHealthCard summary={driverHealthSummary(data)} />
-        </TodayBentoItem>
-        <TodayBentoItem span={12}>
-          <SessionSignalStrip data={data} />
-        </TodayBentoItem>
-        <TodayBentoItem span={12}>
-          <TodayKpiStrip data={data} />
-        </TodayBentoItem>
-
-        <TodayBentoItem id="focus" span={12} className="scroll-mt-28">
-          <div className="@container/today-practice">
-            <div
-              data-equal-height-row="today-practice"
-              className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
-                hasShots
-                  ? "today-practice-grid-has-prescription"
-                  : "today-practice-grid-no-prescription"
-              }`}
-            >
-              {hasShots ? (
-                <div className="today-practice-prescription min-w-0">
-                  <TodayPracticePrescription data={data} />
-                </div>
-              ) : null}
-              <div className="today-practice-mode min-w-0">
-                <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-              </div>
-              <div className="today-practice-plan min-w-0">
-                <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
-              </div>
-            </div>
-          </div>
-        </TodayBentoItem>
-
-        <TodayBentoItem span={12}>
-          <TodayDesktopFilterBar data={data} activeFilterChips={activeFilterChips} />
-        </TodayBentoItem>
-
-        {hasShots ? (
-          <>
-            {data.dataCleaning.excludedShotCount > 0 ? (
-              <TodayBentoItem span={12}>
-                <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
-              </TodayBentoItem>
-            ) : null}
-            <TodayBentoItem id="charts" span={12} className="scroll-mt-28">
+          <TabsContent value="overview" className="grid min-w-0 gap-5">
+            <TodayVerdictHero data={data} linkedPracticePlan={linkedPracticePlan} />
+            <ConnectedMetricBar
+              metrics={todayConnectedMetrics(data, linkedPracticePlan)}
+              label="Latest practice connected metrics"
+            />
+            {hasShots ? (
               <TodayShotCharts
                 shots={chartShots}
                 clubStatuses={chartClubStatuses}
                 patternInsight={chartPatternInsight}
               />
-            </TodayBentoItem>
-            <TodayBentoItem id="clubs" span={12} className="scroll-mt-28">
-              <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
-            </TodayBentoItem>
-            <TodayBentoItem id="pbs" span={12} className="scroll-mt-28">
-              <TodayHighlightsPanel
-                stats={data.clubStats}
-                shots={data.shots}
-                bestStraightShots={data.bestStraightShots}
-              />
-            </TodayBentoItem>
-            <TodayBentoItem span={12}>
+            ) : null}
+            <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
+              <WhatChangedCard items={whatChangedItems(data)} />
+              <DriverHealthCard summary={driverHealthSummary(data)} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="practice" className="grid min-w-0 gap-5">
+            <div className="@container/today-practice">
               <div
-                data-equal-height-row="today-footer"
-                className="grid items-stretch gap-4 lg:grid-cols-2"
+                data-equal-height-row="today-practice"
+                className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
+                  hasShots
+                    ? "today-practice-grid-has-prescription"
+                    : "today-practice-grid-no-prescription"
+                }`}
               >
-                <TodaySocialLine
-                  data={data}
-                  socialContext={socialContext}
-                  loadHref={todaySocialHref(data, clubSort)}
-                  className="h-full"
-                />
-                <TodayRawShotListPanel
-                  data={data}
-                  shotDatabaseHref={shotDatabaseHref}
-                  className="h-full"
-                />
+                {hasShots ? (
+                  <div className="today-practice-prescription min-w-0">
+                    <TodayPracticePrescription data={data} />
+                  </div>
+                ) : null}
+                <div className="today-practice-mode min-w-0">
+                  <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+                </div>
+                <div className="today-practice-plan min-w-0">
+                  <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
+                </div>
               </div>
-            </TodayBentoItem>
-          </>
-        ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="evidence" className="grid min-w-0 gap-5">
+            <TodayDesktopFilterBar data={data} activeFilterChips={activeFilterChips} />
+            {hasShots ? (
+              <>
+                <SessionSignalStrip data={data} />
+                <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
+                <TodayHighlightsPanel
+                  stats={data.clubStats}
+                  shots={data.shots}
+                  bestStraightShots={data.bestStraightShots}
+                />
+                <div className="grid items-start gap-5 xl:grid-cols-2">
+                  <TodaySocialLine
+                    data={data}
+                    socialContext={socialContext}
+                    loadHref={todaySocialHref(data, clubSort)}
+                  />
+                  <TodayRawShotListPanel data={data} shotDatabaseHref={shotDatabaseHref} />
+                </div>
+              </>
+            ) : null}
+          </TabsContent>
+
+          <TabsContent value="data-quality" className="grid min-w-0 gap-5">
+            {data.dataCleaning.excludedShotCount > 0 ? (
+              <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
+            ) : (
+              <section className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5">
+                <div className="flex items-center gap-2 text-emerald-950">
+                  <ShieldCheck className="size-5" />
+                  <h2 className="font-semibold">All imported rows are in the trusted sample</h2>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-emerald-900">
+                  No shot rows were held out of today&apos;s scoring, comparisons or highlights.
+                </p>
+              </section>
+            )}
+            <TodayDesktopFilterBar data={data} activeFilterChips={activeFilterChips} />
+          </TabsContent>
+        </Tabs>
       </div>
     </DesktopWorkbenchLayout>
   );
+}
+
+function todayConnectedMetrics(
+  data: TodayPracticeData,
+  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>,
+) {
+  return todayInsightMetrics(data, linkedPracticePlan)
+    .filter((metric) => metric.label !== "Practice usefulness")
+    .slice(0, 4)
+    .map(({ label, value, detail }) => ({ label, value, detail }));
 }
 
 function todayInsightMetrics(
@@ -1510,12 +1490,17 @@ function TodayPracticeModePanel({
           </div>
         </div>
 
-        <details className="group rounded-lg border border-slate-200 bg-white">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
-            <span>Full 5-step workflow</span>
-            <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="grid gap-2 border-t border-slate-100 p-3">
+        <Collapsible className="group rounded-lg border border-slate-200 bg-white">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50"
+            >
+              <span>Full 5-step workflow</span>
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="grid gap-2 border-t border-slate-100 p-3">
             {steps.map((step, index) => {
               const card = <PracticeStepCard step={step} index={index} />;
 
@@ -1527,8 +1512,8 @@ function TodayPracticeModePanel({
                 <div key={step.title}>{card}</div>
               );
             })}
-          </div>
-        </details>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </DataPanel>
   );
@@ -2017,60 +2002,66 @@ function TodayVerdictHero({
     <section
       className={`@container/today-hero overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6 ${className}`}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-          {data.dateLabel}
-        </span>
-      </div>
-      <h1 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-[1.04] tracking-normal text-slate-950 @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
-        {heroVerdictTitle(data)}
-      </h1>
-      {storyChips.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {storyChips.map((chip) => (
-            <VerdictReasonChip key={`${chip.label}-${chip.value}`} item={chip} />
-          ))}
-        </div>
-      ) : null}
-      <p className="mt-3 max-w-3xl text-base font-medium leading-6 text-slate-700">
-        {reviewNarrative(data, linkedPracticePlan)}
-      </p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {integerFormatter.format(data.shots.length)} shots /{" "}
-        {integerFormatter.format(selectedClubs)} {selectedClubs === 1 ? "club" : "clubs"} / {scope}
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <HeroScopePill label={selectedClubLabel(data)} value="Scope" />
-        <HeroScopePill label="Up to 50 earlier / club" value="Baseline" />
-        <HeroScopePill
-          label={bestShot ? bestShotTitle(bestShot) : "No shot yet"}
-          value="Shot of the day"
-        />
-      </div>
+      <div className="grid min-w-0 items-start gap-5 @5xl/today-hero:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.65fr)]">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+              {data.dateLabel}
+            </span>
+          </div>
+          <h1 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-[1.04] tracking-normal text-slate-950 @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
+            {heroVerdictTitle(data)}
+          </h1>
+          {storyChips.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {storyChips.map((chip) => (
+                <VerdictReasonChip key={`${chip.label}-${chip.value}`} item={chip} />
+              ))}
+            </div>
+          ) : null}
+          <p className="mt-3 max-w-3xl text-base font-medium leading-6 text-slate-700">
+            {reviewNarrative(data, linkedPracticePlan)}
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {integerFormatter.format(data.shots.length)} shots /{" "}
+            {integerFormatter.format(selectedClubs)} {selectedClubs === 1 ? "club" : "clubs"} /{" "}
+            {scope}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <HeroScopePill label={selectedClubLabel(data)} value="Scope" />
+            <HeroScopePill label="Up to 50 earlier / club" value="Baseline" />
+            <HeroScopePill
+              label={bestShot ? bestShotTitle(bestShot) : "No shot yet"}
+              value="Shot of the day"
+            />
+          </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <VerdictStoryCard
-          label="Best current form"
-          value={best?.clubLabel ?? score.strong}
-          detail={best ? bestPerformerDetail(best) : "Building signal"}
-          tone="green"
-          icon={<ShieldCheck className="size-4" />}
-        />
-        <VerdictStoryCard
-          label="Biggest opportunity"
-          value={work?.clubLabel ?? score.weak}
-          detail={work ? opportunityShortDetail(work) : "No clear drag"}
-          tone="pink"
-          icon={<Target className="size-4" />}
-        />
-        <VerdictStoryCard
-          label="Recommendation"
-          value={score.recommendation}
-          detail={score.scoringDetail}
-          tone="amber"
-          icon={<Dumbbell className="size-4" />}
-        />
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <VerdictStoryCard
+              label="Best current form"
+              value={best?.clubLabel ?? score.strong}
+              detail={best ? bestPerformerDetail(best) : "Building signal"}
+              tone="green"
+              icon={<ShieldCheck className="size-4" />}
+            />
+            <VerdictStoryCard
+              label="Biggest opportunity"
+              value={work?.clubLabel ?? score.weak}
+              detail={work ? opportunityShortDetail(work) : "No clear drag"}
+              tone="pink"
+              icon={<Target className="size-4" />}
+            />
+            <VerdictStoryCard
+              label="Recommendation"
+              value={score.recommendation}
+              detail={score.scoringDetail}
+              tone="amber"
+              icon={<Dumbbell className="size-4" />}
+            />
+          </div>
+        </div>
+        <TodayScoreStack data={data} linkedPracticePlan={linkedPracticePlan} className="min-w-0" />
       </div>
     </section>
   );
@@ -2087,6 +2078,7 @@ function TodayScoreStack({
 }) {
   return (
     <section
+      data-today-hero-score-stack
       className={`grid min-w-0 grid-rows-[auto_minmax(0,1fr)] items-stretch gap-4 ${className}`}
     >
       <PracticeScoreHeroCard
@@ -2095,45 +2087,6 @@ function TodayScoreStack({
         linkedPracticePlan={linkedPracticePlan}
       />
       <HeroShotSpotlight shot={data.bestStraightShots[0]} />
-    </section>
-  );
-}
-
-function TodayKpiStrip({ data, className = "" }: { data: TodayPracticeData; className?: string }) {
-  return (
-    <section className={`grid items-stretch gap-2 md:grid-cols-2 xl:grid-cols-4 ${className}`}>
-      <ReviewKpi
-        icon={<Crosshair className="size-4" />}
-        label="Offline"
-        value={formatYards(data.overall.today.offlineAverageYd)}
-        detail={offlineDeltaText(data.overall.offlineDeltaYd)}
-        status={offlineStatus(data.overall.offlineDeltaYd)}
-        tone={offlineKpiTone(data.overall.offlineDeltaYd)}
-      />
-      <ReviewKpi
-        icon={<Gauge className="size-4" />}
-        label="Straight rate"
-        value={formatRate(data.overall.today.straightRate)}
-        detail={deltaText(data.overall.straightRateDelta, "pp", true)}
-        status={rateStatus(data.overall.straightRateDelta)}
-        tone={deltaTone(data.overall.straightRateDelta, "higher")}
-      />
-      <ReviewKpi
-        icon={<ShieldCheck className="size-4" />}
-        label="Lateral window"
-        value={formatRate(data.overall.today.playableRate)}
-        detail={deltaText(data.overall.playableRateDelta, "pp", true)}
-        status={rateStatus(data.overall.playableRateDelta, "Solid")}
-        tone={playableKpiTone(data.overall.playableRateDelta)}
-      />
-      <ReviewKpi
-        icon={<Route className="size-4" />}
-        label="Carry"
-        value={formatYards(data.overall.today.carryAverageYd)}
-        detail={deltaText(data.overall.carryDeltaYd, "yd", true)}
-        status={carryStatus(data.overall.carryDeltaYd)}
-        tone={deltaTone(data.overall.carryDeltaYd, "higher")}
-      />
     </section>
   );
 }
@@ -2913,44 +2866,6 @@ function fairwayLandingPoint(
   };
 }
 
-function ReviewKpi({
-  icon,
-  label,
-  value,
-  detail,
-  status,
-  tone,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  detail: string;
-  status: string;
-  tone: "green" | "sky" | "pink" | "amber" | "slate";
-}) {
-  return (
-    <div className="h-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <span className={`grid size-7 place-items-center rounded-full ${reviewIconClass(tone)}`}>
-            {icon}
-          </span>
-          {label}
-        </div>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${reviewStatusClass(tone)}`}
-        >
-          {status}
-        </span>
-      </div>
-      <p className="mt-2 text-xl font-semibold leading-tight tracking-normal text-slate-950">
-        {value}
-      </p>
-      <p className={reviewDeltaClass(tone)}>{detail}</p>
-    </div>
-  );
-}
-
 function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
   const focus = practiceFocus(data);
 
@@ -3310,42 +3225,44 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
     <>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Date
-        <input
+        <Input
           type="date"
           name="date"
           defaultValue={data.dateKey}
-          className="h-9 w-full min-w-0 rounded-lg border bg-white/90 px-3 text-sm"
+          className="h-9 w-full min-w-0 bg-white/90 text-sm"
         />
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Session
-        <select
-          name="session"
-          defaultValue={data.filters.sessionId}
-          className="h-9 w-full min-w-0 rounded-lg border bg-white/90 px-3 text-sm"
-        >
-          <option value="">All sessions for this practice date</option>
-          {data.sessions.map((session) => (
-            <option key={session.id} value={session.id}>
-              {session.label} ({session.shotCount})
-            </option>
-          ))}
-        </select>
+        <Select name="session" defaultValue={data.filters.sessionId || "all"}>
+          <SelectTrigger className="h-9 w-full min-w-0 bg-white/90">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All sessions for this practice date</SelectItem>
+            {data.sessions.map((session) => (
+              <SelectItem key={session.id} value={session.id}>
+                {session.label} ({session.shotCount})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Club
-        <select
-          name="club"
-          defaultValue={data.filters.club}
-          className="h-9 w-full min-w-0 rounded-lg border bg-white/90 px-3 text-sm"
-        >
-          <option value="">All clubs</option>
-          {data.clubs.map((club) => (
-            <option key={club.type} value={club.type}>
-              {club.label} ({formatClubOptionShotCount(club)})
-            </option>
-          ))}
-        </select>
+        <Select name="club" defaultValue={data.filters.club || "all"}>
+          <SelectTrigger className="h-9 w-full min-w-0 bg-white/90">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All clubs</SelectItem>
+            {data.clubs.map((club) => (
+              <SelectItem key={club.type} value={club.type}>
+                {club.label} ({formatClubOptionShotCount(club)})
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </label>
     </>
   );
@@ -3452,12 +3369,17 @@ function TodayRawShotListPanel({
           </Link>
         </Button>
       </div>
-      <details className="group mt-2 rounded-lg border border-slate-200 bg-slate-50/55">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-slate-800 [&::-webkit-details-marker]:hidden">
-          <span>Preview table</span>
-          <ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="border-t border-slate-200 p-3">
+      <Collapsible className="group mt-2 rounded-lg border border-slate-200 bg-slate-50/55">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm font-semibold text-slate-800"
+          >
+            <span>Preview table</span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t border-slate-200 p-3">
           <div data-workbench-scope="today-raw-shot-preview" className="mb-3">
             <DesktopTableWorkbenchControls
               viewKey="today-raw-shot-preview"
@@ -3567,8 +3489,8 @@ function TodayRawShotListPanel({
               </TableBody>
             </Table>
           </DataTableFrame>
-        </div>
-      </details>
+        </CollapsibleContent>
+      </Collapsible>
     </section>
   );
 }
@@ -3650,44 +3572,49 @@ function TodayHighlightsPanel({
 
               <div className="h-full">
                 {closeCalls.length > 0 ? (
-                  <details className="group h-full rounded-lg border border-amber-100 bg-amber-50/35">
-                    <summary className="grid h-full min-h-36 cursor-pointer list-none content-center gap-3 px-3 py-3 [&::-webkit-details-marker]:hidden">
-                      <span className="flex min-w-0 items-center justify-between gap-3">
-                        <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-amber-950">
-                            Close to PB
-                          </span>
-                          <span className="block text-xs text-amber-800">
-                            {closeCalls.length} near misses from this practice.
-                          </span>
-                        </span>
-                        <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-amber-900">
-                          View all
-                          <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                        </span>
-                      </span>
-                      <span className="grid gap-1.5 @sm/today-highlight-rail:grid-cols-2">
-                        {closeCalls.slice(0, 4).map((highlight) => (
-                          <span
-                            key={`summary-${highlight.id}`}
-                            className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-amber-100 bg-white/70 px-2 py-1.5"
-                          >
-                            <span className="min-w-0 truncate text-xs font-medium text-amber-900">
-                              {highlight.clubLabel} · {highlight.metricLabel}
+                  <Collapsible className="group h-full rounded-lg border border-amber-100 bg-amber-50/35">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="grid h-full min-h-36 w-full cursor-pointer content-center gap-3 px-3 py-3 text-left"
+                      >
+                        <span className="flex min-w-0 items-center justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-amber-950">
+                              Close to PB
                             </span>
-                            <span className="shrink-0 text-sm font-semibold text-amber-950">
-                              {highlight.value}
+                            <span className="block text-xs text-amber-800">
+                              {closeCalls.length} near misses from this practice.
                             </span>
                           </span>
-                        ))}
-                      </span>
-                    </summary>
-                    <div className="grid gap-2 border-t border-amber-100 p-3">
+                          <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-amber-900">
+                            View all
+                            <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+                          </span>
+                        </span>
+                        <span className="grid gap-1.5 @sm/today-highlight-rail:grid-cols-2">
+                          {closeCalls.slice(0, 4).map((highlight) => (
+                            <span
+                              key={`summary-${highlight.id}`}
+                              className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-amber-100 bg-white/70 px-2 py-1.5"
+                            >
+                              <span className="min-w-0 truncate text-xs font-medium text-amber-900">
+                                {highlight.clubLabel} · {highlight.metricLabel}
+                              </span>
+                              <span className="shrink-0 text-sm font-semibold text-amber-950">
+                                {highlight.value}
+                              </span>
+                            </span>
+                          ))}
+                        </span>
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="grid gap-2 border-t border-amber-100 p-3">
                       {closeCalls.map((highlight) => (
                         <HighlightCard key={highlight.id} highlight={highlight} />
                       ))}
-                    </div>
-                  </details>
+                    </CollapsibleContent>
+                  </Collapsible>
                 ) : (
                   <div className="rounded-lg border border-amber-100 bg-amber-50/35 px-3 py-2.5 text-sm text-amber-900">
                     No close-to-PB calls for this selection.
@@ -4230,6 +4157,10 @@ function StraightShotMetric({ label, value }: { label: string; value: string }) 
 
 function first(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+}
+
+function normaliseAllValue(value: string) {
+  return value === "all" ? "" : value;
 }
 
 function shouldLoadTodaySocial(value: string) {
@@ -5348,27 +5279,6 @@ function valueOrZero(value: number | null) {
   return isNumber(value) ? value : 0;
 }
 
-function offlineStatus(value: number | null) {
-  if (value === null) return "Baseline";
-  if (value < -1) return "Straighter";
-  if (value > 1) return "Watch";
-  return "Stable";
-}
-
-function rateStatus(value: number | null, stableLabel = "Stable") {
-  if (value === null) return "Baseline";
-  if (value > 1) return "Up";
-  if (value < -1) return "Down";
-  return stableLabel;
-}
-
-function carryStatus(value: number | null) {
-  if (value === null) return "Baseline";
-  if (value > 1) return "Longer";
-  if (value < -1) return "Shorter";
-  return "Stable";
-}
-
 function reviewIconClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
   if (tone === "green") return "bg-emerald-50 text-emerald-700";
   if (tone === "pink") return "bg-pink-50 text-pink-700";
@@ -5501,18 +5411,6 @@ function rateValueTone(
   if (value >= 35) return "green";
   if (value >= 20) return "amber";
   return "pink";
-}
-
-function reviewDeltaClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
-  const color =
-    tone === "green"
-      ? "text-emerald-700"
-      : tone === "pink"
-        ? "text-pink-700"
-        : tone === "amber"
-          ? "text-amber-800"
-          : "text-muted-foreground";
-  return `mt-2 text-sm font-medium ${color}`;
 }
 
 function verdictCardClass(tone: ReviewTone) {

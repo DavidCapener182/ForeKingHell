@@ -6,6 +6,13 @@ import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getProductPreferences } from "@/lib/product-preferences";
@@ -144,18 +151,21 @@ export default async function NotificationSettingsPage({
                         {option.detail}
                       </span>
                     </span>
-                    <select
-                      id={`delivery-${option.key}`}
-                      name={option.key}
-                      defaultValue={preferences.delivery[option.key]}
-                      className="min-h-11 min-w-0 rounded-xl border bg-background px-2 text-sm font-medium lg:px-3 lg:font-semibold"
-                    >
-                      {Object.entries(deliveryLabels).map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
+                    <Select name={option.key} defaultValue={preferences.delivery[option.key]}>
+                      <SelectTrigger
+                        id={`delivery-${option.key}`}
+                        className="min-h-11 w-full bg-background text-sm font-medium lg:font-semibold"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(deliveryLabels).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                 ))}
               </fieldset>

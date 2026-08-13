@@ -23,6 +23,8 @@ export function CompanionBrandLockup({ className }: { className?: string }) {
 }
 
 export function CompanionLaunchScreen() {
+  const tracerPath = "M 46 184 C 128 164 190 104 270 82 C 350 60 432 108 490 178";
+
   return (
     <main
       className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#031d31] px-6 text-white"
@@ -34,20 +36,84 @@ export function CompanionLaunchScreen() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,rgba(34,197,94,0.16),transparent_32%),linear-gradient(180deg,#062846_0%,#031d31_58%,#021522_100%)]" />
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-[linear-gradient(175deg,transparent_22%,rgba(11,91,57,0.46)_23%,rgba(2,28,23,0.96)_78%)]" />
       <svg
-        viewBox="0 0 360 220"
-        className="pointer-events-none absolute left-1/2 top-[22%] w-[min(92vw,34rem)] -translate-x-1/2 opacity-80"
+        viewBox="0 0 540 220"
+        className="pointer-events-none absolute left-1/2 top-[16%] w-[min(96vw,44rem)] -translate-x-1/2"
         aria-hidden
       >
+        <defs>
+          <linearGradient
+            id="companion-launch-tracer-gradient"
+            x1="46"
+            y1="184"
+            x2="490"
+            y2="82"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0" stopColor="#e5b33d" />
+            <stop offset="0.48" stopColor="#fff3bd" />
+            <stop offset="1" stopColor="#f0c75a" />
+          </linearGradient>
+          <clipPath id="companion-launch-trace-clip">
+            <rect
+              x="30"
+              y="48"
+              width="480"
+              height="150"
+              className="companion-launch-trace-reveal"
+            />
+          </clipPath>
+        </defs>
+
+        <g data-launch-angle-deg="14">
+          <path d="M 24 184 H 112" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+          <path
+            d="M 46 184 L 108 169"
+            stroke="rgba(255,255,255,0.28)"
+            strokeWidth="1"
+            strokeDasharray="3 4"
+          />
+          <text
+            x="99"
+            y="181"
+            fill="rgba(255,255,255,0.5)"
+            fontSize="9"
+            fontWeight="700"
+            letterSpacing="0.9"
+          >
+            14° LAUNCH
+          </text>
+        </g>
+
         <path
-          d="M42 180 C 110 20, 240 20, 318 176"
+          d={tracerPath}
           fill="none"
-          stroke="rgba(245,181,45,0.9)"
-          strokeWidth="3"
+          stroke="rgba(255,255,255,0.13)"
+          strokeWidth="2"
           strokeLinecap="round"
-          className="companion-launch-trace"
+          className="companion-launch-trace-rail"
         />
-        <circle cx="42" cy="180" r="5" fill="#fff" />
-        <circle cx="318" cy="176" r="7" fill="#ef4444" className="animate-pulse" />
+
+        <g clipPath="url(#companion-launch-trace-clip)" className="companion-launch-trace-flight">
+          <path
+            d={tracerPath}
+            fill="none"
+            stroke="rgba(229,179,61,0.32)"
+            strokeWidth="10"
+            strokeLinecap="round"
+            className="companion-launch-trace-glow"
+          />
+          <path
+            d={tracerPath}
+            fill="none"
+            stroke="url(#companion-launch-tracer-gradient)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            className="companion-launch-trace"
+          />
+        </g>
+
+        <circle cx="46" cy="184" r="8" fill="none" stroke="rgba(255,255,255,0.16)" />
+        <circle cx="46" cy="184" r="4.5" fill="#f8fafc" />
       </svg>
       <div className="relative z-10 grid place-items-center text-center">
         <div

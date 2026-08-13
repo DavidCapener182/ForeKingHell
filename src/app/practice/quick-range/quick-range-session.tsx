@@ -28,6 +28,13 @@ import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 type RangeState = "ready" | "active" | "finished";
@@ -163,25 +170,28 @@ export function QuickRangeSession({ focus }: { focus: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border bg-card p-3">
           <label className="grid min-w-40 gap-1 text-sm font-semibold">
             Club
-            <select
-              value={club}
-              onChange={(event) => setClub(event.target.value)}
-              className="min-h-12 rounded-xl border bg-background px-3 text-base"
-            >
-              {[
-                "Driver",
-                "3 Wood",
-                "Hybrid",
-                "5 Iron",
-                "7 Iron",
-                "9 Iron",
-                "Pitching Wedge",
-                "Gap Wedge",
-                "Sand Wedge",
-              ].map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
+            <Select value={club} onValueChange={setClub}>
+              <SelectTrigger className="min-h-12 w-full text-base">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  "Driver",
+                  "3 Wood",
+                  "Hybrid",
+                  "5 Iron",
+                  "7 Iron",
+                  "9 Iron",
+                  "Pitching Wedge",
+                  "Gap Wedge",
+                  "Sand Wedge",
+                ].map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -551,25 +561,28 @@ function QuickRangeMobile({
                 <div className="grid gap-3">
                   <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
                     Club
-                    <select
-                      value={club}
-                      onChange={(event) => onClubChange(event.target.value)}
-                      className="min-h-11 rounded-xl border border-input bg-background px-3 text-base"
-                    >
-                      {[
-                        "Driver",
-                        "3 Wood",
-                        "Hybrid",
-                        "5 Iron",
-                        "7 Iron",
-                        "9 Iron",
-                        "Pitching Wedge",
-                        "Gap Wedge",
-                        "Sand Wedge",
-                      ].map((value) => (
-                        <option key={value}>{value}</option>
-                      ))}
-                    </select>
+                    <Select value={club} onValueChange={onClubChange}>
+                      <SelectTrigger className="min-h-11 w-full text-base">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "Driver",
+                          "3 Wood",
+                          "Hybrid",
+                          "5 Iron",
+                          "7 Iron",
+                          "9 Iron",
+                          "Pitching Wedge",
+                          "Gap Wedge",
+                          "Sand Wedge",
+                        ].map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {value}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </label>
                   <Button
                     type="button"

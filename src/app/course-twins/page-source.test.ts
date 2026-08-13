@@ -3,16 +3,24 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/course-twins/page.tsx"), "utf8");
+const catalogueSource = readFileSync(
+  join(process.cwd(), "src/app/course-twins/course-twin-catalogue.tsx"),
+  "utf8",
+);
 
 describe("Course Twin catalogue page", () => {
   it("gives generated courses a first-class golfer-facing destination", () => {
     expect(source).toContain("listAvailableCourseTwins(userId)");
     expect(source).toContain('title="Course Twin"');
     expect(source).toContain("Aintree, Bootle and every checked package");
-    expect(source).toContain("data-course-twin={twin.courseId}");
-    expect(source).toContain("href={`/play/${twin.courseId}`}");
-    expect(source).toContain("Open Course Twin");
-    expect(source).toContain("Grade {twin.grade}");
+    expect(source).toContain("<CourseTwinCatalogue twins={twins} />");
+    expect(catalogueSource).toContain("data-course-twin={twin.courseId}");
+    expect(catalogueSource).toContain("href={`/play/${twin.courseId}`}");
+    expect(catalogueSource).toContain("Open Course Twin");
+    expect(catalogueSource).toContain("Grade {twin.grade}");
+    expect(catalogueSource).toContain("DataToolbar");
+    expect(catalogueSource).toContain("EntityCombobox");
+    expect(catalogueSource).toContain("ToggleGroup");
   });
 
   it("uses a scan-first native mobile catalogue with secondary package detail disclosed", () => {

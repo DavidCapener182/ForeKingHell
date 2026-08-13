@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { ReactNode } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -40,6 +39,7 @@ import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -70,7 +70,6 @@ import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getDistanceLossDiagnosisData } from "@/lib/distance-loss-diagnosis-data";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
-import type { ClubAnalytics } from "@/lib/club-analytics";
 import {
   getProgressData,
   getProgressScoringEvidence,
@@ -80,11 +79,9 @@ import {
   buildProgressSummary,
   type BestSignal,
   type CoachSummaryGroup,
-  type CurrentFormSignal,
   type DataGap,
   type JourneyEvent,
   type PracticePriority,
-  type ProgressClub,
   type ProgressClubRow,
   type ProgressSummary,
   type ProgressTrend,
@@ -354,64 +351,57 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
               </section>
             </>
           ) : (
-            <>
-              <ProgressScorePanel summary={summary} />
-              <GoalProgressPanel summary={summary} scoringEvidence={scoringEvidence} />
-              <MobileProgressFirstCard summary={summary} />
-              <MobileProgressDimensions summary={summary} clubs={data.clubs} />
-              <div className="progress-bento-grid grid min-w-0 gap-4 overflow-x-clip lg:gap-5">
-                <ProgressBentoItem span={12}>
+            <Tabs defaultValue="performance" className="min-w-0 gap-5" data-progress-workspace>
+              <TabsList variant="line" aria-label="Progress workspace">
+                <TabsTrigger value="performance">Performance</TabsTrigger>
+                <TabsTrigger value="goals">Goals</TabsTrigger>
+                <TabsTrigger value="load">Training load</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="performance" className="grid min-w-0 gap-5">
+                <ProgressScorePanel summary={summary} />
+                <div className="grid min-w-0 gap-5 xl:grid-cols-2">
                   <WeeklyRecapPanel
                     data={featureData}
                     summary={summary}
                     review={weeklyChangeReview}
                   />
-                </ProgressBentoItem>
-                <ProgressBentoItem span={12}>
                   <DistanceLossDiagnosisPanel diagnosis={distanceLossDiagnosis} />
-                </ProgressBentoItem>
-                <ProgressBentoItem span={12}>
-                  <ProgressRoadmapPanel summary={summary} />
-                </ProgressBentoItem>
-                <ProgressBentoItem span={12}>
-                  <ProgressPracticePlannerPanel
-                    summary={practicePlannerSummary}
-                    priorities={summary.practicePlan}
-                  />
-                </ProgressBentoItem>
-                <ProgressBentoItem span={12}>
-                  <div className="progress-analysis-grid grid min-w-0 items-stretch gap-4 lg:gap-5">
-                    <div className="grid h-full min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-4 lg:gap-5">
-                      <ComparisonBar summary={summary} />
-                      <ProgressSignalsPanel summary={summary} clubs={data.clubs} />
-                    </div>
-                    <ProgressTrendsPanel summary={summary} />
-                  </div>
-                </ProgressBentoItem>
-                <ProgressBentoItem span={12}>
-                  <div className="progress-main-rail grid min-w-0 items-stretch gap-4 lg:gap-5">
-                    <div className="grid h-full min-w-0 content-start gap-4 lg:gap-5">
-                      <PracticePlanPanel priorities={summary.practicePlan} />
-                      <div id="journey" className="scroll-mt-28">
-                        <CoachTimelinePanel summary={summary} />
-                      </div>
-                    </div>
-                    <div className="progress-supporting-rail grid h-full min-w-0 grid-rows-[auto_auto_minmax(0,1fr)] gap-4 lg:gap-5">
-                      <CoachReadoutPanel
-                        signal={summary.bestSignal}
-                        groups={summary.coachSummary}
-                        gaps={summary.dataGaps}
-                      />
-                      <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
-                      <TrustLadderPanel items={summary.trustLadder} />
-                    </div>
-                  </div>
-                </ProgressBentoItem>
-                <ProgressBentoItem span={12}>
-                  <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
-                </ProgressBentoItem>
-              </div>
-            </>
+                </div>
+                <ComparisonBar summary={summary} />
+                <ProgressTrendsPanel summary={summary} />
+              </TabsContent>
+
+              <TabsContent value="goals" className="grid min-w-0 gap-5">
+                <GoalProgressPanel summary={summary} scoringEvidence={scoringEvidence} />
+                <ProgressRoadmapPanel summary={summary} />
+                <PracticePlanPanel priorities={summary.practicePlan} />
+              </TabsContent>
+
+              <TabsContent value="load" className="grid min-w-0 gap-5">
+                <ProgressPracticePlannerPanel
+                  summary={practicePlannerSummary}
+                  priorities={summary.practicePlan}
+                />
+                <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+                  <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
+                  <TrustLadderPanel items={summary.trustLadder} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="timeline" className="grid min-w-0 gap-5">
+                <div id="journey" className="scroll-mt-28">
+                  <CoachTimelinePanel summary={summary} />
+                </div>
+                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
+                <CoachReadoutPanel
+                  signal={summary.bestSignal}
+                  groups={summary.coachSummary}
+                  gaps={summary.dataGaps}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </div>
       </DesktopWorkbenchLayout>
@@ -1402,16 +1392,6 @@ function progressInsightEvidence(summary: ProgressSummary) {
   return evidence.slice(0, 6);
 }
 
-type ProgressSpan = 3 | 5 | 6 | 7 | 9 | 12;
-
-function ProgressBentoItem({ span, children }: { span: ProgressSpan; children: ReactNode }) {
-  return (
-    <div className={`progress-bento-item progress-span-${span} min-w-0 max-w-full overflow-x-clip`}>
-      {children}
-    </div>
-  );
-}
-
 function ProgressHeroPanel({
   summary,
   mostImproved,
@@ -2099,145 +2079,6 @@ const weeklyRecapToneStyles: Record<Tone, { card: string; label: string; icon: s
   },
 };
 
-function MobileProgressFirstCard({ summary }: { summary: ProgressSummary }) {
-  const mostImproved = summary.rankings.mostImproved;
-  const needsWork = summary.rankings.needsWork;
-
-  return (
-    <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
-      <div>
-        <p className="text-sm font-semibold text-[#0B7A3B]">This week</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-normal">
-          {mostImproved
-            ? `${formatClubType(mostImproved.clubType)} is moving best`
-            : "Build a comparable baseline"}
-        </h2>
-        <p className="mt-2 text-sm leading-5 text-[#6B7280]">
-          {needsWork
-            ? `${formatClubType(needsWork.clubType)} is the biggest drop: ${needsWork.primaryMiss.toLowerCase()} miss, ${needsWork.trustIndex}% trust.`
-            : "Import another session to separate best improvement, biggest drop and next action."}
-        </p>
-      </div>
-      <Button
-        asChild
-        className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-        data-primary-action
-      >
-        <Link href={needsWork ? `/bag/${needsWork.clubId}/analytics` : "/import"} prefetch={false}>
-          {needsWork ? "Open next action" : "Import session"}
-        </Link>
-      </Button>
-    </section>
-  );
-}
-
-function MobileProgressDimensions({
-  summary,
-  clubs,
-}: {
-  summary: ProgressSummary;
-  clubs: ProgressClub[];
-}) {
-  const mostImproved = summary.rankings.mostImproved;
-  const mostTrusted = summary.rankings.mostTrusted;
-  const strikeClub = [...clubs]
-    .filter((club) => club.analytics.sample.stockShots >= 3)
-    .sort(
-      (left, right) =>
-        right.analytics.consistency.strikeConsistencyScore -
-        left.analytics.consistency.strikeConsistencyScore,
-    )[0];
-  const directionClub = [...clubs]
-    .filter((club) => club.analytics.sample.stockShots >= 3)
-    .sort(
-      (left, right) =>
-        right.analytics.consistency.directionConsistencyScore -
-        left.analytics.consistency.directionConsistencyScore,
-    )[0];
-  const speedMover = [...summary.clubRows]
-    .filter((row) => row.sampleSize >= 6 && row.ballSpeedDeltaMph !== null)
-    .sort(
-      (left, right) =>
-        Math.abs(right.ballSpeedDeltaMph ?? 0) - Math.abs(left.ballSpeedDeltaMph ?? 0),
-    )[0];
-  const rows = [
-    {
-      label: "Performance",
-      value: mostImproved ? formatClubType(mostImproved.clubType) : "Building",
-      detail: mostImproved ? strongestImprovementDetail(mostImproved) : "No stable mover yet.",
-    },
-    {
-      label: "Consistency",
-      value: mostTrusted ? formatClubType(mostTrusted.clubType) : "Building",
-      detail: mostTrusted
-        ? `${mostTrusted.trustIndex}% trust from ${mostTrusted.sampleSize} clean shots.`
-        : "Needs a comparable clean sample.",
-    },
-    {
-      label: "Strike quality",
-      value: strikeClub
-        ? `${strikeClub.analytics.consistency.strikeConsistencyScore}/100`
-        : "No signal",
-      detail: strikeClub
-        ? `${formatClubType(strikeClub.clubType)} · ${strikeClub.analytics.sample.stockShots} clean shots.`
-        : "Smash and ball-speed evidence is still too thin.",
-    },
-    {
-      label: "Direction control",
-      value: directionClub
-        ? `${directionClub.analytics.consistency.directionConsistencyScore}/100`
-        : "No signal",
-      detail: directionClub
-        ? `${formatClubType(directionClub.clubType)} · ${formatRate(directionClub.analytics.accuracy.playableShotRate)} playable.`
-        : "Offline evidence is still too thin.",
-    },
-    {
-      label: "Speed",
-      value:
-        speedMover?.ballSpeedDeltaMph !== null && speedMover?.ballSpeedDeltaMph !== undefined
-          ? `${formatSigned(speedMover.ballSpeedDeltaMph)} mph`
-          : "No stable shift",
-      detail: speedMover
-        ? `${formatClubType(speedMover.clubType)} versus its personal baseline.`
-        : "Needs six comparable clean shots.",
-    },
-    {
-      label: "Training volume",
-      value: `${integerFormatter.format(summary.totals.trackedCleanShots)} clean shots`,
-      detail: "Evidence depth only; more shots is not automatic improvement.",
-    },
-    {
-      label: "Confidence / sample",
-      value: `${summary.totals.averageTrust}% average trust`,
-      detail: `${summary.totals.clubs} clubs · ${summary.dataGaps.length} current data gaps.`,
-    },
-  ];
-
-  return (
-    <section aria-labelledby="progress-dimensions" className="ios-grouped-list sm:hidden">
-      <div className="ios-grouped-row px-4 py-3">
-        <h2 id="progress-dimensions" className="text-[17px] font-semibold">
-          Progress dimensions
-        </h2>
-        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-          Improvement, repeatability and evidence depth are scored separately.
-        </p>
-      </div>
-      <dl>
-        {rows.map((row) => (
-          <div key={row.label} className="ios-grouped-row px-4 py-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-[13px] text-muted-foreground">{row.label}</dt>
-              <dd className="text-right text-[15px] font-semibold tabular-nums">{row.value}</dd>
-            </div>
-            <p className="mt-1 text-[13px] leading-5 text-muted-foreground">{row.detail}</p>
-          </div>
-        ))}
-      </dl>
-    </section>
-  );
-}
-
 type Tone = "green" | "sky" | "pink" | "amber" | "slate";
 
 function ComparisonBar({ summary }: { summary: ProgressSummary }) {
@@ -2274,101 +2115,6 @@ function ComparisonBar({ summary }: { summary: ProgressSummary }) {
         </span>
         <span className="px-2.5 py-1 font-medium">Last 30 days</span>
         <span className="px-2.5 py-1 font-medium">Last 10 sessions</span>
-      </div>
-    </section>
-  );
-}
-
-function ProgressSignalsPanel({
-  summary,
-  clubs,
-}: {
-  summary: ProgressSummary;
-  clubs: Array<{ clubId: string; analytics: ClubAnalytics }>;
-}) {
-  const bestMovement = summary.rankings.mostImproved;
-  const mainConcern = summary.rankings.needsWork;
-  const mostReliable = summary.rankings.mostTrusted;
-  const strongestImprovement = strongestImprovementRow(summary);
-  const mostVolatile = summary.rankings.mostVolatile;
-  const currentForm = summary.rankings.currentForm;
-
-  return (
-    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
-      <ProgressSectionHeader
-        icon={TrendingUp}
-        title="Progress signals"
-        description="The clearest gains, risks and priorities from the current comparison."
-        tone="green"
-      />
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <LargeSignalCard
-          icon={TrendingUp}
-          label="Best movement"
-          value={bestMovement ? formatClubType(bestMovement.clubType) : "--"}
-          detail={bestMovement ? bestMovementDetail(bestMovement) : "Need comparable baselines"}
-          note={bestMovement ? offlineMovementNote(bestMovement) : undefined}
-          href={bestMovement ? `/bag/${bestMovement.clubId}/analytics` : undefined}
-          tone="green"
-        />
-        <LargeSignalCard
-          icon={AlertTriangle}
-          label="Main concern"
-          value={mainConcern ? formatClubType(mainConcern.clubType) : "--"}
-          detail={
-            mainConcern
-              ? `${mainConcern.trustIndex}% trust · lowest trust club with usable data`
-              : "No weak signal has separated yet"
-          }
-          href={mainConcern ? `/bag/${mainConcern.clubId}/analytics` : undefined}
-          tone="amber"
-        />
-      </div>
-      <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2">
-        <SignalSummaryCard
-          label="Most trusted historically"
-          value={mostReliable ? formatClubType(mostReliable.clubType) : "--"}
-          detail={
-            mostReliable
-              ? `${mostReliable.trustIndex}% trust · ${mostReliable.sampleSize} clean shots`
-              : "Need more shots"
-          }
-          href={mostReliable ? `/bag/${mostReliable.clubId}/analytics` : undefined}
-          icon={Gauge}
-          tone="sky"
-        />
-        <SignalSummaryCard
-          label="Best current form"
-          value={currentForm ? formatClubType(currentForm.clubType) : "--"}
-          detail={currentForm ? currentFormDetail(currentForm) : "Need latest-session clean shots"}
-          href={currentForm ? `/bag/${currentForm.clubId}/analytics` : undefined}
-          icon={Sparkles}
-          tone={currentForm?.tone ?? "slate"}
-        />
-        <SignalSummaryCard
-          label="Strongest improvement"
-          value={strongestImprovement ? formatClubType(strongestImprovement.clubType) : "--"}
-          detail={
-            strongestImprovement
-              ? strongestImprovementDetail(strongestImprovement)
-              : "Need comparable baselines"
-          }
-          href={strongestImprovement ? `/bag/${strongestImprovement.clubId}/analytics` : undefined}
-          icon={TrendingUp}
-          tone="green"
-        />
-        <SignalSummaryCard
-          label="Most volatile"
-          value={mostVolatile ? formatClubType(mostVolatile.clubType) : "--"}
-          detail={
-            mostVolatile
-              ? `${formatRate(findAnalytics(clubs, mostVolatile.clubId)?.accuracy.bigMissRate ?? null)} big miss rate`
-              : "Need side-carry data"
-          }
-          href={mostVolatile ? `/bag/${mostVolatile.clubId}/analytics` : undefined}
-          icon={TrendingDown}
-          tone="pink"
-        />
       </div>
     </section>
   );
@@ -2412,122 +2158,6 @@ function ProgressSectionHeader({
         <Icon className="size-5" />
       </span>
     </div>
-  );
-}
-
-function LargeSignalCard({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  note,
-  href,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  detail: string;
-  note?: string;
-  href?: string;
-  tone: Tone;
-}) {
-  const content = (
-    <div
-      className={cn(
-        "grid h-full min-h-40 grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-xl border p-5 transition-colors hover:border-emerald-300",
-        progressSignalToneStyles[tone].card,
-      )}
-    >
-      <span
-        className={cn(
-          "grid size-12 place-items-center rounded-xl",
-          progressSignalToneStyles[tone].icon,
-        )}
-      >
-        <Icon className="size-6" />
-      </span>
-      <div className="min-w-0">
-        <p
-          className={cn(
-            "text-[11px] font-bold uppercase tracking-[0.14em]",
-            progressSignalToneStyles[tone].label,
-          )}
-        >
-          {label}
-        </p>
-        <p className="mt-2 text-2xl font-bold leading-8 tracking-normal text-[#111827]">{value}</p>
-        <p className="mt-4 text-sm leading-5 text-[#475467]">
-          <EmphasizedLead text={detail} tone={tone} />
-        </p>
-        {note ? <p className="mt-1.5 text-xs leading-5 text-[#667085]">{note}</p> : null}
-      </div>
-    </div>
-  );
-
-  return href ? (
-    <Link href={href} prefetch={false} className="block h-full">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-}
-
-function SignalSummaryCard({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  href,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  detail: string;
-  href?: string;
-  tone: Tone;
-}) {
-  const content = (
-    <div className="grid h-full min-h-28 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-[#DFE7DF] bg-white p-4 transition-colors hover:border-emerald-300">
-      <span
-        className={cn(
-          "grid size-10 place-items-center rounded-xl",
-          progressSignalToneStyles[tone].icon,
-        )}
-      >
-        <Icon className="size-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm leading-5 text-[#667085]">{label}</p>
-        <p className="mt-1 text-lg font-bold leading-6 tracking-normal text-[#111827]">{value}</p>
-        <p className="mt-2 text-sm leading-5 text-[#475467]">{detail}</p>
-      </div>
-    </div>
-  );
-
-  return href ? (
-    <Link href={href} prefetch={false} className="block h-full">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-}
-
-function EmphasizedLead({ text, tone }: { text: string; tone: Tone }) {
-  const match = text.match(/^([+-]?\d+(?:\.\d+)?%?|[+-]?\d+(?:\.\d+)?\s?yd)(.*)$/i);
-
-  if (!match) {
-    return text;
-  }
-
-  return (
-    <>
-      <span className={cn("font-bold", progressSignalToneStyles[tone].emphasis)}>{match[1]}</span>
-      {match[2]}
-    </>
   );
 }
 
@@ -4048,28 +3678,6 @@ function weeklyReadout(summary: ProgressSummary) {
   return "Keep building comparable stock-shot samples so the strongest club, weakest signal and next practice target separate clearly.";
 }
 
-function currentFormDetail(signal: CurrentFormSignal) {
-  const parts = [`Latest session: ${signal.shotCount} clean shots`];
-
-  if (isMeaningful(signal.offlineDeltaYd, 0.5)) {
-    parts.push(
-      `offline ${Math.abs(signal.offlineDeltaYd)} yd ${
-        signal.offlineDeltaYd <= 0 ? "tighter" : "wider"
-      }`,
-    );
-  } else if (signal.latestOfflineAverageYd !== null) {
-    parts.push(`${numberFormatter.format(signal.latestOfflineAverageYd)} yd offline avg`);
-  }
-
-  if (isMeaningful(signal.carryDeltaYd, 0.5)) {
-    parts.push(`carry ${formatSigned(signal.carryDeltaYd)} yd`);
-  } else if (isMeaningful(signal.ballSpeedDeltaMph, 0.3)) {
-    parts.push(`ball speed ${formatSigned(signal.ballSpeedDeltaMph)} mph`);
-  }
-
-  return parts.join(" · ");
-}
-
 type RoadmapItem = {
   title: string;
   detail: string;
@@ -4189,29 +3797,6 @@ function strongestImprovementDetail(row: ProgressClubRow) {
   }
 
   return improvementDetail(row);
-}
-
-function bestMovementDetail(row: ProgressClubRow) {
-  if (row.carryDeltaYd !== null && row.carryDeltaYd >= 1) {
-    const control =
-      row.offlineDeltaYd === null || Math.abs(row.offlineDeltaYd) < 2
-        ? "control broadly stable"
-        : row.offlineDeltaYd <= -2
-          ? "dispersion tighter"
-          : "control needs watching";
-    return `${formatSigned(row.carryDeltaYd)} yd carry · ${control}`;
-  }
-
-  return improvementDetail(row);
-}
-
-function offlineMovementNote(row: ProgressClubRow) {
-  if (row.offlineDeltaYd === null || Math.abs(row.offlineDeltaYd) < 0.1) {
-    return undefined;
-  }
-
-  const direction = row.offlineDeltaYd <= 0 ? "tightened" : "widened";
-  return `Offline ${direction} by ${numberFormatter.format(Math.abs(row.offlineDeltaYd))} yd.`;
 }
 
 function trendVerdict(trend: ProgressTrend, summary: ProgressSummary) {
@@ -4367,42 +3952,6 @@ const progressIconToneStyles: Record<Tone, string> = {
   slate: "border-slate-200 bg-slate-50 text-slate-700",
 };
 
-const progressSignalToneStyles: Record<
-  Tone,
-  { card: string; icon: string; label: string; emphasis: string }
-> = {
-  green: {
-    card: "border-emerald-200 bg-[linear-gradient(135deg,#f8fcf9_0%,#ffffff_100%)]",
-    icon: "bg-emerald-50 text-emerald-700",
-    label: "text-emerald-800",
-    emphasis: "text-[#087A3D]",
-  },
-  sky: {
-    card: "border-sky-200 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)]",
-    icon: "bg-sky-50 text-sky-700",
-    label: "text-sky-800",
-    emphasis: "text-[#2563EB]",
-  },
-  pink: {
-    card: "border-rose-200 bg-[linear-gradient(135deg,#fff6f5_0%,#ffffff_100%)]",
-    icon: "bg-rose-50 text-rose-700",
-    label: "text-rose-800",
-    emphasis: "text-[#D92D20]",
-  },
-  amber: {
-    card: "border-amber-200 bg-[linear-gradient(135deg,#fffbf4_0%,#ffffff_100%)]",
-    icon: "bg-amber-50 text-amber-800",
-    label: "text-amber-800",
-    emphasis: "text-[#C25500]",
-  },
-  slate: {
-    card: "border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#ffffff_100%)]",
-    icon: "bg-slate-100 text-slate-600",
-    label: "text-slate-700",
-    emphasis: "text-[#475467]",
-  },
-};
-
 const compactToneClasses: Record<Tone, string> = {
   green: "bg-emerald-500 ring-emerald-100",
   sky: "bg-sky-500 ring-sky-100",
@@ -4421,10 +3970,6 @@ function strokeForTone(tone: Tone) {
   };
 
   return strokes[tone];
-}
-
-function findAnalytics(clubs: Array<{ clubId: string; analytics: ClubAnalytics }>, clubId: string) {
-  return clubs.find((club) => club.clubId === clubId)?.analytics;
 }
 
 function improvementDetail(row: ProgressClubRow) {

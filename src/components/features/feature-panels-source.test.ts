@@ -50,6 +50,9 @@ describe("feature panel source", () => {
 
     expect(savedViewsBlock).toContain("grid auto-rows-fr items-stretch gap-2 md:grid-cols-3");
     expect(savedViewsBlock).toContain("h-full rounded-lg border border-slate-200 bg-white p-3");
-    expect(savedViewsBlock).toContain("<details");
+    expect(savedViewsBlock).toContain("<Collapsible");
+    expect(savedViewsBlock).toContain("<CollapsibleTrigger");
+    expect(savedViewsBlock).toContain("<CollapsibleContent");
+    expect(savedViewsBlock).not.toContain("<details");
   });
 });

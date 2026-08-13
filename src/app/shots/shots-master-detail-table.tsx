@@ -2,10 +2,27 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, GitCompareArrows, ListFilter } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  GitCompareArrows,
+  ListFilter,
+  MoreHorizontal,
+} from "lucide-react";
 
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ShotDeleteButton } from "@/app/shots/shot-delete-button";
 import {
@@ -61,6 +78,7 @@ export function ShotsMasterDetailTable({
   sorts: ShotTableSort[];
 }) {
   const [selectedId, setSelectedId] = useState(shots[0]?.id ?? "");
+  const [detailOpen, setDetailOpen] = useState(false);
   const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
   const selectedShot = useMemo(
     () => shots.find((shot) => shot.id === selectedId) ?? shots[0] ?? null,
@@ -91,6 +109,9 @@ export function ShotsMasterDetailTable({
     } else if (event.key === "End") {
       event.preventDefault();
       selectRowAt(shots.length - 1);
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setDetailOpen(true);
     }
   }
 
@@ -145,7 +166,10 @@ export function ShotsMasterDetailTable({
                     aria-label={`${shot.clubLabel} shot ${shot.shotNumberLabel} on ${shot.shotAtLabel}`}
                     aria-selected={selected}
                     data-selected-shot={selected ? "true" : undefined}
-                    onClick={() => setSelectedId(shot.id)}
+                    onClick={() => {
+                      setSelectedId(shot.id);
+                      setDetailOpen(true);
+                    }}
                     onFocus={() => setSelectedId(shot.id)}
                     onKeyDown={(event) => handleRowKeyDown(event, index)}
                     className={cn(
@@ -192,7 +216,47 @@ export function ShotsMasterDetailTable({
                       {shot.ballSpeedLabel}
                     </TableCell>
                     <TableCell data-column="advanced">
-                      <span className="text-xs font-semibold text-emerald-700">Select</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Actions for ${shot.clubLabel} shot ${shot.shotNumberLabel}`}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <MoreHorizontal className="size-4" aria-hidden />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <DropdownMenuLabel>Shot actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onSelect={() => {
+                              setSelectedId(shot.id);
+                              setDetailOpen(true);
+                            }}
+                          >
+                            View evidence
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link
+                              href={`/shots?club=${encodeURIComponent(shot.clubType)}`}
+                              prefetch={false}
+                            >
+                              Filter this club
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href="/compare" prefetch={false}>
+                              Compare session
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
@@ -209,7 +273,21 @@ export function ShotsMasterDetailTable({
         </ScrollArea>
       </div>
 
-      <SelectedShotDetail shot={selectedShot} />
+      <ResponsiveDetailPanel
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title={selectedShot ? `${selectedShot.clubLabel} shot` : "Shot evidence"}
+        description={
+          selectedShot
+            ? `${selectedShot.shotAtLabel} · shot ${selectedShot.shotNumberLabel}`
+            : "Select a visible shot row to inspect its evidence."
+        }
+        inlineAtUltrawide
+        className="2xl:sticky 2xl:top-20 2xl:self-start"
+        contentClassName="p-0"
+      >
+        <SelectedShotDetail shot={selectedShot} compact />
+      </ResponsiveDetailPanel>
     </div>
   );
 }
@@ -326,16 +404,20 @@ export function SelectedShotDetail({
           </dl>
 
           {compact ? (
-            <details className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs">
-              <summary className="cursor-pointer font-semibold text-foreground">
-                More delivery and strike data
-              </summary>
-              <dl className="mt-2 grid grid-cols-2 gap-1.5">
-                {advancedEvidence.map(([label, value]) => (
-                  <ShotDetailPair key={label} label={label} value={value ?? "--"} compact />
-                ))}
-              </dl>
-            </details>
+            <Collapsible className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs">
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-start px-0">
+                  More delivery and strike data
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent asChild>
+                <dl className="mt-2 grid grid-cols-2 gap-1.5">
+                  {advancedEvidence.map(([label, value]) => (
+                    <ShotDetailPair key={label} label={label} value={value ?? "--"} compact />
+                  ))}
+                </dl>
+              </CollapsibleContent>
+            </Collapsible>
           ) : (
             <dl className="grid gap-2 text-sm">
               {advancedEvidence.map(([label, value]) => (

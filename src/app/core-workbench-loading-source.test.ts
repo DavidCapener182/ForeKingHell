@@ -39,8 +39,13 @@ describe("core desktop workbench loading states", () => {
       const source = existsSync(loadingPath) ? readFileSync(loadingPath, "utf8") : "";
 
       expect(existsSync(loadingPath), `/${route} loading.tsx`).toBe(true);
-      expect(source).toContain("GolfRouteLoading");
-      expect(source).toContain(`variant="${variant}"`);
+      if (route === "feed") {
+        expect(source).toContain("AppLoadingSkeleton");
+        expect(source).toContain("data-feed-timeline-skeleton");
+      } else {
+        expect(source).toContain("GolfRouteLoading");
+        expect(source).toContain(`variant="${variant}"`);
+      }
     }
   });
 
@@ -74,8 +79,13 @@ describe("core desktop workbench loading states", () => {
       const source = existsSync(loadingPath) ? readFileSync(loadingPath, "utf8") : "";
 
       expect(existsSync(loadingPath), `/${route} loading.tsx`).toBe(true);
-      expect(source).toContain("GolfRouteLoading");
-      expect(source).toContain(`variant="${variant}"`);
+      if (route === "feed") {
+        expect(source).toContain("AppLoadingSkeleton");
+        expect(source).toContain("data-feed-timeline-skeleton");
+      } else {
+        expect(source).toContain("GolfRouteLoading");
+        expect(source).toContain(`variant="${variant}"`);
+      }
     }
   });
 

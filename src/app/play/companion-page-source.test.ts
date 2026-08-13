@@ -16,4 +16,13 @@ describe("Play companion selection", () => {
     expect(controlsSource).toContain("router.replace");
     expect(controlsSource).toContain("Updating course setup");
   });
+
+  it("shows setup guidance only until the selected-course decision is ready", () => {
+    expect(pageSource).toContain("data-play-setup-guide");
+    expect(pageSource).toContain("OperationStepper");
+    expect(pageSource).toContain("PlaySetupDrawer");
+    expect(pageSource).toContain("playReady ?");
+    expect(pageSource).toContain("!playReady ?");
+    expect(pageSource).toContain("Continue Round");
+  });
 });

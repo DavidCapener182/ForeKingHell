@@ -22,25 +22,28 @@ function session(index: number): SessionTimelineItem {
 }
 
 describe("SessionTimeline mobile hierarchy", () => {
-  it("keeps the newest ten sessions scannable and discloses the archive", () => {
+  it("renders date-grouped status nodes with tabs and review actions", () => {
     const markup = renderToStaticMarkup(
       <SessionTimeline sessions={Array.from({ length: 13 }, (_, index) => session(index))} />,
     );
 
     expect(markup).toContain("A deliberately long session name 0");
-    expect(markup).toContain("A deliberately long session name 9");
-    expect(markup).toContain("Older sessions");
-    expect(markup).toContain("Continue through the archive");
-    expect(markup).toContain("line-clamp-2");
+    expect(markup).toContain("A deliberately long session name 12");
+    expect(markup).toContain('data-status-timeline="true"');
+    expect(markup).toContain('data-timeline-kind="round"');
+    expect(markup).toContain('data-timeline-kind="practice"');
+    expect(markup).toContain("All");
+    expect(markup).toContain("Practice");
+    expect(markup).toContain("Rounds");
+    expect(markup).toContain("Open review");
     expect(markup).toContain("Measured review ready");
-    expect(markup).not.toContain("for comparison");
-    expect(markup).not.toContain("Compare · 0/2");
+    expect(markup).toContain("Compare tray · 0/2 selected");
   });
 
-  it("renders a useful empty row for a filtered-empty timeline", () => {
+  it("keeps the selection tray deterministic when the route has no rows", () => {
     const markup = renderToStaticMarkup(<SessionTimeline sessions={[]} />);
 
-    expect(markup).toContain("No sessions in this view");
-    expect(markup).toContain("Choose another session type or import new measured data.");
+    expect(markup).toContain("0 sessions and rounds");
+    expect(markup).toContain("Choose two sessions from the timeline.");
   });
 });

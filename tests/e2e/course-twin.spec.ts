@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
@@ -509,6 +509,50 @@ test.describe("Course Twin", () => {
     expect(desktopMetrics.viewportPosition).not.toBe("fixed");
   });
 
+  test("keeps desktop Course Twin controls unobstructed", async ({ page }, testInfo) => {
+    test.setTimeout(120_000);
+    test.skip(testInfo.project.name !== "chromium", "The desktop HUD check runs once in Chromium.");
+    skipWhenNoAuth();
+
+    const courseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
+    await page.setViewportSize({ width: 1792, height: 1029 });
+    await page.goto(`/play/${courseId}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await expectPageReady(page, /Aintree Golf Centre/i);
+
+    const visibleModeDock = page.locator("[data-course-twin-runtime-mode-dock]:visible");
+    await expect(visibleModeDock).toHaveCount(1);
+
+    const openAnalysis = page.locator('button[aria-label="Open analysis controls"]:visible');
+    await expect(openAnalysis).toHaveCount(1);
+    await openAnalysis.click();
+
+    const shotControls = page.locator("[data-course-twin-shot-controls]");
+    await expect(shotControls).toBeVisible();
+
+    const controlSurfaces = {
+      shotControls,
+      holeHud: page.locator("[data-course-twin-hole-hud]"),
+      modeDock: visibleModeDock,
+      cameraControls: page.locator("[data-course-twin-camera-controls]"),
+    };
+    const boxes = {
+      shotControls: await readLocatorBox(controlSurfaces.shotControls),
+      holeHud: await readLocatorBox(controlSurfaces.holeHud),
+      modeDock: await readLocatorBox(controlSurfaces.modeDock),
+      cameraControls: await readLocatorBox(controlSurfaces.cameraControls),
+    };
+
+    expectBoxesNotToOverlap(boxes.shotControls, boxes.holeHud);
+    expectBoxesNotToOverlap(boxes.shotControls, boxes.modeDock);
+    expectBoxesNotToOverlap(boxes.shotControls, boxes.cameraControls);
+    expectBoxesNotToOverlap(boxes.holeHud, boxes.modeDock);
+    expectBoxesNotToOverlap(boxes.holeHud, boxes.cameraControls);
+    expectBoxesNotToOverlap(boxes.modeDock, boxes.cameraControls);
+  });
+
   test("starts, resumes and safely abandons a persisted My Bag round", async ({ page }) => {
     test.setTimeout(120_000);
     skipWhenNoAuth();
@@ -955,6 +999,24 @@ async function readElementBox(page: import("@playwright/test").Page, selector: s
       height: rectangle.height,
     };
   }, selector);
+}
+
+async function readLocatorBox(locator: Locator) {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error("Course Twin control surface is not visible.");
+  return box;
+}
+
+function expectBoxesNotToOverlap(left: ElementBox, right: ElementBox) {
+  const overlapWidth = Math.max(
+    0,
+    Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x),
+  );
+  const overlapHeight = Math.max(
+    0,
+    Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y),
+  );
+  expect(overlapWidth * overlapHeight).toBe(0);
 }
 
 function expectBoxInsideViewport(

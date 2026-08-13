@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -569,13 +570,9 @@ export function DesktopWorkbenchControls({
             data-table-row-shortcuts
           >
             <span className="font-semibold text-foreground">Rows</span>
-            <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[11px]">
-              Up/Down
-            </kbd>
+            <Kbd className="bg-card">Up/Down</Kbd>
             <span>move</span>
-            <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[11px]">
-              Enter
-            </kbd>
+            <Kbd className="bg-card">Enter</Kbd>
             <span>select</span>
           </span>
         </div>
