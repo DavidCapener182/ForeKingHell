@@ -226,7 +226,7 @@ export function PageHeader({
                 </p>
                 <p
                   data-operational-value
-                  className="mt-1 truncate text-2xl font-semibold tracking-normal sm:text-[1.5rem]"
+                  className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground sm:text-[1.5rem]"
                 >
                   {metric.value}
                 </p>

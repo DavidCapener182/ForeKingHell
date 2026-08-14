@@ -11,6 +11,8 @@ export type ClubEvolutionMeasuredPoint = {
   label: string;
   carryYd: number;
   sampleSize: number;
+  medianAbsoluteOfflineYd: number | null;
+  directionalSampleSize: number;
 };
 
 export type ClubEvolutionDisplayPoint = {
@@ -18,12 +20,31 @@ export type ClubEvolutionDisplayPoint = {
   label: string;
   carryYd: number | null;
   sampleSize: number;
+  medianAbsoluteOfflineYd: number | null;
+  directionalSampleSize: number;
 };
 
 export type ClubEvolutionRow<TClub extends ClubEvolutionClub = ClubEvolutionClub> = {
   club: TClub;
   points: ClubEvolutionDisplayPoint[];
   measuredPoints: ClubEvolutionMeasuredPoint[];
+};
+
+export type ClubEvolutionMovementKind =
+  | "building"
+  | "low-confidence"
+  | "shorter-straighter"
+  | "longer-wider"
+  | "control-improved"
+  | "control-wider"
+  | "distance-down"
+  | "carry-up"
+  | "stable";
+
+export type ClubEvolutionMovement = {
+  kind: ClubEvolutionMovementKind;
+  carryDeltaYd: number | null;
+  controlDeltaYd: number | null;
 };
 
 type ClubEvolutionOptions = {
@@ -34,6 +55,10 @@ type ClubEvolutionOptions = {
 
 const DEFAULT_RECENT_SHOTS_PER_CLUB = 200;
 const DEFAULT_MONTH_COUNT = 3;
+const MIN_TREND_SAMPLE_SIZE = 6;
+const MIN_DIRECTIONAL_SAMPLE_SIZE = 6;
+const MEANINGFUL_CARRY_CHANGE_YD = 5;
+const MEANINGFUL_CONTROL_CHANGE_YD = 3;
 const defaultMonthFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
 });
@@ -63,11 +88,17 @@ export function buildClubEvolutionRows<TClub extends ClubEvolutionClub>(
   return clubPointRows
     .map(({ club, points }) => {
       const pointByKey = new Map(points.map((point) => [point.key, point]));
-      const displayPoints = monthWindow.map((month) => ({
-        ...month,
-        carryYd: pointByKey.get(month.key)?.carryYd ?? null,
-        sampleSize: pointByKey.get(month.key)?.sampleSize ?? 0,
-      }));
+      const displayPoints = monthWindow.map((month) => {
+        const measuredPoint = pointByKey.get(month.key);
+
+        return {
+          ...month,
+          carryYd: measuredPoint?.carryYd ?? null,
+          sampleSize: measuredPoint?.sampleSize ?? 0,
+          medianAbsoluteOfflineYd: measuredPoint?.medianAbsoluteOfflineYd ?? null,
+          directionalSampleSize: measuredPoint?.directionalSampleSize ?? 0,
+        };
+      });
       const measuredPoints = displayPoints.filter(
         (point): point is ClubEvolutionMeasuredPoint => point.carryYd !== null,
       );
@@ -117,18 +148,85 @@ function buildClubEvolutionMeasuredPoints<TClub extends ClubEvolutionClub>(
         averageSampleSize: maxShots,
       });
       const values = filteredShots.map((shot) => shot.carryYd).filter(isFiniteNumber);
+      const absoluteOfflineValues = filteredShots
+        .map((shot) => shot.sideCarryYd)
+        .filter(isFiniteNumber)
+        .map(Math.abs);
 
       return {
         key,
         label: group.label,
         carryYd: values.length > 0 ? roundOne(percentile(values, 0.5)) : null,
         sampleSize: values.length,
+        medianAbsoluteOfflineYd:
+          absoluteOfflineValues.length > 0
+            ? roundOne(percentile(absoluteOfflineValues, 0.5))
+            : null,
+        directionalSampleSize: absoluteOfflineValues.length,
       };
     })
     .filter(
       (point): point is ClubEvolutionMeasuredPoint =>
         isFiniteNumber(point.carryYd) && point.sampleSize > 0,
     );
+}
+
+export function classifyClubEvolutionMovement(
+  points: ClubEvolutionMeasuredPoint[],
+): ClubEvolutionMovement {
+  if (points.length < 2) {
+    return { kind: "building", carryDeltaYd: null, controlDeltaYd: null };
+  }
+
+  const first = points[0];
+  const latest = points[points.length - 1];
+  const carryDeltaYd = roundOne(latest.carryYd - first.carryYd);
+  const firstOfflineYd = first.medianAbsoluteOfflineYd;
+  const latestOfflineYd = latest.medianAbsoluteOfflineYd;
+  const hasDirectionalEvidence =
+    Math.min(first.directionalSampleSize, latest.directionalSampleSize) >=
+      MIN_DIRECTIONAL_SAMPLE_SIZE &&
+    isFiniteNumber(firstOfflineYd) &&
+    isFiniteNumber(latestOfflineYd);
+  const controlDeltaYd = hasDirectionalEvidence ? roundOne(latestOfflineYd - firstOfflineYd) : null;
+
+  if (Math.min(first.sampleSize, latest.sampleSize) < MIN_TREND_SAMPLE_SIZE) {
+    return { kind: "low-confidence", carryDeltaYd, controlDeltaYd };
+  }
+
+  if (
+    carryDeltaYd <= -MEANINGFUL_CARRY_CHANGE_YD &&
+    controlDeltaYd !== null &&
+    controlDeltaYd <= -MEANINGFUL_CONTROL_CHANGE_YD
+  ) {
+    return { kind: "shorter-straighter", carryDeltaYd, controlDeltaYd };
+  }
+
+  if (
+    carryDeltaYd >= MEANINGFUL_CARRY_CHANGE_YD &&
+    controlDeltaYd !== null &&
+    controlDeltaYd >= MEANINGFUL_CONTROL_CHANGE_YD
+  ) {
+    return { kind: "longer-wider", carryDeltaYd, controlDeltaYd };
+  }
+
+  if (controlDeltaYd !== null && controlDeltaYd <= -MEANINGFUL_CONTROL_CHANGE_YD) {
+    return { kind: "control-improved", carryDeltaYd, controlDeltaYd };
+  }
+
+  if (controlDeltaYd !== null && controlDeltaYd >= MEANINGFUL_CONTROL_CHANGE_YD) {
+    return { kind: "control-wider", carryDeltaYd, controlDeltaYd };
+  }
+
+  if (carryDeltaYd <= -MEANINGFUL_CARRY_CHANGE_YD) {
+    return { kind: "distance-down", carryDeltaYd, controlDeltaYd };
+  }
+
+  if (carryDeltaYd >= MEANINGFUL_CARRY_CHANGE_YD) {
+    return { kind: "carry-up", carryDeltaYd, controlDeltaYd };
+  }
+
+  return { kind: "stable", carryDeltaYd, controlDeltaYd };
 }
 
 function recentMonthWindow(

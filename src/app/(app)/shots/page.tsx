@@ -1,14 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  ArrowLeft,
-  Database,
-  Gauge,
-  Rows3,
-  ShieldCheck,
-  TableProperties,
-  Upload,
-} from "lucide-react";
+import { Database, Gauge, Rows3, ShieldCheck, TableProperties, Upload } from "lucide-react";
 import {
   and,
   asc,
@@ -192,12 +184,6 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
         <header className="grid gap-4 border-b pb-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <Button asChild variant="ghost" size="sm" className="-ml-2 px-2">
-                <Link href="/dashboard">
-                  <ArrowLeft className="size-4" />
-                  Dashboard
-                </Link>
-              </Button>
               <Badge variant="secondary">Analytics workbench</Badge>
             </div>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance xl:text-4xl">

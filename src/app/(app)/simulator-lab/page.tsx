@@ -123,7 +123,11 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
       <PageShell>
         <DesktopWorkbenchLayout scope="simulator-lab">
           <PageHeader
-            eyebrow={<StatusPill tone="amber">Setup</StatusPill>}
+            eyebrow={
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Setup
+              </span>
+            }
             title="Performance Lab"
             description="Database connection required before launch-monitor analytics can load."
           />
@@ -144,7 +148,11 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
     <PageShell contentClassName="pb-5">
       <DesktopWorkbenchLayout scope="simulator-lab">
         <PageHeader
-          eyebrow={<StatusPill tone="sky">Performance Lab</StatusPill>}
+          eyebrow={
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Performance Lab
+            </span>
+          }
           title="Performance Lab"
           description="WITB gapping, indoor-session deltas and range-handicap coaching from saved launch-monitor data."
           actions={

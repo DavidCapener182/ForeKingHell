@@ -40,6 +40,9 @@ const BOOTLE_YELLOW_YARDAGES = [
   190, 336, 371, 325, 165, 326, 371, 375, 473, 349, 131, 366, 330, 177, 442, 373, 352, 387,
 ];
 const MOUNTAIN_PARK_YELLOW_YARDAGES = [167, 257, 271, 165, 313, 447, 380, 358, 236];
+const TPC_SAWGRASS_STADIUM_ORIGIN = courseMapOrigin(TPC_SAWGRASS_STADIUM_HOLES);
+const BOOTLE_GOLF_COURSE_ORIGIN = courseMapOrigin(BOOTLE_GOLF_COURSE_HOLES);
+const MOUNTAIN_PARK_ORIGIN = courseMapOrigin(MOUNTAIN_PARK_HOLES);
 
 export async function ensureKnownCourseForSession(
   courseName: string | null | undefined,
@@ -300,6 +303,8 @@ export async function ensureTpcSawgrassStadiumCourse(): Promise<CourseSessionLin
       .values({
         name: TPC_SAWGRASS_STADIUM_COURSE.name,
         country: TPC_SAWGRASS_STADIUM_COURSE.country,
+        latitude: TPC_SAWGRASS_STADIUM_ORIGIN.latitude,
+        longitude: TPC_SAWGRASS_STADIUM_ORIGIN.longitude,
         provider: TPC_SAWGRASS_STADIUM_COURSE.provider,
         externalId: TPC_SAWGRASS_STADIUM_COURSE.externalId,
         updatedAt: now,
@@ -309,6 +314,8 @@ export async function ensureTpcSawgrassStadiumCourse(): Promise<CourseSessionLin
         set: {
           name: TPC_SAWGRASS_STADIUM_COURSE.name,
           country: TPC_SAWGRASS_STADIUM_COURSE.country,
+          latitude: TPC_SAWGRASS_STADIUM_ORIGIN.latitude,
+          longitude: TPC_SAWGRASS_STADIUM_ORIGIN.longitude,
           updatedAt: now,
         },
       })
@@ -389,6 +396,8 @@ export async function ensureBootleGolfCourse(): Promise<CourseSessionLink> {
       .values({
         name: BOOTLE_GOLF_COURSE.name,
         country: BOOTLE_GOLF_COURSE.country,
+        latitude: BOOTLE_GOLF_COURSE_ORIGIN.latitude,
+        longitude: BOOTLE_GOLF_COURSE_ORIGIN.longitude,
         provider: BOOTLE_GOLF_COURSE.provider,
         externalId: BOOTLE_GOLF_COURSE.externalId,
         updatedAt: now,
@@ -398,6 +407,8 @@ export async function ensureBootleGolfCourse(): Promise<CourseSessionLink> {
         set: {
           name: BOOTLE_GOLF_COURSE.name,
           country: BOOTLE_GOLF_COURSE.country,
+          latitude: BOOTLE_GOLF_COURSE_ORIGIN.latitude,
+          longitude: BOOTLE_GOLF_COURSE_ORIGIN.longitude,
           updatedAt: now,
         },
       })
@@ -478,6 +489,8 @@ export async function ensureMountainParkCourse(): Promise<CourseSessionLink> {
       .values({
         name: MOUNTAIN_PARK_COURSE.name,
         country: MOUNTAIN_PARK_COURSE.country,
+        latitude: MOUNTAIN_PARK_ORIGIN.latitude,
+        longitude: MOUNTAIN_PARK_ORIGIN.longitude,
         provider: MOUNTAIN_PARK_COURSE.provider,
         externalId: MOUNTAIN_PARK_COURSE.externalId,
         updatedAt: now,
@@ -487,6 +500,8 @@ export async function ensureMountainParkCourse(): Promise<CourseSessionLink> {
         set: {
           name: MOUNTAIN_PARK_COURSE.name,
           country: MOUNTAIN_PARK_COURSE.country,
+          latitude: MOUNTAIN_PARK_ORIGIN.latitude,
+          longitude: MOUNTAIN_PARK_ORIGIN.longitude,
           updatedAt: now,
         },
       })
@@ -586,6 +601,17 @@ export async function findTpcSawgrassStadiumCourse(): Promise<CourseSessionLink>
     .limit(1);
 
   return { courseId: course.id, teeSetId: teeSet?.id ?? null };
+}
+
+function courseMapOrigin(mappedHoles: Array<{ geometry: Array<[number, number]> }>) {
+  const points = mappedHoles.flatMap((hole) => hole.geometry);
+  const latitudes = points.map(([latitude]) => latitude);
+  const longitudes = points.map(([, longitude]) => longitude);
+
+  return {
+    latitude: (Math.min(...latitudes) + Math.max(...latitudes)) / 2,
+    longitude: (Math.min(...longitudes) + Math.max(...longitudes)) / 2,
+  };
 }
 
 function toLineStringGeojson(points: Array<[number, number]>) {

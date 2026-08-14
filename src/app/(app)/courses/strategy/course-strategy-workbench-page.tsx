@@ -32,7 +32,8 @@ import { getDashboardData } from "@/app/dashboard/dashboard-data";
 import { getDb } from "@/db/client";
 import { sessions, shots } from "@/db/schema";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
-import { listAvailableCourseTwins } from "@/lib/course-twin-data";
+import { courseStrategyMapFromManifest } from "@/lib/course-strategy-map";
+import { getCourseTwinManifest } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildPostRoundReview, readStoredPostRoundReview } from "@/lib/post-round-review";
 
@@ -51,15 +52,15 @@ export default async function CourseStrategyPage({
   const params = await searchParams;
   const mode = params?.mode === "post" ? "post" : "pre";
   const userId = await requireCurrentUserId();
-  const [data, strategyData, postRoundData, availableTwins] = await Promise.all([
+  const [data, strategyData, postRoundData] = await Promise.all([
     getDashboardData(),
     getCourseStrategyData(params?.courseId),
     getPostRoundReviewData(params?.roundId),
-    listAvailableCourseTwins(userId),
   ]);
-  const courseTwinAvailable = availableTwins.some(
-    (twin) => twin.courseId === strategyData.selectedCourse?.id,
-  );
+  const courseTwinManifest = strategyData.selectedCourse
+    ? await getCourseTwinManifest({ userId, courseId: strategyData.selectedCourse.id })
+    : null;
+  const courseMap = courseStrategyMapFromManifest(courseTwinManifest);
 
   return (
     <PageShell>
@@ -115,7 +116,8 @@ export default async function CourseStrategyPage({
               strategies={strategyData.strategies}
               course={strategyData.selectedCourse}
               teeName={strategyData.selectedTee?.name}
-              courseTwinAvailable={courseTwinAvailable}
+              courseTwinAvailable={Boolean(courseTwinManifest)}
+              courseMap={courseMap}
             />
           ) : (
             <Alert>

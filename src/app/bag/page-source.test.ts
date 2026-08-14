@@ -26,7 +26,7 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain("data-bag-health-card");
     expect(source).toContain("<ConnectedMetricBar");
     expect(source).toContain("<AppEmptyState");
-    for (const tab of ["distances", "clubs", "scoring", "fitting", "history"]) {
+    for (const tab of ["distances", "clubs", "scoring", "fitting", "history", "evidence"]) {
       expect(source).toContain(`value="${tab}"`);
     }
     expect(clubPanel).toContain("<ResponsiveDetailPanel");
@@ -72,12 +72,11 @@ describe("bag desktop workbench source", () => {
     expect(workspace).toContain('title="Club supporting tools"');
     expect(workspace).toContain('title="Scoring supporting evidence"');
     expect(workspace).toContain('title="Fitting experiment tools"');
-    expect(workspace).toContain('title="History supporting evidence"');
+    expect(workspace).not.toContain('title="History supporting evidence"');
     expect(source).toContain("data-bag-supporting-evidence");
     expect(source).toContain("<Collapsible>");
     expect(source).toContain("parseBagWorkspaceTab");
     expect(source).toContain('id="bag-gapping-table"');
-    expect(source).toContain('id="wedge-roles"');
     expect(source).toContain('id="club-evolution"');
 
     const supportingEvidence =
@@ -88,11 +87,10 @@ describe("bag desktop workbench source", () => {
     expect(supportingEvidence).not.toContain("<CardContent");
 
     const tabWithoutSupportingEvidence = (value: string) => {
-      const nextTab = value === "history" ? "</Tabs>" : '<TabsContent value="';
-      const tab = workspace.slice(
-        workspace.indexOf(`<TabsContent value="${value}"`),
-        workspace.indexOf(nextTab, workspace.indexOf(`<TabsContent value="${value}"`) + 1),
-      );
+      const start = workspace.indexOf(`<TabsContent value="${value}"`);
+      const nextTab = workspace.indexOf('<TabsContent value="', start + 1);
+      const end = nextTab === -1 ? workspace.indexOf("</Tabs>", start) : nextTab;
+      const tab = workspace.slice(start, end);
       return tab.replace(/<BagSupportingEvidence[\s\S]*?<\/BagSupportingEvidence>/g, "");
     };
 
@@ -102,6 +100,12 @@ describe("bag desktop workbench source", () => {
     expect(tabWithoutSupportingEvidence("scoring")).not.toContain("<ShotPatternOverlayPanel");
     expect(tabWithoutSupportingEvidence("fitting")).not.toContain("<AiCaddiePanel");
     expect(tabWithoutSupportingEvidence("history")).not.toContain("<BenchmarkReferencePanel");
+
+    const evidenceTab = tabWithoutSupportingEvidence("evidence");
+    expect(evidenceTab).toContain("<BagScoreTrendPanel");
+    expect(evidenceTab).toContain("<ClubEvolutionPanel");
+    expect(evidenceTab).toContain("<BenchmarkReferencePanel");
+    expect(evidenceTab).not.toContain("<BagSupportingEvidence");
   });
 
   it("shows the leading gapping decision as an Alert and discloses full evidence", () => {
@@ -125,7 +129,7 @@ describe("bag desktop workbench source", () => {
   it("uses direct Radix triggers with shared shadcn button variants for bag disclosures", () => {
     const supportingEvidence =
       source.match(
-        /function BagSupportingEvidence[\s\S]*?async function getBagChallengeData/,
+        /function BagSupportingEvidence[\s\S]*?async function getBagSpeedSummary/,
       )?.[0] ?? "";
     const stockFilters =
       source.match(/function StockFilterPanel[\s\S]*?function StockFilterCards/)?.[0] ?? "";
@@ -141,22 +145,22 @@ describe("bag desktop workbench source", () => {
     expect(stockFilters).not.toContain("<CollapsibleContent asChild>");
   });
 
-  it("leads with the trusted-number answer and four explicit bag checks", () => {
+  it("leads with the trusted-number answer and three explicit bag checks", () => {
     expect(source).toContain("clubs have trusted numbers");
     expect(source).toContain('label="Largest gap"');
     expect(source).toContain('label="Weakest confidence"');
-    expect(source).toContain('label="Current scoring concern"');
+    expect(source).not.toContain('label="Current scoring concern"');
     expect(source).toContain('label="Next bag action"');
   });
 
-  it("keeps the AI bag rail as a large-monitor enhancement", () => {
+  it("removes the permanent AI rail and keeps one contextual bag question", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
 
     expect(layoutBlock).toContain('scope="bag"');
-    expect(layoutBlock).toContain('railBreakpoint="wide"');
-    expect(layoutBlock).toContain("DesktopInsightRail");
-    expect(layoutBlock).toContain('title="AI bag rail"');
+    expect(layoutBlock).not.toContain("DesktopInsightRail");
+    expect(layoutBlock).not.toContain("rail={");
+    expect(source).toContain("Ask about my bag");
   });
 
   it("loads the fitting-only bag simulator outside the initial route graph", () => {
@@ -201,7 +205,7 @@ describe("bag desktop workbench source", () => {
 
   it("keeps the wedge matrix as an exportable desktop table", () => {
     const wedgeBlock =
-      source.match(/function WedgeMatrixPanel[\s\S]*?function PathTrendPanel/)?.[0] ?? "";
+      source.match(/function WedgeMatrixPanel[\s\S]*?function ShotPatternOverlayPanel/)?.[0] ?? "";
 
     expect(source).toContain("wedgeMatrixColumns");
     expect(source).toContain("wedgeMatrixSuggestedViews");
@@ -219,6 +223,41 @@ describe("bag desktop workbench source", () => {
     for (const column of ["club", "full", "three-quarter", "half", "status"]) {
       expect(wedgeBlock).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("balances monthly carry movement with measured lateral control", () => {
+    const evolution =
+      source.match(/function ClubEvolutionPanel[\s\S]*?function DriverEvolutionContextCard/)?.[0] ??
+      "";
+    const readout =
+      source.match(
+        /function clubEvolutionReadout[\s\S]*?function clubEvolutionConfidenceLabel/,
+      )?.[0] ?? "";
+
+    expect(evolution).toContain("median offline");
+    expect(evolution).toContain(">Carry<");
+    expect(evolution).toContain(">Control<");
+    expect(evolution).toContain("clubEvolutionControlDelta");
+    expect(readout).toContain('label: "Straighter trade-off"');
+    expect(readout).toContain("not a distance regression");
+    expect(readout).toContain('label: "Control improved"');
+    expect(readout).toContain('label: "Pattern wider"');
+  });
+
+  it("builds distance benchmarks from a transparent best-30 average", () => {
+    const benchmarkBuilder =
+      source.match(
+        /function buildBenchmarkRows[\s\S]*?async function getPeerBenchmarkSummary/,
+      )?.[0] ?? "";
+
+    expect(benchmarkBuilder).toContain("CLUB_BENCHMARK_CARRY_SAMPLE_SIZE");
+    expect(benchmarkBuilder).toContain("averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE");
+    expect(benchmarkBuilder).toContain(
+      "benchmarkCandidates.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE)",
+    );
+    expect(benchmarkBuilder).toContain("sampleCarryYards");
+    expect(benchmarkBuilder).toContain("savedShotCount: club.rawShotCount");
+    expect(benchmarkBuilder).not.toContain("carryYd: club.stock.bestStockCarryYd");
   });
 
   it("keeps bag pattern charts explainable with fallback tables", () => {
@@ -250,14 +289,16 @@ describe("bag desktop workbench source", () => {
       source.match(/function clubHealthReadout[\s\S]*?function stableBagLabel/)?.[0] ?? "";
 
     expect(evolutionBlock).toContain(
-      "Monthly median carry from clean-stock shots, with sample size and retest confidence.",
+      "Monthly median carry and offline control from the same clean-stock shots.",
     );
     expect(evolutionBlock).toContain("point.sampleSize");
     expect(evolutionBlock).toContain("clubEvolutionReadout(club, measuredPoints)");
     expect(evolutionBlock).toContain("Playable today, carry down versus");
     expect(evolutionBlock).toContain("Do not change swing unless ball");
     expect(evolutionBlock).toContain("Driver ball speed today");
-    expect(evolutionReadoutBlock).toContain('label: "Monitor carry"');
+    expect(evolutionReadoutBlock).toContain(
+      'label: isRetest ? "Distance retest" : "Monitor carry"',
+    );
     expect(evolutionReadoutBlock).toContain("Retest 10 stock shots");
     expect(evolutionReadoutBlock).toContain("delta <= -8");
     expect(evolutionBlock).not.toContain(">Health<");
@@ -309,7 +350,8 @@ describe("bag desktop and Quick Bag boundary", () => {
     expect(responsiveStyles).toContain(".mobileSurface");
     expect(responsiveStyles).toContain(".mobileSurface > section");
     expect(responsiveStyles).toContain(".desktopSurface");
-    expect(source).toContain('className="flex items-center justify-between gap-4"');
+    expect(source).not.toContain('href="/dashboard"');
+    expect(source).not.toContain("Import CSV");
     expect(source).toContain("data-bag-workspace");
   });
 

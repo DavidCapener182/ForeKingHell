@@ -81,6 +81,12 @@ export type ClubBenchmarkPeerSummary = {
   comparisons: ClubBenchmarkPeerComparison[];
 };
 
+export type ClubBenchmarkAdvancePlan = {
+  shotsNeeded: number;
+  targetCarryYd: number;
+  projectedAverageYd: number;
+};
+
 type BenchmarkRowInput = {
   clubId: string;
   clubType: string;
@@ -89,12 +95,18 @@ type BenchmarkRowInput = {
   bestSampleFloorYd?: number | null;
   sampleSize: number;
   confidenceScore: number;
+  sampleCarryYards?: number[];
+  reviewedShotCount?: number;
+  savedShotCount?: number;
   metrics?: ClubBenchmarkMetricValues;
 };
 
 export type ClubBenchmarkRow = BenchmarkRowInput & {
   comparison: ClubDistanceComparison;
+  nextLevelPlan: ClubBenchmarkAdvancePlan | null;
 };
+
+export const CLUB_BENCHMARK_CARRY_SAMPLE_SIZE = 30;
 
 const LEVEL_LABELS: Record<ClubBenchmarkLevelKey, { label: string; shortLabel: string }> = {
   beginner: { label: "Beginner", shortLabel: "Beg" },
@@ -376,10 +388,63 @@ export function buildClubBenchmarkRows(clubs: BenchmarkRowInput[]): ClubBenchmar
     .map((club) => {
       const comparison = compareClubCarryToBenchmark(club.clubType, club.carryYd);
 
-      return comparison ? { ...club, comparison } : null;
+      if (!comparison) {
+        return null;
+      }
+
+      return {
+        ...club,
+        comparison,
+        nextLevelPlan:
+          comparison.nextLevel === null
+            ? null
+            : calculateClubBenchmarkAdvancePlan(
+                club.sampleCarryYards ?? [],
+                comparison.nextLevel.yards,
+                CLUB_BENCHMARK_CARRY_SAMPLE_SIZE,
+              ),
+      };
     })
     .filter((row): row is ClubBenchmarkRow => row !== null)
     .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
+}
+
+export function calculateClubBenchmarkAdvancePlan(
+  carryYards: number[],
+  targetCarryYd: number,
+  sampleSize = CLUB_BENCHMARK_CARRY_SAMPLE_SIZE,
+): ClubBenchmarkAdvancePlan | null {
+  const currentSample = carryYards
+    .filter((value) => Number.isFinite(value))
+    .sort((left, right) => right - left)
+    .slice(0, sampleSize);
+
+  if (currentSample.length === 0 || sampleSize <= 0 || !Number.isFinite(targetCarryYd)) {
+    return null;
+  }
+
+  const currentAverage = mean(currentSample);
+
+  if (currentAverage >= targetCarryYd) {
+    return null;
+  }
+
+  for (let shotsNeeded = 1; shotsNeeded <= sampleSize; shotsNeeded += 1) {
+    const projectedSample = [...currentSample, ...Array(shotsNeeded).fill(targetCarryYd)]
+      .sort((left, right) => right - left)
+      .slice(0, sampleSize);
+    const projectedAverageYd = mean(projectedSample);
+
+    if (projectedAverageYd >= targetCarryYd) {
+      return {
+        shotsNeeded,
+        targetCarryYd: roundOne(targetCarryYd),
+        projectedAverageYd: roundOne(projectedAverageYd),
+      };
+    }
+  }
+
+  return null;
 }
 
 export function benchmarkLevelProgressPercent(benchmark: ClubDistanceBenchmark, carryYd: number) {
@@ -467,6 +532,10 @@ function tourValues(
 
 function roundOne(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function mean(values: number[]) {
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function roundTo(value: number, precision: number) {

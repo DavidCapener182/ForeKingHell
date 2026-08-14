@@ -37,13 +37,14 @@ describe("professional Coach workspace", () => {
   });
 
   it("moves primary, secondary and improving work directly into Practice", () => {
-    expect(source).toContain('label="Primary issue"');
-    expect(source).toContain('label="Secondary issue"');
-    expect(source).toContain('label="What is improving"');
+    expect(source).toContain("What to work on next");
+    expect(source).toContain("index={1}");
+    expect(source).toContain("index={2}");
+    expect(source).toContain("index={3}");
     expect(source).toContain('practiceHref("latest_weakness")');
     expect(source).toContain('practiceHref("confidence")');
     expect(source).toContain('practiceHref("scoring")');
-    expect(source).toContain("Open in Practice");
+    expect(source).not.toContain("Open in Practice");
   });
 
   it("uses an evidence browser for sessions, clubs, rounds, confidence and source records", () => {

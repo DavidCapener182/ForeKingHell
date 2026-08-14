@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Award, Flag, Share2, Target, Trophy, Upload, Users } from "lucide-react";
+import { Award, Flag, Share2, Target, Trophy, Upload, Users } from "lucide-react";
 
 import { AchievementsClient } from "@/app/achievements/achievements-client";
 import { MobileRouteHeader } from "@/components/mobile-sports";
@@ -72,15 +72,9 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
     <PageShell>
       <DesktopWorkbenchLayout scope="achievements">
         <div
-          className="flex flex-col items-start gap-3 lg:flex-row lg:items-center lg:justify-between"
+          className="flex flex-col items-end gap-3 lg:flex-row lg:items-center lg:justify-end"
           data-achievements-workbench
         >
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard">
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
           <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <Button asChild variant="outline">
               <Link href="/course-records">

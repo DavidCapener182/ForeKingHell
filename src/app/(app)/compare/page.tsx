@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
-  ArrowLeft,
   Brain,
   Crosshair,
   FileText,
@@ -188,13 +187,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             />
           }
         >
-          <div className="flex items-center justify-between gap-4">
-            <Button asChild variant="ghost" className="px-0">
-              <Link href="/dashboard" prefetch={false}>
-                <ArrowLeft className="size-4" />
-                Dashboard
-              </Link>
-            </Button>
+          <div className="flex items-center justify-end gap-4">
             <div className="flex gap-2">
               <Button asChild variant="outline">
                 <Link href="/import" prefetch={false}>

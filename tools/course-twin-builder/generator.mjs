@@ -121,7 +121,9 @@ export function buildManifest(plan, terrain, imagery) {
     },
     bounds: terrain.localBounds,
     terrain: {
-      kind: terrain.adapter === "copernicus_glo30" ? "global_dem" : "lidar_dtm",
+      kind: ["copernicus_glo30", "mapzen_terrain_tiles"].includes(terrain.adapter)
+        ? "global_dem"
+        : "lidar_dtm",
       resolutionM: terrain.resolutionM,
       verticalDatum: terrain.verticalDatum,
       warning: warnings[0] ?? null,

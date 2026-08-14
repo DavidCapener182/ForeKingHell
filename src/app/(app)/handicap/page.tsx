@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   AlertTriangle,
-  ArrowLeft,
   Calculator,
   ChartNoAxesCombined,
   Database,
@@ -172,13 +171,7 @@ export default async function HandicapPage() {
 
       {surface === "workbench" && DesktopWorkbenchLayout && DesktopTableWorkbenchControls ? (
         <DesktopWorkbenchLayout scope="handicap">
-          <div className="hidden items-center justify-between gap-4 sm:flex">
-            <Button asChild variant="ghost" className="px-0">
-              <Link href="/dashboard" prefetch={false}>
-                <ArrowLeft className="size-4" />
-                Dashboard
-              </Link>
-            </Button>
+          <div className="hidden items-center justify-end gap-4 sm:flex">
             <div className="flex gap-2">
               <Button asChild variant="outline">
                 <Link href="/rounds" prefetch={false}>

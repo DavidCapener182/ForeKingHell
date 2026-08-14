@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Clock3,
   Gauge,
-  Moon,
   NotebookPen,
   Sun,
   Target,
@@ -73,7 +72,7 @@ export function QuickRangeWorkbenchSession({ focus }: { focus: string }) {
   const [club, setClub] = useState("Driver");
   const [notes, setNotes] = useState("");
   const [labels, setLabels] = useState<Record<string, number>>({});
-  const [outdoor, setOutdoor] = useState(true);
+  const [outdoor, setOutdoor] = useState(false);
   const [wakeLocked, setWakeLocked] = useState(false);
 
   useEffect(() => {
@@ -176,12 +175,8 @@ export function QuickRangeWorkbenchSession({ focus }: { focus: string }) {
                 onClick={() => setOutdoor((value) => !value)}
                 aria-pressed={outdoor}
               >
-                {outdoor ? (
-                  <Sun className="size-4" aria-hidden />
-                ) : (
-                  <Moon className="size-4" aria-hidden />
-                )}
-                {outdoor ? "Outdoor mode" : "Range Night"}
+                <Sun className="size-4" aria-hidden />
+                {outdoor ? "Outdoor mode on" : "Outdoor mode"}
               </Button>
               <Button
                 type="button"

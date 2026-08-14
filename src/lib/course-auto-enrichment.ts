@@ -147,11 +147,18 @@ async function safelyUpdateGoogleDetails(
 }
 
 async function safelyGetOsmHoleGeometry(latitude: number, longitude: number) {
-  try {
-    return await getOsmHoleGeometry(latitude, longitude);
-  } catch {
-    return [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const geometry = await getOsmHoleGeometry(latitude, longitude);
+      if (geometry.length > 0) {
+        return geometry;
+      }
+    } catch {
+      // A later attempt can use another healthy Overpass mirror.
+    }
   }
+
+  return [];
 }
 
 function selectPrimaryHoleSet(

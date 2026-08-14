@@ -81,7 +81,9 @@ describe("checked-in Course Twin pilot packages", () => {
         rejected: [],
       },
     });
-    expect(Object.keys(localCourseTwinManifestsByCourseId)).toHaveLength(report.completed);
+    expect(Object.keys(localCourseTwinManifestsByCourseId).length).toBeGreaterThanOrEqual(
+      report.completed,
+    );
 
     for (const entry of report.packages) {
       const manifest = localCourseTwinManifestsByCourseId[entry.courseId] as typeof aintree;

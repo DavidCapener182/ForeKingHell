@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  ArrowLeft,
   Award,
   ChevronRight,
   Plus,
@@ -17,12 +16,7 @@ import {
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import {
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileTabBar,
-  MobileTopBar,
-} from "@/components/mobile-sports";
+import { MobileAppShell, MobileTabBar, MobileTopBar } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -89,16 +83,9 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
     <PageShell>
       {surface === "companion" ? (
         <MobileAppShell>
-          <MobileTopBar
-            title="Challenges"
-            actions={
-              <CreateChallengeSheet templates={data.templates} freePlan={freePlan} compact />
-            }
-          />
-          <MobileRouteTabs group="social" activeKey="challenges" />
+          <MobileTopBar title="Challenges" />
           <MobileTabBar
             activeKey={activeTab}
-            className="-mt-4"
             tabs={challengeTabs.map((tab) => ({
               key: tab.key,
               label: tab.label,
@@ -120,18 +107,16 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
 
       {surface === "workbench" && DesktopWorkbenchLayout ? (
         <DesktopWorkbenchLayout scope="challenges">
-          <div className="flex items-center justify-between gap-3">
-            <Button asChild variant="ghost" className="px-0">
-              <Link href="/dashboard" prefetch={false}>
-                <ArrowLeft className="size-4" />
-                Dashboard
-              </Link>
-            </Button>
+          <div className="flex justify-end">
             <CreateChallengeSheet templates={data.templates} freePlan={freePlan} />
           </div>
 
           <PageHeader
-            eyebrow={<StatusPill tone="green">Progression</StatusPill>}
+            eyebrow={
+              <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Progression
+              </span>
+            }
             title="Challenges"
             description="Turn measured practice into a target, a next attempt and something worth completing."
             visual={
@@ -259,9 +244,14 @@ function ActiveChallengeGrid({ challenges }: { challenges: ChallengeListItem[] }
         </div>
         <Badge variant="secondary">{challenges.length} in progress</Badge>
       </div>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-3">
         {challenges.map((challenge, index) => (
-          <ActiveChallengeCard key={challenge.id} challenge={challenge} featured={index === 0} />
+          <ActiveChallengeCard
+            key={challenge.id}
+            challenge={challenge}
+            featured={index === 0}
+            compact={index > 0}
+          />
         ))}
       </div>
     </section>
@@ -280,6 +270,29 @@ function ActiveChallengeCard({
   const progress = challengeProgress(challenge);
   const nextAction = nextChallengeAction(challenge);
   const target = challengeTargetLabel(challenge);
+
+  if (compact) {
+    return (
+      <Link
+        href={`/challenges/${challenge.id}`}
+        prefetch={false}
+        className="group grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border bg-card px-4 py-3 transition-colors hover:border-primary/35"
+        data-active-challenge-card
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-semibold">{challenge.title}</span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {challenge.viewerEvidenceCount}/{challenge.evidenceTargetCount} qualifying shots ·{" "}
+            {timeRemaining(challenge.endsAt)}
+          </span>
+        </span>
+        <span className="flex items-center gap-3">
+          <strong className="text-sm tabular-nums text-primary">{progress}%</strong>
+          <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </Link>
+    );
+  }
 
   return (
     <Card
@@ -327,17 +340,13 @@ function ActiveChallengeCard({
           />
         </div>
 
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
-          <ChallengeMetric
-            label="Current value"
-            value={challenge.viewerScoreLabel ?? "No score yet"}
-          />
-          <ChallengeMetric label="Target" value={target} />
-          <ChallengeMetric label="Time remaining" value={timeRemaining(challenge.endsAt)} />
+        <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border">
           <ChallengeMetric
             label="Best attempt"
             value={challenge.viewerScoreLabel ?? "Awaiting proof"}
           />
+          <ChallengeMetric label="Target" value={target} />
+          <ChallengeMetric label="Time left" value={timeRemaining(challenge.endsAt)} />
         </dl>
 
         <div className="grid gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

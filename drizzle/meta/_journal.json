@@ -379,6 +379,20 @@
       "when": 1784808000000,
       "tag": "0053_course_twin_manual_putt_events",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1784880000000,
+      "tag": "0054_clubhouse_manager_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1786738756000,
+      "tag": "0055_account_course_favourites",
+      "breakpoints": true
     }
   ]
 }

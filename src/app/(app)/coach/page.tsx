@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Brain,
   CalendarDays,
@@ -11,6 +10,7 @@ import {
   Database,
   FileText,
   Gauge,
+  MoreHorizontal,
   ShieldCheck,
   Target,
   Upload,
@@ -21,11 +21,17 @@ import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
 import { LazyCoachDataChatPanel } from "@/app/coach/lazy-coach-data-chat-panel";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import { PageShell, StatusPill, type Tone } from "@/components/premium";
+import { PageShell, StatusPill } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { getAiFeatureEntitlement } from "@/lib/ai/usage";
 import { planAllowsAiFeature } from "@/lib/ai/features";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
@@ -134,33 +140,29 @@ async function DesktopCoachWorkspace({
 
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard" prefetch={false}>
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/coach/workspace" prefetch={false}>
-              <UsersRound className="size-4" />
-              Players
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/coach/reports" prefetch={false}>
-              <FileText className="size-4" />
-              Reports
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href={practiceHref("latest_weakness")} prefetch={false}>
-              <Crosshair className="size-4" />
-              Build practice plan
-            </Link>
-          </Button>
-        </div>
+      <header className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="size-4" />
+              Coach tools
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link href="/coach/workspace" prefetch={false}>
+                <UsersRound className="size-4" />
+                Players
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/coach/reports" prefetch={false}>
+                <FileText className="size-4" />
+                Reports
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <DesktopWorkbenchLayout scope="coach">
@@ -213,7 +215,9 @@ function CoachDiagnosis({
       >
         <div className="border-b bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_10%,var(--card)),var(--card)_58%)] p-6 xl:p-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <StatusPill tone={topClub.tone}>Primary diagnosis</StatusPill>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Primary diagnosis
+            </span>
             <span className="text-sm font-medium text-muted-foreground">
               {coachEvidenceConfidence(topClub)} · {topClub.sampleSize} clean shots
             </span>
@@ -281,16 +285,24 @@ function CoachDiagnosis({
         </div>
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-3" aria-label="Coaching priorities">
+      <section
+        className="overflow-hidden rounded-xl border bg-card"
+        aria-label="Coaching priorities"
+      >
+        <div className="border-b px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Coaching priorities
+          </p>
+          <h2 className="mt-1 text-xl font-semibold">What to work on next</h2>
+        </div>
         <CoachingPriority
-          label="Primary issue"
+          index={1}
           title={`${topClub.clubName} · ${topClub.issueLabel}`}
           detail={topClub.drill}
-          tone={topClub.tone}
           href={practiceHref("latest_weakness")}
         />
         <CoachingPriority
-          label="Secondary issue"
+          index={2}
           title={
             secondaryClub
               ? `${secondaryClub.clubName} · ${secondaryClub.issueLabel}`
@@ -299,14 +311,12 @@ function CoachDiagnosis({
           detail={
             secondaryClub?.reason ?? "Add another comparable session before widening the plan."
           }
-          tone={secondaryClub?.tone ?? "slate"}
           href={practiceHref("confidence")}
         />
         <CoachingPriority
-          label="What is improving"
+          index={3}
           title={improving.title}
           detail={improving.detail}
-          tone="green"
           href={practiceHref("scoring")}
         />
       </section>
@@ -492,33 +502,30 @@ function EvidenceVisual({
 }
 
 function CoachingPriority({
-  label,
+  index,
   title,
   detail,
-  tone,
   href,
 }: {
-  label: string;
+  index: number;
   title: string;
   detail: string;
-  tone: Tone;
   href: string;
 }) {
   return (
     <Link
       href={href}
       prefetch={false}
-      className="group grid min-h-48 content-between rounded-xl border bg-card p-5 shadow-sm transition-colors hover:border-primary/45"
+      className="group grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-3 border-b px-5 py-4 last:border-b-0 hover:bg-muted/35"
     >
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <StatusPill tone={tone}>{label}</StatusPill>
-          <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-        </div>
-        <h3 className="mt-4 text-xl font-semibold tracking-tight">{title}</h3>
-        <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{detail}</p>
-      </div>
-      <p className="mt-4 text-sm font-semibold text-primary">Open in Practice</p>
+      <span className="grid size-7 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">
+        {index}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-semibold text-foreground">{title}</span>
+        <span className="mt-1 block text-sm leading-5 text-muted-foreground">{detail}</span>
+      </span>
+      <ChevronRight className="mt-1 size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </Link>
   );
 }
@@ -535,7 +542,9 @@ function CoachEvidenceBrowser({
   return (
     <section className="grid gap-5" data-coach-evidence-browser>
       <div>
-        <StatusPill tone="sky">Evidence browser</StatusPill>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Evidence browser
+        </p>
         <h1 className="mt-4 text-4xl font-semibold tracking-[-0.03em]">Trace the coaching read</h1>
         <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
           Move from the diagnosis to the measured sessions, clubs, rounds and source records behind
@@ -755,7 +764,9 @@ function MobileCoachSummary({
         <main className="grid gap-5 px-4 pb-8 pt-3" data-mobile-coach-summary>
           <section className="rounded-[1.4rem] border bg-card p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <StatusPill tone={topClub.tone}>Main diagnosis</StatusPill>
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Main diagnosis
+              </span>
               <span className="text-xs font-medium text-muted-foreground">
                 {topClub.trustIndex}% confidence
               </span>

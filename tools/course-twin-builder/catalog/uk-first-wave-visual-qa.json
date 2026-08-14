@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-07-22T23:05:26Z",
+  "reviewedAt": "2026-08-14T22:30:00Z",
   "reviewer": "ForeKingHell Course Twin visual QA",
-  "scope": "Authenticated Chromium inspection of each generated course in golfer view at 1280x720. The pass requires the correct course identity, a visible and coherent terrain/aerial scene, sky and horizon, a usable hole line and flag, and no blank canvas or catastrophic texture failure.",
+  "scope": "The original 21 packages were inspected in authenticated Chromium golfer view at 1280x720. The ten recovered packages were inspected in a labelled overhead contact sheet alongside manifest, hole, feature, terrain and asset-integrity checks. Acceptance requires correct course identity, coherent aerial coverage, usable mapped geometry and no blank or catastrophic asset failure.",
   "evidenceCollection": "/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/catalogue-qa",
   "contactSheet": "/Users/davidcapener/.codex/visualizations/2026/07/22/019f8747-3ce1-7612-b9e7-37a32edced58/course-twin-21-course-contact-sheet.jpg",
+  "supplementalOverheadContactSheet": "/Users/davidcapener/.codex/visualizations/2026/08/14/01a001e4-abb0-7221-99b6-7a63cd4c00a5/course-twin-new-first-wave-contact-sheet.jpg",
   "limitations": [
     "This visual pass verifies browser rendering and gross course coherence, not current club routing, scorecard accuracy or survey-grade putting contours.",
-    "All accepted packages remain Grade B and retain the unverified-putting warning.",
+    "The original 21 packages retain their Grade B caveats; recovered packages using 30 m global DEM remain Grade C and are suitable for overhead strategy, not bunker lips or green-break claims.",
     "A club-reported mapping discrepancy still requires a manual correction and rebuilt immutable package before promotion."
   ],
   "courses": [
@@ -165,6 +166,90 @@
       "evidenceFile": "21-brett-vale-golf-course-v1.png",
       "verdict": "pass_with_grade_b_caveats",
       "notes": []
+    },
+    {
+      "courseId": "486ddef6-5963-41d7-b2e6-82cec6732170",
+      "slug": "aberystwyth-golf-course-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#01",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": ["Aerial footprint is coherent and centred on the coastal golf course."]
+    },
+    {
+      "courseId": "2eebecd9-0513-4db4-b4a8-1e7ef1988550",
+      "slug": "aspley-guise-woburn-sands-golf-club-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#02",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": ["Aerial footprint is coherent and centred on the wooded course complex."]
+    },
+    {
+      "courseId": "4cdf3280-af61-44a4-9b7d-5953042f1cd9",
+      "slug": "blackwell-golf-club-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#03",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
+    },
+    {
+      "courseId": "c96251cd-979c-42d9-b961-f64f501a9f94",
+      "slug": "bowood-park-golf-course-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#04",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
+    },
+    {
+      "courseId": "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc",
+      "slug": "brean-golf-club-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#05",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Coastal course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
+    },
+    {
+      "courseId": "dc2fce54-9f8d-4799-bd89-23d019c3da4a",
+      "slug": "brickhampton-court-golf-complex-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#06",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": ["Aerial footprint is coherent and centred on the course complex."]
+    },
+    {
+      "courseId": "e0328f91-81c5-42b4-a08e-3207f407fe2e",
+      "slug": "bridport-and-west-dorset-golf-club-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#07",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Coastal course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
+    },
+    {
+      "courseId": "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46",
+      "slug": "brookmans-park-golf-course-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#08",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
+    },
+    {
+      "courseId": "c2517fe5-ee33-412a-a61f-10d82f5fe359",
+      "slug": "buckingham-golf-club-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#09",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
+    },
+    {
+      "courseId": "b82a233d-968f-4a1a-8252-272580651d4b",
+      "slug": "bulbury-woods-golf-club-v1",
+      "evidenceFile": "supplemental-overhead-contact-sheet.jpg#10",
+      "verdict": "pass_with_grade_b_caveats",
+      "notes": [
+        "Course footprint is visible; global DEM limits this package to Grade C strategy use."
+      ]
     }
   ]
 }

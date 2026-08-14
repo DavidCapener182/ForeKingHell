@@ -81,7 +81,7 @@
 .desktopZones {
   display: grid;
   grid-template-columns: 13rem minmax(26rem, 1fr) minmax(19rem, 24rem);
-  min-height: min(52rem, calc(100dvh - 14rem));
+  height: clamp(40rem, calc(100dvh - 13.5rem), 46rem);
 }
 
 .holeNavigator,
@@ -305,10 +305,92 @@
   background: #d6c190;
 }
 
+.visualCanvas {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .holeVisual {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  min-height: 30rem;
+}
+
+.mappedImagery {
+  opacity: 0.82;
+}
+
+.mappedShade {
+  fill: rgb(3 16 11 / 34%);
+  pointer-events: none;
+}
+
+.mappedFeature {
+  fill: transparent;
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+
+.mappedFeature[data-feature="fairway"] {
+  fill: rgb(76 132 84 / 16%);
+  stroke: rgb(166 205 157 / 42%);
+}
+
+.mappedFeature[data-feature="green"],
+.mappedFeature[data-feature="tee"] {
+  fill: rgb(126 169 121 / 24%);
+  stroke: rgb(202 226 192 / 62%);
+}
+
+.mappedFeature[data-feature="bunker"] {
+  fill: rgb(219 201 148 / 42%);
+  stroke: rgb(242 225 177 / 72%);
+}
+
+.mappedFeature[data-feature="water"] {
+  fill: rgb(63 129 148 / 42%);
+  stroke: rgb(134 193 205 / 78%);
+}
+
+.mappedLine {
+  fill: none;
+  stroke: rgb(234 243 232 / 44%);
+  stroke-dasharray: 4 7;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.mappedTeeMarker {
+  fill: #dbe8d8;
+  stroke: #173b2b;
+  stroke-width: 4;
+}
+
+.mappedGreenMarker {
+  fill: var(--book-accent);
+  stroke: #f7e4ae;
+  stroke-width: 3;
+}
+
+.mappedRangeLabel {
+  fill: var(--book-ink);
+  font-size: 12px;
+  paint-order: stroke;
+  stroke: rgb(5 18 12 / 88%);
+  stroke-linejoin: round;
+  stroke-width: 5px;
+}
+
+.mappedRangeLabel text:first-child {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.mappedRangeLabel text:last-child {
+  fill: var(--book-muted);
 }
 
 .mapGround {

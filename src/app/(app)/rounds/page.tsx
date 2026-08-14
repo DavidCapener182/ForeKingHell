@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Plus, Upload } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { RoundsScoringIndex } from "@/app/rounds/rounds-scoring-index";
@@ -35,14 +35,7 @@ export default async function RoundsPage() {
     <PageShell>
       {surface === "companion" ? (
         <MobileRouteHeader title="Rounds" group="play" activeKey="rounds" />
-      ) : (
-        <Button asChild variant="ghost" className="w-fit px-0">
-          <Link href="/dashboard">
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-      )}
+      ) : null}
 
       <header
         className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between"

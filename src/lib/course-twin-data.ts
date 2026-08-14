@@ -44,6 +44,7 @@ export type AvailableCourseTwin = {
   courseId: string;
   name: string;
   country: string | null;
+  previewImageUrl: string | null;
   grade: "A" | "B" | "C" | "D";
   mappedHoles: number | null;
   terrainResolutionM: number | null;
@@ -129,6 +130,8 @@ export async function listAvailableCourseTwins(userId: string): Promise<Availabl
         courseId: course.id,
         name: local?.course.name ?? course.name,
         country: local?.course.country ?? course.country,
+        previewImageUrl:
+          local?.terrain.imagery?.url ?? (isBootlePilot ? bootleTerrainPackage.imagery.url : null),
         grade,
         mappedHoles: local?.quality.mappedHoles ?? numericValue(published?.mappedHoles) ?? null,
         terrainResolutionM:

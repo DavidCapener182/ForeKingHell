@@ -14,7 +14,7 @@ describe("Analyse companion and workbench boundaries", () => {
     expect(capabilities).toContain(
       'analyse: desktopOnly(\n    "Review latest session",\n    "/sessions"',
     );
-    expect(page).toContain("data-analyse-workspace-tabs");
+    expect(page).toContain("data-analyse-workspace");
     expect(page).toContain("ConnectedMetricBar");
     expect(page).not.toContain("MobileAnalyseOverview");
     expect(page).not.toContain("@/components/app/ios-mobile");

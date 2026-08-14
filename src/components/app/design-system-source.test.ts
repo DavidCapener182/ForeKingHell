@@ -67,8 +67,8 @@ describe("composable analysis design primitives", () => {
     expect(template).toContain("data-analysis-page-template");
     expect(template).toContain('aria-label="Answer and evidence quality"');
     expect(template).toContain("recommendation");
-    expect(analyse).toContain("data-analyse-workspace-tabs");
-    expect(analyse).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
+    expect(analyse).toContain('aria-label="Analyse workspace"');
+    expect(analyse).toContain('["Overview", "/analyse"]');
     expect(analyse).toContain("<ConnectedMetricBar");
     expect(analyse).toContain("<AnalyseProvenancePanel");
   });

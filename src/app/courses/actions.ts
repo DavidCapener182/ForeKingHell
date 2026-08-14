@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 
-import { courses, holes, teeSets } from "@/db/schema";
+import { courseFavourites, courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import {
   ensureBootleGolfCourse,
@@ -626,4 +626,32 @@ function revalidateCourses(courseId?: string) {
   if (courseId) {
     revalidatePath(`/courses/${courseId}/holes`);
   }
+}
+export async function setCourseFavouriteAction(courseId: string, favourite: boolean) {
+  const userId = await requireCurrentUserId();
+  const db = getDb();
+  const [visibleCourse] = await db
+    .select({ id: courses.id })
+    .from(courses)
+    .where(
+      and(
+        eq(courses.id, courseId),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+      ),
+    )
+    .limit(1);
+
+  if (!visibleCourse) {
+    throw new Error("Course not found");
+  }
+
+  if (favourite) {
+    await db.insert(courseFavourites).values({ userId, courseId }).onConflictDoNothing();
+  } else {
+    await db
+      .delete(courseFavourites)
+      .where(and(eq(courseFavourites.userId, userId), eq(courseFavourites.courseId, courseId)));
+  }
+
+  revalidateCourses(courseId);
 }

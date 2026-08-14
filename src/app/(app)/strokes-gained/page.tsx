@@ -3,7 +3,6 @@ import Image from "next/image";
 import { and, asc, desc, eq, gt, gte, isNull, lt, lte, type SQL } from "drizzle-orm";
 import {
   AlertTriangle,
-  ArrowLeft,
   BarChart3,
   Brain,
   ChevronDown,
@@ -306,13 +305,7 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           />
         }
       >
-        <div className="flex items-center justify-between gap-4">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
+        <div className="flex items-center justify-end gap-4">
           <Button asChild variant="outline">
             <Link href="/coach" prefetch={false}>
               <Brain className="size-4" />

@@ -20,7 +20,7 @@ import { AppEmptyState } from "@/components/app/app-empty-state";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { courses, courseRecords, holes, sessions, teeSets } from "@/db/schema";
+import { courseFavourites, courses, courseRecords, holes, sessions, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -60,7 +60,11 @@ export default async function CourseDetailPage({
           </Link>
         </Button>
         <div className="flex flex-wrap gap-2">
-          <CourseFavouriteButton courseId={courseId} courseName={data.course.name} />
+          <CourseFavouriteButton
+            courseId={courseId}
+            courseName={data.course.name}
+            initialFavourite={data.favourite}
+          />
           <Button asChild className="min-h-10">
             <Link href={primaryAction.href}>
               <PrimaryIcon className="size-4" aria-hidden />
@@ -97,6 +101,7 @@ export default async function CourseDetailPage({
               latitude: data.course.latitude,
               longitude: data.course.longitude,
               mapPreviewAvailable: data.mapPreviewAvailable,
+              previewImageUrl: data.courseTwin?.previewImageUrl ?? null,
             }}
             priority
             className="min-h-60 lg:min-h-full"
@@ -510,7 +515,7 @@ async function getCourseDetailData(courseId: string) {
 
   if (!course) return null;
 
-  const [teeRows, holeRows, roundRows, recordRows, twins] = await Promise.all([
+  const [teeRows, holeRows, roundRows, recordRows, favouriteRows, twins] = await Promise.all([
     db.select({ id: teeSets.id }).from(teeSets).where(eq(teeSets.courseId, courseId)),
     db.select({ holeNumber: holes.holeNumber }).from(holes).where(eq(holes.courseId, courseId)),
     db
@@ -540,6 +545,11 @@ async function getCourseDetailData(courseId: string) {
         ),
       )
       .orderBy(asc(courseRecords.createdAt)),
+    db
+      .select({ courseId: courseFavourites.courseId })
+      .from(courseFavourites)
+      .where(and(eq(courseFavourites.userId, userId), eq(courseFavourites.courseId, courseId)))
+      .limit(1),
     listAvailableCourseTwins(userId),
   ]);
   const holeCount = new Set(holeRows.map((row) => row.holeNumber)).size;
@@ -547,6 +557,7 @@ async function getCourseDetailData(courseId: string) {
 
   return {
     course,
+    favourite: favouriteRows.length > 0,
     mapPreviewAvailable: Boolean(process.env.GOOGLE_MAPS_API_KEY?.trim()),
     location: courseLocationLabel(course.address, course.country),
     teeSetCount: teeRows.length,

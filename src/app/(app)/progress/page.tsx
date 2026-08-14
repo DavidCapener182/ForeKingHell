@@ -2,7 +2,6 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import {
   Activity,
-  ArrowLeft,
   ArrowRight,
   Check,
   CircleDot,
@@ -127,13 +126,7 @@ export default async function ProgressPage() {
         data-progress-story
         data-progress-surface={surface}
       >
-        <header className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <Button asChild variant="ghost" className="-ml-3 rounded-full px-3">
-            <Link href={surface === "companion" ? "/today" : "/dashboard"} prefetch={false}>
-              <ArrowLeft className="size-4" aria-hidden="true" />
-              {surface === "companion" ? "Today" : "Dashboard"}
-            </Link>
-          </Button>
+        <header className="flex min-w-0 flex-wrap items-center justify-end gap-3">
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline" className="rounded-full">
               <Link href="/goals" prefetch={false}>

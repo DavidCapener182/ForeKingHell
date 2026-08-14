@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Cuboid, Save, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { HoleStrategy, HoleStrategyMode } from "@/lib/course-strategy";
+import type { CourseStrategyMap } from "@/lib/course-strategy-map";
 
 import styles from "./course-strategy-book.module.css";
 import { HoleStrategyVisual } from "./hole-strategy-visual";
@@ -18,6 +19,7 @@ export function MobileHoleStrategy({
   trustedBag = [],
   tee = null,
   courseTwinAvailable = false,
+  courseMap = null,
 }: {
   strategies: HoleStrategy[];
   course: { id: string; name: string };
@@ -34,6 +36,7 @@ export function MobileHoleStrategy({
   }>;
   tee?: { id: string; name: string; yards: number | null } | null;
   courseTwinAvailable?: boolean;
+  courseMap?: CourseStrategyMap | null;
 }) {
   const [index, setIndex] = useState(0);
   const [modeId, setModeId] = useState<HoleStrategyMode["id"]>("normal");
@@ -114,7 +117,7 @@ export function MobileHoleStrategy({
         </dl>
       </header>
 
-      <HoleStrategyVisual strategy={strategy} mode={mode} compact />
+      <HoleStrategyVisual strategy={strategy} mode={mode} courseMap={courseMap} compact />
 
       <section className={styles.mobileRecommended}>
         <span>Recommended play · {mode.label}</span>

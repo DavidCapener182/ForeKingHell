@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   courseProviderAliases,
+  courseFavourites,
   courseRecordResults,
   courseRecords,
   courses,
@@ -121,52 +122,63 @@ async function getCourseLibraryData(): Promise<CourseLibraryEntry[]> {
 
   if (visibleCourseIds.length === 0) return [];
 
-  const [teeRows, holeRows, roundRows, recordRows, aliasRows, availableTwins] = await Promise.all([
-    db
-      .select({ courseId: teeSets.courseId })
-      .from(teeSets)
-      .where(inArray(teeSets.courseId, visibleCourseIds)),
-    db
-      .select({ courseId: holes.courseId, holeNumber: holes.holeNumber })
-      .from(holes)
-      .where(inArray(holes.courseId, visibleCourseIds)),
-    db
-      .select({ courseId: sessions.courseId, date: sessions.date })
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.userId, userId),
-          inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"]),
+  const [teeRows, holeRows, roundRows, recordRows, aliasRows, favouriteRows, availableTwins] =
+    await Promise.all([
+      db
+        .select({ courseId: teeSets.courseId })
+        .from(teeSets)
+        .where(inArray(teeSets.courseId, visibleCourseIds)),
+      db
+        .select({ courseId: holes.courseId, holeNumber: holes.holeNumber })
+        .from(holes)
+        .where(inArray(holes.courseId, visibleCourseIds)),
+      db
+        .select({ courseId: sessions.courseId, date: sessions.date })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.userId, userId),
+            inArray(sessions.type, ["round", "simulator", "simulated_course", "real_round"]),
+          ),
         ),
-      ),
-    db
-      .select({
-        courseId: courseRecords.courseId,
-        championVerificationStatus: courseRecordResults.verificationStatus,
-        championProfileUserId: userProfiles.userId,
-      })
-      .from(courseRecords)
-      .leftJoin(courseRecordResults, eq(courseRecords.bestResultId, courseRecordResults.id))
-      .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-      .where(
-        and(
-          inArray(courseRecords.courseId, visibleCourseIds),
-          eq(courseRecords.scope, "public"),
-          eq(courseRecords.status, "active"),
+      db
+        .select({
+          courseId: courseRecords.courseId,
+          championVerificationStatus: courseRecordResults.verificationStatus,
+          championProfileUserId: userProfiles.userId,
+        })
+        .from(courseRecords)
+        .leftJoin(courseRecordResults, eq(courseRecords.bestResultId, courseRecordResults.id))
+        .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
+        .where(
+          and(
+            inArray(courseRecords.courseId, visibleCourseIds),
+            eq(courseRecords.scope, "public"),
+            eq(courseRecords.status, "active"),
+          ),
         ),
-      ),
-    db
-      .select({ courseId: courseProviderAliases.courseId })
-      .from(courseProviderAliases)
-      .where(inArray(courseProviderAliases.courseId, visibleCourseIds)),
-    listAvailableCourseTwins(userId),
-  ]);
+      db
+        .select({ courseId: courseProviderAliases.courseId })
+        .from(courseProviderAliases)
+        .where(inArray(courseProviderAliases.courseId, visibleCourseIds)),
+      db
+        .select({ courseId: courseFavourites.courseId })
+        .from(courseFavourites)
+        .where(
+          and(
+            eq(courseFavourites.userId, userId),
+            inArray(courseFavourites.courseId, visibleCourseIds),
+          ),
+        ),
+      listAvailableCourseTwins(userId),
+    ]);
 
   const teeCounts = countBy(teeRows.map((row) => row.courseId));
   const holeNumbers = new Map<string, Set<number>>();
   const roundsByCourse = new Map<string, { count: number; lastPlayedAt: Date | null }>();
   const recordsByCourse = countBy(recordRows.map((row) => row.courseId));
   const aliasesByCourse = countBy(aliasRows.map((row) => row.courseId));
+  const favouriteCourseIds = new Set(favouriteRows.map((row) => row.courseId));
   const twinByCourse = new Map(availableTwins.map((twin) => [twin.courseId, twin]));
 
   for (const row of holeRows) {
@@ -201,6 +213,7 @@ async function getCourseLibraryData(): Promise<CourseLibraryEntry[]> {
       strategyReady: holeCount >= 9 && teeSetCount > 0,
       courseTwinReady: Boolean(twin),
       courseTwinGrade: twin?.grade ?? null,
+      previewImageUrl: twin?.previewImageUrl ?? null,
     };
   });
 
@@ -212,6 +225,7 @@ async function getCourseLibraryData(): Promise<CourseLibraryEntry[]> {
     latitude: course.latitude,
     longitude: course.longitude,
     mapPreviewAvailable: mapPreviewsEnabled,
+    previewImageUrl: course.previewImageUrl,
     holeCount: course.holeCount,
     roundCount: course.roundCount,
     lastPlayedAt: course.lastPlayedAt?.toISOString() ?? null,
@@ -219,6 +233,7 @@ async function getCourseLibraryData(): Promise<CourseLibraryEntry[]> {
     strategyReady: course.strategyReady,
     courseTwinReady: course.courseTwinReady,
     courseTwinGrade: course.courseTwinGrade,
+    favourite: favouriteCourseIds.has(course.id),
   }));
 }
 

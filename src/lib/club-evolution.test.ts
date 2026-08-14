@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildClubEvolutionRows, type ClubEvolutionClub } from "@/lib/club-evolution";
+import {
+  buildClubEvolutionRows,
+  classifyClubEvolutionMovement,
+  type ClubEvolutionClub,
+  type ClubEvolutionMeasuredPoint,
+} from "@/lib/club-evolution";
 import type { StockShot } from "@/lib/stock-yardage";
 
 describe("buildClubEvolutionRows", () => {
@@ -90,6 +95,75 @@ describe("buildClubEvolutionRows", () => {
     expect(rows[0]?.points.map((point) => point.sampleSize)).toEqual([2, 3]);
   });
 
+  it("measures monthly lateral control from the same clean-stock sample", () => {
+    const rows = buildClubEvolutionRows(
+      [
+        club("driver", [
+          shot(200, "2026-05-08T12:00:00.000Z", -20),
+          shot(202, "2026-05-08T12:05:00.000Z", 10),
+          shot(188, "2026-06-08T12:00:00.000Z", -8),
+          shot(190, "2026-06-08T12:05:00.000Z", 4),
+          { ...shot(80, "2026-06-08T12:10:00.000Z", 40), qualityTag: "top" },
+        ]),
+      ],
+      { monthCount: 2 },
+    );
+
+    expect(rows[0]?.points.map((point) => point.medianAbsoluteOfflineYd)).toEqual([15, 6]);
+    expect(rows[0]?.points.map((point) => point.directionalSampleSize)).toEqual([2, 2]);
+  });
+
+  it("treats shorter carry with enough tighter directional evidence as a trade-off", () => {
+    const movement = classifyClubEvolutionMovement([
+      measuredPoint({ carryYd: 200, medianAbsoluteOfflineYd: 18 }),
+      measuredPoint({
+        key: "2026-06",
+        label: "Jun",
+        carryYd: 188,
+        medianAbsoluteOfflineYd: 10,
+      }),
+    ]);
+
+    expect(movement.kind).toBe("shorter-straighter");
+    expect(movement.carryDeltaYd).toBe(-12);
+    expect(movement.controlDeltaYd).toBe(-8);
+  });
+
+  it("keeps a carry drop as distance-down when control did not improve", () => {
+    const movement = classifyClubEvolutionMovement([
+      measuredPoint({ carryYd: 200, medianAbsoluteOfflineYd: 12 }),
+      measuredPoint({
+        key: "2026-06",
+        label: "Jun",
+        carryYd: 188,
+        medianAbsoluteOfflineYd: 13,
+      }),
+    ]);
+
+    expect(movement.kind).toBe("distance-down");
+    expect(movement.controlDeltaYd).toBe(1);
+  });
+
+  it("does not call a trade-off from thin directional evidence", () => {
+    const movement = classifyClubEvolutionMovement([
+      measuredPoint({
+        carryYd: 200,
+        medianAbsoluteOfflineYd: 18,
+        directionalSampleSize: 3,
+      }),
+      measuredPoint({
+        key: "2026-06",
+        label: "Jun",
+        carryYd: 188,
+        medianAbsoluteOfflineYd: 8,
+        directionalSampleSize: 3,
+      }),
+    ]);
+
+    expect(movement.kind).toBe("distance-down");
+    expect(movement.controlDeltaYd).toBeNull();
+  });
+
   it("omits clubs without two measured months in the shared window", () => {
     const rows = buildClubEvolutionRows(
       [
@@ -114,13 +188,27 @@ function club(id: string, shots: StockShot[]): ClubEvolutionClub {
   };
 }
 
-function shot(carryYd: number, shotAt: string): StockShot {
+function shot(carryYd: number, shotAt: string, sideCarryYd = 0): StockShot {
   return {
     carryYd,
     totalYd: carryYd + 10,
-    sideCarryYd: 0,
+    sideCarryYd,
     shotCategory: "full",
     qualityTag: null,
     shotAt,
+  };
+}
+
+function measuredPoint(
+  overrides: Partial<ClubEvolutionMeasuredPoint> = {},
+): ClubEvolutionMeasuredPoint {
+  return {
+    key: "2026-05",
+    label: "May",
+    carryYd: 200,
+    sampleSize: 12,
+    medianAbsoluteOfflineYd: 12,
+    directionalSampleSize: 12,
+    ...overrides,
   };
 }

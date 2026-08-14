@@ -108,7 +108,7 @@ export function buildWeeklyChangeReview(input: {
       ? {
           value: `Review ${largestDecline.value}`,
           detail: "Start with the largest evidence-backed decline before changing the wider plan.",
-          href: largestDecline.href ?? "/bag?tab=history#club-evolution",
+          href: largestDecline.href ?? "/bag?tab=evidence#club-evolution",
           tone: "amber",
         }
       : freshness.tone === "amber" || freshness.tone === "slate"

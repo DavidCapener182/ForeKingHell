@@ -1376,6 +1376,24 @@ export const courses = pgTable(
   ],
 );
 
+export const courseFavourites = pgTable(
+  "fkh_course_favourites",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fkh_course_favourites_user_course_idx").on(table.userId, table.courseId),
+    index("fkh_course_favourites_user_idx").on(table.userId),
+    index("fkh_course_favourites_course_idx").on(table.courseId),
+  ],
+);
+
 export const teeSets = pgTable(
   "fkh_tee_sets",
   {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Check } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { FriendInviteDialog } from "@/app/friends/friend-invite-dialog";
 import { FriendsTabs, type FriendsTab } from "@/app/friends/friends-tabs";
@@ -44,13 +44,7 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
   return (
     <PageShell>
       <DesktopWorkbenchLayout scope="friends">
-        <div className="hidden items-center justify-between gap-3 sm:flex">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
+        <div className="hidden items-center justify-end gap-3 sm:flex">
           <Button asChild variant="outline">
             <Link href="/profile" prefetch={false}>
               @{data.profile.username}

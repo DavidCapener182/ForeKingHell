@@ -45,6 +45,18 @@ describe("PageShell layout contract", () => {
     expect(summaryBlock).not.toContain('className="max-w-36 truncate text-right');
   });
 
+  it("keeps desktop header metric values readable on light tiles", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
+    const pageHeaderBlock =
+      source.match(
+        /export function PageHeader[\s\S]*?export function MobileCompactPageHeader/,
+      )?.[0] ?? "";
+
+    expect(pageHeaderBlock).toContain(
+      'className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground sm:text-[1.5rem]"',
+    );
+  });
+
   it("lets desktop table frames expose labelled regions", () => {
     const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
     const frameBlock =

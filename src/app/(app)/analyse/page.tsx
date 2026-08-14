@@ -14,10 +14,9 @@ import { AnalyseProvenancePanel } from "@/app/analyse/analyse-provenance-panel";
 import { AppCommandContentTrigger } from "@/components/app/app-command-trigger";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDb } from "@/db/client";
 import { clubs, sessions, shots } from "@/db/schema";
 import {
@@ -38,7 +37,6 @@ export default async function AnalysePage() {
   if (data.totalShots === 0) {
     return (
       <PageShell>
-        <PerformanceLabMasthead />
         <AppEmptyState
           icon={<Database className="size-6" aria-hidden />}
           title="Import measured evidence to start analysis"
@@ -60,8 +58,6 @@ export default async function AnalysePage() {
 
   return (
     <PageShell className="bg-[radial-gradient(circle_at_top_right,rgba(8,122,61,0.055),transparent_34rem)]">
-      <PerformanceLabMasthead />
-
       <InsightHero data={data} />
 
       <ConnectedMetricBar
@@ -91,98 +87,48 @@ export default async function AnalysePage() {
         ]}
       />
 
-      <Tabs defaultValue="overview" className="grid min-w-0 gap-5" data-analyse-workspace-tabs>
+      <div className="grid min-w-0 gap-5" data-analyse-workspace>
         <div className="flex min-w-0 flex-col gap-3 border-b border-border/70 pb-3 xl:flex-row xl:items-end xl:justify-between">
-          <TabsList
-            variant="line"
+          <nav
             aria-label="Analyse workspace"
-            className="max-w-full justify-start gap-4 overflow-x-auto pb-1"
+            className="flex max-w-full gap-5 overflow-x-auto pb-1 text-sm font-medium"
           >
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="compare">Compare</TabsTrigger>
-            <TabsTrigger value="shots">Shots</TabsTrigger>
-            <TabsTrigger value="conditions">Conditions</TabsTrigger>
-            <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
-          </TabsList>
+            {[
+              ["Overview", "/analyse"],
+              ["Compare", "/analyse/compare"],
+              ["Shots", data.insight.shotsHref],
+              ["Conditions", "/analyse/conditions"],
+              ["Data Quality", "/analyse/workspace"],
+            ].map(([label, href]) => (
+              <Link
+                key={label}
+                href={href}
+                aria-current={label === "Overview" ? "page" : undefined}
+                className={`focus-aaa relative min-h-9 shrink-0 rounded-sm px-1 outline-none transition-colors hover:text-foreground ${
+                  label === "Overview"
+                    ? "text-foreground after:absolute after:inset-x-0 after:-bottom-[0.8rem] after:h-0.5 after:bg-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
           <AppCommandContentTrigger label="Find an advanced analysis" className="w-full xl:w-72" />
         </div>
 
-        <TabsContent value="overview" className="grid min-w-0 gap-5">
-          <section
-            className="grid min-w-0 gap-4 xl:grid-cols-12 xl:grid-rows-[minmax(16rem,1fr)_minmax(13rem,0.78fr)]"
-            aria-label="Performance Lab analysis entry points"
-          >
-            <CompareFeature data={data} className="xl:col-span-7 xl:row-span-2" />
-            <ShotPatternsFeature data={data} className="xl:col-span-5" />
-            <ConditionsFeature data={data} className="xl:col-span-3" />
-            <DataQualityFeature data={data} className="xl:col-span-2" />
-          </section>
-          <CommandCentreNote />
-        </TabsContent>
-
-        <TabsContent value="compare">
-          <FocusedAnalysis
-            eyebrow="Compare"
-            title="Understand what changed"
-            description="Put two matched sessions side by side, then check sample strength before you call the movement real."
-            href="/analyse/compare"
-            action="Open comparison lab"
-            visual={<ComparisonGraphic comparison={data.comparison} expanded />}
-          />
-        </TabsContent>
-
-        <TabsContent value="shots">
-          <FocusedAnalysis
-            eyebrow="Shot patterns"
-            title="Find your real dispersion and miss"
-            description={`${data.insight.clubLabel} is the clearest place to begin. Inspect the measured landing pattern without letting one outlier write the story.`}
-            href={data.insight.shotsHref}
-            action={`Inspect ${data.insight.clubLabel} shots`}
-            visual={<DispersionGraphic insight={data.insight} expanded />}
-          />
-        </TabsContent>
-
-        <TabsContent value="conditions">
-          <FocusedAnalysis
-            eyebrow="Conditions"
-            title="See how environment changes your numbers"
-            description="Separate recorded venue, weather and surface context before accepting a carry change as swing progress."
-            href="/analyse/conditions"
-            action="Open conditions analysis"
-            visual={<ConditionTagCloud tags={data.conditionTags} expanded />}
-          />
-        </TabsContent>
-
-        <TabsContent value="data-quality">
-          <FocusedAnalysis
-            eyebrow="Data quality"
-            title="Know what evidence you can trust"
-            description="See which confidence inputs are healthy, mixed or limited, then open the evidence workspace only when something needs attention."
-            href="/analyse/workspace"
-            action="Open evidence workspace"
-            visual={<ConfidenceDistribution components={data.confidence.components} expanded />}
-          />
-        </TabsContent>
-      </Tabs>
-    </PageShell>
-  );
-}
-
-function PerformanceLabMasthead() {
-  return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <div className="flex items-center gap-2">
-          <StatusPill tone="sky">Performance Lab</StatusPill>
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Analyse
-          </span>
-        </div>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          One clear read of the evidence, then the right place to investigate it.
-        </p>
+        <section
+          className="grid min-w-0 gap-4 xl:grid-cols-12 xl:grid-rows-[minmax(16rem,1fr)_minmax(13rem,0.78fr)]"
+          aria-label="Performance Lab analysis entry points"
+        >
+          <CompareFeature data={data} className="xl:col-span-7 xl:row-span-2" />
+          <ShotPatternsFeature data={data} className="xl:col-span-5" />
+          <ConditionsFeature data={data} className="xl:col-span-3" />
+          <DataQualityFeature data={data} className="xl:col-span-2" />
+        </section>
+        <CommandCentreNote />
       </div>
-    </header>
+    </PageShell>
   );
 }
 
@@ -193,7 +139,7 @@ function InsightHero({ data }: { data: AnalyseOverview }) {
       <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.55fr)] lg:items-end">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">
-            Current read
+            Performance Lab · Analyse
           </p>
           <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl">
             What does the data say?
@@ -205,6 +151,19 @@ function InsightHero({ data }: { data: AnalyseOverview }) {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-emerald-50/72 sm:text-base">
               {data.insight.detail}
             </p>
+            <div className="mt-5">
+              <AnalyseProvenancePanel
+                trustedShots={data.trustedShots}
+                sessions={data.sessionCount}
+                usefulSessions={data.usefulSessions}
+                activeClubs={data.clubCount}
+                coveredClubs={data.coveredClubs}
+                excludedShots={data.excludedShots}
+                dateRange={data.dateRange}
+                explanation={confidenceExplanation(data.confidence.label)}
+                components={data.confidence.components}
+              />
+            </div>
           </div>
         </div>
 
@@ -227,17 +186,6 @@ function InsightHero({ data }: { data: AnalyseOverview }) {
               <ArrowRight className="size-4" aria-hidden />
             </Link>
           </Button>
-          <AnalyseProvenancePanel
-            trustedShots={data.trustedShots}
-            sessions={data.sessionCount}
-            usefulSessions={data.usefulSessions}
-            activeClubs={data.clubCount}
-            coveredClubs={data.coveredClubs}
-            excludedShots={data.excludedShots}
-            dateRange={data.dateRange}
-            explanation={confidenceExplanation(data.confidence.label)}
-            components={data.confidence.components}
-          />
         </div>
       </div>
     </section>
@@ -640,45 +588,6 @@ function ConfidenceCount({ label, value, dot }: { label: string; value: number; 
       </span>
       <span className="font-semibold tabular-nums">{value}</span>
     </div>
-  );
-}
-
-function FocusedAnalysis({
-  eyebrow,
-  title,
-  description,
-  href,
-  action,
-  visual,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  href: string;
-  action: string;
-  visual: React.ReactNode;
-}) {
-  return (
-    <section className="grid min-h-[28rem] overflow-hidden rounded-[1.5rem] border border-border bg-card lg:grid-cols-[minmax(18rem,0.7fr)_minmax(0,1.3fr)]">
-      <div className="flex flex-col justify-between gap-8 border-b border-border bg-muted/25 p-6 lg:border-r lg:border-b-0 lg:p-8">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            {eyebrow}
-          </p>
-          <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight text-balance">
-            {title}
-          </h2>
-          <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">{description}</p>
-        </div>
-        <Button asChild className="min-h-11 w-fit">
-          <Link href={href}>
-            {action}
-            <ArrowRight className="size-4" aria-hidden />
-          </Link>
-        </Button>
-      </div>
-      <div className="grid min-h-64 place-items-center overflow-hidden p-5 sm:p-8">{visual}</div>
-    </section>
   );
 }
 

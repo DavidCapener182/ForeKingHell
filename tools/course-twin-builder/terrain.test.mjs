@@ -63,3 +63,14 @@ test("LINZ and NRCan adapters resolve official STAC COG catalogues", () => {
   assert.equal(nrcan.url.pathname, "/stac/api/search");
   assert.match(nrcan.attribution.licence, /Canada/);
 });
+
+test("Mapzen adapter resolves the credential-free AWS Open Data GeoTIFF tiles", () => {
+  const request = createTerrainRequest(
+    { ...plan, terrain: { primary: "mapzen_terrain_tiles" } },
+    {},
+  );
+  assert.equal(request.adapter, "mapzen_terrain_tiles");
+  assert.equal(request.reader, "mapzen_geotiff_tiles");
+  assert.match(request.url.hostname, /s3\.amazonaws\.com/);
+  assert.equal(request.verticalDatum, "EGM96");
+});

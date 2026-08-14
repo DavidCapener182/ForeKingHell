@@ -13,7 +13,6 @@ import {
 } from "react";
 import {
   AlertCircle,
-  ArrowLeft,
   Bell,
   CheckCircle2,
   Cloud,
@@ -800,13 +799,7 @@ export function RapsodoSyncClient({
           helpDescription="Keep provider imports deterministic"
           helpItems={rapsodoWorkflowHelpItems}
         >
-          <div className="flex items-center justify-between gap-4">
-            <Button asChild variant="ghost" className="px-0">
-              <Link href="/dashboard">
-                <ArrowLeft className="size-4" />
-                Dashboard
-              </Link>
-            </Button>
+          <div className="flex items-center justify-end gap-4">
             <Button asChild variant="outline">
               <Link href="/import">
                 <Upload className="size-4" />

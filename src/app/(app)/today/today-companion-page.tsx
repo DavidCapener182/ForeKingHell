@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { CalendarDays, ShieldAlert } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 
 import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
 import { TodayPrimaryAnswer } from "@/components/app/today-primary-answer";
-import { IOSDisclosureGroup, IOSMetricRow } from "@/components/app/ios-mobile";
+import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -52,6 +52,9 @@ export default async function TodayCompanionPage() {
     latestData?.rawShots.filter((shot) => shot.sessionId === context.latestPractice.sessionId) ??
     [];
   const patternPoints = buildShotPatternPoints(latestShots);
+  const confidenceWarning = context.bag.issues.find(
+    (issue) => !issue.startsWith("Bag trust is building"),
+  );
   const mainState = resolveTodayPrimaryState({
     currentPlan,
     activeRound,
@@ -65,10 +68,10 @@ export default async function TodayCompanionPage() {
         <TodayPrimaryAnswer
           accountId={userId}
           serverState={mainState}
+          trainingLoadLabel={context.trainingLoad.statusLabel}
           facts={[
-            { label: "Suggested session", value: `${recommendation.minutes} min` },
-            { label: "Training load", value: context.trainingLoad.statusLabel },
-            { label: "Main club", value: recommendation.clubLabel },
+            { label: "Session", value: `${recommendation.minutes} min` },
+            { label: "Club", value: recommendation.clubLabel },
             { label: "Evidence", value: recommendation.evidenceLabel },
           ]}
         />
@@ -94,12 +97,12 @@ export default async function TodayCompanionPage() {
           </Card>
         ) : null}
 
-        {context.bag.issues[0] ? (
+        {confidenceWarning ? (
           <Alert>
             <ShieldAlert aria-hidden />
-            <AlertTitle>One confidence warning</AlertTitle>
+            <AlertTitle>{confidenceWarningTitle(confidenceWarning)}</AlertTitle>
             <AlertDescription>
-              {context.bag.issues[0]} <Link href="/quick-bag">Review Quick Bag.</Link>
+              {confidenceWarning}. <Link href="/quick-bag">Review Quick Bag.</Link>
             </AlertDescription>
           </Alert>
         ) : null}
@@ -112,13 +115,15 @@ export default async function TodayCompanionPage() {
               title: "Why this recommendation?",
               description: recommendation.explanation,
               content: (
-                <div className="grid gap-2">
-                  <IOSMetricRow label="Latest weakness" value={recommendation.clubLabel} />
-                  <IOSMetricRow label="Bag confidence" value={recommendation.bagConfidence} />
-                  <IOSMetricRow
-                    label="Training status"
-                    value={context.trainingLoad.recommendation}
-                  />
+                <div className="grid gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Evidence used
+                  </p>
+                  <ul className="grid gap-2 text-sm leading-5 text-foreground">
+                    <li>Latest measured session · {context.latestPractice.dateLabel}</li>
+                    <li>{latestShots.length} measured shots in the latest session</li>
+                    <li>Training load · {context.trainingLoad.statusLabel}</li>
+                  </ul>
                   <p className="text-xs leading-5 text-muted-foreground">
                     Recommendations use measured golf evidence. Completing a practice activity
                     manually does not count as measured success.
@@ -128,14 +133,22 @@ export default async function TodayCompanionPage() {
             },
           ]}
         />
-
-        <div className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
-          <CalendarDays className="size-4" aria-hidden />
-          Updated from your latest available golf evidence.
-        </div>
       </MobileAppShell>
     </PageShell>
   );
+}
+
+function confidenceWarningTitle(issue: string) {
+  if (issue.endsWith(" needs more data")) {
+    return issue.replace(/ needs more data$/, " needs more evidence");
+  }
+  if (issue.endsWith(" lowest trust")) {
+    return issue.replace(/ lowest trust$/, " confidence is low");
+  }
+  if (issue.endsWith(" volatile")) {
+    return issue.replace(/ volatile$/, " numbers are volatile");
+  }
+  return issue;
 }
 
 async function getInProgressRound(userId: string) {

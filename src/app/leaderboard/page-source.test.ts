@@ -9,20 +9,12 @@ const controls = readFileSync(
 );
 
 describe("leaderboard desktop workspace source", () => {
-  it("uses linked Tabs for the five competition scopes", () => {
-    expect(controls).toContain("<Tabs");
-    expect(controls).toContain("<TabsList");
-    expect(controls).toContain("<TabsTrigger");
-    expect(controls).toContain('aria-label="Leaderboard views"');
-    expect(controls).toContain('{ value: "friends", label: "Friends"');
-    expect(controls).toContain('{ value: "public", label: "Global"');
-    expect(controls).toContain('{ value: "courses", label: "Course"');
-    expect(controls).toContain('{ value: "challenges", label: "Challenge"');
-    expect(controls).toContain('{ value: "tournaments", label: "Tournament"');
-    expect(controls).toContain("const href = `/leaderboard?tab=${tab.value}");
-    expect(controls).toContain('aria-current={active ? "page" : undefined}');
-    expect(controls).toContain('from "@/components/ui/tabs"');
-    expect(source).toContain("<LeaderboardTypeTabs activeTab={activeTab} period={period} />");
+  it("keeps board audience and period independent from compete destinations", () => {
+    expect(controls).not.toContain("<Tabs");
+    expect(source).not.toContain("LeaderboardTypeTabs");
+    expect(source).toContain("MobileLeaderboardScopeSelector");
+    expect(source).toContain('href="/leaderboard?tab=friends"');
+    expect(source).toContain('href="/leaderboard?tab=public"');
   });
 
   it("keeps period and friends/global scope as independent toggle groups", () => {
@@ -130,10 +122,12 @@ describe("leaderboard desktop workspace source", () => {
 });
 
 describe("leaderboard mobile state", () => {
-  it("exposes the period control and scopes proof filters to player boards", () => {
+  it("keeps mobile to one monthly audience selector and top-five board", () => {
     expect(controls).toContain('<ToggleGroupItem value="monthly">This month</ToggleGroupItem>');
-    expect(source).toContain("const showMobilePlayerFilters = isPlayerLeaderboardTab(activeTab);");
-    expect(source).toContain("showMobilePlayerFilters ? (");
+    expect(source).toContain('surface === "companion" ? "monthly"');
+    expect(source).toContain("data.players.slice(0, 5)");
+    expect(source).toContain("View full leaderboard");
+    expect(source).not.toContain("MobileRouteTabs");
     expect(source).not.toContain('<option value="mixed">Mixed</option>');
   });
 

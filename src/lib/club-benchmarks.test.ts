@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  calculateClubBenchmarkAdvancePlan,
   benchmarkDisplayProgressPercent,
   benchmarkLevelProgressPercent,
   buildClubBenchmarkRows,
@@ -115,5 +116,39 @@ describe("club distance benchmarks", () => {
       currentLevelLabel: "Good",
       gapMph: 4,
     });
+  });
+
+  it("calculates how many target-distance shots lift a fixed best-30 average", () => {
+    const sample = [...Array(10).fill(230), ...Array(20).fill(203.3)];
+    const plan = calculateClubBenchmarkAdvancePlan(sample, 220, 30);
+
+    expect(plan).toEqual({
+      shotsNeeded: 15,
+      targetCarryYd: 220,
+      projectedAverageYd: 220.6,
+    });
+  });
+
+  it("attaches a next-level shot plan to a benchmark row", () => {
+    const rows = buildClubBenchmarkRows([
+      {
+        clubId: "driver",
+        clubType: "driver",
+        brandModel: "Model",
+        carryYd: 212.2,
+        sampleSize: 30,
+        confidenceScore: 85,
+        sampleCarryYards: [...Array(10).fill(230), ...Array(20).fill(203.3)],
+        reviewedShotCount: 184,
+        savedShotCount: 1200,
+      },
+    ]);
+
+    expect(rows[0]?.nextLevelPlan).toMatchObject({
+      shotsNeeded: 15,
+      targetCarryYd: 220,
+    });
+    expect(rows[0]?.reviewedShotCount).toBe(184);
+    expect(rows[0]?.savedShotCount).toBe(1200);
   });
 });

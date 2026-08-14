@@ -13,6 +13,8 @@ const USGS_3DEP_URL =
   "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage";
 const NRCAN_STAC_SEARCH_URL = "https://datacube.services.geo.ca/stac/api/search";
 const LINZ_STAC_CATALOG_URL = "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/catalog.json";
+const MAPZEN_TERRAIN_TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/geotiff";
+const MAPZEN_TERRAIN_ZOOM = 13;
 const OUTPUT_SIZE = 513;
 
 proj4.defs(
@@ -130,6 +132,20 @@ export function createTerrainRequest(plan, env = process.env) {
       },
     };
   }
+  if (plan.terrain.primary === "mapzen_terrain_tiles") {
+    return {
+      url: new URL(MAPZEN_TERRAIN_TILE_URL),
+      adapter: "mapzen_terrain_tiles",
+      sourceResolutionM: 30,
+      verticalDatum: "EGM96",
+      reader: "mapzen_geotiff_tiles",
+      attribution: {
+        label: "Mapzen Terrain Tiles on AWS Open Data",
+        url: "https://registry.opendata.aws/terrain-tiles/",
+        licence: "Source-specific open data licences recorded by Mapzen",
+      },
+    };
+  }
   if (plan.terrain.primary !== "copernicus_glo30") {
     throw new Error(`Terrain adapter ${plan.terrain.primary} is not available in this worker.`);
   }
@@ -161,7 +177,9 @@ export function createTerrainRequest(plan, env = process.env) {
 }
 
 export async function fetchTerrain(plan, env = process.env) {
-  const candidates = [plan.terrain.primary, ...(plan.terrain.fallbacks ?? [])];
+  const candidates = [
+    ...new Set([plan.terrain.primary, ...(plan.terrain.fallbacks ?? []), "mapzen_terrain_tiles"]),
+  ];
   let lastError = null;
   for (const adapter of candidates) {
     try {
@@ -178,6 +196,9 @@ export async function fetchTerrain(plan, env = process.env) {
       if (request.reader === "linz_stac_cog") {
         return readLinzStacCog(plan, request);
       }
+      if (request.reader === "mapzen_geotiff_tiles") {
+        return readMapzenTerrainTiles(plan, request);
+      }
       const response = await fetch(request.url, {
         headers: { "user-agent": "ForeKingHell Course Twin Builder/0.2" },
         signal: AbortSignal.timeout(90_000),
@@ -189,6 +210,65 @@ export async function fetchTerrain(plan, env = process.env) {
     }
   }
   throw lastError instanceof Error ? lastError : new Error("No terrain adapter succeeded.");
+}
+
+export async function readMapzenTerrainTiles(plan, request, fetchImpl = fetch) {
+  const bounds = plan.course.geographicBounds;
+  const tileRange = mapzenTileRange(bounds, MAPZEN_TERRAIN_ZOOM);
+  const tileCoordinates = [];
+  for (let y = tileRange.minY; y <= tileRange.maxY; y += 1) {
+    for (let x = tileRange.minX; x <= tileRange.maxX; x += 1) {
+      tileCoordinates.push({ x, y });
+    }
+  }
+  if (tileCoordinates.length > 9) {
+    throw new Error("Mapzen terrain request exceeds the nine-tile course limit.");
+  }
+
+  const tiles = await mapLimit(tileCoordinates, 4, async ({ x, y }) => {
+    const url = new URL(
+      `${request.url.toString().replace(/\/$/, "")}/${MAPZEN_TERRAIN_ZOOM}/${x}/${y}.tif`,
+    );
+    const response = await fetchImpl(url, {
+      headers: { "user-agent": "ForeKingHell Course Twin Builder/0.2" },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`Mapzen terrain tile returned ${response.status}.`);
+    const declaredSize = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredSize) && declaredSize > 12 * 1024 * 1024) {
+      throw new Error("Mapzen terrain tile exceeds the asset limit.");
+    }
+    const tiff = await fromArrayBuffer(await response.arrayBuffer());
+    const image = await tiff.getImage();
+    const width = image.getWidth();
+    const height = image.getHeight();
+    const values = Float32Array.from(await image.readRasters({ interleave: true }), Number);
+    fillNoData(values, width, height, image.getGDALNoData());
+    return { x, y, width, height, values };
+  });
+  const tilesByCoordinate = new Map(tiles.map((tile) => [`${tile.x}:${tile.y}`, tile]));
+  const sample = (latitude, longitude) =>
+    sampleMapzenTile(tilesByCoordinate, tileRange, latitude, longitude, MAPZEN_TERRAIN_ZOOM);
+  const values = new Float32Array(OUTPUT_SIZE * OUTPUT_SIZE);
+  for (let row = 0; row < OUTPUT_SIZE; row += 1) {
+    const latitude =
+      bounds.maxLatitude - (row / (OUTPUT_SIZE - 1)) * (bounds.maxLatitude - bounds.minLatitude);
+    for (let column = 0; column < OUTPUT_SIZE; column += 1) {
+      const longitude =
+        bounds.minLongitude +
+        (column / (OUTPUT_SIZE - 1)) * (bounds.maxLongitude - bounds.minLongitude);
+      values[row * OUTPUT_SIZE + column] = sample(latitude, longitude);
+    }
+  }
+
+  return terrainFromValues({
+    values,
+    originElevationM: sample(plan.course.origin.latitude, plan.course.origin.longitude),
+    plan,
+    request,
+    geographicBounds: bounds,
+    sample,
+  });
 }
 
 async function readProjectedCog(plan, request) {
@@ -549,6 +629,58 @@ async function boundedJson(response, label) {
   } catch {
     throw new Error(`${label} returned invalid JSON.`);
   }
+}
+
+function mapzenTileRange(bounds, zoom) {
+  return {
+    minX: longitudeTile(bounds.minLongitude, zoom),
+    maxX: longitudeTile(bounds.maxLongitude, zoom),
+    minY: latitudeTile(bounds.maxLatitude, zoom),
+    maxY: latitudeTile(bounds.minLatitude, zoom),
+  };
+}
+
+function longitudeTile(longitude, zoom) {
+  const tileCount = 2 ** zoom;
+  return Math.max(0, Math.min(tileCount - 1, Math.floor(((longitude + 180) / 360) * tileCount)));
+}
+
+function latitudeTile(latitude, zoom) {
+  const tileCount = 2 ** zoom;
+  const clamped = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+  const radians = (clamped * Math.PI) / 180;
+  const normalized = (1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2;
+  return Math.max(0, Math.min(tileCount - 1, Math.floor(normalized * tileCount)));
+}
+
+function sampleMapzenTile(tiles, tileRange, latitude, longitude, zoom) {
+  const tileCount = 2 ** zoom;
+  const clampedLatitude = Math.max(-85.05112878, Math.min(85.05112878, latitude));
+  const radians = (clampedLatitude * Math.PI) / 180;
+  const rawGlobalX = ((longitude + 180) / 360) * tileCount;
+  const rawGlobalY =
+    ((1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2) * tileCount;
+  const globalX = Math.max(tileRange.minX, Math.min(tileRange.maxX + 1 - 1e-9, rawGlobalX));
+  const globalY = Math.max(tileRange.minY, Math.min(tileRange.maxY + 1 - 1e-9, rawGlobalY));
+  const tileX = Math.max(0, Math.min(tileCount - 1, Math.floor(globalX)));
+  const tileY = Math.max(0, Math.min(tileCount - 1, Math.floor(globalY)));
+  const tile = tiles.get(`${tileX}:${tileY}`);
+  if (!tile) throw new Error("Mapzen terrain tile coverage is incomplete.");
+  const pixelX = Math.max(0, Math.min(tile.width - 1, (globalX - tileX) * tile.width));
+  const pixelY = Math.max(0, Math.min(tile.height - 1, (globalY - tileY) * tile.height));
+  const left = Math.floor(pixelX);
+  const right = Math.min(tile.width - 1, left + 1);
+  const top = Math.floor(pixelY);
+  const bottom = Math.min(tile.height - 1, top + 1);
+  const horizontal = pixelX - left;
+  const vertical = pixelY - top;
+  const topValue =
+    tile.values[top * tile.width + left] * (1 - horizontal) +
+    tile.values[top * tile.width + right] * horizontal;
+  const bottomValue =
+    tile.values[bottom * tile.width + left] * (1 - horizontal) +
+    tile.values[bottom * tile.width + right] * horizontal;
+  return topValue * (1 - vertical) + bottomValue * vertical;
 }
 
 async function mapLimit(values, limit, mapper) {

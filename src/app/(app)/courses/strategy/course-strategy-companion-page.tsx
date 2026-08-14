@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { listAvailableCourseTwins } from "@/lib/course-twin-data";
+import { courseStrategyMapFromManifest } from "@/lib/course-strategy-map";
+import { getCourseTwinManifest } from "@/lib/course-twin-data";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 
@@ -25,13 +26,11 @@ export default async function CourseStrategyCompanionPage({
 }) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
-  const [data, availableTwins] = await Promise.all([
-    getCourseStrategyData(params?.courseId, params?.teeSetId),
-    listAvailableCourseTwins(userId),
-  ]);
-  const courseTwinAvailable = availableTwins.some(
-    (twin) => twin.courseId === data.selectedCourse?.id,
-  );
+  const data = await getCourseStrategyData(params?.courseId, params?.teeSetId);
+  const courseTwinManifest = data.selectedCourse
+    ? await getCourseTwinManifest({ userId, courseId: data.selectedCourse.id })
+    : null;
+  const courseMap = courseStrategyMapFromManifest(courseTwinManifest);
 
   return (
     <PageShell>
@@ -92,7 +91,8 @@ export default async function CourseStrategyCompanionPage({
             accountId={userId}
             trustedBag={data.trustedBag}
             tee={data.selectedTee}
-            courseTwinAvailable={courseTwinAvailable}
+            courseTwinAvailable={Boolean(courseTwinManifest)}
+            courseMap={courseMap}
           />
         ) : (
           <Alert>

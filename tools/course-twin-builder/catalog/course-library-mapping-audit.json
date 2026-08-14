@@ -1,0 +1,1824 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-14T21:38:20.265Z",
+  "scope": "Visible ForeKingHell course library for the primary LM World Tour account",
+  "summary": {
+    "courses": 68,
+    "registeredPackages": 39,
+    "bootlePilots": 0,
+    "queuedBuildPlans": 0,
+    "sourceReadyNeedsPlan": 0,
+    "verifiedExternalGeometry": 0,
+    "locationOnly": 24,
+    "sourceMappingMissing": 3,
+    "nonRealOrTestCourses": 2
+  },
+  "courses": [
+    {
+      "courseId": "486ddef6-5963-41d7-b2e6-82cec6732170",
+      "name": "Aberystwyth Golf Course",
+      "country": "Wales",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "486ddef6-5963-41d7-b2e6-82cec6732170",
+        "slug": "aberystwyth-golf-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 135,
+        "imageryUrl": "/course-twins/aberystwyth-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/aberystwyth-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "4de11156-16fd-4a36-84e0-fadda53456b0",
+      "name": "Aintree Golf Centre",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "4de11156-16fd-4a36-84e0-fadda53456b0",
+        "slug": "aintree-v1",
+        "grade": "B",
+        "mappedHoles": 9,
+        "mappedFeatures": 82,
+        "imageryUrl": "/course-twins/aintree-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/aintree-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 9,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "1b95d085-59c0-476c-b0ff-c2d369c2aadc",
+      "name": "Aldenham Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "1b95d085-59c0-476c-b0ff-c2d369c2aadc",
+        "slug": "aldenham-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 346,
+        "imageryUrl": "/course-twins/aldenham-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/aldenham-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "0036f96c-d14f-4cf1-a6d3-923cc664f3f6",
+      "name": "Alexander Park Resort",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "0036f96c-d14f-4cf1-a6d3-923cc664f3f6",
+        "slug": "alexander-park-resort-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 127,
+        "imageryUrl": "/course-twins/alexander-park-resort-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/alexander-park-resort-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "19930c7b-c92b-48f9-86a9-2428ed909fc6",
+      "name": "Alsager Golf and Country Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "19930c7b-c92b-48f9-86a9-2428ed909fc6",
+        "slug": "alsager-golf-and-country-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/alsager-golf-and-country-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/alsager-golf-and-country-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "0c4ef63e-2172-41e7-b1c8-57e883b4624c",
+      "name": "Altrincham Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "0c4ef63e-2172-41e7-b1c8-57e883b4624c",
+        "slug": "altrincham-golf-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/altrincham-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/altrincham-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "cd98bcd7-cedb-418a-acd0-2509a6d0edff",
+      "name": "Aronimink Golf Club",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "cd98bcd7-cedb-418a-acd0-2509a6d0edff",
+        "googleMatch": {
+          "address": "3600 St Davids Rd, Newtown Square, PA 19073, USA",
+          "country": "USA",
+          "latitude": 40.011652,
+          "longitude": -75.40903399999999,
+          "name": "Aronimink Golf Club",
+          "placeId": "ChIJ4W1GgWrrxokRd1ZE5tuhE4E",
+          "rating": 4.7,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 420
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "65359509-5de2-485e-8f85-392bba752710",
+      "name": "Arrowe Park Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "65359509-5de2-485e-8f85-392bba752710",
+        "slug": "arrowe-park-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 511,
+        "imageryUrl": "/course-twins/arrowe-park-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/arrowe-park-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "53ee459c-235c-4c65-81bf-8d29ba052145",
+      "name": "Arscott",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "53ee459c-235c-4c65-81bf-8d29ba052145",
+        "slug": "arscott-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 231,
+        "imageryUrl": "/course-twins/arscott-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/arscott-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "742d90a2-797d-4032-a5a7-cb31d667ec20",
+      "name": "Ash Valley Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "742d90a2-797d-4032-a5a7-cb31d667ec20",
+        "slug": "ash-valley-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 76,
+        "imageryUrl": "/course-twins/ash-valley-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/ash-valley-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "105ffa8e-c95f-4cae-bf1e-fa112938e68b",
+      "name": "Ashton & Lea Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "105ffa8e-c95f-4cae-bf1e-fa112938e68b",
+        "slug": "ashton-lea-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 75,
+        "imageryUrl": "/course-twins/ashton-lea-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/ashton-lea-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "2eebecd9-0513-4db4-b4a8-1e7ef1988550",
+      "name": "Aspley Guise & Woburn Sands Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "2eebecd9-0513-4db4-b4a8-1e7ef1988550",
+        "slug": "aspley-guise-woburn-sands-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 178,
+        "imageryUrl": "/course-twins/aspley-guise-woburn-sands-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/aspley-guise-woburn-sands-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "02ff11c8-fd08-42cb-99e5-1a792008fd38",
+      "name": "Astbury Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "02ff11c8-fd08-42cb-99e5-1a792008fd38",
+        "slug": "astbury-golf-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 75,
+        "imageryUrl": "/course-twins/astbury-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/astbury-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "816b540a-6ca1-437b-a563-2b4558874dbf",
+      "name": "Badgemore Park Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "816b540a-6ca1-437b-a563-2b4558874dbf",
+        "slug": "badgemore-park-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 261,
+        "imageryUrl": "/course-twins/badgemore-park-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/badgemore-park-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757",
+      "name": "Barkway Park Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757",
+        "slug": "barkway-park-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/barkway-park-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/barkway-park-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "2c214875-84f0-43a7-b0de-7d8ab9a1efee",
+      "name": "Barnard Castle Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "2c214875-84f0-43a7-b0de-7d8ab9a1efee",
+        "slug": "barnard-castle-golf-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 169,
+        "imageryUrl": "/course-twins/barnard-castle-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/barnard-castle-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "f6311d95-5374-4887-953c-cf01e84a8a8a",
+      "name": "Bay Hill Club and Lodge",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "f6311d95-5374-4887-953c-cf01e84a8a8a",
+        "googleMatch": {
+          "address": "9000 Bay Hill Blvd, Orlando, FL 32819, USA",
+          "country": "USA",
+          "latitude": 28.4583333,
+          "longitude": -81.51055559999999,
+          "name": "Arnold Palmer's Bay Hill Club & Lodge",
+          "placeId": "ChIJ5zbseHp_54gRps9BEirDOxU",
+          "rating": 4.7,
+          "types": ["beauty_salon", "establishment", "lodging", "point_of_interest"],
+          "userRatingsTotal": 1300
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "6f648057-430a-4290-82c9-e39e50242160",
+      "name": "Bearwood Lakes Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "6f648057-430a-4290-82c9-e39e50242160",
+        "slug": "bearwood-lakes-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/bearwood-lakes-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bearwood-lakes-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "e77dcc63-9748-418e-a026-f4dd0c878c48",
+      "name": "Belton Park Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "e77dcc63-9748-418e-a026-f4dd0c878c48",
+        "slug": "belton-park-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/belton-park-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/belton-park-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "1b52ef05-0c0a-4253-8245-013566b3d14b",
+      "name": "Bentham Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "1b52ef05-0c0a-4253-8245-013566b3d14b",
+        "slug": "bentham-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 75,
+        "imageryUrl": "/course-twins/bentham-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bentham-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "7171685a-331c-459e-a745-40f2aff561a3",
+      "name": "Benton Hall Golf and Country Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "7171685a-331c-459e-a745-40f2aff561a3",
+        "slug": "benton-hall-golf-and-country-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 75,
+        "imageryUrl": "/course-twins/benton-hall-golf-and-country-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/benton-hall-golf-and-country-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "034d2dad-1e95-4319-bbdb-627b706364b4",
+      "name": "Bird Hills Golf Centre",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "034d2dad-1e95-4319-bbdb-627b706364b4",
+        "slug": "bird-hills-golf-centre-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 287,
+        "imageryUrl": "/course-twins/bird-hills-golf-centre-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bird-hills-golf-centre-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "4cdf3280-af61-44a4-9b7d-5953042f1cd9",
+      "name": "Blackwell Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "4cdf3280-af61-44a4-9b7d-5953042f1cd9",
+        "slug": "blackwell-golf-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 200,
+        "imageryUrl": "/course-twins/blackwell-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/blackwell-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81",
+      "name": "Bletchingley Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81",
+        "slug": "bletchingley-golf-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/bletchingley-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bletchingley-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "9beb5429-67e4-4f4e-a187-adbe0df74b62",
+      "name": "Bootle Golf Course (Bootle)",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "9beb5429-67e4-4f4e-a187-adbe0df74b62",
+        "slug": "bootle-golf-course-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/bootle-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bootle-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "c96251cd-979c-42d9-b961-f64f501a9f94",
+      "name": "Bowood Park Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "c96251cd-979c-42d9-b961-f64f501a9f94",
+        "slug": "bowood-park-golf-course-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 303,
+        "imageryUrl": "/course-twins/bowood-park-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bowood-park-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9",
+      "name": "Bransford Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9",
+        "slug": "bransford-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/bransford-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bransford-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc",
+      "name": "Brean Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc",
+        "slug": "brean-golf-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 187,
+        "imageryUrl": "/course-twins/brean-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/brean-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "852fa52c-51d2-4729-952c-159238faeb5d",
+      "name": "Brett Vale Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "852fa52c-51d2-4729-952c-159238faeb5d",
+        "slug": "brett-vale-golf-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 75,
+        "imageryUrl": "/course-twins/brett-vale-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/brett-vale-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "dc2fce54-9f8d-4799-bd89-23d019c3da4a",
+      "name": "Brickhampton Court Golf Complex",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "dc2fce54-9f8d-4799-bd89-23d019c3da4a",
+        "slug": "brickhampton-court-golf-complex-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 198,
+        "imageryUrl": "/course-twins/brickhampton-court-golf-complex-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/brickhampton-court-golf-complex-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "e0328f91-81c5-42b4-a08e-3207f407fe2e",
+      "name": "Bridport and West Dorset Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "e0328f91-81c5-42b4-a08e-3207f407fe2e",
+        "slug": "bridport-and-west-dorset-golf-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 145,
+        "imageryUrl": "/course-twins/bridport-and-west-dorset-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bridport-and-west-dorset-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46",
+      "name": "Brookmans Park Golf Course",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46",
+        "slug": "brookmans-park-golf-course-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/brookmans-park-golf-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/brookmans-park-golf-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "c2517fe5-ee33-412a-a61f-10d82f5fe359",
+      "name": "Buckingham Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "c2517fe5-ee33-412a-a61f-10d82f5fe359",
+        "slug": "buckingham-golf-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 144,
+        "imageryUrl": "/course-twins/buckingham-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/buckingham-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "b82a233d-968f-4a1a-8252-272580651d4b",
+      "name": "Bulbury Woods Golf Club",
+      "country": "England",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "b82a233d-968f-4a1a-8252-272580651d4b",
+        "slug": "bulbury-woods-golf-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 147,
+        "imageryUrl": "/course-twins/bulbury-woods-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/bulbury-woods-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "b6dbe79d-3c06-4674-a4de-e1601e026e80",
+      "name": "Carnoustie Golf Links - Championship",
+      "country": "Scotland",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "b6dbe79d-3c06-4674-a4de-e1601e026e80",
+        "googleMatch": {
+          "address": "Links House, Links Parade, Carnoustie DD7 7JE, UK",
+          "country": "UK",
+          "latitude": 56.4963621,
+          "longitude": -2.7162482,
+          "name": "Carnoustie Golf Links",
+          "placeId": "ChIJm8QBqAT1hkgROydD76NleSs",
+          "rating": 4.7,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 1130
+        },
+        "mappedHoles": 18,
+        "geometryRows": 54,
+        "duplicateHoleNumbers": 36,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "afb1f1fe-51b3-4653-b53d-5d3413455b4c",
+      "name": "Crans-sur-Sierre",
+      "country": "Switzerland",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "afb1f1fe-51b3-4653-b53d-5d3413455b4c",
+        "googleMatch": {
+          "address": "Rue du Prado 20, 3963 Crans-Montana, Switzerland",
+          "country": "Switzerland",
+          "latitude": 46.3037165,
+          "longitude": 7.4679093,
+          "name": "Crans-sur-Sierre Golf Club",
+          "placeId": "ChIJQX2qYjDgjkcRh7jnUR3WwVs",
+          "rating": 4.5,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 1321
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "56764be6-90cb-43ed-b3fb-ad95e9aa4f27",
+      "name": "Detroit Golf Club",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "56764be6-90cb-43ed-b3fb-ad95e9aa4f27",
+        "googleMatch": {
+          "address": "17911 Hamilton Rd, Detroit, MI 48203, USA",
+          "country": "USA",
+          "latitude": 42.42628,
+          "longitude": -83.1262462,
+          "name": "Detroit Golf Club",
+          "placeId": "ChIJbTJlSoDOJIgRkRStx64bV5M",
+          "rating": 4.7,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 615
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "aceca512-19c4-47cc-998a-956d335f0ac8",
+      "name": "Doral - Blue Monster",
+      "country": "USA",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "aceca512-19c4-47cc-998a-956d335f0ac8",
+        "slug": "doral-blue-monster-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 75,
+        "imageryUrl": "/course-twins/doral-blue-monster-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/doral-blue-monster-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "3eb8f54b-a31d-4be3-a96b-118c0927c371",
+      "name": "Finca Cortesin",
+      "country": "Spain",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "3eb8f54b-a31d-4be3-a96b-118c0927c371",
+        "googleMatch": {
+          "address": "Club de Golf Finca Cortesin, Ctra. Casares, s/n, km. 2, 29690 Casares, Málaga, Spain",
+          "country": "Spain",
+          "latitude": 36.397765,
+          "longitude": -5.2231688,
+          "name": "CLUB DE GOLF FINCA CORTESIN",
+          "placeId": "ChIJebMYEX_aDA0RAoG3x_7VFG0",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 282
+        },
+        "mappedHoles": 18,
+        "geometryRows": 32,
+        "duplicateHoleNumbers": 14,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "1aff2799-7fc7-42e4-9d6f-cf1baecac4ee",
+      "name": "Firestone South",
+      "country": "USA",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "1aff2799-7fc7-42e4-9d6f-cf1baecac4ee",
+        "slug": "firestone-south-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/firestone-south-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/firestone-south-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "293b1ebe-e68b-5205-933c-f14926739c82",
+      "name": "ForeKingHell Tour Links",
+      "country": "United Kingdom",
+      "status": "non_real_or_test_course",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 18,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "0c46fb72-c061-4a00-b0fd-390717a175cb",
+      "name": "Hamilton Golf and Country Club",
+      "country": "Canada",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "0c46fb72-c061-4a00-b0fd-390717a175cb",
+        "googleMatch": {
+          "address": "232 Golf Links Rd, Ancaster, ON L9G 2N5, Canada",
+          "country": "Canada",
+          "latitude": 43.2188889,
+          "longitude": -79.9769444,
+          "name": "Hamilton Golf and Country Club",
+          "placeId": "ChIJhS1nraKFLIgRSEIf8qTS7N0",
+          "rating": 4.6,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 361
+        },
+        "mappedHoles": 18,
+        "geometryRows": 18,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": true,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "469382cf-c312-40b2-a244-f24e6e401e3e",
+      "name": "Harbour Town Golf Links",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "469382cf-c312-40b2-a244-f24e6e401e3e",
+        "googleMatch": {
+          "address": "11 Lighthouse Ln, Hilton Head Island, SC 29928, USA",
+          "country": "USA",
+          "latitude": 32.1354907,
+          "longitude": -80.8101863,
+          "name": "Harbour Town Golf Links",
+          "placeId": "ChIJm43jzJ94_IgR8mtKmC7mSHY",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 880
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "46d5786a-c868-4610-a984-f2e928f0eaaa",
+      "name": "Inverness Club",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "46d5786a-c868-4610-a984-f2e928f0eaaa",
+        "googleMatch": {
+          "address": "4601 Dorr St, Toledo, OH 43615, USA",
+          "country": "USA",
+          "latitude": 41.6518478,
+          "longitude": -83.6509933,
+          "name": "Inverness Club",
+          "placeId": "ChIJ1ZNY6z15PIgRYYMrkMDiVhI",
+          "rating": 4.7,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 284
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "6b80e572-551f-4973-b439-05ca70a0a079",
+      "name": "Kiawah Island - Ocean Course",
+      "country": "USA",
+      "status": "source_mapping_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "6b80e572-551f-4973-b439-05ca70a0a079",
+        "googleMatch": null,
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "6d494abe-b587-43fe-9f67-804975c49560",
+      "name": "Mountain Park Hotel and Golf Club - Mountain Park",
+      "country": "Wales",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "6d494abe-b587-43fe-9f67-804975c49560",
+        "slug": "mountain-park-hotel-golf-club-v1",
+        "grade": "B",
+        "mappedHoles": 9,
+        "mappedFeatures": 27,
+        "imageryUrl": "/course-twins/mountain-park-hotel-golf-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/mountain-park-hotel-golf-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 9,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "84da061f-a52a-4940-af8c-c49795a33dc0",
+      "name": "Muirfield Village Golf Club",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "84da061f-a52a-4940-af8c-c49795a33dc0",
+        "googleMatch": {
+          "address": "5750 Memorial Dr, Dublin, OH 43017, USA",
+          "country": "USA",
+          "latitude": 40.14051300000001,
+          "longitude": -83.14105719999999,
+          "name": "Muirfield Village Golf Club",
+          "placeId": "ChIJX0iPWYzsOIgRFjKIrv_70CI",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 827
+        },
+        "mappedHoles": 18,
+        "geometryRows": 37,
+        "duplicateHoleNumbers": 19,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "560a0c15-faee-459d-bee9-d420a51d58ea",
+      "name": "Oakmont Country Club",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "560a0c15-faee-459d-bee9-d420a51d58ea",
+        "googleMatch": {
+          "address": "1233 Hulton Rd, Oakmont, PA 15139, USA",
+          "country": "USA",
+          "latitude": 40.5258951,
+          "longitude": -79.8268793,
+          "name": "Oakmont Country Club",
+          "placeId": "ChIJHZpKxqGUNIgRaIYteBDKAdk",
+          "rating": 4.6,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 463
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "a4bfc1c3-634a-4a74-9e71-21b49f081e50",
+      "name": "Pebble Beach Golf Links",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "a4bfc1c3-634a-4a74-9e71-21b49f081e50",
+        "googleMatch": {
+          "address": "1700 17 Mile Dr, Pebble Beach, CA 93953, USA",
+          "country": "USA",
+          "latitude": 36.5696553,
+          "longitude": -121.9497555,
+          "name": "Pebble Beach Golf Links",
+          "placeId": "ChIJdYZu-gDnjYARjqanasXFetE",
+          "rating": 4.8,
+          "types": ["establishment", "lodging", "point_of_interest", "tourist_attraction"],
+          "userRatingsTotal": 4354
+        },
+        "mappedHoles": 18,
+        "geometryRows": 58,
+        "duplicateHoleNumbers": 40,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "6098233a-6a18-47cf-b067-9bed5fe5889f",
+      "name": "PGA National - Champion",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "6098233a-6a18-47cf-b067-9bed5fe5889f",
+        "googleMatch": {
+          "address": "400 Ave of the Champions, Palm Beach Gardens, FL 33418, USA",
+          "country": "USA",
+          "latitude": 26.8284058,
+          "longitude": -80.14221069999999,
+          "name": "PGA National Members Club",
+          "placeId": "ChIJdwcQUNIq2YgRtXoRdRcnng8",
+          "rating": 4.5,
+          "types": ["establishment", "point_of_interest", "store"],
+          "userRatingsTotal": 762
+        },
+        "mappedHoles": 18,
+        "geometryRows": 45,
+        "duplicateHoleNumbers": 27,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "01491238-4daa-4211-a1cb-73bff49a7609",
+      "name": "Playwright Links adf90577",
+      "country": "GB",
+      "status": "non_real_or_test_course",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "036df5ed-dda4-47b8-9864-1d030353ad3a",
+      "name": "Quail Hollow Club",
+      "country": "USA",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "036df5ed-dda4-47b8-9864-1d030353ad3a",
+        "slug": "quail-hollow-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/quail-hollow-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/quail-hollow-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "affcc307-2ff5-4332-aa23-319ae11e976a",
+      "name": "Royal Birkdale",
+      "country": "England",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "affcc307-2ff5-4332-aa23-319ae11e976a",
+        "googleMatch": {
+          "address": "Waterloo Rd, Southport PR8 2LX, UK",
+          "country": "UK",
+          "latitude": 53.6216795,
+          "longitude": -3.0324797,
+          "name": "Royal Birkdale Golf Club",
+          "placeId": "ChIJ4ajsMqg5e0gRKrpphDY4oGI",
+          "rating": 4.9,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 110
+        },
+        "mappedHoles": 18,
+        "geometryRows": 54,
+        "duplicateHoleNumbers": 36,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "882daa4e-bec5-4822-aedd-57622d7fe692",
+      "name": "Royal Birkdale GC",
+      "country": "England",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "882daa4e-bec5-4822-aedd-57622d7fe692",
+        "googleMatch": {
+          "address": "Waterloo Rd, Southport PR8 2LX, UK",
+          "country": "UK",
+          "latitude": 53.6216795,
+          "longitude": -3.0324797,
+          "name": "Royal Birkdale Golf Club",
+          "placeId": "ChIJ4ajsMqg5e0gRKrpphDY4oGI",
+          "rating": 4.9,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 110
+        },
+        "mappedHoles": 18,
+        "geometryRows": 54,
+        "duplicateHoleNumbers": 36,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "9d1dda57-46a7-4548-975c-13eeb1586964",
+      "name": "Royal Liverpool - Hoylake",
+      "country": "England",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "9d1dda57-46a7-4548-975c-13eeb1586964",
+        "googleMatch": {
+          "address": "Meols Dr, Hoylake, Wirral CH47 4AL, UK",
+          "country": "UK",
+          "latitude": 53.3831657,
+          "longitude": -3.1906736,
+          "name": "Royal Liverpool Golf Club",
+          "placeId": "ChIJJ2sM7Zspe0gRqgyXkewNLq8",
+          "rating": 4.6,
+          "types": ["establishment", "point_of_interest", "tourist_attraction"],
+          "userRatingsTotal": 630
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "d063eb72-00a8-44ce-9574-de4b44e7b86d",
+      "name": "Royal Montreal - Blue",
+      "country": "Canada",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "d063eb72-00a8-44ce-9574-de4b44e7b86d",
+        "googleMatch": {
+          "address": "25 Chemin South Ridge, L'Île-Bizard, QC H9E 1B3, Canada",
+          "country": "Canada",
+          "latitude": 45.493298,
+          "longitude": -73.9018564,
+          "name": "The Royal Montreal Golf Club",
+          "placeId": "ChIJReWJxow6yUwR-bP9csVtbHM",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 171
+        },
+        "mappedHoles": 18,
+        "geometryRows": 72,
+        "duplicateHoleNumbers": 54,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "4be20295-a713-445c-98c2-e19bf138e8c3",
+      "name": "Royal Portrush - Dunluce",
+      "country": "Northern Ireland",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "4be20295-a713-445c-98c2-e19bf138e8c3",
+        "googleMatch": {
+          "address": "Dunluce Rd, Portrush BT56 8JQ, UK",
+          "country": "UK",
+          "latitude": 55.1996775,
+          "longitude": -6.635430599999999,
+          "name": "Royal Portrush Golf Club",
+          "placeId": "ChIJp1Sn_MAlYEgRSFmJ_ge9pzw",
+          "rating": 4.7,
+          "types": ["establishment", "point_of_interest", "tourist_attraction"],
+          "userRatingsTotal": 1529
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3",
+      "name": "Sedgefield Country Club",
+      "country": "USA",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3",
+        "slug": "sedgefield-country-club-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/sedgefield-country-club-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/sedgefield-country-club-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": {
+        "courseId": "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3",
+        "googleMatch": {
+          "address": "3201 Forsyth Dr, Greensboro, NC 27407, USA",
+          "country": "USA",
+          "latitude": 36.0143917,
+          "longitude": -79.8868428,
+          "name": "Sedgefield Country Club",
+          "placeId": "ChIJ68toW5saU4gRel-cU2T54Jo",
+          "rating": 4.7,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 485
+        },
+        "mappedHoles": 18,
+        "geometryRows": 18,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": true,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "dcba32a9-385f-42db-9844-115059e91904",
+      "name": "Streamsong Red",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "dcba32a9-385f-42db-9844-115059e91904",
+        "googleMatch": {
+          "address": "1000 Streamsong Dr, Bowling Green, FL 33834, USA",
+          "country": "USA",
+          "latitude": 27.6928971,
+          "longitude": -81.9343397,
+          "name": "Streamsong Golf Course Red",
+          "placeId": "ChIJv_e3_dgh3YgR1w2ObSBtXvY",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 30
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "23f5d302-149a-4542-be86-1bb14e4dad1c",
+      "name": "Sunningdale New",
+      "country": "England",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "23f5d302-149a-4542-be86-1bb14e4dad1c",
+        "googleMatch": {
+          "address": "Ridgemount Rd, Ascot SL5 9RR, UK",
+          "country": "UK",
+          "latitude": 51.3887939,
+          "longitude": -0.6312692,
+          "name": "Sunningdale Golf Club",
+          "placeId": "ChIJe13T0x95dkgRJPnmT_I_GOU",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 330
+        },
+        "mappedHoles": 18,
+        "geometryRows": 48,
+        "duplicateHoleNumbers": 30,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "eb4763ae-fd6d-4685-b319-b6ed2634edab",
+      "name": "Teeth of the Dog",
+      "country": "Dominican Republic",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "eb4763ae-fd6d-4685-b319-b6ed2634edab",
+        "slug": "teeth-of-the-dog-v1",
+        "grade": "C",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/teeth-of-the-dog-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/teeth-of-the-dog-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "bc9cfecd-c615-495b-87b6-3ac3096dbe03",
+      "name": "Torrey Pines South",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "bc9cfecd-c615-495b-87b6-3ac3096dbe03",
+        "googleMatch": {
+          "address": "11480 N Torrey Pines Rd, La Jolla, CA 92037, USA",
+          "country": "USA",
+          "latitude": 32.9024628,
+          "longitude": -117.2462734,
+          "name": "Torrey Pines Golf Course: South Course",
+          "placeId": "ChIJx-yvyN0H3IARuouYKeScwF8",
+          "rating": 4.5,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 44
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "3690981c-29f7-48ca-9d27-03de1713e26f",
+      "name": "TPC Sawgrass - Stadium Course",
+      "country": "USA",
+      "status": "source_mapping_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "3690981c-29f7-48ca-9d27-03de1713e26f",
+        "googleMatch": null,
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "25c03168-562f-4651-8a48-c0111babc752",
+      "name": "TPC Sawgrass - THE PLAYERS Stadium Course",
+      "country": "USA",
+      "status": "package_registered",
+      "localPackage": {
+        "courseId": "25c03168-562f-4651-8a48-c0111babc752",
+        "slug": "tpc-sawgrass-players-stadium-course-v1",
+        "grade": "B",
+        "mappedHoles": 18,
+        "mappedFeatures": 54,
+        "imageryUrl": "/course-twins/tpc-sawgrass-players-stadium-course-v1/imagery.jpg",
+        "terrainUrl": "/course-twins/tpc-sawgrass-players-stadium-course-v1/terrain.f32"
+      },
+      "database": {
+        "coordinates": true,
+        "mappedHoles": 18,
+        "twinStatus": "building",
+        "buildStatus": "queued",
+        "hasBuildPlan": true
+      },
+      "sourceProbe": null
+    },
+    {
+      "courseId": "ddf87120-a4fa-48a2-bd5b-7d4c5123082a",
+      "name": "TPC Summerlin",
+      "country": "USA",
+      "status": "source_mapping_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "ddf87120-a4fa-48a2-bd5b-7d4c5123082a",
+        "googleMatch": null,
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "959658b5-38bd-443e-b21f-db5ce75300aa",
+      "name": "Valhalla Golf Club",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "959658b5-38bd-443e-b21f-db5ce75300aa",
+        "googleMatch": {
+          "address": "15503 Shelbyville Rd, Louisville, KY 40245, USA",
+          "country": "USA",
+          "latitude": 38.2426128,
+          "longitude": -85.4719879,
+          "name": "Valhalla Golf Club",
+          "placeId": "ChIJecFU42SYaYgRBc32qQcr1iM",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 267
+        },
+        "mappedHoles": 18,
+        "geometryRows": 38,
+        "duplicateHoleNumbers": 20,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "8268fec6-1202-471f-bae7-f22ac377dcff",
+      "name": "Vidanta Vallarta",
+      "country": "Mexico",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "8268fec6-1202-471f-bae7-f22ac377dcff",
+        "googleMatch": {
+          "address": "Bahía de Banderas, 63735 Nayarit, Mexico",
+          "country": "Mexico",
+          "latitude": 20.6820374,
+          "longitude": -105.2663133,
+          "name": "Vidanta Greg Norman Golf Course",
+          "placeId": "ChIJQQhvHSlFIYQRT0YI-jmTJKE",
+          "rating": 4.5,
+          "types": ["establishment", "point_of_interest"],
+          "userRatingsTotal": 87
+        },
+        "mappedHoles": 7,
+        "geometryRows": 7,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    },
+    {
+      "courseId": "9455c166-25e6-40ad-a96c-34b8b708fbd0",
+      "name": "Whistling Straits - Straits",
+      "country": "USA",
+      "status": "location_found_geometry_missing",
+      "localPackage": null,
+      "database": {
+        "coordinates": false,
+        "mappedHoles": 0,
+        "twinStatus": null,
+        "buildStatus": null,
+        "hasBuildPlan": false
+      },
+      "sourceProbe": {
+        "courseId": "9455c166-25e6-40ad-a96c-34b8b708fbd0",
+        "googleMatch": {
+          "address": "N8501 Lakeshore Rd, Sheboygan, WI 53083, USA",
+          "country": "USA",
+          "latitude": 43.8509822,
+          "longitude": -87.73541259999999,
+          "name": "Whistling Straits Golf Course",
+          "placeId": "ChIJZ0uo8ixaA4gRUzkfi1T14Yg",
+          "rating": 4.8,
+          "types": ["establishment", "point_of_interest", "store"],
+          "userRatingsTotal": 826
+        },
+        "mappedHoles": 0,
+        "geometryRows": 0,
+        "duplicateHoleNumbers": 0,
+        "geometryReady": false,
+        "errors": []
+      }
+    }
+  ]
+}

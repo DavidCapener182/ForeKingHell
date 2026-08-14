@@ -1,17 +1,9 @@
 import Link from "next/link";
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowUp,
-  ArrowUpDown,
-  ShieldCheck,
-  Target,
-  Trophy,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ShieldCheck, Target, Trophy } from "lucide-react";
 import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import { DataPanel, DataTableFrame, PageShell, SectionHeader } from "@/components/premium";
-import { MobileAppShell, MobileRouteTabs, MobileTopBar } from "@/components/mobile-sports";
+import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -46,10 +38,7 @@ import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
-import {
-  LeaderboardPlayerControls,
-  LeaderboardTypeTabs,
-} from "@/app/leaderboard/leaderboard-controls";
+import { LeaderboardPlayerControls } from "@/app/leaderboard/leaderboard-controls";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +54,7 @@ type LeaderboardPageProps = {
     verification?: string;
     sort?: string;
     dir?: string;
+    full?: string;
   }>;
 };
 
@@ -235,90 +225,55 @@ const challengeLeaderboardSuggestedViews: DesktopSavedViewSuggestion[] = [
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams;
   const requestedTab = parseTab(params?.tab);
-  const activeTab = requestedTab === "monthly" ? "friends" : requestedTab;
-  const period = parseLeaderboardPeriod(params?.period, requestedTab);
+  const surface = await getRequestAppSurface();
+  const activeTab =
+    surface === "companion"
+      ? requestedTab === "public"
+        ? "public"
+        : "friends"
+      : requestedTab === "monthly"
+        ? "friends"
+        : requestedTab;
+  const period =
+    surface === "companion" ? "monthly" : parseLeaderboardPeriod(params?.period, requestedTab);
   const filters = parseLeaderboardFilters(params);
   const playerSort = parsePlayerLeaderboardSort(params?.sort, params?.dir);
   const challengeSort = parseChallengeLeaderboardSort(params?.sort, params?.dir);
-  const [data, surface] = await Promise.all([
-    getLeaderboardData(activeTab, filters, period),
-    getRequestAppSurface(),
-  ]);
+  const data = await getLeaderboardData(activeTab, filters, period);
   const workbench =
     surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
   const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
-  const showMobilePlayerFilters = isPlayerLeaderboardTab(activeTab);
+  const showFullMobileBoard = params?.full === "1";
 
   return (
     <PageShell>
       {surface === "companion" ? (
         <MobileAppShell>
           <MobileTopBar title="Leaderboards" />
-          <MobileRouteTabs group="social" activeKey="leaderboard" />
-          <LeaderboardCompetitionHeader
+          <MobileLeaderboardSummary
             activeTab={activeTab}
-            period={period}
             monthStart={data.monthStart}
-            playerCount={data.players.length}
+            players={data.players}
           />
-          <LeaderboardTypeTabs activeTab={activeTab} period={period} />
-          {showMobilePlayerFilters ? (
-            <LeaderboardPlayerControls
-              activeTab={activeTab}
-              period={period}
-              monthLabel={formatMonth(data.monthStart)}
-              provider={filters.provider}
-              verification={filters.verification}
-            />
-          ) : null}
-          {activeTab === "courses" ? (
-            <MobileBoardLeaderboard
-              label="Course champions"
-              items={data.courseChampionBoards.map((board) => ({
-                id: board.id,
-                name: board.champion.displayName,
-                href: `/profile/${board.champion.username}`,
-                score: board.scoreLabel,
-                detail: board.courseName,
-              }))}
-            />
-          ) : activeTab === "challenges" ? (
-            <MobileBoardLeaderboard
-              label="Challenge boards"
-              items={data.challengeBoards.map((board) => ({
-                id: board.id,
-                name: board.leader?.displayName ?? "Open",
-                href: board.leader ? `/profile/${board.leader.username}` : undefined,
-                score: board.leader?.scoreLabel ?? "--",
-                detail: board.title,
-              }))}
-            />
-          ) : activeTab === "tournaments" ? (
-            <MobileBoardLeaderboard
-              label="Tournament boards"
-              items={data.tournamentBoards.map((board) => ({
-                id: board.id,
-                name: board.champion.displayName,
-                href: `/profile/${board.champion.username}`,
-                score: board.grossTotal,
-                detail: `${board.title} · ${board.roundsCompleted} rounds`,
-              }))}
-            />
-          ) : (
-            <MobileCompetitionLeaderboard players={data.players} period={period} />
-          )}
+          <MobileLeaderboardScopeSelector activeTab={activeTab} />
+          <MobileCompetitionLeaderboard
+            players={showFullMobileBoard ? data.players : data.players.slice(0, 5)}
+            period={period}
+          />
+          <Button asChild variant="outline" className="w-full">
+            <Link
+              href={`/leaderboard?tab=${activeTab}${showFullMobileBoard ? "" : "&full=1"}`}
+              prefetch={false}
+            >
+              {showFullMobileBoard ? "Show top 5" : "View full leaderboard"}
+            </Link>
+          </Button>
         </MobileAppShell>
       ) : null}
 
       {surface === "workbench" && DesktopWorkbenchLayout ? (
         <DesktopWorkbenchLayout scope="leaderboard">
-          <div className="flex items-center justify-between gap-4">
-            <Button asChild variant="ghost" className="px-0">
-              <Link href="/dashboard" prefetch={false}>
-                <ArrowLeft className="size-4" />
-                Dashboard
-              </Link>
-            </Button>
+          <div className="flex justify-end">
             <Button asChild variant="outline">
               <Link href="/profile" prefetch={false}>
                 <ShieldCheck className="size-4" />
@@ -334,9 +289,6 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               monthStart={data.monthStart}
               playerCount={data.players.length}
             />
-
-            <LeaderboardTypeTabs activeTab={activeTab} period={period} />
-
             {activeTab === "friends" || activeTab === "public" ? (
               <LeaderboardPlayerControls
                 activeTab={activeTab}
@@ -1230,10 +1182,6 @@ function challengeSortDirectionCopy(
   return dir === "desc" ? "high to low" : "low to high";
 }
 
-function isPlayerLeaderboardTab(activeTab: LeaderboardTab) {
-  return activeTab === "friends" || activeTab === "monthly" || activeTab === "public";
-}
-
 function LeaderboardCompetitionHeader({
   activeTab,
   period,
@@ -1286,6 +1234,49 @@ function LeaderboardCompetitionHeader({
         </dl>
       </div>
     </section>
+  );
+}
+
+function MobileLeaderboardSummary({
+  activeTab,
+  monthStart,
+  players,
+}: {
+  activeTab: LeaderboardTab;
+  monthStart: Date;
+  players: PlayerRow[];
+}) {
+  const currentRank = players.findIndex((player) => player.isCurrentUser) + 1;
+
+  return (
+    <section className="rounded-xl border bg-card p-4" aria-label="Your monthly leaderboard rank">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {activeTab === "public" ? "Global" : "Friends"} · {formatMonth(monthStart)}
+      </p>
+      <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+        {currentRank > 0 ? `You are #${currentRank} this month` : "You are not ranked this month"}
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {players.length} opted-in golfer{players.length === 1 ? "" : "s"} in this board.
+      </p>
+    </section>
+  );
+}
+
+function MobileLeaderboardScopeSelector({ activeTab }: { activeTab: LeaderboardTab }) {
+  return (
+    <nav className="grid grid-cols-2 gap-2" aria-label="Leaderboard audience">
+      <Button asChild variant={activeTab === "friends" ? "default" : "outline"}>
+        <Link href="/leaderboard?tab=friends" prefetch={false}>
+          Friends
+        </Link>
+      </Button>
+      <Button asChild variant={activeTab === "public" ? "default" : "outline"}>
+        <Link href="/leaderboard?tab=public" prefetch={false}>
+          Global
+        </Link>
+      </Button>
+    </nav>
   );
 }
 
@@ -1343,75 +1334,6 @@ function MobileCompetitionLeaderboard({
         ) : (
           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
             No opted-in golfers match this scope.
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function MobileBoardLeaderboard({
-  label,
-  items,
-}: {
-  label: string;
-  items: Array<{
-    id: string;
-    name: string;
-    href?: string;
-    score: string | number;
-    detail: string;
-  }>;
-}) {
-  return (
-    <section className="overflow-hidden rounded-xl border bg-card" aria-label={label}>
-      <div className="grid grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] gap-2 border-b bg-muted px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <span>Rank</span>
-        <span>Golfer</span>
-        <span className="text-right">Score</span>
-        <span className="text-right">Move</span>
-      </div>
-      <div className="divide-y">
-        {items.length > 0 ? (
-          items.map((item, index) => {
-            const rank = index + 1;
-            const name = item.href ? (
-              <Link
-                href={item.href}
-                prefetch={false}
-                className="block truncate text-sm font-semibold hover:underline"
-              >
-                {item.name}
-              </Link>
-            ) : (
-              <span className="block truncate text-sm font-semibold">{item.name}</span>
-            );
-
-            return (
-              <div
-                key={item.id}
-                className={`grid grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] items-center gap-2 px-3 py-3 ${leaderboardRowClassName(rank, false)}`}
-              >
-                <span className={rankNumberClassName(rank)}>{rank}</span>
-                <div className="min-w-0">
-                  {name}
-                  <span className="block truncate text-[11px] text-muted-foreground">
-                    {item.detail}
-                  </span>
-                </div>
-                <span className="text-right text-sm font-semibold tabular-nums">{item.score}</span>
-                <span
-                  className="text-right text-xs text-muted-foreground"
-                  title="No prior rank snapshot"
-                >
-                  —
-                </span>
-              </div>
-            );
-          })
-        ) : (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-            No visible results yet.
           </div>
         )}
       </div>

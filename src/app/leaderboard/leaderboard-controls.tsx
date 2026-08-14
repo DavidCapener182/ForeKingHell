@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flag, Globe2, Medal, Trophy, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,59 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-type LeaderboardTab = "friends" | "monthly" | "courses" | "challenges" | "tournaments" | "public";
 type LeaderboardPeriod = "all-time" | "monthly";
-
-const tabs: Array<{
-  value: Exclude<LeaderboardTab, "monthly">;
-  label: string;
-  icon: typeof Users;
-}> = [
-  { value: "friends", label: "Friends", icon: Users },
-  { value: "public", label: "Global", icon: Globe2 },
-  { value: "courses", label: "Course", icon: Medal },
-  { value: "challenges", label: "Challenge", icon: Trophy },
-  { value: "tournaments", label: "Tournament", icon: Flag },
-];
-
-export function LeaderboardTypeTabs({
-  activeTab,
-  period,
-}: {
-  activeTab: LeaderboardTab;
-  period: LeaderboardPeriod;
-}) {
-  const selectedTab = activeTab === "monthly" ? "friends" : activeTab;
-
-  return (
-    <Tabs value={selectedTab} data-leaderboard-type-tabs>
-      <TabsList
-        variant="line"
-        aria-label="Leaderboard views"
-        className="h-auto max-w-full justify-start overflow-x-auto border-b border-border px-0 pb-2"
-      >
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const active = tab.value === selectedTab;
-          const keepPeriod = tab.value === "friends" || tab.value === "public";
-          const href = `/leaderboard?tab=${tab.value}${keepPeriod && period === "monthly" ? "&period=monthly" : ""}`;
-
-          return (
-            <TabsTrigger key={tab.value} value={tab.value} asChild>
-              <Link href={href} prefetch={false} aria-current={active ? "page" : undefined}>
-                <Icon aria-hidden />
-                {tab.label}
-              </Link>
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
-    </Tabs>
-  );
-}
 
 export function LeaderboardPlayerControls({
   activeTab,

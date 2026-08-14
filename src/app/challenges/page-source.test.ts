@@ -40,12 +40,13 @@ describe("challenge progression hub", () => {
     expect(source).toContain("data-active-challenge-card");
     expect(source).toContain("aria-label={`${challenge.title} progress`}");
     expect(source).toContain("h-4 bg-background/80");
-    expect(source).toContain("Current value");
-    expect(source).toContain("Time remaining");
+    expect(source).not.toContain('label="Current value"');
+    expect(source).toContain("Time left");
     expect(source).toContain("Best attempt");
     expect(source).toContain("Next useful action");
     expect(source).toContain("nextChallengeAction(challenge)");
     expect(source).toContain("Attempts timeline");
+    expect(source).toContain("compact={index > 0}");
   });
 
   it("keeps available cards compact and defers rules to a sheet", () => {
@@ -97,6 +98,7 @@ describe("challenge progression mobile", () => {
   it("keeps the mobile composition active until the desktop surface takes over", () => {
     expect(source).toContain("<MobileAppShell>");
     expect(source).toContain("<MobileTabBar");
+    expect(source).not.toContain("MobileRouteTabs");
     expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden sm:contents"');
   });

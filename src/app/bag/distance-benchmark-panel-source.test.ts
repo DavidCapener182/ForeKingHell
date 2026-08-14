@@ -62,9 +62,26 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("peerBenchmarksLoaded");
     expect(source).toContain("Peer benchmarks are on demand");
     expect(source).toContain("Load peer benchmarks");
-    expect(source).toContain('href="/bag?peers=1#distance-benchmarks"');
+    expect(source).toContain('href="/bag?tab=evidence&peers=1#distance-benchmarks"');
     expect(source).toContain("Carry, speed and flight benchmarks are loaded.");
     expect(source).toContain("peerBenchmarksLoaded && peerChase");
+  });
+
+  it("explains the best-30 average and gives a real next-level shot plan", () => {
+    expect(source).toContain("Best 30 avg");
+    expect(source).toContain("longest clean full swings");
+    expect(source).toContain("benchmarkAdvanceText");
+    expect(source).toContain("shots at");
+    expect(source).toContain("saved for this club");
+    expect(source).not.toContain("Beat ${formatMetric(row.bestSampleFloorYd)} yd to lift set");
+  });
+
+  it("positions benchmark labels on the same percentage scale as the marker", () => {
+    expect(source).toContain("function BenchmarkScaleLabels");
+    expect(source).toContain("(index / Math.max(1, labels.length - 1)) * 100");
+    expect(source).toContain("style={{ left: `${position}%` }}");
+    expect(source).toContain("-translate-x-1/2");
+    expect(source).not.toContain('className="grid grid-cols-5 text-[10px]');
   });
 
   it("uses semantic shadcn tabs, alerts, badges and sticky table surfaces", () => {

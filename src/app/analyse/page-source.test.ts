@@ -5,11 +5,13 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/analyse/page.tsx"), "utf8");
 
 describe("Analyse hub", () => {
-  it("uses performance-lab tabs and an asymmetric editorial overview", () => {
-    expect(source).toContain("data-analyse-workspace-tabs");
+  it("uses direct route navigation and an asymmetric editorial overview", () => {
+    expect(source).toContain("data-analyse-workspace");
     for (const tab of ["Overview", "Compare", "Shots", "Conditions", "Data Quality"]) {
-      expect(source).toContain(`>${tab}</TabsTrigger>`);
+      expect(source).toContain(`["${tab}",`);
     }
+    expect(source).not.toContain("TabsTrigger");
+    expect(source).not.toContain("FocusedAnalysis");
     expect(source).toContain("ConnectedMetricBar");
     expect(source).toContain("AnalyseProvenancePanel");
     expect(source).toContain("AppCommandContentTrigger");
@@ -50,7 +52,7 @@ describe("Analyse hub", () => {
     expect(capabilities).toContain(
       'analyse: desktopOnly(\n    "Review latest session",\n    "/sessions"',
     );
-    expect(source).toContain("data-analyse-workspace-tabs");
+    expect(source).toContain("data-analyse-workspace");
     for (const obsoleteMobileSource of [
       "MobileAnalyseOverview",
       "MobileAppShell",

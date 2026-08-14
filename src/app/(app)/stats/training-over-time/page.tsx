@@ -1,4 +1,4 @@
-import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { TrainingLoadRangeView } from "@/components/training/TrainingLoadRangeView";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
@@ -25,7 +25,11 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
     <PageShell>
       <DesktopWorkbenchLayout scope="training-load">
         <PageHeader
-          eyebrow={<StatusPill tone="green">Training management</StatusPill>}
+          eyebrow={
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Training management
+            </span>
+          }
           title="Training Load"
           description="A golf-specific view of fitness, freshness and what your next session should be."
         />

@@ -32,10 +32,12 @@ export function TodayPrimaryAnswer({
   accountId,
   serverState,
   facts,
+  trainingLoadLabel,
 }: {
   accountId: string;
   serverState: TodayPrimaryState;
   facts: TodayFact[];
+  trainingLoadLabel?: string;
 }) {
   const isOnline = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnlineSnapshot);
   const [actions, setActions] = useState<OfflineActionRecord[]>([]);
@@ -64,7 +66,7 @@ export function TodayPrimaryAnswer({
   const displayedFacts = syncState
     ? syncFacts(actions, isOnline, syncState.status === "Needs attention")
     : facts;
-  const glanceFacts = displayedFacts.slice(0, 2);
+  const glanceFacts = displayedFacts.slice(0, 3);
 
   function retrySync() {
     window.dispatchEvent(new Event("fkh-offline-retry-requested"));
@@ -95,16 +97,23 @@ export function TodayPrimaryAnswer({
           </CardTitle>
         </div>
         <CardAction>
-          <Badge className="border-[#a6f04a] bg-[#a6f04a] !text-[#052f22] hover:bg-[#a6f04a]">
-            {state.status}
-          </Badge>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Badge className="border-[#a6f04a] bg-[#a6f04a] !text-[#052f22] hover:bg-[#a6f04a]">
+              {state.status}
+            </Badge>
+            {trainingLoadLabel && !syncState ? (
+              <Badge variant="outline" className="border-white/25 bg-black/20 text-white">
+                {trainingLoadLabel}
+              </Badge>
+            ) : null}
+          </div>
         </CardAction>
       </CardHeader>
 
       <CardContent className="grid gap-2">
         <p className="max-w-[94%] text-sm leading-5 text-white/74">{state.reason}</p>
 
-        <div className="grid grid-cols-2 gap-4 border-y border-white/14 py-2">
+        <div className="grid grid-cols-3 gap-3 border-y border-white/14 py-2">
           {glanceFacts.map((fact) => (
             <div key={fact.label}>
               <p className="text-[11px] text-white/55">{fact.label}</p>

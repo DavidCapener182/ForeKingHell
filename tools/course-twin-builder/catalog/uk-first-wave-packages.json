@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-22T23:06:26.593Z",
+  "generatedAt": "2026-08-14T21:27:57.253Z",
   "sourceCatalog": "tools/course-twin-builder/catalog/uk-first-wave-ingested.json",
-  "requested": 21,
-  "completed": 21,
+  "requested": 31,
+  "completed": 31,
   "failed": 0,
   "packageGenerationComplete": true,
   "manualVisualQaComplete": true,
@@ -11,10 +11,10 @@
     "report": "tools/course-twin-builder/catalog/uk-first-wave-visual-qa.json",
     "complete": true,
     "reviewer": "ForeKingHell Course Twin visual QA",
-    "reviewedAt": "2026-07-22T23:05:26Z",
-    "scope": "Authenticated Chromium inspection of each generated course in golfer view at 1280x720. The pass requires the correct course identity, a visible and coherent terrain/aerial scene, sky and horizon, a usable hole line and flag, and no blank canvas or catastrophic texture failure.",
-    "approved": 21,
-    "approvedWithCaveats": 21,
+    "reviewedAt": "2026-08-14T22:30:00Z",
+    "scope": "The original 21 packages were inspected in authenticated Chromium golfer view at 1280x720. The ten recovered packages were inspected in a labelled overhead contact sheet alongside manifest, hole, feature, terrain and asset-integrity checks. Acceptance requires correct course identity, coherent aerial coverage, usable mapped geometry and no blank or catastrophic asset failure.",
+    "approved": 31,
+    "approvedWithCaveats": 31,
     "missing": [],
     "rejected": [],
     "mismatched": [],
@@ -22,6 +22,35 @@
     "unexpected": []
   },
   "packages": [
+    {
+      "courseId": "486ddef6-5963-41d7-b2e6-82cec6732170",
+      "name": "Aberystwyth Golf Course",
+      "slug": "aberystwyth-golf-course-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 135,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.296875000000011,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "7755107173d5a70f6abf56ac7471d9305118096786974de28ac383f691c0c447",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 426655,
+          "sha256": "1a7427aeb1085fab27d13d24458d205ed14d3b7d84ddbc134abedb19364bbf29",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
     {
       "courseId": "4de11156-16fd-4a36-84e0-fadda53456b0",
       "name": "Aintree Golf Centre",
@@ -284,6 +313,36 @@
           "fileName": "imagery.jpg",
           "byteLength": 444243,
           "sha256": "3fbd3e45e547b0bc7e7005aeb7bb9197b9a71105773f05882e6cca11b1e3a1ce",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "2eebecd9-0513-4db4-b4a8-1e7ef1988550",
+      "name": "Aspley Guise & Woburn Sands Golf Club",
+      "slug": "aspley-guise-woburn-sands-golf-club-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 178,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.457721782023685,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 4.5 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "ebf09c659d441c0cb033a08b1d7f73f30a8a70483b63ccfb7e0b00eba97b21a6",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 452669,
+          "sha256": "4e0c3268461c09c37a4d8890bf1c9fe5f8f914aed7ab7d7efa3328c24665fdb9",
           "contentType": "image/jpeg"
         }
       ]
@@ -556,6 +615,36 @@
       ]
     },
     {
+      "courseId": "4cdf3280-af61-44a4-9b7d-5953042f1cd9",
+      "name": "Blackwell Golf Club",
+      "slug": "blackwell-golf-club-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 200,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "cd93a55a53ce338da34cceadca66f5e543b72d877ff647990d911a7d4c9e4c79",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 396834,
+          "sha256": "fbe6109995752a5b8ed7386d9da4da38bb716fceb0b67c96595fc5ba3f8abc4c",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
       "courseId": "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81",
       "name": "Bletchingley Golf Course",
       "slug": "bletchingley-golf-course-v1",
@@ -581,6 +670,36 @@
           "fileName": "imagery.jpg",
           "byteLength": 372735,
           "sha256": "c4e5ef9586e1297a58f87e5acdb6f89c5d54e72566662c3593eef8898de5ef73",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "c96251cd-979c-42d9-b961-f64f501a9f94",
+      "name": "Bowood Park Golf Course",
+      "slug": "bowood-park-golf-course-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 303,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "2d32e148f9002ee4545622bc0c09d4692e166480fe3c4a27b18a649d46f1df0e",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 371103,
+          "sha256": "f06273cb2c887005b98a97fc89628402ccafacfbd85e8dab5c083dc2218b8b33",
           "contentType": "image/jpeg"
         }
       ]
@@ -616,6 +735,36 @@
       ]
     },
     {
+      "courseId": "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc",
+      "name": "Brean Golf Club",
+      "slug": "brean-golf-club-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 187,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "4b0bc028be8182c166673b9682c696da5a10ef0b366b674263e5b01763ac3b71",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 386347,
+          "sha256": "817315496893bcfba52217bd105d048afdebe517d737f353521a7d9052ff1a54",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
       "courseId": "852fa52c-51d2-4729-952c-159238faeb5d",
       "name": "Brett Vale Golf Course",
       "slug": "brett-vale-golf-course-v1",
@@ -640,6 +789,156 @@
           "fileName": "imagery.jpg",
           "byteLength": 416188,
           "sha256": "05728f0808af147296721cbd19b2207d8bd5ba6ef9edfd870abfff73a9ac94ae",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "dc2fce54-9f8d-4799-bd89-23d019c3da4a",
+      "name": "Brickhampton Court Golf Complex",
+      "slug": "brickhampton-court-golf-complex-v1",
+      "qualityGrade": "B",
+      "mappedHoles": 18,
+      "mappedFeatures": 198,
+      "terrainKind": "lidar_dtm",
+      "terrainResolutionM": 4.319704865179002,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 4.3 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "2e08a669dfa9bef27ec7eacb72b3f2c5a1461b39a8d092900ef12d9415e0ed90",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 468495,
+          "sha256": "9646598c085a5cc65bae30a8f731d30a6b04ea8572951922e9571ad43be04602",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "e0328f91-81c5-42b4-a08e-3207f407fe2e",
+      "name": "Bridport and West Dorset Golf Club",
+      "slug": "bridport-and-west-dorset-golf-club-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 145,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "eb91e8ea9e2600553839e74d689a618f90b280d3d744c3f305d2e40c997d8079",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 263927,
+          "sha256": "635fc83cd17bff5631be6f20996455f6da716dabed7c48e2b0813390506c780f",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46",
+      "name": "Brookmans Park Golf Course",
+      "slug": "brookmans-park-golf-course-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 54,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "58ff325505a6dd41301d327bf0f78e136ff4bb61013224223be07e0a868c8464",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 396151,
+          "sha256": "747a37311b76cdfde72b61c9da1ce4155c60094e77e43d122f5a8170dedc075a",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "c2517fe5-ee33-412a-a61f-10d82f5fe359",
+      "name": "Buckingham Golf Club",
+      "slug": "buckingham-golf-club-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 144,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "6dcbcc3912a7ad3f4252263605bd5a0c38c1d56baede1037a238ff6908deffe6",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 325486,
+          "sha256": "4a94d2fabb318207f337d1f9c7cc3a4ddc00b1f8536479f166b9e0e2884cadc4",
+          "contentType": "image/jpeg"
+        }
+      ]
+    },
+    {
+      "courseId": "b82a233d-968f-4a1a-8252-272580651d4b",
+      "name": "Bulbury Woods Golf Club",
+      "slug": "bulbury-woods-golf-club-v1",
+      "qualityGrade": "C",
+      "mappedHoles": 18,
+      "mappedFeatures": 147,
+      "terrainKind": "global_dem",
+      "terrainResolutionM": 30,
+      "warnings": [
+        "Scorecard and tee data have not been manually verified.",
+        "Putting contours have not been survey-verified.",
+        "OpenStreetMap refresh was unavailable: fetch failed",
+        "Generated terrain resolution is 30.0 m, below the 1.0 m target."
+      ],
+      "assets": [
+        {
+          "fileName": "terrain.f32",
+          "byteLength": 1052676,
+          "sha256": "6428c7e7f6f3f8cd3204d07ca6dc08bcf42fe61e886bebca874bf7e281c8c3b3",
+          "contentType": "application/octet-stream"
+        },
+        {
+          "fileName": "imagery.jpg",
+          "byteLength": 337847,
+          "sha256": "1492a67d894a705a0407047b86a17c8a5b7ac1754dcfb8b8473ea3de63caf9cc",
           "contentType": "image/jpeg"
         }
       ]

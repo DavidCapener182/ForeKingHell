@@ -50,9 +50,10 @@ describe("course library source", () => {
     }
     expect(librarySource).toContain('value="grid"');
     expect(librarySource).toContain('value="table"');
-    expect(favouritesSource).toContain("forekinghell-course-favourites");
-    expect(favouritesSource).toContain("window.localStorage");
-    expect(favouritesSource).toContain("useSyncExternalStore");
+    expect(favouritesSource).toContain("setCourseFavouriteAction");
+    expect(favouritesSource).toContain("initialFavourites");
+    expect(favouritesSource).not.toContain("window.localStorage");
+    expect(pageSource).toContain("courseFavourites");
   });
 
   it("renders catalogue cards and a compact professional table", () => {
@@ -60,8 +61,17 @@ describe("course library source", () => {
     expect(librarySource).toContain("data-course-table");
     expect(librarySource).toContain("<CoursePreview");
     expect(librarySource).toContain("Last played");
-    expect(librarySource).toContain("View course");
+    expect(librarySource).not.toContain(">View course<");
+    expect(librarySource).toContain("Course details building");
+    expect(librarySource).toContain("<DrawerContent>");
     expect(librarySource).toContain("/api/courses/google/map");
+    expect(librarySource).toContain("course.previewImageUrl");
+    expect(librarySource).not.toContain("courseLogoRoutePath");
+    expect(librarySource).not.toContain("course.name} logo");
+    expect(librarySource).not.toContain('"Not ready"');
+    expect(librarySource).toContain("Available course features");
+    expect(librarySource).toContain('aria-label="Unavailable"');
+    expect(librarySource).toContain("Aerial view of");
     expect(librarySource).toContain("<TableHeader>");
     expect(librarySource).toContain("<TableBody>");
   });

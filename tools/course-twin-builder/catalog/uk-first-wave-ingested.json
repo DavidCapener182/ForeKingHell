@@ -105,6 +105,56 @@
       "name": "Brett Vale Golf Course",
       "courseId": "852fa52c-51d2-4729-952c-159238faeb5d",
       "mappedHoles": 18
+    },
+    {
+      "name": "Aberystwyth Golf Course",
+      "courseId": "486ddef6-5963-41d7-b2e6-82cec6732170",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Aspley Guise & Woburn Sands Golf Club",
+      "courseId": "2eebecd9-0513-4db4-b4a8-1e7ef1988550",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Blackwell Golf Club",
+      "courseId": "4cdf3280-af61-44a4-9b7d-5953042f1cd9",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Bowood Park Golf Course",
+      "courseId": "c96251cd-979c-42d9-b961-f64f501a9f94",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Brean Golf Club",
+      "courseId": "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Brickhampton Court Golf Complex",
+      "courseId": "dc2fce54-9f8d-4799-bd89-23d019c3da4a",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Bridport and West Dorset Golf Club",
+      "courseId": "e0328f91-81c5-42b4-a08e-3207f407fe2e",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Brookmans Park Golf Course",
+      "courseId": "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Buckingham Golf Club",
+      "courseId": "c2517fe5-ee33-412a-a61f-10d82f5fe359",
+      "mappedHoles": 18
+    },
+    {
+      "name": "Bulbury Woods Golf Club",
+      "courseId": "b82a233d-968f-4a1a-8252-272580651d4b",
+      "mappedHoles": 18
     }
   ]
 }

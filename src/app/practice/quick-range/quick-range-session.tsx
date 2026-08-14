@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Moon, Sun, Target, Upload } from "lucide-react";
+import { ArrowRight, Sun, Target, Upload } from "lucide-react";
 
 import { DataWarning } from "@/components/app/evidence-status";
 import {
@@ -53,7 +53,7 @@ export function QuickRangeCompanionSession({ focus }: { focus: string }) {
   const [club, setClub] = useState("Driver");
   const [notes, setNotes] = useState("");
   const [labels, setLabels] = useState<Record<string, number>>({});
-  const [outdoor, setOutdoor] = useState(true);
+  const [outdoor, setOutdoor] = useState(false);
   const [wakeLocked, setWakeLocked] = useState(false);
 
   useEffect(() => {
@@ -235,7 +235,7 @@ export function QuickRangeCompanionSession({ focus }: { focus: string }) {
               value: "setup",
               title: "Club and display",
               summary: club,
-              description: `${outdoor ? "Outdoor" : "Range Night"} · ${wakeLocked ? "Screen awake" : "Auto-lock normal"}`,
+              description: `${outdoor ? "Outdoor mode" : "Saved theme"} · ${wakeLocked ? "Screen awake" : "Auto-lock normal"}`,
               content: (
                 <div className="grid gap-3">
                   <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
@@ -260,12 +260,8 @@ export function QuickRangeCompanionSession({ focus }: { focus: string }) {
                     onClick={() => setOutdoor((value) => !value)}
                     aria-pressed={outdoor}
                   >
-                    {outdoor ? (
-                      <Sun className="size-4" aria-hidden />
-                    ) : (
-                      <Moon className="size-4" aria-hidden />
-                    )}
-                    {outdoor ? "Outdoor mode" : "Range Night"}
+                    <Sun className="size-4" aria-hidden />
+                    {outdoor ? "Outdoor mode on" : "Outdoor mode"}
                   </Button>
                   <Button
                     type="button"

@@ -6,6 +6,7 @@ import { ChevronRight, Cuboid, Flag, ShieldCheck, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { HoleStrategy, HoleStrategyMode } from "@/lib/course-strategy";
+import type { CourseStrategyMap } from "@/lib/course-strategy-map";
 
 import styles from "./course-strategy-book.module.css";
 import { HoleStrategyVisual } from "./hole-strategy-visual";
@@ -15,11 +16,13 @@ export function DigitalCaddieBook({
   course,
   teeName,
   courseTwinAvailable,
+  courseMap,
 }: {
   strategies: HoleStrategy[];
   course: { id: string; name: string };
   teeName?: string | null;
   courseTwinAvailable: boolean;
+  courseMap?: CourseStrategyMap | null;
 }) {
   const [index, setIndex] = useState(0);
   const [modeId, setModeId] = useState<HoleStrategyMode["id"]>("normal");
@@ -106,7 +109,7 @@ export function DigitalCaddieBook({
             </div>
             <span className={styles.modeReadout}>{mode.label} line</span>
           </div>
-          <HoleStrategyVisual strategy={strategy} mode={mode} />
+          <HoleStrategyVisual strategy={strategy} mode={mode} courseMap={courseMap} />
         </main>
 
         <aside className={styles.strategyPanel} aria-label="Strategy panel">

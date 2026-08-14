@@ -34,8 +34,9 @@ describe("course strategy surface split", () => {
     expect(routeSource).toContain('await import("./course-strategy-workbench-page")');
     expect(companionSource).toContain("data-course-strategy-companion");
     expect(companionSource).toContain("<MobileHoleStrategy");
-    expect(companionSource).toContain("courseTwinAvailable={courseTwinAvailable}");
-    expect(companionSource).toContain("listAvailableCourseTwins(userId)");
+    expect(companionSource).toContain("courseTwinAvailable={Boolean(courseTwinManifest)}");
+    expect(companionSource).toContain("getCourseTwinManifest");
+    expect(companionSource).toContain("courseStrategyMapFromManifest");
     expect(companionSource).toContain("PlaySetupDrawer");
     expect(companionSource).toContain('title="Caddie Book"');
     expect(companionSource).not.toContain("IOSGroupedList");
@@ -94,9 +95,15 @@ describe("course strategy surface split", () => {
     expect(digitalBookSource).toContain("Safe target");
     expect(digitalBookSource).toContain("Ideal leave");
     expect(digitalBookSource).toContain("Open Course Twin");
+    expect(digitalBookSource).toContain("courseMap={courseMap}");
     expect(visualSource).toContain("Recommended landing");
     expect(visualSource).toContain("Measured dispersion");
-    expect(visualSource).toContain("Hazard distance");
+    expect(visualSource).toContain("Mapped aerial plan");
+    expect(visualSource).toContain("Course Twin geometry · personal shot overlay");
+    expect(visualSource).toContain("className={styles.visualCanvas}");
+    expect(visualSource).toContain('preserveAspectRatio="xMidYMid meet"');
+    expect(visualSource).toContain("pointAlongPolyline");
+    expect(visualSource).toContain("courseMap.imageUrl");
   });
 
   it("uses one visible shadcn composition for each workbench mode", () => {

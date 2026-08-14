@@ -20,6 +20,11 @@ export type OsmHoleGeometry = {
 };
 
 const OSM_USER_AGENT = "LM World Tour golf analytics course importer";
+const OVERPASS_ENDPOINTS = [
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.nchc.org.tw/api/interpreter",
+];
 
 type NominatimResult = {
   osm_type?: string;
@@ -77,21 +82,31 @@ export async function getOsmHoleGeometry(lat: number, lon: number) {
     return [];
   }
 
-  const response = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "user-agent": OSM_USER_AGENT,
-    },
-    body: new URLSearchParams({ data: buildOverpassGolfHoleQuery(lat, lon) }),
-    signal: AbortSignal.timeout(20_000),
-  });
+  const body = new URLSearchParams({ data: buildOverpassGolfHoleQuery(lat, lon) });
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "user-agent": OSM_USER_AGENT,
+        },
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
 
-  if (!response.ok) {
-    return [];
+      if (response.ok) {
+        const holes = parseOverpassGolfHoles(await response.json());
+        if (holes.length > 0) {
+          return holes;
+        }
+      }
+    } catch {
+      // Overpass instances are community-run and can fail independently.
+    }
   }
 
-  return parseOverpassGolfHoles(await response.json());
+  return [];
 }
 
 export function parseNominatimCourseResults(payload: unknown): OsmCourseResult[] {

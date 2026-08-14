@@ -83,11 +83,12 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 const METRICS: MetricDefinition[] = [
   {
     key: "carryYd",
-    label: "Best stock carry",
-    shortLabel: "Best stock",
+    label: "Best-30 carry average",
+    shortLabel: "Best 30 avg",
     unit: "yd",
     precision: 1,
-    description: "Best-stock carry against broad club-distance reference levels.",
+    description:
+      "Mean carry from your longest 30 clean full swings against broad reference levels.",
     comparisonMode: "higher",
   },
   {
@@ -96,7 +97,7 @@ const METRICS: MetricDefinition[] = [
     shortLabel: "Club speed",
     unit: "mph",
     precision: 1,
-    description: "Average speed from your best-20 stock shots against estimated ability levels.",
+    description: "Average speed from the same best-30 clean full swings.",
     comparisonMode: "higher",
   },
   {
@@ -105,7 +106,7 @@ const METRICS: MetricDefinition[] = [
     shortLabel: "Ball speed",
     unit: "mph",
     precision: 1,
-    description: "Ball speed from the same stock-shot set against estimated ability levels.",
+    description: "Ball speed from the same best-30 clean full swings.",
     comparisonMode: "higher",
   },
   {
@@ -139,8 +140,8 @@ const METRICS: MetricDefinition[] = [
 
 const COMPARISON_METRICS = METRICS.filter((metric) => metric.key !== "carryYd");
 const PEER_TAB_VALUE = "peers";
-const BENCHMARK_TABLE_CLASS = "min-w-[1280px] table-fixed";
-const BENCHMARK_TABLE_COLUMN_WIDTHS = ["6%", "15%", "9%", "9%", "14%", "30%", "11%", "6%"];
+const BENCHMARK_TABLE_CLASS = "min-w-[1400px] table-fixed";
+const BENCHMARK_TABLE_COLUMN_WIDTHS = ["6%", "13%", "9%", "9%", "18%", "27%", "10%", "8%"];
 const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "carryYd",
   "clubSpeedMph",
@@ -156,12 +157,12 @@ const FLIGHT_METRIC_KEYS = new Set<ClubBenchmarkMetricKey>(["maxHeightYd", "land
 const benchmarkCarryColumns: DesktopWorkbenchColumn[] = [
   { id: "club", label: "Club", locked: true },
   { id: "model", label: "Model" },
-  { id: "your-carry", label: "Your carry" },
+  { id: "your-carry", label: "Best 30 avg" },
   { id: "level", label: "Level" },
   { id: "next", label: "Next" },
   { id: "benchmark-band", label: "Benchmark band" },
   { id: "tour-anchor", label: "Tour anchor" },
-  { id: "sample", label: "Sample" },
+  { id: "sample", label: "Evidence" },
 ];
 
 const benchmarkMetricColumns: DesktopWorkbenchColumn[] = [
@@ -172,7 +173,7 @@ const benchmarkMetricColumns: DesktopWorkbenchColumn[] = [
   { id: "metric-target", label: "Target" },
   { id: "metric-band", label: "Benchmark band" },
   { id: "tour-anchor", label: "Tour anchor" },
-  { id: "sample", label: "Sample" },
+  { id: "sample", label: "Evidence" },
 ];
 
 const benchmarkPeerColumns: DesktopWorkbenchColumn[] = [
@@ -317,7 +318,7 @@ function BenchmarkOverview({
           label: "Carry step",
           value: closestCarry ? formatClubType(closestCarry.clubType) : "--",
           detail: closestCarry
-            ? `${formatMetric(closestCarry.comparison.yardsToNextLevel)} yd to ${closestCarry.comparison.nextLevel?.label}`
+            ? `${closestCarry.comparison.nextLevel?.label}: ${benchmarkAdvanceText(closestCarry)}`
             : "No carry chase yet",
           tone: closestCarry ? "amber" : "slate",
           href: closestCarry ? `/bag/${closestCarry.clubId}` : undefined,
@@ -409,7 +410,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
             label: "Strongest match",
             value: strongest ? formatClubType(strongest.clubType) : "--",
             detail: strongest
-              ? `${strongest.comparison.levelLabel} at ${formatMetric(strongest.carryYd)} yd`
+              ? `${strongest.comparison.levelLabel} at ${formatMetric(strongest.carryYd)} yd best-30 avg`
               : "Need stock carry samples",
             tone: benchmarkTone(strongest?.comparison.levelKey ?? "no-data"),
             href: strongest ? `/bag/${strongest.clubId}` : undefined,
@@ -418,13 +419,29 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
             label: "Closest next level",
             value: closestNext ? formatClubType(closestNext.clubType) : "--",
             detail: closestNext
-              ? `${formatMetric(closestNext.comparison.yardsToNextLevel)} yd to ${closestNext.comparison.nextLevel?.label}`
+              ? `${closestNext.comparison.nextLevel?.label}: ${benchmarkAdvanceText(closestNext)}`
               : "No next target yet",
             tone: closestNext ? "amber" : "slate",
             href: closestNext ? `/bag/${closestNext.clubId}` : undefined,
           },
         ]}
       />
+
+      <Alert className="border-[var(--status-information-border)] bg-[var(--status-information-surface)]">
+        <BarChart3
+          className="size-4 text-[var(--status-information-foreground)]"
+          aria-hidden="true"
+        />
+        <AlertTitle className="text-[var(--status-information-foreground)]">
+          What the benchmark sample means
+        </AlertTitle>
+        <AlertDescription className="leading-5 text-[var(--status-information-foreground)]">
+          Best 30 avg is the mean carry from up to 30 of your longest clean full swings for each
+          club. The evidence count is deliberately capped at 30; it does not mean only 30 saved
+          shots exist. Chips, pitches, tagged mishits and rows without carry stay outside this
+          comparison. Saved totals are shown per club, rather than as one whole-bag total.
+        </AlertDescription>
+      </Alert>
 
       <MobileAccordionSection title="Club level table" count={`${rows.length} clubs`}>
         <MobileDataList>
@@ -437,12 +454,12 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
               action={<BenchmarkBadge row={row} />}
             >
               <DataPair
-                label="Best stock"
+                label="Best 30 avg"
                 value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
               />
-              <DataPair label="Sample" value={row.sampleSize.toString()} />
+              <DataPair label="Evidence" value={benchmarkEvidenceText(row)} />
               <DataPair label="Next" value={benchmarkNextText(row)} />
-              <DataPair label="Best-stock floor" value={benchmarkFloorText(row)} />
+              <DataPair label="Shot plan" value={benchmarkAdvanceText(row)} />
               <DataPair label="Reference" value={benchmarkReferenceText(row)} />
               <BenchmarkMeter row={row} />
             </MobileDataCard>
@@ -471,7 +488,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
           >
             <TableCaption id="distance-benchmark-carry-summary" className="sr-only">
               Carry benchmark table comparing each club with inferred level, next target, benchmark
-              band, tour anchor and sample confidence.
+              band, tour anchor and best-30 evidence.
             </TableCaption>
             <BenchmarkTableColumns />
             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
@@ -484,14 +501,14 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                 </TableHead>
                 <TableHead data-column="model">Model</TableHead>
                 <TableHead data-column="your-carry" className="text-right">
-                  Your carry
+                  Best 30 avg
                 </TableHead>
                 <TableHead data-column="level">Level</TableHead>
                 <TableHead data-column="next">Next</TableHead>
                 <TableHead data-column="benchmark-band">Benchmark band</TableHead>
                 <TableHead data-column="tour-anchor">Tour anchor</TableHead>
                 <TableHead data-column="sample" className="text-right">
-                  Sample
+                  Evidence
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -524,7 +541,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                   </TableCell>
                   <TableCell data-column="next" className="text-sm text-muted-foreground">
                     <span className="block">{benchmarkNextText(row)}</span>
-                    <span className="block text-xs">{benchmarkFloorText(row)}</span>
+                    <span className="block text-xs">{benchmarkAdvanceText(row)}</span>
                   </TableCell>
                   <TableCell data-column="benchmark-band">
                     <BenchmarkMeter row={row} />
@@ -533,8 +550,10 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                     {tourAnchorText(row, CARRY_METRIC)}
                   </TableCell>
                   <TableCell data-column="sample" className="text-right">
-                    <span className="font-medium">{row.sampleSize}</span>
-                    <span className="ml-2 text-muted-foreground">{row.confidenceScore}%</span>
+                    <span className="block font-medium">{row.sampleSize} used</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {benchmarkSavedEvidenceText(row)}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}
@@ -620,6 +639,7 @@ function LevelMetricContent({
               />
               <DataPair label="Tour anchor" value={comparison.tourAnchorLabel} />
               <DataPair label="Band" value={metricReferenceText(comparison, metric)} />
+              <DataPair label="Evidence" value={benchmarkEvidenceText(comparison.row)} />
               <MetricLevelMeter comparison={comparison} metric={metric} />
             </MobileDataCard>
           ))}
@@ -647,7 +667,7 @@ function LevelMetricContent({
           >
             <TableCaption id={`${metric.key}-benchmark-summary`} className="sr-only">
               {metric.shortLabel} benchmark table comparing each club with the current value, level,
-              target, benchmark band, tour anchor and sample confidence.
+              target, benchmark band, tour anchor and best-30 evidence.
             </TableCaption>
             <BenchmarkTableColumns />
             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
@@ -667,7 +687,7 @@ function LevelMetricContent({
                 <TableHead data-column="metric-band">{metricBandLabel(metric)}</TableHead>
                 <TableHead data-column="tour-anchor">Tour anchor</TableHead>
                 <TableHead data-column="sample" className="text-right">
-                  Sample
+                  Evidence
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -711,9 +731,9 @@ function LevelMetricContent({
                     {comparison.tourAnchorLabel}
                   </TableCell>
                   <TableCell data-column="sample" className="text-right">
-                    <span className="font-medium">{comparison.row.sampleSize}</span>
-                    <span className="ml-2 text-muted-foreground">
-                      {comparison.row.confidenceScore}%
+                    <span className="block font-medium">{comparison.row.sampleSize} used</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {benchmarkSavedEvidenceText(comparison.row)}
                     </span>
                   </TableCell>
                 </TableRow>
@@ -767,7 +787,7 @@ function PeerComparisonContent({
             </AlertDescription>
           </div>
           <Button asChild variant="outline" className="w-fit bg-card/70">
-            <Link href="/bag?peers=1#distance-benchmarks" prefetch={false}>
+            <Link href="/bag?tab=evidence&peers=1#distance-benchmarks" prefetch={false}>
               Load peer benchmarks
             </Link>
           </Button>
@@ -962,22 +982,11 @@ function BenchmarkMeter({ row }: { row: ClubBenchmarkRow }) {
           />
         )}
       </div>
-      <div className="grid grid-cols-5 text-[10px] leading-4 text-muted-foreground">
-        {row.comparison.benchmark.levels.map((level, index) => (
-          <span
-            key={level.key}
-            className={
-              index === 0
-                ? "text-left"
-                : index === row.comparison.benchmark.levels.length - 1
-                  ? "text-right"
-                  : "text-center"
-            }
-          >
-            {level.shortLabel} {level.yards}
-          </span>
-        ))}
-      </div>
+      <BenchmarkScaleLabels
+        labels={row.comparison.benchmark.levels.map(
+          (level) => `${level.shortLabel} ${level.yards}`,
+        )}
+      />
     </div>
   );
 }
@@ -1032,18 +1041,37 @@ function MetricLevelMeter({
           />
         )}
       </div>
-      <div className="grid grid-cols-5 text-[10px] leading-4 text-muted-foreground">
-        {levels.map((level, index) => (
+      <BenchmarkScaleLabels
+        labels={levels.map(
+          (level) => `${level.shortLabel} ${formatMetricValue(level.value, metric)}`,
+        )}
+      />
+    </div>
+  );
+}
+
+function BenchmarkScaleLabels({ labels }: { labels: string[] }) {
+  return (
+    <div className="relative h-4 text-[10px] leading-4 text-muted-foreground">
+      {labels.map((label, index) => {
+        const position = (index / Math.max(1, labels.length - 1)) * 100;
+        const alignmentClass =
+          index === 0
+            ? "translate-x-0"
+            : index === labels.length - 1
+              ? "-translate-x-full"
+              : "-translate-x-1/2";
+
+        return (
           <span
-            key={level.key}
-            className={
-              index === 0 ? "text-left" : index === levels.length - 1 ? "text-right" : "text-center"
-            }
+            key={`${label}-${index}`}
+            className={`absolute top-0 whitespace-nowrap ${alignmentClass}`}
+            style={{ left: `${position}%` }}
           >
-            {level.shortLabel} {formatMetricValue(level.value, metric)}
+            {label}
           </span>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -1232,12 +1260,44 @@ function benchmarkNextText(row: ClubBenchmarkRow) {
   return `${formatMetric(row.comparison.yardsToNextLevel)} yd to ${row.comparison.nextLevel.label}`;
 }
 
-function benchmarkFloorText(row: ClubBenchmarkRow) {
-  if (row.bestSampleFloorYd === null || row.bestSampleFloorYd === undefined) {
-    return "Need stock sample";
+function benchmarkAdvanceText(row: ClubBenchmarkRow) {
+  if (row.comparison.carryYd === null) {
+    return "Build a clean full-swing sample";
   }
 
-  return `Beat ${formatMetric(row.bestSampleFloorYd)} yd to lift set`;
+  if (row.comparison.nextLevel === null) {
+    return "No higher reference marker";
+  }
+
+  if (row.nextLevelPlan === null) {
+    return "Add clean full swings to build the plan";
+  }
+
+  const targetText = `${formatMetric(row.nextLevelPlan.targetCarryYd)} yd+ → ${formatMetric(
+    row.nextLevelPlan.projectedAverageYd,
+  )} yd avg`;
+
+  return row.nextLevelPlan.shotsNeeded === 1
+    ? `1 shot at ${targetText}`
+    : `${row.nextLevelPlan.shotsNeeded} shots at ${targetText}`;
+}
+
+function benchmarkEvidenceText(row: ClubBenchmarkRow) {
+  return `${row.sampleSize} used · ${benchmarkSavedEvidenceText(row)}`;
+}
+
+function benchmarkSavedEvidenceText(row: ClubBenchmarkRow) {
+  if (row.savedShotCount === undefined) {
+    return "saved count unavailable";
+  }
+
+  if (row.reviewedShotCount !== undefined && row.reviewedShotCount < row.savedShotCount) {
+    return `${row.reviewedShotCount.toLocaleString("en-GB")} reviewed · ${row.savedShotCount.toLocaleString(
+      "en-GB",
+    )} saved for this club`;
+  }
+
+  return `${row.savedShotCount.toLocaleString("en-GB")} saved for this club`;
 }
 
 function benchmarkReferenceText(row: ClubBenchmarkRow) {

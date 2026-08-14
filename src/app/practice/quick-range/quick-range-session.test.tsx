@@ -69,4 +69,23 @@ describe("QuickRangeSession mobile task flow", () => {
     expect(source).toContain("var(--status-success-surface)");
     expect(source).not.toContain("bg-emerald-50");
   });
+
+  it("preserves the selected app theme until outdoor mode is explicitly enabled", () => {
+    const companion = readFileSync(
+      join(process.cwd(), "src/app/practice/quick-range/quick-range-session.tsx"),
+      "utf8",
+    );
+    const workbench = readFileSync(
+      join(process.cwd(), "src/app/practice/quick-range/quick-range-workbench-session.tsx"),
+      "utf8",
+    );
+
+    for (const source of [companion, workbench]) {
+      expect(source).toContain("const [outdoor, setOutdoor] = useState(false);");
+      expect(source).toContain('if (outdoor) root.dataset.theme = "outdoor";');
+      expect(source).toContain('{outdoor ? "Outdoor mode on" : "Outdoor mode"}');
+    }
+
+    expect(companion).toContain('`${outdoor ? "Outdoor mode" : "Saved theme"} ·');
+  });
 });
