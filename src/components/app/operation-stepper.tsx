@@ -1,6 +1,8 @@
 import { Check, CircleAlert } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export type OperationStep = {
@@ -54,15 +56,19 @@ export function OperationStepper({
             className="min-w-0"
           >
             <div className="flex items-center">
-              <span
+              <Badge
+                variant={
+                  step.status === "complete"
+                    ? "default"
+                    : step.status === "error"
+                      ? "destructive"
+                      : "outline"
+                }
                 className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-bold",
-                  step.status === "complete" && "border-primary bg-primary text-primary-foreground",
+                  "grid size-6 shrink-0 place-items-center rounded-full p-0 text-[11px] font-bold shadow-none",
                   step.status === "current" &&
                     "border-primary bg-primary/10 text-primary ring-2 ring-primary/15",
-                  step.status === "error" &&
-                    "border-destructive bg-destructive/10 text-destructive",
-                  step.status === "upcoming" && "border-border bg-muted text-muted-foreground",
+                  step.status === "upcoming" && "bg-muted text-muted-foreground",
                 )}
               >
                 {step.status === "complete" ? (
@@ -72,9 +78,9 @@ export function OperationStepper({
                 ) : (
                   index + 1
                 )}
-              </span>
+              </Badge>
               {index < steps.length - 1 ? (
-                <span className="mx-1 h-px min-w-0 flex-1 bg-border" aria-hidden />
+                <Separator className="mx-1 min-w-0 flex-1 data-horizontal:w-auto" aria-hidden />
               ) : null}
             </div>
             <p className="mt-1 truncate text-xs font-semibold">{step.label}</p>

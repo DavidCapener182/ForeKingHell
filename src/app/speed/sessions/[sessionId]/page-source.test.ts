@@ -33,64 +33,29 @@ describe("speed session desktop swing log", () => {
   });
 });
 
-describe("speed session mobile information architecture", () => {
-  it("shows the session outcome before mobile evidence and the desktop workbench", () => {
-    expect(source.indexOf("<MobileSpeedSessionAnswer")).toBeGreaterThan(-1);
-    expect(source.indexOf("<MobileSpeedSessionDisclosures")).toBeGreaterThan(
-      source.indexOf("<MobileSpeedSessionAnswer"),
-    );
-    expect(source.indexOf('<DesktopWorkbenchLayout scope="speed-session">')).toBeGreaterThan(
-      source.indexOf("<MobileSpeedSessionDisclosures"),
-    );
-    expect(source).toContain("data-mobile-speed-session-answer");
-    expect(source).toContain('aria-labelledby="mobile-speed-session-title"');
-    expect(source).toContain("Session average");
-    expect(source).toContain("data-primary-action");
+describe("speed session desktop-only bundle", () => {
+  it("excludes the obsolete companion and iOS render graph", () => {
+    expect(source).toContain('<DesktopWorkbenchLayout scope="speed-session">');
+    expect(source).toContain('className="grid gap-3"');
 
-    const answer = source.slice(
-      source.indexOf("function MobileSpeedSessionAnswer"),
-      source.indexOf("function MobileSpeedSessionDisclosures"),
-    );
-    expect(answer.indexOf("Next action")).toBeLessThan(
-      answer.indexOf('label="Speed session summary"'),
-    );
+    for (const obsoleteSurface of [
+      "MobileSpeedSessionAnswer",
+      "MobileSpeedSessionDisclosures",
+      "MobileSwingEvidence",
+      "MobileSpeedSessionEditForm",
+      "@/components/app/ios-mobile",
+      "lg:hidden",
+      "sm:hidden",
+      "hidden lg:contents",
+      'className="hidden gap-3 sm:grid"',
+    ]) {
+      expect(source).not.toContain(obsoleteSurface);
+    }
   });
 
-  it("uses a single disclosure level for evidence, metadata and editing", () => {
-    const disclosures = source.slice(
-      source.indexOf("function MobileSpeedSessionDisclosures"),
-      source.indexOf("function MobileSwingEvidence"),
-    );
-
-    expect(disclosures).toContain("IOSDisclosureGroup");
-    expect(disclosures).toContain('key={openEditByDefault ? "edit-open" : "collapsed"}');
-    expect(disclosures).toContain('defaultValue={openEditByDefault ? "edit-session" : undefined}');
-    expect(disclosures).toContain("Swing evidence");
-    expect(disclosures).toContain("Session details");
-    expect(disclosures).toContain("Edit session");
-    expect(disclosures).not.toContain("<details");
-  });
-
-  it("renders every swing as a native row with the useful calculated evidence", () => {
-    const swingEvidence = source.slice(
-      source.indexOf("function MobileSwingEvidence"),
-      source.indexOf("function MobileSpeedSessionMetadata"),
-    );
-
-    expect(swingEvidence).toContain("IOSGroupedList");
-    expect(swingEvidence).toContain("IOSListRow");
-    expect(swingEvidence).toContain("rollingAverage(");
-    expect(swingEvidence).toContain("speedSwingPhase(");
-    expect(swingEvidence).toContain("speedSwingSignal(");
-    expect(swingEvidence).not.toContain("<Table");
-  });
-
-  it("keeps correction and deletion server actions available on mobile", () => {
-    expect(source).toContain("<form action={updateSpeedSessionAction}");
-    expect(source).toContain("<form action={deleteSpeedSessionAction}");
-    expect(source).toContain("ConfirmSubmitButton");
-    expect(source).toContain('name="speedReadings"');
-    expect(source).toContain('name="targetSpeedMph"');
-    expect(source).toContain('inputMode="decimal"');
+  it("keeps ordinary session cards and table cells theme-aware", () => {
+    expect(source).toContain("bg-card");
+    expect(source).toContain("var(--status-success-surface)");
+    expect(source).not.toMatch(/\b(?:bg-white|text-slate-|border-slate-|bg-emerald-)/);
   });
 });

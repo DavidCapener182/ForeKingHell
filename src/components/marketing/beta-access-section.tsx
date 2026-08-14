@@ -40,7 +40,7 @@ export function BetaAccessSection() {
             status="Limited"
           />
           <Item variant="muted" size="sm">
-            <CircleCheck className="size-4 shrink-0 text-emerald-700" />
+            <CircleCheck className="size-4 shrink-0 text-primary" />
             <ItemContent>
               <ItemTitle>Plan and configuration</ItemTitle>
               <ItemDescription>Feature availability can depend on both.</ItemDescription>
@@ -75,7 +75,7 @@ function ProviderItem({
 }) {
   return (
     <Item variant="outline" size="sm">
-      <CircleCheck className="size-4 shrink-0 text-emerald-700" />
+      <CircleCheck className="size-4 shrink-0 text-primary" />
       <ItemContent>
         <ItemTitle>{title}</ItemTitle>
         <ItemDescription>{detail}</ItemDescription>

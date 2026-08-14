@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowLeft, Brain, CalendarDays, Plus, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
+import { ChallengeGridSection } from "@/app/challenges/challenge-grid-section";
 import { ChallengeJoinDialog } from "@/app/challenges/challenge-join-dialog";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
@@ -32,6 +33,7 @@ import {
 import { DataFirstFlowPanel } from "@/components/product-polish";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -42,11 +44,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   Table,
@@ -65,7 +65,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getBillingPageData } from "@/lib/billing";
@@ -80,6 +79,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import { socialVisibilityOptions } from "@/lib/social";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -137,12 +137,16 @@ type ChallengesPageProps = {
 export default async function ChallengesPage({ searchParams }: ChallengesPageProps) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
-  const [data, billing, progressData, featureData] = await Promise.all([
+  const [data, billing, progressData, featureData, surface] = await Promise.all([
     getChallengesPageData(),
     getBillingPageData(),
     getProgressData(userId),
     getFeatureIdeasData(),
+    getRequestAppSurface(),
   ]);
+  const workbench =
+    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
   const coach = buildCoachSummary(progressData.clubs);
   const drillChallenges = buildCoachDrillChallenges(coach);
   const drillStatuses = await getCoachDrillAwardStatuses(drillChallenges);
@@ -186,7 +190,7 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
     {
       title: "Wedge window",
       detail: "12 shots inside the launch and carry window.",
-      href: "/coach#more-drills",
+      href: "/practice?intent=latest_weakness",
       status: "optional" as const,
     },
     {
@@ -217,569 +221,567 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar title="Challenges" />
-        <MobileRouteTabs group="social" activeKey="challenges" />
-        <MobileTabBar
-          activeKey={activeTab}
-          className="-mt-4"
-          tabs={[
-            { key: "live", label: "Live", href: "/challenges" },
-            { key: "joined", label: "Joined", href: "/challenges?tab=joined" },
-            { key: "seasons", label: "Seasons", href: "/challenges?tab=seasons" },
-            { key: "templates", label: "Templates", href: "/challenges?tab=templates" },
-            { key: "past", label: "Past", href: "/challenges?tab=past" },
-          ]}
-        />
-        <MobileStatusAction
-          label={mobileStatus.label}
-          value={mobileStatus.value}
-          detail={mobileStatus.detail}
-          action={
-            <BottomSheet
-              label={
-                <>
-                  <Plus className="size-4" /> Create
-                </>
-              }
-              title="Create challenge"
-            >
-              {showPrivateChallengeUpgrade ? (
-                <div className="grid gap-3 text-sm text-[#6B7280]">
-                  <p>
-                    Free players can join public boards. Plus unlocks private friend challenges.
-                  </p>
-                  <Button asChild variant="outline" className="rounded-full">
-                    <Link href="/billing" prefetch={false}>
-                      View plans
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <form action={createChallengeAction} className="grid gap-3">
-                  <BuilderStep
-                    number="1"
-                    title="Choose the measured challenge"
-                    detail="The template defines the scoring rule and proof requirement."
-                  />
-                  <label className="grid gap-1 text-sm font-medium">
-                    Template
-                    <Select name="templateId" defaultValue={data.templates[0]?.id}>
-                      <SelectTrigger className="h-11 w-full" aria-label="Challenge template">
-                        <SelectValue placeholder="Select a template" />
+      {surface === "companion" ? (
+        <MobileAppShell>
+          <MobileTopBar title="Challenges" />
+          <MobileRouteTabs group="social" activeKey="challenges" />
+          <MobileTabBar
+            activeKey={activeTab}
+            className="-mt-4"
+            tabs={[
+              { key: "live", label: "Live", href: "/challenges" },
+              { key: "joined", label: "Joined", href: "/challenges?tab=joined" },
+              { key: "seasons", label: "Seasons", href: "/challenges?tab=seasons" },
+              { key: "templates", label: "Templates", href: "/challenges?tab=templates" },
+              { key: "past", label: "Past", href: "/challenges?tab=past" },
+            ]}
+          />
+          <MobileStatusAction
+            label={mobileStatus.label}
+            value={mobileStatus.value}
+            detail={mobileStatus.detail}
+            action={
+              <BottomSheet
+                label={
+                  <>
+                    <Plus className="size-4" /> Create
+                  </>
+                }
+                title="Create challenge"
+              >
+                {showPrivateChallengeUpgrade ? (
+                  <div className="grid gap-3 text-sm text-muted-foreground">
+                    <p>
+                      Free players can join public boards. Plus unlocks private friend challenges.
+                    </p>
+                    <Button asChild variant="outline" className="rounded-full">
+                      <Link href="/billing" prefetch={false}>
+                        View plans
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <form action={createChallengeAction} className="grid gap-3">
+                    <BuilderStep
+                      number="1"
+                      title="Choose the measured challenge"
+                      detail="The template defines the scoring rule and proof requirement."
+                    />
+                    <label className="grid gap-1 text-sm font-medium">
+                      Template
+                      <Select name="templateId" defaultValue={data.templates[0]?.id}>
+                        <SelectTrigger className="h-11 w-full" aria-label="Challenge template">
+                          <SelectValue placeholder="Select a template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {data.templates.map((template) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <Input
+                      name="title"
+                      placeholder="May Wedge Window"
+                      className="h-11 rounded-lg bg-background"
+                      required
+                    />
+                    <Textarea
+                      name="description"
+                      rows={3}
+                      placeholder="Description"
+                      className="rounded-lg border bg-background px-3 py-2 text-sm"
+                    />
+                    <BuilderStep
+                      number="2"
+                      title="Choose who can enter"
+                      detail="Visibility controls discovery; exact shot rows remain private."
+                    />
+                    <Select name="visibility" defaultValue="friends">
+                      <SelectTrigger className="h-11 w-full" aria-label="Challenge visibility">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {data.templates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.name}
+                        {socialVisibilityOptions.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {titleCase(option)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </label>
-                  <Input
-                    name="title"
-                    placeholder="May Wedge Window"
-                    className="h-11 rounded-lg bg-background"
-                    required
-                  />
-                  <Textarea
-                    name="description"
-                    rows={3}
-                    placeholder="Description"
-                    className="rounded-lg border bg-background px-3 py-2 text-sm"
-                  />
-                  <BuilderStep
-                    number="2"
-                    title="Choose who can enter"
-                    detail="Visibility controls discovery; exact shot rows remain private."
-                  />
-                  <Select name="visibility" defaultValue="friends">
-                    <SelectTrigger className="h-11 w-full" aria-label="Challenge visibility">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {socialVisibilityOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {titleCase(option)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <BuilderStep
-                    number="3"
-                    title="Set the evidence window"
-                    detail="Only qualifying imported evidence inside these dates counts."
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input
-                      name="startsAt"
-                      type="date"
-                      className="h-11 rounded-lg bg-background"
-                      aria-label="Challenge starts"
+                    <BuilderStep
+                      number="3"
+                      title="Set the evidence window"
+                      detail="Only qualifying imported evidence inside these dates counts."
                     />
-                    <Input
-                      name="endsAt"
-                      type="date"
-                      className="h-11 rounded-lg bg-background"
-                      aria-label="Challenge ends"
-                    />
-                  </div>
-                  <ChallengeEligibilityPreview />
-                  <Button type="submit" className="rounded-full">
-                    <Plus className="size-4" />
-                    Create
-                  </Button>
-                </form>
-              )}
-            </BottomSheet>
-          }
-        />
-        {activeTab === "templates" ? (
-          <section className="grid gap-2" aria-label="Challenge templates">
-            <IOSSectionHeader
-              title="Templates"
-              description="Choose a measured format before creating a board."
-            />
-            <IOSGroupedList label="Challenge templates">
-              {mobileTemplates.length > 0 ? (
-                mobileTemplates.map((template) => (
-                  <IOSListRow
-                    key={template.id}
-                    label={template.name}
-                    value={template.scoringDirection === "asc" ? "Lower wins" : "Higher wins"}
-                    detail={template.description}
-                  />
-                ))
-              ) : (
-                <IOSListRow
-                  label="No templates available"
-                  detail="Challenge templates will appear here when configured."
-                />
-              )}
-            </IOSGroupedList>
-          </section>
-        ) : (
-          <>
-            {mobilePrimaryChallenge ? (
-              <MobilePremiumChallengeCard challenge={mobilePrimaryChallenge} featured />
-            ) : null}
-            <section className="grid gap-2" aria-label={mobileChallengeListTitle(activeTab)}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        name="startsAt"
+                        type="date"
+                        className="h-11 rounded-lg bg-background"
+                        aria-label="Challenge starts"
+                      />
+                      <Input
+                        name="endsAt"
+                        type="date"
+                        className="h-11 rounded-lg bg-background"
+                        aria-label="Challenge ends"
+                      />
+                    </div>
+                    <ChallengeEligibilityPreview />
+                    <Button type="submit" className="rounded-full">
+                      <Plus className="size-4" />
+                      Create
+                    </Button>
+                  </form>
+                )}
+              </BottomSheet>
+            }
+          />
+          {activeTab === "templates" ? (
+            <section className="grid gap-2" aria-label="Challenge templates">
               <IOSSectionHeader
-                title={mobileChallengeListTitle(activeTab)}
-                description={
-                  mobilePrimaryChallenge
-                    ? `${mobileRemainingChallenges.length} more in this view`
-                    : "Nothing is available in this view yet."
-                }
+                title="Templates"
+                description="Choose a measured format before creating a board."
               />
-              <IOSGroupedList label={mobileChallengeListTitle(activeTab)}>
-                {mobileRemainingChallenges.length > 0 ? (
-                  mobileRemainingChallenges.map((challenge) => (
+              <IOSGroupedList label="Challenge templates">
+                {mobileTemplates.length > 0 ? (
+                  mobileTemplates.map((template) => (
                     <IOSListRow
-                      key={challenge.id}
-                      label={challenge.title}
-                      value={
-                        challenge.viewerRank
-                          ? `#${challenge.viewerRank}`
-                          : `${challenge.participantCount} players`
-                      }
-                      detail={`${challenge.templateName} · ${formatChallengeWindow(challenge)}`}
-                      href={`/challenges/${challenge.id}`}
-                      status={
-                        <IOSInlineStatus
-                          label={
-                            challenge.viewerJoined
-                              ? "Joined"
-                              : isPastChallenge(challenge)
-                                ? titleCase(challenge.status.replaceAll("_", " "))
-                                : "Open board"
-                          }
-                          tone={
-                            challenge.viewerJoined
-                              ? "positive"
-                              : isPastChallenge(challenge)
-                                ? "neutral"
-                                : "info"
-                          }
-                        />
-                      }
+                      key={template.id}
+                      label={template.name}
+                      value={template.scoringDirection === "asc" ? "Lower wins" : "Higher wins"}
+                      detail={template.description}
                     />
                   ))
                 ) : (
                   <IOSListRow
-                    label={mobilePrimaryChallenge ? "No more boards" : "No boards in this view"}
-                    detail={mobileChallengeEmptyDetail(activeTab)}
+                    label="No templates available"
+                    detail="Challenge templates will appear here when configured."
                   />
                 )}
               </IOSGroupedList>
             </section>
-          </>
-        )}
-        <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
-        <CompetitionFeaturePanel data={featureData} />
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="challenges">
-        <div className="hidden items-center justify-between gap-3 lg:flex">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/leaderboard?tab=challenges" prefetch={false}>
-              <Trophy className="size-4" />
-              Challenge boards
-            </Link>
-          </Button>
-        </div>
-
-        <div className="hidden lg:contents">
-          <PageHeader
-            eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
-            title="Competition hub"
-            description="Join monthly boards, follow friends competing, and create private launch-monitor challenges without exposing account access."
-            visual={
-              <PageArtwork variant="challenges" alt="" className="h-full min-h-36" priority />
-            }
-            metrics={[
-              { label: "Active", value: data.active.length, detail: "Visible open challenges" },
-              { label: "Joined", value: data.mine.length, detail: "Your active entries" },
-              {
-                label: "Templates",
-                value: data.templates.length,
-                detail: "Launch-monitor friendly formats",
-              },
-              { label: "Privacy", value: "Friends", detail: "Private challenges stay scoped" },
-            ]}
-          />
-
-          {activeTab === "seasons" ? (
-            <section className="grid gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-              <div>
-                <StatusPill tone="green">Seasonal leagues</StatusPill>
-                <h2 className="mt-2 text-xl font-semibold">
-                  Long-form boards, measured automatically
-                </h2>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  A season is any challenge running for at least four weeks. Imported qualifying
-                  shots update the same proof-backed board; manual claims and out-of-window shots
-                  stay excluded. Use friends visibility for a private league or public for an opt-in
-                  community season.
-                </p>
-              </div>
-              <Button asChild className="min-h-11 rounded-xl">
-                <Link href="/challenges?tab=seasons#create-challenge" prefetch={false}>
-                  <Plus className="size-4" />
-                  Create season
-                </Link>
-              </Button>
-            </section>
-          ) : null}
-
-          {featured ? (
-            <section className="premium-card overflow-hidden">
-              <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
-                <div>
-                  <StatusPill tone="green">Featured monthly challenge</StatusPill>
-                  <h2 className="mt-3 text-3xl font-semibold tracking-normal">{featured.title}</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {featured.description ??
-                      `${featured.templateName} board with ${featured.participantCount} players entered.`}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Badge variant="secondary">{featured.templateName}</Badge>
-                    <Badge variant="outline">
-                      {featured.viewerJoined ? "Entered" : "Not entered"}
-                    </Badge>
-                    <Badge variant="outline">{featured.participantCount} friends and players</Badge>
-                    {featured.viewerRank ? (
-                      <Badge variant="secondary">Your rank #{featured.viewerRank}</Badge>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-4">
-                  {featured.leader ? (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Current leader</p>
-                      <p className="mt-1 text-xl font-semibold tracking-normal">
-                        {featured.leader.displayName}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {featured.leader.scoreLabel} · {featured.leader.verificationLabel}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Awaiting qualifying imports. New imported shots update the board
-                      automatically.
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button asChild>
-                      <Link href={`/challenges/${featured.id}`} prefetch={false}>
-                        <Trophy className="size-4" />
-                        Open event
-                      </Link>
-                    </Button>
-                    {!featured.viewerJoined ? (
-                      <ChallengeJoinDialog
-                        challengeId={featured.id}
-                        challengeTitle={featured.title}
-                        size="default"
+          ) : (
+            <>
+              {mobilePrimaryChallenge ? (
+                <MobilePremiumChallengeCard challenge={mobilePrimaryChallenge} featured />
+              ) : null}
+              <section className="grid gap-2" aria-label={mobileChallengeListTitle(activeTab)}>
+                <IOSSectionHeader
+                  title={mobileChallengeListTitle(activeTab)}
+                  description={
+                    mobilePrimaryChallenge
+                      ? `${mobileRemainingChallenges.length} more in this view`
+                      : "Nothing is available in this view yet."
+                  }
+                />
+                <IOSGroupedList label={mobileChallengeListTitle(activeTab)}>
+                  {mobileRemainingChallenges.length > 0 ? (
+                    mobileRemainingChallenges.map((challenge) => (
+                      <IOSListRow
+                        key={challenge.id}
+                        label={challenge.title}
+                        value={
+                          challenge.viewerRank
+                            ? `#${challenge.viewerRank}`
+                            : `${challenge.participantCount} players`
+                        }
+                        detail={`${challenge.templateName} · ${formatChallengeWindow(challenge)}`}
+                        href={`/challenges/${challenge.id}`}
+                        status={
+                          <IOSInlineStatus
+                            label={
+                              challenge.viewerJoined
+                                ? "Joined"
+                                : isPastChallenge(challenge)
+                                  ? titleCase(challenge.status.replaceAll("_", " "))
+                                  : "Open board"
+                            }
+                            tone={
+                              challenge.viewerJoined
+                                ? "positive"
+                                : isPastChallenge(challenge)
+                                  ? "neutral"
+                                  : "info"
+                            }
+                          />
+                        }
                       />
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </section>
-          ) : null}
-
-          <DataFirstFlowPanel
-            title="Daily micro challenges"
-            description="Short Rapsodo-friendly drills for testers who want a clear session target before creating a private board."
-            steps={dailyMicroChallengeSteps}
-            actionHref="/coach#more-drills"
-            actionLabel="Open drills"
-          />
-
+                    ))
+                  ) : (
+                    <IOSListRow
+                      label={mobilePrimaryChallenge ? "No more boards" : "No boards in this view"}
+                      detail={mobileChallengeEmptyDetail(activeTab)}
+                    />
+                  )}
+                </IOSGroupedList>
+              </section>
+            </>
+          )}
+          <MobileDailyCoachDrills challenges={drillChallenges} statuses={drillStatuses} />
           <CompetitionFeaturePanel data={featureData} />
+        </MobileAppShell>
+      ) : null}
 
-          <ChallengeBoardTable activeTab={activeTab} rows={challengeBoardRows} />
+      {surface === "workbench" && DesktopWorkbenchLayout ? (
+        <DesktopWorkbenchLayout scope="challenges">
+          <div className="flex items-center justify-between gap-3">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/dashboard" prefetch={false}>
+                <ArrowLeft className="size-4" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/leaderboard?tab=challenges" prefetch={false}>
+                <Trophy className="size-4" />
+                Challenge boards
+              </Link>
+            </Button>
+          </div>
 
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(320px,0.42fr)]">
-            <DataPanel>
-              <SectionHeader
+          <>
+            <PageHeader
+              eyebrow={<StatusPill tone="amber">Challenges</StatusPill>}
+              title="Competition hub"
+              description="Join monthly boards, follow friends competing, and create private launch-monitor challenges without exposing account access."
+              visual={
+                <PageArtwork variant="challenges" alt="" className="h-full min-h-36" priority />
+              }
+              metrics={[
+                { label: "Active", value: data.active.length, detail: "Visible open challenges" },
+                { label: "Joined", value: data.mine.length, detail: "Your active entries" },
+                {
+                  label: "Templates",
+                  value: data.templates.length,
+                  detail: "Launch-monitor friendly formats",
+                },
+                { label: "Privacy", value: "Friends", detail: "Private challenges stay scoped" },
+              ]}
+            />
+
+            {activeTab === "seasons" ? (
+              <section className="grid gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div>
+                  <StatusPill tone="green">Seasonal leagues</StatusPill>
+                  <h2 className="mt-2 text-xl font-semibold">
+                    Long-form boards, measured automatically
+                  </h2>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    A season is any challenge running for at least four weeks. Imported qualifying
+                    shots update the same proof-backed board; manual claims and out-of-window shots
+                    stay excluded. Use friends visibility for a private league or public for an
+                    opt-in community season.
+                  </p>
+                </div>
+                <Button asChild className="min-h-11 rounded-xl">
+                  <Link href="/challenges?tab=seasons#create-challenge" prefetch={false}>
+                    <Plus className="size-4" />
+                    Create season
+                  </Link>
+                </Button>
+              </section>
+            ) : null}
+
+            {featured ? (
+              <Card className="gap-0 py-0">
+                <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+                  <div>
+                    <StatusPill tone="green">Featured monthly challenge</StatusPill>
+                    <h2 className="mt-3 text-3xl font-semibold tracking-normal">
+                      {featured.title}
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                      {featured.description ??
+                        `${featured.templateName} board with ${featured.participantCount} players entered.`}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Badge variant="secondary">{featured.templateName}</Badge>
+                      <Badge variant="outline">
+                        {featured.viewerJoined ? "Entered" : "Not entered"}
+                      </Badge>
+                      <Badge variant="outline">
+                        {featured.participantCount} friends and players
+                      </Badge>
+                      {featured.viewerRank ? (
+                        <Badge variant="secondary">Your rank #{featured.viewerRank}</Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="grid gap-3 rounded-lg border bg-muted/55 p-4">
+                    {featured.leader ? (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Current leader</p>
+                        <p className="mt-1 text-xl font-semibold tracking-normal">
+                          {featured.leader.displayName}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {featured.leader.scoreLabel} · {featured.leader.verificationLabel}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Awaiting qualifying imports. New imported shots update the board
+                        automatically.
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild>
+                        <Link href={`/challenges/${featured.id}`} prefetch={false}>
+                          <Trophy className="size-4" />
+                          Open event
+                        </Link>
+                      </Button>
+                      {!featured.viewerJoined ? (
+                        <ChallengeJoinDialog
+                          challengeId={featured.id}
+                          challengeTitle={featured.title}
+                          size="default"
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <DataFirstFlowPanel
+              title="Daily micro challenges"
+              description="Short Rapsodo-friendly drills for testers who want a clear session target before creating a private board."
+              steps={dailyMicroChallengeSteps}
+              actionHref="/practice?intent=latest_weakness"
+              actionLabel="Open drills"
+            />
+
+            <CompetitionFeaturePanel data={featureData} />
+
+            <ChallengeBoardTable activeTab={activeTab} rows={challengeBoardRows} />
+
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,0.58fr)_minmax(320px,0.42fr)]">
+              <ChallengeGridSection
                 title="My active entries"
                 description="Challenges you have joined or created."
-                action={<Trophy className="size-5 text-amber-600" />}
-              />
-              <CardContent>
+                action={<Trophy className="size-5 text-primary" />}
+              >
                 <ChallengeGrid
                   challenges={data.mine}
                   empty="Join a public board or create a private friend challenge."
                 />
-              </CardContent>
-            </DataPanel>
+              </ChallengeGridSection>
 
-            <DataPanel>
-              <SectionHeader
+              <ChallengeGridSection
                 title="Friends competing"
                 description="Boards with activity from visible players."
-                action={<Users className="size-5 text-sky-600" />}
-              />
-              <CardContent>
+                action={<Users className="size-5 text-[var(--status-information-foreground)]" />}
+              >
                 <ChallengeGrid
                   challenges={friendsCompeting}
                   empty="No friends are competing on visible boards yet."
                 />
-              </CardContent>
-            </DataPanel>
-          </section>
+              </ChallengeGridSection>
+            </section>
 
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <DataPanel>
-              <SectionHeader
+            <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <ChallengeGridSection
                 title="Public and friend boards"
                 description="Import-scored boards you can open or join."
-                action={<Trophy className="size-5 text-amber-600" />}
-              />
-              <CardContent>
+                action={<Trophy className="size-5 text-primary" />}
+              >
                 <ChallengeGrid
                   challenges={data.challenges}
                   empty="No challenges are visible yet."
                 />
-              </CardContent>
-            </DataPanel>
+              </ChallengeGridSection>
 
-            <div className="grid gap-4">
-              <DataPanel>
-                <SectionHeader
-                  title="Templates"
-                  description="Rapsodo-friendly formats for private leagues and public boards."
-                />
-                <CardContent className="grid gap-2">
-                  {data.templates.map((template) => (
-                    <div
-                      key={template.id}
-                      className="rounded-lg border bg-[#F5F6F4] px-3 py-2 text-sm"
-                    >
-                      <p className="font-medium">{template.name}</p>
-                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                        {template.description}
-                      </p>
-                    </div>
-                  ))}
-                </CardContent>
-              </DataPanel>
-
-              <DataPanel>
-                <SectionHeader
-                  title="Create private challenge"
-                  description="Start with a template, then invite friends from the event page."
-                  action={<Plus className="size-5 text-emerald-600" />}
-                />
-                <CardContent>
-                  <div
-                    id="create-challenge"
-                    className="mb-3 scroll-mt-28 rounded-lg border bg-[#F5F6F4] p-3 text-sm"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <p className="font-semibold">Private challenge entitlement</p>
-                        <p className="mt-1 text-muted-foreground">
-                          Current plan: {activePlanName}. Limit: {privateChallengeLimitText}.
+              <div className="grid gap-4">
+                <DataPanel>
+                  <SectionHeader
+                    title="Templates"
+                    description="Rapsodo-friendly formats for private leagues and public boards."
+                  />
+                  <CardContent className="grid gap-2">
+                    {data.templates.map((template) => (
+                      <div
+                        key={template.id}
+                        className="rounded-lg border bg-muted/55 px-3 py-2 text-sm"
+                      >
+                        <p className="font-medium">{template.name}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {template.description}
                         </p>
                       </div>
-                      {showPrivateChallengeUpgrade ? (
-                        <Button asChild variant="outline" size="sm">
+                    ))}
+                  </CardContent>
+                </DataPanel>
+
+                <DataPanel>
+                  <SectionHeader
+                    title="Create private challenge"
+                    description="Start with a template, then invite friends from the event page."
+                    action={<Plus className="size-5 text-primary" />}
+                  />
+                  <CardContent>
+                    <div
+                      id="create-challenge"
+                      className="mb-3 scroll-mt-28 rounded-lg border bg-muted/55 p-3 text-sm"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-semibold">Private challenge entitlement</p>
+                          <p className="mt-1 text-muted-foreground">
+                            Current plan: {activePlanName}. Limit: {privateChallengeLimitText}.
+                          </p>
+                        </div>
+                        {showPrivateChallengeUpgrade ? (
+                          <Button asChild variant="outline" size="sm">
+                            <Link href="/billing" prefetch={false}>
+                              <Sparkles className="size-4" />
+                              Upgrade
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Badge variant="secondary">Private leagues enabled</Badge>
+                        )}
+                      </div>
+                    </div>
+                    {showPrivateChallengeUpgrade ? (
+                      <div className="rounded-xl border border-dashed bg-card p-4 text-sm">
+                        <p className="font-semibold">
+                          Upgrade to create friend and private leagues.
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Free players can join public boards and social challenges. Plus unlocks
+                          private friend challenges.
+                        </p>
+                        <Button asChild className="mt-3" variant="outline">
                           <Link href="/billing" prefetch={false}>
                             <Sparkles className="size-4" />
-                            Upgrade
+                            View plans
                           </Link>
                         </Button>
-                      ) : (
-                        <Badge variant="secondary">Private leagues enabled</Badge>
-                      )}
-                    </div>
-                  </div>
-                  {showPrivateChallengeUpgrade ? (
-                    <div className="rounded-xl border border-dashed bg-white p-4 text-sm">
-                      <p className="font-semibold">Upgrade to create friend and private leagues.</p>
-                      <p className="mt-1 text-muted-foreground">
-                        Free players can join public boards and social challenges. Plus unlocks
-                        private friend challenges.
-                      </p>
-                      <Button asChild className="mt-3" variant="outline">
-                        <Link href="/billing" prefetch={false}>
-                          <Sparkles className="size-4" />
-                          View plans
-                        </Link>
-                      </Button>
-                    </div>
-                  ) : (
-                    <Sheet>
-                      <SheetTrigger
-                        type="button"
-                        className={cn(
-                          buttonVariants(),
-                          "w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]",
-                        )}
-                      >
-                        <Plus className="size-4" />
-                        Create challenge
-                      </SheetTrigger>
-                      <SheetContent className="overflow-y-auto sm:max-w-lg">
-                        <SheetHeader>
-                          <SheetTitle>Create challenge</SheetTitle>
-                          <SheetDescription>
-                            Start with a template, then invite friends from the event page.
-                          </SheetDescription>
-                        </SheetHeader>
-                        <form action={createChallengeAction} className="grid gap-4 px-4 pb-4">
-                          <BuilderStep
-                            number="1"
-                            title="Format"
-                            detail="Choose the measured outcome and automatic scoring rule."
-                          />
-                          <label className="grid gap-2 text-sm font-medium">
-                            <span>Template</span>
-                            <Select name="templateId" defaultValue={data.templates[0]?.id}>
-                              <SelectTrigger
-                                className="h-10 w-full"
-                                aria-label="Challenge template"
-                              >
-                                <SelectValue placeholder="Select a template" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {data.templates.map((template) => (
-                                  <SelectItem key={template.id} value={template.id}>
-                                    {template.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </label>
-                          <label className="grid gap-2 text-sm font-medium">
-                            <span>Title</span>
-                            <Input
-                              name="title"
-                              placeholder="May Wedge Control Challenge"
-                              className="h-10 rounded-xl bg-background"
-                              required
+                      </div>
+                    ) : (
+                      <Sheet>
+                        <SheetTrigger
+                          type="button"
+                          className={cn(buttonVariants(), "w-full rounded-lg")}
+                        >
+                          <Plus className="size-4" />
+                          Create challenge
+                        </SheetTrigger>
+                        <SheetContent className="overflow-y-auto sm:max-w-lg">
+                          <SheetHeader>
+                            <SheetTitle>Create challenge</SheetTitle>
+                            <SheetDescription>
+                              Start with a template, then invite friends from the event page.
+                            </SheetDescription>
+                          </SheetHeader>
+                          <form action={createChallengeAction} className="grid gap-4 px-4 pb-4">
+                            <BuilderStep
+                              number="1"
+                              title="Format"
+                              detail="Choose the measured outcome and automatic scoring rule."
                             />
-                          </label>
-                          <label className="grid gap-2 text-sm font-medium">
-                            <span>Description</span>
-                            <Textarea
-                              name="description"
-                              rows={3}
-                              className="rounded-lg border bg-background px-3 py-2 text-sm"
-                            />
-                          </label>
-                          <BuilderStep
-                            number="2"
-                            title="Audience"
-                            detail="Choose discovery without exposing exact shot rows."
-                          />
-                          <label className="grid gap-2 text-sm font-medium">
-                            <span>Visibility</span>
-                            <Select name="visibility" defaultValue="friends">
-                              <SelectTrigger
-                                className="h-10 w-full"
-                                aria-label="Challenge visibility"
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {socialVisibilityOptions.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {titleCase(option)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </label>
-                          <BuilderStep
-                            number="3"
-                            title="Evidence window"
-                            detail="Only qualifying imports recorded during this window enter the board."
-                          />
-                          <div className="grid gap-4 sm:grid-cols-2">
                             <label className="grid gap-2 text-sm font-medium">
-                              <span>Starts</span>
+                              <span>Template</span>
+                              <Select name="templateId" defaultValue={data.templates[0]?.id}>
+                                <SelectTrigger
+                                  className="h-10 w-full"
+                                  aria-label="Challenge template"
+                                >
+                                  <SelectValue placeholder="Select a template" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {data.templates.map((template) => (
+                                    <SelectItem key={template.id} value={template.id}>
+                                      {template.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </label>
+                            <label className="grid gap-2 text-sm font-medium">
+                              <span>Title</span>
                               <Input
-                                name="startsAt"
-                                type="date"
+                                name="title"
+                                placeholder="May Wedge Control Challenge"
                                 className="h-10 rounded-xl bg-background"
+                                required
                               />
                             </label>
                             <label className="grid gap-2 text-sm font-medium">
-                              <span>Ends</span>
-                              <Input
-                                name="endsAt"
-                                type="date"
-                                className="h-10 rounded-xl bg-background"
+                              <span>Description</span>
+                              <Textarea
+                                name="description"
+                                rows={3}
+                                className="rounded-lg border bg-background px-3 py-2 text-sm"
                               />
                             </label>
-                          </div>
-                          <ChallengeEligibilityPreview />
-                          <Button type="submit" className="rounded-lg">
-                            <Plus className="size-4" />
-                            Create
-                          </Button>
-                        </form>
-                      </SheetContent>
-                    </Sheet>
-                  )}
-                </CardContent>
-              </DataPanel>
-            </div>
-          </section>
-        </div>
-      </DesktopWorkbenchLayout>
+                            <BuilderStep
+                              number="2"
+                              title="Audience"
+                              detail="Choose discovery without exposing exact shot rows."
+                            />
+                            <label className="grid gap-2 text-sm font-medium">
+                              <span>Visibility</span>
+                              <Select name="visibility" defaultValue="friends">
+                                <SelectTrigger
+                                  className="h-10 w-full"
+                                  aria-label="Challenge visibility"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {socialVisibilityOptions.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {titleCase(option)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </label>
+                            <BuilderStep
+                              number="3"
+                              title="Evidence window"
+                              detail="Only qualifying imports recorded during this window enter the board."
+                            />
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <label className="grid gap-2 text-sm font-medium">
+                                <span>Starts</span>
+                                <Input
+                                  name="startsAt"
+                                  type="date"
+                                  className="h-10 rounded-xl bg-background"
+                                />
+                              </label>
+                              <label className="grid gap-2 text-sm font-medium">
+                                <span>Ends</span>
+                                <Input
+                                  name="endsAt"
+                                  type="date"
+                                  className="h-10 rounded-xl bg-background"
+                                />
+                              </label>
+                            </div>
+                            <ChallengeEligibilityPreview />
+                            <Button type="submit" className="rounded-lg">
+                              <Plus className="size-4" />
+                              Create
+                            </Button>
+                          </form>
+                        </SheetContent>
+                      </Sheet>
+                    )}
+                  </CardContent>
+                </DataPanel>
+              </div>
+            </section>
+          </>
+        </DesktopWorkbenchLayout>
+      ) : null}
     </PageShell>
   );
 }
@@ -814,13 +816,15 @@ function ChallengeEligibilityPreview() {
   );
 }
 
-function ChallengeBoardTable({
+async function ChallengeBoardTable({
   activeTab,
   rows,
 }: {
   activeTab: ChallengeHubTab;
   rows: ChallengeBoardRow[];
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
     <section
       id="challenge-board-table"
@@ -859,11 +863,11 @@ function ChallengeBoardTable({
             Challenge board table showing board, status, visibility, template, event window, player
             count, leader, proof label and action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
             <TableRow>
               <TableHead
                 data-column="board"
-                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-72 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
               >
                 Board
               </TableHead>
@@ -885,7 +889,7 @@ function ChallengeBoardTable({
                 <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="board"
-                    className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-72 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     <ChallengeBoardTitle row={row} />
                   </TableCell>
@@ -949,17 +953,29 @@ function ChallengeBoardFilterTabs({ activeTab }: { activeTab: ChallengeHubTab })
   ];
 
   return (
-    <Tabs value={activeTab} aria-label="Challenge board views" data-challenge-section-tabs>
-      <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
-        {tabs.map((tab) => (
-          <TabsTrigger key={tab.key} value={tab.key} asChild>
-            <Link href={tab.href} prefetch={false}>
+    <ButtonGroup
+      aria-label="Challenge board views"
+      className="max-w-full justify-start overflow-x-auto"
+      data-challenge-section-tabs
+    >
+      {tabs.map((tab) => {
+        const active = tab.key === activeTab;
+
+        return (
+          <Button
+            key={tab.key}
+            asChild
+            size="sm"
+            variant={active ? "secondary" : "outline"}
+            className="whitespace-nowrap"
+          >
+            <Link href={tab.href} prefetch={false} aria-current={active ? "page" : undefined}>
               {tab.label}
             </Link>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+          </Button>
+        );
+      })}
+    </ButtonGroup>
   );
 }
 
@@ -980,7 +996,7 @@ function ChallengeBoardTitle({ row }: { row: ChallengeBoardRow }) {
       <Link
         href={`/challenges/${row.challenge.id}`}
         prefetch={false}
-        className="font-semibold text-emerald-700 hover:underline"
+        className="font-semibold text-primary hover:underline"
       >
         {row.challenge.title}
       </Link>
@@ -1350,7 +1366,7 @@ function MobileDailyCoachDrills({
       description="Coach-generated shot-count challenges refresh daily and award XP when today’s imports prove completion or a win."
       action={
         <Button asChild variant="outline" size="sm" className="rounded-full">
-          <Link href="/coach#more-drills" prefetch={false}>
+          <Link href="/practice?intent=latest_weakness" prefetch={false}>
             <Brain className="size-4" />
             Coach
           </Link>
@@ -1373,34 +1389,34 @@ function MobileDailyCoachDrills({
           return (
             <Link
               key={challenge.id}
-              href="/coach#more-drills"
+              href="/practice?intent=latest_weakness"
               prefetch={false}
-              className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 text-[#050505]"
+              className="grid gap-3 rounded-lg border bg-card p-3 text-foreground"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#0B7A3B]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                     {challenge.clubName} · {challenge.issueLabel}
                   </p>
                   <p className="mt-1 font-semibold">{challenge.title}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-[#6B7280]">
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                     {challenge.winCondition}
                   </p>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#111827] px-2.5 py-1 text-xs font-semibold text-white">
-                  <Zap className="size-3 text-emerald-300" />+{challenge.completeXp}/
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background">
+                  <Zap className="size-3 text-background" />+{challenge.completeXp}/
                   {challenge.winXp}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-lg bg-[#F5F6F4] px-3 py-2">
-                  <p className="text-xs text-[#6B7280]">Uploaded today</p>
+                <div className="rounded-lg bg-muted/55 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Uploaded today</p>
                   <p className="font-semibold">
                     {status.uploadedShotCount}/{status.completionTarget}
                   </p>
                 </div>
-                <div className="rounded-lg bg-[#F5F6F4] px-3 py-2">
-                  <p className="text-xs text-[#6B7280]">Win progress</p>
+                <div className="rounded-lg bg-muted/55 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">Win progress</p>
                   <p className="font-semibold">
                     {status.winCount}/{status.winTarget}
                   </p>
@@ -1410,7 +1426,7 @@ function MobileDailyCoachDrills({
           );
         })
       ) : (
-        <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+        <div className="rounded-lg border border-dashed bg-card p-4 text-sm text-muted-foreground">
           Import at least three clean shots with one club to generate daily coach XP drills.
         </div>
       )}
@@ -1448,7 +1464,7 @@ function ChallengeGrid({
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {challenges.map((challenge) => (
-        <Card key={challenge.id} className="premium-card" size="sm">
+        <Card key={challenge.id} className="premium-card" size="sm" data-challenge-card>
           {!challenge.viewerJoined ? (
             <div
               data-media-container
@@ -1493,7 +1509,7 @@ function ChallengeGrid({
               </div>
             ) : null}
             {challenge.leader ? (
-              <div className="rounded-lg border bg-white p-3 text-sm">
+              <div className="rounded-lg border bg-card p-3 text-sm">
                 <p className="font-medium">Leader: {challenge.leader.displayName}</p>
                 <p className="text-muted-foreground">
                   {challenge.leader.scoreLabel} · {challenge.leader.verificationLabel}

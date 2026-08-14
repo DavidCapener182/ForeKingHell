@@ -5,12 +5,14 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/providers/page.tsx"), "utf8");
 
 describe("providers desktop workbench", () => {
-  it("uses real provider evidence in a dedicated native mobile console", () => {
-    expect(source).toContain("MobileProviderConsole");
-    expect(source).toContain("MobileProviderRows");
-    expect(source).toContain("MobileProviderSessionRows");
-    expect(source).toContain("IOSDisclosureGroup");
-    expect(source).toContain('className="hidden lg:grid"');
+  it("keeps the desktop-only provider console free of an obsolete companion tree", () => {
+    expect(source).not.toContain("MobileProviderConsole");
+    expect(source).not.toContain("MobileProviderRows");
+    expect(source).not.toContain("MobileProviderSessionRows");
+    expect(source).not.toContain("IOSDisclosureGroup");
+    expect(source).not.toContain("MobileAppShell");
+    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="providers">');
     expect(source).not.toContain("0 blocking failures");
     expect(source).toContain("No import jobs observed");
   });
@@ -41,6 +43,24 @@ describe("providers desktop workbench", () => {
     }
   });
 
+  it("uses semantic theme tokens for the provider table and primary action", () => {
+    expect(source).toContain("[&_th]:bg-muted");
+    expect(source).toContain("min-w-56 bg-muted");
+    expect(source).toContain("min-w-56 bg-card font-medium");
+    expect(source).toContain('<Database className="size-4 text-primary"');
+
+    for (const hardCodedToken of [
+      "bg-white",
+      "text-sky-",
+      "text-amber-",
+      "bg-[#",
+      "text-[#",
+      "border-[#",
+    ]) {
+      expect(source).not.toContain(hardCodedToken);
+    }
+  });
+
   it("shows provider health with operational adapter statuses", () => {
     expect(source).toContain("Rapsodo is live");
     expect(source).toContain("Square is beta");
@@ -64,6 +84,8 @@ describe("providers desktop workbench", () => {
     expect(source).toContain("OperationStepper");
     expect(source).toContain("StatusTimeline");
     expect(source).toContain("AppEmptyState");
+    expect(source).toContain("defaultValue={activeTab}");
+    expect(source).toContain('href: "/providers?tab=diagnostics#provider-jobs"');
   });
 
   it("does not add the contextual AI rail to the provider console", () => {

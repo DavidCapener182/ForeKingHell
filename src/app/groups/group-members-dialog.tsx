@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Users } from "lucide-react";
 
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,9 +82,16 @@ export function GroupMembersDialog({ members }: { members: Member[] }) {
               </Item>
             ))
           ) : (
-            <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-              <Users className="mx-auto mb-2 size-5" /> No active members yet.
-            </div>
+            <AppEmptyState
+              icon={<Users />}
+              title="No active members yet"
+              description="Invite the first golfer to start the roster."
+              primaryAction={
+                <Button asChild variant="outline">
+                  <Link href="/groups">Open groups</Link>
+                </Button>
+              }
+            />
           )}
         </div>
       </DialogContent>

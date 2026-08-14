@@ -1,11 +1,13 @@
-import { GolfRouteLoading } from "@/components/golf-loading";
+import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
+import { PageShell } from "@/components/premium";
 
 export default function CompareLoading() {
   return (
-    <GolfRouteLoading
-      title="Preparing comparison"
-      subtitle="Loading baseline choices, comparison periods, club filters, and the evidence needed to explain what changed."
-      variant="compare"
-    />
+    <PageShell>
+      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
+        <AppLoadingSkeleton variant="answer" />
+        <AppLoadingSkeleton variant="table" rows={5} />
+      </div>
+    </PageShell>
   );
 }

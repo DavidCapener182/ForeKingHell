@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 
 import type { RoundMapHole, RoundMapShot } from "@/app/rounds/[sessionId]/round-shot-map";
+import { Spinner } from "@/components/ui/spinner";
 
 const RoundShotMap = dynamic(
   () => import("@/app/rounds/[sessionId]/round-shot-map").then((module) => module.RoundShotMap),
@@ -13,7 +14,10 @@ const RoundShotMap = dynamic(
         className="grid min-h-[32rem] place-items-center rounded-xl bg-slate-950 px-6 text-center text-sm font-medium text-slate-300"
         role="status"
       >
-        Loading the interactive round map…
+        <span className="grid place-items-center gap-3">
+          <Spinner className="size-6 text-emerald-300" />
+          Loading the interactive round map…
+        </span>
       </div>
     ),
   },

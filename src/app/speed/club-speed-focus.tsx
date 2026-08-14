@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Gauge, Target, TrendingUp } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { calculateSpeedIndex, formatSpeed, formatSpeedCompact } from "@/lib/speed-training";
 import type { ClubSpeedRow, FutureBagProjectionRow, SpeedGoal } from "@/lib/speed-training-data";
 import { cn } from "@/lib/utils";
@@ -59,30 +59,33 @@ export function ClubSpeedFocus({
 
   return (
     <div className="grid gap-4 p-4">
-      <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Speed club focus">
-        {rows.map((row) => {
-          const key = clubRowKey(row);
-          const selected = key === clubRowKey(selectedRow);
+      <div className="overflow-x-auto pb-1">
+        <ToggleGroup
+          type="single"
+          value={clubRowKey(selectedRow)}
+          onValueChange={(value) => {
+            const nextRow = rows.find((row) => clubRowKey(row) === value);
 
-          return (
-            <Button
-              key={key}
-              type="button"
-              size="sm"
-              variant={selected ? "secondary" : "outline"}
-              aria-pressed={selected}
-              onClick={() => {
-                replaceSelectedClub(router, row.clubId);
-              }}
-              className={cn(
-                "max-w-[180px] justify-start overflow-hidden",
-                selected ? "border-emerald-300 bg-emerald-100 text-emerald-950" : "",
-              )}
+            if (nextRow) {
+              replaceSelectedClub(router, nextRow.clubId);
+            }
+          }}
+          variant="outline"
+          spacing={2}
+          aria-label="Speed club focus"
+          className="min-w-max"
+        >
+          {rows.map((row) => (
+            <ToggleGroupItem
+              key={clubRowKey(row)}
+              value={clubRowKey(row)}
+              aria-label={`Focus ${shortClubLabel(row)} speed evidence`}
+              className="h-8 max-w-[180px] justify-start overflow-hidden px-2.5 text-xs"
             >
               <span className="truncate">{shortClubLabel(row)}</span>
-            </Button>
-          );
-        })}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
@@ -92,7 +95,7 @@ export function ClubSpeedFocus({
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Selected club
               </p>
-              <h2 className="mt-1 truncate text-xl font-semibold tracking-normal text-slate-950">
+              <h2 className="mt-1 truncate text-xl font-semibold tracking-normal text-foreground">
                 {selectedRow.clubLabel}
               </h2>
             </div>
@@ -171,10 +174,10 @@ export function ClubSpeedFocus({
           </div>
         </div>
 
-        <div className="grid gap-3 rounded-lg border border-border/70 bg-white/65 p-4">
+        <div className="grid gap-3 rounded-lg border border-border/70 bg-card/65 p-4">
           <div className="flex items-center gap-2">
             <Gauge className="size-4 text-primary" aria-hidden="true" />
-            <p className="text-sm font-semibold text-slate-950">Club readout</p>
+            <p className="text-sm font-semibold text-foreground">Club readout</p>
           </div>
           <div className="grid gap-2">
             <MiniPair label="No-ball PB" value={formatSpeedCompact(selectedRow.trainingPbMph)} />
@@ -188,7 +191,7 @@ export function ClubSpeedFocus({
               value={projection ? `${projection.currentCarryYd} yd` : "No stock"}
             />
           </div>
-          <div className="rounded-lg border border-border/70 bg-white/70 p-3 text-sm leading-6 text-muted-foreground">
+          <div className="rounded-lg border border-border/70 bg-card/70 p-3 text-sm leading-6 text-muted-foreground">
             {clubInsight(selectedRow, target, carry)}
           </div>
         </div>
@@ -209,18 +212,21 @@ function FocusMetric({
   tone: Tone;
 }) {
   return (
-    <div className="rounded-lg border border-border/70 bg-white/65 p-3">
+    <div className="rounded-lg border border-border/70 bg-card/65 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {label}
         </p>
         {tone === "green" ? (
-          <TrendingUp className="size-3.5 text-emerald-700" aria-hidden="true" />
+          <TrendingUp
+            className="size-3.5 text-[var(--status-success-foreground)]"
+            aria-hidden="true"
+          />
         ) : tone === "amber" ? (
-          <Target className="size-3.5 text-amber-700" aria-hidden="true" />
+          <Target className="size-3.5 text-[var(--status-warning-foreground)]" aria-hidden="true" />
         ) : null}
       </div>
-      <p className="mt-1 text-lg font-semibold tabular-nums text-slate-950">{value}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{value}</p>
       <p className={cn("mt-1 text-xs leading-5", metricDetailClass(tone))}>{detail}</p>
     </div>
   );
@@ -230,7 +236,7 @@ function MiniPair({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm">
       <span className="truncate text-muted-foreground">{label}</span>
-      <span className="font-semibold tabular-nums text-slate-950">{value}</span>
+      <span className="font-semibold tabular-nums text-foreground">{value}</span>
     </div>
   );
 }
@@ -554,24 +560,24 @@ function transferTone(status: string): Tone {
 function transferToneClass(status: string) {
   switch (transferTone(status)) {
     case "green":
-      return "bg-emerald-50 text-emerald-950 ring-emerald-200";
+      return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-[var(--status-success-border)]";
     case "sky":
-      return "bg-sky-50 text-sky-950 ring-sky-200";
+      return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] ring-[var(--status-information-border)]";
     case "amber":
-      return "bg-amber-50 text-amber-950 ring-amber-200";
+      return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] ring-[var(--status-warning-border)]";
     default:
-      return "bg-slate-50 text-slate-700 ring-slate-200";
+      return "bg-muted text-muted-foreground ring-border";
   }
 }
 
 function metricDetailClass(tone: Tone) {
   switch (tone) {
     case "green":
-      return "text-emerald-800";
+      return "text-[var(--status-success-foreground)]";
     case "sky":
-      return "text-sky-800";
+      return "text-[var(--status-information-foreground)]";
     case "amber":
-      return "text-amber-800";
+      return "text-[var(--status-warning-foreground)]";
     default:
       return "text-muted-foreground";
   }

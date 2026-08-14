@@ -6,28 +6,14 @@ import {
 } from "@/app/social-intelligence/actions";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import {
-  DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import {
-  BottomSheet,
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileStatusAction,
-  MobileTopBar,
-} from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -45,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { getSocialIntelligencePageData } from "@/lib/social-intelligence";
 import { socialVisibilityOptions } from "@/lib/social";
 
@@ -67,8 +54,6 @@ type SocialSafetyRow = {
   detail: string;
   createdAt: Date;
 };
-
-type SocialIntelligenceData = Awaited<ReturnType<typeof getSocialIntelligencePageData>>;
 
 const socialSafetyColumns: DesktopWorkbenchColumn[] = [
   { id: "source", label: "Source", locked: true },
@@ -129,24 +114,7 @@ export default async function SocialIntelligencePage() {
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar title="Recaps & Safety" />
-        <MobileRouteTabs group="social" activeKey="recaps" />
-        <MobileStatusAction
-          label="Visible safety records"
-          value={safetyRows.length}
-          detail={`${data.reports.length} ${data.reports.length === 1 ? "report" : "reports"} · ${data.moderation.length} ${data.moderation.length === 1 ? "moderation event" : "moderation events"}`}
-          action={
-            <BottomSheet label="Report" title="Report social content">
-              <SocialReportForm />
-            </BottomSheet>
-          }
-        />
-        <MobileSocialSafetyQueue rows={safetyRows} />
-        <MobileSocialRecaps summaries={data.summaries} />
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="social-intelligence" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="social-intelligence">
         <PageHeader
           eyebrow={<StatusPill tone="sky">Recaps and safety</StatusPill>}
           title="Recaps & Safety"
@@ -160,38 +128,44 @@ export default async function SocialIntelligencePage() {
 
         <section className="grid min-w-0 gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
           <section className="grid gap-4 lg:sticky lg:top-28">
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <Sparkles className="size-4 text-emerald-600" />
-                Generate summary
-              </p>
-              <div className="mt-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Sparkles className="size-4 text-primary" />
+                  Generate summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <GenerateSummaryForm />
-              </div>
-            </section>
+              </CardContent>
+            </Card>
 
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <Flag className="size-4 text-red-600" />
-                Report content
-              </p>
-              <div className="mt-3">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Flag className="size-4 text-destructive" />
+                  Report content
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <SocialReportForm />
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           </section>
 
           <section className="grid min-w-0 gap-4">
-            <section className="min-w-0 rounded-xl border bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold">Weekly and challenge recaps</p>
-              <div className="mt-4 grid gap-3">
+            <Card className="min-w-0">
+              <CardHeader>
+                <CardTitle className="text-sm">Weekly and challenge recaps</CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y">
                 {data.summaries.length === 0 ? (
                   <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
                     No summaries generated yet.
                   </p>
                 ) : (
                   data.summaries.map((summary) => (
-                    <article key={summary.id} className="rounded-xl border bg-slate-50 p-4">
+                    <article key={summary.id} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Badge variant="secondary">{label(summary.summaryType)}</Badge>
                         <Badge variant="outline">{summary.visibility}</Badge>
@@ -204,191 +178,14 @@ export default async function SocialIntelligencePage() {
                     </article>
                   ))
                 )}
-              </div>
-            </section>
+              </CardContent>
+            </Card>
 
             <SocialSafetyLedger rows={safetyRows} />
           </section>
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
-  );
-}
-
-function MobileSocialSafetyQueue({ rows }: { rows: SocialSafetyRow[] }) {
-  const primaryRows = rows.slice(0, 3);
-  const olderRows = rows.slice(3);
-
-  return (
-    <section className="grid gap-2" aria-label="Social safety queue">
-      <IOSSectionHeader
-        title="Safety queue"
-        description={
-          rows.length > 0
-            ? "Reports and moderation records visible to this account"
-            : "No reports or moderation records are visible"
-        }
-      />
-      <MobileSocialSafetyRows rows={primaryRows} />
-      {olderRows.length > 0 ? (
-        <IOSDisclosureGroup
-          label="Older social safety records"
-          items={[
-            {
-              value: "older-safety-records",
-              title: "Older safety records",
-              summary: olderRows.length,
-              description: "Earlier reports and moderation events",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: <MobileSocialSafetyRows rows={olderRows} />,
-            },
-          ]}
-        />
-      ) : null}
-      {rows.length > 0 ? <MobileSafetyTechnicalDetails rows={rows} /> : null}
-    </section>
-  );
-}
-
-function MobileSocialSafetyRows({ rows }: { rows: SocialSafetyRow[] }) {
-  return (
-    <IOSGroupedList label="Visible social safety records">
-      {rows.length > 0 ? (
-        rows.map((row) => (
-          <IOSListRow
-            key={row.id}
-            label={row.reason}
-            value={row.status}
-            detail={
-              <>
-                <span>
-                  {row.source} · {dateFormatter.format(row.createdAt)}
-                </span>
-                {row.detail ? <span className="mt-0.5 block">{row.detail}</span> : null}
-              </>
-            }
-            status={
-              <IOSInlineStatus
-                label={row.severity}
-                tone={
-                  row.severity === "High"
-                    ? "critical"
-                    : row.severity === "Medium" || row.severity === "Reported"
-                      ? "attention"
-                      : "info"
-                }
-              />
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow
-          label="No safety records"
-          detail="Reports created by this account and visible moderation events will appear here."
-          status={<IOSInlineStatus label="No action needed" tone="positive" />}
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function MobileSafetyTechnicalDetails({ rows }: { rows: SocialSafetyRow[] }) {
-  return (
-    <IOSDisclosureGroup
-      label="Social safety record identifiers"
-      items={[
-        {
-          value: "safety-record-identifiers",
-          title: "Record identifiers",
-          summary: rows.length,
-          description: "Target IDs for support or moderation review",
-          contentClassName: "px-0 pb-0 pt-0",
-          content: (
-            <IOSGroupedList label="Safety record target IDs" className="border-0">
-              {rows.map((row) => (
-                <IOSListRow
-                  key={row.id}
-                  label={row.source}
-                  value={row.status}
-                  detail={<span className="[overflow-wrap:anywhere]">{row.target}</span>}
-                />
-              ))}
-            </IOSGroupedList>
-          ),
-        },
-      ]}
-    />
-  );
-}
-
-function MobileSocialRecaps({ summaries }: { summaries: SocialIntelligenceData["summaries"] }) {
-  const latest = summaries[0] ?? null;
-  const older = summaries.slice(1);
-
-  return (
-    <section className="grid gap-2" aria-label="Social recaps">
-      <IOSSectionHeader
-        title="Recaps"
-        description={`${summaries.length} generated ${summaries.length === 1 ? "summary" : "summaries"}`}
-        action={
-          <BottomSheet label="Generate" title="Generate a recap">
-            <GenerateSummaryForm />
-          </BottomSheet>
-        }
-      />
-      <IOSGroupedList label="Latest social recap">
-        {latest ? (
-          <IOSListRow
-            label={latest.headline}
-            value={label(latest.visibility)}
-            detail={latest.body}
-            status={
-              <IOSInlineStatus
-                label={`${label(latest.summaryType)} · ${dateFormatter.format(latest.createdAt)}`}
-                tone="info"
-              />
-            }
-          />
-        ) : (
-          <IOSListRow
-            label="No recap yet"
-            detail="Generate a private recap when you want a concise summary of real activity."
-          />
-        )}
-      </IOSGroupedList>
-      {older.length > 0 ? (
-        <IOSDisclosureGroup
-          label="Earlier social recaps"
-          items={[
-            {
-              value: "earlier-recaps",
-              title: "Earlier recaps",
-              summary: older.length,
-              description: "Previously generated summaries",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <IOSGroupedList label="Earlier generated recaps" className="border-0">
-                  {older.map((summary) => (
-                    <IOSListRow
-                      key={summary.id}
-                      label={summary.headline}
-                      value={label(summary.visibility)}
-                      detail={summary.body}
-                      status={
-                        <IOSInlineStatus
-                          label={`${label(summary.summaryType)} · ${dateFormatter.format(summary.createdAt)}`}
-                          tone="neutral"
-                        />
-                      }
-                    />
-                  ))}
-                </IOSGroupedList>
-              ),
-            },
-          ]}
-        />
-      ) : null}
-    </section>
   );
 }
 
@@ -424,7 +221,7 @@ function GenerateSummaryForm() {
           </SelectContent>
         </Select>
       </label>
-      <Button type="submit" className="min-h-11 rounded-xl bg-[#111827] text-white">
+      <Button type="submit" className="min-h-11 rounded-xl">
         <Brain className="size-4" />
         Generate
       </Button>
@@ -466,7 +263,7 @@ function SocialReportForm() {
       </label>
       <label className="grid gap-1 text-sm font-medium">
         Details <span className="font-normal text-muted-foreground">(optional)</span>
-        <textarea
+        <Textarea
           name="details"
           rows={4}
           className="rounded-xl border bg-background px-3 py-2 text-base"
@@ -484,12 +281,14 @@ function SocialReportForm() {
   );
 }
 
-function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
+async function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
     <section
       id="social-safety-ledger"
       data-workbench-scope="social-safety"
-      className="min-w-0 overflow-hidden rounded-xl border bg-white p-4 shadow-sm"
+      className="grid min-w-0 gap-3"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -510,7 +309,6 @@ function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
         suggestedViews={socialSafetySuggestedViews}
         exportTableId="social-safety"
         exportFileName="forekinghell-social-safety.csv"
-        className="my-3"
       />
 
       <DataTableFrame mainTable mainTableLabel="Social safety queue table" stickyFirstColumn>
@@ -519,11 +317,11 @@ function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
             Social safety queue table showing source, severity, status, reason, target, detail and
             created date.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="source"
-                className="sticky left-0 z-20 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-48 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Source
               </TableHead>
@@ -541,7 +339,7 @@ function SocialSafetyLedger({ rows }: { rows: SocialSafetyRow[] }) {
                 <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="source"
-                    className="sticky left-0 z-10 min-w-48 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     {row.source}
                   </TableCell>

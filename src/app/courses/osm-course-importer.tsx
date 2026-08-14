@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, MapPinned, Search } from "lucide-react";
+import { AlertCircle, Info, Loader2, MapPinned, Search, TriangleAlert } from "lucide-react";
 
 import { createOsmCourseAction } from "@/app/courses/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import type { OsmCourseResult, OsmHoleGeometry } from "@/lib/osm-course-search";
 
 type SearchState =
@@ -82,9 +84,6 @@ export function OsmCourseImporter() {
     }
   }
 
-  const holes = holeState.holes;
-  const totalYards = holes.reduce((total, hole) => total + hole.yards, 0);
-
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
@@ -100,12 +99,12 @@ export function OsmCourseImporter() {
               }
             }}
             placeholder="Bootle Golf Course"
-            className="h-11 rounded-xl bg-white"
+            className="h-11 bg-background"
           />
         </label>
         <Button
           type="button"
-          className="h-11 self-end rounded-xl bg-[#111827] text-white"
+          className="h-11 self-end"
           disabled={searchState.status === "loading"}
           onClick={() => void searchCourses()}
         >
@@ -119,111 +118,148 @@ export function OsmCourseImporter() {
       </div>
 
       {searchState.status === "error" ? (
-        <p className="text-sm text-destructive">{searchState.message}</p>
+        <Alert variant="destructive" data-osm-search-feedback>
+          <AlertCircle className="size-4" />
+          <AlertTitle>OpenStreetMap search failed</AlertTitle>
+          <AlertDescription>{searchState.message}</AlertDescription>
+        </Alert>
       ) : null}
       {searchState.status === "idle" && searchState.message ? (
-        <p className="text-sm text-muted-foreground">{searchState.message}</p>
+        <Alert data-osm-search-feedback>
+          <Info className="size-4" />
+          <AlertTitle>Search needed</AlertTitle>
+          <AlertDescription>{searchState.message}</AlertDescription>
+        </Alert>
       ) : null}
 
       {searchState.status === "success" ? (
         <div className="grid gap-2">
           {searchState.results.length > 0 ? (
             searchState.results.map((course) => (
-              <button
+              <Item
                 key={`${course.osmType}-${course.osmId}`}
-                type="button"
-                onClick={() => void selectCourse(course)}
-                className="min-h-11 rounded-xl border bg-white px-3 py-2 text-left text-sm transition hover:bg-muted motion-reduce:transition-none"
+                variant={selected?.osmId === course.osmId ? "muted" : "outline"}
+                className="items-start"
+                data-osm-course-result
               >
-                <span className="flex items-start justify-between gap-3">
-                  <span>
-                    <span className="block font-medium">{course.name}</span>
-                    <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
-                      {course.displayName}
-                    </span>
-                  </span>
+                <ItemContent>
+                  <ItemTitle>{course.name}</ItemTitle>
+                  <ItemDescription className="whitespace-normal [overflow-wrap:anywhere]">
+                    {course.displayName}
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions className="flex-col items-end sm:flex-row sm:items-center">
                   <Badge variant={selected?.osmId === course.osmId ? "default" : "outline"}>
                     {course.osmType}
                   </Badge>
-                </span>
-              </button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={selected?.osmId === course.osmId ? "secondary" : "outline"}
+                    onClick={() => void selectCourse(course)}
+                  >
+                    {selected?.osmId === course.osmId ? "Selected" : "Review"}
+                  </Button>
+                </ItemActions>
+              </Item>
             ))
           ) : (
-            <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              No OpenStreetMap courses matched that search.
-            </div>
+            <Alert data-osm-search-feedback>
+              <Info className="size-4" />
+              <AlertTitle>No courses found</AlertTitle>
+              <AlertDescription>No OpenStreetMap courses matched that search.</AlertDescription>
+            </Alert>
           )}
         </div>
       ) : null}
 
-      {selected ? (
-        <div className="rounded-2xl border bg-white/90 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold">{selected.name}</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">{selected.displayName}</p>
-            </div>
-            <MapPinned className="size-5 text-emerald-600" />
-          </div>
-          <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-            <SmallMetric
-              label="Holes found"
-              value={holeState.status === "loading" ? "Loading" : String(holes.length)}
-            />
-            <SmallMetric
-              label="Yardage"
-              value={totalYards > 0 ? `${totalYards.toLocaleString("en-GB")} yd` : "--"}
-            />
-            <SmallMetric label="Source" value="OSM + Overpass" />
-          </div>
-          {holeState.status === "error" ? (
-            <p className="mt-3 text-sm text-destructive">{holeState.message}</p>
-          ) : null}
-          {holeState.status === "success" && holes.length === 0 ? (
-            <p className="mt-3 text-sm text-amber-700">
-              No tagged golf holes were found nearby. You can still import the course shell and add
-              holes manually.
-            </p>
-          ) : null}
-          <form
-            action={createOsmCourseAction}
-            className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
-          >
-            <input type="hidden" name="name" value={selected.name} />
-            <input type="hidden" name="country" value={selected.country ?? ""} />
-            <input type="hidden" name="osmType" value={selected.osmType} />
-            <input type="hidden" name="osmId" value={selected.osmId} />
-            <input type="hidden" name="lat" value={selected.lat} />
-            <input type="hidden" name="lon" value={selected.lon} />
-            <input type="hidden" name="holesJson" value={JSON.stringify(holes)} />
-            <label className="grid gap-2 text-sm font-medium">
-              <span>Tee set name</span>
-              <Input
-                name="teeName"
-                defaultValue="OpenStreetMap"
-                className="min-h-11 rounded-xl bg-white"
-              />
-            </label>
-            <Button
-              type="submit"
-              disabled={holeState.status === "loading"}
-              className="min-h-11 rounded-xl bg-[#111827] text-white"
-            >
-              <MapPinned className="size-4" />
-              Import course
-            </Button>
-          </form>
-        </div>
-      ) : null}
+      {selected ? <OsmCourseSelection course={selected} holeState={holeState} /> : null}
     </div>
+  );
+}
+
+export function OsmCourseSelection({
+  course,
+  holeState,
+}: {
+  course: OsmCourseResult;
+  holeState: HoleState;
+}) {
+  const holes = holeState.holes;
+  const totalYards = holes.reduce((total, hole) => total + hole.yards, 0);
+
+  return (
+    <section className="grid gap-4 border-t border-border pt-4" data-osm-course-selection>
+      <Item variant="muted" className="items-start">
+        <ItemContent>
+          <ItemTitle>{course.name}</ItemTitle>
+          <ItemDescription className="whitespace-normal leading-6">
+            {course.displayName}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <MapPinned className="size-5 text-primary" aria-hidden />
+        </ItemActions>
+      </Item>
+      <div className="grid gap-2 text-sm sm:grid-cols-3">
+        <SmallMetric
+          label="Holes found"
+          value={holeState.status === "loading" ? "Loading" : String(holes.length)}
+        />
+        <SmallMetric
+          label="Yardage"
+          value={totalYards > 0 ? `${totalYards.toLocaleString("en-GB")} yd` : "--"}
+        />
+        <SmallMetric label="Source" value="OSM + Overpass" />
+      </div>
+      {holeState.status === "error" ? (
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertTitle>Hole lookup failed</AlertTitle>
+          <AlertDescription>{holeState.message}</AlertDescription>
+        </Alert>
+      ) : null}
+      {holeState.status === "success" && holes.length === 0 ? (
+        <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]">
+          <TriangleAlert className="size-4" />
+          <AlertTitle>No tagged holes found</AlertTitle>
+          <AlertDescription className="text-current/80">
+            No tagged golf holes were found nearby. You can still import the course shell and add
+            holes manually.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <form
+        action={createOsmCourseAction}
+        className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
+      >
+        <input type="hidden" name="name" value={course.name} />
+        <input type="hidden" name="country" value={course.country ?? ""} />
+        <input type="hidden" name="osmType" value={course.osmType} />
+        <input type="hidden" name="osmId" value={course.osmId} />
+        <input type="hidden" name="lat" value={course.lat} />
+        <input type="hidden" name="lon" value={course.lon} />
+        <input type="hidden" name="holesJson" value={JSON.stringify(holes)} />
+        <label className="grid gap-2 text-sm font-medium">
+          <span>Tee set name</span>
+          <Input name="teeName" defaultValue="OpenStreetMap" className="min-h-11 bg-background" />
+        </label>
+        <Button type="submit" disabled={holeState.status === "loading"} className="min-h-11">
+          <MapPinned className="size-4" />
+          Import course
+        </Button>
+      </form>
+    </section>
   );
 }
 
 function SmallMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-white px-3 py-2">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-semibold">{value}</p>
-    </div>
+    <Item variant="muted" size="sm" className="items-start">
+      <ItemContent>
+        <ItemDescription>{label}</ItemDescription>
+        <ItemTitle>{value}</ItemTitle>
+      </ItemContent>
+    </Item>
   );
 }

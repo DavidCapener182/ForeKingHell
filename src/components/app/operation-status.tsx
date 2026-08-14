@@ -1,7 +1,8 @@
-import { AlertCircle, CheckCircle2, LoaderCircle, TriangleAlert } from "lucide-react";
+import { AlertCircle, CheckCircle2, TriangleAlert } from "lucide-react";
 
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export function OperationStatus({
@@ -20,29 +21,26 @@ export function OperationStatus({
   className?: string;
 }) {
   const Icon =
-    status === "working"
-      ? LoaderCircle
-      : status === "success"
-        ? CheckCircle2
-        : status === "warning"
-          ? TriangleAlert
-          : AlertCircle;
+    status === "success" ? CheckCircle2 : status === "warning" ? TriangleAlert : AlertCircle;
 
   return (
     <Alert
       variant={status === "error" ? "destructive" : "default"}
       className={cn(
-        status === "success" && "border-primary/25 bg-primary/5",
-        status === "warning" && "border-amber-500/30 bg-amber-500/5",
+        status === "success" &&
+          "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+        status === "warning" &&
+          "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
         className,
       )}
       aria-live={status === "error" ? "assertive" : "polite"}
       data-operation-status={status}
     >
-      <Icon
-        className={cn("size-4", status === "working" && "animate-spin motion-reduce:animate-none")}
-        aria-hidden
-      />
+      {status === "working" ? (
+        <Spinner className="size-4" />
+      ) : (
+        <Icon className="size-4" aria-hidden />
+      )}
       <AlertTitle>{title}</AlertTitle>
       {description || typeof progress === "number" ? (
         <AlertDescription className="grid gap-2">

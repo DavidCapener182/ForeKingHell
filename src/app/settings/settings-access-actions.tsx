@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { collaborationRoles } from "@/lib/collaboration";
+import { collaborationRoles } from "@/lib/collaboration-roles";
 
 export function SettingsInvitationDialog() {
   return (

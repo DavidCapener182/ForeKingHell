@@ -878,7 +878,7 @@ export function DesktopWorkbenchChrome({
             {shortcutRows.map((shortcut) => (
               <div
                 key={`${shortcut.action}-${shortcut.keys.join("")}`}
-                className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] items-center gap-3 rounded-lg border border-border bg-white/70 px-3 py-2"
+                className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] items-center gap-3 rounded-lg border border-border bg-card/70 px-3 py-2"
               >
                 <span className="flex flex-wrap gap-1">
                   {shortcut.keys.map((key) => (
@@ -1039,7 +1039,7 @@ function QuickLinkSection({
                 event.preventDefault();
                 onNavigate(link.href);
               }}
-              className="focus-aaa grid gap-0.5 rounded-lg border border-border bg-white/70 px-3 py-2 outline-none hover:border-emerald-300 hover:bg-white"
+              className="focus-aaa grid gap-0.5 rounded-lg border border-border bg-card/70 px-3 py-2 outline-none hover:border-primary/40 hover:bg-card"
             >
               <span className="truncate text-sm font-semibold">{link.title}</span>
               <span className="truncate text-xs text-muted-foreground">{link.detail}</span>
@@ -1079,9 +1079,9 @@ function AssistantPanel({
 }) {
   return (
     <>
-      <SheetHeader className="border-b border-border bg-[#FFFDF8] p-4 pr-12 text-left">
+      <SheetHeader className="border-b border-border bg-card p-4 pr-12 text-left">
         <div className="flex items-center gap-2">
-          <span className="grid size-9 place-items-center rounded-lg bg-emerald-900 text-white">
+          <span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
             <Bot className="size-4" aria-hidden />
           </span>
           <div className="min-w-0">
@@ -1104,9 +1104,9 @@ function AssistantPanel({
             {context.evidence.map((item) => (
               <div
                 key={item}
-                className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-border bg-white/72 px-3 py-2 text-sm"
+                className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-2 rounded-lg border border-border bg-card/70 px-3 py-2 text-sm"
               >
-                <Check className="mt-0.5 size-4 text-emerald-700" aria-hidden />
+                <Check className="mt-0.5 size-4 text-primary" aria-hidden />
                 <span>{item}</span>
               </div>
             ))}
@@ -1123,27 +1123,28 @@ function AssistantPanel({
                   key={prompt.label}
                   href={`/data-chat?prompt=${encodeURIComponent(prompt.prompt)}&source=${encodeURIComponent(pathname)}`}
                   prefetch={false}
-                  className="focus-aaa grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-white/72 px-3 py-2 outline-none hover:border-emerald-300 hover:bg-white"
+                  className="focus-aaa grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-card/70 px-3 py-2 outline-none hover:border-primary/40 hover:bg-card"
                 >
-                  <Icon className="size-4 text-emerald-700" aria-hidden />
+                  <Icon className="size-4 text-primary" aria-hidden />
                   <span className="text-sm font-semibold">{prompt.label}</span>
                   <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
                 </Link>
               );
             })}
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onSave}
               className={cn(
-                "focus-aaa grid min-h-12 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none",
+                "focus-aaa grid h-auto min-h-12 w-full grid-cols-[auto_minmax(0,1fr)] items-center justify-start gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold outline-none",
                 saved
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-                  : "border-border bg-white/72 hover:border-emerald-300 hover:bg-white",
+                  ? "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]"
+                  : "border-border bg-card/70 hover:border-primary/40 hover:bg-card",
               )}
             >
-              <Pin className="size-4 text-emerald-700" aria-hidden />
+              <Pin className="size-4 text-primary" aria-hidden />
               {saved ? "Insight saved" : "Save this insight"}
-            </button>
+            </Button>
           </section>
         </div>
       </ScrollArea>
@@ -1152,7 +1153,7 @@ function AssistantPanel({
 }
 
 function ShortcutKey({ children }: { children: ReactNode }) {
-  return <Kbd className="min-w-6 bg-white font-bold leading-4">{children}</Kbd>;
+  return <Kbd className="min-w-6 bg-card font-bold leading-4">{children}</Kbd>;
 }
 
 function buildCommandItems(

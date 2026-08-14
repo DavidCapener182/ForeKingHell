@@ -14,7 +14,6 @@ import {
 
 import {
   AdminMetric,
-  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -23,24 +22,18 @@ import {
   label,
   PlanBadge,
 } from "@/app/admin/admin-components";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { MobileStatusAction } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   Table,
@@ -132,23 +125,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   return (
     <PageShell>
-      <AdminMobileShell
-        title="Operations"
-        active="/admin"
-        status={params?.adminStatus}
-        error={params?.adminError}
-      >
-        <AdminMobileOverview data={data} operations={operations} />
-      </AdminMobileShell>
-
-      <div className="hidden gap-3 lg:grid">
+      <div className="grid gap-3">
         <AdminNav active="/admin" />
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
       <DesktopWorkbenchLayout
         scope="admin"
-        className="hidden lg:grid"
         railBreakpoint="wide"
         rail={
           <DesktopInsightRail
@@ -314,7 +297,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </p>
               ) : (
                 data.recentAuditRows.map((row) => (
-                  <div key={row.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                  <div key={row.id} className="rounded-xl bg-muted/55 px-3 py-2 text-sm">
                     <p className="font-medium">{label(row.action)}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {row.actorEmail ?? "System"} · {row.targetType ?? "target"} ·{" "}
@@ -331,231 +314,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   );
 }
 
-function AdminMobileOverview({
-  data,
-  operations,
-}: {
-  data: AdminOverviewData["data"];
-  operations: AdminOverviewData["operations"];
-}) {
-  const urgentCount =
-    data.metrics.openReports + operations.providerImportFailures + operations.billingFailures;
-  const primaryHref = data.metrics.openReports
-    ? "/admin/moderation"
-    : operations.providerImportFailures
-      ? "/providers#provider-jobs"
-      : operations.billingFailures
-        ? "/admin/billing"
-        : "/admin/system-checks";
-  const olderUsers = data.recentUsers.slice(5);
-
-  return (
-    <>
-      <MobileStatusAction
-        label="Needs attention"
-        value={urgentCount}
-        detail={
-          urgentCount > 0
-            ? `${data.metrics.openReports} reports · ${operations.providerImportFailures} provider failures · ${operations.billingFailures} billing failures`
-            : "No report, provider-import or billing failures are flagged"
-        }
-        action={
-          <Button asChild className="min-h-11">
-            <Link href={primaryHref}>{urgentCount > 0 ? "Review" : "Checks"}</Link>
-          </Button>
-        }
-      />
-
-      <section className="grid gap-2" aria-label="Admin operations queue">
-        <IOSSectionHeader
-          title="Operations queue"
-          description="Live rows that can require an owner or operator decision"
-        />
-        <AdminOperationsQueue data={data} operations={operations} />
-      </section>
-
-      <section className="grid gap-2" aria-label="Admin operating pages">
-        <IOSSectionHeader title="Run the platform" />
-        <IOSGroupedList label="Admin operating pages">
-          <IOSListRow
-            label="Users and access"
-            value={data.metrics.users}
-            detail={`${data.metrics.activeSubscriptions} active paid rows`}
-            href="/admin/users"
-            icon={UserRound}
-          />
-          <IOSListRow
-            label="Challenges"
-            value={data.metrics.challenges}
-            detail="Boards, entries, attempts and results"
-            href="/admin/challenges"
-            icon={Flag}
-          />
-          <IOSListRow
-            label="Partners"
-            value={operations.partnerOffers}
-            detail={`${operations.sponsors} sponsors`}
-            href="/partners"
-            icon={Zap}
-          />
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-label="Recent admin users">
-        <IOSSectionHeader
-          title="Recent users"
-          description={`${data.recentUsers.length} latest accounts`}
-        />
-        <MobileAdminOverviewUsers users={data.recentUsers.slice(0, 5)} />
-        {olderUsers.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More recent admin users"
-            items={[
-              {
-                value: "more-recent-users",
-                title: "More recent users",
-                summary: olderUsers.length,
-                description: "Earlier accounts in this snapshot",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobileAdminOverviewUsers users={olderUsers} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-
-      <IOSDisclosureGroup
-        label="Admin supporting evidence"
-        items={[
-          {
-            value: "network-snapshot",
-            title: "Network snapshot",
-            summary: operations.groups + operations.friendships,
-            description: "Social, provider, partner and AI row counts",
-            contentClassName: "px-0 pb-0 pt-0",
-            content: (
-              <IOSGroupedList label="Network snapshot rows" className="border-0">
-                <IOSListRow label="Groups" value={operations.groups} />
-                <IOSListRow label="Friendships" value={operations.friendships} />
-                <IOSListRow label="Friend requests" value={operations.friendRequests} />
-                <IOSListRow label="Provider accounts" value={operations.providerAccounts} />
-                <IOSListRow label="Import jobs" value={operations.importJobs} />
-                <IOSListRow label="Sponsors" value={operations.sponsors} />
-                <IOSListRow label="Partner offers" value={operations.partnerOffers} />
-                <IOSListRow label="AI summaries" value={operations.aiSummaries} />
-              </IOSGroupedList>
-            ),
-          },
-          {
-            value: "recent-audit-log",
-            title: "Recent audit log",
-            summary: data.recentAuditRows.length,
-            description: "Latest owner and operator changes",
-            contentClassName: "px-0 pb-0 pt-0",
-            content: (
-              <IOSGroupedList label="Recent admin audit rows" className="border-0">
-                {data.recentAuditRows.length > 0 ? (
-                  data.recentAuditRows.map((row) => (
-                    <IOSListRow
-                      key={row.id}
-                      label={label(row.action)}
-                      detail={`${row.actorEmail ?? "System"} · ${formatDateTime(row.createdAt)}`}
-                      value={row.targetType ? label(row.targetType) : undefined}
-                    />
-                  ))
-                ) : (
-                  <IOSListRow
-                    label="No admin changes recorded"
-                    detail="Audit activity will appear after an owner or operator change."
-                  />
-                )}
-              </IOSGroupedList>
-            ),
-          },
-        ]}
-      />
-    </>
-  );
-}
-
-function AdminOperationsQueue({
-  data,
-  operations,
-}: {
-  data: AdminOverviewData["data"];
-  operations: AdminOverviewData["operations"];
-}) {
-  return (
-    <IOSGroupedList label="Live admin operations queue">
-      <IOSListRow
-        label="Open reports"
-        value={data.metrics.openReports}
-        detail="User reports awaiting moderation"
-        href="/admin/moderation"
-        status={
-          <IOSInlineStatus
-            label={data.metrics.openReports > 0 ? "Review required" : "None flagged"}
-            tone={data.metrics.openReports > 0 ? "attention" : "positive"}
-          />
-        }
-      />
-      <IOSListRow
-        label="Failed provider imports"
-        value={operations.providerImportFailures}
-        detail={`${operations.importJobs} import jobs tracked`}
-        href="/providers#provider-jobs"
-        status={
-          <IOSInlineStatus
-            label={operations.providerImportFailures > 0 ? "Review required" : "None flagged"}
-            tone={operations.providerImportFailures > 0 ? "attention" : "positive"}
-          />
-        }
-      />
-      <IOSListRow
-        label="Billing failures"
-        value={operations.billingFailures}
-        detail={`${data.metrics.activeSubscriptions} active paid rows`}
-        href="/admin/billing"
-        status={
-          <IOSInlineStatus
-            label={operations.billingFailures > 0 ? "Review required" : "None flagged"}
-            tone={operations.billingFailures > 0 ? "attention" : "positive"}
-          />
-        }
-      />
-    </IOSGroupedList>
-  );
-}
-
-function MobileAdminOverviewUsers({ users }: { users: AdminOverviewUser[] }) {
-  return (
-    <IOSGroupedList label="Admin recent user rows">
-      {users.length > 0 ? (
-        users.map((user) => (
-          <IOSListRow
-            key={user.id}
-            label={user.displayName}
-            value={label(user.activePlan)}
-            detail={`${user.email ?? "No email"} · ${user.sessionCount} sessions · ${user.feedCount} cards`}
-            href={`/admin/users?q=${encodeURIComponent(user.email ?? user.displayName)}`}
-            status={
-              user.adminRole ? (
-                <IOSInlineStatus label={label(user.adminRole)} tone="info" />
-              ) : undefined
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow
-          label="No recent users"
-          detail="New accounts will appear after they are created."
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
+async function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
   return (
     <AdminSection
       title="Recent users"
@@ -586,11 +345,11 @@ function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
               Recent admin users table showing user, plan, admin role, session count, feed card
               count, account creation date and action.
             </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
               <TableRow>
                 <TableHead
                   data-column="user"
-                  className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 min-w-64 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                 >
                   User
                 </TableHead>
@@ -610,7 +369,7 @@ function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
                   <TableRow key={user.id} tabIndex={0} className="focus-aaa outline-none">
                     <TableCell
                       data-column="user"
-                      className="sticky left-0 z-10 min-w-64 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 min-w-64 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                     >
                       <span className="block max-w-72 truncate">{user.displayName}</span>
                       <span className="mt-1 block truncate text-xs text-muted-foreground">
@@ -643,8 +402,17 @@ function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                    No recent users are available.
+                  <TableCell colSpan={7} className="p-4">
+                    <AppEmptyState
+                      icon={<UserRound className="size-5" />}
+                      title="No recent users"
+                      description="User accounts will appear here after their first verified account activity."
+                      primaryAction={
+                        <Button asChild variant="outline" size="sm">
+                          <Link href="/admin/users">Open user directory</Link>
+                        </Button>
+                      }
+                    />
                   </TableCell>
                 </TableRow>
               )}
@@ -656,7 +424,7 @@ function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
   );
 }
 
-function AdminLink({
+export function AdminLink({
   href,
   title,
   description,
@@ -665,26 +433,33 @@ function AdminLink({
   title: string;
   description: string;
 }) {
+  const Icon = title === "Challenges" ? Flag : title === "Billing" ? Zap : Activity;
+
   return (
-    <Link href={href} className="rounded-xl border bg-slate-50 p-4 text-sm hover:bg-slate-100">
-      <div className="flex items-center gap-2 font-semibold">
-        {title === "Challenges" ? (
-          <Flag className="size-4 text-amber-600" />
-        ) : title === "Billing" ? (
-          <Zap className="size-4 text-emerald-600" />
-        ) : (
-          <Activity className="size-4 text-sky-600" />
-        )}
-        {title}
-      </div>
-      <p className="mt-2 leading-6 text-muted-foreground">{description}</p>
+    <Link
+      href={href}
+      className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      data-admin-operating-link
+    >
+      <Item
+        variant="outline"
+        className="h-full items-start transition-colors hover:border-primary/40 hover:bg-muted/60"
+      >
+        <ItemMedia className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="size-4" aria-hidden />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{title}</ItemTitle>
+          <ItemDescription className="whitespace-normal leading-5">{description}</ItemDescription>
+        </ItemContent>
+      </Item>
     </Link>
   );
 }
 
 function SnapshotRow({ label: rowLabel, value }: { label: string; value: number | string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/55 px-3 py-2">
       <span className="text-muted-foreground">{rowLabel}</span>
       <span className="font-semibold">{value}</span>
     </div>

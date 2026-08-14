@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Pin } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type SavedInsightLink = {
@@ -73,26 +74,27 @@ export function DesktopSaveInsightButton({
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       onClick={saveInsight}
       disabled={!hydrated}
       data-save-insight-hydrated={hydrated ? "true" : "false"}
       className={cn(
-        "focus-aaa grid min-h-11 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none",
+        "focus-aaa grid h-auto min-h-11 grid-cols-[auto_minmax(0,1fr)] items-center justify-start gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold outline-none",
         saved
-          ? "border-emerald-300 bg-emerald-50 text-emerald-950"
-          : "border-border bg-white/78 hover:border-emerald-300 hover:bg-white",
+          ? "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]"
+          : "border-border bg-card/80 hover:border-primary/40 hover:bg-card",
         className,
       )}
     >
       {saved ? (
-        <Check className="size-4 text-emerald-700" aria-hidden />
+        <Check className="size-4 text-primary" aria-hidden />
       ) : (
-        <Pin className="size-4 text-emerald-700" aria-hidden />
+        <Pin className="size-4 text-primary" aria-hidden />
       )}
       <span>{saved ? "Insight saved" : "Save this insight"}</span>
-    </button>
+    </Button>
   );
 }
 

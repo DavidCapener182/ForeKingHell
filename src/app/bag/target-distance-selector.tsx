@@ -8,8 +8,8 @@ import { ChevronRight, Lightbulb, Minus, Plus, ShieldCheck, Target } from "lucid
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import { DataPanel, MobileAccordionSection } from "@/components/premium";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { formatClubType } from "@/lib/club-format";
 
 export type TargetDistanceRow = {
@@ -290,9 +290,17 @@ function getShotDetailParts(shot: PlannedShot, index: number, isMultiShotPlan: b
 }
 
 const planMetricSoftToneClasses: Record<PlanTone, string> = {
-  green: "text-emerald-700",
-  amber: "text-amber-700",
-  slate: "text-slate-950",
+  green: "text-[var(--status-success-foreground)]",
+  amber: "text-[var(--status-warning-foreground)]",
+  slate: "text-foreground",
+};
+
+const planBadgeToneClasses: Record<PlanTone, string> = {
+  green:
+    "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+  amber:
+    "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
+  slate: "border-border bg-muted text-muted-foreground",
 };
 
 function SummaryMetric({
@@ -305,30 +313,9 @@ function SummaryMetric({
   tone?: PlanTone;
 }) {
   return (
-    <div className="min-w-0 border-slate-200 px-4 first:pl-0 last:pr-0 sm:border-l sm:first:border-l-0">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
+    <div className="min-w-0 border-border px-4 first:pl-0 last:pr-0 sm:border-l sm:first:border-l-0">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <p className={`mt-1 text-base font-semibold ${planMetricSoftToneClasses[tone]}`}>{value}</p>
-    </div>
-  );
-}
-
-function MobileTargetMetric({
-  label,
-  value,
-  tone = "slate",
-}: {
-  label: string;
-  value: ReactNode;
-  tone?: PlanTone;
-}) {
-  return (
-    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
-      <p className="truncate text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
-        {label}
-      </p>
-      <p className={`mt-1 truncate text-base font-semibold ${planMetricSoftToneClasses[tone]}`}>
-        {value}
-      </p>
     </div>
   );
 }
@@ -373,7 +360,6 @@ export function TargetDistanceSelector({
   const description = "Pick the safest club for today’s number.";
   const planTone = getPlanTone(plan);
   const riskLevel = getRiskLevel(plan);
-  const decisionSummary = riskLevel === "--" ? "Risk" : riskLevel;
   const windowQuality = getWindowQuality(plan);
 
   function selectTarget(value: number) {
@@ -381,91 +367,26 @@ export function TargetDistanceSelector({
   }
 
   return (
-    <DataPanel className="overflow-hidden rounded-lg border-slate-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)] sm:rounded-[1.35rem]">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-2.5 pt-2.5 sm:gap-4 sm:px-6 sm:pb-5 sm:pt-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 sm:size-14 sm:rounded-2xl">
-            <Target className="size-5 sm:size-7" />
+    <section
+      data-target-distance-selector
+      className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-5 pt-6">
+        <div className="flex items-center gap-4">
+          <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-border">
+            <Target className="size-6" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold tracking-normal text-slate-950 sm:text-2xl">
+            <h2 className="text-2xl font-semibold tracking-normal text-foreground">
               Target distance selector
             </h2>
-            <p className="mt-1 text-sm text-slate-600 sm:text-base">{description}</p>
+            <p className="mt-1 text-base text-muted-foreground">{description}</p>
           </div>
-        </div>
-        <div className="hidden size-9 place-items-center rounded-full text-emerald-700 ring-1 ring-emerald-100 sm:grid">
-          <Target className="size-5" />
         </div>
       </div>
 
-      <CardContent className="grid gap-3 px-3 pb-4 pt-0 sm:gap-6 sm:px-6 sm:pb-6 sm:pt-1 lg:grid-cols-[minmax(430px,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(560px,0.95fr)_minmax(0,1.8fr)]">
-        <div className="premium-command-surface grid gap-3 rounded-lg p-3 sm:hidden">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">
-                I have
-              </p>
-              <p className="mt-1 text-4xl font-semibold tracking-normal text-emerald-950">
-                {targetYd}
-                <span className="ml-1 text-xl text-slate-600">yd</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-11 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700"
-                aria-label="Reduce target distance by 5 yards"
-                onClick={() => selectTarget(targetYd - STEP_YD)}
-              >
-                <Minus className="size-5" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-11 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700"
-                aria-label="Increase target distance by 5 yards"
-                onClick={() => selectTarget(targetYd + STEP_YD)}
-              >
-                <Plus className="size-5" />
-              </Button>
-            </div>
-          </div>
-          <input
-            id="target-distance-yards-mobile"
-            name="targetDistanceYardsMobile"
-            type="number"
-            inputMode="numeric"
-            min={MIN_TARGET_YD}
-            max={MAX_TARGET_YD}
-            step={STEP_YD}
-            value={targetYd}
-            suppressHydrationWarning
-            onFocus={(event) => event.currentTarget.select()}
-            onChange={(event) => selectTarget(Number(event.target.value))}
-            className="h-12 w-full rounded-xl border border-[#D7DEE8] bg-white px-4 text-lg font-semibold text-slate-950 shadow-sm outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-100"
-          />
-          <div className="grid grid-cols-5 gap-2" aria-label="Target distance presets">
-            {TARGET_PRESETS.map((distance) => (
-              <Button
-                key={distance}
-                type="button"
-                size="sm"
-                variant={distance === targetYd ? "default" : "outline"}
-                aria-pressed={distance === targetYd}
-                className="h-10 rounded-full px-2 text-xs font-semibold"
-                onClick={() => selectTarget(distance)}
-              >
-                {distance}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative hidden min-h-[620px] overflow-hidden rounded-2xl border border-[#DDE5DF] bg-emerald-50 shadow-sm sm:block">
+      <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[minmax(430px,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(560px,0.95fr)_minmax(0,1.8fr)]">
+        <div className="relative min-h-[560px] overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
           <Image
             src={TARGET_DISTANCE_IMAGE_SRC}
             alt=""
@@ -474,16 +395,16 @@ export function TargetDistanceSelector({
             sizes="(min-width: 1280px) 460px, (min-width: 768px) 42vw, 100vw"
             className="scale-[1.03] object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/92 via-white/76 to-white/0" />
-          <div className="absolute inset-x-0 top-0 h-[390px] bg-white/72 [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
-          <div className="relative z-10 flex min-h-[620px] flex-col p-7">
+          <div className="absolute inset-0 bg-gradient-to-b from-card/95 via-card/75 to-card/0" />
+          <div className="absolute inset-x-0 top-0 h-[390px] bg-card/70 [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
+          <div className="relative z-10 flex min-h-[560px] flex-col p-7">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-700">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Hole / target
               </p>
-              <p className="mt-2 text-6xl font-semibold tracking-normal text-emerald-950">
+              <p className="mt-2 text-6xl font-semibold tracking-normal text-foreground">
                 {targetYd}
-                <span className="ml-2 text-3xl text-slate-600">yd</span>
+                <span className="ml-2 text-3xl text-muted-foreground">yd</span>
               </p>
             </div>
 
@@ -498,7 +419,7 @@ export function TargetDistanceSelector({
                   size="sm"
                   variant={distance === targetYd ? "default" : "outline"}
                   aria-pressed={distance === targetYd}
-                  className="h-11 rounded-full border-slate-200 bg-white px-3 text-sm font-semibold text-slate-950 shadow-sm hover:bg-white data-[state=active]:bg-emerald-600"
+                  className="h-11 rounded-full px-3 text-sm font-semibold shadow-sm"
                   onClick={() => selectTarget(distance)}
                 >
                   {distance} yd
@@ -506,26 +427,21 @@ export function TargetDistanceSelector({
               ))}
             </div>
 
-            <div className="mt-8">
-              <label
-                htmlFor="target-distance-yards"
-                className="text-base font-medium text-slate-700"
-              >
-                Type hole yards
-              </label>
+            <Field className="mt-8 max-w-sm">
+              <FieldLabel htmlFor="target-distance-yards">Type hole yards</FieldLabel>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="size-12 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-50"
+                  className="size-12 rounded-full text-primary shadow-sm"
                   aria-label="Reduce target distance by 5 yards"
                   onClick={() => selectTarget(targetYd - STEP_YD)}
                 >
                   <Minus className="size-5" />
                 </Button>
                 <div className="relative">
-                  <input
+                  <Input
                     id="target-distance-yards"
                     name="targetDistanceYards"
                     type="number"
@@ -537,9 +453,9 @@ export function TargetDistanceSelector({
                     suppressHydrationWarning
                     onFocus={(event) => event.currentTarget.select()}
                     onChange={(event) => selectTarget(Number(event.target.value))}
-                    className="h-14 w-36 rounded-xl border border-[#D7DEE8] bg-white px-5 pr-12 text-xl font-semibold text-slate-950 shadow-sm outline-none focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-100"
+                    className="h-14 w-36 px-5 pr-12 text-xl font-semibold shadow-sm"
                   />
-                  <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-500">
+                  <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
                     yd
                   </span>
                 </div>
@@ -547,55 +463,39 @@ export function TargetDistanceSelector({
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="size-12 rounded-full border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm hover:bg-emerald-50"
+                  className="size-12 rounded-full text-primary shadow-sm"
                   aria-label="Increase target distance by 5 yards"
                   onClick={() => selectTarget(targetYd + STEP_YD)}
                 >
                   <Plus className="size-5" />
                 </Button>
               </div>
-            </div>
+            </Field>
             <div className="mt-auto min-h-36" />
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-col gap-3 sm:min-h-[620px] sm:gap-5">
-          <div className="flex flex-1 flex-col rounded-xl border border-[#D7DEE8] bg-white p-4 shadow-sm sm:rounded-2xl sm:p-7">
+        <div className="flex min-h-[560px] flex-col gap-5">
+          <div className="flex flex-1 flex-col rounded-2xl border border-border bg-muted/20 p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-lg font-semibold text-emerald-700">
+                <p className="text-lg font-semibold text-primary">
                   {isMultiShotPlan ? "Recommended route" : "Recommended"}
                 </p>
-                <p className="mt-2 text-2xl font-semibold tracking-normal text-slate-950 sm:text-3xl">
+                <p className="mt-2 text-3xl font-semibold tracking-normal text-foreground">
                   {planTitle}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+              <Badge
+                variant="outline"
+                className={`gap-2 px-4 py-2 ${planBadgeToneClasses[planTone]}`}
+              >
                 <ShieldCheck className="size-4" />
                 {plan ? `${plan.lowestTrust}% lowest trust` : "Needs data"}
-              </span>
+              </Badge>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:hidden">
-              <MobileTargetMetric label="Club" value={planTitle} tone={planTone} />
-              <MobileTargetMetric
-                label="Play number"
-                value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
-                tone="green"
-              />
-              <MobileTargetMetric
-                label="Trust"
-                value={plan ? `${plan.lowestTrust}%` : "--"}
-                tone={planTone}
-              />
-              <MobileTargetMetric
-                label="Dangerous miss"
-                value={plan ? formatPlanMiss(plan) : "--"}
-                tone={planTone}
-              />
-            </div>
-
-            <div className="mt-4 hidden grid-cols-2 gap-3 rounded-xl bg-slate-50/80 px-4 py-3 shadow-inner sm:mt-6 sm:grid sm:grid-cols-4 sm:px-5 sm:py-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm sm:grid-cols-4">
               <SummaryMetric
                 label="Planned total"
                 value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
@@ -613,42 +513,6 @@ export function TargetDistanceSelector({
               />
             </div>
 
-            <MobileAccordionSection
-              title="Decision detail"
-              description="Risk, sample size and course-condition reminder."
-              count={decisionSummary}
-              className="mt-3"
-            >
-              <div className="grid gap-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <SummaryMetric
-                    label="Planned total"
-                    value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
-                    tone="green"
-                  />
-                  <SummaryMetric label="Risk" value={riskLevel} tone={planTone} />
-                  <SummaryMetric label="Matched window" value={windowQuality} tone={planTone} />
-                  <SummaryMetric
-                    label="Sample"
-                    value={
-                      plan
-                        ? `${plan.shots.reduce((total, shot) => total + shot.row.sampleSize, 0)} shots`
-                        : "--"
-                    }
-                  />
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
-                  <div className="flex items-start gap-2">
-                    <Lightbulb className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                    <p>
-                      <span className="font-semibold text-emerald-700">Tip:</span> Wind, elevation
-                      and lie can affect distances. Review conditions before committing.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </MobileAccordionSection>
-
             {plan && plan.shots.length > 0 ? (
               <div className="mt-7 flex flex-col gap-3 xl:flex-row xl:items-center">
                 {plan.shots.map((shot, index) => {
@@ -659,15 +523,15 @@ export function TargetDistanceSelector({
                       <Link
                         href={`/bag/${shot.row.id}`}
                         prefetch={false}
-                        className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                        className="min-w-0 flex-1 rounded-xl border border-border bg-card p-4 text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-3">
-                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-emerald-700 text-xs font-semibold text-white">
+                            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                               {index + 1}
                             </span>
-                            <p className="truncate text-lg font-semibold text-slate-950">
-                              <span className="block text-xs font-medium text-slate-500">
+                            <p className="truncate text-lg font-semibold text-foreground">
+                              <span className="block text-xs font-medium text-muted-foreground">
                                 {getShotLabel(shot.row, index, plan.shots.length)}
                               </span>
                               <span className="block truncate">
@@ -675,12 +539,12 @@ export function TargetDistanceSelector({
                               </span>
                             </p>
                           </div>
-                          <Badge variant="outline" className="shrink-0 bg-white px-3 py-1">
+                          <Badge variant="outline" className="shrink-0 bg-card px-3 py-1">
                             {formatMetric(shot.plannedYd)} yd
                             {isTouchRow(shot.row) ? " touch" : ""}
                           </Badge>
                         </div>
-                        <div className="mt-4 text-base text-slate-600">
+                        <div className="mt-4 text-base text-muted-foreground">
                           <p>{detail.primary}</p>
                           {detail.secondary ? (
                             <p className="mt-1 pl-3 before:mr-2 before:content-['•']">
@@ -690,7 +554,7 @@ export function TargetDistanceSelector({
                         </div>
                       </Link>
                       {index < plan.shots.length - 1 ? (
-                        <ChevronRight className="hidden size-6 shrink-0 text-slate-700 xl:block" />
+                        <ChevronRight className="hidden size-6 shrink-0 text-muted-foreground xl:block" />
                       ) : null}
                     </Fragment>
                   );
@@ -699,13 +563,13 @@ export function TargetDistanceSelector({
             ) : null}
 
             {alternatives.length > 0 ? (
-              <div className="mt-7 hidden sm:block">
+              <div className="mt-7">
                 <div className="flex items-center gap-4">
-                  <div className="h-px flex-1 bg-slate-200" />
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                  <div className="h-px flex-1 bg-border" />
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Alternative routes
                   </p>
-                  <div className="h-px flex-1 bg-slate-200" />
+                  <div className="h-px flex-1 bg-border" />
                 </div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-3">
                   {alternatives.map((alternative) => {
@@ -717,22 +581,22 @@ export function TargetDistanceSelector({
                         key={alternative.routeKey}
                         href={`/bag/${finalShot.row.id}`}
                         prefetch={false}
-                        className="rounded-xl border border-slate-200 bg-white p-5 text-sm shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+                        className="rounded-xl border border-border bg-card p-5 text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
                       >
-                        <p className="truncate text-xl font-semibold text-slate-950">
+                        <p className="truncate text-xl font-semibold text-foreground">
                           {formatRouteTitle(alternative)}
                         </p>
                         <div className="mt-4 grid grid-cols-2 gap-3">
                           <div>
-                            <p className="text-xs font-medium uppercase tracking-[0.1em] text-slate-500">
+                            <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">
                               Total
                             </p>
-                            <p className="mt-1 font-semibold text-slate-950">
+                            <p className="mt-1 font-semibold text-foreground">
                               {formatMetric(alternative.expectedYd)} yd
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs font-medium uppercase tracking-[0.1em] text-slate-500">
+                            <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">
                               Result
                             </p>
                             <p
@@ -742,12 +606,12 @@ export function TargetDistanceSelector({
                             </p>
                           </div>
                         </div>
-                        <p className="mt-4 text-base text-slate-600">
+                        <p className="mt-4 text-base text-muted-foreground">
                           {alternative.lowestTrust}% lowest trust
                         </p>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full rounded-full bg-emerald-700"
+                            className="h-full rounded-full bg-primary"
                             style={{
                               width: `${Math.max(8, Math.min(100, alternative.lowestTrust))}%`,
                             }}
@@ -759,64 +623,23 @@ export function TargetDistanceSelector({
                 </div>
               </div>
             ) : null}
-            {alternatives.length > 0 ? (
-              <MobileAccordionSection
-                title="Alternative routes"
-                description="Other playable ways to cover the number."
-                count={`${alternatives.length} options`}
-              >
-                <div className="grid gap-3">
-                  {alternatives.map((alternative) => {
-                    const finalShot = alternative.shots[alternative.shots.length - 1];
-                    const alternativeTone = getPlanTone(alternative);
-
-                    return (
-                      <Link
-                        key={alternative.routeKey}
-                        href={`/bag/${finalShot.row.id}`}
-                        prefetch={false}
-                        className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm transition hover:border-emerald-300"
-                      >
-                        <p className="truncate text-lg font-semibold text-slate-950">
-                          {formatRouteTitle(alternative)}
-                        </p>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <SummaryMetric
-                            label="Total"
-                            value={`${formatMetric(alternative.expectedYd)} yd`}
-                          />
-                          <SummaryMetric
-                            label="Result"
-                            value={formatPlanMiss(alternative)}
-                            tone={alternativeTone}
-                          />
-                        </div>
-                        <p className="mt-3 text-sm text-slate-600">
-                          {alternative.lowestTrust}% lowest trust
-                        </p>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </MobileAccordionSection>
-            ) : null}
           </div>
 
-          <div className="hidden flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex sm:px-5 sm:py-4">
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <Lightbulb className="size-5 text-emerald-600" />
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-5 py-4 shadow-sm">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <Lightbulb className="size-5 text-primary" />
               <p>
-                <span className="font-semibold text-emerald-700">Tip:</span> Wind, elevation and lie
+                <span className="font-semibold text-foreground">Tip:</span> Wind, elevation and lie
                 can affect distances. Review your conditions before committing.
               </p>
             </div>
-            <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-500">
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
               Learn more
               <ChevronRight className="size-4" />
             </span>
           </div>
         </div>
-      </CardContent>
-    </DataPanel>
+      </div>
+    </section>
   );
 }

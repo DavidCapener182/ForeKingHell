@@ -9,10 +9,14 @@ import {
   type ChartFallbackColumn,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
+import { EntityCombobox } from "@/components/app/entity-combobox";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { DataPanel, SectionHeader, StatusPill, type Tone } from "@/components/premium";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +64,7 @@ export function ClubIntelligencePanel({
   initialClubId?: string | null;
 }) {
   const [selectedClubId, setSelectedClubId] = useState(initialClubId ?? clubs[0]?.id ?? null);
+  const [detailOpen, setDetailOpen] = useState(true);
   const selectedClub = useMemo(
     () => clubs.find((club) => club.id === selectedClubId) ?? clubs[0] ?? null,
     [clubs, selectedClubId],
@@ -79,35 +84,28 @@ export function ClubIntelligencePanel({
         }
       />
       <CardContent className="grid gap-4 p-4 sm:p-5">
-        <div
-          aria-label="Select a club"
-          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 outline-none sm:mx-0 sm:px-0"
-        >
-          {clubs.map((club) => {
-            const active = club.id === selectedClub.id;
-
-            return (
-              <button
-                key={club.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setSelectedClubId(club.id)}
-                className={cn(
-                  "min-h-10 shrink-0 rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  active
-                    ? "border-emerald-700 bg-[#0B7A3B] text-white shadow-sm"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300",
-                )}
-              >
-                {club.label}
-              </button>
-            );
-          })}
+        <div className="max-w-sm" data-club-intelligence-combobox>
+          <EntityCombobox
+            value={selectedClub.id}
+            onValueChange={(value) => {
+              setSelectedClubId(value);
+              setDetailOpen(true);
+            }}
+            options={clubs.map((club) => ({
+              value: club.id,
+              label: club.label,
+              description: `${club.brandModel} · ${club.trustScore}% trust`,
+            }))}
+            label="Select a club"
+            placeholder="Choose a club"
+            searchPlaceholder="Search clubs…"
+            emptyLabel="No matching club."
+          />
         </div>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
           <div className="grid gap-3">
-            <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
               <ClubArtwork
                 clubType={selectedClub.type}
                 brand={selectedClub.brand}
@@ -157,69 +155,82 @@ export function ClubIntelligencePanel({
             </div>
           </div>
 
-          <div className="grid gap-3">
-            <div className="grid gap-3 md:grid-cols-3">
-              <ClubSignal signal={selectedClub.health} label="Health" />
-              <ClubSignal signal={selectedClub.miss} label="Current miss" />
-              <ClubSignal
-                signal={
-                  selectedClub.trend ?? {
-                    label: "Trend building",
-                    detail: "Need two clean stock samples.",
-                    tone: "slate",
+          <div className="grid content-start gap-3">
+            <ResponsiveDetailPanel
+              open={detailOpen}
+              onOpenChange={setDetailOpen}
+              inlineAtUltrawide
+              title={`${selectedClub.label} intelligence`}
+              description="Measured carry, trust, miss and dispersion evidence for the selected club."
+              trigger={
+                <Button type="button" className="w-fit" data-selected-club-detail-trigger>
+                  Review {selectedClub.label}
+                  <ChevronRight className="size-4" />
+                </Button>
+              }
+              className="shadow-sm"
+              contentClassName="grid gap-3"
+            >
+              <div className="grid gap-3 md:grid-cols-3">
+                <ClubSignal signal={selectedClub.health} label="Health" />
+                <ClubSignal signal={selectedClub.miss} label="Current miss" />
+                <ClubSignal
+                  signal={
+                    selectedClub.trend ?? {
+                      label: "Trend building",
+                      detail: "Need two clean stock samples.",
+                      tone: "slate",
+                    }
                   }
-                }
-                label="Trend"
-              />
-            </div>
+                  label="Trend"
+                />
+              </div>
 
-            <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Shot pattern</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Last {selectedClub.shots.length} usable carries for this club.
+              <section className="grid gap-3" aria-label="Selected club shot pattern">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Shot pattern</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Last {selectedClub.shots.length} usable carries for this club.
+                    </p>
+                  </div>
+                  <StatusPill tone={selectedClub.trustScore >= 75 ? "green" : "amber"}>
+                    {selectedClub.trustScore}% trust
+                  </StatusPill>
+                </div>
+                <ClubDispersionChart club={selectedClub} />
+                <ConnectedMetricBar
+                  embedded
+                  label="Selected club shot evidence"
+                  className="sm:grid-cols-3 xl:grid-cols-3"
+                  metrics={[
+                    {
+                      label: "Sample",
+                      value: `${selectedClub.sampleSize}`,
+                      detail: `${selectedClub.shotCount} saved shots`,
+                    },
+                    { label: "Best stock", value: selectedClub.bestStockLabel },
+                    { label: "Recommended", value: selectedClub.primaryCarryLabel },
+                  ]}
+                />
+              </section>
+
+              <Separator />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">Full detail remains available</p>
+                  <p className="text-xs text-muted-foreground">
+                    Open the club page for deeper filters, analytics and saved-shot context.
                   </p>
                 </div>
-                <StatusPill tone={selectedClub.trustScore >= 75 ? "green" : "amber"}>
-                  {selectedClub.trustScore}% trust
-                </StatusPill>
+                <Button asChild variant="outline" size="sm" className="rounded-lg">
+                  <Link href={`/bag/${selectedClub.id}`} prefetch={false}>
+                    Open {selectedClub.label}
+                    <ChevronRight className="size-4" />
+                  </Link>
+                </Button>
               </div>
-              <ClubDispersionChart club={selectedClub} />
-              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-                <ClubIntelligenceMetric
-                  label="Sample"
-                  value={`${selectedClub.sampleSize}`}
-                  detail={`${selectedClub.shotCount} saved shots`}
-                  tone="slate"
-                />
-                <ClubIntelligenceMetric
-                  label="Best stock"
-                  value={selectedClub.bestStockLabel}
-                  tone="sky"
-                />
-                <ClubIntelligenceMetric
-                  label="Recommended"
-                  value={selectedClub.primaryCarryLabel}
-                  tone="green"
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">Full detail remains available</p>
-                <p className="text-xs text-muted-foreground">
-                  Open the club page for deeper filters, analytics and saved-shot context.
-                </p>
-              </div>
-              <Button asChild variant="outline" size="sm" className="rounded-lg">
-                <Link href={`/bag/${selectedClub.id}`} prefetch={false}>
-                  Open {selectedClub.label}
-                  <ChevronRight className="size-4" />
-                </Link>
-              </Button>
-            </div>
+            </ResponsiveDetailPanel>
           </div>
         </div>
       </CardContent>
@@ -241,8 +252,10 @@ function ClubIntelligenceMetric({
   return (
     <div className={cn("rounded-lg border px-3 py-2", metricToneClass(tone))}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</p>
-      <p className="mt-1 text-lg font-semibold leading-6 tracking-normal text-slate-950">{value}</p>
-      {detail ? <p className="mt-0.5 truncate text-xs text-slate-600">{detail}</p> : null}
+      <p className="mt-1 text-lg font-semibold leading-6 tracking-normal text-foreground">
+        {value}
+      </p>
+      {detail ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p> : null}
     </div>
   );
 }
@@ -251,8 +264,8 @@ function ClubSignal({ label, signal }: { label: string; signal: ClubIntelligence
   return (
     <div className={cn("min-h-28 rounded-lg border px-3 py-3", metricToneClass(signal.tone))}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</p>
-      <p className="mt-1 text-base font-semibold leading-5 text-slate-950">{signal.label}</p>
-      <p className="mt-1 text-xs leading-4 text-slate-600">{signal.detail}</p>
+      <p className="mt-1 text-base font-semibold leading-5 text-foreground">{signal.label}</p>
+      <p className="mt-1 text-xs leading-4 text-muted-foreground">{signal.detail}</p>
       {label === "Health" ? (
         <Progress
           value={
@@ -274,7 +287,7 @@ function ClubSignal({ label, signal }: { label: string; signal: ClubIntelligence
 function ClubDispersionChart({ club }: { club: ClubIntelligenceItem }) {
   if (club.shots.length === 0) {
     return (
-      <div className="mt-3 grid h-44 place-items-center rounded-lg border border-slate-200 bg-white text-sm font-medium text-muted-foreground">
+      <div className="mt-3 grid h-44 place-items-center rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground">
         Shot chart building
       </div>
     );
@@ -288,31 +301,31 @@ function ClubDispersionChart({ club }: { club: ClubIntelligenceItem }) {
     <div className="mt-3 grid gap-3">
       <svg
         viewBox="0 0 360 160"
-        className="h-44 w-full rounded-lg border border-slate-200 bg-white"
+        className="h-44 w-full rounded-lg border border-border bg-card"
         role="img"
         aria-label={`${club.label} carry and offline shot pattern`}
       >
-        <rect x="0" y="0" width="360" height="160" fill="#F8FAFC" />
+        <rect x="0" y="0" width="360" height="160" fill="var(--card)" />
         {[60, 120, 180, 240].map((yard) => {
           const y = 148 - (yard / maxCarry) * 126;
 
           return (
             <g key={yard}>
-              <line x1="18" x2="344" y1={y} y2={y} stroke="#E5E7EB" />
-              <text x="24" y={y - 5} fill="#94A3B8" fontSize="10" fontWeight="700">
+              <line x1="18" x2="344" y1={y} y2={y} stroke="var(--border)" />
+              <text x="24" y={y - 5} fill="var(--muted-foreground)" fontSize="10" fontWeight="700">
                 {yard}
               </text>
             </g>
           );
         })}
-        <line x1="180" x2="180" y1="14" y2="148" stroke="#CBD5E1" strokeDasharray="4 5" />
+        <line x1="180" x2="180" y1="14" y2="148" stroke="var(--border)" strokeDasharray="4 5" />
         {club.carryMedianYd ? (
           <line
             x1="18"
             x2="344"
             y1={148 - (club.carryMedianYd / maxCarry) * 126}
             y2={148 - (club.carryMedianYd / maxCarry) * 126}
-            stroke={club.accent}
+            stroke="var(--primary)"
             strokeDasharray="7 5"
             strokeOpacity="0.85"
             strokeWidth="2"
@@ -322,7 +335,7 @@ function ClubDispersionChart({ club }: { club: ClubIntelligenceItem }) {
           const x = 180 + ((shot.sideCarryYd ?? 0) / maxSide) * 145;
           const y = 148 - (shot.carryYd / maxCarry) * 126;
 
-          return <circle key={index} cx={x} cy={y} r="4.5" fill={club.accent} opacity="0.72" />;
+          return <circle key={index} cx={x} cy={y} r="4.5" fill="var(--primary)" opacity="0.72" />;
         })}
       </svg>
       <ChartAccessibleFallback
@@ -389,20 +402,20 @@ function formatSignedChartYards(value: number | null) {
 
 function metricToneClass(tone: Tone) {
   if (tone === "green") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
   }
 
   if (tone === "sky") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
   }
 
   if (tone === "amber") {
-    return "border-amber-200 bg-amber-50 text-amber-800";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
 
   if (tone === "pink") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
+    return "border-destructive/30 bg-destructive/10 text-destructive";
   }
 
-  return "border-slate-200 bg-slate-50 text-slate-600";
+  return "border-border bg-muted/50 text-muted-foreground";
 }

@@ -21,7 +21,6 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { IOSDisclosureGroup, IOSInlineStatus, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -55,7 +54,20 @@ type PageProps = {
   params: Promise<{
     courseId: string;
   }>;
+  searchParams?: Promise<{
+    tab?: string | string[];
+  }>;
 };
+
+const COURSE_DETAIL_TABS = ["overview", "mapping", "tees", "holes", "records"] as const;
+type CourseDetailTab = (typeof COURSE_DETAIL_TABS)[number];
+
+function parseCourseDetailTab(value: string | string[] | undefined): CourseDetailTab {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return COURSE_DETAIL_TABS.includes(candidate as CourseDetailTab)
+    ? (candidate as CourseDetailTab)
+    : "overview";
+}
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const coordinateFormatter = new Intl.NumberFormat("en-GB", {
@@ -82,23 +94,24 @@ const holeGeometryColumns: DesktopWorkbenchColumn[] = [
 const holeGeometrySuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Missing coordinates",
-    href: "#hole-geometry-table",
+    href: "?tab=holes#hole-geometry-table",
     detail: "Find holes that still need tee and green points.",
   },
   {
     title: "Tee-set metadata",
-    href: "#tee-set",
+    href: "?tab=tees#tee-set",
     detail: "Check rating, slope, par and yardage before mapping holes.",
   },
   {
     title: "Geometry preview",
-    href: "#geometry-preview",
+    href: "?tab=tees#geometry-preview",
     detail: "Review the saved tee-to-green lines before editing.",
   },
 ];
 
-export default async function CourseHoleEditorPage({ params }: PageProps) {
+export default async function CourseHoleEditorPage({ params, searchParams }: PageProps) {
   const { courseId } = await params;
+  const activeTab = parseCourseDetailTab((await searchParams)?.tab);
   const data = await getCourseEditorData(courseId);
 
   if (!data) {
@@ -114,6 +127,9 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   const usesAutomaticCourseData = usesAutomaticImportData(data.course);
   const allowManualHoleEditing = data.isEditable && (hasMappedGeometry || !usesAutomaticCourseData);
   const showTeeSetTools = Boolean(primaryTeeSet && (hasMappedGeometry || !usesAutomaticCourseData));
+  const activeHoleGeometrySuggestedViews = showTeeSetTools
+    ? holeGeometrySuggestedViews
+    : holeGeometrySuggestedViews.filter((view) => view.href.includes("tab=holes"));
   const shotPatternEnabled = isShotPatternFeatureEnabled();
   const hasCourseTwinPilot = await isCourseTwinAvailable({
     courseId,
@@ -131,7 +147,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
   return (
     <PageShell>
       <DesktopWorkbenchLayout scope="course-holes">
-        <div className="hidden items-center justify-between gap-4 lg:flex">
+        <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/courses" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -164,78 +180,53 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
           </div>
         </div>
 
-        <div className="hidden lg:block">
-          <PageHeader
-            eyebrow={
-              <StatusPill tone={data.isEditable ? "green" : "sky"}>
-                {data.isEditable ? "Course editor" : "Course reference"}
-              </StatusPill>
-            }
-            title={data.course.name}
-            description={
-              data.isEditable
-                ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
-                : "Use this course for scoring and overlays. Editing is limited to courses you imported or created."
-            }
-            visual={
-              <PageArtwork
-                variant="fairway"
-                alt=""
-                crop="random"
-                cropKey={courseId}
-                className="h-full min-h-44"
-                priority
-              />
-            }
-            metrics={[
-              {
-                label: "Provider",
-                value: data.course.provider,
-                detail: data.course.country ?? "Country not set",
-              },
-              {
-                label: "Tee sets",
-                value: integerFormatter.format(data.teeSets.length),
-                detail: "Current editor uses the first tee set.",
-              },
-              {
-                label: "Mapped holes",
-                value: integerFormatter.format(mappedHoleCount),
-                detail: "Saved tee and green points.",
-              },
-              {
-                label: "Map status",
-                value: mapStatus,
-                detail: "Round overlays use these coordinates.",
-              },
-            ]}
-          />
-        </div>
-
-        <section className="grid gap-2 px-1 lg:hidden" aria-labelledby="mobile-course-title">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <PageHeader
+          eyebrow={
             <StatusPill tone={data.isEditable ? "green" : "sky"}>
               {data.isEditable ? "Course editor" : "Course reference"}
             </StatusPill>
-            <IOSInlineStatus
-              label={`${mappedHoleCount}/${holeSlots.length} holes mapped`}
-              tone={mappedHoleCount === holeSlots.length ? "positive" : "attention"}
+          }
+          title={data.course.name}
+          description={
+            data.isEditable
+              ? "Edit the tee-set metadata and saved hole geometry used by real-course overlays and handicap estimates."
+              : "Use this course for scoring and overlays. Editing is limited to courses you imported or created."
+          }
+          visual={
+            <PageArtwork
+              variant="fairway"
+              alt=""
+              crop="random"
+              cropKey={courseId}
+              className="h-full min-h-44"
+              priority
             />
-          </div>
-          <h1
-            id="mobile-course-title"
-            className="text-[2rem] font-semibold leading-9 tracking-tight"
-          >
-            {data.course.name}
-          </h1>
-          <p className="text-[15px] leading-5 text-muted-foreground">
-            {data.isEditable
-              ? "Place tee and green points for the selected hole."
-              : "Review the saved course geometry used by rounds and overlays."}
-          </p>
-        </section>
+          }
+          metrics={[
+            {
+              label: "Provider",
+              value: data.course.provider,
+              detail: data.course.country ?? "Country not set",
+            },
+            {
+              label: "Tee sets",
+              value: integerFormatter.format(data.teeSets.length),
+              detail: "Current editor uses the first tee set.",
+            },
+            {
+              label: "Mapped holes",
+              value: integerFormatter.format(mappedHoleCount),
+              detail: "Saved tee and green points.",
+            },
+            {
+              label: "Map status",
+              value: mapStatus,
+              detail: "Round overlays use these coordinates.",
+            },
+          ]}
+        />
 
-        <Tabs defaultValue="overview" className="min-w-0 gap-5" data-course-detail-tabs>
+        <Tabs defaultValue={activeTab} className="min-w-0 gap-5" data-course-detail-tabs>
           <TabsList
             variant="line"
             aria-label="Course detail sections"
@@ -250,24 +241,22 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
 
           <TabsContent value="overview" className="grid min-w-0 gap-4">
             {data.course.latitude !== null && data.course.longitude !== null ? (
-              <div className="hidden lg:block">
-                <GoogleCourseContextPanel
-                  address={data.course.address}
-                  googleRating={data.course.googleRating}
-                  latitude={data.course.latitude}
-                  longitude={data.course.longitude}
-                  name={data.course.name}
-                  reviewCount={data.course.googleUserRatingsTotal}
-                  websiteUrl={data.course.websiteUrl}
-                />
-              </div>
+              <GoogleCourseContextPanel
+                address={data.course.address}
+                googleRating={data.course.googleRating}
+                latitude={data.course.latitude}
+                longitude={data.course.longitude}
+                name={data.course.name}
+                reviewCount={data.course.googleUserRatingsTotal}
+                websiteUrl={data.course.websiteUrl}
+              />
             ) : null}
 
             <Alert
               className={
                 mapStatus === "Ready"
                   ? "border-primary/30 bg-primary/5"
-                  : "border-amber-500/40 bg-amber-500/5"
+                  : "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]"
               }
             >
               <MapPinned className="size-4" />
@@ -323,13 +312,11 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
               </DataPanel>
             ) : allowManualHoleEditing ? (
               <DataPanel>
-                <div className="hidden lg:block">
-                  <SectionHeader
-                    title="Visual hole editor"
-                    description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
-                    action={<MapPinned className="size-5 text-sky-600" />}
-                  />
-                </div>
+                <SectionHeader
+                  title="Visual hole editor"
+                  description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
+                  action={<MapPinned className="size-5 text-primary" />}
+                />
                 <CardContent>
                   <CourseHoleMapEditor
                     courseId={data.course.id}
@@ -356,7 +343,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                 <SectionHeader
                   title="Automatic course import"
                   description="Course details are pulled from Google Places and mapped hole data is pulled from available course geometry sources."
-                  action={<MapPinned className="size-5 text-sky-600" />}
+                  action={<MapPinned className="size-5 text-primary" />}
                 />
                 <CardContent>
                   <AutoImportStatusContent autoImport={data.autoImport} />
@@ -367,7 +354,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                 <SectionHeader
                   title="Read-only course geometry"
                   description="This map is read-only for your account. Import or create a course if you need custom tee or green points."
-                  action={<MapPinned className="size-5 text-sky-600" />}
+                  action={<MapPinned className="size-5 text-primary" />}
                 />
                 <CardContent>
                   <p className="text-sm leading-6 text-muted-foreground">
@@ -379,83 +366,15 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             )}
           </TabsContent>
 
-          <section className="grid gap-2 lg:hidden">
-            <IOSSectionHeader
-              title="Course options"
-              description="Reference details and secondary destinations"
-            />
-            <IOSDisclosureGroup
-              label="Course details and tools"
-              items={[
-                {
-                  value: "course-details",
-                  title: "Course details",
-                  summary: data.course.country ?? data.course.provider,
-                  description: data.course.address ?? "Provider and map reference",
-                  content: (
-                    <dl className="grid gap-3 text-sm">
-                      <MobileDetailRow label="Provider" value={data.course.provider} />
-                      <MobileDetailRow label="Country" value={data.course.country ?? "Not set"} />
-                      {data.course.googleRating !== null ? (
-                        <MobileDetailRow
-                          label="Google rating"
-                          value={`${data.course.googleRating.toFixed(1)} · ${integerFormatter.format(data.course.googleUserRatingsTotal ?? 0)} reviews`}
-                        />
-                      ) : null}
-                      {data.course.latitude !== null && data.course.longitude !== null ? (
-                        <MobileDetailRow
-                          label="Map centre"
-                          value={`${coordinateFormatter.format(data.course.latitude)}, ${coordinateFormatter.format(data.course.longitude)}`}
-                        />
-                      ) : null}
-                    </dl>
-                  ),
-                },
-                {
-                  value: "course-tools",
-                  title: "Related tools",
-                  summary: "Rounds & overlays",
-                  description: "Open another course task",
-                  content: (
-                    <div className="grid gap-2">
-                      <Button asChild variant="outline" className="min-h-11 justify-start">
-                        <Link href="/rounds" prefetch={false}>
-                          <Flag className="size-4" aria-hidden />
-                          Rounds
-                        </Link>
-                      </Button>
-                      {hasCourseTwinPilot ? (
-                        <Button asChild variant="outline" className="min-h-11 justify-start">
-                          <Link href={`/play/${courseId}`} prefetch={false}>
-                            <Cuboid className="size-4" aria-hidden />
-                            Open Course Twin
-                          </Link>
-                        </Button>
-                      ) : null}
-                      {shotPatternEnabled ? (
-                        <Button asChild variant="outline" className="min-h-11 justify-start">
-                          <Link href={`/courses/${courseId}/shot-pattern`} prefetch={false}>
-                            <MapPinned className="size-4" aria-hidden />
-                            Shot pattern
-                          </Link>
-                        </Button>
-                      ) : null}
-                    </div>
-                  ),
-                },
-              ]}
-            />
-          </section>
-
           <TabsContent value="tees" className="grid min-w-0 gap-4">
             {primaryTeeSet && showTeeSetTools ? (
               <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
                 <div className="grid gap-4">
-                  <DataPanel>
+                  <DataPanel id="tee-set" className="scroll-mt-28">
                     <SectionHeader
                       title="Tee set"
                       description="Rating and slope improve handicap calculations. Yardage and par drive the round context."
-                      action={<Trophy className="size-5 text-amber-500" />}
+                      action={<Trophy className="size-5 text-[var(--status-warning-foreground)]" />}
                     />
                     <CardContent>
                       {data.isEditable ? (
@@ -499,7 +418,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
                     </CardContent>
                   </DataPanel>
 
-                  <section className="hidden gap-3 sm:grid sm:grid-cols-2">
+                  <section className="grid gap-3 sm:grid-cols-2">
                     <MetricCard
                       label="Course rating"
                       value={formatOptionalNumber(primaryTeeSet.courseRating)}
@@ -536,6 +455,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
               <HoleGeometryTable
                 courseId={data.course.id}
                 teeSetName={primaryTeeSet.name}
+                suggestedViews={activeHoleGeometrySuggestedViews}
                 holes={holeSlots.map((holeNumber) => ({
                   holeNumber,
                   hole: holeByNumber.get(holeNumber) ?? null,
@@ -545,7 +465,7 @@ export default async function CourseHoleEditorPage({ params }: PageProps) {
             ) : null}
 
             {primaryTeeSet && allowManualHoleEditing ? (
-              <DataPanel className="hidden lg:block">
+              <DataPanel>
                 <SectionHeader
                   title="Hole geometry"
                   description="Save tee and green coordinates for each hole. Seeded courses already include this data; manual courses can be built up one hole at a time."
@@ -684,7 +604,7 @@ async function loadCourseEditorRows(
 
 function AutoImportStatusContent({ autoImport }: { autoImport: CourseAutoImportResult }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-muted-foreground">
+    <div className="rounded-2xl border border-border bg-muted/45 px-4 py-3 text-sm text-muted-foreground">
       {autoImport.status === "imported"
         ? "Hole geometry was imported automatically. Refresh if the updated map is not visible yet."
         : autoImport.status === "no_coordinates"
@@ -810,17 +730,19 @@ function HoleGeometryTable({
   courseId,
   editable,
   holes: holeRows,
+  suggestedViews,
   teeSetName,
 }: {
   courseId: string;
   editable: boolean;
   holes: Array<{ holeNumber: number; hole: typeof holes.$inferSelect | null }>;
+  suggestedViews: DesktopSavedViewSuggestion[];
   teeSetName: string;
 }) {
   const mappedCount = holeRows.filter((row) => row.hole).length;
 
   return (
-    <section id="hole-geometry-table" className="hidden lg:block" data-workbench-scope="courses">
+    <section id="hole-geometry-table" className="grid" data-workbench-scope="courses">
       <DataPanel>
         <SectionHeader
           title="Hole geometry table"
@@ -838,7 +760,7 @@ function HoleGeometryTable({
             currentViewLabel={`${teeSetName} hole geometry`}
             resultLabel={`${integerFormatter.format(holeRows.length)} holes`}
             columns={holeGeometryColumns}
-            suggestedViews={holeGeometrySuggestedViews}
+            suggestedViews={suggestedViews}
             exportTableId="course-hole-geometry"
             exportFileName="forekinghell-course-hole-geometry.csv"
           />
@@ -851,11 +773,11 @@ function HoleGeometryTable({
                 Course hole geometry table showing hole number, par, yardage, stroke index, tee
                 coordinates, green coordinates, mapping status and edit action.
               </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                 <TableRow>
                   <TableHead
                     data-column="hole"
-                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     Hole
                   </TableHead>
@@ -881,7 +803,7 @@ function HoleGeometryTable({
                   <TableRow key={holeNumber} tabIndex={0} className="focus-aaa outline-none">
                     <TableCell
                       data-column="hole"
-                      className="sticky left-0 z-10 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
                     >
                       Hole {holeNumber}
                     </TableCell>
@@ -940,23 +862,14 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="h-10 rounded-xl bg-white" {...props} />
+      <Input name={name} className="h-10 rounded-xl bg-background" {...props} />
     </label>
-  );
-}
-
-function MobileDetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 items-start justify-between gap-4 border-b border-border/70 pb-3 last:border-0 last:pb-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 text-right font-medium text-foreground">{value}</dd>
-    </div>
   );
 }
 
 function ReadonlyValue({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-white px-3 py-2">
+    <div className="rounded-xl border bg-muted/35 px-3 py-2">
       <dt className="text-xs uppercase tracking-normal text-muted-foreground">{label}</dt>
       <dd className="mt-1 font-medium">{value}</dd>
     </div>
@@ -1072,7 +985,7 @@ function CourseGeometryPreview({
           { key: "green", label: "Green" },
         ]}
         rows={courseGeometryRows(mappedHoles)}
-        className="bg-white/80"
+        className="bg-card/80"
       />
     </div>
   );

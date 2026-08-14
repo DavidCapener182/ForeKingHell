@@ -5,7 +5,6 @@ import {
   Archive,
   ArrowLeft,
   CalendarDays,
-  ChevronDown,
   CircleDot,
   Gauge,
   Save,
@@ -23,34 +22,23 @@ import {
   saveEquipmentHistoryAction,
 } from "@/app/equipment/actions";
 import { BagOrderForm, type BagOrderClubItem } from "@/app/equipment/bag-order-form";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   DataPanel,
   DataPair,
   DataTableFrame,
-  MobileBentoSummary,
-  MobileDataCard,
-  MobileDataList,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
   type Tone,
 } from "@/components/premium";
-import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -60,10 +48,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   Table,
@@ -130,23 +117,29 @@ const retiredClubColumns: DesktopWorkbenchColumn[] = [
   { id: "status", label: "Status" },
 ];
 
-const equipmentSuggestedViews: DesktopSavedViewSuggestion[] = [
-  {
-    title: "Equipment history",
-    href: "#equipment-history-table",
-    detail: "Current and previous setup rows with ball, loft, lie and shaft details.",
-  },
-  {
-    title: "Retired clubs",
-    href: "#retired-clubs-table",
-    detail: "Clubs removed from the active bag with shot counts and last use.",
-  },
-  {
-    title: "Bag intelligence",
-    href: "/bag",
-    detail: "Compare setup changes against gapping and confidence.",
-  },
-];
+function equipmentSuggestedViews(includeRetiredClubs: boolean): DesktopSavedViewSuggestion[] {
+  return [
+    {
+      title: "Equipment history",
+      href: "#equipment-history-table",
+      detail: "Current and previous setup rows with ball, loft, lie and shaft details.",
+    },
+    ...(includeRetiredClubs
+      ? [
+          {
+            title: "Retired clubs",
+            href: "#retired-clubs-table",
+            detail: "Clubs removed from the active bag with shot counts and last use.",
+          },
+        ]
+      : []),
+    {
+      title: "Bag intelligence",
+      href: "/bag",
+      detail: "Compare setup changes against gapping and confidence.",
+    },
+  ];
+}
 export default async function EquipmentPage({ searchParams }: EquipmentPageProps) {
   const params = await searchParams;
   const [data, featureData] = await Promise.all([getEquipmentData(), getFeatureIdeasData()]);
@@ -154,14 +147,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
 
   return (
     <PageShell>
-      <MobileEquipmentExperience
-        data={data}
-        intelligence={intelligence}
-        featureData={featureData}
-        saved={params?.saved}
-      />
-
-      <DesktopWorkbenchLayout scope="equipment" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="equipment">
         <div className="hidden items-center justify-between gap-4 sm:flex">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/bag" prefetch={false}>
@@ -220,35 +206,6 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           </Alert>
         ) : null}
 
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Current setup",
-              value: intelligence.primarySetupLabel,
-              detail: `${data.activeClubs.length} clubs tracked`,
-              tone: "green",
-            },
-            {
-              label: "Bag fit",
-              value: `${intelligence.bagFitScore}%`,
-              detail: intelligence.fitDetail,
-              tone: "sky",
-            },
-            {
-              label: "Weak window",
-              value: intelligence.weakness.label,
-              detail: intelligence.weakness.detail,
-              tone: "amber",
-            },
-            {
-              label: "Next move",
-              value: intelligence.nextUpgrade ?? "Build sample",
-              detail: intelligence.nextUpgradeDetail,
-              tone: "slate",
-            },
-          ]}
-        />
-
         <CurrentSetupStrip setup={intelligence.setup} ballModel={data.ballModels[0] ?? null} />
         <VisualBagSlotsSection
           clubs={buildBagOrderItems(intelligence.activeProfiles)}
@@ -268,699 +225,100 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           />
         ) : null}
 
-        <EquipmentMobileDisclosure
-          title="Add or edit setup"
-          description="Ball models, specs and retire controls."
-        >
-          <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-            <DataPanel>
-              <SectionHeader
-                title="Add ball model"
-                description="Use this when you switch balls and want to compare before/after launch data."
-                action={<CircleDot className="size-5 text-emerald-600" />}
-              />
-              <CardContent>
-                <form action={createBallModelAction} className="grid gap-3">
-                  <FormField label="Brand" name="brand" placeholder="Titleist" />
-                  <FormField label="Model" name="model" placeholder="Pro V1" required />
-                  <Button
-                    type="submit"
-                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                  >
-                    <Save className="size-4" />
-                    Save ball
-                  </Button>
-                </form>
-              </CardContent>
-            </DataPanel>
-
-            <DataPanel>
-              <SectionHeader
-                title="Add club specification"
-                description="Saving a new active setup automatically closes the previous active setup for that club."
-                action={<Wrench className="size-5 text-sky-600" />}
-              />
-              <CardContent>
-                <form action={saveEquipmentHistoryAction} className="grid gap-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <SelectField
-                      label="Club"
-                      name="clubId"
-                      values={data.activeClubs.map((club) => ({
-                        value: club.id,
-                        label: formatClubType(club.type),
-                      }))}
-                    />
-                    <SelectField
-                      label="Ball model"
-                      name="ballModelId"
-                      optionalLabel="No ball model"
-                      values={data.ballModels.map((ball) => ({
-                        value: ball.id,
-                        label: [ball.brand, ball.model].filter(Boolean).join(" "),
-                      }))}
-                    />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-4">
-                    <FormField label="Effective from" name="effectiveFrom" type="date" />
-                    <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
-                    <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
-                    <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
-                  </div>
-                  <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
-                  <FormField
-                    label="Notes"
-                    name="notes"
-                    placeholder="Grip, length, adapter setting, build notes"
-                  />
-                  <Button
-                    type="submit"
-                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                  >
-                    <Save className="size-4" />
-                    Save specification
-                  </Button>
-                </form>
-              </CardContent>
-            </DataPanel>
-          </section>
-        </EquipmentMobileDisclosure>
-
-        {data.retiredClubs.length > 0 ? (
-          <EquipmentMobileDisclosure title="Retired equipment" description="Historic club records">
-            <DataPanel>
-              <SectionHeader
-                title="Retired clubs"
-                description="Clubs no longer in the active bag. Historic shots stay available for before/after comparisons."
-                action={<Archive className="size-5 text-slate-500" />}
-              />
-              <CardContent>
-                <RetiredClubsTable retired={data.retiredClubs} />
-              </CardContent>
-            </DataPanel>
-          </EquipmentMobileDisclosure>
-        ) : null}
-
-        <EquipmentMobileDisclosure title="Setup history" description="Specification timeline">
+        <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <DataPanel>
             <SectionHeader
-              title="Setup history"
-              description="A timeline of club and ball setups used by the account."
+              title="Add ball model"
+              description="Use this when you switch balls and want to compare before/after launch data."
+              action={<CircleDot className="size-5 text-primary" />}
             />
             <CardContent>
-              <EquipmentHistoryTable history={data.history} />
+              <form action={createBallModelAction} className="grid gap-3">
+                <FormField label="Brand" name="brand" placeholder="Titleist" />
+                <FormField label="Model" name="model" placeholder="Pro V1" required />
+                <Button type="submit" className="w-full rounded-lg sm:w-fit">
+                  <Save className="size-4" />
+                  Save ball
+                </Button>
+              </form>
             </CardContent>
           </DataPanel>
-        </EquipmentMobileDisclosure>
-      </DesktopWorkbenchLayout>
-    </PageShell>
-  );
-}
 
-function MobileEquipmentExperience({
-  data,
-  intelligence,
-  featureData,
-  saved,
-}: {
-  data: EquipmentData;
-  intelligence: EquipmentIntelligence;
-  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
-  saved?: string;
-}) {
-  const profiles = [...intelligence.activeProfiles].sort(
-    (left, right) => clubSortValue(left.club.type) - clubSortValue(right.club.type),
-  );
-  const bagOrderItems = buildBagOrderItems(profiles);
-  const currentBall = data.ballModels[0] ?? null;
+          <DataPanel>
+            <SectionHeader
+              title="Add club specification"
+              description="Saving a new active setup automatically closes the previous active setup for that club."
+              action={<Wrench className="size-5 text-[var(--status-information-foreground)]" />}
+            />
+            <CardContent>
+              <form action={saveEquipmentHistoryAction} className="grid gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <SelectField
+                    label="Club"
+                    name="clubId"
+                    values={data.activeClubs.map((club) => ({
+                      value: club.id,
+                      label: formatClubType(club.type),
+                    }))}
+                  />
+                  <SelectField
+                    label="Ball model"
+                    name="ballModelId"
+                    optionalLabel="No ball model"
+                    values={data.ballModels.map((ball) => ({
+                      value: ball.id,
+                      label: [ball.brand, ball.model].filter(Boolean).join(" "),
+                    }))}
+                  />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <FormField label="Effective from" name="effectiveFrom" type="date" />
+                  <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
+                  <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
+                  <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
+                </div>
+                <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
+                <FormField
+                  label="Notes"
+                  name="notes"
+                  placeholder="Grip, length, adapter setting, build notes"
+                />
+                <Button type="submit" className="w-full rounded-lg sm:w-fit">
+                  <Save className="size-4" />
+                  Save specification
+                </Button>
+              </form>
+            </CardContent>
+          </DataPanel>
+        </section>
 
-  return (
-    <MobileAppShell className="gap-5">
-      <div data-equipment-mobile-experience className="grid gap-5">
-        <MobileRouteHeader title="Equipment" group="analyse" activeKey="equipment" />
-
-        {saved ? (
-          <Alert className="ios-grouped-list">
-            <CircleDot className="size-4" />
-            <AlertTitle>{equipmentSavedTitle(saved)}</AlertTitle>
-            <AlertDescription>{equipmentSavedDescription(saved)}</AlertDescription>
-          </Alert>
+        {data.retiredClubs.length > 0 ? (
+          <DataPanel>
+            <SectionHeader
+              title="Retired clubs"
+              description="Clubs no longer in the active bag. Historic shots stay available for before/after comparisons."
+              action={<Archive className="size-5 text-muted-foreground" />}
+            />
+            <CardContent>
+              <RetiredClubsTable retired={data.retiredClubs} />
+            </CardContent>
+          </DataPanel>
         ) : null}
 
-        <section className="grid gap-2.5" aria-label="Current bag fit">
-          <IOSSectionHeader
-            title="Current bag fit"
-            description="The setup signal and the first window to check."
+        <DataPanel>
+          <SectionHeader
+            title="Setup history"
+            description="A timeline of club and ball setups used by the account."
           />
-          <IOSGroupedList label="Current bag fit summary">
-            <IOSListRow
-              icon={Gauge}
-              label="Bag fit"
-              value={`${intelligence.bagFitScore}%`}
-              detail={intelligence.fitDetail}
-              status={
-                <IOSInlineStatus
-                  label={intelligence.bagFitScore > 0 ? "Current score" : "Needs shot data"}
-                  tone={iosStatusTone(intelligence.bagFitTone)}
-                />
-              }
+          <CardContent>
+            <EquipmentHistoryTable
+              history={data.history}
+              includeRetiredClubs={data.retiredClubs.length > 0}
             />
-            <IOSListRow
-              icon={Target}
-              label="Weak window"
-              value={intelligence.weakness.label}
-              detail={intelligence.weakness.detail}
-              status={
-                <IOSInlineStatus
-                  label={intelligence.weakness.tone === "green" ? "No urgent gap" : "Review first"}
-                  tone={iosStatusTone(intelligence.weakness.tone)}
-                />
-              }
-            />
-          </IOSGroupedList>
-          <Button asChild className="min-h-11 w-full rounded-lg">
-            <Link href="#equipment-mobile-actions" prefetch={false}>
-              <Wrench className="size-4" aria-hidden />
-              Manage setup
-            </Link>
-          </Button>
-        </section>
-
-        <section className="grid gap-2.5" aria-label="Owned equipment">
-          <IOSSectionHeader
-            title="Owned setup"
-            description={`${profiles.length} active ${profiles.length === 1 ? "club" : "clubs"}. Carry is shown when shot evidence is available.`}
-          />
-          <IOSGroupedList label="Owned equipment and clubs">
-            {profiles.length > 0 ? (
-              profiles.map((profile) => (
-                <IOSListRow
-                  key={profile.club.id}
-                  label={formatClubType(profile.club.type)}
-                  detail={profile.equipmentName}
-                  value={
-                    profile.carryLabel === "--"
-                      ? `${profile.confidence}% trust`
-                      : profile.carryLabel
-                  }
-                  href={`/bag/${profile.club.id}`}
-                  ariaLabel={`Open ${formatClubType(profile.club.type)} equipment details`}
-                />
-              ))
-            ) : (
-              <IOSListRow
-                icon={Wrench}
-                label="No active clubs"
-                detail="Add a setup or import shots to start your owned-equipment list."
-                status={<IOSInlineStatus label="Setup required" tone="attention" />}
-              />
-            )}
-            {currentBall ? (
-              <IOSListRow
-                icon={CircleDot}
-                label="Ball"
-                detail={[currentBall.brand, currentBall.model].filter(Boolean).join(" ")}
-                value="Current"
-              />
-            ) : null}
-          </IOSGroupedList>
-        </section>
-
-        <section
-          id="equipment-mobile-actions"
-          className="grid scroll-mt-28 gap-2.5"
-          aria-label="Equipment detail and actions"
-        >
-          <IOSSectionHeader
-            title="Details and actions"
-            description="Open one section at a time for deeper setup work."
-          />
-          <IOSDisclosureGroup
-            label="Equipment detail and actions"
-            items={[
-              {
-                value: "score",
-                title: "Bag score and guidance",
-                summary: `${intelligence.bagFitScore}%`,
-                description: "Strength, next move and fitting evidence",
-                content: (
-                  <MobileBagScoreDetails intelligence={intelligence} featureData={featureData} />
-                ),
-              },
-              {
-                value: "timeline",
-                title: "Bag order and timeline",
-                summary: `${profiles.length} clubs`,
-                description: "Reorder, capture a snapshot or retire a club",
-                content: (
-                  <MobileBagTimelineDetails
-                    profiles={profiles}
-                    clubs={bagOrderItems}
-                    snapshots={data.snapshots}
-                  />
-                ),
-              },
-              {
-                value: "impact",
-                title: "Equipment impact",
-                summary:
-                  intelligence.impacts.length > 0
-                    ? `${intelligence.impacts.length} comparisons`
-                    : "No baseline",
-                description: "Before-and-after performance signals",
-                content: <MobileEquipmentImpactDetails impacts={intelligence.impacts} />,
-              },
-              {
-                value: "builder",
-                title: "Bag builder",
-                summary: intelligence.nextUpgrade ?? "Current bag",
-                description: "Projected setup moves from current evidence",
-                content: <MobileBagBuilderDetails scenarios={intelligence.builderScenarios} />,
-              },
-              {
-                value: "forms",
-                title: "Add or edit setup",
-                summary: "Ball and club",
-                description: "Save a ball model or active club specification",
-                content: <MobileEquipmentForms data={data} />,
-              },
-              {
-                value: "history",
-                title: "History and specifications",
-                summary: `${data.history.length + data.retiredClubs.length} records`,
-                description: "Previous builds, active specifications and retired clubs",
-                content: <MobileEquipmentHistoryDetails data={data} />,
-              },
-            ]}
-          />
-          <IOSGroupedList label="Equipment tools">
-            <IOSListRow
-              icon={Sparkles}
-              label="Experiment Lab"
-              detail="Compare measured setup changes before making a decision."
-              href="/equipment/experiments"
-            />
-          </IOSGroupedList>
-        </section>
-      </div>
-    </MobileAppShell>
-  );
-}
-
-function MobileBagScoreDetails({
-  intelligence,
-  featureData,
-}: {
-  intelligence: EquipmentIntelligence;
-  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
-}) {
-  return (
-    <div className="grid gap-5">
-      <div className="grid divide-y divide-border/70">
-        <MobileEquipmentDetailRow
-          label="Strength"
-          value={intelligence.strength.label}
-          detail={intelligence.strength.detail}
-        />
-        <MobileEquipmentDetailRow
-          label="Weak window"
-          value={intelligence.weakness.label}
-          detail={intelligence.weakness.detail}
-        />
-        <MobileEquipmentDetailRow
-          label="Next move"
-          value={intelligence.nextUpgrade ?? "Build sample"}
-          detail={intelligence.nextUpgradeDetail}
-        />
-        <MobileEquipmentDetailRow
-          label="Average confidence"
-          value={`${intelligence.averageConfidence}%`}
-          detail={`${intelligence.trustedCount} trusted clubs`}
-        />
-      </div>
-      <section className="grid gap-2.5" aria-label="Fitting guidance">
-        <h3 className="text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
-          Fitting guidance
-        </h3>
-        <BagFeaturePanel data={featureData} compactMobile />
-      </section>
-    </div>
-  );
-}
-
-function MobileBagTimelineDetails({
-  profiles,
-  clubs,
-  snapshots,
-}: {
-  profiles: ClubProfile[];
-  clubs: BagOrderClubItem[];
-  snapshots: EquipmentSnapshotRow[];
-}) {
-  return (
-    <div className="grid gap-6">
-      <section className="grid gap-3" aria-label="Bag order">
-        <div>
-          <h3 className="text-[15px] font-semibold text-foreground">Bag order</h3>
-          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-            Drag with a pointer, or use the section picker and 44px move controls on touch and
-            keyboard.
-          </p>
-        </div>
-        {clubs.length > 0 ? (
-          <BagOrderForm clubs={clubs} />
-        ) : (
-          <p className="text-[13px] leading-5 text-muted-foreground">
-            Add a club before arranging the bag.
-          </p>
-        )}
-      </section>
-
-      <section className="grid gap-3" aria-label="Bag snapshots">
-        <div>
-          <h3 className="text-[15px] font-semibold text-foreground">Bag snapshot</h3>
-          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-            Save the current setup before a fitting or equipment change.
-          </p>
-        </div>
-        <form action={captureEquipmentSnapshotAction} className="grid gap-3">
-          <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />
-          <Button type="submit" className="min-h-11 w-full rounded-lg">
-            <Save className="size-4" aria-hidden />
-            Capture snapshot
-          </Button>
-        </form>
-        <div className="grid divide-y divide-border/70">
-          {snapshots.length > 0 ? (
-            snapshots.slice(0, 4).map((snapshot) => (
-              <div key={snapshot.id} className="flex items-start justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="text-[15px] font-medium text-foreground">{snapshot.label}</p>
-                  <p className="mt-0.5 text-[13px] text-muted-foreground">
-                    {compactDateFormatter.format(snapshot.capturedAt)}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
-                  {snapshot.items.length} clubs
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="py-3 text-[13px] leading-5 text-muted-foreground">
-              No bag snapshots yet.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="grid gap-2" aria-label="Current club timeline">
-        <h3 className="text-[15px] font-semibold text-foreground">Current club timeline</h3>
-        <div className="grid divide-y divide-border/70">
-          {profiles.map((profile) => (
-            <div key={profile.club.id} className="grid gap-2 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[15px] font-medium text-foreground">
-                    {formatClubType(profile.club.type)}
-                  </p>
-                  <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-                    {profile.equipmentName}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[15px] tabular-nums text-muted-foreground">
-                  {profile.carryLabel}
-                </span>
-              </div>
-              <p className="text-[13px] leading-5 text-muted-foreground">
-                {profile.shotCount.toLocaleString("en-GB")} shots · added{" "}
-                {profile.addedAt ? compactDateFormatter.format(profile.addedAt) : "date unknown"} ·{" "}
-                {profile.performanceLabel.toLowerCase()}
-              </p>
-              <RetireClubForm club={profile.club as ActiveClub} compact />
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function MobileEquipmentImpactDetails({ impacts }: { impacts: EquipmentImpact[] }) {
-  if (impacts.length === 0) {
-    return (
-      <p className="text-[13px] leading-5 text-muted-foreground">
-        No measured before-and-after equipment comparison is available yet.
-      </p>
-    );
-  }
-
-  return (
-    <div className="grid divide-y divide-border/70">
-      {impacts.map((impact) => (
-        <section
-          key={`${impact.clubLabel}-${impact.equipmentName}-${impact.addedLabel}`}
-          className="grid gap-2 py-3 first:pt-0 last:pb-0"
-          aria-label={`${impact.clubLabel} equipment impact`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="text-[15px] font-medium text-foreground">{impact.equipmentName}</h3>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">
-                {impact.clubLabel} · added {impact.addedLabel}
-              </p>
-            </div>
-            <IOSInlineStatus label={impact.verdict} tone={iosStatusTone(impact.tone)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-[13px]">
-            <MobileEquipmentValue label="Carry" value={formatDeltaYards(impact.carryDeltaYd)} />
-            <MobileEquipmentValue label="Offline" value={formatOfflineChange(impact)} />
-          </div>
-          <p className="text-[13px] leading-5 text-muted-foreground">{impact.detail}</p>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function MobileBagBuilderDetails({ scenarios }: { scenarios: BuilderScenario[] }) {
-  return (
-    <div className="grid divide-y divide-border/70">
-      {scenarios.map((scenario) => (
-        <MobileEquipmentDetailRow
-          key={scenario.label}
-          label={scenario.label}
-          value={`${scenario.score}%`}
-          detail={scenario.detail}
-        />
-      ))}
-    </div>
-  );
-}
-
-function MobileEquipmentForms({ data }: { data: EquipmentData }) {
-  return (
-    <div className="grid gap-6">
-      <section className="grid gap-3" aria-label="Add ball model">
-        <div>
-          <h3 className="text-[15px] font-semibold text-foreground">Add ball model</h3>
-          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-            Save the ball used for before-and-after launch comparisons.
-          </p>
-        </div>
-        <form action={createBallModelAction} className="grid gap-3">
-          <FormField label="Brand" name="brand" placeholder="Titleist" />
-          <FormField label="Model" name="model" placeholder="Pro V1" required />
-          <Button type="submit" className="min-h-11 w-full rounded-lg">
-            <Save className="size-4" aria-hidden />
-            Save ball
-          </Button>
-        </form>
-      </section>
-
-      <section className="grid gap-3" aria-label="Add club specification">
-        <div>
-          <h3 className="text-[15px] font-semibold text-foreground">Add club specification</h3>
-          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-            A new active setup automatically closes the previous setup for that club.
-          </p>
-        </div>
-        <form action={saveEquipmentHistoryAction} className="grid gap-3">
-          <SelectField
-            label="Club"
-            name="clubId"
-            values={data.activeClubs.map((club) => ({
-              value: club.id,
-              label: formatClubType(club.type),
-            }))}
-          />
-          <SelectField
-            label="Ball model"
-            name="ballModelId"
-            optionalLabel="No ball model"
-            values={data.ballModels.map((ball) => ({
-              value: ball.id,
-              label: [ball.brand, ball.model].filter(Boolean).join(" "),
-            }))}
-          />
-          <FormField label="Effective from" name="effectiveFrom" type="date" />
-          <div className="grid grid-cols-2 gap-3">
-            <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
-            <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
-          </div>
-          <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
-          <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
-          <FormField
-            label="Notes"
-            name="notes"
-            placeholder="Grip, length, adapter setting, build notes"
-          />
-          <Button type="submit" className="min-h-11 w-full rounded-lg">
-            <Save className="size-4" aria-hidden />
-            Save specification
-          </Button>
-        </form>
-      </section>
-    </div>
-  );
-}
-
-function MobileEquipmentHistoryDetails({ data }: { data: EquipmentData }) {
-  return (
-    <div className="grid gap-6">
-      <section className="grid gap-2" aria-label="Equipment specification history">
-        <h3 className="text-[15px] font-semibold text-foreground">Specification history</h3>
-        <div className="grid divide-y divide-border/70">
-          {data.history.length > 0 ? (
-            data.history.map((row) => (
-              <div key={row.id} className="grid gap-1.5 py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-medium text-foreground">
-                      {formatClubType(row.clubType ?? "")}
-                    </p>
-                    <p className="text-[13px] leading-5 text-muted-foreground">
-                      {formatDate(row.effectiveFrom)} –{" "}
-                      {row.effectiveTo ? formatDate(row.effectiveTo) : "current"}
-                    </p>
-                  </div>
-                  <IOSInlineStatus
-                    label={row.effectiveTo ? "Previous" : "Active"}
-                    tone={row.effectiveTo ? "neutral" : "positive"}
-                  />
-                </div>
-                <p className="text-[13px] leading-5 text-muted-foreground">
-                  Ball {formatBall(row.ballBrand, row.ballModel)} · loft/lie{" "}
-                  {formatNumber(row.loftDeg)}/{formatNumber(row.lieDeg)} · {row.shaft ?? "No shaft"}
-                </p>
-                {row.notes ? (
-                  <p className="text-[13px] leading-5 text-muted-foreground">{row.notes}</p>
-                ) : null}
-              </div>
-            ))
-          ) : (
-            <p className="py-3 text-[13px] leading-5 text-muted-foreground">
-              No equipment specifications have been saved yet.
-            </p>
-          )}
-        </div>
-      </section>
-
-      <section className="grid gap-2" aria-label="Retired equipment">
-        <h3 className="text-[15px] font-semibold text-foreground">Retired equipment</h3>
-        <div className="grid divide-y divide-border/70">
-          {data.retiredClubs.length > 0 ? (
-            data.retiredClubs.map((club) => (
-              <div key={club.id} className="flex items-start justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="text-[15px] font-medium text-foreground">
-                    {formatClubType(club.type)}
-                  </p>
-                  <p className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
-                    {[club.brand, club.model].filter(Boolean).join(" ") || "Unknown model"}
-                  </p>
-                </div>
-                <span className="shrink-0 text-right text-[13px] leading-5 text-muted-foreground">
-                  {club.shotCount.toLocaleString("en-GB")} shots
-                  <br />
-                  {club.lastShotAt ? formatDate(club.lastShotAt) : "No last shot"}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="py-3 text-[13px] leading-5 text-muted-foreground">No retired clubs.</p>
-          )}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function MobileEquipmentDetailRow({
-  label,
-  value,
-  detail,
-}: {
-  label: ReactNode;
-  value: ReactNode;
-  detail?: ReactNode;
-}) {
-  return (
-    <div className="grid gap-1 py-3 first:pt-0 last:pb-0">
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[13px] text-muted-foreground">{label}</span>
-        <span className="max-w-[58%] text-right text-[15px] font-medium leading-5 text-foreground tabular-nums">
-          {value}
-        </span>
-      </div>
-      {detail ? <p className="text-[13px] leading-5 text-muted-foreground">{detail}</p> : null}
-    </div>
-  );
-}
-
-function MobileEquipmentValue({ label, value }: { label: ReactNode; value: ReactNode }) {
-  return (
-    <div>
-      <p className="text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-medium text-foreground tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function iosStatusTone(tone: Tone): ComponentProps<typeof IOSInlineStatus>["tone"] {
-  if (tone === "green") return "positive";
-  if (tone === "amber") return "attention";
-  if (tone === "pink") return "critical";
-  if (tone === "sky") return "info";
-  return "neutral";
-}
-
-function EquipmentMobileDisclosure({
-  title,
-  description,
-  children,
-}: {
-  title: ReactNode;
-  description?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <Collapsible className="group sm:contents">
-      <CollapsibleTrigger className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/92 px-3 py-2 text-left text-sm shadow-sm sm:hidden">
-        <span className="min-w-0">
-          <span className="block truncate font-semibold tracking-normal">{title}</span>
-          {description ? (
-            <span className="block truncate text-xs text-muted-foreground">{description}</span>
-          ) : null}
-        </span>
-        <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
-          aria-hidden
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent forceMount className="hidden group-data-[state=open]:block sm:!contents">
-        {children}
-      </CollapsibleContent>
-    </Collapsible>
+          </CardContent>
+        </DataPanel>
+      </DesktopWorkbenchLayout>
+    </PageShell>
   );
 }
 
@@ -985,46 +343,50 @@ function CurrentSetupStrip({
         const primaryClub = item.profiles[0]?.club;
 
         return (
-          <div key={item.key} className="premium-card grid min-w-[76vw] gap-3 p-3 sm:min-w-0">
-            <ClubArtwork
-              clubType={primaryClub?.type}
-              brand={primaryClub?.brand}
-              model={primaryClub?.model}
-              alt=""
-              source="generated-v2"
-              className="h-28 rounded-lg"
-              imageClassName="px-4 py-2"
-              sizes="(min-width: 1280px) 210px, (min-width: 640px) 28vw, 70vw"
-              priority
-            />
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-              <div className="min-w-0">
-                <p className="text-base font-semibold tracking-normal">{item.label}</p>
-                <p className="mt-0.5 truncate text-sm text-muted-foreground">{item.model}</p>
+          <Card key={item.key} className="min-w-[76vw] gap-0 py-0 sm:min-w-0">
+            <CardContent className="grid gap-3 p-3">
+              <ClubArtwork
+                clubType={primaryClub?.type}
+                brand={primaryClub?.brand}
+                model={primaryClub?.model}
+                alt=""
+                source="generated-v2"
+                className="h-28 rounded-lg"
+                imageClassName="px-4 py-2"
+                sizes="(min-width: 1280px) 210px, (min-width: 640px) 28vw, 70vw"
+                priority
+              />
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold tracking-normal">{item.label}</p>
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">{item.model}</p>
+                </div>
+                <StatusPill tone={item.tone}>{item.confidenceLabel}</StatusPill>
               </div>
-              <StatusPill tone={item.tone}>{item.confidenceLabel}</StatusPill>
-            </div>
-            <p className="text-xs leading-5 text-muted-foreground">{item.detail}</p>
-          </div>
+              <p className="text-xs leading-5 text-muted-foreground">{item.detail}</p>
+            </CardContent>
+          </Card>
         );
       })}
       {ballModel ? (
-        <div className="premium-card grid min-w-[76vw] gap-3 p-3 sm:min-w-0">
-          <div className="grid h-28 place-items-center rounded-lg border border-slate-200 bg-white shadow-inner">
-            <div className="grid size-20 place-items-center rounded-full border border-slate-200 bg-white shadow-sm">
-              <CircleDot className="size-10 text-emerald-700" />
+        <Card className="min-w-[76vw] gap-0 py-0 sm:min-w-0">
+          <CardContent className="grid gap-3 p-3">
+            <div className="grid h-28 place-items-center rounded-lg border border-border bg-card shadow-inner">
+              <div className="grid size-20 place-items-center rounded-full border border-border bg-card shadow-sm">
+                <CircleDot className="size-10 text-primary" />
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="text-base font-semibold tracking-normal">Ball</p>
-            <p className="mt-0.5 truncate text-sm text-muted-foreground">
-              {[ballModel.brand, ballModel.model].filter(Boolean).join(" ")}
+            <div>
+              <p className="text-base font-semibold tracking-normal">Ball</p>
+              <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                {[ballModel.brand, ballModel.model].filter(Boolean).join(" ")}
+              </p>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Current ball model for setup comparisons.
             </p>
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Current ball model for setup comparisons.
-          </p>
-        </div>
+          </CardContent>
+        </Card>
       ) : null}
     </section>
   );
@@ -1049,14 +411,11 @@ function VisualBagSlotsSection({
         <div className="grid content-start gap-3">
           <form
             action={captureEquipmentSnapshotAction}
-            className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-3"
+            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3"
           >
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />
-              <Button
-                type="submit"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
+              <Button type="submit" className="rounded-lg">
                 <Save className="size-4" />
                 Capture
               </Button>
@@ -1068,7 +427,7 @@ function VisualBagSlotsSection({
               snapshots.slice(0, 4).map((snapshot) => (
                 <div
                   key={snapshot.id}
-                  className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                  className="rounded-lg border border-border bg-card p-3 shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -1123,15 +482,15 @@ function CurrentBagScorePanel({ intelligence }: { intelligence: EquipmentIntelli
         }
       />
       <CardContent className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
+        <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--status-success-foreground)]">
             <Gauge className="size-4" />
             Bag fit
           </div>
-          <p className="mt-3 text-5xl font-semibold tracking-normal text-emerald-950">
+          <p className="mt-3 text-5xl font-semibold tracking-normal text-foreground">
             {intelligence.bagFitScore}%
           </p>
-          <p className="mt-2 text-sm leading-6 text-emerald-900/75">{intelligence.fitDetail}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{intelligence.fitDetail}</p>
           <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
             <DataPair label="Confidence" value={`${intelligence.averageConfidence}%`} />
             <DataPair label="Trusted clubs" value={intelligence.trustedCount.toString()} />
@@ -1179,7 +538,7 @@ function EquipmentSignalCard({
   tone: Tone;
 }) {
   return (
-    <div className={`grid gap-3 rounded-lg border bg-white p-3 ${toneBorderClass(tone)}`}>
+    <div className={`grid gap-3 rounded-lg border bg-card p-3 ${toneBorderClass(tone)}`}>
       <div
         className={`flex items-center gap-2 text-xs font-semibold uppercase ${toneTextClass(tone)}`}
       >
@@ -1200,46 +559,46 @@ function ClubIntelligenceSection({ profiles }: { profiles: ClubProfile[] }) {
       <SectionHeader
         title="Club intelligence"
         description="Each club now shows its course number, confidence and current miss instead of just brand and model."
-        action={<TrendingUp className="size-5 text-emerald-700" />}
+        action={<TrendingUp className="size-5 text-primary" />}
       />
       <CardContent className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 pt-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-4 lg:grid-cols-3 xl:grid-cols-4">
         {profiles.length > 0 ? (
           profiles.map((profile) => (
-            <Link
+            <Card
               key={profile.club.id}
-              href={`/bag/${profile.club.id}`}
-              prefetch={false}
-              className="premium-card block min-w-[78vw] overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-emerald-300 sm:min-w-0"
+              className="min-w-[78vw] gap-0 rounded-lg py-0 transition-colors hover:ring-primary/50 sm:min-w-0"
             >
-              <ClubArtwork
-                clubType={profile.club.type}
-                brand={profile.club.brand}
-                model={profile.club.model}
-                alt=""
-                source="generated-v2"
-                className="h-32 rounded-none border-0 border-b"
-                imageClassName="px-5 py-3"
-                sizes="(min-width: 1280px) 280px, (min-width: 640px) 42vw, 78vw"
-              />
-              <div className="grid gap-3 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-lg font-semibold tracking-normal">
-                      {formatClubType(profile.club.type)}
-                    </p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {profile.equipmentName}
-                    </p>
+              <Link href={`/bag/${profile.club.id}`} prefetch={false} className="block">
+                <ClubArtwork
+                  clubType={profile.club.type}
+                  brand={profile.club.brand}
+                  model={profile.club.model}
+                  alt=""
+                  source="generated-v2"
+                  className="h-32 rounded-none border-0 border-b"
+                  imageClassName="px-5 py-3"
+                  sizes="(min-width: 1280px) 280px, (min-width: 640px) 42vw, 78vw"
+                />
+                <div className="grid gap-3 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-lg font-semibold tracking-normal">
+                        {formatClubType(profile.club.type)}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {profile.equipmentName}
+                      </p>
+                    </div>
+                    <StatusPill tone={profile.statusTone}>{profile.statusLabel}</StatusPill>
                   </div>
-                  <StatusPill tone={profile.statusTone}>{profile.statusLabel}</StatusPill>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <DataPair label="Carry" value={profile.carryLabel} />
+                    <DataPair label="Confidence" value={`${profile.confidence}%`} />
+                  </div>
+                  <p className="text-sm leading-5 text-muted-foreground">{profile.missLabel}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <DataPair label="Carry" value={profile.carryLabel} />
-                  <DataPair label="Confidence" value={`${profile.confidence}%`} />
-                </div>
-                <p className="text-sm leading-5 text-muted-foreground">{profile.missLabel}</p>
-              </div>
-            </Link>
+              </Link>
+            </Card>
           ))
         ) : (
           <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
@@ -1257,14 +616,14 @@ function BagTimelineSection({ profiles }: { profiles: ClubProfile[] }) {
       <SectionHeader
         title="Bag timeline"
         description="Current clubs ordered like a bag, with performance state and maintenance actions kept together."
-        action={<CalendarDays className="size-5 text-sky-700" />}
+        action={<CalendarDays className="size-5 text-[var(--status-information-foreground)]" />}
       />
       <CardContent className="grid gap-2">
         {profiles.length > 0 ? (
           profiles.map((profile) => (
             <div
               key={profile.club.id}
-              className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,0.7fr))_auto] md:items-center"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3 md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,0.7fr))_auto] md:items-center"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <ClubArtwork
@@ -1315,13 +674,13 @@ function EquipmentImpactSection({ impacts }: { impacts: EquipmentImpact[] }) {
       <SectionHeader
         title="Equipment intelligence"
         description="Before/after signals answer whether the club has actually changed performance."
-        action={<ShieldCheck className="size-5 text-emerald-700" />}
+        action={<ShieldCheck className="size-5 text-primary" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {impacts.slice(0, 4).map((impact) => (
           <div
             key={`${impact.clubLabel}-${impact.equipmentName}-${impact.addedLabel}`}
-            className={`grid gap-3 rounded-lg border bg-white p-3 ${toneBorderClass(impact.tone)}`}
+            className={`grid gap-3 rounded-lg border bg-card p-3 ${toneBorderClass(impact.tone)}`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -1349,13 +708,13 @@ function BagBuilderSection({ scenarios }: { scenarios: BuilderScenario[] }) {
       <SectionHeader
         title="Bag builder"
         description="Projected fit changes for the most obvious setup moves."
-        action={<Sparkles className="size-5 text-sky-700" />}
+        action={<Sparkles className="size-5 text-[var(--status-information-foreground)]" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-3">
         {scenarios.map((scenario) => (
           <div
             key={scenario.label}
-            className={`grid gap-2 rounded-lg border bg-white p-3 ${toneBorderClass(scenario.tone)}`}
+            className={`grid gap-2 rounded-lg border bg-card p-3 ${toneBorderClass(scenario.tone)}`}
           >
             <div className="flex items-start justify-between gap-3">
               <p className="font-semibold tracking-normal">{scenario.label}</p>
@@ -1381,7 +740,7 @@ function ClubHistorySection({
       <SectionHeader
         title="Club history"
         description="Retired clubs become the story of what changed, not a dead inventory list."
-        action={<Archive className="size-5 text-slate-500" />}
+        action={<Archive className="size-5 text-muted-foreground" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {retiredProfiles.slice(0, 6).map((profile) => {
@@ -1393,7 +752,7 @@ function ClubHistorySection({
           return (
             <div
               key={profile.club.id}
-              className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3"
+              className="grid gap-3 rounded-lg border border-border bg-card p-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -1428,7 +787,9 @@ function ClubHistorySection({
   );
 }
 
-function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
+async function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
     <section id="retired-clubs-table" className="grid gap-3" data-workbench-scope="retired-clubs">
       <DesktopTableWorkbenchControls
@@ -1437,47 +798,20 @@ function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
         currentViewLabel="Retired club inventory"
         resultLabel={`${retired.length} retired clubs`}
         columns={retiredClubColumns}
-        suggestedViews={equipmentSuggestedViews}
+        suggestedViews={equipmentSuggestedViews(true)}
         exportTableId="retired-clubs"
         exportFileName="forekinghell-retired-clubs.csv"
       />
-      <DataTableFrame
-        mainTableLabel="Retired club inventory table"
-        stickyFirstColumn
-        mobile={
-          <MobileDataList
-            empty={
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                No retired clubs.
-              </p>
-            }
-          >
-            {retired.map((club) => (
-              <MobileDataCard
-                key={club.id}
-                title={formatClubType(club.type)}
-                subtitle={[club.brand, club.model].filter(Boolean).join(" ") || "Unknown brand"}
-                action={<StatusPill tone="slate">Retired</StatusPill>}
-              >
-                <DataPair label="Shots" value={club.shotCount.toLocaleString("en-GB")} />
-                <DataPair
-                  label="Last shot"
-                  value={club.lastShotAt instanceof Date ? formatDate(club.lastShotAt) : "--"}
-                />
-              </MobileDataCard>
-            ))}
-          </MobileDataList>
-        }
-      >
+      <DataTableFrame mainTableLabel="Retired club inventory table" stickyFirstColumn>
         <Table data-workbench-export-table="retired-clubs" aria-describedby="retired-clubs-summary">
           <TableCaption id="retired-clubs-summary" className="sr-only">
             Retired club inventory table showing club, model, shot count, last shot date and status.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="club"
-                className="sticky left-0 z-20 min-w-32 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-32 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Club
               </TableHead>
@@ -1495,7 +829,7 @@ function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
                 <TableRow key={club.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="club"
-                    className="sticky left-0 z-10 min-w-32 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-32 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     {formatClubType(club.type)}
                   </TableCell>
@@ -1533,16 +867,19 @@ function RetireClubForm({ club, compact = false }: { club: ActiveClub; compact?:
   return (
     <form action={retireClubAction}>
       <input type="hidden" name="clubId" value={club.id} />
-      <Button
+      <ConfirmSubmitButton
         type="submit"
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="min-h-11 border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+        className="min-h-11 border-destructive/35 text-destructive hover:bg-destructive/10 hover:text-destructive"
         aria-label={`Retire ${label}`}
+        confirmTitle="Retire club"
+        confirmMessage={`Retire ${label}? The club leaves your active bag but its shot and equipment history remain available.`}
+        confirmActionLabel="Retire club"
       >
         <Archive className="size-4" />
         Retire
-      </Button>
+      </ConfirmSubmitButton>
     </form>
   );
 }
@@ -2353,30 +1690,30 @@ function scoreTone(score: number): Tone {
 function toneBorderClass(tone: Tone) {
   switch (tone) {
     case "green":
-      return "border-emerald-100";
+      return "border-[var(--status-success-border)]";
     case "sky":
-      return "border-sky-100";
+      return "border-[var(--status-information-border)]";
     case "pink":
-      return "border-pink-100";
+      return "border-[var(--status-error-border)]";
     case "amber":
-      return "border-amber-100";
+      return "border-[var(--status-warning-border)]";
     case "slate":
-      return "border-slate-200";
+      return "border-border";
   }
 }
 
 function toneTextClass(tone: Tone) {
   switch (tone) {
     case "green":
-      return "text-emerald-700";
+      return "text-[var(--status-success-foreground)]";
     case "sky":
-      return "text-sky-700";
+      return "text-[var(--status-information-foreground)]";
     case "pink":
-      return "text-pink-700";
+      return "text-destructive";
     case "amber":
-      return "text-amber-800";
+      return "text-[var(--status-warning-foreground)]";
     case "slate":
-      return "text-slate-600";
+      return "text-muted-foreground";
   }
 }
 
@@ -2473,11 +1810,15 @@ function isNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function EquipmentHistoryTable({
+async function EquipmentHistoryTable({
   history,
+  includeRetiredClubs,
 }: {
   history: Awaited<ReturnType<typeof getEquipmentData>>["history"];
+  includeRetiredClubs: boolean;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
     <section
       id="equipment-history-table"
@@ -2490,44 +1831,11 @@ function EquipmentHistoryTable({
         currentViewLabel="Equipment history"
         resultLabel={`${history.length} setup rows`}
         columns={equipmentHistoryColumns}
-        suggestedViews={equipmentSuggestedViews}
+        suggestedViews={equipmentSuggestedViews(includeRetiredClubs)}
         exportTableId="equipment-history"
         exportFileName="forekinghell-equipment-history.csv"
       />
-      <DataTableFrame
-        mainTable
-        mainTableLabel="Equipment history table"
-        stickyFirstColumn
-        mobile={
-          <MobileDataList
-            empty={
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                No equipment history yet.
-              </p>
-            }
-          >
-            {history.map((row) => (
-              <MobileDataCard
-                key={row.id}
-                title={formatClubType(row.clubType ?? "")}
-                subtitle={`${formatDate(row.effectiveFrom)} - ${row.effectiveTo ? formatDate(row.effectiveTo) : "current"}`}
-                action={
-                  <StatusPill tone={row.effectiveTo ? "slate" : "green"}>
-                    {row.effectiveTo ? "Retired" : "Active"}
-                  </StatusPill>
-                }
-              >
-                <DataPair label="Ball" value={formatBall(row.ballBrand, row.ballModel)} />
-                <DataPair
-                  label="Loft / lie"
-                  value={`${formatNumber(row.loftDeg)} / ${formatNumber(row.lieDeg)}`}
-                />
-                <DataPair label="Shaft" value={row.shaft ?? "--"} />
-              </MobileDataCard>
-            ))}
-          </MobileDataList>
-        }
-      >
+      <DataTableFrame mainTable mainTableLabel="Equipment history table" stickyFirstColumn>
         <Table
           data-workbench-export-table="equipment-history"
           aria-describedby="equipment-history-summary"
@@ -2536,11 +1844,11 @@ function EquipmentHistoryTable({
             Equipment history table showing club, effective dates, ball model, loft and lie, shaft,
             swing weight and active or retired status.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="club"
-                className="sticky left-0 z-20 min-w-32 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-32 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Club
               </TableHead>
@@ -2558,7 +1866,7 @@ function EquipmentHistoryTable({
                 <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="club"
-                    className="sticky left-0 z-10 min-w-32 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-32 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     {formatClubType(row.clubType ?? "")}
                   </TableCell>
@@ -2606,7 +1914,7 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="min-h-11 rounded-xl bg-white" {...props} />
+      <Input name={name} className="min-h-11 rounded-xl bg-card" {...props} />
     </label>
   );
 }
@@ -2630,7 +1938,7 @@ function SelectField({
         defaultValue={optionalLabel ? "__none__" : values[0]?.value}
         required={!optionalLabel}
       >
-        <SelectTrigger className="min-h-11 w-full bg-white">
+        <SelectTrigger className="min-h-11 w-full bg-card">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

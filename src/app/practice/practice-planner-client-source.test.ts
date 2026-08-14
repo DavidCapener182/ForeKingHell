@@ -8,21 +8,44 @@ const source = readFileSync(
 );
 
 describe("practice planner desktop ledger", () => {
-  it("uses a focused mobile task flow instead of stacking the desktop planner", () => {
-    expect(source).toContain("data-practice-mobile-task");
-    expect(source).toContain("<PracticeMobileBlockPicker");
-    expect(source).toContain('label="Quick adjustments"');
-    expect(source).toContain('label="Practice plan support"');
-    expect(source).toContain('value: "why"');
-    expect(source).toContain('value: "result"');
-    expect(source).toContain("Save &amp; Start Practice");
-    expect(source).toContain("<ActiveRangeMode");
-    expect(source).toContain("data-active-range-mode");
-    expect(source).toContain("w-[8.5rem] shrink-0 snap-start");
-    expect(source).toContain("navigator.wakeLock");
-    expect(source).toContain("Manual block completion is recorded separately");
-    expect(source).not.toContain('label="Match upload"');
-    expect(source).toContain('className="hidden min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid"');
+  it("keeps the workbench client free of the dedicated companion stack", () => {
+    for (const obsoleteSurface of [
+      "ActiveRangeMode",
+      "PracticeFinishedActions",
+      "PracticeMobileTask",
+      "PracticeMobileBlockPicker",
+      "PracticeMobileWhy",
+      "PracticeMobileResult",
+      "IOSGroupedList",
+      "IOSDisclosureGroup",
+      "IOSInlineStatus",
+      "IOSListRow",
+      "IOSSectionHeader",
+      "MobileFilterSheet",
+      "CarouselContent",
+      "activePracticeStorageKey",
+      "cacheActivePractice",
+      "readActivePractice",
+      "clearActivePractice",
+      "navigator.wakeLock",
+      "data-active-range-mode",
+      "data-practice-mobile-task",
+    ]) {
+      expect(source).not.toContain(obsoleteSurface);
+    }
+
+    expect(source).not.toContain("accountId:");
+    expect(source).toContain("<PracticeSetupBar");
+    expect(source).toContain("<PracticeAgenda");
+    expect(source).toContain("<SelectedBlockDetail");
+    expect(source).toContain("<SessionControlPanel");
+    expect(source).toContain("<PlanVsActual");
+    expect(source).toContain("<PracticeBlockLedger");
+    expect(source).toContain("<PracticeLibrary");
+    expect(source).toContain("await startPracticePlanAction(savedPlanId)");
+    expect(source).toContain(
+      "Practice started. Upload or sync the matching launch-monitor session when finished.",
+    );
   });
 
   it("keeps practice blocks as an exportable desktop table", () => {
@@ -85,20 +108,51 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("pngPreviewUrl");
     expect(source).toContain("grid-rows-[auto_minmax(0,1fr)_auto]");
     expect(source).toContain("lg:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.1fr)]");
-    expect(source).toContain("min-h-0 overflow-y-auto bg-muted p-3 lg:bg-[#f8f7ed]");
+    expect(source).toContain("min-h-0 overflow-y-auto bg-muted p-3 lg:bg-background");
     expect(source).toContain(
-      "min-h-0 overflow-y-auto border-t bg-muted p-3 lg:border-l lg:border-t-0 lg:bg-[#f6f4e7]",
+      "min-h-0 overflow-y-auto border-t bg-muted p-3 lg:border-l lg:border-t-0",
     );
     expect(source).toContain("practicePlanImageDataUrl(plan)");
     expect(source).toContain("downloadPracticePlanImage");
     expect(source).toContain("Saved practice reference PNG preview");
     expect(source).toContain("Show PNG");
     expect(source).toContain("Save as image");
-    expect(source).toContain("setMessage(messageText)");
+    expect(source).toContain("setOutcome(successOutcome(messageText))");
     expect(source).toContain("setSavedPlanId(null)");
     expect(source).toContain("setComparison(null)");
     expect(source).toContain("setPracticeScore(null)");
     expect(source).toContain("Practice drill swapped. Save the edited plan before upload.");
+    expect(source).toContain("<ResponsiveDetailPanel");
+    expect(source).toContain("Open selected block controls");
+    expect(source).toContain("<Drawer");
+    expect(source).toContain("Templates and saved practice plans");
+    const selectedBlockPanel =
+      source.match(
+        /<ResponsiveDetailPanel[\s\S]*?data-selected-block-sheet-content[\s\S]*?<\/ResponsiveDetailPanel>/,
+      )?.[0] ?? "";
+    expect(selectedBlockPanel).toContain("data-selected-block-sheet-content");
+    expect(selectedBlockPanel).not.toContain("<Card");
+    const planVsActual =
+      source.match(/function PlanVsActual[\s\S]*?function PracticeResultItem/)?.[0] ?? "";
+    expect(planVsActual).toContain("<Card");
+    expect(planVsActual).toContain("<Table");
+    expect(planVsActual).toContain("<TableHeader");
+    expect(planVsActual).toContain("<TableBody");
+    expect(planVsActual).not.toContain("<MiniMetric");
+    expect(planVsActual).not.toContain("xl:grid-cols-3");
+  });
+
+  it("uses shadcn Buttons for template and saved-plan choices", () => {
+    const templates =
+      source.match(/function TemplatesPanel[\s\S]*?function SavedPlansPanel/)?.[0] ?? "";
+    const savedPlans =
+      source.match(/function SavedPlansPanel[\s\S]*?function CompactSelect/)?.[0] ?? "";
+
+    for (const library of [templates, savedPlans]) {
+      expect(library).toContain("<Button");
+      expect(library).toContain('variant="outline"');
+      expect(library).not.toMatch(/<button\b/);
+    }
   });
 
   it("keeps the saved-reference dialog keyboard, dynamic-viewport and dark-mode safe", () => {
@@ -112,5 +166,64 @@ describe("practice planner desktop ledger", () => {
     expect(dialogSource).toContain("bg-card");
     expect(dialogSource).not.toContain("100vh");
     expect(dialogSource).not.toContain("max-lg:bg-white");
+    expect(dialogSource).toContain("lg:border-primary-foreground/20");
+    expect(dialogSource).not.toMatch(
+      /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#/,
+    );
+    expect(source).toContain('context.fillStyle = "#f6f4e7"');
+  });
+
+  it("keeps the measured practice result as one card with divided metrics and callouts", () => {
+    const resultOverview =
+      source.match(
+        /function PracticeResultsOverview[\s\S]*?function formatSessionOptionType/,
+      )?.[0] ?? "";
+    const metric = source.match(/function MiniMetric[\s\S]*?function shortTarget/)?.[0] ?? "";
+
+    expect(resultOverview).toContain("data-practice-result-card");
+    expect((resultOverview.match(/<Card(?:\s|>)/g) ?? []).length).toBe(1);
+    expect(resultOverview).toContain("lg:divide-x");
+    expect(resultOverview).not.toContain("<CardContent");
+    expect(metric).not.toContain("<Card");
+    expect(metric).not.toContain("rounded-lg border bg-card");
+  });
+
+  it("keeps validation failures and successful outcomes distinct inside the Today card", () => {
+    const linkSession =
+      source.match(/function linkSelectedSession[\s\S]*?function startPractice/)?.[0] ?? "";
+    const todayCard =
+      source.match(/function PracticeTodayCard[\s\S]*?function PracticeResultsOverview/)?.[0] ?? "";
+
+    expect(source).toContain('status: "error" | "success"');
+    expect(source).toContain("setOutcome(successOutcome(messageText))");
+    expect(source).toContain(
+      "<PracticeTodayCard plan={plan} focusSummary={focusSummary} outcome={outcome} />",
+    );
+    expect(linkSession).toContain('errorOutcome("Choose an uploaded session first.")');
+    expect(linkSession).toContain(
+      'errorOutcome("Save this practice plan before importing a session into it.")',
+    );
+    expect(linkSession).toContain(
+      'result.error ?? "That uploaded session could not be scored against this plan."',
+    );
+    expect(linkSession).toContain("successOutcome(");
+    expect(todayCard).toContain("<Alert");
+    expect(todayCard).toContain('variant={outcome.status === "error" ? "destructive" : "default"}');
+    expect(todayCard).toContain('role={outcome.status === "error" ? "alert" : "status"}');
+    expect(todayCard).toContain("var(--status-success-border)");
+    expect(todayCard).toContain("var(--status-success-surface)");
+    expect(todayCard).toContain("var(--status-success-foreground)");
+    expect(todayCard).toContain("data-practice-outcome={outcome.status}");
+    expect(todayCard).not.toContain("border-primary/20 bg-primary/5");
+    expect(source).not.toContain("const [message, setMessage]");
+  });
+
+  it("keeps selected agenda rows readable across semantic themes", () => {
+    const agenda =
+      source.match(/function PracticeAgenda[\s\S]*?function SelectedBlockDetail/)?.[0] ?? "";
+
+    expect(agenda).toContain('variant={selected ? "secondary" : "outline"}');
+    expect(agenda).toContain('selected ? "border-primary/30 shadow-sm"');
+    expect(agenda).not.toContain('variant={selected ? "default" : "outline"}');
   });
 });

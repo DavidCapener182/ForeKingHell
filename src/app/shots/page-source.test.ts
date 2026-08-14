@@ -15,8 +15,59 @@ const patternExplorerSource = readFileSync(
   join(process.cwd(), "src/app/shots/shot-pattern-explorer.tsx"),
   "utf8",
 );
+const filterToolbarSource = readFileSync(
+  join(process.cwd(), "src/app/shots/shot-filter-toolbar.tsx"),
+  "utf8",
+);
 
 describe("shots desktop workbench page", () => {
+  it("uses one desktop shadcn data toolbar with responsive advanced filters", () => {
+    expect(source).toContain("<ShotFilterToolbar");
+    expect(filterToolbarSource).toContain("<DataToolbar");
+    expect(filterToolbarSource).toContain("<ResponsiveFilterPanel");
+    expect(filterToolbarSource).toContain("activeFilters={activeFilters}");
+    expect(filterToolbarSource).toContain('aria-label="Group shots by"');
+    expect(filterToolbarSource).toContain('<SelectItem value="club">Group by club</SelectItem>');
+    expect(filterToolbarSource).toContain(
+      '<SelectItem value="session">Group by session</SelectItem>',
+    );
+    expect(source).toContain("groupBy={filters.group}");
+    expect(masterDetailSource).toContain("data-shot-group={groupBy}");
+    expect(masterDetailSource).toContain("shotGroupLabel(shot, groupBy)");
+  });
+
+  it("uses semantic skeletons while the dynamic pattern explorer loads", () => {
+    const dynamicFallback =
+      source.match(/const ShotPatternExplorer = dynamicImport[\s\S]*?type SearchParams/)?.[0] ?? "";
+    expect(dynamicFallback).toContain("<Skeleton");
+    expect(dynamicFallback).toContain('aria-label="Shot-pattern explorer loading"');
+    expect(dynamicFallback).not.toContain(">Loading shot-pattern explorer…</div>");
+  });
+
+  it("keeps the desktop workbench free of the duplicate mobile architecture", () => {
+    const desktopStart = source.indexOf("data-shots-desktop-workbench");
+    const desktopEnd = source.indexOf("type DispersionShot");
+    const desktopBlock = source.slice(desktopStart, desktopEnd);
+
+    expect(desktopBlock).toContain("<ShotFilterToolbar");
+    expect(desktopBlock).toContain("<ShotsMasterDetailTable");
+    expect(desktopBlock).toContain("<Table");
+    for (const mobilePrimitive of [
+      "MobileCompactPageHeader",
+      "MobileMetricStrip",
+      "MobileSectionChips",
+      "MobileFilterSheet",
+      "ActiveFilterChips",
+      "MobileAccordionSection",
+      "MobileDataList",
+      "MobileDataCard",
+      "StickyMobileAction",
+      "DataTableFrame",
+    ]) {
+      expect(desktopBlock).not.toContain(mobilePrimitive);
+    }
+  });
+
   it("keeps the shot explorer table-first until the shared wide-monitor rail appears", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
@@ -39,8 +90,7 @@ describe("shots desktop workbench page", () => {
     expect(source).toContain('data-workbench-scope="shots-session-imports"');
     expect(source).toContain('data-workbench-export-table="shots-session-imports"');
     expect(source).toContain('exportFileName="forekinghell-shot-session-imports.csv"');
-    expect(source).toContain('label="Session imports table"');
-    expect(source).toContain("stickyFirstColumn");
+    expect(source).toContain('aria-label="Session imports table"');
     expect(source).toContain('id="shots-session-imports-summary"');
     expect(source).toContain('aria-describedby="shots-session-imports-summary"');
     expect(interactiveMapSource).toContain(
@@ -71,7 +121,6 @@ describe("shots desktop workbench page", () => {
     expect(source).toContain('sort: "recent"');
     expect(source).toContain("const href = sessionImportHref(filters, session.id);");
     expect(source).toContain("href={href}");
-    expect(source).toContain('href={sessionImportHref(filters, session.id, "dispersion")}');
     expect(source).toContain('data-selected-session={selected ? "true" : undefined}');
   });
 
@@ -81,56 +130,120 @@ describe("shots desktop workbench page", () => {
     expect(source).toContain("initialClub={filters.club}");
   });
 
-  it("keeps map markers selectable with the same selected-shot detail and deletion control", () => {
-    expect(source).toContain("parseSelectedShotId");
-    expect(source).toContain("selectedShotHref");
-    expect(source).toContain("clearSelectedShotHref");
-    expect(source).toContain("selectedMapShotDetail");
+  it("keeps map markers selectable with client-side detail and deletion control", () => {
+    expect(source).not.toContain("parseSelectedShotId");
+    expect(source).not.toContain("selectedShotHref");
+    expect(source).not.toContain("selectedMapShotDetail");
     expect(source).toContain("InteractiveDesktopShotMapContent");
-    expect(source).toContain("aria-label={`Show ${formatClubType(shot.clubType)} shot");
-    expect(source).toContain("{selectedShot ? (");
-    expect(source).toContain("<SelectedShotDetail shot={selectedShot} />");
+    expect(interactiveMapSource).toContain('const [selectedId, setSelectedId] = useState("")');
+    expect(interactiveMapSource).toContain("onClick={() => setSelectedId(shot.id)}");
+    expect(interactiveMapSource).toContain("aria-label={`Show ${shot.clubTypeLabel} shot");
+    expect(interactiveMapSource).toContain("{selectedShot ? (");
+    expect(interactiveMapSource).toContain("<SelectedShotDetail shot={selectedShot} compact />");
     expect(masterDetailSource).toContain("ShotDeleteButton");
     expect(interactiveMapSource).toContain("data-shot-map-point={shot.id}");
   });
+
+  it("keeps selected-shot Sheet content flat and uses semantic shadcn evidence surfaces", () => {
+    const responsiveDetail =
+      masterDetailSource.match(/<ResponsiveDetailPanel[\s\S]*?<\/ResponsiveDetailPanel>/)?.[0] ??
+      "";
+    const selectedDetail =
+      masterDetailSource.match(
+        /export function SelectedShotDetail[\s\S]*?function ShotDetailMetric/,
+      )?.[0] ?? "";
+
+    expect(responsiveDetail).toContain("<SelectedShotDetail shot={selectedShot} compact />");
+    expect(selectedDetail).toContain('const Comp = compact ? "section" : Card');
+    expect(selectedDetail).not.toContain("bg-emerald-800");
+    expect(selectedDetail).not.toContain("bg-emerald-50");
+    expect(selectedDetail).not.toContain("bg-amber-50");
+    expect(selectedDetail).not.toContain("bg-rose-50");
+    expect(patternExplorerSource).toContain("<Table");
+    expect(patternExplorerSource).not.toContain("<table");
+    expect(patternExplorerSource).toContain("data-shot-pattern-explorer");
+    expect(patternExplorerSource).toContain("<Button\n              key={cluster.key}");
+    expect(patternExplorerSource).toContain("<AlertTitle>No matching shot clusters</AlertTitle>");
+    expect(patternExplorerSource).not.toMatch(/<button\b/);
+  });
+
+  it("keeps ordinary workbench surfaces semantic while preserving the specialist shot map", () => {
+    const fixedPalette =
+      /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#|rgba\(|#[0-9a-f]{3,8}/i;
+
+    for (const ordinarySource of [
+      source,
+      masterDetailSource,
+      patternExplorerSource,
+      filterToolbarSource,
+    ]) {
+      expect(ordinarySource).not.toMatch(fixedPalette);
+    }
+
+    expect(source).toContain("shadow-[1px_0_0_hsl(var(--border))]");
+    expect(masterDetailSource).toContain('sort.active ? "text-primary"');
+    expect(interactiveMapSource).toContain("bg-[#eef6ef]");
+    expect(interactiveMapSource).toContain("rgba(15, 118, 110, 0.58)");
+  });
+
+  it("flattens archive stats and the selected-shot bulk toolbar inside their section Cards", () => {
+    const statTile = source.match(/function StatTile[\s\S]*?function formatDate/)?.[0] ?? "";
+    const bulkToolbar =
+      masterDetailSource.match(
+        /export function ShotBulkToolbar[\s\S]*?function shotGroupLabel/,
+      )?.[0] ?? "";
+
+    expect(statTile).toContain("<Item");
+    expect(statTile).toContain("data-shot-stat");
+    expect(statTile).not.toMatch(/<Card(?:\s|>)/);
+    expect(bulkToolbar).toContain('role="toolbar"');
+    expect(bulkToolbar).toContain("data-shot-bulk-toolbar");
+    expect(bulkToolbar).not.toMatch(/<Card(?:\s|>)/);
+  });
 });
 
-describe("shots mobile information architecture", () => {
-  it("renders a purpose-built answer-first archive before specialist evidence", () => {
-    const mobileBlock =
-      source.match(/function ShotsMobileOverview[\s\S]*?function MobileShotRows/)?.[0] ?? "";
-
-    expect(mobileBlock).toContain("data-shots-mobile-overview");
-    expect(mobileBlock).toContain('title="Shots"');
-    expect(mobileBlock).toContain('title={<span id="shots-mobile-heading">Shot archive</span>}');
-    expect(mobileBlock).toContain('label="Filter and sort"');
-    expect(mobileBlock).toContain('<IOSGroupedList label="Latest matching shots">');
-    expect(mobileBlock.indexOf('label="Latest matching shots"')).toBeLessThan(
-      mobileBlock.indexOf('title={<span id="shots-evidence-heading">Evidence and tools</span>}'),
-    );
-    expect(mobileBlock).toContain('id="selected-shot-mobile"');
-    expect(mobileBlock).toContain("<SelectedShotDetail shot={selectedShot} compact />");
-  });
-
-  it("keeps secondary maps, patterns, saved views and import audit in one-level disclosures", () => {
-    const mobileBlock =
-      source.match(/function ShotsMobileOverview[\s\S]*?function MobileShotRows/)?.[0] ?? "";
-
-    expect(mobileBlock).toContain("<IOSDisclosureGroup");
-    for (const value of ["dispersion", "patterns", "views", "imports"]) {
-      expect(mobileBlock).toContain(`value: "${value}"`);
+describe("shots desktop-only bundle boundary", () => {
+  it("excludes the obsolete mobile archive and duplicate filter stack", () => {
+    for (const obsoleteSymbol of [
+      "ShotsMobileOverview",
+      "MobileShotRows",
+      "MobileShotImportAudit",
+      "MobileSavedShotViews",
+      "MobileShotDispersionMap",
+      "MobileFilterSheet",
+      "ActiveFilterChips",
+      "MobileAppShell",
+      "MobileRouteHeader",
+      "IOSDisclosureGroup",
+      "IOSGroupedList",
+      "IOSInlineStatus",
+      "IOSListRow",
+      "IOSMetricRow",
+      "IOSSectionHeader",
+      "ShotFilterFields",
+      "data-shots-mobile-overview",
+      "shots-mobile-heading",
+    ]) {
+      expect(source).not.toContain(obsoleteSymbol);
     }
-    expect(mobileBlock).toContain("<MobileShotDispersionMap");
-    expect(mobileBlock).toContain("<ShotPatternExplorer groups={patternGroups} />");
-    expect(source).toContain('className="hidden lg:contents" data-shots-desktop-workbench');
+
+    expect(source).not.toContain("@/components/app/ios-mobile");
+    expect(source).not.toContain("@/components/mobile-sports");
+    expect(source).not.toContain('className="hidden lg:contents"');
+    expect(source).toContain('className="contents" data-shots-desktop-workbench');
+    expect(source).toContain("<ShotFilterToolbar");
+    expect(source).toContain("<DesktopShotDispersionMap");
+    expect(source).toContain("<SavedShotViewsPanel");
+    expect(source).toContain("<ShotsMasterDetailTable");
   });
 
-  it("replaces the advanced pattern table with native rows on phones", () => {
+  it("keeps the advanced pattern table and removes its iOS duplicate rows", () => {
     expect(patternExplorerSource).toContain('aria-label="Shot clusters"');
-    expect(patternExplorerSource).toContain("<IOSGroupedList");
-    expect(patternExplorerSource).toContain(
-      'className="mt-3 hidden max-h-80 overflow-auto lg:block"',
-    );
-    expect(patternExplorerSource).toContain('className="w-full min-w-[42rem]');
+    expect(patternExplorerSource).not.toContain("<IOSGroupedList");
+    expect(patternExplorerSource).not.toContain("<IOSListRow");
+    expect(patternExplorerSource).not.toContain("@/components/app/ios-mobile");
+    expect(patternExplorerSource).toContain('className="mt-3 max-h-80 overflow-auto"');
+    expect(patternExplorerSource).toContain('<Table className="min-w-[42rem]">');
+    expect(patternExplorerSource).not.toContain("<table");
   });
 });

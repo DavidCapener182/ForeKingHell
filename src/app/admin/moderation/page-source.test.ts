@@ -14,9 +14,7 @@ const bulkSubmitSource = readFileSync(
 describe("admin moderation desktop console source", () => {
   it("uses a shared admin moderation workbench without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="admin-moderation" className="hidden lg:grid">',
-    );
+    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-moderation">');
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -34,7 +32,7 @@ describe("admin moderation desktop console source", () => {
     expect(source).toContain('mainTableLabel="User reports table"');
     expect(source).toContain('label="Moderation events table"');
     expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain("<caption");
+    expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source.match(/<a\n      href={adminModerationSortHref/g)).toHaveLength(2);
     expect(source).not.toContain('from "next/link"');
@@ -44,7 +42,6 @@ describe("admin moderation desktop console source", () => {
     expect(source).toContain("bulkResolveSocialReportsAction");
     expect(source).toContain("bulkResolveModerationEventsAction");
     expect(source).toContain("AdminBulkActionSubmit");
-    expect(source).toContain("AdminConfirmSubmitButton");
     expect(source).toContain("writes an admin audit entry");
   });
 
@@ -61,12 +58,19 @@ describe("admin moderation desktop console source", () => {
     expect(bulkSubmitSource).toContain("Resolve ${selectedCount} selected");
   });
 
-  it("puts unresolved records first with focused mobile resolution sheets", () => {
-    expect(source).toContain("AdminMobileShell");
-    expect(source).toContain("AdminMobileModeration");
-    expect(source).toContain("MobileModerationRecordSheet");
-    expect(source).toContain("MobileModerationRows");
-    expect(source).toContain("MobileTabBar");
-    expect(source).toContain("<BottomSheet");
+  it("excludes companion moderation sheets from the desktop-only route", () => {
+    for (const obsolete of [
+      "AdminMobileShell",
+      "AdminMobileModeration",
+      "MobileModerationRecordSheet",
+      "MobileModerationRows",
+      "MobileTabBar",
+      "BottomSheet",
+      "IOSDisclosureGroup",
+      "getRequestAppSurface",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
   });
 });

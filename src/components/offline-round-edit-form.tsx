@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { AlertCircle, CheckCircle2, Loader2, WifiOff } from "lucide-react";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { queueOfflineAction } from "@/lib/offline-queue";
 import type { OfflineRoundEditKind } from "@/lib/offline-round-edit-payload";
 
@@ -70,34 +71,45 @@ export function OfflineRoundEditForm({
       <input type="hidden" name="expectedUpdatedAt" value={recordVersion} />
       {children}
       {saveStatus === "saving" ? (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-[#0B7A3B]" aria-live="polite">
+        <Alert
+          className="mt-2 border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]"
+          aria-live="polite"
+        >
           <Loader2 className="size-3.5 animate-spin" />
-          Saving…
-        </p>
+          <AlertDescription className="text-xs text-[var(--status-information-foreground)]">
+            Saving…
+          </AlertDescription>
+        </Alert>
       ) : null}
       {saveStatus === "saved" ? (
-        <p
-          className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0B7A3B]"
+        <Alert
+          className="mt-2 border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]"
           aria-live="polite"
         >
           <CheckCircle2 className="size-3.5" />
-          Saved just now.
-        </p>
+          <AlertDescription className="text-xs font-medium text-[var(--status-success-foreground)]">
+            Saved just now.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {saveStatus === "error" ? (
-        <p
-          className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-700"
-          aria-live="polite"
-        >
+        <Alert variant="destructive" className="mt-2" aria-live="polite">
           <AlertCircle className="size-3.5" />
-          Save failed. Try again.
-        </p>
+          <AlertDescription className="text-xs font-medium text-destructive">
+            Save failed. Try again.
+          </AlertDescription>
+        </Alert>
       ) : null}
       {queued ? (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-700" aria-live="polite">
+        <Alert
+          className="mt-2 border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]"
+          aria-live="polite"
+        >
           <WifiOff className="size-3.5" />
-          Queued for sync when this device is online.
-        </p>
+          <AlertDescription className="text-xs text-[var(--status-warning-foreground)]">
+            Queued for sync when this device is online.
+          </AlertDescription>
+        </Alert>
       ) : null}
     </form>
   );

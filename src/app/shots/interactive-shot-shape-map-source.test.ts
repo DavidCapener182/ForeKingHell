@@ -23,8 +23,12 @@ describe("interactive desktop shot map", () => {
     expect(source).toContain("const [selectedClub, setSelectedClub] = useState(initialClub);");
     expect(source).toContain("shots.filter((shot) => shot.clubType === selectedClub)");
     expect(source).toContain('aria-label="Filter top-down map by club"');
-    expect(source).toContain('type="button"');
-    expect(source).toContain('label={clubType === "driver" ? "D" : formatClubType(clubType)}');
-    expect(source).toContain("onClick={() => {");
+    expect(source).toContain('from "@/components/ui/toggle-group"');
+    expect(source).toContain('<ToggleGroup\n          type="single"');
+    expect(source).toContain("<ToggleGroupItem key={clubType} value={clubType}>");
+    expect(source).toContain('clubType === "driver" ? "D" : formatClubType(clubType)');
+    expect(source).not.toContain("ShotMapClubFilterButton");
+    expect(source).not.toContain("border-emerald-950 bg-emerald-950 text-white");
+    expect(source).toContain("border-border bg-muted/35");
   });
 });

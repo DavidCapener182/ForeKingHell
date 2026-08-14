@@ -1,7 +1,21 @@
 "use client";
 
-import { RouteErrorState } from "@/components/route-state";
+import { AppErrorState } from "@/components/app/app-error-state";
+import { PageShell } from "@/components/premium";
+import { Button } from "@/components/ui/button";
 
 export default function Error({ reset }: { reset: () => void }) {
-  return <RouteErrorState title="Session impact could not load" onRetry={reset} />;
+  return (
+    <PageShell>
+      <AppErrorState
+        title="Session impact could not load"
+        description="No session evidence was changed. Retry the comparison to load it again."
+        action={
+          <Button type="button" variant="outline" onClick={reset}>
+            Retry
+          </Button>
+        }
+      />
+    </PageShell>
+  );
 }

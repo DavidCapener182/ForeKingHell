@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function ShotDeleteButton({ shotId }: { shotId: string }) {
   const router = useRouter();
@@ -63,9 +64,11 @@ export function ShotDeleteButton({ shotId }: { shotId: string }) {
         </AlertDialogContent>
       </AlertDialog>
       {error ? (
-        <p role="alert" className="text-sm font-medium text-destructive">
-          {error}
-        </p>
+        <Alert variant="destructive">
+          <AlertDescription className="text-sm font-medium text-destructive">
+            {error}
+          </AlertDescription>
+        </Alert>
       ) : null}
     </div>
   );

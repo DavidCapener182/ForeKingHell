@@ -1,8 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { ChevronDown } from "lucide-react";
+
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 64rem)";
 
@@ -33,10 +35,15 @@ export function MobileCollapsible({
     isDesktopViewport,
     () => false,
   );
+  const [open, setOpen] = useState(false);
 
   return (
-    <details className="mobile-collapsible group lg:contents" open={isDesktop || undefined}>
-      <summary className="ios-grouped-list ios-grouped-row focus-aaa flex min-h-14 cursor-pointer list-none touch-manipulation items-center justify-between gap-3 px-4 py-2.5 text-left outline-none lg:hidden [&::-webkit-details-marker]:hidden">
+    <Collapsible
+      className="mobile-collapsible group/collapsible lg:contents"
+      open={isDesktop || open}
+      onOpenChange={setOpen}
+    >
+      <CollapsibleTrigger className="focus-aaa flex min-h-14 w-full cursor-pointer touch-manipulation items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2.5 text-left outline-none lg:hidden">
         <span className="min-w-0">
           <span className="block text-[15px] font-medium leading-5 tracking-normal">{title}</span>
           {description ? (
@@ -48,12 +55,12 @@ export function MobileCollapsible({
         <span className="inline-flex shrink-0 items-center gap-2 text-[13px] font-medium text-muted-foreground">
           {count ? <span>{count}</span> : null}
           <ChevronDown
-            className="size-4 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none"
+            className="size-4 transition-transform duration-150 group-data-[state=open]/collapsible:rotate-180 motion-reduce:transition-none"
             aria-hidden
           />
         </span>
-      </summary>
-      <div className="hidden pt-2 group-open:block lg:contents">{children}</div>
-    </details>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pt-2 lg:contents">{children}</CollapsibleContent>
+    </Collapsible>
   );
 }

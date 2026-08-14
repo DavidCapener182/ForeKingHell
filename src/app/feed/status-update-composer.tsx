@@ -5,7 +5,9 @@ import { ImagePlus, Loader2, Plus, Send, Trash2 } from "lucide-react";
 
 import { createStatusUpdateAction } from "@/app/feed/actions";
 import { SocialAvatar } from "@/components/social/social-avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
@@ -74,7 +76,7 @@ export function StatusUpdateComposerSheet({
             username={username}
             avatarUrl={avatarUrl}
             defaultVisibility={defaultVisibility}
-            className="border-0 shadow-none"
+            className="shadow-none"
           />
         </div>
       </SheetContent>
@@ -174,130 +176,123 @@ function StatusUpdateComposerFields({
   }
 
   return (
-    <form
-      action={formAction}
-      className={cn(
-        compact ? "rounded-2xl border border-[#E5E7EB] bg-white p-4 shadow-sm" : "premium-card p-4",
-        className,
-      )}
-    >
-      <input type="hidden" name="imageDataUrl" value={imageDataUrl} readOnly />
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleImageChange}
-      />
-
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-        <SocialAvatar
-          displayName={displayName}
-          username={username}
-          avatarUrl={avatarUrl}
-          href="/profile"
-          size={compact ? "sm" : "md"}
+    <Card className={cn("py-0", compact && "rounded-2xl", className)}>
+      <form action={formAction} className="p-4">
+        <input type="hidden" name="imageDataUrl" value={imageDataUrl} readOnly />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleImageChange}
         />
-        <div className="grid gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Post a status update</p>
-            <p className="text-xs text-muted-foreground">
-              Share a range note, round recap, swing feel or golf photo.
-            </p>
-          </div>
-          <Textarea
-            name="body"
-            value={body}
-            maxLength={MAX_BODY_LENGTH}
-            rows={compact ? 3 : 4}
-            placeholder="What changed in your game today?"
-            className="resize-none rounded-xl bg-white"
-            onChange={(event) => setBody(event.target.value)}
-          />
 
-          {imageDataUrl ? (
-            <div className="overflow-hidden rounded-xl border bg-[#F5F6F4]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageDataUrl} alt="" className="max-h-80 w-full object-cover" />
-              <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                <span className="text-xs text-muted-foreground">
-                  {imageStatus ?? "Image ready."}
-                </span>
+        <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+          <SocialAvatar
+            displayName={displayName}
+            username={username}
+            avatarUrl={avatarUrl}
+            href="/profile"
+            size={compact ? "sm" : "md"}
+          />
+          <div className="grid gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Post a status update</p>
+              <p className="text-xs text-muted-foreground">
+                Share a range note, round recap, swing feel or golf photo.
+              </p>
+            </div>
+            <Textarea
+              name="body"
+              value={body}
+              maxLength={MAX_BODY_LENGTH}
+              rows={compact ? 3 : 4}
+              placeholder="What changed in your game today?"
+              className="resize-none rounded-xl bg-background"
+              onChange={(event) => setBody(event.target.value)}
+            />
+
+            {imageDataUrl ? (
+              <div className="overflow-hidden rounded-xl border border-border bg-muted/45">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageDataUrl} alt="" className="max-h-80 w-full object-cover" />
+                <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                  <span className="text-xs text-muted-foreground">
+                    {imageStatus ?? "Image ready."}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setImageDataUrl("");
+                      setImageStatus(null);
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setImageDataUrl("");
-                    setImageStatus(null);
-                  }}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  <Trash2 className="size-4" />
-                  Remove
+                  <ImagePlus className="size-4" />
+                  {imageDataUrl ? "Change image" : "Add image"}
+                </Button>
+                <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <span>Visibility</span>
+                  <Select name="visibility" defaultValue={defaultVisibility}>
+                    <SelectTrigger size="sm" aria-label="Post visibility">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {visibilityOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {titleCase(option)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {body.length}/{MAX_BODY_LENGTH}
+                </span>
+                <Button type="submit" disabled={pending || !canPost} size="sm">
+                  {pending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                  Post
                 </Button>
               </div>
             </div>
-          ) : null}
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
+            {imageStatus && !imageDataUrl ? (
+              <p className="text-xs text-muted-foreground">{imageStatus}</p>
+            ) : null}
+            {state.message ? (
+              <Alert
+                variant={state.status === "error" ? "destructive" : "default"}
+                aria-live="polite"
               >
-                <ImagePlus className="size-4" />
-                {imageDataUrl ? "Change image" : "Add image"}
-              </Button>
-              <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <span>Visibility</span>
-                <Select name="visibility" defaultValue={defaultVisibility}>
-                  <SelectTrigger size="sm" aria-label="Post visibility">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {visibilityOptions.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {titleCase(option)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {body.length}/{MAX_BODY_LENGTH}
-              </span>
-              <Button type="submit" disabled={pending || !canPost} size="sm">
-                {pending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                Post
-              </Button>
-            </div>
+                <AlertDescription>{state.message}</AlertDescription>
+              </Alert>
+            ) : null}
           </div>
-
-          {imageStatus && !imageDataUrl ? (
-            <p className="text-xs text-muted-foreground">{imageStatus}</p>
-          ) : null}
-          {state.message ? (
-            <p
-              className={cn(
-                "text-xs",
-                state.status === "error" ? "text-red-600" : "text-muted-foreground",
-              )}
-              aria-live="polite"
-            >
-              {state.message}
-            </p>
-          ) : null}
         </div>
-      </div>
-    </form>
+      </form>
+    </Card>
   );
 }
 

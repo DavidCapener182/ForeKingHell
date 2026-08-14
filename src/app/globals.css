@@ -157,7 +157,7 @@ html[data-theme="clubhouse"]
 html[data-theme="clubhouse"]
   .desktop-page-header
   [data-page-header-copy]
-  :where(p, .text-muted-foreground) {
+  :where(p, .text-muted-foreground):not([data-tone-role="surface"]) {
   color: #d7d2c3 !important;
 }
 
@@ -987,6 +987,12 @@ html[data-theme="high-contrast"] [data-slot="chart"] .recharts-line-curve:nth-of
       100% 100%,
       100% 100%,
       100% 100%;
+  }
+
+  html[data-theme="high-contrast"] body {
+    background: var(--background);
+    background-image: none;
+    background-attachment: scroll;
   }
 
   html[data-theme="clubhouse"] body {
@@ -2002,40 +2008,40 @@ html[data-theme="clubhouse"] [data-current="true"] {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: #f5f8ef;
-    color: #596a5f;
+    background: var(--muted);
+    color: var(--muted-foreground);
     font-size: 0.74rem;
     letter-spacing: 0;
   }
 
   .data-table-scroll td {
-    color: #111827;
+    color: var(--foreground);
   }
 
   .data-table-scroll tbody tr:nth-child(even) {
-    background: #f6f8f2;
+    background: color-mix(in srgb, var(--muted) 58%, var(--card));
   }
 
   [data-sticky-first-column="true"] .data-table-scroll :where(th, td):first-child {
     position: sticky;
     left: 0;
     z-index: 2;
-    background: var(--surface);
-    box-shadow: 1px 0 0 rgba(15, 23, 42, 0.08);
+    background: var(--card);
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--border) 70%, transparent);
   }
 
   [data-sticky-first-column="true"] .data-table-scroll th:first-child {
     z-index: 3;
-    background: #f5f8ef;
+    background: var(--muted);
   }
 
   [data-sticky-first-column="true"] .data-table-scroll tbody tr:nth-child(even) td:first-child {
-    background: #f6f8f2;
+    background: color-mix(in srgb, var(--muted) 58%, var(--card));
   }
 
   [data-sticky-first-column="true"] .data-table-scroll tbody tr:hover td:first-child,
   [data-sticky-first-column="true"] .data-table-scroll tbody tr:focus-within td:first-child {
-    background: #eef5ea;
+    background: color-mix(in srgb, var(--primary) 10%, var(--card));
   }
 
   [data-sticky-first-column="true"]
@@ -2043,7 +2049,7 @@ html[data-theme="clubhouse"] [data-current="true"] {
     tbody
     tr[data-state="selected"]
     td:first-child {
-    background: #ecfdf5;
+    background: color-mix(in srgb, var(--primary) 14%, var(--card));
   }
 
   .chart-frame {

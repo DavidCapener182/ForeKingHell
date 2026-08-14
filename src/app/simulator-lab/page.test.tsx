@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -19,6 +20,13 @@ vi.mock("@/app/simulator-lab/session-roast-panel", () => ({
   SessionRoastPanel: ({ facts }: { facts: unknown[] }) => (
     <div data-testid="roast-panel">Roast facts: {facts.length}</div>
   ),
+}));
+
+vi.mock("@/components/app/desktop-workbench", () => ({
+  DesktopWorkbenchLayout: ({ children }: { children: ReactNode }) => (
+    <div data-testid="desktop-workbench">{children}</div>
+  ),
+  DesktopTableWorkbenchControls: () => <div data-testid="desktop-table-controls" />,
 }));
 
 describe("/simulator-lab page", () => {

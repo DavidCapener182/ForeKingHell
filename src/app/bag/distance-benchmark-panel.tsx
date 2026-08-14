@@ -8,6 +8,8 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -186,7 +188,7 @@ const benchmarkPeerColumns: DesktopWorkbenchColumn[] = [
 const benchmarkSuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Full bag gapping",
-    href: "/bag#bag-gapping-table",
+    href: "/bag?tab=distances#bag-gapping-table",
     detail: "Compare benchmark context with playable stock distances.",
   },
   {
@@ -215,7 +217,7 @@ export function DistanceBenchmarkPanel({
       <SectionHeader
         title="Distance benchmarks"
         description="Carry, speed and flight benchmarks, with peer context when visibility allows."
-        action={<BarChart3 className="size-5 text-emerald-500" aria-hidden="true" />}
+        action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
       />
       <CardContent className="space-y-4">
         <BenchmarkOverview
@@ -225,19 +227,19 @@ export function DistanceBenchmarkPanel({
         />
         <Tabs defaultValue="carryYd" className="gap-4">
           <div className="-mx-1 overflow-x-auto px-1">
-            <TabsList className="h-auto w-max justify-start rounded-lg border bg-white p-1 shadow-sm">
+            <TabsList className="h-auto w-max justify-start rounded-lg border bg-muted p-1 shadow-sm">
               {METRICS.map((metric) => (
                 <TabsTrigger
                   key={metric.key}
                   value={metric.key}
-                  className="min-h-8 px-2 text-xs data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm sm:px-3 sm:text-sm"
+                  className="min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
                 >
                   {metric.shortLabel}
                 </TabsTrigger>
               ))}
               <TabsTrigger
                 value={PEER_TAB_VALUE}
-                className="min-h-8 px-2 text-xs data-active:bg-[#0B7A3B] data-active:text-white data-active:shadow-sm sm:px-3 sm:text-sm"
+                className="min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
               >
                 Peers
               </TabsTrigger>
@@ -472,11 +474,11 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
               band, tour anchor and sample confidence.
             </TableCaption>
             <BenchmarkTableColumns />
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
               <TableRow>
                 <TableHead
                   data-column="club"
-                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                 >
                   Club
                 </TableHead>
@@ -498,7 +500,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                 <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="club"
-                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     <Link
                       href={`/bag/${row.clubId}`}
@@ -648,11 +650,11 @@ function LevelMetricContent({
               target, benchmark band, tour anchor and sample confidence.
             </TableCaption>
             <BenchmarkTableColumns />
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
               <TableRow>
                 <TableHead
                   data-column="club"
-                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                 >
                   Club
                 </TableHead>
@@ -678,7 +680,7 @@ function LevelMetricContent({
                 >
                   <TableCell
                     data-column="club"
-                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     <Link
                       href={`/bag/${comparison.row.clubId}`}
@@ -751,26 +753,26 @@ function PeerComparisonContent({
 
   if (!peerBenchmarksLoaded) {
     return (
-      <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <Alert className="border-[var(--status-information-border)] bg-[var(--status-information-surface)] p-4">
+        <Users className="size-4 text-[var(--status-information-foreground)]" aria-hidden="true" />
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
           <div className="max-w-2xl">
-            <p className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
-              <Users className="size-4" aria-hidden="true" />
+            <AlertTitle className="text-[var(--status-information-foreground)]">
               Peer benchmarks are on demand
-            </p>
-            <p className="mt-2 text-sm leading-6 text-emerald-900">
+            </AlertTitle>
+            <AlertDescription className="mt-2 leading-6 text-[var(--status-information-foreground)]">
               Carry, speed and flight benchmarks are loaded. Peer percentiles use social visibility
               checks and recent public or friend-visible stock shots, so they are loaded only when
               you ask for comparison context.
-            </p>
+            </AlertDescription>
           </div>
-          <Button asChild variant="outline" className="w-fit border-emerald-700 text-emerald-900">
+          <Button asChild variant="outline" className="w-fit bg-card/70">
             <Link href="/bag?peers=1#distance-benchmarks" prefetch={false}>
               Load peer benchmarks
             </Link>
           </Button>
         </div>
-      </div>
+      </Alert>
     );
   }
 
@@ -865,11 +867,11 @@ function PeerComparisonContent({
               Peer benchmark comparison table showing each club metric beside peer median, top 25
               percent value, percentile and peer sample.
             </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
               <TableRow>
                 <TableHead
                   data-column="club"
-                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                 >
                   Club
                 </TableHead>
@@ -898,7 +900,7 @@ function PeerComparisonContent({
                 >
                   <TableCell
                     data-column="club"
-                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     <Link
                       href={`/bag/${peerRow.row.clubId}`}
@@ -950,11 +952,11 @@ function BenchmarkMeter({ row }: { row: ClubBenchmarkRow }) {
 
   return (
     <div className="min-w-0 space-y-2">
-      <div className="relative h-3 rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-emerald-600" style={{ width: `${marker ?? 0}%` }} />
+      <div className="relative h-3 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${marker ?? 0}%` }} />
         {marker === null ? null : (
           <span
-            className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-sm"
+            className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full border-2 border-card bg-foreground shadow-sm"
             style={{ left: `calc(${marker}% - 0.5rem)` }}
             aria-hidden
           />
@@ -982,13 +984,12 @@ function BenchmarkMeter({ row }: { row: ClubBenchmarkRow }) {
 
 function BenchmarkBadge({ row }: { row: ClubBenchmarkRow }) {
   return (
-    <span
-      className={`inline-flex min-w-24 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${benchmarkBadgeClass(
-        row.comparison.levelKey,
-      )}`}
+    <Badge
+      variant="outline"
+      className={`h-auto min-w-24 justify-center px-2 py-1 ${benchmarkBadgeClass(row.comparison.levelKey)}`}
     >
       {row.comparison.levelLabel}
-    </span>
+    </Badge>
   );
 }
 
@@ -1000,13 +1001,12 @@ function MetricLevelBadge({
   metric: MetricDefinition;
 }) {
   return (
-    <span
-      className={`inline-flex min-w-24 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-xs font-semibold ${benchmarkBadgeClass(
-        comparison.levelKey,
-      )}`}
+    <Badge
+      variant="outline"
+      className={`h-auto min-w-24 justify-center px-2 py-1 ${benchmarkBadgeClass(comparison.levelKey)}`}
     >
       {metricBadgeLabel(comparison, metric)}
-    </span>
+    </Badge>
   );
 }
 
@@ -1022,11 +1022,11 @@ function MetricLevelMeter({
 
   return (
     <div className="min-w-0 space-y-2">
-      <div className="relative h-3 rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-emerald-600" style={{ width: `${marker ?? 0}%` }} />
+      <div className="relative h-3 rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary" style={{ width: `${marker ?? 0}%` }} />
         {marker === null ? null : (
           <span
-            className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full border-2 border-white bg-slate-950 shadow-sm"
+            className="absolute top-1/2 size-4 -translate-y-1/2 rounded-full border-2 border-card bg-foreground shadow-sm"
             style={{ left: `calc(${marker}% - 0.5rem)` }}
             aria-hidden
           />
@@ -1145,13 +1145,12 @@ function PeerPercentileBadge({ percentile }: { percentile: number | null }) {
   }
 
   return (
-    <span
-      className={`inline-flex min-w-20 justify-center rounded-full border px-2 py-1 text-xs font-semibold ${peerBadgeClass(
-        percentile,
-      )}`}
+    <Badge
+      variant="outline"
+      className={`h-auto min-w-20 justify-center px-2 py-1 ${peerBadgeClass(percentile)}`}
     >
       {formatPercentile(percentile)}
-    </span>
+    </Badge>
   );
 }
 
@@ -1211,14 +1210,14 @@ function peerBadgeClass(percentile: number) {
   const tone = peerTone(percentile);
 
   if (tone === "green") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
   }
 
   if (tone === "sky") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
   }
 
-  return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
 }
 
 function benchmarkNextText(row: ClubBenchmarkRow) {
@@ -1274,22 +1273,22 @@ function benchmarkTone(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
 
 function benchmarkBadgeClass(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
   if (levelKey === "tour" || levelKey === "tour-plus") {
-    return "border-violet-200 bg-violet-50 text-violet-700";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
   }
 
   if (levelKey === "advanced" || levelKey === "good") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
   }
 
   if (levelKey === "average") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
   }
 
   if (levelKey === "beginner" || levelKey === "building") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
 
-  return "border-slate-200 bg-slate-50 text-slate-600";
+  return "border-border bg-muted text-muted-foreground";
 }
 
 function strongestMetricMatch(comparisons: MetricLevelComparison[]) {

@@ -25,6 +25,11 @@ describe("mobile shot-pattern chart surface", () => {
     expect(source).toContain('mode="trajectory"');
     expect(source).toContain("-side miss reaches");
     expect(source).toContain("Accessible shot data");
+    expect(source).toContain("<Table");
+    expect(source).toContain("data-shot-detail-drawer");
+    expect(source).toContain("<Drawer");
+    expect(source).not.toContain("bg-white");
+    expect(source).not.toContain("ios-grouped-list");
     expect(source).not.toContain("function DispersionChart");
     expect(source).not.toContain("function FlightChart");
     expect(source).not.toContain("slice(0, 40)");

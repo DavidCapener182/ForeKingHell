@@ -5,16 +5,18 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/strokes-gained/page.tsx"), "utf8");
 
 describe("strokes gained desktop workbench", () => {
-  it("keeps one answer-first mobile title while retaining the dashboard route rail", () => {
-    expect(source).toContain(
-      '<MobileRouteTabs group="dashboard" activeKey="strokes" sticky={false} />',
-    );
-    expect(source).not.toContain("<MobileRouteHeader");
+  it("keeps one desktop-only workbench while companion traffic redirects", () => {
     expect(source).toContain(
       'title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}',
     );
-    expect(source).toContain("mobileHeroDescription(analysis, activeCategory)");
-    expect(source).toContain("hidden lg:inline");
+    expect(source).toContain("description={heroDescription(analysis, activeCategory)}");
+    expect(source).not.toContain("MobileRouteTabs");
+    expect(source).not.toContain("MobileScoringDiagnosis");
+    expect(source).not.toContain("MobileCategorySummary");
+    expect(source).not.toContain("MobileStrokesGainedDisclosures");
+    expect(source).not.toContain("@/components/app/ios-mobile");
+    expect(source).not.toContain("lg:hidden");
+    expect(source).not.toContain("hidden lg:");
     expect(source).not.toContain("Tee is the main scoring leak");
   });
 
@@ -74,8 +76,8 @@ describe("strokes gained desktop workbench", () => {
     expect(waterfallBlock).toContain('viewBox="0 0 760 150"');
     expect(waterfallBlock).toContain("max-w-full");
     expect(waterfallBlock).toContain("md:grid-cols-[minmax(0,1.35fr)_minmax(17rem,0.65fr)]");
-    expect(waterfallBlock).toContain("compactMobile");
-    expect(waterfallBlock).toContain("[&>details]:hidden");
+    expect(waterfallBlock).not.toContain("compactMobile");
+    expect(waterfallBlock).not.toContain("[&>details]:hidden");
   });
 
   it("keeps the scoring diagnosis and round history compact", () => {
@@ -100,7 +102,7 @@ describe("strokes gained desktop workbench", () => {
     expect(highlightBlock).toContain('<section className="grid items-start gap-4 md:grid-cols-2">');
     expect(highlightBlock).toContain("<DataPanel>");
     expect(highlightBlock).not.toContain("<DataPanel stretch>");
-    expect(highlightBlock).toContain('className="gap-2"');
+    expect(highlightBlock).toContain('className="grid gap-2"');
     expect(highlightBlock).toContain(
       'className="mt-1 truncate text-sm leading-5 text-muted-foreground"',
     );
@@ -119,15 +121,31 @@ describe("strokes gained desktop workbench", () => {
     expect(breakdownBlock).not.toContain("sm:grid-cols-[3rem_11rem_minmax(0,1fr)_5rem]");
   });
 
-  it("uses one-level mobile disclosures without duplicating the event filter form or ids", () => {
-    expect(source).toContain("IOSDisclosureGroup");
-    expect(source).toContain('title: "Phase detail"');
-    expect(source).toContain('title: "Shot evidence"');
-    expect(source).toContain('title: "Round trend"');
-    expect(source).toContain('title: "Hole impact"');
-    expect(source).toContain('className="hidden lg:contents"');
+  it("keeps one event filter and evidence table without a mobile duplicate", () => {
+    expect(source).not.toContain("IOSDisclosureGroup");
+    expect(source).not.toContain("IOSGroupedList");
+    expect(source).not.toContain("MobileDataList");
     expect(source.match(/<StrokesGainedFilterForm/g)).toHaveLength(1);
     expect(source.match(/id="events"/g)).toHaveLength(1);
     expect(source.match(/id="strokes-gained-events-summary"/g)).toHaveLength(1);
+  });
+
+  it("uses semantic theme tokens for ordinary cards, diagnosis and table controls", () => {
+    const categories =
+      source.match(/function CategoryCard[\s\S]*?function CalculationCoverageStrip/)?.[0] ?? "";
+    const leak =
+      source.match(/function MainScoringLeak[\s\S]*?function scoringLeakArtwork/)?.[0] ?? "";
+    const table =
+      source.match(/function StrokesGainedEventTable[\s\S]*?function SgValue/)?.[0] ?? "";
+    const toneHelpers = source.match(/function sgTextClassName[\s\S]*?function first/)?.[0] ?? "";
+
+    for (const block of [categories, leak, table, toneHelpers]) {
+      expect(block).toContain("var(--");
+      expect(block).not.toMatch(
+        /(?:bg|text|border|ring)-(?:white|slate|emerald|green|amber|orange|red|rose|sky|blue|indigo|violet|purple)(?:-\d+|\/)|rgba\(15,23,42/,
+      );
+      expect(block).not.toMatch(/#(?:111827|667085|B42318|087A3D|E5E7EB)/i);
+    }
+    expect(source).toContain('const fill = value >= 0 ? "#087A3D" : "#DC2626"');
   });
 });

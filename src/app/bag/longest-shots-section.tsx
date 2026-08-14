@@ -4,22 +4,10 @@ import { useMemo, useState } from "react";
 import { Activity, Gauge, Target, Trophy, Wind, type LucideIcon } from "lucide-react";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-} from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { formatClubType } from "@/lib/club-format";
 import {
   formatStoredApexFeet,
@@ -28,7 +16,6 @@ import {
   formatStoredYards,
   type DistanceUnitPreference,
 } from "@/lib/units";
-import { cn } from "@/lib/utils";
 
 export type LongestShot = {
   id: string;
@@ -79,11 +66,11 @@ export function LongestShotsSection({
   return (
     <section className="space-y-4">
       <Card className="premium-card">
-        <CardHeader className="hidden gap-3 lg:flex">
+        <CardHeader className="flex gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2 text-2xl tracking-normal">
-                <Trophy className="size-5 text-amber-500" />
+                <Trophy className="size-5 text-[var(--status-warning-foreground)]" />
                 Longest shots
               </CardTitle>
               <CardDescription>
@@ -95,7 +82,7 @@ export function LongestShotsSection({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="hidden gap-2 lg:grid lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {shots.map((shot) => (
               <LongestShotButton
                 key={shot.id}
@@ -106,13 +93,6 @@ export function LongestShotsSection({
               />
             ))}
           </div>
-
-          <MobileLongestShotSelector
-            shots={shots}
-            selectedShot={selectedShot}
-            preferredUnits={preferredUnits}
-            onSelect={setSelectedShotId}
-          />
 
           <ShotSimulator shot={selectedShot} preferredUnits={preferredUnits} />
           <ChartAccessibleFallback
@@ -131,76 +111,10 @@ export function LongestShotsSection({
               { key: "apex", label: "Apex" },
             ]}
             rows={longestShotsRows(shots, selectedShot.id, preferredUnits)}
-            className="hidden lg:block"
           />
         </CardContent>
       </Card>
     </section>
-  );
-}
-
-function MobileLongestShotSelector({
-  shots,
-  selectedShot,
-  preferredUnits,
-  onSelect,
-}: {
-  shots: LongestShot[];
-  selectedShot: LongestShot;
-  preferredUnits: DistanceUnitPreference;
-  onSelect: (shotId: string) => void;
-}) {
-  const warning = recordWarning(selectedShot, preferredUnits);
-
-  return (
-    <div className="space-y-3 lg:hidden" data-mobile-longest-selector>
-      <label className="block text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
-        Club record
-        <Select value={selectedShot.id} onValueChange={onSelect}>
-          <SelectTrigger
-            className="mt-1.5 min-h-11 w-full text-base"
-            aria-label="Choose a club record to replay"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {shots.map((shot) => (
-              <SelectItem key={shot.id} value={shot.id}>
-                {formatClubType(shot.clubType)} ·{" "}
-                {formatStoredYards(shotDistance(shot), preferredUnits)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-
-      <IOSGroupedList label="Selected longest shot summary">
-        <IOSListRow
-          label={formatClubType(selectedShot.clubType)}
-          value={formatStoredYards(shotDistance(selectedShot), preferredUnits)}
-          detail={`${selectedShot.brandModel} · ${formatDate(selectedShot.shotAt)}`}
-          status={
-            <IOSInlineStatus
-              label={
-                selectedShot.recordTrust === "trusted" ? "Trusted personal best" : "Raw maximum"
-              }
-              tone={selectedShot.recordTrust === "trusted" ? "positive" : "attention"}
-            />
-          }
-        />
-        <IOSListRow
-          label="Carry"
-          value={formatStoredYards(selectedShot.carryYd, preferredUnits)}
-          detail={`Offline ${formatStoredLateralYards(selectedShot.sideCarryYd, preferredUnits)}`}
-        />
-      </IOSGroupedList>
-
-      {warning ? (
-        <Alert data-mobile-record-warning>
-          <AlertDescription>{warning}</AlertDescription>
-        </Alert>
-      ) : null}
-    </div>
   );
 }
 
@@ -216,19 +130,12 @@ function LongestShotButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
       aria-pressed={selected}
       onClick={onClick}
-      className={cn(
-        "apple-panel-strong flex min-h-14 items-center gap-3 p-2.5 text-left transition-colors hover:border-emerald-300",
-        selected && "border-emerald-300 bg-background",
-      )}
-      style={{
-        borderColor: selected ? shot.accent : "#e5e7eb",
-        boxShadow: selected ? `0 0 0 1px ${shot.accent}` : undefined,
-        outline: "none",
-      }}
+      className="h-auto min-h-14 justify-start gap-3 whitespace-normal p-2.5 text-left aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:ring-2 aria-pressed:ring-ring/20"
     >
       <span
         className="grid size-8 shrink-0 place-items-center rounded-md text-xs font-semibold text-white"
@@ -250,7 +157,7 @@ function LongestShotButton({
           {shot.recordTrust === "trusted" ? "Trusted" : "Raw only"} / {formatDate(shot.shotAt)}
         </span>
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -423,7 +330,7 @@ function ShotSimulator({
         </svg>
       </div>
 
-      <div className="hidden flex-col gap-4 p-5 lg:flex">
+      <div className="flex flex-col gap-4 p-5" data-longest-shot-workbench-details>
         <div>
           <Badge className="text-white" style={{ background: shot.accent }}>
             {formatClubType(shot.clubType)}
@@ -436,16 +343,24 @@ function ShotSimulator({
             {formatSessionSource(shot.sessionSource)}
           </p>
           {shot.recordTrust === "raw" ? (
-            <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
-              This is the raw maximum, not a trusted personal best. Its source or quality evidence
-              does not meet the verified-record rules.
-            </p>
+            <Alert className="mt-2 border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]">
+              <Trophy aria-hidden="true" />
+              <AlertTitle>Raw maximum only</AlertTitle>
+              <AlertDescription className="text-[var(--status-warning-foreground)]">
+                This is not a trusted personal best. Its source or quality evidence does not meet
+                the verified-record rules.
+              </AlertDescription>
+            </Alert>
           ) : shot.rawMaximumYd !== null &&
             shot.rawMaximumYd > (shot.totalYd ?? shot.carryYd ?? 0) ? (
-            <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-950">
-              Raw maximum {formatStoredYards(shot.rawMaximumYd, preferredUnits)} · excluded from the
-              trusted record by its quality, category, or source evidence.
-            </p>
+            <Alert className="mt-2 border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]">
+              <Target aria-hidden="true" />
+              <AlertTitle>Higher raw maximum excluded</AlertTitle>
+              <AlertDescription className="text-[var(--status-information-foreground)]">
+                {formatStoredYards(shot.rawMaximumYd, preferredUnits)} was excluded from the trusted
+                record by its quality, category, or source evidence.
+              </AlertDescription>
+            </Alert>
           ) : null}
         </div>
 
@@ -484,79 +399,6 @@ function ShotSimulator({
           />
         </div>
       </div>
-
-      <MobileShotReplayDetails shot={shot} preferredUnits={preferredUnits} />
-    </div>
-  );
-}
-
-function MobileShotReplayDetails({
-  shot,
-  preferredUnits,
-}: {
-  shot: LongestShot;
-  preferredUnits: DistanceUnitPreference;
-}) {
-  return (
-    <div className="p-3 lg:hidden" data-mobile-replay-details>
-      <IOSDisclosureGroup
-        label="Longest shot replay details"
-        items={[
-          {
-            value: "flight",
-            title: "Flight profile",
-            summary: formatStoredApexFeet(shot.apexFt, preferredUnits),
-            description: "Launch, apex and descent shape",
-            content: <FlightProfile shot={shot} preferredUnits={preferredUnits} />,
-            contentClassName: "px-3",
-          },
-          {
-            value: "metrics",
-            title: "Shot metrics",
-            summary: `${formatMetric(shot.ballSpeedMph)} mph`,
-            description: "Launch-monitor evidence for this record",
-            content: (
-              <IOSGroupedList label="Selected shot metrics">
-                <IOSListRow label="Carry" value={formatStoredYards(shot.carryYd, preferredUnits)} />
-                <IOSListRow label="Launch" value={`${formatMetric(shot.launchAngleDeg)} deg`} />
-                <IOSListRow
-                  label="Apex"
-                  value={formatStoredApexFeet(shot.apexFt, preferredUnits)}
-                />
-                <IOSListRow
-                  label="Offline"
-                  value={formatStoredLateralYards(shot.sideCarryYd, preferredUnits)}
-                />
-                <IOSListRow
-                  label="Ball speed"
-                  value={formatStoredSpeedMph(shot.ballSpeedMph, preferredUnits)}
-                />
-                <IOSListRow label="Spin" value={`${formatMetric(shot.spinRate)} rpm`} />
-              </IOSGroupedList>
-            ),
-            contentClassName: "px-0",
-          },
-          {
-            value: "evidence",
-            title: "Record evidence",
-            summary: shot.recordTrust === "trusted" ? "Trusted" : "Raw",
-            description: "Source, shot number and quality classification",
-            content: (
-              <IOSGroupedList label="Selected record evidence">
-                <IOSListRow
-                  label="Session source"
-                  value={formatSessionSource(shot.sessionSource)}
-                />
-                <IOSListRow label="Shot" value={`#${shot.shotNumber ?? "-"}`} />
-                <IOSListRow label="Recorded" value={formatDate(shot.shotAt)} />
-                <IOSListRow label="Quality" value={shot.qualityTag ?? "Not labelled"} />
-                <IOSListRow label="Category" value={shot.shotCategory ?? "Not labelled"} />
-              </IOSGroupedList>
-            ),
-            contentClassName: "px-0",
-          },
-        ]}
-      />
     </div>
   );
 }
@@ -616,7 +458,7 @@ function FlightProfile({
           { key: "spin", label: "Spin" },
         ]}
         rows={flightProfileRows(shot, preferredUnits)}
-        className="mt-3 hidden lg:block"
+        className="mt-3"
       />
     </div>
   );
@@ -799,18 +641,6 @@ function formatDate(value: string) {
 
 function formatSessionSource(value: string) {
   return value.replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function recordWarning(shot: LongestShot, preferredUnits: DistanceUnitPreference) {
-  if (shot.recordTrust === "raw") {
-    return "This is the raw maximum, not a trusted personal best. Its source or quality evidence does not meet the verified-record rules.";
-  }
-
-  if (shot.rawMaximumYd !== null && shot.rawMaximumYd > (shot.totalYd ?? shot.carryYd ?? 0)) {
-    return `Raw maximum ${formatStoredYards(shot.rawMaximumYd, preferredUnits)} was excluded from the trusted record by its quality, category or source evidence.`;
-  }
-
-  return null;
 }
 
 function clamp(value: number, min: number, max: number) {

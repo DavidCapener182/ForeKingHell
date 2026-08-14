@@ -23,4 +23,10 @@ describe("notification settings mobile composition", () => {
     expect(source).toContain("id={`legacy-${option.key}`}");
     expect(source).not.toContain("htmlFor={option.key}");
   });
+
+  it("uses a semantic shadcn Alert for save feedback", () => {
+    expect(source).toContain('<Alert role="status">');
+    expect(source).toContain("<AlertDescription>Notification preferences saved.");
+    expect(source).not.toContain("bg-emerald-");
+  });
 });

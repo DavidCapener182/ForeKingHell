@@ -70,7 +70,7 @@ export function WorkspaceSwitcher({
                 aria-current={view.isActive ? "page" : undefined}
                 className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2"
               >
-                <span className="grid size-8 place-items-center rounded-md bg-emerald-50 text-emerald-800">
+                <span className="grid size-8 place-items-center rounded-md bg-secondary text-secondary-foreground">
                   <Icon className="size-4" aria-hidden />
                 </span>
                 <span className="grid min-w-0 gap-0.5">

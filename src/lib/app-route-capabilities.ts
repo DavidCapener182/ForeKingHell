@@ -14,11 +14,7 @@ export const mobileCapabilities = {
   sessions: companionPrimary(),
   rounds: { mobileExperience: "summary" },
   import: companionMore(),
-  courses: desktopOnly(
-    "Prepare for a round",
-    "/play",
-    "Course management and mapping use the full workbench.",
-  ),
+  courses: companionMore(),
   "course-twins": { mobileExperience: "companion" },
   "course-strategy": { mobileExperience: "companion" },
   "play-companion": companionPrimary(),
@@ -191,6 +187,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
+const companionExactRoutes = ["/courses"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",
@@ -204,6 +201,7 @@ const summaryOnlyPrefixes = [
 ] as const;
 
 export function isDesktopOnlyCompanionPath(pathname: string) {
+  if (companionExactRoutes.some((route) => pathname === route)) return false;
   if (companionExceptions.some((route) => pathMatches(pathname, route))) return false;
   return desktopOnlyPrefixes.some((route) => pathMatches(pathname, route));
 }

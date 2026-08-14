@@ -5,7 +5,7 @@ import {
   ArrowLeft,
   ArrowUp,
   ArrowUpDown,
-  Filter,
+  ChevronRight,
   MapPinned,
   Plus,
   RefreshCw,
@@ -20,45 +20,36 @@ import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { seedKnownCoursesAction } from "@/app/courses/actions";
 import { CourseFollowFeaturePanel } from "@/components/features/feature-panels";
 import {
-  ActiveFilterChips,
-  DataPair,
   DataPanel,
   DataTableFrame,
-  MobileDataCard,
-  MobileDataList,
-  MobileFilterSheet,
-  MobileHorizontalRail,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
 import {
-  BottomSheet,
   MobileAppShell,
   MobileRouteTabs,
   MobileStatusAction,
   MobileTabBar,
   MobileTopBar,
-  NativeListSection,
 } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-} from "@/components/app/ios-mobile";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
-  DesktopInsightRail,
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   Table,
@@ -83,10 +74,19 @@ import { getDb } from "@/db/client";
 import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getCourseFollowFeatureData } from "@/lib/feature-ideas";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { CourseDirectoryToolbar } from "@/app/courses/course-directory-toolbar";
+import { CourseDirectoryControls } from "@/app/courses/course-directory-toolbar";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -205,15 +205,21 @@ type CourseSearchParams = { [key: string]: string | string[] | undefined };
 type SearchParams = Promise<CourseSearchParams>;
 
 export default async function CoursesPage({ searchParams }: { searchParams: SearchParams }) {
-  const params = await searchParams;
+  const [params, surface] = await Promise.all([searchParams, getRequestAppSurface()]);
   return (
-    <Suspense fallback={<CoursesPageLoading />}>
-      <CoursesPageContent params={params} />
+    <Suspense fallback={<CoursesPageLoading surface={surface} />}>
+      <CoursesPageContent params={params} surface={surface} />
     </Suspense>
   );
 }
 
-async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
+async function CoursesPageContent({
+  params,
+  surface,
+}: {
+  params: CourseSearchParams;
+  surface: "companion" | "workbench";
+}) {
   const query = first(params.q).trim().slice(0, 80);
   const activeTab = parseCourseTab(first(params.tab));
   const directoryView = parseCourseDirectoryView(first(params.view));
@@ -263,209 +269,191 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
     .join(" · ");
   const mobileCourses = sortedDisplayedCourses;
 
-  return (
-    <PageShell>
-      <MobileAppShell>
-        <MobileTopBar
-          title="Courses"
-          actions={
-            <BottomSheet
-              label={
-                <>
-                  <Filter className="size-4" /> Filter
-                </>
-              }
-              title="Course filters"
-              triggerClassName="bg-card text-foreground ring-1 ring-border"
-            >
-              <form className="grid gap-3">
-                <input type="hidden" name="tab" value={activeTab} />
-                <label className="grid gap-1 text-sm font-medium">
-                  Course search
-                  <input
-                    name="q"
-                    defaultValue={query}
-                    placeholder="Search course, country, or provider"
-                    className="h-11 rounded-lg border border-border bg-background px-3 text-sm text-foreground"
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button type="submit" className="min-h-11 rounded-full bg-[#0B7A3B] text-white">
-                    Search
-                  </Button>
-                  <Button asChild variant="outline" className="min-h-11 rounded-full">
-                    <Link href="/courses" prefetch={false}>
-                      Reset
-                    </Link>
-                  </Button>
-                </div>
-              </form>
-            </BottomSheet>
-          }
-        />
-        <MobileRouteTabs group="play" activeKey="courses" />
-        <MobileTabBar
-          activeKey={activeTab}
-          className="-mt-4"
-          tabs={[
-            { key: "records", label: "Records", href: "/courses" },
-            { key: "patterns", label: "Patterns", href: "/courses?tab=patterns" },
-            { key: "played", label: "Played", href: "/courses?tab=played" },
-            { key: "manage", label: "Manage", href: "/courses?tab=manage" },
-          ]}
-        />
-        <MobileStatusAction
-          label={activeTab === "patterns" ? "Course patterns" : "Course records"}
-          value={
-            activeTab === "patterns"
-              ? `${integerFormatter.format(patternCourses.length)} ready`
-              : `${integerFormatter.format(data.recordCount)} boards`
-          }
-          detail={
-            activeTab === "patterns"
-              ? "Mapped courses with shot-pattern overlays ready to open."
-              : `${integerFormatter.format(data.championCount)} verified champions · ${integerFormatter.format(roundLinkedCourses.length)} played courses`
-          }
-          action={
-            <Button
-              asChild
-              className="min-h-11 rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link
-                href={
-                  activeTab === "patterns" && patternCourses[0]
-                    ? `/courses/${patternCourses[0].id}/shot-pattern`
-                    : "/course-records"
-                }
-                prefetch={false}
-              >
-                {activeTab === "patterns" ? "Open" : "Records"}
-              </Link>
-            </Button>
-          }
-        />
-        {activeTab === "manage" ? (
-          <NativeListSection
-            title="Course management"
-            description="Search, seed, create and edit course data from here."
+  if (surface === "companion") {
+    return (
+      <PageShell>
+        <MobileAppShell>
+          <MobileTopBar title="Courses" />
+          <MobileRouteTabs group="play" activeKey="courses" />
+          <MobileTabBar
+            activeKey={activeTab}
+            className="-mt-4"
+            tabs={[
+              { key: "records", label: "Records", href: "/courses" },
+              { key: "patterns", label: "Patterns", href: "/courses?tab=patterns" },
+              { key: "played", label: "Played", href: "/courses?tab=played" },
+              { key: "manage", label: "Manage", href: "/courses?tab=manage" },
+            ]}
+          />
+          <MobileStatusAction
+            label={activeTab === "patterns" ? "Course patterns" : "Course records"}
+            value={
+              activeTab === "patterns"
+                ? `${integerFormatter.format(patternCourses.length)} ready`
+                : `${integerFormatter.format(data.recordCount)} boards`
+            }
+            detail={
+              activeTab === "patterns"
+                ? "Mapped courses with shot-pattern overlays ready to open."
+                : `${integerFormatter.format(data.championCount)} verified champions · ${integerFormatter.format(roundLinkedCourses.length)} played courses`
+            }
             action={
-              <Button asChild variant="outline" size="sm" className="min-h-11 rounded-full">
-                <Link href="/courses/new" prefetch={false}>
-                  New
+              <Button asChild className="min-h-11">
+                <Link
+                  href={
+                    activeTab === "patterns" && patternCourses[0]
+                      ? `/courses/${patternCourses[0].id}/shot-pattern`
+                      : "/course-records"
+                  }
+                  prefetch={false}
+                >
+                  {activeTab === "patterns" ? "Open" : "Records"}
                 </Link>
               </Button>
             }
-          >
-            <div className="grid gap-3">
-              <form action={seedKnownCoursesAction}>
-                <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
-                  <RefreshCw className="size-4" />
-                  Seed known courses
+          />
+
+          <CourseDirectoryControls
+            key={`${activeTab}:${query}`}
+            surface="companion"
+            query={query}
+            activeTab={activeTab}
+            resultLabel={`${integerFormatter.format(mobileCourses.length)} courses`}
+          />
+
+          {activeTab === "manage" ? (
+            <Card data-course-companion-management>
+              <CardHeader>
+                <CardTitle>Course management</CardTitle>
+                <CardDescription>Seed the known catalogue or create a new course.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2">
+                <form action={seedKnownCoursesAction}>
+                  <Button type="submit" variant="outline" className="min-h-11 w-full">
+                    <RefreshCw className="size-4" />
+                    Seed known
+                  </Button>
+                </form>
+                <Button asChild className="min-h-11 w-full">
+                  <Link href="/courses/new" prefetch={false}>
+                    <Plus className="size-4" />
+                    New
+                  </Link>
                 </Button>
-              </form>
-              <IOSGroupedList label="Courses to manage">
-                {sortedDisplayedCourses.map((course) => (
-                  <IOSListRow
-                    key={course.id}
-                    icon={Settings}
-                    label={course.name}
-                    value={`${course.holeCount} holes`}
-                    detail={`${course.teeSetCount} tee sets · ${course.sourceLabel}`}
-                    href={`/courses/${course.id}/holes`}
-                    status={
-                      <IOSInlineStatus
-                        label={courseQualitySummary(course)}
-                        tone={courseQualityTone(course) === "green" ? "positive" : "attention"}
-                      />
-                    }
-                  />
-                ))}
-              </IOSGroupedList>
-            </div>
-          </NativeListSection>
-        ) : (
-          <NativeListSection
-            title={
-              activeTab === "played"
-                ? "Played courses"
-                : activeTab === "patterns"
-                  ? "Course patterns"
-                  : activeTab === "favourites"
-                    ? "Favourite courses"
-                    : "Record boards"
-            }
-            description={
-              activeTab === "patterns"
-                ? "Mapped courses with enough saved hole geometry for dispersion overlays."
-                : activeTab === "records"
-                  ? "Champions and live record boards first."
-                  : undefined
-            }
-          >
-            <IOSGroupedList label="Course directory">
-              {mobileCourses.map((course) => (
-                <IOSListRow
-                  key={course.id}
-                  icon={activeTab === "patterns" ? MapPinned : Trophy}
-                  label={course.name}
-                  value={mobileCourseValue(course, activeTab)}
-                  detail={mobileCourseDetail(course, activeTab)}
-                  href={mobileCourseHref(course, activeTab)}
-                  status={
-                    <IOSInlineStatus
-                      label={mobileCourseStatus(course, activeTab)}
-                      tone={mobileCourseStatusTone(course, activeTab)}
-                    />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card data-course-companion-directory>
+            <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+              <div className="min-w-0">
+                <CardTitle>{mobileCourseDirectoryTitle(activeTab)}</CardTitle>
+                <CardDescription>{mobileCourseDirectoryDescription(activeTab)}</CardDescription>
+              </div>
+              <Badge variant="secondary">{mobileCourses.length}</Badge>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {mobileCourses.length > 0 ? (
+                mobileCourses.map((course) => (
+                  <Item key={course.id} variant="outline" className="items-start">
+                    <ItemMedia className="rounded-lg bg-primary/10 p-2 text-primary">
+                      {activeTab === "patterns" ? (
+                        <MapPinned className="size-4" aria-hidden />
+                      ) : activeTab === "manage" ? (
+                        <Settings className="size-4" aria-hidden />
+                      ) : (
+                        <Trophy className="size-4" aria-hidden />
+                      )}
+                    </ItemMedia>
+                    <ItemContent className="space-y-1">
+                      <ItemTitle>{course.name}</ItemTitle>
+                      <ItemDescription className="whitespace-normal">
+                        {mobileCourseDetail(course, activeTab)}
+                      </ItemDescription>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-xs font-medium text-foreground">
+                          {mobileCourseValue(course, activeTab)}
+                        </span>
+                        <Badge variant={mobileCourseStatusVariant(course, activeTab)}>
+                          {mobileCourseStatus(course, activeTab)}
+                        </Badge>
+                      </div>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button asChild variant="ghost" size="icon-sm">
+                        <Link
+                          href={mobileCourseHref(course, activeTab)}
+                          prefetch={false}
+                          aria-label={`Open ${course.name}`}
+                        >
+                          <ChevronRight className="size-4" aria-hidden />
+                        </Link>
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                ))
+              ) : (
+                <AppEmptyState
+                  icon={<MapPinned className="size-5" />}
+                  title={
+                    activeTab === "patterns" ? "No mapped course patterns" : "No courses found"
+                  }
+                  description={
+                    activeTab === "patterns"
+                      ? "Open Manage to map course holes first."
+                      : "Clear the course filter or choose another view."
+                  }
+                  primaryAction={
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/courses" prefetch={false}>
+                        Clear filter
+                      </Link>
+                    </Button>
                   }
                 />
-              ))}
-            </IOSGroupedList>
-            {mobileCourses.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border bg-card p-4 text-sm leading-5 text-muted-foreground">
-                {activeTab === "patterns"
-                  ? "No mapped course patterns yet. Open Manage to map course holes first."
-                  : "No courses match this view yet."}
-              </div>
-            ) : null}
-          </NativeListSection>
-        )}
-        <IOSDisclosureGroup
-          label="Course directory supporting detail"
-          items={[
-            {
-              value: "readiness",
-              title: "Course data readiness",
-              summary: `${mappedCourses.length}/${data.courses.length} mapped`,
-              description: "Mapping, ratings, providers and linked rounds",
-              content: (
-                <IOSGroupedList label="Course data readiness metrics">
-                  <IOSListRow label="Mapped courses" value={String(mappedCourses.length)} />
-                  <IOSListRow label="Rated tee sets" value={String(data.ratedTeeSetCount)} />
-                  <IOSListRow label="Linked rounds" value={String(data.roundCount)} />
-                  <IOSListRow label="Record boards" value={String(data.recordCount)} />
-                  <IOSListRow
-                    label="Manage course data"
-                    detail="Edit tee sets, mapping and provider details"
-                    href="/courses?tab=manage"
-                  />
-                </IOSGroupedList>
-              ),
-              contentClassName: "px-0",
-            },
-            {
-              value: "alerts",
-              title: "Course alerts and following",
-              summary: "Optional",
-              description: "Keep course updates without crowding the directory",
-              content: (
-                <CourseFollowFeaturePanel data={featureData} courseId={focusCourse?.id ?? null} />
-              ),
-              contentClassName: "px-2",
-            },
-          ]}
-        />
-      </MobileAppShell>
+              )}
+            </CardContent>
+          </Card>
 
+          <Card data-course-companion-readiness>
+            <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+              <div>
+                <CardTitle>Course data readiness</CardTitle>
+                <CardDescription>Mapping, ratings, rounds and record coverage.</CardDescription>
+              </div>
+              <Badge variant="outline">
+                {mappedCourses.length}/{data.courses.length} mapped
+              </Badge>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2">
+              <CourseReadinessItem label="Mapped courses" value={mappedCourses.length} />
+              <CourseReadinessItem label="Rated tee sets" value={data.ratedTeeSetCount} />
+              <CourseReadinessItem label="Linked rounds" value={data.roundCount} />
+              <CourseReadinessItem label="Record boards" value={data.recordCount} />
+            </CardContent>
+            <CardFooter>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/courses?tab=manage" prefetch={false}>
+                  <Settings className="size-4" />
+                  Manage course data
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {activeTab === "manage" ? (
+            <CourseFollowFeaturePanel data={featureData} courseId={focusCourse?.id ?? null} />
+          ) : null}
+        </MobileAppShell>
+      </PageShell>
+    );
+  }
+
+  const { DesktopInsightRail, DesktopTableWorkbenchControls, DesktopWorkbenchLayout } =
+    await import("@/components/app/desktop-workbench");
+
+  return (
+    <PageShell>
       <DesktopWorkbenchLayout
         scope="courses"
         rail={
@@ -532,7 +520,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
           />
         }
       >
-        <div className="hidden items-center justify-between gap-4 lg:flex">
+        <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -555,7 +543,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
           </div>
         </div>
 
-        <div className="hidden lg:contents">
+        <div className="contents">
           <PageHeader
             eyebrow={<StatusPill tone="green">Course hub</StatusPill>}
             title="Courses"
@@ -593,68 +581,10 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
             ]}
           />
 
-          <MobileMetricStrip
-            items={[
-              {
-                label: "Courses",
-                value: integerFormatter.format(data.courses.length),
-                detail: "Library",
-                tone: "green",
-              },
-              {
-                label: "Mapped",
-                value: integerFormatter.format(mappedCourses.length),
-                detail: "Geometry saved",
-                tone: "sky",
-              },
-              {
-                label: "Tee sets",
-                value: integerFormatter.format(data.teeSetCount),
-                detail: "Ratings and yardages",
-                tone: "amber",
-              },
-              {
-                label: "Rounds",
-                value: integerFormatter.format(data.roundCount),
-                detail: "Linked",
-                tone: "slate",
-              },
-            ]}
-          />
-
           <CourseFollowFeaturePanel data={featureData} courseId={focusCourse?.id ?? null} />
 
-          <div className="grid gap-3 sm:hidden">
-            <MobileFilterSheet label="Search courses" activeCount={query ? 1 : 0}>
-              <form className="grid gap-3">
-                <label className="grid gap-1 text-sm font-medium">
-                  Course search
-                  <input
-                    name="q"
-                    defaultValue={query}
-                    placeholder="Search course, country, or provider"
-                    className="h-11 rounded-xl border bg-white px-3 text-sm"
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="submit"
-                    className="rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                  >
-                    Search
-                  </Button>
-                  <Button asChild variant="outline" className="rounded-xl">
-                    <Link href="/courses" prefetch={false}>
-                      Reset
-                    </Link>
-                  </Button>
-                </div>
-              </form>
-            </MobileFilterSheet>
-            <ActiveFilterChips items={query ? [{ label: `${query} x`, href: "/courses" }] : []} />
-          </div>
-
-          <CourseDirectoryToolbar
+          <CourseDirectoryControls
+            surface="workbench"
             query={query}
             activeTab={activeTab}
             view={directoryView}
@@ -694,52 +624,6 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
 
           <CourseDataQualityPanel courses={displayedCourses} />
 
-          <MobileHorizontalRail
-            title="Courses"
-            description="Open a course to view tee sets and saved hole geometry."
-            action={
-              <Button asChild variant="outline" size="sm" className="min-h-10 rounded-xl">
-                <Link href="/courses/new" prefetch={false}>
-                  New
-                </Link>
-              </Button>
-            }
-          >
-            {sortedDisplayedCourses.slice(0, 6).map((course, index) => (
-              <Link
-                key={course.id}
-                href={`/courses/${course.id}/holes`}
-                prefetch={false}
-                className="apple-panel-strong block p-4"
-              >
-                <PageArtwork
-                  variant={courseArtworkVariant(course)}
-                  alt=""
-                  crop={courseArtworkCrop(course)}
-                  cropKey={course.id}
-                  className="mb-3 block h-24 min-h-0 rounded-xl"
-                  sizes="90vw"
-                  priority={index === 0}
-                />
-                <p className="truncate font-semibold tracking-normal">{course.name}</p>
-                <p className="mt-1 truncate text-sm text-muted-foreground">
-                  {course.country ?? "Country not set"}
-                </p>
-                <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-                  <span className="rounded-lg bg-[#F5F6F4] px-2 py-2">
-                    {course.recordCount} records
-                  </span>
-                  <span className="rounded-lg bg-[#F5F6F4] px-2 py-2">
-                    {course.teeSetCount} tees
-                  </span>
-                  <span className="rounded-lg bg-[#F5F6F4] px-2 py-2">
-                    {course.roundCount} rounds
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </MobileHorizontalRail>
-
           {directoryView === "grid" ? (
             <CourseDirectoryGrid
               courses={sortedDisplayedCourses}
@@ -770,90 +654,7 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                   exportFileName="forekinghell-courses-view.csv"
                   className="mb-3"
                 />
-                <DataTableFrame
-                  mainTable
-                  mainTableLabel="Course library table"
-                  stickyFirstColumn
-                  mobile={
-                    <MobileDataList>
-                      {sortedDisplayedCourses.length > 0 ? (
-                        sortedDisplayedCourses.map((course) => (
-                          <MobileDataCard
-                            key={course.id}
-                            title={course.name}
-                            subtitle={course.country ?? "Country not set"}
-                            action={
-                              <Badge
-                                variant={course.provider === "manual" ? "outline" : "secondary"}
-                              >
-                                {course.sourceLabel}
-                              </Badge>
-                            }
-                          >
-                            <PageArtwork
-                              variant={courseArtworkVariant(course)}
-                              alt=""
-                              crop={courseArtworkCrop(course)}
-                              cropKey={course.id}
-                              className="block h-20 min-h-0 rounded-xl"
-                              sizes="calc(100vw - 2rem)"
-                            />
-                            <DataPair
-                              label="Thumbnail"
-                              value={
-                                course.holeCount > 0 ? "Saved geometry" : "Illustrative layout"
-                              }
-                            />
-                            <DataPair label="Records" value={course.recordCount} />
-                            <DataPair
-                              label="Champion"
-                              value={course.champion?.displayName ?? "--"}
-                            />
-                            <DataPair label="Tee sets" value={course.teeSetCount} />
-                            <DataPair
-                              label="Mapped holes"
-                              value={
-                                <span
-                                  className={
-                                    course.holeCount >= 18 ? "text-emerald-700" : "text-amber-700"
-                                  }
-                                >
-                                  {course.holeCount}
-                                </span>
-                              }
-                            />
-                            <DataPair label="Data quality" value={courseQualitySummary(course)} />
-                            <DataPair label="Rounds" value={course.roundCount} />
-                            <Button asChild variant="outline" size="sm" className="mt-1 w-full">
-                              <Link href={`/courses/${course.id}/records`} prefetch={false}>
-                                <Trophy className="size-4" />
-                                Open records
-                              </Link>
-                            </Button>
-                            <Button asChild variant="ghost" size="sm" className="mt-1 w-full">
-                              <Link href={`/courses/${course.id}/holes`} prefetch={false}>
-                                <Settings className="size-4" />
-                                Manage
-                              </Link>
-                            </Button>
-                            {shotPatternEnabled && course.holeCount > 0 ? (
-                              <Button asChild size="sm" className="mt-1 w-full">
-                                <Link href={`/courses/${course.id}/shot-pattern`} prefetch={false}>
-                                  <MapPinned className="size-4" />
-                                  Pattern
-                                </Link>
-                              </Button>
-                            ) : null}
-                          </MobileDataCard>
-                        ))
-                      ) : (
-                        <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                          No courses yet. Seed known courses or create one manually.
-                        </div>
-                      )}
-                    </MobileDataList>
-                  }
-                >
+                <DataTableFrame mainTable mainTableLabel="Course library table" stickyFirstColumn>
                   <Table
                     className="min-w-[980px]"
                     data-workbench-scope="courses"
@@ -864,11 +665,11 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                       Course library with provider source, data quality, record boards, champions,
                       tee sets, mapped holes, linked rounds and management actions.
                     </TableCaption>
-                    <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                    <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
                       <TableRow>
                         <TableHead
                           data-column="course"
-                          className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                          className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)]"
                           aria-sort={
                             courseSort.metric === "course" ? sortAriaValue(courseSort.dir) : "none"
                           }
@@ -943,13 +744,13 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                         <TableRow key={course.id} tabIndex={0} className="focus-aaa outline-none">
                           <TableCell
                             data-column="course"
-                            className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            className="sticky left-0 z-10 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)]"
                           >
                             <div>
                               <Link
                                 href={`/courses/${course.id}/holes`}
                                 prefetch={false}
-                                className="font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                                className="font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                               >
                                 {course.name}
                               </Link>
@@ -987,8 +788,8 @@ async function CoursesPageContent({ params }: { params: CourseSearchParams }) {
                             <span
                               className={
                                 course.holeCount >= 18
-                                  ? "font-semibold text-emerald-700"
-                                  : "font-semibold text-amber-700"
+                                  ? "font-semibold text-[var(--status-success-foreground)]"
+                                  : "font-semibold text-[var(--status-warning-foreground)]"
                               }
                             >
                               {course.holeCount}
@@ -1122,10 +923,11 @@ function CourseActionsMenu({
 }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon-sm" aria-label={`Actions for ${course.name}`}>
-          <MoreHorizontal className="size-4" />
-        </Button>
+      <DropdownMenuTrigger
+        className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+        aria-label={`Actions for ${course.name}`}
+      >
+        <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuLabel>Course actions</DropdownMenuLabel>
@@ -1178,6 +980,7 @@ function mobileCourseValue(
 ) {
   if (activeTab === "patterns") return `${course.holeCount} holes`;
   if (activeTab === "played") return `${course.roundCount} rounds`;
+  if (activeTab === "manage") return `${course.holeCount} mapped holes`;
   return `${course.recordCount} boards`;
 }
 
@@ -1195,6 +998,10 @@ function mobileCourseDetail(
     return `${location} · ${course.recordCount} record boards`;
   }
 
+  if (activeTab === "manage") {
+    return `${location} · ${course.teeSetCount} tee sets · ${course.sourceLabel}`;
+  }
+
   return course.champion
     ? `${location} · champion ${course.champion.displayName}`
     : `${location} · no verified champion yet`;
@@ -1206,38 +1013,76 @@ function mobileCourseStatus(
 ) {
   if (activeTab === "patterns") return "Overlay ready";
   if (activeTab === "played") return "Played course";
+  if (activeTab === "manage") return courseQualitySummary(course);
   if (course.championVerificationStatus === "verified") return "Verified champion";
   return "Open board";
 }
 
-function mobileCourseStatusTone(
+function mobileCourseStatusVariant(
   course: CourseDirectoryCourse,
   activeTab: ReturnType<typeof parseCourseTab>,
-): Parameters<typeof IOSInlineStatus>[0]["tone"] {
-  if (activeTab === "patterns" || activeTab === "played") return "info";
-  return course.championVerificationStatus === "verified" ? "positive" : "attention";
+): "default" | "secondary" | "outline" {
+  if (activeTab === "manage") {
+    return courseQualityTone(course) === "green" ? "default" : "secondary";
+  }
+  if (activeTab === "patterns" || activeTab === "played") return "secondary";
+  return course.championVerificationStatus === "verified" ? "default" : "outline";
 }
 
-function CoursesPageLoading() {
+function mobileCourseDirectoryTitle(activeTab: ReturnType<typeof parseCourseTab>) {
+  if (activeTab === "played") return "Played courses";
+  if (activeTab === "patterns") return "Course patterns";
+  if (activeTab === "manage") return "Courses to manage";
+  return "Record boards";
+}
+
+function mobileCourseDirectoryDescription(activeTab: ReturnType<typeof parseCourseTab>) {
+  if (activeTab === "patterns") {
+    return "Mapped courses ready for dispersion overlays.";
+  }
+  if (activeTab === "played") {
+    return "Courses connected to your saved rounds.";
+  }
+  if (activeTab === "manage") {
+    return "Open tee sets, hole mapping and provider data.";
+  }
+  return "Champions and live record boards first.";
+}
+
+function CourseReadinessItem({ label, value }: { label: string; value: number }) {
+  return (
+    <Item variant="muted" size="sm">
+      <ItemContent>
+        <ItemDescription>{label}</ItemDescription>
+        <ItemTitle className="text-base tabular-nums">{integerFormatter.format(value)}</ItemTitle>
+      </ItemContent>
+    </Item>
+  );
+}
+
+function CoursesPageLoading({ surface }: { surface: "companion" | "workbench" }) {
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar title="Courses" />
-        <MobileRouteTabs group="play" activeKey="courses" />
-        <div className="grid gap-3 p-4">
-          <div className="h-24 animate-pulse rounded-lg bg-[#E5E7EB]" />
-          <div className="h-48 animate-pulse rounded-lg bg-[#E5E7EB]" />
-          <div className="h-48 animate-pulse rounded-lg bg-[#E5E7EB]" />
+      {surface === "companion" ? (
+        <MobileAppShell>
+          <MobileTopBar title="Courses" />
+          <MobileRouteTabs group="play" activeKey="courses" />
+          <div className="grid gap-3 p-4">
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-48 rounded-lg" />
+            <Skeleton className="h-48 rounded-lg" />
+          </div>
+        </MobileAppShell>
+      ) : (
+        <div className="grid gap-4">
+          <Skeleton className="h-48 rounded-lg" />
+          <div className="grid gap-3 md:grid-cols-3">
+            <Skeleton className="h-32 rounded-lg" />
+            <Skeleton className="h-32 rounded-lg" />
+            <Skeleton className="h-32 rounded-lg" />
+          </div>
         </div>
-      </MobileAppShell>
-      <div className="hidden gap-4 lg:grid">
-        <div className="h-48 animate-pulse rounded-lg bg-muted" />
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="h-32 animate-pulse rounded-lg bg-muted" />
-          <div className="h-32 animate-pulse rounded-lg bg-muted" />
-          <div className="h-32 animate-pulse rounded-lg bg-muted" />
-        </div>
-      </div>
+      )}
     </PageShell>
   );
 }
@@ -1308,7 +1153,7 @@ function SortableCourseHeadLink({
       aria-label={`Sort courses by ${label}, ${sortDirectionCopy(nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </Link>
   );
 }
@@ -1417,55 +1262,67 @@ function CourseDataQualityPanel({
   const aliasMatched = courses.filter((course) => course.providerAliasCount > 0).length;
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Course data quality"
-        description="Source labels and health checks make Google, OSM, Rapsodo aliases and manual setup visible before users trust a board."
-        action={
-          <StatusPill tone={courseQualityTone(focusCourse)}>
+    <Card data-course-data-quality>
+      <CardHeader className="gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Course data quality</CardTitle>
+            <CardDescription className="mt-1 max-w-4xl leading-6">
+              Source labels and health checks make Google, OSM, Rapsodo aliases and manual setup
+              visible before users trust a board.
+            </CardDescription>
+          </div>
+          <Badge variant={courseQualityScore(focusCourse) >= 3 ? "secondary" : "outline"}>
             {courseQualitySummary(focusCourse)}
-          </StatusPill>
-        }
-      />
-      <CardContent className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <DataPair
-            label="Google-enriched"
-            value={`${integerFormatter.format(googleEnriched)} courses`}
-          />
-          <DataPair
-            label="18 holes mapped"
-            value={`${integerFormatter.format(mappedCourses)} courses`}
-          />
-          <DataPair
-            label="Rating/slope"
-            value={`${integerFormatter.format(ratedCourses)} courses`}
-          />
-          <DataPair
-            label="Provider aliases"
-            value={`${integerFormatter.format(aliasMatched)} courses`}
-          />
+          </Badge>
         </div>
-        <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <ConnectedMetricBar
+          embedded
+          label="Course directory data quality"
+          metrics={[
+            {
+              label: "Google-enriched",
+              value: `${integerFormatter.format(googleEnriched)} courses`,
+            },
+            {
+              label: "18 holes mapped",
+              value: `${integerFormatter.format(mappedCourses)} courses`,
+            },
+            { label: "Rating / slope", value: `${integerFormatter.format(ratedCourses)} courses` },
+            {
+              label: "Provider aliases",
+              value: `${integerFormatter.format(aliasMatched)} courses`,
+            },
+          ]}
+        />
+        <Alert>
+          <MapPinned className="size-4" aria-hidden="true" />
+          <AlertTitle>{focusCourse.name}</AlertTitle>
+          <AlertDescription>
+            {focusCourse.sourceLabel} · {courseQualitySummary(focusCourse)}. Missing evidence stays
+            visible below before this course is used for records or mapping.
+          </AlertDescription>
+        </Alert>
+        <div className="rounded-lg border border-border bg-muted/35 p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{focusCourse.name}</p>
               <p className="mt-1 text-sm text-muted-foreground">{focusCourse.sourceLabel}</p>
             </div>
-            <StatusPill tone={courseQualityTone(focusCourse)}>
-              {courseQualitySummary(focusCourse)}
-            </StatusPill>
+            <Badge variant="outline">{courseQualitySummary(focusCourse)}</Badge>
           </div>
           <div className="mt-3 grid gap-2 text-sm">
             {courseQualityChecks(focusCourse).map((check) => (
               <div
                 key={check.label}
-                className="flex items-center justify-between gap-3 rounded-md bg-white px-2 py-1.5 ring-1 ring-slate-200"
+                className="flex items-center justify-between gap-3 rounded-md bg-card px-2 py-1.5 ring-1 ring-border"
               >
                 <span className="text-muted-foreground">{check.label}</span>
                 <span
                   className={
-                    check.ready ? "font-medium text-emerald-700" : "font-medium text-amber-700"
+                    check.ready ? "font-medium text-primary" : "font-medium text-accent-foreground"
                   }
                 >
                   {check.ready ? "Found" : "Missing"}
@@ -1475,7 +1332,7 @@ function CourseDataQualityPanel({
           </div>
         </div>
       </CardContent>
-    </DataPanel>
+    </Card>
   );
 }
 

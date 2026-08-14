@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 
-export const collaborationRoles = ["coach", "viewer", "editor"] as const;
+import type { CollaborationRole } from "@/lib/collaboration-roles";
 
-export type CollaborationRole = (typeof collaborationRoles)[number];
+export { collaborationRoles } from "@/lib/collaboration-roles";
+export type { CollaborationRole } from "@/lib/collaboration-roles";
 
 export function normalizeInvitationEmail(value: FormDataEntryValue | null) {
   if (typeof value !== "string") {

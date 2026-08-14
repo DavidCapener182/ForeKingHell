@@ -6,8 +6,15 @@ import { Loader2, MessageCircle } from "lucide-react";
 
 import { trackPlausibleEvent } from "@/lib/analytics";
 import type { CoachSqlCitation } from "@/lib/coach-sql-context";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
 
 type CoachChatResponse = {
   answer: string;
@@ -65,73 +72,83 @@ export function CoachChatCard({ questionId = "coach-question" }: { questionId?: 
   }
 
   return (
-    <CardContent className="space-y-4" data-coach-chat-ready={isReady ? "true" : "false"}>
-      <div className="grid gap-3">
-        <label className="grid gap-2 text-sm font-medium" htmlFor={questionId}>
+    <div className="space-y-4 px-4" data-coach-chat-ready={isReady ? "true" : "false"}>
+      <div className="grid gap-2">
+        <label className="text-sm font-medium" htmlFor={questionId}>
           Ask from your shot data
-          <textarea
+        </label>
+        <InputGroup className="min-h-28 items-stretch bg-card shadow-sm">
+          <InputGroupTextarea
             id={questionId}
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="How can I improve my 7 iron dispersion?"
-            className="min-h-24 resize-y rounded-xl border border-input bg-white px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="min-h-20 resize-y px-3 pt-3 text-sm"
             maxLength={600}
             disabled={!isReady}
           />
-        </label>
-        <Button
-          type="button"
-          onClick={askCoach}
-          disabled={!isReady || isPending || !question.trim()}
-          className="w-fit"
-        >
-          {isPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <MessageCircle className="size-4" />
-          )}
-          Ask coach
-        </Button>
+          <InputGroupAddon align="block-end" className="justify-end border-t px-2 pt-2">
+            <Button
+              type="button"
+              size="sm"
+              onClick={askCoach}
+              disabled={!isReady || isPending || !question.trim()}
+            >
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <MessageCircle className="size-4" />
+              )}
+              Ask coach
+            </Button>
+          </InputGroupAddon>
+        </InputGroup>
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <MessageCircle className="size-4" aria-hidden />
+          <AlertTitle>Coach could not answer</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       {response ? (
-        <div className="apple-panel-strong p-4">
+        <section className="rounded-lg border bg-muted/30 p-4" data-coach-chat-answer>
           <p className="text-sm leading-6">{response.answer}</p>
           {response.citations.length > 0 ? (
-            <div className="mt-4 border-t pt-3">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Cited data
-              </p>
-              <div className="mt-2 grid gap-2">
-                {response.citations.slice(0, 5).map((citation) =>
-                  citation.href ? (
-                    <Link
-                      key={citation.id}
-                      href={citation.href}
-                      prefetch={false}
-                      className="rounded-lg bg-slate-50 px-3 py-2 text-sm hover:bg-emerald-50"
-                    >
-                      <span className="font-medium">{citation.label}</span>
-                      <span className="block text-muted-foreground">{citation.detail}</span>
-                    </Link>
-                  ) : (
-                    <div key={citation.id} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
-                      <span className="font-medium">{citation.label}</span>
-                      <span className="block text-muted-foreground">{citation.detail}</span>
-                    </div>
-                  ),
-                )}
-              </div>
-            </div>
+            <Accordion type="single" collapsible className="mt-4 border-t">
+              <AccordionItem value="citations">
+                <AccordionTrigger>Cited data ({response.citations.length})</AccordionTrigger>
+                <AccordionContent className="grid gap-2">
+                  {response.citations.slice(0, 5).map((citation) =>
+                    citation.href ? (
+                      <Button
+                        key={citation.id}
+                        asChild
+                        variant="outline"
+                        className="h-auto justify-start whitespace-normal p-3 text-left"
+                      >
+                        <Link href={citation.href} prefetch={false}>
+                          <span>
+                            <span className="block font-medium">{citation.label}</span>
+                            <span className="block text-muted-foreground">{citation.detail}</span>
+                          </span>
+                        </Link>
+                      </Button>
+                    ) : (
+                      <div key={citation.id} className="rounded-lg border bg-muted/30 p-3 text-sm">
+                        <span className="font-medium">{citation.label}</span>
+                        <span className="block text-muted-foreground">{citation.detail}</span>
+                      </div>
+                    ),
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           ) : null}
-        </div>
+        </section>
       ) : null}
-    </CardContent>
+    </div>
   );
 }

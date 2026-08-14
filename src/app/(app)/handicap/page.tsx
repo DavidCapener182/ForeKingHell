@@ -40,11 +40,9 @@ import {
 import { HandicapConfidenceFeaturePanel } from "@/components/features/feature-panels";
 import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
 import { PageArtwork } from "@/components/visuals/page-artwork";
-import {
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   ChartAccessibleFallback,
@@ -63,6 +61,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildCoachSummary } from "@/lib/coach";
@@ -120,12 +119,17 @@ const handicapSuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 export default async function HandicapPage() {
-  const [rounds, progressData, featureData, rangeReality] = await Promise.all([
+  const [rounds, progressData, featureData, rangeReality, surface] = await Promise.all([
     getHandicapRounds(),
     getProgressData(),
     getFeatureIdeasData(),
     getRangeRealityHandicapData(),
+    getRequestAppSurface(),
   ]);
+  const workbench =
+    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
+  const DesktopTableWorkbenchControls = workbench?.DesktopTableWorkbenchControls;
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
   const missingRatingRounds = rounds.filter(
@@ -152,250 +156,188 @@ export default async function HandicapPage() {
 
   return (
     <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
-      <HandicapMobileOverview
-        rounds={rounds}
-        missingRatingRounds={missingRatingRounds}
-        realHandicap={realHandicap}
-        simulatorHandicap={simulatorHandicap}
-        combinedHandicap={combinedHandicap}
-        playingHandicap={playingHandicap}
-        rangeReality={rangeReality}
-        latestRound={latestRound}
-        topCoachCard={topCoachCard}
-      />
+      {surface === "companion" ? (
+        <HandicapMobileOverview
+          rounds={rounds}
+          missingRatingRounds={missingRatingRounds}
+          realHandicap={realHandicap}
+          simulatorHandicap={simulatorHandicap}
+          combinedHandicap={combinedHandicap}
+          playingHandicap={playingHandicap}
+          rangeReality={rangeReality}
+          latestRound={latestRound}
+          topCoachCard={topCoachCard}
+        />
+      ) : null}
 
-      <DesktopWorkbenchLayout scope="handicap" className="hidden lg:grid">
-        <div className="hidden items-center justify-between gap-4 sm:flex">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/rounds" prefetch={false}>
-                <Flag className="size-4" />
-                Rounds
+      {surface === "workbench" && DesktopWorkbenchLayout && DesktopTableWorkbenchControls ? (
+        <DesktopWorkbenchLayout scope="handicap">
+          <div className="hidden items-center justify-between gap-4 sm:flex">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/dashboard" prefetch={false}>
+                <ArrowLeft className="size-4" />
+                Dashboard
               </Link>
             </Button>
-            <Button asChild>
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import scorecard
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild variant="outline">
+                <Link href="/rounds" prefetch={false}>
+                  <Flag className="size-4" />
+                  Rounds
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/import" prefetch={false}>
+                  <Upload className="size-4" />
+                  Import scorecard
+                </Link>
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <PageHeader
-          eyebrow={<StatusPill tone="amber">Unofficial scoring estimates</StatusPill>}
-          title="Handicap"
-          description="Separate best-form differentials from a conservative playing estimate. LM World Tour uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
-          visual={<PageArtwork variant="handicap" alt="" className="h-full min-h-44" />}
-          actions={
-            <Button
-              asChild
-              size="sm"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              <Link href="/rounds" prefetch={false}>
-                <Flag className="size-4" />
-                Rounds
-              </Link>
-            </Button>
-          }
-          metrics={[
-            {
-              label: "Real best-form",
-              value: formatHandicapValue(realHandicap.value),
-              detail: handicapMethodDetail(realHandicap),
-            },
-            {
-              label: "Simulator best-form",
-              value: formatHandicapValue(simulatorHandicap.value),
-              detail: handicapMethodDetail(simulatorHandicap),
-            },
-            {
-              label: "Realistic playing",
-              value: formatHandicapValue(playingHandicap.value),
-              detail: playingHandicap.methodLabel,
-            },
-            {
-              label: "Range reality",
-              value: rangeReality.estimate.label,
-              detail: `${rangeReality.estimate.expectedRangeLabel} / ${rangeReality.estimate.confidenceLabel}`,
-            },
-          ]}
-        />
+          <PageHeader
+            eyebrow={<StatusPill tone="amber">Unofficial scoring estimates</StatusPill>}
+            title="Handicap"
+            description="Separate best-form differentials from a conservative playing estimate. LM World Tour uses score differentials and reduced-score-count logic, but this is not an official Handicap Index."
+            visual={<PageArtwork variant="handicap" alt="" className="h-full min-h-44" />}
+            actions={
+              <Button asChild size="sm" className="rounded-lg">
+                <Link href="/rounds" prefetch={false}>
+                  <Flag className="size-4" />
+                  Rounds
+                </Link>
+              </Button>
+            }
+            metrics={[
+              {
+                label: "Real best-form",
+                value: formatHandicapValue(realHandicap.value),
+                detail: handicapMethodDetail(realHandicap),
+              },
+              {
+                label: "Simulator best-form",
+                value: formatHandicapValue(simulatorHandicap.value),
+                detail: handicapMethodDetail(simulatorHandicap),
+              },
+              {
+                label: "Realistic playing",
+                value: formatHandicapValue(playingHandicap.value),
+                detail: playingHandicap.methodLabel,
+              },
+              {
+                label: "Range reality",
+                value: rangeReality.estimate.label,
+                detail: `${rangeReality.estimate.expectedRangeLabel} / ${rangeReality.estimate.confidenceLabel}`,
+              },
+            ]}
+          />
 
-        <MobileSectionChips
-          items={[
-            { label: "Estimate", href: "#estimate" },
-            { label: "Range", href: "#range-reality" },
-            { label: "Trend", href: "#trend" },
-            { label: "Tasks", href: "#tasks" },
-            { label: "Rounds", href: "#rounds" },
-          ]}
-        />
+          <MobileSectionChips
+            items={[
+              { label: "Estimate", href: "#estimate" },
+              { label: "Range", href: "#range-reality" },
+              { label: "Trend", href: "#trend" },
+              ...(missingRatingRounds.length > 0 ? [{ label: "Tasks", href: "#tasks" }] : []),
+              { label: "Rounds", href: "#rounds-mobile" },
+            ]}
+          />
 
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Playing estimate",
-              value: formatHandicapValue(playingHandicap.value),
-              detail: playingHandicap.methodLabel,
-              tone: "amber",
-            },
-            {
-              label: "Best form",
-              value: formatHandicapValue(realHandicap.value),
-              detail: `${realRounds.length} real`,
-              tone: "green",
-            },
-            {
-              label: "Trend",
-              value: trendSentence(combinedHandicap),
-              detail: "Combined",
-              tone:
-                combinedHandicap.trend.direction === "down"
-                  ? "green"
-                  : combinedHandicap.trend.direction === "up"
-                    ? "amber"
-                    : "slate",
-            },
-            {
-              label: "Range reality",
-              value: rangeReality.estimate.label,
-              detail: rangeReality.estimate.confidenceLabel,
-              tone:
-                rangeReality.estimate.confidence === "high"
-                  ? "green"
-                  : rangeReality.estimate.confidence === "medium"
-                    ? "sky"
-                    : "amber",
-            },
-          ]}
-        />
+          <MobileBentoSummary
+            items={[
+              {
+                label: "Playing estimate",
+                value: formatHandicapValue(playingHandicap.value),
+                detail: playingHandicap.methodLabel,
+                tone: "amber",
+              },
+              {
+                label: "Best form",
+                value: formatHandicapValue(realHandicap.value),
+                detail: `${realRounds.length} real`,
+                tone: "green",
+              },
+              {
+                label: "Trend",
+                value: trendSentence(combinedHandicap),
+                detail: "Combined",
+                tone:
+                  combinedHandicap.trend.direction === "down"
+                    ? "green"
+                    : combinedHandicap.trend.direction === "up"
+                      ? "amber"
+                      : "slate",
+              },
+              {
+                label: "Range reality",
+                value: rangeReality.estimate.label,
+                detail: rangeReality.estimate.confidenceLabel,
+                tone:
+                  rangeReality.estimate.confidence === "high"
+                    ? "green"
+                    : rangeReality.estimate.confidence === "medium"
+                      ? "sky"
+                      : "amber",
+              },
+            ]}
+          />
 
-        <HandicapConfidenceFeaturePanel data={featureData} />
+          <HandicapConfidenceFeaturePanel data={featureData} />
 
-        <section id="estimate" className="scroll-mt-28">
-          <PlayingHandicapPanel summary={playingHandicap} />
-        </section>
+          <section id="estimate" className="scroll-mt-28">
+            <PlayingHandicapPanel summary={playingHandicap} />
+          </section>
 
-        <section
-          aria-label="Handicap confidence panels"
-          tabIndex={0}
-          className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4"
-        >
-          <div className="min-w-[82vw] md:min-w-0">
-            <HandicapPanel
-              title="Real course ceiling"
-              summary={realHandicap}
-              rounds={realRounds.length}
-              tone="green"
-            />
-          </div>
-          <div className="min-w-[82vw] md:min-w-0">
-            <HandicapPanel
-              title="Simulator ceiling"
-              summary={simulatorHandicap}
-              rounds={simulatorRounds.length}
-              tone="sky"
-            />
-          </div>
-          <div className="min-w-[82vw] md:min-w-0">
-            <RangeRealityPanel reality={rangeReality} />
-          </div>
-          <div className="min-w-[82vw] md:min-w-0">
-            <HandicapPanel
-              title="Combined ceiling"
-              summary={combinedHandicap}
-              rounds={rounds.length}
-              tone="amber"
-            />
-          </div>
-        </section>
-
-        <section id="range-reality" className="scroll-mt-28">
-          <RangeRealityDetailPanel reality={rangeReality} />
-        </section>
-
-        <section id="trend" className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <MobileAccordionSection
-            title="Readout"
-            description="Current scorecard signals."
-            count="4 signals"
+          <section
+            aria-label="Handicap confidence panels"
+            tabIndex={0}
+            className="-mx-4 flex scroll-mt-28 gap-4 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-4"
           >
-            <CompactReadoutGrid
-              items={[
-                {
-                  label: "Trend",
-                  value: trendSentence(combinedHandicap),
-                  detail:
-                    "Lower is better. Trend compares current estimate with the prior estimate.",
-                  tone:
-                    combinedHandicap.trend.direction === "down"
-                      ? "green"
-                      : combinedHandicap.trend.direction === "up"
-                        ? "amber"
-                        : "slate",
-                },
-                {
-                  label: "Data quality",
-                  value: `${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`,
-                  detail: "Real-course estimates are stronger with rating and slope.",
-                  tone: missingRatingRounds.length > 0 ? "amber" : "green",
-                },
-                {
-                  label: "Latest round",
-                  value: latestRound
-                    ? `${latestRound.totalScore ?? "--"} at ${latestRound.courseName ?? latestRound.fileName ?? "latest round"}`
-                    : "No scorecards yet",
-                  detail: latestRound
-                    ? `${formatDate(latestRound.date)} / differential ${formatHandicapValue(latestRound.handicapDifferential)}`
-                    : "Import or create a scorecard to start.",
-                  tone: "sky",
-                },
-                {
-                  label: "Range priority",
-                  value: topCoachCard
-                    ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}`
-                    : "No club priority yet",
-                  detail: topCoachCard
-                    ? topCoachCard.drill
-                    : "Import more launch monitor sessions.",
-                  tone: topCoachCard ? topCoachCard.tone : "slate",
-                  href: topCoachCard ? `/bag/${topCoachCard.clubId}/analytics` : "/coach",
-                },
-              ]}
-            />
-          </MobileAccordionSection>
+            <div className="min-w-[82vw] md:min-w-0">
+              <HandicapPanel
+                title="Real course ceiling"
+                summary={realHandicap}
+                rounds={realRounds.length}
+                tone="green"
+              />
+            </div>
+            <div className="min-w-[82vw] md:min-w-0">
+              <HandicapPanel
+                title="Simulator ceiling"
+                summary={simulatorHandicap}
+                rounds={simulatorRounds.length}
+                tone="sky"
+              />
+            </div>
+            <div className="min-w-[82vw] md:min-w-0">
+              <RangeRealityPanel reality={rangeReality} />
+            </div>
+            <div className="min-w-[82vw] md:min-w-0">
+              <HandicapPanel
+                title="Combined ceiling"
+                summary={combinedHandicap}
+                rounds={rounds.length}
+                tone="amber"
+              />
+            </div>
+          </section>
 
-          <MobileAccordionSection
-            title="Trend chart"
-            description="Running best-form estimate."
-            count={`${rounds.length} rounds`}
-          >
-            <HandicapTrendChart rounds={[...rounds].reverse()} />
-          </MobileAccordionSection>
+          <section id="range-reality" className="scroll-mt-28">
+            <RangeRealityDetailPanel reality={rangeReality} />
+          </section>
 
-          <DataPanel className="hidden sm:flex">
-            <SectionHeader
+          <section id="trend" className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+            <MobileAccordionSection
               title="Readout"
-              description="What the current scorecards are saying."
-              action={<Info className="size-5 text-sky-500" />}
-            />
-            <CardContent>
+              description="Current scorecard signals."
+              count="4 signals"
+            >
               <CompactReadoutGrid
-                columnsClassName="md:grid-cols-2"
                 items={[
                   {
                     label: "Trend",
                     value: trendSentence(combinedHandicap),
                     detail:
-                      "Lower is better. Trend compares the current estimate with the estimate before the newest eligible round.",
+                      "Lower is better. Trend compares current estimate with the prior estimate.",
                     tone:
                       combinedHandicap.trend.direction === "down"
                         ? "green"
@@ -406,8 +348,7 @@ export default async function HandicapPage() {
                   {
                     label: "Data quality",
                     value: `${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`,
-                    detail:
-                      "Simulator rounds can fall back to par and 113 slope; real-course estimates are stronger with rating and slope.",
+                    detail: "Real-course estimates are stronger with rating and slope.",
                     tone: missingRatingRounds.length > 0 ? "amber" : "green",
                   },
                   {
@@ -427,223 +368,306 @@ export default async function HandicapPage() {
                       : "No club priority yet",
                     detail: topCoachCard
                       ? topCoachCard.drill
-                      : "Import more launch monitor sessions to separate range performance from scorecards.",
+                      : "Import more launch monitor sessions.",
                     tone: topCoachCard ? topCoachCard.tone : "slate",
                     href: topCoachCard ? `/bag/${topCoachCard.clubId}/analytics` : "/coach",
                   },
                 ]}
               />
-            </CardContent>
-          </DataPanel>
+            </MobileAccordionSection>
 
-          <DataPanel className="hidden sm:flex">
-            <SectionHeader
+            <MobileAccordionSection
               title="Trend chart"
-              description="Running best-form estimate after each eligible round, oldest to newest."
-              action={<Trophy className="size-5 text-amber-500" />}
-            />
-            <CardContent>
+              description="Running best-form estimate."
+              count={`${rounds.length} rounds`}
+            >
               <HandicapTrendChart rounds={[...rounds].reverse()} />
-            </CardContent>
-          </DataPanel>
-        </section>
+            </MobileAccordionSection>
 
-        {missingRatingRounds.length > 0 ? (
-          <DataPanel id="tasks" className="scroll-mt-28 border-amber-200 bg-amber-50/70">
-            <SectionHeader
-              title="Data to improve"
-              description="These rounds are included using fallback assumptions where needed."
-              action={<AlertTriangle className="size-5 text-amber-700" />}
-            />
-            <CardContent className="grid gap-2 md:grid-cols-2">
-              {missingRatingRounds.slice(0, 6).map((round) => (
-                <Link
-                  key={round.id}
-                  href={`/rounds/${round.id}`}
-                  prefetch={false}
-                  className="rounded-xl border border-amber-200 bg-white/80 p-4 hover:border-amber-400"
-                >
-                  <p className="font-semibold">
-                    {round.courseName ?? round.fileName ?? "Untitled round"}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Missing {round.courseRating === null ? "course rating" : ""}
-                    {round.courseRating === null && round.slopeRating === null ? " and " : ""}
-                    {round.slopeRating === null ? "slope rating" : ""}.
-                  </p>
-                </Link>
-              ))}
-            </CardContent>
-          </DataPanel>
-        ) : null}
-
-        <MobileAccordionSection
-          title="Score differential table"
-          description="Newest scorecards and 18-hole equivalent inputs."
-          count={`${rounds.length} rounds`}
-        >
-          <MobileDataList>
-            {rounds.length > 0 ? (
-              rounds.map((round) => (
-                <MobileDataCard
-                  key={round.id}
-                  href={`/rounds/${round.id}`}
-                  title={round.courseName ?? round.fileName ?? "Untitled round"}
-                  subtitle={formatDate(round.date)}
-                  action={
-                    <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
-                      {formatSessionType(round.type)}
-                    </Badge>
-                  }
-                >
-                  <DataPair label="Score" value={round.totalScore ?? "--"} />
-                  <DataPair label="Rating" value={formatOptionalNumber(round.courseRating)} />
-                  <DataPair label="Slope" value={round.slopeRating ?? "--"} />
-                  <DataPair
-                    label="Differential"
-                    value={formatHandicapValue(round.handicapDifferential)}
-                  />
-                  <DataPair
-                    label="Eligibility"
-                    value={`${round.eligibility.label} · ${round.eligibility.reason}`}
-                  />
-                  <DataPair label="Holes" value={formatHolesPlayed(round)} />
-                </MobileDataCard>
-              ))
-            ) : (
-              <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                No scorecards yet. Import a simulated course or add a real round.
-              </div>
-            )}
-          </MobileDataList>
-        </MobileAccordionSection>
-
-        <DataPanel id="rounds" className="hidden scroll-mt-28 sm:flex">
-          <SectionHeader
-            title="Score differential table"
-            description="Best-form estimates use score differentials; 9-hole rounds are shown as 18-hole equivalents."
-          />
-          <CardContent className="grid gap-3">
-            <div data-workbench-scope="handicap-rounds" className="grid gap-3">
-              <DesktopTableWorkbenchControls
-                viewKey="handicap-rounds"
-                scope="handicap-rounds"
-                currentViewLabel="Score differential evidence"
-                resultLabel={`${rounds.length} rounds`}
-                columns={handicapRoundColumns}
-                suggestedViews={handicapSuggestedViews}
-                exportTableId="handicap-rounds"
-                exportFileName="forekinghell-handicap-score-differentials.csv"
+            <DataPanel className="hidden sm:flex">
+              <SectionHeader
+                title="Readout"
+                description="What the current scorecards are saying."
+                action={<Info className="size-5 text-[var(--status-information-foreground)]" />}
               />
-              <DataTableFrame mainTable mainTableLabel="Score differential table" stickyFirstColumn>
-                <Table
-                  className="min-w-[1180px]"
-                  data-workbench-export-table="handicap-rounds"
-                  aria-describedby="handicap-rounds-summary"
+              <CardContent>
+                <CompactReadoutGrid
+                  columnsClassName="md:grid-cols-2"
+                  items={[
+                    {
+                      label: "Trend",
+                      value: trendSentence(combinedHandicap),
+                      detail:
+                        "Lower is better. Trend compares the current estimate with the estimate before the newest eligible round.",
+                      tone:
+                        combinedHandicap.trend.direction === "down"
+                          ? "green"
+                          : combinedHandicap.trend.direction === "up"
+                            ? "amber"
+                            : "slate",
+                    },
+                    {
+                      label: "Data quality",
+                      value: `${missingRatingRounds.length} round${missingRatingRounds.length === 1 ? "" : "s"} need rating/slope`,
+                      detail:
+                        "Simulator rounds can fall back to par and 113 slope; real-course estimates are stronger with rating and slope.",
+                      tone: missingRatingRounds.length > 0 ? "amber" : "green",
+                    },
+                    {
+                      label: "Latest round",
+                      value: latestRound
+                        ? `${latestRound.totalScore ?? "--"} at ${latestRound.courseName ?? latestRound.fileName ?? "latest round"}`
+                        : "No scorecards yet",
+                      detail: latestRound
+                        ? `${formatDate(latestRound.date)} / differential ${formatHandicapValue(latestRound.handicapDifferential)}`
+                        : "Import or create a scorecard to start.",
+                      tone: "sky",
+                    },
+                    {
+                      label: "Range priority",
+                      value: topCoachCard
+                        ? `${topCoachCard.clubName}: ${topCoachCard.issueLabel}`
+                        : "No club priority yet",
+                      detail: topCoachCard
+                        ? topCoachCard.drill
+                        : "Import more launch monitor sessions to separate range performance from scorecards.",
+                      tone: topCoachCard ? topCoachCard.tone : "slate",
+                      href: topCoachCard ? `/bag/${topCoachCard.clubId}/analytics` : "/coach",
+                    },
+                  ]}
+                />
+              </CardContent>
+            </DataPanel>
+
+            <DataPanel className="hidden sm:flex">
+              <SectionHeader
+                title="Trend chart"
+                description="Running best-form estimate after each eligible round, oldest to newest."
+                action={<Trophy className="size-5 text-[var(--status-warning-foreground)]" />}
+              />
+              <CardContent>
+                <HandicapTrendChart rounds={[...rounds].reverse()} />
+              </CardContent>
+            </DataPanel>
+          </section>
+
+          {missingRatingRounds.length > 0 ? (
+            <DataPanel
+              id="tasks"
+              className="scroll-mt-28 border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]"
+            >
+              <SectionHeader
+                title="Data to improve"
+                description="These rounds are included using fallback assumptions where needed."
+                action={
+                  <AlertTriangle className="size-5 text-[var(--status-warning-foreground)]" />
+                }
+              />
+              <CardContent className="grid gap-2 md:grid-cols-2">
+                {missingRatingRounds.slice(0, 6).map((round) => (
+                  <Link
+                    key={round.id}
+                    href={`/rounds/${round.id}`}
+                    prefetch={false}
+                    className="rounded-xl border border-[var(--status-warning-border)] bg-card/80 p-4 hover:border-[var(--status-warning-foreground)]"
+                  >
+                    <p className="font-semibold">
+                      {round.courseName ?? round.fileName ?? "Untitled round"}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Missing {round.courseRating === null ? "course rating" : ""}
+                      {round.courseRating === null && round.slopeRating === null ? " and " : ""}
+                      {round.slopeRating === null ? "slope rating" : ""}.
+                    </p>
+                  </Link>
+                ))}
+              </CardContent>
+            </DataPanel>
+          ) : null}
+
+          <div id="rounds-mobile" className="scroll-mt-28 lg:hidden">
+            <MobileAccordionSection
+              title="Score differential table"
+              description="Newest scorecards and 18-hole equivalent inputs."
+              count={`${rounds.length} rounds`}
+            >
+              <MobileDataList>
+                {rounds.length > 0 ? (
+                  rounds.map((round) => (
+                    <MobileDataCard
+                      key={round.id}
+                      href={`/rounds/${round.id}`}
+                      title={round.courseName ?? round.fileName ?? "Untitled round"}
+                      subtitle={formatDate(round.date)}
+                      action={
+                        <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                          {formatSessionType(round.type)}
+                        </Badge>
+                      }
+                    >
+                      <DataPair label="Score" value={round.totalScore ?? "--"} />
+                      <DataPair label="Rating" value={formatOptionalNumber(round.courseRating)} />
+                      <DataPair label="Slope" value={round.slopeRating ?? "--"} />
+                      <DataPair
+                        label="Differential"
+                        value={formatHandicapValue(round.handicapDifferential)}
+                      />
+                      <DataPair
+                        label="Eligibility"
+                        value={`${round.eligibility.label} · ${round.eligibility.reason}`}
+                      />
+                      <DataPair label="Holes" value={formatHolesPlayed(round)} />
+                    </MobileDataCard>
+                  ))
+                ) : (
+                  <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
+                    No scorecards yet. Import a simulated course or add a real round.
+                  </div>
+                )}
+              </MobileDataList>
+            </MobileAccordionSection>
+          </div>
+
+          <DataPanel id="rounds" className="hidden scroll-mt-28 sm:flex">
+            <SectionHeader
+              title="Score differential table"
+              description="Best-form estimates use score differentials; 9-hole rounds are shown as 18-hole equivalents."
+            />
+            <CardContent className="grid gap-3">
+              <div data-workbench-scope="handicap-rounds" className="grid gap-3">
+                <DesktopTableWorkbenchControls
+                  viewKey="handicap-rounds"
+                  scope="handicap-rounds"
+                  currentViewLabel="Score differential evidence"
+                  resultLabel={`${rounds.length} rounds`}
+                  columns={handicapRoundColumns}
+                  suggestedViews={handicapSuggestedViews}
+                  exportTableId="handicap-rounds"
+                  exportFileName="forekinghell-handicap-score-differentials.csv"
+                />
+                <DataTableFrame
+                  mainTable
+                  mainTableLabel="Score differential table"
+                  stickyFirstColumn
                 >
-                  <TableCaption id="handicap-rounds-summary">
-                    Score differential rows used for the unofficial handicap confidence view.
-                  </TableCaption>
-                  <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                    <TableRow>
-                      <TableHead
-                        data-column="round"
-                        className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                      >
-                        Round
-                      </TableHead>
-                      <TableHead data-column="date">Date</TableHead>
-                      <TableHead data-column="type">Type</TableHead>
-                      <TableHead data-column="score" className="text-right">
-                        Score
-                      </TableHead>
-                      <TableHead data-column="rating" className="text-right">
-                        Rating
-                      </TableHead>
-                      <TableHead data-column="slope" className="text-right">
-                        Slope
-                      </TableHead>
-                      <TableHead data-column="differential" className="text-right">
-                        Diff
-                      </TableHead>
-                      <TableHead data-column="eligibility">Eligibility</TableHead>
-                      <TableHead data-column="holes" className="text-right">
-                        Holes
-                      </TableHead>
-                      <TableHead data-column="shots" className="text-right">
-                        Shots
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rounds.map((round) => (
-                      <TableRow key={round.id} tabIndex={0} className="focus-aaa outline-none">
-                        <TableCell
-                          data-column="round"
-                          className="sticky left-0 z-10 max-w-64 truncate bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                        >
-                          <Link
-                            href={`/rounds/${round.id}`}
-                            prefetch={false}
-                            className="hover:underline"
-                          >
-                            {round.courseName ?? round.fileName ?? "Untitled round"}
-                          </Link>
-                        </TableCell>
-                        <TableCell data-column="date">{formatDate(round.date)}</TableCell>
-                        <TableCell data-column="type">
-                          <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
-                            {formatSessionType(round.type)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell data-column="score" className="text-right">
-                          {round.totalScore ?? "--"}
-                        </TableCell>
-                        <TableCell data-column="rating" className="text-right">
-                          {formatOptionalNumber(round.courseRating)}
-                        </TableCell>
-                        <TableCell data-column="slope" className="text-right">
-                          {round.slopeRating ?? "--"}
-                        </TableCell>
-                        <TableCell data-column="differential" className="text-right font-semibold">
-                          {formatHandicapValue(round.handicapDifferential)}
-                        </TableCell>
-                        <TableCell data-column="eligibility" className="max-w-72 whitespace-normal">
-                          <span className="font-medium">{round.eligibility.label}</span>
-                          <span className="mt-0.5 block text-xs text-muted-foreground">
-                            {round.eligibility.reason}
-                          </span>
-                        </TableCell>
-                        <TableCell data-column="holes" className="text-right">
-                          {formatHolesPlayed(round)}
-                        </TableCell>
-                        <TableCell data-column="shots" className="text-right">
-                          {integerFormatter.format(round.shotCount)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {rounds.length === 0 ? (
+                  <Table
+                    className="min-w-[1180px]"
+                    data-workbench-export-table="handicap-rounds"
+                    aria-describedby="handicap-rounds-summary"
+                  >
+                    <TableCaption id="handicap-rounds-summary">
+                      Score differential rows used for the unofficial handicap confidence view.
+                    </TableCaption>
+                    <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                       <TableRow>
-                        <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
-                          No scorecards yet. Import a simulated course or add a real round.
-                        </TableCell>
+                        <TableHead
+                          data-column="round"
+                          className="sticky left-0 z-20 min-w-64 bg-card shadow-[1px_0_0_color-mix(in_oklab,var(--border)_72%,transparent)]"
+                        >
+                          Round
+                        </TableHead>
+                        <TableHead data-column="date">Date</TableHead>
+                        <TableHead data-column="type">Type</TableHead>
+                        <TableHead data-column="score" className="text-right">
+                          Score
+                        </TableHead>
+                        <TableHead data-column="rating" className="text-right">
+                          Rating
+                        </TableHead>
+                        <TableHead data-column="slope" className="text-right">
+                          Slope
+                        </TableHead>
+                        <TableHead data-column="differential" className="text-right">
+                          Diff
+                        </TableHead>
+                        <TableHead data-column="eligibility">Eligibility</TableHead>
+                        <TableHead data-column="holes" className="text-right">
+                          Holes
+                        </TableHead>
+                        <TableHead data-column="shots" className="text-right">
+                          Shots
+                        </TableHead>
                       </TableRow>
-                    ) : null}
-                  </TableBody>
-                </Table>
-              </DataTableFrame>
-            </div>
-          </CardContent>
-        </DataPanel>
-        <StickyMobileAction>
-          <Button asChild className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-            <Link href="/import" prefetch={false}>
-              <Upload className="size-4" />
-              Import scorecard
-            </Link>
-          </Button>
-        </StickyMobileAction>
-      </DesktopWorkbenchLayout>
+                    </TableHeader>
+                    <TableBody>
+                      {rounds.map((round) => (
+                        <TableRow key={round.id} tabIndex={0} className="focus-aaa outline-none">
+                          <TableCell
+                            data-column="round"
+                            className="sticky left-0 z-10 max-w-64 truncate bg-card font-medium shadow-[1px_0_0_color-mix(in_oklab,var(--border)_72%,transparent)]"
+                          >
+                            <Link
+                              href={`/rounds/${round.id}`}
+                              prefetch={false}
+                              className="hover:underline"
+                            >
+                              {round.courseName ?? round.fileName ?? "Untitled round"}
+                            </Link>
+                          </TableCell>
+                          <TableCell data-column="date">{formatDate(round.date)}</TableCell>
+                          <TableCell data-column="type">
+                            <Badge variant={round.type === "real_round" ? "default" : "secondary"}>
+                              {formatSessionType(round.type)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell data-column="score" className="text-right">
+                            {round.totalScore ?? "--"}
+                          </TableCell>
+                          <TableCell data-column="rating" className="text-right">
+                            {formatOptionalNumber(round.courseRating)}
+                          </TableCell>
+                          <TableCell data-column="slope" className="text-right">
+                            {round.slopeRating ?? "--"}
+                          </TableCell>
+                          <TableCell
+                            data-column="differential"
+                            className="text-right font-semibold"
+                          >
+                            {formatHandicapValue(round.handicapDifferential)}
+                          </TableCell>
+                          <TableCell
+                            data-column="eligibility"
+                            className="max-w-72 whitespace-normal"
+                          >
+                            <span className="font-medium">{round.eligibility.label}</span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {round.eligibility.reason}
+                            </span>
+                          </TableCell>
+                          <TableCell data-column="holes" className="text-right">
+                            {formatHolesPlayed(round)}
+                          </TableCell>
+                          <TableCell data-column="shots" className="text-right">
+                            {integerFormatter.format(round.shotCount)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {rounds.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={10}
+                            className="h-24 text-center text-muted-foreground"
+                          >
+                            No scorecards yet. Import a simulated course or add a real round.
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                    </TableBody>
+                  </Table>
+                </DataTableFrame>
+              </div>
+            </CardContent>
+          </DataPanel>
+          <StickyMobileAction>
+            <Button asChild className="w-full rounded-lg">
+              <Link href="/import" prefetch={false}>
+                <Upload className="size-4" />
+                Import scorecard
+              </Link>
+            </Button>
+          </StickyMobileAction>
+        </DesktopWorkbenchLayout>
+      ) : null}
     </PageShell>
   );
 }
@@ -866,7 +890,7 @@ function HandicapMobileOverview({
                     <ul className="grid gap-2 text-[13px] leading-5 text-muted-foreground">
                       {rangeReality.estimate.caveats.slice(0, 3).map((caveat) => (
                         <li key={caveat} className="flex gap-2">
-                          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--status-warning-foreground)]" />
                           <span>{caveat}</span>
                         </li>
                       ))}
@@ -1059,7 +1083,7 @@ function HandicapPanel({
 
 function PlayingHandicapPanel({ summary }: { summary: PlayingHandicapSummary }) {
   return (
-    <DataPanel className="border-amber-200 bg-amber-50/70">
+    <DataPanel className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]">
       <SectionHeader
         title="Realistic playing handicap"
         description={summary.warning}
@@ -1147,7 +1171,7 @@ function RangeRealityDetailPanel({ reality }: { reality: RangeRealityHandicapDat
   const topPractice = reality.prescriptions[0] ?? null;
 
   return (
-    <DataPanel className="border-emerald-200 bg-emerald-50/50">
+    <DataPanel className="border-[var(--status-success-border)] bg-[var(--status-success-surface)]">
       <SectionHeader
         title="Range reality handicap"
         description={estimate.disclaimer}
@@ -1175,11 +1199,7 @@ function RangeRealityDetailPanel({ reality }: { reality: RangeRealityHandicapDat
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{estimate.methodLabel}</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              asChild
-              size="sm"
-              className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
+            <Button asChild size="sm" className="rounded-lg">
               <Link href="/simulator-lab#range-reality" prefetch={false}>
                 <Radar className="size-4" />
                 Open Performance Lab
@@ -1225,11 +1245,11 @@ function RangeRealityDetailPanel({ reality }: { reality: RangeRealityHandicapDat
             ]}
           />
           {estimate.caveats.length > 0 ? (
-            <div className="grid gap-2 text-sm leading-6 text-amber-950/80">
+            <div className="grid gap-2 text-sm leading-6 text-[var(--status-warning-foreground)]">
               {estimate.caveats.slice(0, 3).map((caveat) => (
                 <p
                   key={caveat}
-                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+                  className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-3 py-2"
                 >
                   {caveat}
                 </p>
@@ -1271,7 +1291,7 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
             { key: "estimate", label: "Running estimate" },
           ]}
           rows={[]}
-          className="bg-white/70"
+          className="bg-card/70"
         />
       </div>
     );
@@ -1345,7 +1365,7 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
           { key: "estimate", label: "Running estimate" },
         ]}
         rows={handicapTrendChartRows(points)}
-        className="bg-white/70"
+        className="bg-card/70"
       />
     </div>
   );

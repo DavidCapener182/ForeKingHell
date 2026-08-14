@@ -5,6 +5,21 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/partners/page.tsx"), "utf8");
 
 describe("partners desktop operations board", () => {
+  it("ships only the workbench graph on this desktop-only route", () => {
+    expect(source).toContain('<DesktopWorkbenchLayout scope="partners">');
+    for (const obsolete of [
+      "getRequestAppSurface",
+      "MobilePartnersOperations",
+      "MobilePartnerOfferRows",
+      "MobileSponsorRows",
+      "BottomSheet",
+      "IOSDisclosureGroup",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
+  });
+
   it("uses the partners artwork variant on the actual operations page", () => {
     expect(source).toContain('variant="partners"');
     expect(source).toContain("visual={<PageArtwork");
@@ -43,14 +58,10 @@ describe("partners desktop operations board", () => {
     expect(source).not.toContain("rail={");
   });
 
-  it("uses native mobile sponsor and offer lists with focused creation sheets", () => {
-    expect(source).toContain("MobilePartnersOperations");
-    expect(source).toContain("MobilePartnerOfferRows");
-    expect(source).toContain("MobileSponsorRows");
-    expect(source).toContain("<BottomSheet");
-    expect(source).toContain("IOSDisclosureGroup");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="partners" className="hidden lg:grid">',
-    );
+  it("uses theme-aware ordinary workbench surfaces", () => {
+    expect(source).not.toMatch(/\b(?:bg-white|bg-slate-\d+|text-slate-\d+|border-slate-\d+)\b/);
+    expect(source).not.toMatch(/bg-\[#[0-9A-Fa-f]+\]|text-white/);
+    expect(source).toContain("bg-card");
+    expect(source).toContain("bg-muted/40");
   });
 });

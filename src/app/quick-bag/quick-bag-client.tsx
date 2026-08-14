@@ -1,10 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { Target } from "lucide-react";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { EntityCombobox } from "@/components/app/entity-combobox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import {
   Item,
   ItemActions,
@@ -52,6 +45,29 @@ export type QuickBagClub = {
 };
 
 const quickTargets = [100, 125, 150, 175, 200];
+
+const EntityCombobox = dynamic(
+  () => import("@/components/app/entity-combobox").then((module) => module.EntityCombobox),
+  {
+    ssr: false,
+    loading: () => (
+      <Button
+        type="button"
+        variant="outline"
+        disabled
+        aria-busy="true"
+        aria-label="Loading club or target"
+        className="min-h-12 w-full justify-between rounded-xl bg-background text-base font-normal"
+      >
+        Loading club or target…
+      </Button>
+    ),
+  },
+);
+
+const QuickBagClubDrawer = dynamic(() =>
+  import("@/app/quick-bag/quick-bag-club-drawer").then((module) => module.QuickBagClubDrawer),
+);
 
 export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; accountId: string }) {
   const [targetDistance, setTargetDistance] = useState("");
@@ -286,7 +302,9 @@ export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; ac
         </p>
       </Card>
 
-      <QuickBagClubDrawer club={selectedClub} open={detailOpen} onOpenChange={setDetailOpen} />
+      {detailOpen ? (
+        <QuickBagClubDrawer club={selectedClub} open onOpenChange={setDetailOpen} />
+      ) : null}
     </>
   );
 }
@@ -297,40 +315,6 @@ function QuickMetric({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-0.5 font-semibold">{value}</p>
     </div>
-  );
-}
-
-function QuickBagClubDrawer({
-  club,
-  open,
-  onOpenChange,
-}: {
-  club: QuickBagClub | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-      <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
-        <DrawerHeader className="text-left">
-          <DrawerTitle>{club?.label ?? "Club detail"}</DrawerTitle>
-          <DrawerDescription>
-            {club ? `${club.model} · ${confidenceLabel(club)}` : "Choose a measured club."}
-          </DrawerDescription>
-        </DrawerHeader>
-        {club ? (
-          <div className="grid gap-4 px-4 pb-4">
-            <LateralRange club={club} />
-            <div className="grid grid-cols-2 gap-3 rounded-xl bg-muted/55 p-3">
-              <QuickMetric label="Trusted carry" value={yardValue(club.trustedCarryYd)} />
-              <QuickMetric label="Play number" value={yardValue(club.playNumberYd)} />
-              <QuickMetric label="Measured range" value={rangeLabel(club)} />
-              <QuickMetric label="Typical pattern" value={patternLabel(club)} />
-            </div>
-          </div>
-        ) : null}
-      </DrawerContent>
-    </Drawer>
   );
 }
 

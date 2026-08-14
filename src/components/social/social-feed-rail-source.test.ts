@@ -40,13 +40,15 @@ describe("social feed rail route suppression", () => {
   });
 
   it("uses semantic surfaces inside the portalled preview sheet", () => {
-    const sheetCards = source.slice(source.indexOf("function RailDayDigest"));
+    expect(source).toContain('<Card role="article"');
+    expect(source).toContain("<Skeleton");
+    expect(source).toContain("<Alert");
+    expect(source).toContain("bg-card");
+    expect(source).toContain("bg-secondary/70");
+    expect(source).toContain("bg-background");
 
-    expect(sheetCards).toContain("bg-card");
-    expect(sheetCards).toContain("bg-secondary/70");
-    expect(sheetCards).toContain("bg-background");
-    expect(sheetCards).not.toContain("border-slate-200 bg-white");
-    expect(sheetCards).not.toContain("bg-slate-50/70");
-    expect(sheetCards).not.toContain('className="h-8 rounded-lg bg-white text-xs"');
+    for (const token of ["bg-white", "bg-slate-", "text-slate-", "border-slate-", "ring-slate-"]) {
+      expect(source).not.toContain(token);
+    }
   });
 });

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type GroupSection = "overview" | "activity" | "members";
+export type GroupSection = "overview" | "activity" | "members";
 
 const sections: Array<{ value: GroupSection; label: string; href: string }> = [
   { value: "overview", label: "Overview", href: "#overview" },
@@ -12,7 +12,13 @@ const sections: Array<{ value: GroupSection; label: string; href: string }> = [
   { value: "members", label: "Members", href: "#members" },
 ];
 
-export function GroupSectionTabs() {
+export function GroupSectionTabs({
+  activeSection,
+  baseHref,
+}: {
+  activeSection?: GroupSection;
+  baseHref?: string;
+} = {}) {
   const [active, setActive] = useState<GroupSection>("overview");
 
   useEffect(() => {
@@ -28,11 +34,18 @@ export function GroupSectionTabs() {
   }, []);
 
   return (
-    <Tabs value={active} onValueChange={(value) => setActive(value as GroupSection)}>
+    <Tabs
+      value={activeSection ?? active}
+      onValueChange={(value) => {
+        if (!activeSection) setActive(value as GroupSection);
+      }}
+    >
       <TabsList className="h-auto w-full justify-start bg-muted/70 p-1">
         {sections.map((section) => (
           <TabsTrigger key={section.value} value={section.value} asChild>
-            <a href={section.href}>{section.label}</a>
+            <a href={baseHref ? `${baseHref}?section=${section.value}` : section.href}>
+              {section.label}
+            </a>
           </TabsTrigger>
         ))}
       </TabsList>

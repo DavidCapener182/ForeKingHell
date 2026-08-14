@@ -5,20 +5,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
-  ArrowLeft,
   Award,
-  CheckCircle2,
-  Database,
   ExternalLink,
   FlaskConical,
   GitCompareArrows,
   Route,
-  Trophy,
-  Upload,
 } from "lucide-react";
 
 import { saveRapsodoImportBatchAction } from "@/app/import/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
+import { OperationStatus } from "@/components/app/operation-status";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,11 +30,6 @@ import type {
 } from "@/app/import/import-types";
 import { UploadDropzone } from "@/app/import/upload-dropzone";
 import { useImportFiles } from "@/app/import/use-import-files";
-import {
-  MobileBentoSummary,
-  MobileCompactPageHeader,
-  StickyMobileAction,
-} from "@/components/premium";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { achievementUnlockHref, clubHref, shotRowsHref } from "@/lib/alert-links";
 import { trackPlausibleEvent } from "@/lib/analytics";
@@ -66,7 +57,6 @@ import type {
 } from "@/lib/imports/save-rapsodo-import";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
-import { cn } from "@/lib/utils";
 
 type SaveState =
   | { status: "idle" }
@@ -78,8 +68,6 @@ type SaveState =
       achievementUnlockNotifications: AchievementUnlockNotification[];
     }
   | { status: "error"; message: string };
-
-type MobileImportStep = "source" | "preview" | "mapping" | "import";
 
 const TPC_SAWGRASS_PLAYERS_2026_SCORECARD = [
   "1,4,360",
@@ -144,7 +132,6 @@ export function ImportForm({
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
-  const [mobileStep, setMobileStep] = useState<MobileImportStep>("source");
   const [scorecardExtractState, setScorecardExtractState] = useState<ScorecardExtractState>({
     status: "idle",
   });
@@ -153,21 +140,6 @@ export function ImportForm({
   const [isOnline, setIsOnline] = useState(true);
   const [offlineStorageEnabled, setOfflineStorageEnabled] = useState(false);
   const isCourseUpload = sessionType === "simulated_course";
-  const mobileImportSteps = useMemo(
-    () => [
-      { id: "source" as const, label: "1. Choose source" },
-      { id: "preview" as const, label: "2. Preview data" },
-      { id: "mapping" as const, label: "3. Confirm mapping" },
-      { id: "import" as const, label: "4. Review & import" },
-    ],
-    [],
-  );
-  const visibleMobileStep = mobileImportSteps.some((step) => step.id === mobileStep)
-    ? mobileStep
-    : "preview";
-  const activeMobileStepIndex = mobileImportSteps.findIndex(
-    (step) => step.id === visibleMobileStep,
-  );
 
   useEffect(() => {
     const hydrationTimer = window.setTimeout(() => setIsHydrated(true), 0);
@@ -200,7 +172,6 @@ export function ImportForm({
       lastModified: Date.UTC(2026, 6, 18),
     });
     void readImportFiles([sampleFile]);
-    setMobileStep("preview");
   }, [readImportFiles, startWithSampleData]);
 
   const scorecard = useMemo(() => parseScorecardText(scorecardText), [scorecardText]);
@@ -658,144 +629,19 @@ export function ImportForm({
   }
 
   return (
-    <section
-      className="px-4 py-6 sm:px-6 lg:px-8"
-      data-import-ready={isHydrated ? "true" : "false"}
-    >
+    <section className="min-w-0" data-import-ready={isHydrated ? "true" : "false"}>
       <div className="mx-auto flex w-full max-w-none flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard">
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">CSV import workspace</p>
+            <p className="text-sm text-muted-foreground">
+              Choose files, review mappings and save trusted rows.
+            </p>
+          </div>
+          <Badge variant="secondary">
             {isCourseUpload ? "Simulated course CSV" : "Launch monitor CSV"}
           </Badge>
         </div>
-
-        <MobileCompactPageHeader
-          title="Import launch monitor shots"
-          description="Upload CSVs, confirm columns, preview rows, then save."
-          metricLabel="Shots"
-          metricValue={aggregate.shotCount.toString()}
-          metricDetail={
-            uploadedFiles.length > 0
-              ? `${uploadedFiles.length} file${uploadedFiles.length === 1 ? "" : "s"}`
-              : "No files"
-          }
-          action={
-            <Button
-              type="button"
-              size="sm"
-              disabled={!canSave}
-              onClick={saveImportBatch}
-              className="premium-action rounded-lg"
-            >
-              <Upload className="size-4" />
-              Save
-            </Button>
-          }
-        />
-
-        <MobileImportStatusStrip
-          currentStep={visibleMobileStep}
-          fileCount={aggregate.fileCount}
-          shotCount={aggregate.shotCount}
-          clubCount={aggregate.clubCount}
-          warningCount={aggregate.warnings.length}
-          isCourseUpload={isCourseUpload}
-          courseHoleCount={scorecard.holes.length}
-          courseAssignedShotCount={courseAssignedShotCount}
-          canSave={canSave}
-          onStepChange={setMobileStep}
-        />
-
-        <div className="sm:hidden">
-          <MobileBentoSummary
-            items={[
-              {
-                label: "Files",
-                value: aggregate.fileCount.toString(),
-                detail: "Selected",
-                tone: "green",
-              },
-              {
-                label: "Rows",
-                value: aggregate.rowCount.toString(),
-                detail: "Parsed",
-                tone: "sky",
-              },
-              {
-                label: "Shots",
-                value: aggregate.shotCount.toString(),
-                detail: "Preview",
-                tone: "amber",
-              },
-              {
-                label: "Warnings",
-                value: aggregate.warnings.length.toString(),
-                detail: "Review",
-                tone: aggregate.warnings.length > 0 ? "pink" : "slate",
-              },
-            ]}
-          />
-        </div>
-
-        <header className="premium-hero hidden p-5 sm:block sm:p-7">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl space-y-2">
-              <h1 className="text-4xl font-semibold tracking-normal text-balance sm:text-5xl">
-                Import launch monitor shots
-              </h1>
-              <p className="text-base leading-7 text-muted-foreground">
-                Upload one or more launch-monitor CSVs, review the normalized shot rows, then save
-                each file as its own session with raw data preserved.
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                <Link href="/shots">
-                  <Database className="size-4" />
-                  View saved shots
-                </Link>
-              </Button>
-              <Button
-                type="button"
-                size="lg"
-                disabled={!canSave}
-                onClick={saveImportBatch}
-                className="premium-action w-full sm:w-auto"
-              >
-                <Upload className="size-4" />
-                {isPending ? "Saving…" : "Save batch"}
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <div className="hidden sm:block">
-          <ImportFlowGuide
-            currentStep={visibleMobileStep}
-            isCourseUpload={isCourseUpload}
-            fileCount={aggregate.fileCount}
-            rowCount={aggregate.rowCount}
-            shotCount={aggregate.shotCount}
-            clubCount={aggregate.clubCount}
-            warningCount={aggregate.warnings.length}
-            courseHoleCount={scorecard.holes.length}
-            courseAssignedShotCount={courseAssignedShotCount}
-            canSave={canSave}
-            onStepChange={setMobileStep}
-          />
-        </div>
-
-        <MobileImportStepper
-          steps={mobileImportSteps}
-          step={visibleMobileStep}
-          onStepChange={setMobileStep}
-        />
 
         {startWithSampleData ? (
           <Alert>
@@ -815,221 +661,188 @@ export function ImportForm({
           </Alert>
         ) : null}
 
-        {saveState.status !== "idle" ? (
-          <Alert variant={saveState.status === "error" ? "destructive" : "default"}>
-            {saveState.status === "error" ? (
-              <AlertCircle className="size-4" />
-            ) : saveState.achievementUnlockNotifications.length > 0 ? (
-              <Award className="size-4" />
-            ) : saveState.longestShotNotifications.length > 0 ? (
-              <Trophy className="size-4" />
-            ) : (
-              <CheckCircle2 className="size-4" />
-            )}
-            <AlertTitle>
-              {saveState.status === "error"
+        {isPending ? (
+          <OperationStatus
+            status="working"
+            title="Saving import"
+            description="Validating files and saving trusted shot rows."
+          />
+        ) : saveState.status !== "idle" ? (
+          <OperationStatus
+            status={saveState.status}
+            title={
+              saveState.status === "error"
                 ? "Import failed"
                 : saveState.achievementUnlockNotifications.length > 0
                   ? "Achievements unlocked"
                   : saveState.longestShotNotifications.length > 0
                     ? "New longest shot"
-                    : "Import saved"}
-            </AlertTitle>
-            <AlertDescription>
-              <p>{saveState.message}</p>
-              {saveState.status === "success" ? (
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  {saveState.savedSessionId ? (
-                    <Button asChild size="sm" className="premium-action">
-                      <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
-                        <GitCompareArrows className="size-4" />
-                        Compare this session
+                    : "Import saved"
+            }
+            description={
+              <>
+                <p>{saveState.message}</p>
+                {saveState.status === "success" ? (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    {saveState.savedSessionId ? (
+                      <Button asChild size="sm" className="premium-action">
+                        <Link href={compareSessionHref(saveState.savedSessionId)} prefetch={false}>
+                          <GitCompareArrows className="size-4" />
+                          Compare this session
+                        </Link>
+                      </Button>
+                    ) : null}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href="/achievements">
+                        <Award className="size-4" />
+                        View achievements
                       </Link>
                     </Button>
-                  ) : null}
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/achievements">
-                      <Award className="size-4" />
-                      View achievements
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-              {saveState.status === "success" && saveState.longestShotNotifications.length > 0 ? (
-                <div className="apple-panel mt-3 p-3 text-foreground">
-                  <p className="text-sm font-medium">
-                    {saveState.longestShotNotifications.length === 1
-                      ? "Personal best beaten"
-                      : "Personal bests beaten"}
-                  </p>
-                  <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
-                    {saveState.longestShotNotifications.map((notification) => (
-                      <li
-                        key={`${notification.clubId}-${notification.shotDistanceYd}-${notification.fileName}`}
-                        className="flex flex-col gap-2 rounded-lg bg-white/90 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span>
-                          <Link
-                            href={clubHref(notification)}
-                            className="font-medium text-foreground underline-offset-4 hover:underline"
-                          >
-                            {notification.clubLabel}
-                          </Link>
-                          {": "}
-                          {formatMetric(notification.shotDistanceYd)} yd {notification.distanceType}
-                          {" beat "}
-                          {formatMetric(notification.previousDistanceYd)} yd
-                          {notification.shotNumber === null
-                            ? ""
-                            : ` on shot ${notification.shotNumber}`}
-                          {"."}
-                        </span>
-                        <span className="flex shrink-0 flex-wrap gap-2">
-                          <Link
-                            href={clubHref(notification)}
-                            className="inline-flex h-8 items-center gap-1 rounded-lg border bg-white/80 px-2 text-xs font-medium text-foreground hover:bg-white"
-                          >
-                            Club page
-                            <ExternalLink className="size-3.5" />
-                          </Link>
-                          <Link
-                            href={shotRowsHref(notification)}
-                            className="inline-flex h-8 items-center gap-1 rounded-lg border bg-white/80 px-2 text-xs font-medium text-foreground hover:bg-white"
-                          >
-                            Shot rows
-                            <ExternalLink className="size-3.5" />
-                          </Link>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {saveState.status === "success" &&
-              saveState.achievementUnlockNotifications.length > 0 ? (
-                <div className="trust-indicator mt-3 rounded-lg p-3 text-foreground">
-                  <p className="text-sm font-medium">
-                    {saveState.achievementUnlockNotifications.length === 1
-                      ? "Achievement unlocked"
-                      : "Achievements unlocked"}
-                  </p>
-                  <ul className="mt-2 space-y-2 text-sm">
-                    {saveState.achievementUnlockNotifications.map((achievement) => (
-                      <li key={`${achievement.achievementId}-${achievement.unlockedAt}`}>
-                        <Link
-                          href={achievementUnlockHref(achievement.achievementId)}
-                          className="flex flex-col gap-1 rounded-lg bg-white/90 px-3 py-2 transition-colors hover:bg-emerald-100/60 sm:flex-row sm:items-center sm:justify-between"
+                  </div>
+                ) : null}
+                {saveState.status === "success" && saveState.longestShotNotifications.length > 0 ? (
+                  <div className="mt-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3 text-[var(--status-success-foreground)]">
+                    <p className="text-sm font-medium">
+                      {saveState.longestShotNotifications.length === 1
+                        ? "Personal best beaten"
+                        : "Personal bests beaten"}
+                    </p>
+                    <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
+                      {saveState.longestShotNotifications.map((notification) => (
+                        <li
+                          key={`${notification.clubId}-${notification.shotDistanceYd}-${notification.fileName}`}
+                          className="flex flex-col gap-2 rounded-lg border border-[var(--status-success-border)] bg-card px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                         >
                           <span>
-                            <span className="font-medium">{achievement.name}</span>
-                            <span className="text-muted-foreground">
-                              {" "}
-                              - {achievement.description}
+                            <Link
+                              href={clubHref(notification)}
+                              className="font-medium text-foreground underline-offset-4 hover:underline"
+                            >
+                              {notification.clubLabel}
+                            </Link>
+                            {": "}
+                            {formatMetric(notification.shotDistanceYd)} yd{" "}
+                            {notification.distanceType}
+                            {" beat "}
+                            {formatMetric(notification.previousDistanceYd)} yd
+                            {notification.shotNumber === null
+                              ? ""
+                              : ` on shot ${notification.shotNumber}`}
+                            {"."}
+                          </span>
+                          <span className="flex shrink-0 flex-wrap gap-2">
+                            <Link
+                              href={clubHref(notification)}
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border bg-card px-2 text-xs font-medium text-foreground hover:bg-muted"
+                            >
+                              Club page
+                              <ExternalLink className="size-3.5" />
+                            </Link>
+                            <Link
+                              href={shotRowsHref(notification)}
+                              className="inline-flex h-8 items-center gap-1 rounded-lg border bg-card px-2 text-xs font-medium text-foreground hover:bg-muted"
+                            >
+                              Shot rows
+                              <ExternalLink className="size-3.5" />
+                            </Link>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {saveState.status === "success" &&
+                saveState.achievementUnlockNotifications.length > 0 ? (
+                  <div className="mt-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3 text-[var(--status-success-foreground)]">
+                    <p className="text-sm font-medium">
+                      {saveState.achievementUnlockNotifications.length === 1
+                        ? "Achievement unlocked"
+                        : "Achievements unlocked"}
+                    </p>
+                    <ul className="mt-2 space-y-2 text-sm">
+                      {saveState.achievementUnlockNotifications.map((achievement) => (
+                        <li key={`${achievement.achievementId}-${achievement.unlockedAt}`}>
+                          <Link
+                            href={achievementUnlockHref(achievement.achievementId)}
+                            className="flex flex-col gap-1 rounded-lg border border-[var(--status-success-border)] bg-card px-3 py-2 transition-colors hover:bg-muted sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <span>
+                              <span className="font-medium">{achievement.name}</span>
+                              <span className="text-muted-foreground">
+                                {" "}
+                                - {achievement.description}
+                              </span>
                             </span>
-                          </span>
-                          <span className="flex shrink-0 items-center gap-2">
-                            <Badge className="w-fit bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                              +{achievement.xpAwarded.toLocaleString("en-GB")} XP
-                            </Badge>
-                            <ExternalLink className="size-3.5 text-emerald-700" />
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </AlertDescription>
-          </Alert>
+                            <span className="flex shrink-0 items-center gap-2">
+                              <Badge className="w-fit bg-primary text-primary-foreground hover:bg-primary/90">
+                                +{achievement.xpAwarded.toLocaleString("en-GB")} XP
+                              </Badge>
+                              <ExternalLink className="size-3.5 text-primary" />
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            }
+          />
         ) : null}
-        <section className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-          <Card
-            className={cn(
-              "premium-card",
-              ["source", "mapping"].includes(visibleMobileStep) ? "flex" : "hidden sm:flex",
-            )}
-          >
-            <CardHeader>
-              <CardTitle>{mobileImportCardTitle(visibleMobileStep)}</CardTitle>
-              <CardDescription>
-                Drag in one or more launch-monitor files. Obvious parse issues appear before save.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className={visibleMobileStep === "source" ? "block" : "hidden sm:block"}>
-                <UploadDropzone
-                  fileInputRef={fileInputRef}
-                  isDragging={isDragging}
-                  readProgress={readProgress}
-                  files={parsedFiles}
-                  setIsDragging={setIsDragging}
-                  onFilesSelected={readSelectedFiles}
-                  onClear={clearBatch}
-                  onRemoveFile={removeFile}
-                />
-              </div>
+        <section className="grid gap-4" data-import-configuration>
+          <header>
+            <h2 className="text-xl font-semibold tracking-normal">
+              Choose files and configure the session
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Drag in one or more launch-monitor files. Obvious parse issues appear before save.
+            </p>
+          </header>
+          <div className="grid gap-5 xl:grid-cols-2">
+            <div className="grid min-w-0 content-start gap-5">
+              <UploadDropzone
+                fileInputRef={fileInputRef}
+                isDragging={isDragging}
+                readProgress={readProgress}
+                files={parsedFiles}
+                setIsDragging={setIsDragging}
+                onFilesSelected={readSelectedFiles}
+                onClear={clearBatch}
+                onRemoveFile={removeFile}
+              />
+            </div>
+            <div className="grid min-w-0 content-start gap-5">
+              <SessionSettings
+                sessionDate={sessionDate}
+                sessionType={sessionType}
+                distanceUnit={distanceUnit}
+                detectedUnits={detectedUnits}
+                detectedSessionDateIso={detectedSessionDateIso}
+                onSessionDateChange={setSessionDate}
+                onSessionTypeChange={setSessionType}
+                onDistanceUnitChange={setDistanceUnit}
+              />
 
-              <div className={visibleMobileStep === "source" ? "block" : "hidden sm:block"}>
-                <SessionSettings
-                  sessionDate={sessionDate}
-                  sessionType={sessionType}
-                  distanceUnit={distanceUnit}
-                  detectedUnits={detectedUnits}
-                  detectedSessionDateIso={detectedSessionDateIso}
-                  onSessionDateChange={setSessionDate}
-                  onSessionTypeChange={setSessionType}
-                  onDistanceUnitChange={setDistanceUnit}
-                />
-              </div>
-
-              <div className={visibleMobileStep === "mapping" ? "block" : "hidden sm:block"}>
-                <ColumnMappingPanel
-                  files={uploadedFiles}
-                  columnMapping={columnMapping}
-                  onColumnMappingChange={setColumnMapping}
-                />
-              </div>
-
+              <ColumnMappingPanel
+                files={uploadedFiles}
+                columnMapping={columnMapping}
+                onColumnMappingChange={setColumnMapping}
+              />
               {isCourseUpload ? (
-                <div className={visibleMobileStep === "mapping" ? "block" : "hidden sm:block"}>
-                  <ScorecardExtractionPanel
-                    scorecardImageInputRef={scorecardImageInputRef}
-                    scorecardExtractState={scorecardExtractState}
-                    courseName={courseName}
-                    scorecardText={scorecardText}
-                    holeCount={scorecard.holes.length}
-                    totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
-                    onApplySawgrassPreset={applySawgrassPreset}
-                    onExtractScorecardImage={extractScorecardImage}
-                    onCourseNameChange={setCourseName}
-                    onScorecardTextChange={setScorecardText}
-                  />
-                </div>
+                <ScorecardExtractionPanel
+                  scorecardImageInputRef={scorecardImageInputRef}
+                  scorecardExtractState={scorecardExtractState}
+                  courseName={courseName}
+                  scorecardText={scorecardText}
+                  holeCount={scorecard.holes.length}
+                  totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
+                  onApplySawgrassPreset={applySawgrassPreset}
+                  onExtractScorecardImage={extractScorecardImage}
+                  onCourseNameChange={setCourseName}
+                  onScorecardTextChange={setScorecardText}
+                />
               ) : null}
-            </CardContent>
-          </Card>
-
-          <div className="hidden gap-4 sm:grid sm:grid-cols-2">
-            <MetricCard
-              label="Files"
-              value={aggregate.fileCount.toString()}
-              detail={uploadedFiles.length > 0 ? "Ready for batch import" : "No files selected"}
-            />
-            <MetricCard
-              label="Rows"
-              value={aggregate.rowCount.toString()}
-              detail="All non-empty CSV rows"
-            />
-            <MetricCard
-              label="Shots"
-              value={aggregate.shotCount.toString()}
-              detail="Parsed preview rows"
-            />
-            <MetricCard
-              label="Clubs"
-              value={aggregate.clubCount.toString()}
-              detail="Detected across files"
-            />
+            </div>
           </div>
         </section>
 
@@ -1042,12 +855,7 @@ export function ImportForm({
         ) : null}
 
         {isCourseUpload ? (
-          <Card
-            className={cn(
-              "premium-card",
-              visibleMobileStep === "mapping" ? "flex" : "hidden sm:flex",
-            )}
-          >
+          <Card className="premium-card">
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -1056,7 +864,7 @@ export function ImportForm({
                     Shots are grouped into holes using the scorecard yardage and the CSV shot order.
                   </CardDescription>
                 </div>
-                <Route className="size-5 text-emerald-600" />
+                <Route className="size-5 text-primary" />
               </div>
             </CardHeader>
             <CardContent>
@@ -1072,393 +880,22 @@ export function ImportForm({
           </Card>
         ) : null}
 
-        <div className={visibleMobileStep === "import" ? "block" : "hidden sm:block"}>
-          <SaveChecklistCard
-            hasFiles={uploadedFiles.length > 0}
-            hasShots={aggregate.shotCount > 0}
-            hasCompleteCourseMapping={
-              !isCourseUpload || courseAssignedShotCount === aggregate.shotCount
-            }
-            hasNoWarnings={aggregate.warnings.length === 0}
-            isOnline={isOnline}
-            isPending={isPending}
-            canSave={canSave}
-            onSave={saveImportBatch}
-          />
-        </div>
+        <SaveChecklistCard
+          hasFiles={uploadedFiles.length > 0}
+          hasShots={aggregate.shotCount > 0}
+          hasCompleteCourseMapping={
+            !isCourseUpload || courseAssignedShotCount === aggregate.shotCount
+          }
+          hasNoWarnings={aggregate.warnings.length === 0}
+          isOnline={isOnline}
+          isPending={isPending}
+          canSave={canSave}
+          onSave={saveImportBatch}
+        />
 
-        <div className={visibleMobileStep === "preview" ? "block" : "hidden sm:block"}>
-          <ShotPreview shots={previewShots} isCourseUpload={isCourseUpload} />
-        </div>
-
-        <StickyMobileAction>
-          <div className="grid grid-cols-[auto_1fr] gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-xl"
-              disabled={activeMobileStepIndex <= 0}
-              onClick={() =>
-                setMobileStep(mobileImportSteps[Math.max(0, activeMobileStepIndex - 1)].id)
-              }
-            >
-              Back
-            </Button>
-            {visibleMobileStep === "import" ? (
-              <Button
-                type="button"
-                disabled={!canSave}
-                onClick={saveImportBatch}
-                className="premium-action rounded-lg"
-              >
-                <Upload className="size-4" />
-                {isPending ? "Saving…" : "Save batch"}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="premium-action rounded-lg"
-                onClick={() =>
-                  setMobileStep(
-                    mobileImportSteps[
-                      Math.min(mobileImportSteps.length - 1, activeMobileStepIndex + 1)
-                    ].id,
-                  )
-                }
-              >
-                Next
-              </Button>
-            )}
-          </div>
-        </StickyMobileAction>
+        <ShotPreview shots={previewShots} isCourseUpload={isCourseUpload} />
       </div>
     </section>
-  );
-}
-
-function MobileImportStepper({
-  steps,
-  step,
-  onStepChange,
-}: {
-  steps: Array<{ id: MobileImportStep; label: string }>;
-  step: MobileImportStep;
-  onStepChange: (step: MobileImportStep) => void;
-}) {
-  return (
-    <nav
-      aria-label="Import steps"
-      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden"
-    >
-      {steps.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => onStepChange(item.id)}
-          className={cn(
-            "min-h-10 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
-            item.id === step
-              ? "premium-route-tab-active"
-              : "border-border bg-white/80 text-slate-700",
-          )}
-        >
-          {item.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function MobileImportStatusStrip({
-  currentStep,
-  fileCount,
-  shotCount,
-  clubCount,
-  warningCount,
-  isCourseUpload,
-  courseHoleCount,
-  courseAssignedShotCount,
-  canSave,
-  onStepChange,
-}: {
-  currentStep: MobileImportStep;
-  fileCount: number;
-  shotCount: number;
-  clubCount: number;
-  warningCount: number;
-  isCourseUpload: boolean;
-  courseHoleCount: number;
-  courseAssignedShotCount: number;
-  canSave: boolean;
-  onStepChange: (step: MobileImportStep) => void;
-}) {
-  const courseReady =
-    !isCourseUpload || (courseHoleCount > 0 && courseAssignedShotCount === shotCount);
-  const statusItems = [
-    {
-      id: "source" as const,
-      label: "Source",
-      value: fileCount > 0 ? "Ready" : "Add file",
-      state: fileCount > 0 ? ("ready" as const) : ("blocked" as const),
-    },
-    {
-      id: "preview" as const,
-      label: "Shots",
-      value: shotCount > 0 ? "✓" : "--",
-      state: shotCount > 0 ? ("ready" as const) : ("blocked" as const),
-    },
-    {
-      id: "mapping" as const,
-      label: "Mapping",
-      value: clubCount > 0 ? "✓" : shotCount > 0 ? "Review" : "--",
-      state:
-        clubCount > 0
-          ? ("ready" as const)
-          : shotCount > 0
-            ? ("warning" as const)
-            : ("blocked" as const),
-    },
-    {
-      id: "import" as const,
-      label: "Import",
-      value: warningCount > 0 ? `${warningCount} warn` : canSave && courseReady ? "Ready" : "Wait",
-      state:
-        warningCount > 0
-          ? ("warning" as const)
-          : canSave
-            ? ("ready" as const)
-            : ("blocked" as const),
-    },
-  ];
-
-  return (
-    <section
-      className="premium-command-surface grid gap-2 rounded-lg p-3 sm:hidden"
-      data-clubhouse-state={canSave ? "live" : "current"}
-      aria-label="Import status"
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">Import status</p>
-        <Badge
-          data-live-status={canSave ? "ready" : undefined}
-          className="bg-background/80 text-muted-foreground ring-1 ring-border hover:bg-background"
-        >
-          {canSave ? "Ready" : "Review"}
-        </Badge>
-      </div>
-      <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-        {statusItems.map((item) => (
-          <div key={item.label} className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onStepChange(item.id)}
-              data-current={currentStep === item.id ? "true" : undefined}
-              data-status-state={item.state}
-              className={cn(
-                "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-background/80 px-2.5 text-xs font-semibold shadow-sm transition-colors",
-                currentStep === item.id
-                  ? "border-primary/40 text-primary"
-                  : item.state === "ready"
-                    ? "border-primary/15 text-primary"
-                    : item.state === "warning"
-                      ? "border-amber-200 text-amber-700"
-                      : "border-border text-muted-foreground",
-              )}
-              aria-label={`${item.label}: ${item.value}`}
-            >
-              <span
-                className={cn(
-                  "grid size-4 place-items-center rounded-full",
-                  item.state === "ready"
-                    ? "bg-primary/10 text-primary"
-                    : item.state === "warning"
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-muted text-muted-foreground",
-                )}
-              >
-                {item.state === "ready" ? (
-                  <CheckCircle2 className="size-3" />
-                ) : (
-                  <AlertCircle className="size-3" />
-                )}
-              </span>
-              <span>{item.label}</span>
-              <span
-                className={cn(
-                  "text-[11px] font-medium",
-                  item.state === "blocked" ? "text-muted-foreground" : "text-current",
-                )}
-              >
-                {item.value}
-              </span>
-            </button>
-            {item.label !== "Import" ? (
-              <span className="text-muted-foreground/50" aria-hidden="true">
-                ·
-              </span>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ImportFlowGuide({
-  currentStep,
-  isCourseUpload,
-  fileCount,
-  rowCount,
-  shotCount,
-  clubCount,
-  warningCount,
-  courseHoleCount,
-  courseAssignedShotCount,
-  canSave,
-  onStepChange,
-}: {
-  currentStep: MobileImportStep;
-  isCourseUpload: boolean;
-  fileCount: number;
-  rowCount: number;
-  shotCount: number;
-  clubCount: number;
-  warningCount: number;
-  courseHoleCount: number;
-  courseAssignedShotCount: number;
-  canSave: boolean;
-  onStepChange: (step: MobileImportStep) => void;
-}) {
-  const flowSteps = [
-    {
-      id: "source" as const,
-      title: "Choose source",
-      value: fileCount > 0 ? `${fileCount} file${fileCount === 1 ? "" : "s"}` : "No files",
-      detail:
-        fileCount > 0
-          ? `${rowCount} raw rows · ${isCourseUpload ? "Simulated course" : "Range session"}`
-          : "Connect Rapsodo or add CSV exports",
-      ready: fileCount > 0,
-      icon: Upload,
-    },
-    {
-      id: "preview" as const,
-      title: "Preview data",
-      value: shotCount > 0 ? `${shotCount} shots` : "Waiting for data",
-      detail:
-        warningCount > 0
-          ? `${warningCount} parsing warnings to review`
-          : "Inspect accepted and excluded rows",
-      ready: shotCount > 0,
-      icon: AlertCircle,
-    },
-    {
-      id: "mapping" as const,
-      title: "Confirm club mapping",
-      value: shotCount > 0 ? `${clubCount} club${clubCount === 1 ? "" : "s"}` : "Mapping needed",
-      detail: isCourseUpload
-        ? `${courseAssignedShotCount}/${shotCount} shots assigned across ${courseHoleCount} holes`
-        : "Check names, units and session context",
-      ready:
-        shotCount > 0 &&
-        (!isCourseUpload || (courseHoleCount > 0 && courseAssignedShotCount === shotCount)),
-      icon: Database,
-    },
-    {
-      id: "import" as const,
-      title: "Review and import",
-      value: canSave ? "Ready" : "Blocked",
-      detail: canSave ? "Save trusted rows and open the result" : "Complete the required checks",
-      ready: canSave,
-      icon: CheckCircle2,
-    },
-  ];
-
-  return (
-    <section className="premium-command-surface rounded-lg p-3">
-      <div className="flex flex-col gap-1 px-1 pb-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-[#111827]">Guided import path</p>
-          <p className="mt-1 text-sm leading-5 text-[#667085]">
-            Move one clean export into trusted bag numbers, with every raw row still accounted for.
-          </p>
-        </div>
-        <Badge className="w-fit bg-white/75 text-[#475467] ring-1 ring-[#DFE7DF] hover:bg-white">
-          {canSave ? "Ready to save" : "Review required"}
-        </Badge>
-      </div>
-      <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-        {flowSteps.map((step, index) => {
-          const Icon = step.icon;
-          const active = step.id === currentStep;
-
-          return (
-            <button
-              key={step.id}
-              type="button"
-              onClick={() => onStepChange(step.id)}
-              className={cn(
-                "grid min-h-[8.75rem] grid-rows-[auto_1fr] rounded-lg border bg-white/76 p-3 text-left transition-colors",
-                active
-                  ? "border-[#0B7A3B] shadow-[0_8px_20px_rgba(8,122,61,0.08)]"
-                  : "border-[#E5E7EB] hover:border-[#CFE7D6]",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <span className="grid size-8 place-items-center rounded-md bg-[#F5F6F4] text-xs font-semibold text-[#667085]">
-                  {index + 1}
-                </span>
-                <span
-                  className={cn(
-                    "grid size-8 place-items-center rounded-lg",
-                    step.ready
-                      ? "bg-[#E8F7EE] text-[#087A3D]"
-                      : active
-                        ? "bg-[#FFF4DB] text-[#8A4B00]"
-                        : "bg-[#F2F4F7] text-[#667085]",
-                  )}
-                >
-                  <Icon className="size-4" />
-                </span>
-              </div>
-              <span className="mt-3 min-w-0">
-                <span className="block text-sm font-semibold leading-5 text-[#111827]">
-                  {step.title}
-                </span>
-                <span className="mt-1 block line-clamp-2 text-lg font-bold leading-6 tracking-normal text-[#111827]">
-                  {step.value}
-                </span>
-                <span className="mt-1 block line-clamp-2 text-sm leading-5 text-[#667085]">
-                  {step.detail}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function mobileImportCardTitle(step: MobileImportStep) {
-  if (step === "source") return "Step 1: Choose source";
-  if (step === "preview") return "Step 2: Preview data";
-  if (step === "mapping") return "Step 3: Confirm club mapping";
-  if (step === "import") return "Step 4: Review and import";
-  return "Import setup";
-}
-
-function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
-  return (
-    <Card className="premium-card">
-      <CardHeader>
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-4xl font-semibold tracking-normal">{value}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="truncate text-sm text-muted-foreground">{detail}</p>
-      </CardContent>
-    </Card>
   );
 }
 

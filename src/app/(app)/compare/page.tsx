@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   ArrowLeft,
   Brain,
@@ -13,6 +14,7 @@ import {
 
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { DesktopInsightRail, DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import {
   defaultClubCompareFilters,
@@ -25,10 +27,10 @@ import {
 import { ClubCompareClient } from "@/app/compare/club-compare-client";
 import { PlayerCompareClient } from "@/app/compare/player-compare-client";
 import { ProgressCompareClient } from "@/app/compare/progress-compare-client";
-import {
-  MobileCompareWorkspace,
-  type MobileCompareView,
-} from "@/app/compare/mobile-compare-workspace";
+import type { SavedWorkspaceComparison } from "@/app/compare/comparison-workspace";
+import { getDb } from "@/db/client";
+import { analysisSnapshots } from "@/db/schema";
+import { requireCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -81,11 +83,24 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
   }
 
   const params = await searchParams;
-  const mobileView = parseMobileView(params.view);
-  const [playerData, data] = await Promise.all([
+  const activeView = parseCompareView(stringParam(params.view));
+  const userId = await requireCurrentUserId();
+  const [playerData, data, savedRows] = await Promise.all([
     getPlayerCompareData(parsePlayerFilters(params)),
     getClubCompareData(parseFilters(params)),
+    getDb()
+      .select()
+      .from(analysisSnapshots)
+      .where(
+        and(
+          eq(analysisSnapshots.userId, userId),
+          sql`${analysisSnapshots.chartStateJson}->>'view' = 'workspace_comparison'`,
+        ),
+      )
+      .orderBy(desc(analysisSnapshots.capturedAt))
+      .limit(36),
   ]);
+  const savedComparisons = savedRows.flatMap(savedWorkspaceComparison);
   const latestSession = data.progress.latestSession;
   const comparison = data.progress.previousWeek;
   const selectedClubLabel =
@@ -105,9 +120,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
 
   return (
     <PageShell>
-      <MobileCompareWorkspace data={data} playerData={playerData} view={mobileView} />
-
-      <div className="hidden lg:block" data-compare-desktop-workbench>
+      <div data-compare-desktop-workbench>
         <DesktopWorkbenchLayout
           scope="compare"
           railBreakpoint="wide"
@@ -175,7 +188,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             />
           }
         >
-          <div className="hidden items-center justify-between gap-4 sm:flex">
+          <div className="flex items-center justify-between gap-4">
             <Button asChild variant="ghost" className="px-0">
               <Link href="/dashboard" prefetch={false}>
                 <ArrowLeft className="size-4" />
@@ -197,11 +210,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             title="Compare"
             description="Start with your latest week against recent practice, then drill into club-vs-club and player comparisons."
             actions={
-              <Button
-                asChild
-                size="lg"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
+              <Button asChild size="lg" className="rounded-lg">
                 <Link href="/shots" prefetch={false}>
                   <Crosshair className="size-4" />
                   Open shots
@@ -210,11 +219,41 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             }
           />
 
-          <ProgressCompareClient data={data.progress} />
+          <ButtonGroup
+            aria-label="Comparison view"
+            className="max-w-full justify-start overflow-x-auto"
+            data-compare-active-view
+          >
+            {(["progress", "clubs", "players"] as const).map((view) => {
+              const active = activeView === view;
 
-          <ClubCompareClient data={data} />
-
-          <PlayerCompareClient data={playerData} />
+              return (
+                <Button key={view} asChild size="sm" variant={active ? "secondary" : "outline"}>
+                  <Link href={`/compare?view=${view}`} aria-current={active ? "page" : undefined}>
+                    {view === "progress" ? "Progress" : view === "clubs" ? "Clubs" : "Players"}
+                  </Link>
+                </Button>
+              );
+            })}
+          </ButtonGroup>
+          <div className="grid gap-4 pt-2">
+            {activeView === "progress" ? (
+              <ProgressCompareClient
+                data={data.progress}
+                savedComparisons={savedComparisons.filter((item) => item.view === "progress")}
+              />
+            ) : activeView === "clubs" ? (
+              <ClubCompareClient
+                data={data}
+                savedComparisons={savedComparisons.filter((item) => item.view === "clubs")}
+              />
+            ) : (
+              <PlayerCompareClient
+                data={playerData}
+                savedComparisons={savedComparisons.filter((item) => item.view === "players")}
+              />
+            )}
+          </div>
         </DesktopWorkbenchLayout>
       </div>
     </PageShell>
@@ -244,9 +283,9 @@ function stringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
-function parseMobileView(value: string | string[] | undefined): MobileCompareView {
-  const resolved = stringParam(value);
-  return resolved === "clubs" || resolved === "players" ? resolved : "progress";
+function parseCompareView(value: string) {
+  if (value === "clubs" || value === "players") return value;
+  return "progress" as const;
 }
 
 function comparisonBenefitTone(verdict: string) {
@@ -254,4 +293,25 @@ function comparisonBenefitTone(verdict: string) {
   if (verdict === "Useful") return "sky" as const;
   if (verdict === "Mixed") return "amber" as const;
   return "slate" as const;
+}
+
+function savedWorkspaceComparison(
+  row: typeof analysisSnapshots.$inferSelect,
+): SavedWorkspaceComparison[] {
+  const view = row.chartStateJson.compareView;
+  if (view !== "progress" && view !== "clubs" && view !== "players") return [];
+
+  return [
+    {
+      id: row.id,
+      view,
+      name: row.name,
+      capturedAt: row.capturedAt.toISOString(),
+      description: String(
+        row.summaryJson.summary ??
+          `${String(row.summaryJson.focusLabel ?? "Focus")} vs ${String(row.summaryJson.baselineLabel ?? "baseline")}`,
+      ),
+      notes: row.notes,
+    },
+  ];
 }

@@ -7,9 +7,7 @@ const source = readFileSync(join(process.cwd(), "src/app/(admin)/admin/billing/p
 describe("admin billing desktop console source", () => {
   it("uses the shared billing workbench shell without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="admin-billing" className="hidden lg:grid">',
-    );
+    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-billing">');
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -26,7 +24,7 @@ describe("admin billing desktop console source", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-scope="admin-billing"');
     expect(source).toContain('data-workbench-export-table="admin-billing"');
-    expect(source).toContain("<caption");
+    expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("<a\n      href={`/admin/billing?sort=${metric}&dir=${nextDir}`}");
     expect(source).not.toContain('from "next/link"');
@@ -43,12 +41,17 @@ describe("admin billing desktop console source", () => {
     expect(source).toContain('confirmActionLabel="Grant full access"');
   });
 
-  it("prioritises billing failures in a segmented native mobile directory", () => {
-    expect(source).toContain("AdminMobileShell");
-    expect(source).toContain("AdminMobileBilling");
-    expect(source).toContain("MobileBillingGrant");
-    expect(source).toContain("MobileTabBar");
-    expect(source).toContain("IOSDisclosureGroup");
-    expect(source).toContain("billingAttentionStatuses");
+  it("excludes companion-only billing code from the desktop-only admin route", () => {
+    for (const obsolete of [
+      "AdminMobileShell",
+      "AdminMobileBilling",
+      "MobileBillingGrant",
+      "MobileTabBar",
+      "IOSDisclosureGroup",
+      "getRequestAppSurface",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
   });
 });

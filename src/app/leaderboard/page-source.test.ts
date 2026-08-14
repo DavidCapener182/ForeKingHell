@@ -3,8 +3,51 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/leaderboard/page.tsx"), "utf8");
+const controls = readFileSync(
+  join(process.cwd(), "src/app/leaderboard/leaderboard-controls.tsx"),
+  "utf8",
+);
 
 describe("leaderboard desktop workspace source", () => {
+  it("uses real link buttons rather than orphaned URL-navigation tabs", () => {
+    expect(controls).toContain("<ButtonGroup");
+    expect(controls).toContain('aria-label="Leaderboard views"');
+    expect(controls).toContain("<Button");
+    expect(controls).toContain('variant={active ? "secondary" : "outline"}');
+    expect(controls).toContain("href={`/leaderboard?tab=${tab.value}`}");
+    expect(controls).toContain('aria-current={active ? "page" : undefined}');
+    expect(controls).not.toContain("TabsTrigger");
+    expect(controls).not.toContain('from "@/components/ui/tabs"');
+    expect(source).toContain("<LeaderboardTypeTabs activeTab={activeTab} />");
+  });
+
+  it("selects one request surface before loading the desktop workbench", () => {
+    const staticWorkbenchImport =
+      source.match(
+        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
+      )?.[0] ?? "";
+
+    expect(source).toContain("getRequestAppSurface()");
+    expect(source).toContain(
+      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+    );
+    expect(source).toContain('surface === "companion" ? (');
+    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
+    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
+    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
+    expect(source).not.toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('<DesktopWorkbenchLayout scope="leaderboard" className="hidden');
+  });
+
+  it("uses semantic theme tokens for ordinary leaderboard surfaces", () => {
+    expect(source).toContain("bg-muted");
+    expect(source).toContain("bg-card");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).not.toMatch(
+      /bg-white|bg-\[#|text-\[#|border-\[#|(?:bg|text|border)-(?:slate|green|emerald|amber|rose)-\d+/,
+    );
+  });
+
   it("keeps leaderboards in the desktop workbench without a persistent AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('scope="leaderboard"');
@@ -88,7 +131,7 @@ describe("leaderboard mobile state", () => {
   it("uses an in-page mobile full leaderboard instead of a desktop-only anchor", () => {
     expect(source).toContain("MobilePlayerLeaderboardDisclosure");
     expect(source).not.toContain('viewAllHref="#full-leaderboard"');
-    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden sm:contents"');
   });
 });

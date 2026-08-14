@@ -8,6 +8,14 @@ import {
   themePreferenceChangeEvent,
   themePreviewStorageKey,
 } from "@/components/theme-controller";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { parseTheme, themeOptions, type ThemePreference } from "@/lib/user-settings";
 
 const themeLabels: Record<ThemePreference, string> = {
@@ -68,34 +76,33 @@ export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePre
         </p>
       </div>
 
-      <div className="grid divide-y overflow-hidden rounded-xl border bg-card lg:grid-cols-2 lg:gap-2 lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent xl:grid-cols-4">
-        {themeOptions.map((value) => (
-          <label
-            key={value}
-            className="group relative grid min-h-14 cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-x-3 bg-transparent px-4 py-3 transition-colors has-[:checked]:bg-primary/5 has-[:focus-visible]:z-10 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-[-3px] has-[:focus-visible]:outline-ring lg:min-h-24 lg:rounded-lg lg:border lg:bg-card lg:p-3 lg:hover:border-primary/45 lg:has-[:checked]:border-primary lg:has-[:focus-visible]:outline-offset-2"
+      <div className="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(220px,0.7fr)] sm:items-end">
+        <div className="grid gap-2">
+          <Label htmlFor="desktop-theme-preference">Desktop theme</Label>
+          <Select
+            name="theme"
+            value={selectedTheme}
+            onValueChange={(value) => previewThemePreference(value as ThemePreference)}
           >
-            <input
-              type="radio"
-              name="theme"
-              value={value}
-              checked={selectedTheme === value}
-              className="mt-0.5 size-4 accent-primary"
-              onChange={(event) => {
-                if (event.currentTarget.checked) {
-                  const preference = event.currentTarget.value as ThemePreference;
-                  previewThemePreference(preference);
-                }
-              }}
-            />
-            <span className="grid min-w-0 content-start gap-1">
-              <span className="font-semibold">{themeLabels[value]}</span>
-              <span className="text-xs font-normal leading-4 text-muted-foreground">
-                {themeDescriptions[value]}
-              </span>
-              <ThemeSwatch theme={value} />
-            </span>
-          </label>
-        ))}
+            <SelectTrigger id="desktop-theme-preference" className="w-full">
+              <SelectValue placeholder="Choose a desktop theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {themeOptions.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {themeLabels[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="rounded-lg border bg-muted/40 px-3 py-2">
+          <p className="font-semibold">{themeLabels[selectedTheme]}</p>
+          <p className="mt-0.5 text-xs font-normal leading-4 text-muted-foreground">
+            {themeDescriptions[selectedTheme]}
+          </p>
+          <ThemeSwatch theme={selectedTheme} />
+        </div>
       </div>
       <span className="text-xs font-normal leading-5 text-muted-foreground lg:hidden">
         Save settings to keep this as your desktop preference. Mobile remains automatic.
@@ -130,7 +137,7 @@ function ThemeSwatch({ theme }: { theme: ThemePreference }) {
     <span
       aria-hidden="true"
       data-theme-swatch={theme}
-      className="mt-1 hidden h-6 grid-cols-[1.5fr_1fr_0.4fr] overflow-hidden rounded-sm border border-black/10 lg:grid"
+      className="mt-2 grid h-6 grid-cols-[1.5fr_1fr_0.4fr] overflow-hidden rounded-sm border border-border"
     >
       <span />
       <span />

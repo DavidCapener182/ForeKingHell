@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Flame, Radio, Save } from "lucide-react";
+import { CircleCheck, Flame, Radio, Save, TriangleAlert } from "lucide-react";
 
 import { createSessionRoastFeedItemAction } from "@/app/simulator-lab/actions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { SessionRoastFact, SimulatorLabSession } from "@/lib/simulator-lab";
 
 type RoastDraft = {
@@ -13,6 +14,11 @@ type RoastDraft = {
   roast: string;
   shortCaption: string;
   safetyNote: string;
+};
+
+type RoastNotice = {
+  kind: "success" | "error";
+  message: string;
 };
 
 export function SessionRoastPanel({
@@ -24,7 +30,7 @@ export function SessionRoastPanel({
 }) {
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState<RoastDraft | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<RoastNotice | null>(null);
 
   if (!session) {
     return (
@@ -37,7 +43,7 @@ export function SessionRoastPanel({
   const activeSession = session;
 
   function generateRoast() {
-    setMessage(null);
+    setNotice(null);
     startTransition(async () => {
       try {
         const response = await fetch("/api/ai/session-roast", {
@@ -51,13 +57,19 @@ export function SessionRoastPanel({
         } | null;
 
         if (!response.ok || !payload?.roast) {
-          setMessage(payload?.message ?? "Roast generation failed.");
+          setNotice({
+            kind: "error",
+            message: payload?.message ?? "Roast generation failed.",
+          });
           return;
         }
 
         setDraft(payload.roast);
       } catch {
-        setMessage("Roast generation could not connect. Try again after the page reloads.");
+        setNotice({
+          kind: "error",
+          message: "Roast generation could not connect. Try again after the page reloads.",
+        });
       }
     });
   }
@@ -67,7 +79,7 @@ export function SessionRoastPanel({
       return;
     }
 
-    setMessage(null);
+    setNotice(null);
     startTransition(async () => {
       try {
         const result = await createSessionRoastFeedItemAction({
@@ -77,13 +89,16 @@ export function SessionRoastPanel({
           shortCaption: draft.shortCaption,
         });
 
-        setMessage(
+        setNotice(
           result.ok
-            ? "Saved as a private feed draft."
-            : (result.message ?? "Could not save draft."),
+            ? { kind: "success", message: "Saved as a private feed draft." }
+            : { kind: "error", message: result.message ?? "Could not save draft." },
         );
       } catch {
-        setMessage("Could not save draft. Try again after the page reloads.");
+        setNotice({
+          kind: "error",
+          message: "Could not save draft. Try again after the page reloads.",
+        });
       }
     });
   }
@@ -111,22 +126,30 @@ export function SessionRoastPanel({
               </p>
               <h3 className="mt-1 text-lg font-semibold">{draft.headline}</h3>
             </div>
-            <Radio className="size-5 text-emerald-600" />
+            <Radio className="size-5 text-[var(--status-success-foreground)]" />
           </div>
           <p className="mt-3 text-sm leading-6">{draft.roast}</p>
           <p className="mt-3 text-xs leading-5 text-muted-foreground">{draft.safetyNote}</p>
         </div>
       ) : null}
 
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+      {notice?.kind === "error" ? (
+        <Alert variant="destructive" data-roast-status="error">
+          <TriangleAlert className="size-4" aria-hidden />
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      ) : notice?.kind === "success" ? (
+        <Alert
+          className="border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]"
+          data-roast-status="success"
+        >
+          <CircleCheck className="size-4" aria-hidden />
+          <AlertDescription>{notice.message}</AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
-          type="button"
-          onClick={generateRoast}
-          disabled={pending}
-          className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-        >
+        <Button type="button" onClick={generateRoast} disabled={pending} className="rounded-lg">
           <Flame className="size-4" />
           {pending ? "Working" : "Roast this session"}
         </Button>

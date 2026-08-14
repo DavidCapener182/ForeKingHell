@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { ChevronDown, ChevronUp, GripVertical, Save } from "lucide-react";
 
 import { saveBagOrderAction } from "@/app/equipment/actions";
@@ -56,13 +56,13 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
           return (
             <div
               key={section.key}
-              className="min-h-44 rounded-lg border border-slate-200 bg-white p-2"
+              className="min-h-44 rounded-lg border border-border bg-card p-2"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => handleDrop(event, section.key)}
             >
               <div className="flex items-center justify-between gap-2 px-1 pb-2">
                 <p className="text-sm font-semibold tracking-normal">{section.label}</p>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   {sectionItems.length}
                 </span>
               </div>
@@ -78,13 +78,13 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => handleDrop(event, section.key, club.id)}
                     className={cn(
-                      "group rounded-lg border bg-gradient-to-br from-white to-slate-50 p-2 shadow-sm",
-                      "transition hover:border-emerald-300 hover:shadow-md",
+                      "group rounded-lg border bg-gradient-to-br from-card to-muted/40 p-2 shadow-sm",
+                      "transition hover:border-primary/50 hover:shadow-md",
                     )}
                   >
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2">
                       <GripVertical
-                        className="mt-0.5 size-4 cursor-grab text-slate-400 group-active:cursor-grabbing"
+                        className="mt-0.5 size-4 cursor-grab text-muted-foreground group-active:cursor-grabbing"
                         aria-hidden
                       />
                       <div className="min-w-0">
@@ -94,20 +94,30 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
                         <p className="truncate text-xs text-muted-foreground">{club.brandModel}</p>
                       </div>
                       <div className="flex gap-1">
-                        <IconButton
-                          label={`Move ${club.label} up`}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          aria-label={`Move ${club.label} up`}
+                          title={`Move ${club.label} up`}
                           disabled={index === 0}
                           onClick={() => moveWithinSection(club.id, -1)}
+                          className="size-11 shrink-0 touch-manipulation motion-reduce:transition-none"
                         >
                           <ChevronUp className="size-4" />
-                        </IconButton>
-                        <IconButton
-                          label={`Move ${club.label} down`}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          aria-label={`Move ${club.label} down`}
+                          title={`Move ${club.label} down`}
                           disabled={index === sectionItems.length - 1}
                           onClick={() => moveWithinSection(club.id, 1)}
+                          className="size-11 shrink-0 touch-manipulation motion-reduce:transition-none"
                         >
                           <ChevronDown className="size-4" />
-                        </IconButton>
+                        </Button>
                       </div>
                     </div>
                     <label
@@ -147,10 +157,7 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
       </div>
 
       <div className="flex justify-end">
-        <Button
-          type="submit"
-          className="min-h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-        >
+        <Button type="submit" className="min-h-11 rounded-lg">
           <Save className="size-4" />
           Save bag order
         </Button>
@@ -177,31 +184,6 @@ export function BagOrderForm({ clubs }: { clubs: BagOrderClubItem[] }) {
   function moveToSection(clubId: string, section: string) {
     setItems((current) => moveBagClub(current, clubId, section));
   }
-}
-
-function IconButton({
-  label,
-  disabled,
-  onClick,
-  children,
-}: {
-  label: string;
-  disabled: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-emerald-200 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-35 motion-reduce:transition-none"
-    >
-      {children}
-    </button>
-  );
 }
 
 function groupBySection(items: BagOrderClubItem[]) {

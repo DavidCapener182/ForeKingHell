@@ -7,9 +7,7 @@ const source = readFileSync(join(process.cwd(), "src/app/(admin)/admin/users/pag
 describe("admin users desktop console source", () => {
   it("uses the shared workbench shell without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="admin-users" className="hidden lg:grid">',
-    );
+    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-users">');
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -26,7 +24,7 @@ describe("admin users desktop console source", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-scope="admin-users"');
     expect(source).toContain('data-workbench-export-table="admin-users"');
-    expect(source).toContain("<caption");
+    expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("<a\n      href={adminUserSortHref");
     expect(source).not.toContain('from "next/link"');
@@ -42,16 +40,21 @@ describe("admin users desktop console source", () => {
     expect(source).toContain("creates a permanent full-plan entitlement");
     expect(source).toContain('confirmTitle="Grant admin access"');
     expect(source).toContain("Owner and operator roles can change platform operations");
-    expect(source).toContain("Deactivate admin access for");
-    expect(source).toContain("writes an audit entry");
+    expect(source).toContain("AdminUserActions");
   });
 
-  it("uses a focused mobile user directory with search and grant sheets", () => {
-    expect(source).toContain("AdminMobileShell");
-    expect(source).toContain("AdminMobileUsers");
-    expect(source).toContain("MobileUserTools");
-    expect(source).toContain("MobileAdminUserRows");
-    expect(source).toContain("<BottomSheet");
-    expect(source).toContain("IOSDisclosureGroup");
+  it("excludes companion search and grant sheets from the desktop-only route", () => {
+    for (const obsolete of [
+      "AdminMobileShell",
+      "AdminMobileUsers",
+      "MobileUserTools",
+      "MobileAdminUserRows",
+      "BottomSheet",
+      "IOSDisclosureGroup",
+      "getRequestAppSurface",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
   });
 });

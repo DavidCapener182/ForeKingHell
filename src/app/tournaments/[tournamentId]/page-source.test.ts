@@ -7,6 +7,43 @@ const source = readFileSync(
   "utf8",
 );
 
+describe("tournament detail theme semantics", () => {
+  it("selects one request surface before loading the desktop workbench", () => {
+    const staticWorkbenchImport =
+      source.match(
+        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
+      )?.[0] ?? "";
+
+    expect(source).toContain("getRequestAppSurface()");
+    expect(source).toContain(
+      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+    );
+    expect(source).toContain('surface === "companion" ? (');
+    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
+    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
+    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
+    expect(source).not.toContain(
+      '<DesktopWorkbenchLayout scope="tournament-detail" className="hidden',
+    );
+  });
+
+  it("uses semantic surfaces and status tokens for ordinary interface chrome", () => {
+    expect(source).toContain("bg-card");
+    expect(source).toContain("bg-muted");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).not.toMatch(
+      /bg-white|bg-\[#|text-\[#|border-\[#|(?:bg|text|border)-(?:slate|green|emerald|amber|rose|sky)-\d+/,
+    );
+  });
+
+  it("renders server-authored rules and submission triggers directly across RSC boundaries", () => {
+    expect(source).toContain('import { Button, buttonVariants } from "@/components/ui/button"');
+    expect(source).toMatch(/<SheetTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
+    expect(source).toMatch(/<DialogTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
+    expect(source).not.toMatch(/<(?:Sheet|Dialog)Trigger\s+asChild>[\s\S]*?<Button/);
+  });
+});
+
 describe("tournament detail desktop standings", () => {
   it("keeps event standings table-first with saved views, column control and export", () => {
     expect(source).toContain("<PageShell>");
@@ -47,6 +84,8 @@ describe("tournament detail mobile standings", () => {
     expect(source).toContain("MobileTournamentStandings");
     expect(source).toContain("visibleStandings={visibleStandings}");
     expect(source).not.toContain("viewAllHref={`/tournaments/${data.tournament.id}#standings`}");
-    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain(
+      '<DesktopWorkbenchLayout scope="tournament-detail" className="hidden',
+    );
   });
 });

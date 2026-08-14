@@ -2,58 +2,36 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
   CalendarDays,
   CheckCircle2,
-  ChevronDown,
-  Circle,
-  Dumbbell,
   Flame,
   LineChart,
   Plus,
   ShieldCheck,
   Sparkles,
-  XCircle,
 } from "lucide-react";
 
-import {
-  ChartAccessibleFallback,
-  type ChartFallbackColumn,
-  type ChartFallbackRow,
-} from "@/components/app/chart-accessible-fallback";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import {
-  DataPanel,
-  DataTableFrame,
-  EmptyState,
-  MobileSectionChips,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
+import { DataTableFrame, SectionHeader, StatusPill, type Tone } from "@/components/premium";
 import { RecentTrainingSessions } from "@/components/training/RecentTrainingSessions";
 import { TrainingSessionForm } from "@/components/training/TrainingSessionForm";
 import { TrainingSourceSuggestions } from "@/components/training/TrainingSourceSuggestions";
 import { TrainingStatusCard } from "@/components/training/TrainingStatusCard";
 import { TrainingSummaryCards } from "@/components/training/TrainingSummaryCards";
-import { BottomSheet } from "@/components/mobile-sports";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -63,9 +41,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { selectTrainingRangeData } from "@/lib/training/rangeSelection";
 import { TRAINING_RANGE_OPTIONS, type TrainingRangeKey } from "@/lib/training/ranges";
-import type { FitnessFreshnessPoint } from "@/lib/training/fitnessFreshness";
 import type {
   TrainingEfficiencyCard,
   TrainingOverTimeData,
@@ -90,36 +68,16 @@ type TrainingLoadRangeViewProps = {
   initialRangeKey: TrainingRangeKey;
 };
 
-type MobilePracticeSummary = {
-  completedCount: number;
-  averageScore: number | null;
-  latestCompleted: { title: string; score: number | null } | null;
-};
-
 const integerFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
 });
 const weekdayFormatter = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
 });
-const chartDateFormatter = new Intl.DateTimeFormat("en-GB", {
+const ledgerDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
 });
-
-const trainingStatusChartColumns: ChartFallbackColumn[] = [
-  { key: "date", label: "Date" },
-  { key: "form", label: "Golf Form" },
-  { key: "sessionQuality", label: "Session Quality" },
-  { key: "fitness", label: "Training Fitness" },
-  { key: "fatigue", label: "Recent Load" },
-];
-
-const dailyLoadChartColumns: ChartFallbackColumn[] = [
-  { key: "date", label: "Date" },
-  { key: "load", label: "Session load" },
-  { key: "band", label: "Load band" },
-];
 
 const trainingSessionColumns: DesktopWorkbenchColumn[] = [
   { id: "date", label: "Date", locked: true },
@@ -153,26 +111,24 @@ const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
 function DeferredChartLoading({ label }: { label: string }) {
   return (
     <div
-      className="chart-frame grid min-h-64 place-items-center bg-muted/25 text-sm font-medium text-muted-foreground"
+      className="chart-frame grid min-h-64 content-center gap-3 bg-muted/25 p-4"
       role="status"
       aria-label={`${label} loading`}
     >
-      Loading {label.toLowerCase()}…
+      <Skeleton className="h-4 w-40" />
+      <Skeleton className="h-40 w-full" />
+      <span className="sr-only">Loading {label.toLowerCase()}…</span>
     </div>
   );
 }
 
 export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRangeViewProps) {
   const [activeRangeKey, setActiveRangeKey] = useState(initialRangeKey);
+  const [logOpen, setLogOpen] = useState(false);
   const displayData = useMemo(
     () => selectTrainingRangeData(data, activeRangeKey),
     [activeRangeKey, data],
   );
-  const trainingStatusSummary = buildTrainingStatusChartSummary(displayData.series);
-  const dailyLoadSummary = buildDailyLoadChartSummary(displayData.series);
-  const trainingStatusRows = buildTrainingStatusChartRows(displayData.series);
-  const dailyLoadRows = buildDailyLoadChartRows(displayData.series);
-
   function handleRangeChange(rangeKey: TrainingRangeKey) {
     setActiveRangeKey(rangeKey);
     replaceBrowserRange(rangeKey);
@@ -181,20 +137,6 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
   return (
     <>
       <RangeControls activeKey={activeRangeKey} onRangeChange={handleRangeChange} />
-
-      <MobileSectionChips
-        items={[
-          { label: "Summary", href: "#summary" },
-          { label: "Status", href: "#chart" },
-          { label: "Recovery", href: "#recovery" },
-          { label: "Balance", href: "#balance" },
-          { label: "Streak", href: "#streak" },
-          { label: "Load", href: "#load" },
-          { label: "Ledger", href: "#training-load-sessions" },
-          { label: "Log", href: "#log-load" },
-          { label: "Recent", href: "#recent" },
-        ]}
-      />
 
       {!displayData.hasTrainingData ? (
         <TrainingEmptyState conditioningDays={displayData.conditioningDays} />
@@ -208,7 +150,7 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
         />
       </div>
 
-      <DataPanel id="chart">
+      <Card id="chart" className="shadow-sm" data-training-status-chart-card>
         <SectionHeader
           title="Training Status"
           description="Golf Form is the trend signal. Session Quality shows how good each scored session was."
@@ -221,41 +163,24 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
             data={displayData.series}
             sessionMarkers={displayData.sessionMarkers}
           />
-          <ChartAccessibleFallback
-            title="Training Status"
-            summary={trainingStatusSummary}
-            columns={trainingStatusChartColumns}
-            rows={trainingStatusRows}
-            className="mt-3"
-          />
         </CardContent>
-      </DataPanel>
+      </Card>
 
-      <section className="grid items-stretch gap-3 lg:grid-cols-2 2xl:grid-cols-5">
-        <RecoveryRecommendation data={displayData} />
-        <Next48HoursCard data={displayData} />
-        <WeeklyTrainingScore data={displayData} />
-        <TrainingStreakCard data={data} />
-        <TrainingBalanceCard data={displayData} />
-      </section>
+      <RecoveryWorkbench data={displayData} />
 
-      <DataPanel id="load">
+      <TrainingRhythmWorkbench data={displayData} streakData={data} />
+
+      <Card id="load" className="shadow-sm" data-training-daily-load-chart>
         <SectionHeader
           title="Daily swing load"
-          description="Each bar is the total session load logged for that day. Green is normal, amber is heavy, red is very high."
-          action={<BarChart3 className="size-5 text-emerald-700" aria-hidden="true" />}
+          description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
+          action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
         />
         <CardContent className="grid gap-3">
           <LoadLegend />
           <TrainingLoadBars data={displayData.series} />
-          <ChartAccessibleFallback
-            title="Daily swing load"
-            summary={dailyLoadSummary}
-            columns={dailyLoadChartColumns}
-            rows={dailyLoadRows}
-          />
         </CardContent>
-      </DataPanel>
+      </Card>
 
       <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
 
@@ -269,475 +194,138 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
 
       <EfficiencyCards cards={displayData.efficiencyCards} />
 
-      <TrainingSourceSuggestions suggestions={displayData.suggestions} rangeKey={activeRangeKey} />
+      <TrainingSourceSuggestions
+        suggestions={displayData.suggestions}
+        rangeKey={activeRangeKey}
+        idPrefix="desktop-suggested-rpe"
+      />
 
-      <LogGolfLoadPanel rangeKey={activeRangeKey} today={displayData.today} />
+      <Card id="log-load" className="shadow-sm" data-training-load-actions>
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold">Update the evidence</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Log a session here, or use Sessions for the full workload history.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <ResponsiveDetailPanel
+              open={logOpen}
+              onOpenChange={setLogOpen}
+              title="Log golf training"
+              description="Add a round, practice block, speed session or manual workload entry."
+              trigger={
+                <Button type="button">
+                  <Plus className="size-4" aria-hidden />
+                  Log training
+                </Button>
+              }
+            >
+              <TrainingSessionForm
+                rangeKey={activeRangeKey}
+                today={displayData.today}
+                idPrefix="desktop-training-load"
+              />
+            </ResponsiveDetailPanel>
+            <Button asChild variant="outline">
+              <Link href="/sessions">View session history</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <RecentTrainingSessions sessions={displayData.recentSessions} />
     </>
   );
 }
 
-export function MobileTrainingLoadRangeView({
-  data,
-  initialRangeKey,
-  practiceSummary,
-}: TrainingLoadRangeViewProps & { practiceSummary: MobilePracticeSummary }) {
-  const [activeRangeKey, setActiveRangeKey] = useState(initialRangeKey);
-  const displayData = useMemo(
-    () => selectTrainingRangeData(data, activeRangeKey),
-    [activeRangeKey, data],
-  );
-  const recovery = buildRecoveryRecommendation(displayData);
-  const next48 = buildNext48Plan(displayData);
-  const weekly = buildWeeklyTrainingScore(displayData);
-  const streak = buildTrainingStreak(displayData);
-  const trainingStatusSummary = buildTrainingStatusChartSummary(displayData.series);
-  const dailyLoadSummary = buildDailyLoadChartSummary(displayData.series);
-  const trainingStatusRows = buildTrainingStatusChartRows(displayData.series);
-  const dailyLoadRows = buildDailyLoadChartRows(displayData.series);
-  const loadHigh = (displayData.latest?.fatigue ?? 0) >= 120;
-  const practiceFit = loadHigh ? "Technical plan" : "Load appropriate";
-
-  function handleRangeChange(rangeKey: TrainingRangeKey) {
-    setActiveRangeKey(rangeKey);
-    replaceBrowserRange(rangeKey);
-  }
-
-  return (
-    <div className="grid min-w-0 gap-4" data-mobile-training-load>
-      <RangeControls activeKey={activeRangeKey} onRangeChange={handleRangeChange} mobile />
-
-      <section className="premium-command-surface grid min-w-0 gap-4 rounded-lg p-4">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Current golf form
-            </p>
-            <p className="mt-1 text-5xl font-semibold tracking-normal">
-              {displayData.hasTrainingData ? formatMetric(displayData.summary.form.value) : "--"}
-            </p>
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">
-              {displayData.hasTrainingData
-                ? `${displayData.status.detail} ${displayData.trend.detail}`
-                : "Log a round or practice block to establish a golf-specific workload baseline."}
-            </p>
-          </div>
-          <IOSInlineStatus
-            label={displayData.hasTrainingData ? displayData.status.label : "Building baseline"}
-            tone={iosTrainingTone(displayData.status.tone)}
-            className="shrink-0"
-          />
-        </div>
-        <IOSGroupedList label="Current training load summary">
-          <IOSMetricRow
-            label="Training fitness"
-            value={formatMetric(displayData.summary.fitness.value)}
-            detail={`${displayData.conditioningDays}-day capacity · ${displayData.confidence.score}% evidence`}
-            tone="positive"
-          />
-          <IOSMetricRow
-            label="Recent load"
-            value={formatMetric(displayData.summary.fatigue.value)}
-            detail={`${recentLoadLabel(displayData.summary.fatigue.value)} · rolling seven days`}
-            tone={loadHigh ? "attention" : "info"}
-          />
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-training-action-title">
-        <IOSSectionHeader
-          title={<span id="mobile-training-action-title">Next action</span>}
-          description="What the current workload can sensibly handle."
-        />
-        <div className="ios-grouped-list p-4">
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold">{recovery.title}</h2>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">{recovery.summary}</p>
-            </div>
-            <IOSInlineStatus
-              label={recovery.label}
-              tone={
-                recovery.tone === "green"
-                  ? "positive"
-                  : recovery.tone === "amber"
-                    ? "attention"
-                    : "info"
-              }
-              className="shrink-0"
-            />
-          </div>
-          <div className="mt-3 ios-grouped-list overflow-hidden">
-            <IOSListRow label="Best next session" value={recovery.best} />
-            <IOSListRow label="Avoid" value={recovery.avoid} />
-            <IOSListRow
-              label="Practice Planner fit"
-              value={practiceFit}
-              detail={
-                practiceSummary.latestCompleted
-                  ? `${practiceSummary.latestCompleted.title} · score ${practiceSummary.latestCompleted.score ?? "--"}`
-                  : "No completed structured plan yet"
-              }
-            />
-          </div>
-          <div className="mt-3">
-            <BottomSheet
-              label={
-                <>
-                  <Plus className="size-4" aria-hidden />
-                  Log training
-                </>
-              }
-              title="Log golf training"
-              triggerClassName="w-full"
-            >
-              <TrainingSessionForm
-                rangeKey={activeRangeKey}
-                today={displayData.today}
-                idPrefix="mobile-training-load"
-              />
-            </BottomSheet>
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-training-evidence-title">
-        <IOSSectionHeader
-          title={<span id="mobile-training-evidence-title">Evidence and history</span>}
-          description="Open the chart or history needed for the current decision."
-        />
-        <IOSDisclosureGroup
-          label="Training load evidence and history"
-          items={[
-            {
-              value: "training-trend",
-              title: "Golf form trend",
-              summary: displayData.trend.label,
-              description: "Golf Form, session quality, fitness and recent load",
-              content: (
-                <div className="grid gap-3">
-                  <TrainingOverTimeChart
-                    data={displayData.series}
-                    sessionMarkers={displayData.sessionMarkers}
-                  />
-                  <ChartAccessibleFallback
-                    title="Training Status"
-                    summary={trainingStatusSummary}
-                    columns={trainingStatusChartColumns}
-                    rows={trainingStatusRows}
-                  />
-                </div>
-              ),
-            },
-            {
-              value: "next-48",
-              title: "Recovery detail",
-              summary: recovery.label,
-              description: "Tomorrow, the following day and the reason",
-              content: (
-                <div className="grid gap-3">
-                  <IOSGroupedList label="Next 48 hours">
-                    {next48.items.map((item) => (
-                      <IOSListRow
-                        key={item.label}
-                        label={item.label}
-                        value={item.activity}
-                        detail={item.reason}
-                      />
-                    ))}
-                  </IOSGroupedList>
-                  <div className="ios-grouped-list p-3 text-sm leading-6 text-muted-foreground">
-                    {recovery.reasonLines.map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              value: "weekly-rhythm",
-              title: "Weekly rhythm",
-              summary: weekly.grade,
-              description: `${weekly.sessions} sessions · ${formatMetric(weekly.load)} load`,
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <MobileWeeklyTrainingRows data={displayData} weekly={weekly} streak={streak} />
-              ),
-            },
-            {
-              value: "daily-load",
-              title: "Daily swing load",
-              summary: recentLoadLabel(displayData.latest?.fatigue ?? 0),
-              description: "Daily workload bars and load bands",
-              content: (
-                <div className="grid gap-3">
-                  <LoadLegend />
-                  <TrainingLoadBars data={displayData.series} />
-                  <ChartAccessibleFallback
-                    title="Daily swing load"
-                    summary={dailyLoadSummary}
-                    columns={dailyLoadChartColumns}
-                    rows={dailyLoadRows}
-                  />
-                </div>
-              ),
-            },
-            {
-              value: "training-ledger",
-              title: "Training ledger",
-              summary: displayData.sessions.length,
-              description: "Rounds, range work, speed sessions and manual load",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: <MobileTrainingSessionRows sessions={displayData.sessions} />,
-            },
-            {
-              value: "training-response",
-              title: "Training response",
-              summary: `${displayData.efficiencyCards.length} signals`,
-              description: "Model status, response and confidence explanation",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: <MobileTrainingResponseRows data={displayData} />,
-            },
-            {
-              value: "source-suggestions",
-              title: "Sessions ready to link",
-              summary: displayData.suggestions.length,
-              description: "Use existing golf evidence without changing the source record",
-              content: (
-                <TrainingSourceSuggestions
-                  suggestions={displayData.suggestions}
-                  rangeKey={activeRangeKey}
-                  idPrefix="mobile-suggested-rpe"
-                />
-              ),
-            },
-          ]}
-        />
-      </section>
-    </div>
-  );
-}
-
-function MobileWeeklyTrainingRows({
-  data,
-  weekly,
-  streak,
-}: {
-  data: TrainingOverTimeData;
-  weekly: ReturnType<typeof buildWeeklyTrainingScore>;
-  streak: ReturnType<typeof buildTrainingStreak>;
-}) {
-  return (
-    <IOSGroupedList label="Weekly training rhythm" className="rounded-none">
-      <IOSListRow
-        label="Training quality"
-        value={weekly.grade}
-        detail={`${weekly.sessions} sessions · Golf Form ${formatSigned(weekly.formChange)}`}
-      />
-      <IOSListRow
-        label="Consistency"
-        value={`${streak.consistency}%`}
-        detail={`${streak.currentStreak} current · ${streak.bestStreak} best streak`}
-      />
-      {data.trainingBalance.segments.map((segment) => (
-        <IOSListRow
-          key={segment.key}
-          label={segment.label}
-          value={`${segment.percent}%`}
-          detail={`${segment.sessions} sessions · ${formatMetric(segment.load)} load`}
-        />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function MobileTrainingSessionRows({ sessions }: { sessions: TrainingSessionListItem[] }) {
-  if (sessions.length === 0) {
-    return (
-      <p className="p-4 text-sm leading-6 text-muted-foreground">
-        No training load sessions are logged in this range.
-      </p>
-    );
-  }
-
-  return (
-    <IOSGroupedList label="Training sessions in selected range" className="rounded-none">
-      {sessions.map((session) => (
-        <IOSListRow
-          key={session.id}
-          label={session.title}
-          value={formatMetric(session.sessionLoad)}
-          detail={`${formatLedgerDate(session.sessionDate)} · ${formatTrainingSource(session.sourceType)} · RPE ${session.rpe}`}
-          href={mobileTrainingSessionHref(session)}
-          status={<IOSInlineStatus label={formatTrainingVolume(session)} tone="info" />}
-        />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function MobileTrainingResponseRows({ data }: { data: TrainingOverTimeData }) {
-  return (
-    <IOSGroupedList label="Training response signals" className="rounded-none">
-      <IOSListRow label="Current status" value={data.status.label} detail={data.status.advice} />
-      <IOSListRow
-        label="Evidence confidence"
-        value={`${data.confidence.score}%`}
-        detail={data.confidence.detail}
-      />
-      {data.efficiencyCards.map((card) => (
-        <IOSListRow key={card.title} label={card.title} value={card.metric} detail={card.detail} />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function RangeControls({
-  activeKey,
-  onRangeChange,
-  mobile = false,
-}: {
-  activeKey: TrainingRangeKey;
-  onRangeChange: (rangeKey: TrainingRangeKey) => void;
-  mobile?: boolean;
-}) {
-  return (
-    <nav
-      aria-label="Training range"
-      className={cn(
-        "premium-command-surface flex w-full gap-1 overflow-x-auto rounded-lg p-1",
-        !mobile && "sm:w-fit",
-      )}
-    >
-      {TRAINING_RANGE_OPTIONS.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          aria-pressed={option.key === activeKey}
-          onClick={() => onRangeChange(option.key)}
-          className={cn(
-            "min-w-12 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors motion-reduce:transition-none",
-            mobile ? "min-h-11 flex-1" : "min-h-9",
-            option.key === activeKey
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
-          )}
-        >
-          {option.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function TrainingEmptyState({ conditioningDays }: { conditioningDays: number }) {
-  return (
-    <DataPanel>
-      <CardContent className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-        <EmptyState
-          icon={<LineChart className="size-5" aria-hidden="true" />}
-          title="Start logging rounds or practice sessions to build your golf training profile."
-          description="Golf Form shows whether comparable sessions are moving the right way. Training Fitness is your long-term golf load, and Recent Load is your short-term workload."
-          action={
-            <Button asChild>
-              <Link href="#log-load">Log first session</Link>
-            </Button>
-          }
-        />
-        <div className="grid gap-2 sm:grid-cols-3">
-          <PrimerCard
-            icon={<Sparkles className="size-4" aria-hidden="true" />}
-            title="Golf Form"
-            detail="Indexed golf form. 100 is your baseline, 110+ is very good, and 120+ is peak form."
-          />
-          <PrimerCard
-            icon={<ShieldCheck className="size-4" aria-hidden="true" />}
-            title="Training Fitness"
-            detail={`${conditioningDays}-day golf workload capacity. It moves slowly so short quiet spells do not look like your training base disappeared.`}
-          />
-          <PrimerCard
-            icon={<BarChart3 className="size-4" aria-hidden="true" />}
-            title="Recent Load"
-            detail="7-day golf workload. It moves quickly after hard practice, walking rounds or speed work."
-          />
-        </div>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function PrimerCard({ icon, title, detail }: { icon: ReactNode; title: string; detail: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-4">
-      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-        {icon}
-        {title}
-      </div>
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
-
-function EfficiencyCards({ cards }: { cards: TrainingEfficiencyCard[] }) {
-  return (
-    <section id="overlays" className="grid gap-3 md:grid-cols-3">
-      {cards.map((card) => (
-        <article
-          key={card.title}
-          className={cn("rounded-lg border p-4", overlayToneClass(card.tone))}
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">
-            Training response
-          </p>
-          <p className="mt-3 text-3xl font-semibold tracking-normal">{card.metric}</p>
-          <p className="mt-1 text-sm font-semibold">{card.title}</p>
-          <p className="mt-2 text-sm leading-5 opacity-80">{card.detail}</p>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function RecoveryRecommendation({ data }: { data: TrainingOverTimeData }) {
+function RecoveryWorkbench({ data }: { data: TrainingOverTimeData }) {
   const recovery = buildRecoveryRecommendation(data);
+  const next48Hours = buildNext48Plan(data);
 
   return (
-    <DataPanel id="recovery" className="h-full">
+    <Card id="recovery" className="scroll-mt-28 shadow-sm" data-training-recovery-workbench>
       <SectionHeader
-        title="Recovery recommendation"
-        description="What tomorrow can sensibly handle from today's workload and Golf Form."
+        title="Recovery and next 48 hours"
+        description="Turn today's workload and Golf Form into a specific next-session decision."
         action={<StatusPill tone={recovery.tone}>{recovery.label}</StatusPill>}
       />
-      <CardContent className="grid gap-3">
-        <div className={cn("rounded-lg border p-3", recoveryToneClass(recovery.tone))}>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">Tomorrow</p>
-          <p className="mt-2 text-xl font-semibold tracking-normal">{recovery.title}</p>
-          <p className="mt-2 text-sm leading-6 opacity-85">{recovery.summary}</p>
-        </div>
-        <div className="grid gap-2">
-          <RecoveryRow label="Best" value={recovery.best} tone="green" />
-          <RecoveryRow label="Optional" value={recovery.acceptable} tone="amber" />
-          <RecoveryRow label="Avoid" value={recovery.avoid} tone="red" />
-          <div className="rounded-lg border border-slate-200 bg-white/80 px-3 py-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Reason
-            </p>
-            <div className="mt-2 grid gap-1">
-              {recovery.reasonLines.map((line) => (
-                <p key={line} className="text-sm leading-5 text-muted-foreground">
-                  {line}
-                </p>
-              ))}
-            </div>
+      <CardContent className="grid gap-6 lg:grid-cols-2 lg:gap-0 lg:divide-x lg:divide-border">
+        <section aria-labelledby="recovery-recommendation-title" className="min-w-0 lg:pr-6">
+          <div className={cn("rounded-lg border p-4", statusSurfaceClass(recovery.tone))}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">Tomorrow</p>
+            <h3
+              id="recovery-recommendation-title"
+              className="mt-2 text-xl font-semibold tracking-normal"
+            >
+              {recovery.title}
+            </h3>
+            <p className="mt-2 text-sm leading-6 opacity-90">{recovery.summary}</p>
           </div>
-        </div>
+
+          <dl className="mt-3 divide-y divide-border rounded-lg border border-border">
+            <RecoveryDecision label="Best" value={recovery.best} tone="green" />
+            <RecoveryDecision label="Optional" value={recovery.acceptable} tone="amber" />
+            <RecoveryDecision label="Avoid" value={recovery.avoid} tone="red" />
+          </dl>
+
+          <div className="mt-3 border-l-2 border-primary/35 pl-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Why
+            </p>
+            <ul className="mt-2 grid gap-1.5 text-sm leading-5 text-muted-foreground">
+              {recovery.reasonLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section
+          id="next-48-hours"
+          aria-labelledby="next-48-hours-title"
+          className="min-w-0 border-t border-border pt-6 lg:border-t-0 lg:pl-6 lg:pt-0"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 id="next-48-hours-title" className="text-lg font-semibold tracking-normal">
+                Next 48 hours
+              </h3>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                How the next two golf days should be paced.
+              </p>
+            </div>
+            <StatusPill tone={next48Hours.tone}>Predictive</StatusPill>
+          </div>
+
+          <ol className="mt-4 divide-y divide-border rounded-lg border border-border">
+            {next48Hours.items.map((item) => (
+              <li key={item.label} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-3">
+                <span
+                  className={cn(
+                    "mt-0.5 inline-flex size-8 items-center justify-center rounded-full border",
+                    statusSurfaceClass(item.tone),
+                  )}
+                >
+                  <CalendarDays className="size-4" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    {item.label}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{item.activity}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.reason}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
       </CardContent>
-    </DataPanel>
+    </Card>
   );
 }
 
-function RecoveryRow({
+function RecoveryDecision({
   label,
   value,
   tone,
@@ -746,308 +334,253 @@ function RecoveryRow({
   value: string;
   tone: "green" | "amber" | "red";
 }) {
-  const icon =
-    tone === "green" ? (
-      <CheckCircle2 className="size-4 text-emerald-700" aria-hidden="true" />
-    ) : tone === "amber" ? (
-      <Circle className="size-4 text-amber-700" aria-hidden="true" />
-    ) : (
-      <XCircle className="size-4 text-red-700" aria-hidden="true" />
-    );
+  const Icon = tone === "red" ? AlertTriangle : CheckCircle2;
 
   return (
-    <div
-      className={cn(
-        "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-lg border px-3 py-2",
-        recoveryRowClass(tone),
-      )}
-    >
-      <span className="inline-flex size-8 items-center justify-center rounded-full bg-white/70">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-3 py-2.5">
+      <Icon className={cn("size-4", statusIconClass(tone))} aria-hidden="true" />
+      <div className="flex min-w-0 items-baseline justify-between gap-3">
+        <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {label}
-        </p>
-        <p className="text-sm font-semibold text-foreground">{value}</p>
+        </dt>
+        <dd className="text-right text-sm font-semibold text-foreground">{value}</dd>
       </div>
     </div>
   );
 }
 
-function Next48HoursCard({ data }: { data: TrainingOverTimeData }) {
-  const plan = buildNext48Plan(data);
-
-  return (
-    <DataPanel className="h-full">
-      <SectionHeader
-        title="Next 48 Hours"
-        description="How the next two golf days should be paced."
-        action={<StatusPill tone={plan.tone}>Predictive</StatusPill>}
-      />
-      <CardContent>
-        <div className="grid gap-2">
-          {plan.items.map((item) => (
-            <div
-              key={item.label}
-              className={cn(
-                "grid grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-lg border px-3 py-2",
-                recoveryRowClass(item.tone),
-              )}
-            >
-              <span className="inline-flex size-8 items-center justify-center rounded-full bg-white/70">
-                <CalendarDays className="size-4" aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  {item.label}
-                </p>
-                <p className="text-sm font-semibold text-foreground">{item.activity}</p>
-                <p className="text-xs leading-4 text-muted-foreground">{item.reason}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function WeeklyTrainingScore({ data }: { data: TrainingOverTimeData }) {
+function TrainingRhythmWorkbench({
+  data,
+  streakData,
+}: {
+  data: TrainingOverTimeData;
+  streakData: TrainingOverTimeData;
+}) {
   const score = buildWeeklyTrainingScore(data);
-
-  return (
-    <DataPanel id="weekly-score" className="h-full">
-      <SectionHeader
-        title="Weekly Training Quality"
-        description="This week's workload, form movement and training quality."
-        action={<StatusPill tone={score.tone}>{score.grade}</StatusPill>}
-      />
-      <CardContent>
-        <div className="grid gap-3">
-          <div className={cn("rounded-lg border p-4", recoveryToneClass(score.tone))}>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">
-              Training Quality
-            </p>
-            <p className="mt-1 text-6xl font-semibold tracking-normal sm:text-7xl">{score.grade}</p>
-            <p className="mt-2 text-sm leading-5 opacity-85">
-              {score.sessions} session{score.sessions === 1 ? "" : "s"} - {formatMetric(score.load)}{" "}
-              load - Golf Form {formatSigned(score.formChange)}.
-            </p>
-          </div>
-          <div className="grid gap-2">
-            <ReportGrade label="Practice Quality" value={score.practiceQualityGrade} />
-            <ReportGrade label="Recovery" value={score.recoveryGrade} />
-            <ReportGrade label="Consistency" value={score.consistencyGrade} />
-            <ReportGrade label="Progress" value={score.progressGrade} />
-          </div>
-          <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Because
-            </p>
-            <div className="mt-2 grid gap-1.5">
-              {score.positiveLines.map((line) => (
-                <ReasonLine key={line} icon="check" line={line} />
-              ))}
-              {score.cautionLines.map((line) => (
-                <ReasonLine key={line} icon="warn" line={line} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function ReportGrade({ label, value }: { label: string; value: string }) {
-  const tone = gradeTone(value);
-
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-lg border px-3 py-2",
-        reportGradeClass(tone),
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className={cn("size-2.5 rounded-full", reportGradeDotClass(tone))} />
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          {label}
-        </p>
-      </div>
-      <p className="text-2xl font-semibold tracking-normal text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function ReasonLine({ icon, line }: { icon: "check" | "warn"; line: string }) {
-  return (
-    <div className="flex gap-2 text-sm leading-5 text-muted-foreground">
-      {icon === "check" ? (
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-700" aria-hidden="true" />
-      ) : (
-        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
-      )}
-      <span>{line}</span>
-    </div>
-  );
-}
-
-function TrainingStreakCard({ data }: { data: TrainingOverTimeData }) {
-  const streak = buildTrainingStreak(data);
-
-  return (
-    <DataPanel id="streak" className="h-full">
-      <SectionHeader
-        title="Training streak"
-        description="Current rhythm from logged rounds, practice and speed work."
-        action={<StatusPill tone={streak.tone}>Target 3d</StatusPill>}
-      />
-      <CardContent>
-        <div className="grid gap-3">
-          <div className={cn("rounded-lg border p-4", recoveryToneClass(streak.tone))}>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] opacity-75">
-              <Flame className="size-4" aria-hidden="true" />
-              Current streak
-            </div>
-            <p className="mt-2 text-4xl font-semibold tracking-normal">
-              {streak.currentStreak} day{streak.currentStreak === 1 ? "" : "s"}
-            </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 2xl:grid-cols-3">
-            <MiniMetric label="Target" value="3 days" />
-            <MiniMetric label="Longest" value={`${streak.bestStreak} days`} />
-            <MiniMetric label="Consistency" value={`${streak.consistency}%`} />
-          </div>
-        </div>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function TrainingBalanceCard({ data }: { data: TrainingOverTimeData }) {
+  const streak = buildTrainingStreak(streakData);
   const balance = data.trainingBalance;
   const ratio = buildTrainingRatio(data.latest);
 
   return (
-    <DataPanel id="balance" className="h-full">
+    <Card id="weekly-score" className="scroll-mt-28 shadow-sm" data-training-rhythm-workbench>
       <SectionHeader
-        title="Training Balance"
-        description={`Last ${balance.windowDays} days by logged workload.`}
-        action={<StatusPill tone={ratio.pillTone}>{ratio.status}</StatusPill>}
+        title="Weekly training quality"
+        description="Workload, recovery, consistency and practice balance in one weekly read."
+        action={<StatusPill tone={score.tone}>{score.grade}</StatusPill>}
       />
-      <CardContent>
-        <div className="grid gap-3">
-          <div className={cn("rounded-lg border p-3", ratioToneClass(ratio.tone))}>
-            <div className="flex items-start justify-between gap-3">
+      <CardContent className="grid gap-6 xl:grid-cols-[0.9fr_0.8fr_1.3fr] xl:gap-0 xl:divide-x xl:divide-border">
+        <section aria-labelledby="weekly-quality-title" className="min-w-0 xl:pr-6">
+          <div className={cn("rounded-lg border p-4", statusSurfaceClass(score.tone))}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">
+              Training quality
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-3">
+              <h3 id="weekly-quality-title" className="text-5xl font-semibold tracking-normal">
+                {score.grade}
+              </h3>
+              <p className="pb-1 text-sm font-semibold">{score.comparison}</p>
+            </div>
+            <p className="mt-2 text-sm leading-5 opacity-90">
+              {score.sessions} session{score.sessions === 1 ? "" : "s"} · {formatMetric(score.load)}{" "}
+              load · Golf Form {formatSigned(score.formChange)}.
+            </p>
+          </div>
+
+          <dl className="mt-3 divide-y divide-border rounded-lg border border-border">
+            <GradeRow label="Practice quality" value={score.practiceQualityGrade} />
+            <GradeRow label="Recovery" value={score.recoveryGrade} />
+            <GradeRow label="Consistency" value={score.consistencyGrade} />
+            <GradeRow label="Progress" value={score.progressGrade} />
+          </dl>
+
+          <ul className="mt-3 grid gap-1.5 text-sm leading-5 text-muted-foreground">
+            {score.positiveLines.map((line) => (
+              <ReasonLine key={line} tone="positive" line={line} />
+            ))}
+            {score.cautionLines.map((line) => (
+              <ReasonLine key={line} tone="caution" line={line} />
+            ))}
+          </ul>
+        </section>
+
+        <section
+          id="streak"
+          aria-labelledby="training-streak-title"
+          className="min-w-0 border-t border-border pt-6 xl:border-t-0 xl:px-6 xl:pt-0"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 id="training-streak-title" className="text-lg font-semibold tracking-normal">
+                Training streak
+              </h3>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                Logged rounds, practice and speed work.
+              </p>
+            </div>
+            <Flame className="size-5 text-primary" aria-hidden="true" />
+          </div>
+
+          <p className="mt-5 text-4xl font-semibold tracking-normal">
+            {streak.currentStreak} day{streak.currentStreak === 1 ? "" : "s"}
+          </p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Current streak · target 3 days
+          </p>
+
+          <dl className="mt-4 divide-y divide-border border-y border-border">
+            <MetricRow label="Longest" value={`${streak.bestStreak} days`} />
+            <MetricRow label="Consistency" value={`${streak.consistency}%`} />
+          </dl>
+        </section>
+
+        <section
+          id="balance"
+          aria-labelledby="training-balance-title"
+          className="min-w-0 border-t border-border pt-6 xl:border-t-0 xl:pl-6 xl:pt-0"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 id="training-balance-title" className="text-lg font-semibold tracking-normal">
+                Training balance
+              </h3>
+              <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                Last {balance.windowDays} days by logged workload.
+              </p>
+            </div>
+            <StatusPill tone={ratio.pillTone}>{ratio.status}</StatusPill>
+          </div>
+
+          <div className={cn("mt-4 rounded-lg border p-3", statusSurfaceClass(ratio.tone))}>
+            <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">
                   Workload ratio
                 </p>
                 <p className="mt-1 text-3xl font-semibold tracking-normal">{ratio.label}</p>
               </div>
-              <p className="text-sm font-semibold">{ratio.status}</p>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs leading-4 opacity-80">
-              <span>Recent {ratio.recent}</span>
-              <span>Fitness {ratio.fitness}</span>
+              <p className="text-xs font-medium opacity-85">
+                Recent {ratio.recent} · Fitness {ratio.fitness}
+              </p>
             </div>
           </div>
-          {balance.segments.map((segment) => (
-            <div key={segment.key} className="grid gap-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-foreground">{segment.label}</p>
-                <div className="text-right">
+
+          <div className="mt-4 grid gap-4">
+            {balance.segments.map((segment) => (
+              <div key={segment.key} className="grid gap-1.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">{segment.label}</p>
                   <p className="text-sm font-semibold tabular-nums text-foreground">
                     {segment.percent}%
                   </p>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    Target {balanceTargetLabel(segment.key)}
-                  </p>
                 </div>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={cn("h-full rounded-full", balanceBarClass(segment.key))}
-                  style={{ width: `${segment.percent}%` }}
+                <Progress
+                  value={segment.percent}
+                  aria-label={`${segment.label} ${segment.percent}% of training load`}
+                  className="h-2"
                 />
+                <p className="text-xs leading-4 text-muted-foreground">
+                  {segment.sessions} session{segment.sessions === 1 ? "" : "s"} ·{" "}
+                  {formatMetric(segment.load)} load · target {balanceTargetLabel(segment.key)}
+                </p>
               </div>
-              <p className="text-xs leading-4 text-muted-foreground">
-                {segment.sessions} session{segment.sessions === 1 ? "" : "s"} -{" "}
-                {formatMetric(segment.load)} load
-              </p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
       </CardContent>
-    </DataPanel>
+    </Card>
+  );
+}
+
+function GradeRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </dt>
+      <dd>
+        <StatusPill tone={gradeTone(value)}>{value}</StatusPill>
+      </dd>
+    </div>
+  );
+}
+
+function ReasonLine({ tone, line }: { tone: "positive" | "caution"; line: string }) {
+  const Icon = tone === "positive" ? CheckCircle2 : AlertTriangle;
+
+  return (
+    <li className="flex gap-2">
+      <Icon
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          tone === "positive" ? "text-primary" : "text-[var(--status-warning-foreground)]",
+        )}
+        aria-hidden="true"
+      />
+      <span>{line}</span>
+    </li>
+  );
+}
+
+function MetricRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-2.5">
+      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-semibold text-foreground">{value}</dd>
+    </div>
   );
 }
 
 function LoadLegend() {
   return (
-    <div className="grid gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:grid-cols-3">
-      <LegendItem className="bg-emerald-500" label="Normal" detail="< 300 load" />
-      <LegendItem className="bg-amber-500" label="Heavy" detail="300-499" />
-      <LegendItem className="bg-red-500" label="Very heavy" detail="500+" />
+    <div
+      className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-3"
+      role="list"
+      aria-label="Daily training load bands"
+    >
+      <LoadLegendItem tone="green" label="Normal" detail="Under 300 load" />
+      <LoadLegendItem tone="amber" label="Heavy" detail="300–499 load" />
+      <LoadLegendItem tone="pink" label="Very heavy" detail="500+ load" />
     </div>
   );
 }
 
-function LegendItem({
-  className,
-  label,
-  detail,
-}: {
-  className: string;
-  label: string;
-  detail: string;
-}) {
+function LoadLegendItem({ tone, label, detail }: { tone: Tone; label: string; detail: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-white/70 px-2 py-1.5">
-      <span className="inline-flex items-center gap-1.5">
-        <span className={cn("size-2.5 rounded-full", className)} />
-        {label}
-      </span>
-      <span className="text-[10px] text-muted-foreground">{detail}</span>
+    <div
+      className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2"
+      role="listitem"
+    >
+      <StatusPill tone={tone}>{label}</StatusPill>
+      <span>{detail}</span>
     </div>
   );
 }
 
-function LogGolfLoadPanel({ rangeKey, today }: { rangeKey: TrainingRangeKey; today: string }) {
+function EfficiencyCards({ cards }: { cards: TrainingEfficiencyCard[] }) {
   return (
-    <DataPanel id="log-load" className="overflow-hidden">
-      <Collapsible className="group">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-lg font-semibold tracking-normal text-foreground">
-                <Dumbbell className="size-5 text-emerald-700" aria-hidden="true" />
-                Log Training
+    <Card id="training-response" className="scroll-mt-28 shadow-sm" data-training-response>
+      <SectionHeader
+        title="Training response"
+        description="How carry, accuracy and scoring are responding to the logged workload evidence."
+        action={<StatusPill tone="sky">{cards.length} signals</StatusPill>}
+      />
+      <CardContent className="p-0">
+        <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+          {cards.map((card) => (
+            <article key={card.title} className="min-w-0 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-sm font-semibold text-foreground">{card.title}</h3>
+                <StatusPill tone={card.tone}>Response</StatusPill>
               </div>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                Add a round, practice block, speed session or manual workload entry.
+              <p className="mt-4 text-3xl font-semibold tracking-normal text-foreground">
+                {card.metric}
               </p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm">
-              <Plus className="size-4" aria-hidden="true" />
-              Log Training
-              <ChevronDown
-                className="size-4 transition-transform group-open:rotate-180"
-                aria-hidden="true"
-              />
-            </span>
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="border-t border-border/70">
-          <TrainingSessionForm rangeKey={rangeKey} today={today} />
-        </CollapsibleContent>
-      </Collapsible>
-    </DataPanel>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{card.detail}</p>
+            </article>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1062,131 +595,195 @@ function TrainingSessionLedger({
     TRAINING_RANGE_OPTIONS.find((option) => option.key === rangeKey)?.label ?? rangeKey;
 
   return (
-    <section
+    <Card
       id="training-load-sessions"
-      className="hidden scroll-mt-28 gap-3 sm:grid"
+      className="scroll-mt-28 gap-0 py-0 shadow-sm"
       data-workbench-scope="training-load-sessions"
     >
-      <DataPanel className="gap-0 py-0">
-        <SectionHeader
-          title="Training load ledger"
-          description="Range, round, speed and manual workload rows behind the selected Training Status range."
-          action={<StatusPill tone="sky">{rangeLabel}</StatusPill>}
+      <SectionHeader
+        title="Training load ledger"
+        description="Range, round, speed and manual workload rows behind the selected Training Status range."
+        action={<StatusPill tone="sky">{rangeLabel}</StatusPill>}
+      />
+      <CardContent className="grid gap-3 p-3">
+        <DesktopTableWorkbenchControls
+          viewKey="training-load-sessions"
+          scope="training-load-sessions"
+          currentViewLabel={`${rangeLabel} training load`}
+          resultLabel={`${integerFormatter.format(sessions.length)} session${sessions.length === 1 ? "" : "s"}`}
+          columns={trainingSessionColumns}
+          suggestedViews={trainingSessionSuggestedViews}
+          exportTableId="training-load-sessions"
+          exportFileName={`forekinghell-training-load-${rangeKey}.csv`}
         />
-        <CardContent className="grid gap-3 p-3">
-          <DesktopTableWorkbenchControls
-            viewKey="training-load-sessions"
-            scope="training-load-sessions"
-            currentViewLabel={`${rangeLabel} training load`}
-            resultLabel={`${integerFormatter.format(sessions.length)} session${
-              sessions.length === 1 ? "" : "s"
-            }`}
-            columns={trainingSessionColumns}
-            suggestedViews={trainingSessionSuggestedViews}
-            exportTableId="training-load-sessions"
-            exportFileName={`forekinghell-training-load-${rangeKey}.csv`}
-          />
-          <DataTableFrame mainTable mainTableLabel="Training load session table" stickyFirstColumn>
-            <Table
-              data-workbench-export-table="training-load-sessions"
-              aria-describedby="training-load-sessions-summary"
-            >
-              <TableCaption id="training-load-sessions-summary" className="sr-only">
-                Training load session table showing date, session, source, workload, RPE, volume,
-                conditions and notes for the selected range.
-              </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                <TableRow>
-                  <TableHead
-                    data-column="date"
-                    className="sticky left-0 z-20 min-w-28 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                  >
-                    Date
-                  </TableHead>
-                  <TableHead data-column="session" className="min-w-64">
-                    Session
-                  </TableHead>
-                  <TableHead data-column="source">Source</TableHead>
-                  <TableHead data-column="load" className="text-right">
-                    Load
-                  </TableHead>
-                  <TableHead data-column="rpe" className="text-right">
-                    RPE
-                  </TableHead>
-                  <TableHead data-column="volume">Volume</TableHead>
-                  <TableHead data-column="conditions">Conditions</TableHead>
-                  <TableHead data-column="notes" className="min-w-72">
-                    Notes
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sessions.length > 0 ? (
-                  sessions.map((session) => (
-                    <TableRow key={session.id} tabIndex={0} className="focus-aaa outline-none">
-                      <TableCell
-                        data-column="date"
-                        className="sticky left-0 z-10 bg-white font-semibold shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                      >
-                        {formatLedgerDate(session.sessionDate)}
-                      </TableCell>
-                      <TableCell data-column="session">
-                        <div className="min-w-0">
-                          <p className="max-w-72 truncate font-semibold text-foreground">
-                            {session.title}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {session.competition ? "Competition" : "Training"} -{" "}
-                            {session.sourceId ? session.sourceId.slice(0, 8) : "manual entry"}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell data-column="source">
-                        <StatusPill tone={trainingSourceTone(session.sourceType)}>
-                          {formatTrainingSource(session.sourceType)}
-                        </StatusPill>
-                      </TableCell>
-                      <TableCell data-column="load" className="text-right tabular-nums">
-                        {integerFormatter.format(Math.round(session.sessionLoad))}
-                      </TableCell>
-                      <TableCell data-column="rpe" className="text-right tabular-nums">
-                        {session.rpe}
-                      </TableCell>
-                      <TableCell data-column="volume">{formatTrainingVolume(session)}</TableCell>
-                      <TableCell data-column="conditions">
-                        {formatTrainingConditions(session)}
-                      </TableCell>
-                      <TableCell data-column="notes">
-                        <span className="block max-w-80 truncate text-muted-foreground">
-                          {session.notes?.trim() || "No notes"}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                      No training load sessions are logged in this range.
+        <DataTableFrame mainTable mainTableLabel="Training load session table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="training-load-sessions"
+            aria-describedby="training-load-sessions-summary"
+          >
+            <TableCaption id="training-load-sessions-summary" className="sr-only">
+              Training load session table showing date, session, source, workload, RPE, volume,
+              conditions and notes for the selected range.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+              <TableRow>
+                <TableHead data-column="date" className="sticky left-0 z-20 min-w-28 bg-card">
+                  Date
+                </TableHead>
+                <TableHead data-column="session" className="min-w-64">
+                  Session
+                </TableHead>
+                <TableHead data-column="source">Source</TableHead>
+                <TableHead data-column="load" className="text-right">
+                  Load
+                </TableHead>
+                <TableHead data-column="rpe" className="text-right">
+                  RPE
+                </TableHead>
+                <TableHead data-column="volume">Volume</TableHead>
+                <TableHead data-column="conditions">Conditions</TableHead>
+                <TableHead data-column="notes" className="min-w-72">
+                  Notes
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions.length > 0 ? (
+                sessions.map((session) => (
+                  <TableRow key={session.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="date"
+                      className="sticky left-0 z-10 border-r border-border bg-card font-semibold"
+                    >
+                      {formatLedgerDate(session.sessionDate)}
+                    </TableCell>
+                    <TableCell data-column="session">
+                      <div className="min-w-0">
+                        <p className="max-w-72 truncate font-semibold text-foreground">
+                          {session.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {session.competition ? "Competition" : "Training"} ·{" "}
+                          {session.sourceId ? session.sourceId.slice(0, 8) : "manual entry"}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell data-column="source">
+                      <StatusPill tone={trainingSourceTone(session.sourceType)}>
+                        {formatTrainingSource(session.sourceType)}
+                      </StatusPill>
+                    </TableCell>
+                    <TableCell data-column="load" className="text-right tabular-nums">
+                      {integerFormatter.format(Math.round(session.sessionLoad))}
+                    </TableCell>
+                    <TableCell data-column="rpe" className="text-right tabular-nums">
+                      {session.rpe}
+                    </TableCell>
+                    <TableCell data-column="volume">{formatTrainingVolume(session)}</TableCell>
+                    <TableCell data-column="conditions">
+                      {formatTrainingConditions(session)}
+                    </TableCell>
+                    <TableCell data-column="notes">
+                      <span className="block max-w-80 truncate text-muted-foreground">
+                        {session.notes?.trim() || "No notes"}
+                      </span>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
-        </CardContent>
-      </DataPanel>
-    </section>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                    No training load sessions are logged in this range.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </CardContent>
+    </Card>
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function RangeControls({
+  activeKey,
+  onRangeChange,
+}: {
+  activeKey: TrainingRangeKey;
+  onRangeChange: (rangeKey: TrainingRangeKey) => void;
+}) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/80 p-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-semibold tracking-normal text-foreground">{value}</p>
-    </div>
+    <ToggleGroup
+      type="single"
+      value={activeKey}
+      onValueChange={(value) => {
+        if (value) onRangeChange(value as TrainingRangeKey);
+      }}
+      aria-label="Training range"
+      variant="outline"
+      spacing={1}
+      className="premium-command-surface flex w-full gap-1 overflow-x-auto rounded-lg p-1 sm:w-fit"
+    >
+      {TRAINING_RANGE_OPTIONS.map((option) => (
+        <ToggleGroupItem
+          key={option.key}
+          value={option.key}
+          aria-label={`Show ${option.label} training range`}
+          className="min-h-9 min-w-12 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors motion-reduce:transition-none"
+        >
+          {option.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+function TrainingEmptyState({ conditioningDays }: { conditioningDays: number }) {
+  return (
+    <Alert className="p-4" data-training-empty-state>
+      <LineChart className="size-4" aria-hidden="true" />
+      <AlertTitle>Start logging rounds or practice sessions</AlertTitle>
+      <AlertDescription className="space-y-4">
+        <p>
+          Build your golf training profile to see whether comparable sessions are moving the right
+          way.
+        </p>
+        <dl className="grid gap-3 border-t border-border pt-4 sm:grid-cols-3 sm:divide-x sm:divide-border">
+          <div className="min-w-0 sm:pr-3">
+            <dt className="flex items-center gap-2 font-medium text-foreground">
+              <Sparkles className="size-4" aria-hidden="true" />
+              Golf Form
+            </dt>
+            <dd className="mt-1 leading-5">
+              Indexed golf form. 100 is your baseline, 110+ is very good, and 120+ is peak form.
+            </dd>
+          </div>
+          <div className="min-w-0 sm:px-3">
+            <dt className="flex items-center gap-2 font-medium text-foreground">
+              <ShieldCheck className="size-4" aria-hidden="true" />
+              Training Fitness
+            </dt>
+            <dd className="mt-1 leading-5">
+              {conditioningDays}-day golf workload capacity. It moves slowly so a short quiet spell
+              does not look like your training base disappeared.
+            </dd>
+          </div>
+          <div className="min-w-0 sm:pl-3">
+            <dt className="flex items-center gap-2 font-medium text-foreground">
+              <BarChart3 className="size-4" aria-hidden="true" />
+              Recent Load
+            </dt>
+            <dd className="mt-1 leading-5">
+              7-day golf workload. It moves quickly after hard practice, walking rounds or speed
+              work.
+            </dd>
+          </div>
+        </dl>
+        <Button asChild>
+          <Link href="#log-load">Log first session</Link>
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -1206,22 +803,7 @@ function buildWeeklyTrainingScore(data: TrainingOverTimeData) {
   const recoveryGrade = gradeFromScore(recoveryScoreValue(latest));
   const practiceQualityGrade = gradeFromScore(practiceQualityScoreValue(latest, formChange));
   const progressGrade = gradeFromScore(progressScoreValue(formChange));
-  const tone: "green" | "sky" | "amber" | "slate" =
-    score >= 80 ? "green" : score >= 68 ? "sky" : score >= 55 ? "amber" : "slate";
-  const positiveLines = buildWeeklyPositiveLines({
-    sessions,
-    load,
-    formChange,
-    latest,
-    practiceQualityGrade,
-    recoveryGrade,
-  });
-  const cautionLines = buildWeeklyCautionLines({
-    sessions,
-    load,
-    consistencyGrade,
-    latest,
-  });
+  const tone: Tone = score >= 80 ? "green" : score >= 68 ? "sky" : score >= 55 ? "amber" : "slate";
 
   return {
     sessions,
@@ -1234,8 +816,20 @@ function buildWeeklyTrainingScore(data: TrainingOverTimeData) {
     practiceQualityGrade,
     progressGrade,
     comparison: comparisonLabel(formChange),
-    positiveLines,
-    cautionLines,
+    positiveLines: buildWeeklyPositiveLines({
+      sessions,
+      load,
+      formChange,
+      latest,
+      practiceQualityGrade,
+      recoveryGrade,
+    }),
+    cautionLines: buildWeeklyCautionLines({
+      sessions,
+      load,
+      consistencyGrade,
+      latest,
+    }),
   };
 }
 
@@ -1409,19 +1003,14 @@ function buildTrainingStreak(data: TrainingOverTimeData) {
     },
     { count: 0, done: false },
   ).count;
-  const last30Start = addDays(data.today, -29);
-  const bestStreak = longestDateStreak(activeDates);
-  const recentActiveDates = activeDates.filter((date) => date >= last30Start);
-  const activeDaysLast28 = recentActiveDates.length;
-  const consistency = Math.min(100, Math.round((activeDaysLast28 / 12) * 100));
-  const tone: "green" | "sky" | "amber" | "slate" =
-    consistency >= 85 ? "green" : consistency >= 60 ? "sky" : consistency >= 35 ? "amber" : "slate";
+  const recentStart = addDays(data.today, -29);
+  const recentActiveDates = activeDates.filter((date) => date >= recentStart);
+  const consistency = Math.min(100, Math.round((recentActiveDates.length / 12) * 100));
 
   return {
     currentStreak,
-    bestStreak,
+    bestStreak: longestDateStreak(activeDates),
     consistency,
-    tone,
   };
 }
 
@@ -1446,11 +1035,7 @@ function buildWeeklyPositiveLines({
     lines.push("Recovery managed.");
   }
 
-  if (
-    practiceQualityGrade === "A" ||
-    practiceQualityGrade === "A-" ||
-    practiceQualityGrade === "B+"
-  ) {
+  if (["A", "A-", "B+"].includes(practiceQualityGrade)) {
     lines.push("Practice quality high.");
   }
 
@@ -1520,22 +1105,10 @@ function weeklyScoreValue({
 }
 
 function consistencyScoreValue(sessions: number) {
-  if (sessions >= 4) {
-    return 92;
-  }
-
-  if (sessions === 3) {
-    return 84;
-  }
-
-  if (sessions === 2) {
-    return 76;
-  }
-
-  if (sessions === 1) {
-    return 62;
-  }
-
+  if (sessions >= 4) return 92;
+  if (sessions === 3) return 84;
+  if (sessions === 2) return 76;
+  if (sessions === 1) return 62;
   return 45;
 }
 
@@ -1545,19 +1118,9 @@ function recoveryScoreValue(latest: TrainingOverTimeData["latest"]) {
   }
 
   const ratio = latest.fatigue / latest.fitness;
-
-  if (ratio <= 0.9) {
-    return 90;
-  }
-
-  if (ratio <= 1.2) {
-    return 80;
-  }
-
-  if (ratio <= 1.55) {
-    return 68;
-  }
-
+  if (ratio <= 0.9) return 90;
+  if (ratio <= 1.2) return 80;
+  if (ratio <= 1.55) return 68;
   return 52;
 }
 
@@ -1567,386 +1130,33 @@ function practiceQualityScoreValue(latest: TrainingOverTimeData["latest"], formC
 }
 
 function progressScoreValue(formChange: number) {
-  if (formChange >= 4) {
-    return 92;
-  }
-
-  if (formChange >= 2) {
-    return 84;
-  }
-
-  if (formChange >= 0) {
-    return 76;
-  }
-
-  if (formChange >= -2) {
-    return 64;
-  }
-
+  if (formChange >= 4) return 92;
+  if (formChange >= 2) return 84;
+  if (formChange >= 0) return 76;
+  if (formChange >= -2) return 64;
   return 50;
 }
 
 function comparisonLabel(formChange: number) {
-  if (formChange >= 2) {
-    return "Better";
-  }
-
-  if (formChange <= -2) {
-    return "Lower";
-  }
-
+  if (formChange >= 2) return "Better";
+  if (formChange <= -2) return "Lower";
   return "Steady";
 }
 
 function gradeFromScore(score: number) {
-  if (score >= 92) {
-    return "A";
-  }
-
-  if (score >= 84) {
-    return "A-";
-  }
-
-  if (score >= 76) {
-    return "B+";
-  }
-
-  if (score >= 68) {
-    return "B";
-  }
-
-  if (score >= 55) {
-    return "C";
-  }
-
+  if (score >= 92) return "A";
+  if (score >= 84) return "A-";
+  if (score >= 76) return "B+";
+  if (score >= 68) return "B";
+  if (score >= 55) return "C";
   return "D";
 }
 
-function gradeTone(grade: string) {
-  if (grade === "A" || grade === "A-" || grade === "B+") {
-    return "green";
-  }
-
-  if (grade === "B") {
-    return "sky";
-  }
-
-  if (grade === "C") {
-    return "amber";
-  }
-
-  return "red";
-}
-
-function reportGradeClass(tone: ReturnType<typeof gradeTone>) {
-  switch (tone) {
-    case "green":
-      return "border-emerald-200 bg-emerald-50/80";
-    case "sky":
-      return "border-sky-200 bg-sky-50/80";
-    case "amber":
-      return "border-amber-200 bg-amber-50/80";
-    case "red":
-      return "border-red-200 bg-red-50/80";
-  }
-}
-
-function reportGradeDotClass(tone: ReturnType<typeof gradeTone>) {
-  switch (tone) {
-    case "green":
-      return "bg-emerald-500";
-    case "sky":
-      return "bg-sky-500";
-    case "amber":
-      return "bg-amber-500";
-    case "red":
-      return "bg-red-500";
-  }
-}
-
-function formatLedgerDate(dateKey: string) {
-  return chartDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
-}
-
-function formatTrainingSource(sourceType: TrainingSessionListItem["sourceType"]) {
-  switch (sourceType) {
-    case "launch_monitor":
-      return "Launch monitor";
-    case "imported":
-      return "Imported";
-    case "practice":
-      return "Practice";
-    case "round":
-      return "Round";
-    case "manual":
-      return "Manual";
-  }
-}
-
-function trainingSourceTone(sourceType: TrainingSessionListItem["sourceType"]) {
-  switch (sourceType) {
-    case "round":
-      return "green";
-    case "manual":
-      return "amber";
-    default:
-      return "sky";
-  }
-}
-
-function formatTrainingVolume(session: TrainingSessionListItem) {
-  if (session.holesPlayed) {
-    return `${integerFormatter.format(session.holesPlayed)} holes`;
-  }
-
-  if (session.totalSwings) {
-    return `${integerFormatter.format(session.totalSwings)} swings`;
-  }
-
-  if (session.durationMinutes) {
-    return `${integerFormatter.format(session.durationMinutes)} min`;
-  }
-
-  return "Manual";
-}
-
-function formatTrainingConditions(session: TrainingSessionListItem) {
-  const conditions = [
-    session.walked ? "Walked" : session.usedCart ? "Cart" : null,
-    session.fullSwings ? `${integerFormatter.format(session.fullSwings)} full` : null,
-    session.shortGameSwings ? `${integerFormatter.format(session.shortGameSwings)} short` : null,
-    session.puttingSwings ? `${integerFormatter.format(session.puttingSwings)} putts` : null,
-    session.mentalPressure ? `Pressure ${session.mentalPressure}` : null,
-    session.physicalDemand ? `Demand ${session.physicalDemand}` : null,
-  ].filter(Boolean);
-
-  return conditions.length > 0 ? conditions.join(" / ") : "Not recorded";
-}
-
-function buildTrainingStatusChartSummary(series: FitnessFreshnessPoint[]) {
-  const latest = series.at(-1);
-
-  if (!latest) {
-    return "No Training Status chart data is available yet.";
-  }
-
-  const comparison = series[Math.max(0, series.length - 8)];
-  const formChange = latest.form - comparison.form;
-  const latestQuality = latestSessionQualityPoint(series);
-  const qualityCopy = latestQuality
-    ? ` Latest scored session quality is ${formatMetric(latestQuality.sessionQuality)}/100 on ${formatChartDate(
-        latestQuality.date,
-      )}.`
-    : " No scored session quality is visible in this range.";
-
-  return `Latest ${formatChartDate(latest.date)}: Golf Form ${formatMetric(latest.form)}, Training Fitness ${formatMetric(latest.fitness)}, Recent Load ${formatMetric(latest.fatigue)}. Golf Form is ${formatSigned(
-    formChange,
-  )} versus the nearest 7-day comparison point.${qualityCopy}`;
-}
-
-function buildDailyLoadChartSummary(series: FitnessFreshnessPoint[]) {
-  if (series.length === 0) {
-    return "No Daily swing load chart data is available yet.";
-  }
-
-  const activeDays = series.filter((point) => point.load > 0);
-  const totalLoad = series.reduce((total, point) => total + point.load, 0);
-  const peak = series.reduce<FitnessFreshnessPoint | null>(
-    (highest, point) => (!highest || point.load > highest.load ? point : highest),
-    null,
-  );
-
-  if (!peak || activeDays.length === 0) {
-    return `This range has no logged swing load across ${series.length} chart day${series.length === 1 ? "" : "s"}.`;
-  }
-
-  return `${activeDays.length} active day${activeDays.length === 1 ? "" : "s"} in this chart, ${formatMetric(
-    totalLoad,
-  )} total load. The highest day is ${formatChartDate(peak.date)} at ${formatMetric(
-    peak.load,
-  )} load, marked ${loadBand(peak.load).toLowerCase()}.`;
-}
-
-function buildTrainingStatusChartRows(series: FitnessFreshnessPoint[]): ChartFallbackRow[] {
-  return series.slice(-10).map((point) => ({
-    date: formatChartDate(point.date),
-    form: formatMetric(point.form),
-    sessionQuality: formatOptionalMetric(point.sessionQuality),
-    fitness: formatMetric(point.fitness),
-    fatigue: formatMetric(point.fatigue),
-  }));
-}
-
-function latestSessionQualityPoint(series: FitnessFreshnessPoint[]) {
-  return [...series].reverse().find(
-    (
-      point,
-    ): point is FitnessFreshnessPoint & {
-      sessionQuality: number;
-    } => typeof point.sessionQuality === "number" && Number.isFinite(point.sessionQuality),
-  );
-}
-
-function buildDailyLoadChartRows(series: FitnessFreshnessPoint[]): ChartFallbackRow[] {
-  return series.slice(-10).map((point) => ({
-    date: formatChartDate(point.date),
-    load: formatMetric(point.load),
-    band: loadBand(point.load),
-  }));
-}
-
-function loadBand(load: number) {
-  if (load >= 500) {
-    return "Very heavy";
-  }
-
-  if (load >= 300) {
-    return "Heavy";
-  }
-
-  if (load > 0) {
-    return "Normal";
-  }
-
-  return "No load";
-}
-
-function formatChartDate(dateKey: string) {
-  return chartDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
-}
-
-function recentLoadLabel(value: number) {
-  if (value >= 120) {
-    return "Heavy week";
-  }
-
-  if (value >= 70) {
-    return "Above normal";
-  }
-
-  return "Normal week";
-}
-
-function iosTrainingTone(
-  tone: TrainingOverTimeData["status"]["tone"],
-): "positive" | "attention" | "info" | "neutral" {
-  switch (tone) {
-    case "green":
-      return "positive";
-    case "amber":
-      return "attention";
-    case "sky":
-      return "info";
-    case "slate":
-      return "neutral";
-  }
-}
-
-function mobileTrainingSessionHref(session: TrainingSessionListItem) {
-  if (session.sourceType === "round" && session.sourceId) {
-    return `/rounds/${session.sourceId}`;
-  }
-
-  if (session.sourceType === "launch_monitor" || session.sourceType === "imported") {
-    return "/today";
-  }
-
-  return undefined;
-}
-
-function formatMetric(value: number) {
-  return integerFormatter.format(Math.round(value));
-}
-
-function formatOptionalMetric(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
-    return "Not scored";
-  }
-
-  return formatMetric(value);
-}
-
-function formatSigned(value: number) {
-  const rounded = Math.round(value);
-  return `${rounded > 0 ? "+" : ""}${integerFormatter.format(rounded)}`;
-}
-
-function longestDateStreak(dates: string[]) {
-  if (dates.length === 0) {
-    return 0;
-  }
-
-  let longest = 1;
-  let current = 1;
-
-  for (let index = 1; index < dates.length; index += 1) {
-    const previous = dates[index - 1]!;
-    const currentDate = dates[index]!;
-
-    if (dateDiffDays(previous, currentDate) === 1) {
-      current += 1;
-    } else {
-      current = 1;
-    }
-
-    longest = Math.max(longest, current);
-  }
-
-  return longest;
-}
-
-function dateDiffDays(a: string, b: string) {
-  const first = new Date(`${a}T00:00:00.000Z`).getTime();
-  const second = new Date(`${b}T00:00:00.000Z`).getTime();
-
-  return Math.round((second - first) / 86_400_000);
-}
-
-function weekdayLabel(dateKey: string) {
-  return weekdayFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
-}
-
-function addDays(dateKey: string, days: number) {
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function overlayToneClass(tone: TrainingEfficiencyCard["tone"]) {
-  switch (tone) {
-    case "green":
-      return "border-emerald-200 bg-emerald-50 text-emerald-950";
-    case "amber":
-      return "border-amber-200 bg-amber-50 text-amber-950";
-    case "sky":
-      return "border-sky-200 bg-sky-50 text-sky-950";
-    default:
-      return "border-slate-200 bg-white/80 text-foreground";
-  }
-}
-
-function recoveryToneClass(tone: "green" | "amber" | "sky" | "slate") {
-  switch (tone) {
-    case "green":
-      return "border-emerald-200 bg-emerald-50 text-emerald-950";
-    case "amber":
-      return "border-amber-200 bg-amber-50 text-amber-950";
-    case "sky":
-      return "border-sky-200 bg-sky-50 text-sky-950";
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-950";
-  }
-}
-
-function recoveryRowClass(tone: "green" | "amber" | "red") {
-  switch (tone) {
-    case "green":
-      return "border-emerald-200 bg-emerald-50/80";
-    case "amber":
-      return "border-amber-200 bg-amber-50/80";
-    case "red":
-      return "border-red-200 bg-red-50/80";
-  }
+function gradeTone(grade: string): Tone {
+  if (grade === "A" || grade === "A-" || grade === "B+") return "green";
+  if (grade === "B") return "sky";
+  if (grade === "C") return "amber";
+  return "pink";
 }
 
 function buildTrainingRatio(latest: TrainingOverTimeData["latest"]) {
@@ -2012,19 +1222,125 @@ function buildTrainingRatio(latest: TrainingOverTimeData["latest"]) {
   };
 }
 
-function ratioToneClass(tone: "green" | "amber" | "red" | "sky" | "slate") {
+function statusSurfaceClass(tone: Tone | "red") {
   switch (tone) {
     case "green":
-      return "border-emerald-200 bg-emerald-50 text-emerald-950";
-    case "amber":
-      return "border-amber-200 bg-amber-50 text-amber-950";
-    case "red":
-      return "border-red-200 bg-red-50 text-red-950";
+      return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
     case "sky":
-      return "border-sky-200 bg-sky-50 text-sky-950";
-    default:
-      return "border-slate-200 bg-slate-50 text-slate-950";
+      return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
+    case "amber":
+      return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
+    case "pink":
+    case "red":
+      return "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive";
+    case "slate":
+      return "border-border bg-muted/50 text-foreground";
   }
+}
+
+function statusIconClass(tone: "green" | "amber" | "red") {
+  if (tone === "green") return "text-primary";
+  if (tone === "amber") return "text-[var(--status-warning-foreground)]";
+  return "text-destructive";
+}
+
+function formatLedgerDate(dateKey: string) {
+  return ledgerDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
+}
+
+function formatTrainingSource(sourceType: TrainingSessionListItem["sourceType"]) {
+  switch (sourceType) {
+    case "launch_monitor":
+      return "Launch monitor";
+    case "imported":
+      return "Imported";
+    case "practice":
+      return "Practice";
+    case "round":
+      return "Round";
+    case "manual":
+      return "Manual";
+  }
+}
+
+function trainingSourceTone(sourceType: TrainingSessionListItem["sourceType"]): Tone {
+  switch (sourceType) {
+    case "round":
+      return "green";
+    case "manual":
+      return "amber";
+    default:
+      return "sky";
+  }
+}
+
+function formatTrainingVolume(session: TrainingSessionListItem) {
+  if (session.holesPlayed) return `${integerFormatter.format(session.holesPlayed)} holes`;
+  if (session.totalSwings) return `${integerFormatter.format(session.totalSwings)} swings`;
+  if (session.durationMinutes) return `${integerFormatter.format(session.durationMinutes)} min`;
+  return "Manual";
+}
+
+function formatTrainingConditions(session: TrainingSessionListItem) {
+  const conditions = [
+    session.walked ? "Walked" : session.usedCart ? "Cart" : null,
+    session.fullSwings ? `${integerFormatter.format(session.fullSwings)} full` : null,
+    session.shortGameSwings ? `${integerFormatter.format(session.shortGameSwings)} short` : null,
+    session.puttingSwings ? `${integerFormatter.format(session.puttingSwings)} putts` : null,
+    session.mentalPressure ? `Pressure ${session.mentalPressure}` : null,
+    session.physicalDemand ? `Demand ${session.physicalDemand}` : null,
+  ].filter(Boolean);
+
+  return conditions.length > 0 ? conditions.join(" / ") : "Not recorded";
+}
+
+function formatMetric(value: number) {
+  return integerFormatter.format(Math.round(value));
+}
+
+function formatSigned(value: number) {
+  const rounded = Math.round(value);
+  return `${rounded > 0 ? "+" : ""}${integerFormatter.format(rounded)}`;
+}
+
+function longestDateStreak(dates: string[]) {
+  if (dates.length === 0) {
+    return 0;
+  }
+
+  let longest = 1;
+  let current = 1;
+
+  for (let index = 1; index < dates.length; index += 1) {
+    const previous = dates[index - 1]!;
+    const currentDate = dates[index]!;
+
+    if (dateDiffDays(previous, currentDate) === 1) {
+      current += 1;
+    } else {
+      current = 1;
+    }
+
+    longest = Math.max(longest, current);
+  }
+
+  return longest;
+}
+
+function dateDiffDays(a: string, b: string) {
+  const first = new Date(`${a}T00:00:00.000Z`).getTime();
+  const second = new Date(`${b}T00:00:00.000Z`).getTime();
+  return Math.round((second - first) / 86_400_000);
+}
+
+function weekdayLabel(dateKey: string) {
+  return weekdayFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
+}
+
+function addDays(dateKey: string, days: number) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function balanceTargetLabel(
@@ -2037,17 +1353,6 @@ function balanceTargetLabel(
       return "30-40%";
     case "speed":
       return "10-20%";
-  }
-}
-
-function balanceBarClass(key: TrainingOverTimeData["trainingBalance"]["segments"][number]["key"]) {
-  switch (key) {
-    case "range":
-      return "bg-emerald-500";
-    case "rounds":
-      return "bg-sky-500";
-    case "speed":
-      return "bg-amber-500";
   }
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { KeyboardEventHandler, MouseEvent, RefObject } from "react";
+import { Fragment, type KeyboardEventHandler, type MouseEvent, type RefObject } from "react";
 import {
   ArrowRight,
   Check,
@@ -23,6 +23,8 @@ import {
   CommandInput,
   CommandItem as CommandMenuItem,
   CommandList,
+  CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
@@ -94,23 +96,26 @@ export function DesktopCommandPalette({
             <CommandEmpty>
               No matching command. Try a page, club, course, friend, round or import action.
             </CommandEmpty>
-            {groups.map((group) => (
-              <CommandGroup key={group} heading={group}>
-                {commands.map((command, index) =>
-                  (command.group ?? "Navigation") === group ? (
-                    <CommandLink
-                      key={`${command.type}-${command.title}-${command.href}`}
-                      command={command}
-                      index={index}
-                      active={index === activeIndex}
-                      pinned={pinnedHrefs.has(command.href)}
-                      onSelect={onSelect}
-                      onTogglePinned={onTogglePinned}
-                      onPreview={() => onPreview(index)}
-                    />
-                  ) : null,
-                )}
-              </CommandGroup>
+            {groups.map((group, groupIndex) => (
+              <Fragment key={group}>
+                {groupIndex > 0 ? <CommandSeparator /> : null}
+                <CommandGroup heading={group}>
+                  {commands.map((command, index) =>
+                    (command.group ?? "Navigation") === group ? (
+                      <CommandLink
+                        key={`${command.type}-${command.title}-${command.href}`}
+                        command={command}
+                        index={index}
+                        active={index === activeIndex}
+                        pinned={pinnedHrefs.has(command.href)}
+                        onSelect={onSelect}
+                        onTogglePinned={onTogglePinned}
+                        onPreview={() => onPreview(index)}
+                      />
+                    ) : null,
+                  )}
+                </CommandGroup>
+              </Fragment>
             ))}
           </CommandList>
           <aside className="hidden min-h-0 border-l border-border bg-muted/25 p-3 md:grid md:content-start md:gap-4">
@@ -144,9 +149,9 @@ export function DesktopCommandPalette({
             <button
               type="button"
               onClick={onOpenShortcuts}
-              className="focus-aaa grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-white/72 px-3 py-2 text-left text-sm font-semibold outline-none hover:border-emerald-300"
+              className="focus-aaa grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/80 px-3 py-2 text-left text-sm font-semibold outline-none hover:border-primary/40 hover:bg-accent/60"
             >
-              <Keyboard className="size-4 text-emerald-700" aria-hidden />
+              <Keyboard className="size-4 text-primary" aria-hidden />
               <span>Keyboard shortcuts</span>
               <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
             </button>
@@ -191,9 +196,9 @@ function CommandLink({
       value={[command.title, command.detail, command.href, command.group ?? ""].join(" ")}
       onSelect={() => onSelect(command)}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-white/72 transition-[border-color,background-color,box-shadow] hover:border-emerald-300 hover:bg-white",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-card/80 transition-[border-color,background-color,box-shadow] hover:border-primary/40 hover:bg-accent/60",
         active
-          ? "border-emerald-400 bg-emerald-50/75 shadow-[0_0_0_1px_rgba(5,150,105,0.22)]"
+          ? "border-primary/50 bg-primary/10 shadow-sm ring-1 ring-primary/20"
           : "border-border",
       )}
       data-command-active={active ? "true" : undefined}
@@ -205,7 +210,7 @@ function CommandLink({
         onMouseEnter={onPreview}
         className="focus-aaa group grid min-h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-l-lg px-3 py-2 text-left outline-none"
       >
-        <span className="grid size-8 place-items-center rounded-md bg-emerald-50 text-emerald-800">
+        <span className="grid size-8 place-items-center rounded-md bg-primary/10 text-primary">
           <Icon className="size-4" aria-hidden />
         </span>
         <span className="min-w-0">
@@ -224,10 +229,10 @@ function CommandLink({
             {command.detail}
           </span>
         </span>
-        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+        <CommandShortcut className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="hidden md:inline">{index + 1}</span>
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-700" />
-        </span>
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+        </CommandShortcut>
       </Link>
       <button
         type="button"
@@ -237,8 +242,8 @@ function CommandLink({
           onTogglePinned(command);
         }}
         className={cn(
-          "focus-aaa grid min-h-14 w-12 place-items-center rounded-r-lg border-l border-border outline-none transition-colors hover:bg-emerald-50",
-          pinned ? "text-emerald-700" : "text-muted-foreground",
+          "focus-aaa grid min-h-14 w-12 place-items-center rounded-r-lg border-l border-border outline-none transition-colors hover:bg-primary/10",
+          pinned ? "text-primary" : "text-muted-foreground",
         )}
         aria-label={pinned ? `Unpin ${command.title}` : `Pin ${command.title}`}
       >
@@ -279,7 +284,7 @@ function QuickLinkSection({
                 event.preventDefault();
                 onNavigate(link.href);
               }}
-              className="focus-aaa grid gap-0.5 rounded-lg border border-border bg-white/70 px-3 py-2 outline-none hover:border-emerald-300 hover:bg-white"
+              className="focus-aaa grid gap-0.5 rounded-lg border border-border bg-card/75 px-3 py-2 outline-none hover:border-primary/40 hover:bg-accent/60"
             >
               <span className="truncate text-sm font-semibold">{link.title}</span>
               <span className="truncate text-xs text-muted-foreground">{link.detail}</span>

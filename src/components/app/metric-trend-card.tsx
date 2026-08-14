@@ -1,9 +1,26 @@
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+"use client";
 
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { Line, LineChart, ReferenceLine } from "recharts";
+
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 
 export type MetricTrendPoint = { label: string; value: number };
+
+const chartConfig = {
+  value: {
+    label: "Measured value",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig;
 
 export function MetricTrendCard({
   label,
@@ -25,10 +42,15 @@ export function MetricTrendCard({
   className?: string;
 }) {
   const Icon = direction === "up" ? ArrowUpRight : direction === "down" ? ArrowDownRight : Minus;
-  const chart = buildSparkline(points, threshold);
 
   return (
-    <Card className={cn("min-w-0 shadow-xs", className)} data-metric-trend-card>
+    <Card
+      className={cn(
+        "min-w-0 bg-gradient-to-br from-card via-card to-primary/[0.035] shadow-sm ring-border",
+        className,
+      )}
+      data-metric-trend-card
+    >
       <CardContent className="grid min-h-36 gap-3 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -38,41 +60,51 @@ export function MetricTrendCard({
             <p className="mt-1 truncate text-2xl font-bold tracking-tight">{value}</p>
           </div>
           {delta ? (
-            <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold">
+            <Badge
+              variant={direction === "neutral" ? "outline" : "secondary"}
+              className="shrink-0 gap-1 shadow-xs"
+              data-trend-direction={direction}
+            >
               <Icon className="size-3.5" aria-hidden />
               {delta}
-            </span>
+            </Badge>
           ) : null}
         </div>
-        {chart ? (
-          <svg
-            viewBox="0 0 120 34"
-            role="img"
+        {points.length > 1 ? (
+          <ChartContainer
+            config={chartConfig}
             aria-label={`${label} trend from ${points[0]?.label} to ${points.at(-1)?.label}`}
-            className="h-9 w-full overflow-visible"
-            preserveAspectRatio="none"
+            className="h-12 w-full min-w-0 aspect-auto"
+            initialDimension={{ width: 320, height: 48 }}
           >
-            {chart.thresholdY !== null ? (
-              <line
-                x1="0"
-                x2="120"
-                y1={chart.thresholdY}
-                y2={chart.thresholdY}
-                className="stroke-muted-foreground/35"
-                strokeDasharray="3 3"
-                vectorEffect="non-scaling-stroke"
+            <LineChart
+              data={points}
+              accessibilityLayer
+              margin={{ top: 5, right: 3, bottom: 5, left: 3 }}
+            >
+              {typeof threshold === "number" ? (
+                <ReferenceLine
+                  y={threshold}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.45}
+                  ifOverflow="extendDomain"
+                />
+              ) : null}
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent labelKey="label" indicator="line" />}
               />
-            ) : null}
-            <polyline
-              points={chart.points}
-              fill="none"
-              className="stroke-primary"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          </svg>
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="var(--color-value)"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 4, fill: "var(--color-value)" }}
+              />
+            </LineChart>
+          </ChartContainer>
         ) : (
           <p className="text-xs text-muted-foreground">Trend appears after two measured periods.</p>
         )}
@@ -80,19 +112,4 @@ export function MetricTrendCard({
       </CardContent>
     </Card>
   );
-}
-
-function buildSparkline(points: MetricTrendPoint[], threshold?: number) {
-  if (points.length < 2) return null;
-  const values = points.map((point) => point.value);
-  if (typeof threshold === "number") values.push(threshold);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const x = (index: number) => (index / (points.length - 1)) * 120;
-  const y = (value: number) => 31 - ((value - min) / range) * 28;
-  return {
-    points: points.map((point, index) => `${x(index)},${y(point.value)}`).join(" "),
-    thresholdY: typeof threshold === "number" ? y(threshold) : null,
-  };
 }

@@ -21,21 +21,35 @@ describe("mobile pushed-screen header contract", () => {
     }
   });
 
-  it("keeps legacy desktop back/action rows out of the mobile accessibility tree", () => {
-    expect(source("src/app/(app)/analyse/compare/page.tsx")).toContain(
-      'className="hidden flex-wrap items-center justify-between gap-2 lg:flex"',
+  it("keeps desktop-only compare controls visible while companion traffic falls back", () => {
+    const analyseCompare = source("src/app/(app)/analyse/compare/page.tsx");
+    expect(analyseCompare).toContain(
+      'className="flex flex-wrap items-center justify-between gap-2"',
     );
+    expect(analyseCompare).not.toContain("MobileTopBar");
+    expect(analyseCompare).not.toContain('className="hidden flex-wrap');
+  });
+
+  it("keeps redirected desktop back rows visible without CSS-hidden duplicate trees", () => {
     for (const file of [
       "src/app/(app)/analyse/conditions/page.tsx",
       "src/app/(app)/analyse/workspace/page.tsx",
     ]) {
-      expect(source(file), file).toContain('className="hidden min-h-11 w-fit px-0 lg:inline-flex"');
+      expect(source(file), file).toContain('className="min-h-11 w-fit px-0"');
+      expect(source(file), file).not.toContain("lg:hidden");
+      expect(source(file), file).not.toContain("hidden lg:");
     }
-    expect(source("src/app/(app)/courses/new/page.tsx")).toContain(
-      'className="hidden items-center justify-between gap-4 lg:flex"',
-    );
-    expect(source("src/app/(app)/rounds/[sessionId]/page.tsx")).toContain(
-      'className="hidden items-center justify-between gap-4 lg:flex"',
-    );
+
+    const newCourse = source("src/app/(app)/courses/new/page.tsx");
+    expect(newCourse).toContain('className="flex items-center justify-between gap-4"');
+    expect(newCourse).not.toContain("lg:hidden");
+    expect(newCourse).not.toContain("hidden lg:");
+
+    const roundDetail = source("src/app/(app)/rounds/[sessionId]/page.tsx");
+    expect(roundDetail).toContain("getRequestAppSurface()");
+    expect(roundDetail).toContain('surface === "companion" ? (');
+    expect(roundDetail).toContain('surface === "workbench"');
+    expect(roundDetail).toContain('className="flex items-center justify-between gap-4"');
+    expect(roundDetail).not.toContain('className="hidden items-center justify-between gap-4');
   });
 });

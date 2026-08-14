@@ -1,11 +1,13 @@
-import { GolfRouteLoading } from "@/components/golf-loading";
+import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
+import { PageShell } from "@/components/premium";
 
 export default function ShotsLoading() {
   return (
-    <GolfRouteLoading
-      title="Loading shot explorer"
-      subtitle="Preparing filters, saved views, master-detail rows, and the latest shot evidence."
-      variant="shots"
-    />
+    <PageShell>
+      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
+        <AppLoadingSkeleton variant="answer" />
+        <AppLoadingSkeleton variant="table" rows={7} />
+      </div>
+    </PageShell>
   );
 }

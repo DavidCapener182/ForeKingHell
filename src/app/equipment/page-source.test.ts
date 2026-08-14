@@ -3,8 +3,28 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/equipment/page.tsx"), "utf8");
+const confirmSource = readFileSync(
+  join(process.cwd(), "src/components/app/confirm-submit-button.tsx"),
+  "utf8",
+);
 
 describe("equipment desktop tables", () => {
+  it("ships only the desktop equipment graph on this desktop-only route", () => {
+    expect(source).toContain('<DesktopWorkbenchLayout scope="equipment">');
+    for (const obsolete of [
+      "getRequestAppSurface",
+      "MobileAppShell",
+      "MobileBentoSummary",
+      "MobileDataCard",
+      "MobileDataList",
+      "IOSDisclosureGroup",
+      "mobile={",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
+  });
+
   it("keeps equipment history and retired clubs in desktop workbench tables", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('data-workbench-scope="equipment-history"');
@@ -34,37 +54,37 @@ describe("equipment desktop tables", () => {
     expect(source).toContain("md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4");
     expect(source).not.toContain("md:grid-cols-2 xl:grid-cols-4");
   });
-});
 
-describe("equipment mobile information architecture", () => {
-  it("leads with bag fit and a scannable owned-club list", () => {
-    const mobileSource = source.slice(
-      source.indexOf("function MobileEquipmentExperience"),
-      source.indexOf("function EquipmentMobileDisclosure"),
+  it("uses theme-aware ordinary controls and table surfaces", () => {
+    expect(source).toContain('className="min-h-11 rounded-xl bg-card"');
+    expect(source).toContain('className="min-h-11 w-full bg-card"');
+    expect(source).toContain("[&_th]:bg-card");
+    expect(source).not.toMatch(/\b(?:bg-white|bg-slate-\d+|text-slate-\d+|border-slate-\d+)\b/);
+    expect(source).not.toMatch(
+      /(?:bg|text|border|hover:bg|hover:border)-(?:emerald|sky|amber)-\d+|bg-\[#[0-9A-Fa-f]+\]/,
     );
-
-    expect(mobileSource).toContain('label="Bag fit"');
-    expect(mobileSource).toContain('label="Weak window"');
-    expect(mobileSource).toContain('title="Owned setup"');
-    expect(mobileSource).toContain("profiles.map((profile)");
-    expect(mobileSource).toContain("href={`/bag/${profile.club.id}`}");
-    expect(mobileSource).toContain('href="#equipment-mobile-actions"');
-    expect(source).toContain('className="hidden lg:grid"');
   });
 
-  it("keeps secondary setup work in a single-level native disclosure group", () => {
-    expect(source).toContain(
-      '<IOSDisclosureGroup\n            label="Equipment detail and actions"',
-    );
-    expect(source).toContain('value: "score"');
-    expect(source).toContain('value: "timeline"');
-    expect(source).toContain('value: "impact"');
-    expect(source).toContain('value: "builder"');
-    expect(source).toContain('value: "forms"');
-    expect(source).toContain('value: "history"');
+  it("preserves all equipment mutations after removing the obsolete companion tree", () => {
     expect(source).toContain("captureEquipmentSnapshotAction");
     expect(source).toContain("createBallModelAction");
     expect(source).toContain("saveEquipmentHistoryAction");
     expect(source).toContain("<RetireClubForm");
+  });
+
+  it("confirms the destructive retire-club action through the shared AlertDialog flow", () => {
+    const retireSource = source.slice(
+      source.indexOf("function RetireClubForm"),
+      source.indexOf("async function getEquipmentData"),
+    );
+
+    expect(retireSource).toContain("<form action={retireClubAction}>");
+    expect(retireSource).toContain("<ConfirmSubmitButton");
+    expect(retireSource).toContain('confirmTitle="Retire club"');
+    expect(retireSource).toContain('confirmActionLabel="Retire club"');
+    expect(retireSource).toContain("shot and equipment history remain available");
+    expect(retireSource).not.toContain("<Button");
+    expect(confirmSource).toContain("<AlertDialog open={open}");
+    expect(confirmSource).toContain("requestSubmit(buttonRef.current)");
   });
 });

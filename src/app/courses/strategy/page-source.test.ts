@@ -19,7 +19,7 @@ const mobileHoleSource = readFileSync(
   "utf8",
 );
 
-describe("course strategy mode-aware mobile hierarchy", () => {
+describe("course strategy surface split", () => {
   it("loads the companion before the dashboard-backed workbench", () => {
     expect(routeSource).toContain('surface === "companion"');
     expect(routeSource).toContain('await import("./course-strategy-companion-page")');
@@ -29,77 +29,76 @@ describe("course strategy mode-aware mobile hierarchy", () => {
     expect(companionSource).toContain("courseTwinAvailable={courseTwinAvailable}");
     expect(companionSource).toContain("listAvailableCourseTwins(userId)");
     expect(companionSource).toContain("PlaySetupDrawer");
+    expect(companionSource).toContain("<StrategySummaryItem");
+    expect(companionSource).toContain("<Item");
+    expect(companionSource).not.toContain("IOSGroupedList");
     expect(companionSource).not.toContain("getDashboardData");
   });
 
   it("uses carousel semantics, compact progress and explicit hole controls", () => {
-    expect(mobileHoleSource).toContain('aria-roledescription="carousel"');
-    expect(mobileHoleSource).toContain('aria-roledescription="slide"');
+    expect(mobileHoleSource).toContain("<Carousel");
+    expect(mobileHoleSource).toContain("<CarouselContent");
+    expect(mobileHoleSource).toContain("<CarouselItem");
+    expect(mobileHoleSource).toContain("<CarouselPrevious");
+    expect(mobileHoleSource).toContain("<CarouselNext");
+    expect(mobileHoleSource).toContain("valueAsBadge");
     expect(mobileHoleSource).toContain("<Progress");
     expect(mobileHoleSource).toContain("Hole {strategy.holeNumber} of {strategies.length}");
     expect(mobileHoleSource).toContain('aria-label="Previous hole"');
     expect(mobileHoleSource).toContain('aria-label="Next hole"');
   });
 
-  it("renders every pre-round planning surface only in pre mode", () => {
-    expect(source).toContain(
-      "<MobilePreRoundStrategy data={data} strategyData={strategyData} accountId={userId} />",
-    );
-    expect(source).toContain('{mode === "pre" ? (\n        <section');
-    expect(source).toContain('className="hidden gap-4 rounded-2xl border bg-card p-4 lg:grid"');
-    expect(source.match(/<MobilePreRoundStrategy/g)).toHaveLength(1);
-    expect(source).toContain("data-mobile-pre-round-strategy");
-    expect(source).toContain('mode === "post" ? "post" : "pre"');
+  it("keeps companion and iOS rendering out of the workbench bundle", () => {
+    for (const legacyMobileSymbol of [
+      "MobilePreRoundStrategy",
+      "MobilePostRoundStrategy",
+      "MobileHoleStrategy",
+      "IOSDisclosureGroup",
+      "IOSGroupedList",
+      "IOSInlineStatus",
+      "IOSListRow",
+      "IOSSectionHeader",
+      "data-mobile-pre-round-strategy",
+      "data-mobile-post-round-strategy",
+    ]) {
+      expect(source).not.toContain(legacyMobileSymbol);
+    }
+
+    expect(source).not.toContain("@/components/app/ios-mobile");
+    expect(source).not.toContain("@/app/courses/strategy/mobile-hole-strategy");
+    expect(source).toContain("Hole-by-hole plan");
+    expect(source).toContain("Guided post-round review");
   });
 
-  it("puts the answer, warning and Prepare round action before hole disclosure", () => {
-    const mobile = source.slice(
-      source.indexOf("function MobilePreRoundStrategy"),
-      source.indexOf("function MobilePostRoundStrategy"),
-    );
-
-    expect(mobile.indexOf('title="Overall strategy"')).toBeLessThan(
-      mobile.indexOf('title="A plan is not a live caddie"'),
-    );
-    expect(mobile.indexOf("Prepare round")).toBeLessThan(
-      mobile.indexOf('title="Hole-by-hole plan"'),
-    );
-    expect(mobile).toContain("<MobileHoleStrategy");
-    expect(mobile).toContain("strategies={strategies}");
-    expect(mobile).toContain("accountId={accountId}");
+  it("uses the shadcn Textarea for post-round review context", () => {
+    const reviewQuestion =
+      source.match(/function ReviewQuestion[\s\S]*?function RoundResultCard/)?.[0] ?? "";
+    expect(reviewQuestion).toContain("<Textarea");
+    expect(reviewQuestion).not.toContain("<textarea");
   });
 
-  it("keeps secondary course selection and evidence one level deep", () => {
-    const mobile = source.slice(
-      source.indexOf("function MobilePreRoundStrategy"),
-      source.indexOf("function MobilePostRoundStrategy"),
-    );
+  it("renders the hole hazard as a semantic shadcn alert", () => {
+    const hazard =
+      source.match(
+        /<Alert className="border-\[var\(--status-warning-border\)\][\s\S]*?<\/Alert>/,
+      )?.[0] ?? "";
 
-    expect(mobile).toContain('label="Course selection"');
-    expect(mobile).toContain('label="Supporting course evidence"');
-    expect(mobile).toContain('<Select name="courseId"');
-    expect(mobile).toContain('<SelectTrigger className="min-h-11 w-full">');
-    expect(mobile).toContain('className="min-h-11 w-full rounded-xl"');
+    expect(source).toContain("import { Alert, AlertDescription, AlertTitle }");
+    expect(hazard).toContain("<AlertTitle>Hazard check</AlertTitle>");
+    expect(hazard).toContain("var(--status-warning-surface)");
+    expect(hazard).not.toContain("bg-amber-50");
   });
 
-  it("puts the post-round answer and practice action before review controls on phones", () => {
-    const mobile = source.slice(
-      source.indexOf("function MobilePostRoundStrategy"),
-      source.indexOf("function mobileReviewConfidenceTone"),
-    );
-
-    expect(source).toContain(
-      '<MobilePostRoundStrategy postRoundData={postRoundData} saved={params?.saved === "1"} />',
-    );
-    expect(source).toContain('className="hidden gap-4 lg:grid"');
-    expect(mobile.indexOf('title="What the round changed"')).toBeLessThan(
-      mobile.indexOf('title="Practise this next"'),
-    );
-    expect(mobile.indexOf('title="Practise this next"')).toBeLessThan(
-      mobile.indexOf('title: "Add review context"'),
-    );
-    expect(mobile).toContain('label="Post-round review controls and evidence"');
-    expect(mobile).toContain('className="min-h-11 w-full min-w-0');
-    expect(mobile).not.toContain("<details");
+  it("uses one visible shadcn composition for each workbench mode", () => {
+    expect(source).toContain("data-course-strategy-plan");
+    expect(source).toContain("data-course-strategy-post-round");
+    expect(source).toContain('from "@/components/ui/item"');
+    expect(source).toContain("<Item key={strategy.holeNumber}");
+    expect(source).toContain("<AlertTitle>No completed round yet</AlertTitle>");
+    expect(source).toContain("<AlertTitle>Review context saved</AlertTitle>");
+    expect(source).not.toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden gap-4 lg:grid"');
+    expect(source).not.toMatch(/<article\b/);
+    expect(source).not.toContain("rounded-xl border border-dashed p-5");
   });
 });

@@ -7,21 +7,25 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("equipment experiment mobile composition", () => {
-  it("leads with the measured verdict and moves setup and decision forms into sheets", () => {
-    expect(source).toContain("MobileEquipmentExperiment");
-    expect(source).toContain("experimentVerdict(metrics)");
-    expect(source).toContain("experimentKeyMetrics(metrics)");
-    expect(source).toContain("ExperimentSelectionSheet");
-    expect(source).toContain("ExperimentDecisionSheet");
-    expect(source).toContain('title="Choose measured setups"');
-    expect(source).toContain('title="Record equipment decision"');
-    expect(source).toContain("IOSDisclosureGroup");
+describe("equipment experiment desktop workbench", () => {
+  it("excludes the obsolete companion graph from the desktop-only route bundle", () => {
+    expect(source).toContain("data-equipment-experiment-desktop");
+    for (const obsolete of [
+      "MobileEquipmentExperiment",
+      "ExperimentSelectionSheet",
+      "ExperimentDecisionSheet",
+      "IOSDisclosureGroup",
+      "MobileAppShell",
+      "lg:hidden",
+      'className="hidden gap-4 lg:grid"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
   });
 
   it("keeps the desktop experiment workbench and real mutations intact", () => {
     expect(source).toContain("data-equipment-experiment-desktop");
-    expect(source).toContain('className="hidden gap-4 lg:grid"');
+    expect(source).toContain('className="grid gap-4"');
     expect(source).toContain("getCompareData(filters)");
     expect(source).toContain("saveSessionComparisonAction");
     expect(source).toContain('action="/equipment/experiments"');
@@ -29,9 +33,14 @@ describe("equipment experiment mobile composition", () => {
 
   it("uses accessible native controls and honest confidence language", () => {
     expect(source).toContain("min-h-11");
-    expect(source).toContain('role="alert"');
-    expect(source).toContain("metrics[0]?.source");
-    expect(source).toContain("metrics[0]?.caveat");
+    expect(source).toContain(
+      'import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"',
+    );
+    expect(source).toContain("<AlertTitle>Check whether the test is fair</AlertTitle>");
+    expect(source).toContain("<AlertDescription>");
+    expect(source).not.toContain('role="alert"');
+    expect(source).toContain("metric.confidenceLabel");
+    expect(source).toContain("metric.caveat");
     expect(source).not.toContain("min-h-10");
   });
 });

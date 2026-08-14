@@ -1,6 +1,9 @@
 "use client";
 
 import "./globals.css";
+
+import { AppErrorState } from "@/components/app/app-error-state";
+import { Button } from "@/components/ui/button";
 import { BRAND_NAME } from "@/lib/brand";
 
 export default function GlobalError({
@@ -11,23 +14,18 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body>
-        <main id="main-content" className="grid min-h-screen place-items-center px-4 py-10">
-          <section className="premium-card max-w-xl p-6 text-center">
-            <h1 className="text-3xl font-semibold tracking-normal">
-              {BRAND_NAME} hit a fatal error
-            </h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              The app shell could not recover automatically.
-            </p>
-            <button
-              type="button"
-              onClick={() => unstable_retry()}
-              className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-[#111827] px-4 text-sm font-medium text-white"
-            >
-              Try again
-            </button>
-          </section>
+      <body className="bg-background text-foreground">
+        <main id="main-content" className="grid min-h-dvh place-items-center px-4 py-10">
+          <AppErrorState
+            className="w-full max-w-xl shadow-lg"
+            title={`${BRAND_NAME} hit a fatal error`}
+            description="The app shell could not recover automatically."
+            action={
+              <Button type="button" variant="destructive" onClick={unstable_retry}>
+                Try again
+              </Button>
+            }
+          />
         </main>
       </body>
     </html>

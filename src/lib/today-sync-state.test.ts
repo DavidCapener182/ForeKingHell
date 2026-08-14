@@ -28,7 +28,7 @@ describe("Today queued-import priority", () => {
       getTodaySyncOverride([action("import-csv"), action("import-csv", "dead_letter")], true),
     ).toMatchObject({
       status: "Needs attention",
-      href: "/settings#offline-storage",
+      href: "/settings?section=offline#offline-storage",
     });
   });
 });

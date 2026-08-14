@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
-import { ArrowLeft, ExternalLink, FileLock2, Link2, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ExternalLink,
+  FileLock2,
+  Link2,
+  ShieldCheck,
+} from "lucide-react";
 
 import { createCoachReportAction, revokeCoachReportAction } from "@/app/coach/reports/actions";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { getDb } from "@/db/client";
 import { contentExports, shareLinks } from "@/db/schema";
 import { coachReportSectionIds, type CoachReportSectionId } from "@/lib/coach-report";
@@ -137,15 +136,7 @@ export default async function CoachReportsPage({
 
   return (
     <PageShell>
-      <MobileCoachReports
-        error={params.error}
-        includeComparisons={params.include === "comparisons"}
-        links={links}
-        now={now}
-        sharedUrl={sharedUrl}
-      />
-
-      <div className="hidden lg:contents">
+      <div>
         <PageHeader
           eyebrow={<StatusPill tone="sky">Selective sharing</StatusPill>}
           title="Coach reports"
@@ -161,12 +152,10 @@ export default async function CoachReportsPage({
         />
 
         {params.error === "select_sections" ? (
-          <div
-            role="alert"
-            className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive"
-          >
-            Select at least one report section.
-          </div>
+          <Alert variant="destructive">
+            <AlertTriangle className="size-4" aria-hidden />
+            <AlertTitle>Select at least one report section.</AlertTitle>
+          </Alert>
         ) : null}
 
         {sharedUrl ? (
@@ -380,380 +369,6 @@ export default async function CoachReportsPage({
         </section>
       </div>
     </PageShell>
-  );
-}
-
-type CoachReportHistoryItem = {
-  id: string;
-  title: string | null;
-  expiresAt: Date | null;
-  revokedAt: Date | null;
-  exportCreatedAt: Date;
-  renderConfig: unknown;
-};
-
-function MobileCoachReports({
-  error,
-  includeComparisons,
-  links,
-  now,
-  sharedUrl,
-}: {
-  error?: string;
-  includeComparisons: boolean;
-  links: CoachReportHistoryItem[];
-  now: Date;
-  sharedUrl: string | null;
-}) {
-  const recommendedCount = coachReportSectionIds.filter(
-    (section) =>
-      sectionCopy[section].checked || (section === "saved_comparisons" && includeComparisons),
-  ).length;
-
-  return (
-    <MobileAppShell className="gap-4">
-      <MobileTopBar title="Coach report" />
-
-      {error === "select_sections" ? (
-        <div
-          role="alert"
-          className="ios-grouped-list border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive"
-        >
-          Select at least one report section.
-        </div>
-      ) : null}
-
-      {sharedUrl ? <MobileReportReady sharedUrl={sharedUrl} /> : null}
-
-      <form action={createCoachReportAction} className="grid gap-4" data-mobile-report-builder>
-        <section className="grid gap-2" aria-labelledby="mobile-report-template-title">
-          <IOSSectionHeader
-            title={<span id="mobile-report-template-title">1. Template</span>}
-            description="Choose the audience, then control the evidence below."
-          />
-          <IOSGroupedList label="Report template">
-            <label className="ios-grouped-row flex min-h-14 flex-col items-stretch gap-2 px-4 py-2.5">
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-medium">Report type</span>
-                <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  Frozen at the moment you generate it
-                </span>
-              </span>
-              <Select name="template" defaultValue="coach">
-                <SelectTrigger aria-label="Report template" className="min-h-11 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {coachReportTemplates.map((template) => (
-                    <SelectItem key={template.value} value={template.value}>
-                      {template.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </IOSGroupedList>
-        </section>
-
-        <section className="grid gap-2" aria-labelledby="mobile-report-sections-title">
-          <IOSSectionHeader
-            title={<span id="mobile-report-sections-title">2. Sections</span>}
-            description="Recommended evidence starts selected. Remove anything the coach does not need."
-          />
-          <IOSDisclosureGroup
-            label="Choose report sections"
-            items={[
-              {
-                value: "report-sections",
-                title: "Included evidence",
-                summary: `${recommendedCount} defaults`,
-                description: "Profile, goals, bag, sessions and measured trends",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: (
-                  <fieldset>
-                    <legend className="sr-only">Include these report sections</legend>
-                    <IOSGroupedList label="Available report sections" className="rounded-none">
-                      {coachReportSectionIds.map((section) => {
-                        const copy = sectionCopy[section];
-                        return (
-                          <MobileReportSectionOption
-                            key={section}
-                            section={section}
-                            checked={
-                              copy.checked ||
-                              (section === "saved_comparisons" && includeComparisons)
-                            }
-                          />
-                        );
-                      })}
-                    </IOSGroupedList>
-                  </fieldset>
-                ),
-              },
-            ]}
-          />
-        </section>
-
-        <section className="grid gap-2" aria-labelledby="mobile-report-privacy-title">
-          <IOSSectionHeader
-            title={<span id="mobile-report-privacy-title">3. Privacy</span>}
-            description="The link grants access to this snapshot only, never the account."
-          />
-          <IOSDisclosureGroup
-            label="Report privacy controls"
-            items={[
-              {
-                value: "privacy-controls",
-                title: "Privacy controls",
-                summary: "Protected",
-                description: "Exact shots and social data are hidden by default",
-                content: (
-                  <div className="grid gap-3">
-                    <label className="grid gap-1.5 text-sm font-medium">
-                      Optional password
-                      <Input
-                        name="password"
-                        type="password"
-                        minLength={8}
-                        maxLength={128}
-                        autoComplete="new-password"
-                        placeholder="At least 8 characters"
-                        className="min-h-11 rounded-lg bg-background"
-                      />
-                    </label>
-                    <div className="ios-grouped-list overflow-hidden">
-                      <MobilePrivacyToggle
-                        name="disableDownload"
-                        title="Disable download"
-                        detail="Keep the report view-only."
-                      />
-                      <MobilePrivacyToggle
-                        name="hideExactShotData"
-                        title="Hide exact shot data"
-                        detail="Omit raw evidence even if it was selected."
-                        defaultChecked
-                      />
-                      <MobilePrivacyToggle
-                        name="hideSocialInformation"
-                        title="Hide social information"
-                        detail="Exclude friends, groups and feed information."
-                        defaultChecked
-                      />
-                    </div>
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </section>
-
-        <section className="grid gap-2" aria-labelledby="mobile-report-review-title">
-          <IOSSectionHeader
-            title={<span id="mobile-report-review-title">4. Review</span>}
-            description="Create one revocable link for the selected snapshot."
-          />
-          <IOSGroupedList label="Report review">
-            <label className="ios-grouped-row flex min-h-14 items-center gap-3 px-4 py-2.5">
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-medium">Link expires after</span>
-                <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  You can revoke it sooner from history
-                </span>
-              </span>
-              <Select name="expiryDays" defaultValue="14">
-                <SelectTrigger aria-label="Link expiry" className="min-h-11 w-auto">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="14">14 days</SelectItem>
-                  <SelectItem value="30">30 days</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
-            <IOSListRow
-              label="Access"
-              value="Private link"
-              detail="No account role, future data or settings access"
-              icon={ShieldCheck}
-            />
-          </IOSGroupedList>
-          <Button type="submit" className="premium-action min-h-12 w-full rounded-lg">
-            <FileLock2 className="size-4" aria-hidden />
-            Generate private link
-          </Button>
-        </section>
-      </form>
-
-      <MobileReportHistory links={links} now={now} />
-    </MobileAppShell>
-  );
-}
-
-function MobileReportReady({ sharedUrl }: { sharedUrl: string }) {
-  return (
-    <section className="ios-grouped-list border-primary/30 bg-primary/5 p-4" aria-live="polite">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Link2 className="size-5" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold">Report link ready</h2>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            This token is shown once. Save it before leaving the page.
-          </p>
-        </div>
-      </div>
-      <Label htmlFor="mobile-new-report-link" className="sr-only">
-        Private share link
-      </Label>
-      <Input
-        id="mobile-new-report-link"
-        value={sharedUrl}
-        readOnly
-        className="mt-3 min-h-11 rounded-lg bg-background"
-      />
-      <Button asChild className="mt-3 min-h-11 w-full rounded-lg">
-        <Link href={sharedUrl} target="_blank" rel="noreferrer">
-          Open report
-          <ExternalLink className="size-4" aria-hidden />
-        </Link>
-      </Button>
-    </section>
-  );
-}
-
-function MobileReportSectionOption({
-  section,
-  checked,
-}: {
-  section: CoachReportSectionId;
-  checked: boolean;
-}) {
-  const copy = sectionCopy[section];
-  return (
-    <label className="ios-grouped-row flex min-h-14 cursor-pointer items-start gap-3 px-4 py-3">
-      <Checkbox
-        name="sections"
-        value={section}
-        defaultChecked={checked}
-        className="mt-0.5 size-5 shrink-0"
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium">{copy.title}</span>
-        <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
-          {copy.detail}
-        </span>
-      </span>
-    </label>
-  );
-}
-
-function MobilePrivacyToggle({
-  name,
-  title,
-  detail,
-  defaultChecked = false,
-}: {
-  name: string;
-  title: string;
-  detail: string;
-  defaultChecked?: boolean;
-}) {
-  return (
-    <label className="ios-grouped-row flex min-h-14 cursor-pointer items-center gap-3 px-4 py-2.5">
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium">{title}</span>
-        <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
-          {detail}
-        </span>
-      </span>
-      <Switch name={name} defaultChecked={defaultChecked} />
-    </label>
-  );
-}
-
-function MobileReportHistory({ links, now }: { links: CoachReportHistoryItem[]; now: Date }) {
-  const activeLinks = links.filter(
-    (link) => !link.revokedAt && !(link.expiresAt && link.expiresAt <= now),
-  );
-
-  return (
-    <section className="grid gap-2" aria-labelledby="mobile-report-history-title">
-      <IOSSectionHeader
-        title={<span id="mobile-report-history-title">Report history</span>}
-        description="Old tokens cannot be shown again, but access can be revoked here."
-        action={
-          <IOSInlineStatus
-            label={`${activeLinks.length} active`}
-            tone={activeLinks.length > 0 ? "positive" : "neutral"}
-          />
-        }
-      />
-      <IOSDisclosureGroup
-        label="Report history"
-        items={[
-          {
-            value: "report-history",
-            title: "Previous reports",
-            summary: links.length,
-            description: links.length > 0 ? "Status, access and revocation" : "No reports yet",
-            contentClassName: "px-0 pb-0 pt-0",
-            content:
-              links.length > 0 ? (
-                <div className="ios-grouped-list overflow-hidden rounded-none">
-                  {links.map((link) => (
-                    <MobileReportHistoryRow key={link.id} link={link} now={now} />
-                  ))}
-                </div>
-              ) : (
-                <p className="p-4 text-sm text-muted-foreground">
-                  Generate your first selective report above.
-                </p>
-              ),
-          },
-        ]}
-      />
-    </section>
-  );
-}
-
-function MobileReportHistoryRow({ link, now }: { link: CoachReportHistoryItem; now: Date }) {
-  const access = parseCoachReportAccessConfig(link.renderConfig);
-  const expired = Boolean(link.expiresAt && link.expiresAt <= now);
-  const status = link.revokedAt ? "Revoked" : expired ? "Expired" : "Active";
-
-  return (
-    <article className="ios-grouped-row grid gap-3 px-4 py-3">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[15px] font-medium">{link.title ?? "Coach report"}</p>
-          <p className="mt-0.5 text-[13px] leading-[1.15rem] text-muted-foreground">
-            {formatDate(link.exportCreatedAt)}
-            {link.expiresAt ? ` · expires ${formatDate(link.expiresAt)}` : ""}
-          </p>
-          <p className="mt-1 text-[13px] leading-[1.15rem] text-muted-foreground">
-            {access.passwordHash ? "Password protected" : "Token protected"} ·{" "}
-            {access.accessHistory.length} {access.accessHistory.length === 1 ? "view" : "views"}
-          </p>
-        </div>
-        <IOSInlineStatus label={status} tone={status === "Active" ? "positive" : "neutral"} />
-      </div>
-      {!link.revokedAt && !expired ? (
-        <form action={revokeCoachReportAction}>
-          <input type="hidden" name="shareLinkId" value={link.id} />
-          <ConfirmSubmitButton
-            variant="outline"
-            className="min-h-11 w-full rounded-lg"
-            confirmTitle="Revoke this report link?"
-            confirmMessage="Anyone using this private link will immediately lose access to the frozen report."
-            confirmActionLabel="Revoke link"
-          >
-            Revoke link
-          </ConfirmSubmitButton>
-        </form>
-      ) : null}
-    </article>
   );
 }
 

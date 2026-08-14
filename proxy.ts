@@ -149,7 +149,10 @@ function protectedAppResponse(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  const companionRuntimePath = companionRuntimePathFor(request.nextUrl.pathname);
+  const companionRuntimePath = companionRuntimePathFor(
+    request.nextUrl.pathname,
+    request.nextUrl.searchParams.get("source"),
+  );
   if (companionRuntimePath) {
     const runtimeUrl = request.nextUrl.clone();
     runtimeUrl.pathname = companionRuntimePath;
@@ -175,8 +178,11 @@ function protectedAppResponse(request: NextRequest) {
   return NextResponse.next({ request });
 }
 
-function companionRuntimePathFor(pathname: string) {
+function companionRuntimePathFor(pathname: string, importSource: string | null) {
   if (pathname === "/import/result") return "/companion-runtime/import/result";
+  if (pathname === "/import" && importSource === "csv") {
+    return "/companion-runtime/import/csv";
+  }
   if (pathname === "/import") return "/companion-runtime/import";
   if (pathname === "/rapsodo") return "/companion-runtime/rapsodo";
   return null;

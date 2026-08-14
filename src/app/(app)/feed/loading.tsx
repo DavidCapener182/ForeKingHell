@@ -1,5 +1,6 @@
 import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
 import { PageShell } from "@/components/premium";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function FeedLoading() {
@@ -20,17 +21,17 @@ export default function FeedLoading() {
           data-feed-timeline-skeleton
         >
           {Array.from({ length: 4 }, (_, index) => (
-            <article key={index} className="relative rounded-xl border bg-card p-4">
+            <Card key={index} role="article" className="relative py-0">
               <Skeleton className="absolute -left-9 top-5 size-6 rounded-full" />
-              <div className="flex gap-3">
+              <CardContent className="flex gap-3 p-4">
                 <Skeleton className="size-10 shrink-0 rounded-full" />
                 <div className="grid flex-1 gap-2">
                   <Skeleton className="h-4 w-36" />
                   <Skeleton className="h-6 w-2/3" />
                   <Skeleton className="h-20 w-full rounded-lg" />
                 </div>
-              </div>
-            </article>
+              </CardContent>
+            </Card>
           ))}
         </section>
       </div>

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { AlertTriangle, ImageIcon, Loader2, ShieldCheck } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -98,7 +99,7 @@ export function ScorecardProofUploader({
   }
 
   return (
-    <div className="grid gap-3 rounded-lg border bg-[#F5F6F4] p-3">
+    <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3">
       <input type="hidden" name="scorecardProofToken" value={proofToken} />
       <input
         ref={fileInputRef}
@@ -113,7 +114,7 @@ export function ScorecardProofUploader({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <ShieldCheck className="size-4 text-emerald-600" />
+            <ShieldCheck className="size-4 text-primary" />
             Proof check
           </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -143,7 +144,7 @@ export function ScorecardProofUploader({
             name={screenshotFieldName}
             value={screenshotPath}
             placeholder="/uploads/scorecards/round.png"
-            className="h-10 rounded-xl bg-white"
+            className="h-10 rounded-xl bg-background"
             readOnly
           />
         </label>
@@ -154,21 +155,21 @@ export function ScorecardProofUploader({
             value={extractedTotal}
             onChange={(event) => setExtractedTotal(event.target.value)}
             inputMode="numeric"
-            className="h-10 rounded-xl bg-white"
+            className="h-10 rounded-xl bg-background"
           />
         </label>
       </div>
-      <p
-        className={
-          state.status === "error"
-            ? "flex items-start gap-2 text-xs leading-5 text-destructive"
-            : "text-xs leading-5 text-muted-foreground"
-        }
-        aria-live="polite"
-      >
-        {state.status === "error" ? <AlertTriangle className="mt-0.5 size-3.5 shrink-0" /> : null}
-        <span>{state.message}</span>
-      </p>
+      {state.status === "error" ? (
+        <Alert variant="destructive" aria-live="polite">
+          <AlertTriangle className="size-4" aria-hidden />
+          <AlertTitle>Proof check</AlertTitle>
+          <AlertDescription>{state.message}</AlertDescription>
+        </Alert>
+      ) : (
+        <p className="text-xs leading-5 text-muted-foreground" aria-live="polite">
+          {state.message}
+        </p>
+      )}
     </div>
   );
 }

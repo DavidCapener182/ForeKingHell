@@ -1,365 +1,343 @@
 "use client";
 
 import { useState } from "react";
-import type { ReactNode } from "react";
-import { BarChart3, CalendarDays, CalendarRange, TrendingUp } from "lucide-react";
+import { BarChart3, TrendingUp } from "lucide-react";
 
+import {
+  ComparisonWorkspace,
+  type ComparisonTableRow,
+  type SavedWorkspaceComparison,
+} from "@/app/compare/comparison-workspace";
 import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
-import {
-  DesktopTableWorkbenchControls,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
-} from "@/components/app/desktop-workbench";
-import {
-  DataPanel,
-  DataTableFrame,
-  SectionHeader,
-  StatusPill,
-  type Tone,
-} from "@/components/premium";
-import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { StatusPill, type Tone } from "@/components/premium";
+import { Item, ItemContent } from "@/components/ui/item";
 import type {
   CompareClubRow,
   CompareDelta,
+  CompareSampleSummary,
   ProgressCompareData,
+  ProgressComparison,
   ProgressPeriod,
-  ProgressPeriodMode,
 } from "@/lib/compare-data";
 
-type BaselineView = "previousWeek" | "previousMonth";
+type ProgressWindow = "week" | "month";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-const compareFocusClubColumns: DesktopWorkbenchColumn[] = [
-  { id: "club", label: "Club", locked: true },
-  { id: "current", label: "Last 7 days" },
-  { id: "baseline", label: "Baseline" },
-  { id: "carry", label: "Carry" },
-  { id: "playable", label: "Playable" },
-  { id: "big-misses", label: "Big misses" },
-  { id: "shot-cone", label: "Shot cone" },
-  { id: "signal", label: "Overall signal" },
-];
-
-const comparePeriodColumns: DesktopWorkbenchColumn[] = [
-  { id: "period", label: "Period", locked: true },
-  { id: "shots", label: "Shots" },
-  { id: "clubs", label: "Clubs" },
-  { id: "carry", label: "Carry" },
-  { id: "playable", label: "Playable" },
-  { id: "big-misses", label: "Big misses" },
-  { id: "shot-cone", label: "Shot cone" },
-  { id: "previous", label: "Vs previous" },
-];
-
-const compareProgressSuggestedViews: DesktopSavedViewSuggestion[] = [
-  {
-    title: "Control movement",
-    href: "/compare#compare-focus-clubs",
-    detail: "Review playable, big-miss and shot-cone deltas for the latest period.",
-  },
-  {
-    title: "Distance movement",
-    href: "/compare#compare-focus-clubs",
-    detail: "Keep carry and current/baseline sample columns visible.",
-  },
-  {
-    title: "Report export",
-    href: "/compare#compare-period-history",
-    detail: "Export focus-club and period rows for a comparison report.",
-  },
-];
-
-export function ProgressCompareClient({ data }: { data: ProgressCompareData }) {
-  const [baselineView, setBaselineView] = useState<BaselineView>("previousWeek");
-  const [periodMode, setPeriodMode] = useState<ProgressPeriodMode>("week");
-  const comparison = baselineView === "previousWeek" ? data.previousWeek : data.previousMonth;
-  const periods = periodMode === "week" ? data.weeklyPeriods : data.monthlyPeriods;
-
-  return (
-    <DataPanel id="progress-over-time">
-      <SectionHeader
-        title="Progress over time"
-        description={
-          data.latestSession
-            ? `${comparison.focus.label} against ${comparison.label.toLowerCase()}, with ${periodMode === "week" ? "weekly" : "monthly"} trend rows below.`
-            : "Import sessions to compare progress over time."
-        }
-        action={<TrendingUp className="size-5 text-emerald-600" />}
-      />
-      <CardContent className="grid gap-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <SegmentButton
-              active={baselineView === "previousWeek"}
-              icon={<CalendarDays className="size-4" />}
-              label="7 days"
-              onClick={() => setBaselineView("previousWeek")}
-            />
-            <SegmentButton
-              active={baselineView === "previousMonth"}
-              icon={<CalendarRange className="size-4" />}
-              label="30 days"
-              onClick={() => setBaselineView("previousMonth")}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <SegmentButton
-              active={periodMode === "week"}
-              icon={<BarChart3 className="size-4" />}
-              label="Weeks"
-              onClick={() => setPeriodMode("week")}
-            />
-            <SegmentButton
-              active={periodMode === "month"}
-              icon={<CalendarRange className="size-4" />}
-              label="Months"
-              onClick={() => setPeriodMode("month")}
-            />
-          </div>
-        </div>
-
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <ProgressMetric
-            label="Last 7 days"
-            value={formatShotCount(comparison.focus.stockShots)}
-            detail={comparison.focus.detail}
-            badge="Current"
-            tone="green"
-          />
-          <ProgressMetric
-            label={comparison.label}
-            value={formatShotCount(comparison.baseline.stockShots)}
-            detail={comparison.detail}
-            badge="Baseline"
-            tone="sky"
-          />
-          <ProgressMetric
-            label="Control signal"
-            value={controlSignalValue(comparison.delta)}
-            detail={controlSignalDetail(comparison.delta)}
-            badge={controlSignalBadge(comparison.delta)}
-            tone={controlSignalTone(comparison.delta)}
-          />
-          <ProgressMetric
-            label="Shot cone"
-            value={formatSignedYards(comparison.delta.coneDeltaYd)}
-            detail="Dispersion width; lower is tighter"
-            badge={movementLabel(comparison.delta.coneDeltaYd, "lower")}
-            tone={movementTone(comparison.delta.coneDeltaYd, "lower")}
-          />
-          <ProgressMetric
-            label="Carry context"
-            value={formatSignedYards(comparison.delta.carryDeltaYd)}
-            detail="Median stock carry; not the verdict"
-            badge={movementLabel(comparison.delta.carryDeltaYd, "higher")}
-            tone={movementTone(comparison.delta.carryDeltaYd, "higher")}
-          />
-        </section>
-
-        {comparison.clubRows.length > 0 ? (
-          <FocusClubTable rows={comparison.clubRows} />
-        ) : (
-          <div className="apple-panel grid place-items-center rounded-lg px-4 py-10 text-center">
-            <div>
-              <p className="font-semibold">No 7-day club rows yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Progress appears once the latest week has tracked full-shot clubs.
-              </p>
-            </div>
-          </div>
-        )}
-
-        <section className="grid gap-4 min-[1900px]:grid-cols-[0.8fr_1.2fr]">
-          <PeriodTrendStrip periods={periods} />
-          <PeriodTable periods={periods} mode={periodMode} />
-        </section>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function SegmentButton({
-  active,
-  icon,
-  label,
-  onClick,
+export function ProgressCompareClient({
+  data,
+  savedComparisons = [],
 }: {
-  active: boolean;
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
+  data: ProgressCompareData;
+  savedComparisons?: SavedWorkspaceComparison[];
 }) {
+  const [draftFocus, setDraftFocus] = useState("last-7");
+  const [draftBaseline, setDraftBaseline] = useState("previous-7");
+  const [appliedWindow, setAppliedWindow] = useState<ProgressWindow>("week");
+  const comparison = appliedWindow === "week" ? data.previousWeek : data.previousMonth;
+  const periods = appliedWindow === "week" ? data.weeklyPeriods : data.monthlyPeriods;
+  const rows = data.latestSession ? progressComparisonRows(comparison) : [];
+  const appliedFocus = appliedWindow === "week" ? "last-7" : "last-30";
+  const appliedBaseline = appliedWindow === "week" ? "previous-7" : "previous-30";
+
+  function selectFocus(value: string) {
+    const month = value === "last-30";
+    setDraftFocus(month ? "last-30" : "last-7");
+    setDraftBaseline(month ? "previous-30" : "previous-7");
+  }
+
+  function selectBaseline(value: string) {
+    const month = value === "previous-30";
+    setDraftFocus(month ? "last-30" : "last-7");
+    setDraftBaseline(month ? "previous-30" : "previous-7");
+  }
+
+  function applySelection() {
+    const month = draftFocus === "last-30" || draftBaseline === "previous-30";
+    setAppliedWindow(month ? "month" : "week");
+    setDraftFocus(month ? "last-30" : "last-7");
+    setDraftBaseline(month ? "previous-30" : "previous-7");
+  }
+
+  function resetSelection() {
+    setDraftFocus("last-7");
+    setDraftBaseline("previous-7");
+    setAppliedWindow("week");
+  }
+
   return (
-    <Button
-      type="button"
-      aria-pressed={active}
-      variant={active ? "default" : "outline"}
-      size="sm"
-      className={
-        active ? "rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]" : "rounded-lg bg-white/85"
+    <ComparisonWorkspace
+      view="progress"
+      focusValue={draftFocus}
+      baselineValue={draftBaseline}
+      appliedFocusValue={appliedFocus}
+      appliedBaselineValue={appliedBaseline}
+      onFocusValueChange={selectFocus}
+      onBaselineValueChange={selectBaseline}
+      onCompare={applySelection}
+      onReset={resetSelection}
+      focusLabel={comparison.focus.label}
+      baselineLabel={comparison.label}
+      focusOptions={[
+        {
+          value: "last-7",
+          label: "Last 7 days",
+          description: `${integerFormatter.format(data.previousWeek.focus.stockShots)} stock shots`,
+        },
+        {
+          value: "last-30",
+          label: "Last 30 days",
+          description: `${integerFormatter.format(data.previousMonth.focus.stockShots)} stock shots`,
+        },
+      ]}
+      baselineOptions={[
+        {
+          value: "previous-7",
+          label: "Previous 7 days",
+          description: `${integerFormatter.format(data.previousWeek.baseline.stockShots)} stock shots`,
+        },
+        {
+          value: "previous-30",
+          label: "Previous 30 days",
+          description: `${integerFormatter.format(data.previousMonth.baseline.stockShots)} stock shots`,
+        },
+      ]}
+      rows={rows}
+      sampleReady={comparison.focus.stockShots >= 10 && comparison.baseline.stockShots >= 10}
+      sampleTitle={
+        comparison.focus.stockShots >= 10 && comparison.baseline.stockShots >= 10
+          ? "Decision-ready period samples"
+          : "Early period comparison"
       }
-      onClick={onClick}
-    >
-      {icon}
-      {label}
-    </Button>
+      sampleDescription={`${comparison.benefit.summary} Current samples: ${integerFormatter.format(comparison.focus.stockShots)} and ${integerFormatter.format(comparison.baseline.stockShots)} stock shots.`}
+      evidenceTitle="Progress comparison evidence"
+      evidenceDescription="Sample context, club movement and period history support the single metric table."
+      evidence={
+        <>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <ProgressSampleItem label="Focus" sample={comparison.focus} tone="green" />
+            <ProgressSampleItem label="Baseline" sample={comparison.baseline} tone="sky" />
+          </div>
+          <FocusClubEvidence rows={comparison.clubRows} />
+          <PeriodTrendStrip periods={periods} />
+          <PeriodHistory periods={periods} />
+        </>
+      }
+      savedComparisons={savedComparisons}
+      exportFileName={`forekinghell-compare-${appliedWindow}-history.csv`}
+      empty={
+        <AppEmptyState
+          icon={<TrendingUp className="size-5" />}
+          title="No comparison evidence yet"
+          description="Import a tracked practice session to compare progress over time."
+          primaryAction={null}
+        />
+      }
+    />
   );
 }
 
-function ProgressMetric({
+function progressComparisonRows(comparison: ProgressComparison): ComparisonTableRow[] {
+  const confidence = comparisonConfidence(
+    comparison.focus.stockShots,
+    comparison.baseline.stockShots,
+  );
+  const metrics = [
+    metricRow(
+      "Carry",
+      comparison.focus.carryMedianYd,
+      comparison.baseline.carryMedianYd,
+      comparison.delta.carryDeltaYd,
+      "higher",
+      formatYards,
+      formatSignedYards,
+    ),
+    metricRow(
+      "Ball speed",
+      comparison.focus.ballSpeedAverageMph,
+      comparison.baseline.ballSpeedAverageMph,
+      comparison.delta.ballSpeedDeltaMph,
+      "higher",
+      formatMph,
+      formatSignedMph,
+    ),
+    metricRow(
+      "Launch",
+      comparison.focus.launchAverageDeg,
+      comparison.baseline.launchAverageDeg,
+      comparison.delta.launchDeltaDeg,
+      "context",
+      formatDegrees,
+      formatSignedDegrees,
+    ),
+    metricRow(
+      "Offline average",
+      comparison.focus.absoluteOfflineAverageYd,
+      comparison.baseline.absoluteOfflineAverageYd,
+      comparison.delta.offlineDeltaYd,
+      "lower",
+      formatYards,
+      formatSignedYards,
+    ),
+    metricRow(
+      "Shot cone",
+      comparison.focus.shotConeWidthYd,
+      comparison.baseline.shotConeWidthYd,
+      comparison.delta.coneDeltaYd,
+      "lower",
+      formatYards,
+      formatSignedYards,
+    ),
+    metricRow(
+      "Playable",
+      comparison.focus.playableRate,
+      comparison.baseline.playableRate,
+      comparison.delta.playableRateDelta,
+      "higher",
+      formatRate,
+      formatSignedRate,
+    ),
+    metricRow(
+      "Big misses",
+      comparison.focus.bigMissRate,
+      comparison.baseline.bigMissRate,
+      comparison.delta.bigMissRateDelta,
+      "lower",
+      formatRate,
+      formatSignedRate,
+    ),
+  ];
+
+  return metrics.map((metric) => {
+    const rowConfidence =
+      metric.direction === "No data" ? { label: "No data", tone: "slate" as const } : confidence;
+    return {
+      ...metric,
+      confidence: rowConfidence.label,
+      confidenceTone: rowConfidence.tone,
+    };
+  });
+}
+
+function metricRow(
+  metric: string,
+  focus: number | null,
+  baseline: number | null,
+  delta: number | null,
+  direction: "higher" | "lower" | "context",
+  formatValue: (value: number | null) => string,
+  formatDelta: (value: number | null) => string,
+): Omit<ComparisonTableRow, "confidence" | "confidenceTone"> {
+  const movement = metricDirection(delta, direction);
+  return {
+    id: metric,
+    metric,
+    focus: formatValue(focus),
+    baseline: formatValue(baseline),
+    delta: formatDelta(delta),
+    direction: movement.label,
+    directionTone: movement.tone,
+  };
+}
+
+function ProgressSampleItem({
   label,
-  value,
-  detail,
-  badge,
+  sample,
   tone,
 }: {
   label: string;
-  value: string;
-  detail: string;
-  badge: string;
+  sample: CompareSampleSummary;
   tone: Tone;
 }) {
   return (
-    <div className="apple-panel-strong min-w-0 rounded-lg p-3">
-      <div className="flex items-start justify-between gap-2">
-        <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          {label}
-        </p>
-        <StatusPill tone={tone}>{badge}</StatusPill>
-      </div>
-      <p className="mt-2 truncate text-2xl font-semibold tracking-normal">{value}</p>
-      <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{detail}</p>
-    </div>
+    <Item variant="outline" className="items-start p-4">
+      <ItemContent className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              {label}
+            </p>
+            <p className="mt-1 font-semibold">{sample.label}</p>
+          </div>
+          <StatusPill tone={tone}>{integerFormatter.format(sample.stockShots)} shots</StatusPill>
+        </div>
+        <p className="text-sm leading-5 text-muted-foreground">{sample.detail}</p>
+        <dl className="grid grid-cols-3 gap-3 border-t pt-3 text-sm">
+          <div>
+            <dt className="text-xs text-muted-foreground">Carry</dt>
+            <dd className="mt-1 font-semibold">{formatYards(sample.carryMedianYd)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Playable</dt>
+            <dd className="mt-1 font-semibold">{formatRate(sample.playableRate)}</dd>
+          </div>
+          <div>
+            <dt className="text-xs text-muted-foreground">Shot cone</dt>
+            <dd className="mt-1 font-semibold">{formatYards(sample.shotConeWidthYd)}</dd>
+          </div>
+        </dl>
+      </ItemContent>
+    </Item>
   );
 }
 
-function FocusClubTable({ rows }: { rows: CompareClubRow[] }) {
+function FocusClubEvidence({ rows }: { rows: CompareClubRow[] }) {
   return (
-    <section id="compare-focus-clubs" data-workbench-scope="compare-focus-clubs">
-      <DesktopTableWorkbenchControls
-        viewKey="compare-focus-clubs"
-        scope="compare-focus-clubs"
-        currentViewLabel="Compare focus clubs"
-        resultLabel={`${rows.length} clubs`}
-        columns={compareFocusClubColumns}
-        suggestedViews={compareProgressSuggestedViews}
-        exportTableId="compare-focus-clubs"
-        exportFileName="forekinghell-compare-focus-clubs.csv"
-        className="mb-3"
-      />
-      <DataTableFrame label="Compare focus-club movement table" stickyFirstColumn>
-        <Table
-          className="min-w-[980px]"
-          data-workbench-export-table="compare-focus-clubs"
-          aria-describedby="compare-focus-clubs-summary"
-        >
-          <TableCaption id="compare-focus-clubs-summary" className="sr-only">
-            Compare focus-club movement table showing club, latest sample, baseline, carry,
-            playable, big misses, shot cone and overall signal.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-            <TableRow>
-              <TableHead
-                data-column="club"
-                className="sticky left-0 z-20 min-w-40 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
-                Club
-              </TableHead>
-              <TableHead data-column="current" className="text-right">
-                Last 7 days
-              </TableHead>
-              <TableHead data-column="baseline" className="text-right">
-                Baseline
-              </TableHead>
-              <TableHead data-column="carry" className="text-right">
-                Carry
-              </TableHead>
-              <TableHead data-column="playable" className="text-right">
-                Playable
-              </TableHead>
-              <TableHead data-column="big-misses" className="text-right">
-                Big misses
-              </TableHead>
-              <TableHead data-column="shot-cone" className="text-right">
-                Shot cone
-              </TableHead>
-              <TableHead data-column="signal" className="text-right">
-                Overall signal
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
-                <TableCell
-                  data-column="club"
-                  className="sticky left-0 z-10 min-w-40 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                >
-                  {row.label}
-                </TableCell>
-                <TableCell data-column="current" className="text-right">
-                  <StackedValue
-                    value={formatYards(row.focus.carryMedianYd)}
-                    detail={formatShotCount(row.focus.stockShots)}
-                  />
-                </TableCell>
-                <TableCell data-column="baseline" className="text-right">
-                  <StackedValue
-                    value={formatYards(row.baseline.carryMedianYd)}
-                    detail={formatShotCount(row.baseline.stockShots)}
-                  />
-                </TableCell>
-                <DeltaCell
-                  columnId="carry"
-                  value={row.delta.carryDeltaYd}
-                  direction="higher"
-                  unit="yd"
-                />
-                <DeltaCell
-                  columnId="playable"
-                  value={row.delta.playableRateDelta}
-                  direction="higher"
-                  unit="pts"
-                />
-                <DeltaCell
-                  columnId="big-misses"
-                  value={row.delta.bigMissRateDelta}
-                  direction="lower"
-                  unit="pts"
-                />
-                <StackedDeltaCell
-                  columnId="shot-cone"
-                  value={row.delta.coneDeltaYd}
-                  direction="lower"
-                  unit="yd"
-                  detail={`${formatYards(row.baseline.shotConeWidthYd)} -> ${formatYards(row.focus.shotConeWidthYd)}`}
-                />
-                <TableCell data-column="signal" className="text-right">
-                  <StatusPill tone={scoreTone(row)}>{scoreLabel(row)}</StatusPill>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+    <section className="grid gap-3" aria-labelledby="progress-club-evidence-title">
+      <div>
+        <h3 id="progress-club-evidence-title" className="font-semibold">
+          Club movement
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Each club keeps its carry, control and sample evidence without creating another table.
+        </p>
+      </div>
+      {rows.length ? (
+        <div className="divide-y divide-border rounded-xl border">
+          {rows.map((row) => (
+            <div
+              key={row.clubId}
+              className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(8rem,0.8fr)_repeat(4,minmax(7rem,1fr))] lg:items-center"
+            >
+              <div>
+                <p className="font-semibold">{row.label}</p>
+                <p className="text-xs text-muted-foreground">
+                  {integerFormatter.format(row.focus.stockShots)} vs{" "}
+                  {integerFormatter.format(row.baseline.stockShots)} shots
+                </p>
+              </div>
+              <EvidenceDelta label="Carry" value={formatSignedYards(row.delta.carryDeltaYd)} />
+              <EvidenceDelta
+                label="Playable"
+                value={formatSignedRate(row.delta.playableRateDelta)}
+              />
+              <EvidenceDelta label="Cone" value={formatSignedYards(row.delta.coneDeltaYd)} />
+              <StatusPill tone={scoreTone(row)}>{scoreLabel(row)}</StatusPill>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+          No focus-club rows are available for this period.
+        </p>
+      )}
     </section>
+  );
+}
+
+function EvidenceDelta({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 font-semibold tabular-nums">{value}</p>
+    </div>
   );
 }
 
@@ -368,54 +346,46 @@ function PeriodTrendStrip({ periods }: { periods: ProgressPeriod[] }) {
   const maxShots = Math.max(1, ...chronological.map((period) => period.summary.stockShots));
 
   return (
-    <div className="apple-panel-strong min-w-0 rounded-lg p-4">
+    <section className="min-w-0 rounded-xl border bg-muted/20 p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">Trend shape</p>
+        <div>
+          <h3 className="font-semibold">Trend shape</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Carry, playable rate, shot cone and sample size.
+            Playable rate, sample size, carry and shot cone by period.
           </p>
         </div>
-        <BarChart3 className="size-5 shrink-0 text-sky-600" />
+        <BarChart3 className="size-5 text-[var(--status-information-foreground)]" aria-hidden />
       </div>
       <div className="mt-4 grid gap-3">
-        {chronological.length > 0 ? (
-          chronological.map((period) => {
-            const playable = period.summary.playableRate ?? 0;
-            const shotWidth = Math.max(8, (period.summary.stockShots / maxShots) * 100);
-
-            return (
-              <div key={period.key} className="grid gap-1">
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate font-medium">{period.label}</span>
-                  <span className="shrink-0 text-muted-foreground">
-                    {formatYards(period.summary.carryMedianYd)}
-                  </span>
+        {chronological.map((period) => {
+          const playable = period.summary.playableRate ?? 0;
+          const shotWidth = Math.max(8, (period.summary.stockShots / maxShots) * 100);
+          return (
+            <div key={period.key} className="grid gap-1">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="truncate font-medium">{period.label}</span>
+                <span className="text-muted-foreground">
+                  {formatYards(period.summary.carryMedianYd)} ·{" "}
+                  {formatYards(period.summary.shotConeWidthYd)} cone
+                </span>
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_4.5rem] gap-2">
+                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-[var(--status-success-foreground)]"
+                    style={{ width: `${Math.max(5, Math.min(100, playable))}%` }}
+                  />
                 </div>
-                <div className="grid h-8 grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2">
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-emerald-600"
-                      style={{ width: `${Math.max(5, Math.min(100, playable))}%` }}
-                    />
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-sky-500"
-                      style={{ width: `${Math.min(100, shotWidth)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>{formatRate(period.summary.playableRate)} playable</span>
-                  <span>{formatYards(period.summary.shotConeWidthYd)} cone</span>
+                <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-[var(--status-information-foreground)]"
+                    style={{ width: `${Math.min(100, shotWidth)}%` }}
+                  />
                 </div>
               </div>
-            );
-          })
-        ) : (
-          <p className="text-sm text-muted-foreground">No periods available yet.</p>
-        )}
+            </div>
+          );
+        })}
       </div>
       <ChartAccessibleFallback
         title="Compare period trend"
@@ -428,19 +398,57 @@ function PeriodTrendStrip({ periods }: { periods: ProgressPeriod[] }) {
           { key: "cone", label: "Shot cone" },
         ]}
         rows={periodTrendChartRows(chronological)}
-        className="mt-4 bg-white/70"
+        className="mt-4 bg-card/70"
       />
-    </div>
+    </section>
+  );
+}
+
+function PeriodHistory({ periods }: { periods: ProgressPeriod[] }) {
+  return (
+    <section className="grid gap-3" aria-labelledby="progress-period-history-title">
+      <div>
+        <h3 id="progress-period-history-title" className="font-semibold">
+          Period history
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Samples and movement against the previous period.
+        </p>
+      </div>
+      <div className="divide-y divide-border rounded-xl border">
+        {periods.length ? (
+          periods.map((period) => (
+            <div
+              key={period.key}
+              className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(9rem,1fr)_repeat(5,minmax(6.5rem,auto))] lg:items-center"
+            >
+              <div>
+                <p className="font-semibold">{period.label}</p>
+                <p className="text-xs text-muted-foreground">{period.detail}</p>
+              </div>
+              <EvidenceDelta
+                label="Shots"
+                value={integerFormatter.format(period.summary.stockShots)}
+              />
+              <EvidenceDelta label="Carry" value={formatYards(period.summary.carryMedianYd)} />
+              <EvidenceDelta label="Playable" value={formatRate(period.summary.playableRate)} />
+              <EvidenceDelta label="Cone" value={formatYards(period.summary.shotConeWidthYd)} />
+              <StatusPill tone={periodBenefitTone(period.benefit.verdict)}>
+                {period.benefit.verdict}
+              </StatusPill>
+            </div>
+          ))
+        ) : (
+          <p className="p-4 text-sm text-muted-foreground">No period history yet.</p>
+        )}
+      </div>
+    </section>
   );
 }
 
 function periodTrendChartSummary(periods: ProgressPeriod[]) {
   const latest = periods.at(-1);
-
-  if (!latest) {
-    return "No compare period trend rows are available yet; import more tracked stock shots before asking for trend explanations.";
-  }
-
+  if (!latest) return "No compare period trend rows are available yet.";
   return `Latest shown period is ${latest.label}: ${integerFormatter.format(latest.summary.stockShots)} stock shots, ${formatYards(latest.summary.carryMedianYd)} carry, ${formatRate(latest.summary.playableRate)} playable and ${formatYards(latest.summary.shotConeWidthYd)} shot cone.`;
 }
 
@@ -455,283 +463,21 @@ function periodTrendChartRows(periods: ProgressPeriod[]): ChartFallbackRow[] {
   }));
 }
 
-function PeriodTable({ periods, mode }: { periods: ProgressPeriod[]; mode: ProgressPeriodMode }) {
-  return (
-    <section id="compare-period-history" data-workbench-scope="compare-period-history">
-      <DesktopTableWorkbenchControls
-        viewKey="compare-period-history"
-        scope="compare-period-history"
-        currentViewLabel={`${mode === "week" ? "Weekly" : "Monthly"} compare history`}
-        resultLabel={`${periods.length} ${mode === "week" ? "weeks" : "months"}`}
-        columns={comparePeriodColumns}
-        suggestedViews={compareProgressSuggestedViews}
-        exportTableId="compare-period-history"
-        exportFileName={`forekinghell-compare-${mode}-history.csv`}
-        className="mb-3"
-      />
-      <DataTableFrame label="Compare period history table" stickyFirstColumn>
-        <Table
-          className="min-w-[980px]"
-          data-workbench-export-table="compare-period-history"
-          aria-describedby="compare-period-history-summary"
-        >
-          <TableCaption id="compare-period-history-summary" className="sr-only">
-            Compare period history table showing period, shots, clubs, carry, playable rate, big
-            misses, shot cone and movement against the previous period.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-            <TableRow>
-              <TableHead
-                data-column="period"
-                className="sticky left-0 z-20 min-w-36 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
-                {mode === "week" ? "Week" : "Month"}
-              </TableHead>
-              <TableHead data-column="shots" className="text-right">
-                Shots
-              </TableHead>
-              <TableHead data-column="clubs" className="text-right">
-                Clubs
-              </TableHead>
-              <TableHead data-column="carry" className="text-right">
-                Carry
-              </TableHead>
-              <TableHead data-column="playable" className="text-right">
-                Playable
-              </TableHead>
-              <TableHead data-column="big-misses" className="text-right">
-                Big misses
-              </TableHead>
-              <TableHead data-column="shot-cone" className="text-right">
-                Shot cone
-              </TableHead>
-              <TableHead data-column="previous" className="min-w-36 text-right">
-                Vs previous
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {periods.length > 0 ? (
-              periods.map((period) => (
-                <TableRow key={period.key} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="period"
-                    className="sticky left-0 z-10 min-w-36 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                  >
-                    <StackedValue value={period.label} detail={period.detail} />
-                  </TableCell>
-                  <TableCell data-column="shots" className="text-right">
-                    {integerFormatter.format(period.summary.stockShots)}
-                  </TableCell>
-                  <TableCell data-column="clubs" className="text-right">
-                    {integerFormatter.format(period.summary.clubs)}
-                  </TableCell>
-                  <TableCell data-column="carry" className="text-right">
-                    {formatYards(period.summary.carryMedianYd)}
-                  </TableCell>
-                  <TableCell data-column="playable" className="text-right">
-                    {formatRate(period.summary.playableRate)}
-                  </TableCell>
-                  <TableCell data-column="big-misses" className="text-right">
-                    {formatRate(period.summary.bigMissRate)}
-                  </TableCell>
-                  <TableCell data-column="shot-cone" className="text-right">
-                    {formatYards(period.summary.shotConeWidthYd)}
-                  </TableCell>
-                  <TableCell data-column="previous" className="min-w-36 text-right">
-                    <StackedDelta delta={period.deltaFromPrevious} />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
-                  No period history yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
-    </section>
-  );
+function metricDirection(value: number | null, direction: "higher" | "lower" | "context") {
+  if (value === null) return { label: "No data", tone: "slate" as const };
+  if (direction === "context") return { label: "Context", tone: "amber" as const };
+  if (Math.round(value * 10) / 10 === 0) return { label: "Even", tone: "slate" as const };
+  const focusWins = direction === "higher" ? value > 0 : value < 0;
+  return focusWins
+    ? { label: "Focus", tone: "green" as const }
+    : { label: "Baseline", tone: "sky" as const };
 }
 
-function StackedValue({ value, detail }: { value: string; detail: string }) {
-  return (
-    <span className="inline-flex min-w-0 flex-col items-end">
-      <span className="max-w-40 truncate font-medium">{value}</span>
-      <span className="max-w-40 truncate text-xs text-muted-foreground">{detail}</span>
-    </span>
-  );
-}
-
-function DeltaCell({
-  columnId,
-  value,
-  direction,
-  unit,
-}: {
-  columnId: string;
-  value: number | null;
-  direction: "higher" | "lower";
-  unit: "yd" | "pts";
-}) {
-  return (
-    <TableCell data-column={columnId} className={deltaClass(value, direction)}>
-      {unit === "yd" ? formatSignedYards(value) : formatSignedRate(value)}
-    </TableCell>
-  );
-}
-
-function StackedDeltaCell({
-  columnId,
-  value,
-  direction,
-  unit,
-  detail,
-}: {
-  columnId: string;
-  value: number | null;
-  direction: "higher" | "lower";
-  unit: "yd" | "pts";
-  detail: string;
-}) {
-  return (
-    <TableCell data-column={columnId} className={deltaClass(value, direction)}>
-      <span className="inline-flex min-w-0 flex-col items-end">
-        <span>{unit === "yd" ? formatSignedYards(value) : formatSignedRate(value)}</span>
-        <span className="max-w-40 truncate text-xs font-normal text-muted-foreground">
-          {detail}
-        </span>
-      </span>
-    </TableCell>
-  );
-}
-
-function StackedDelta({ delta }: { delta: CompareDelta }) {
-  return (
-    <span className="inline-flex flex-col items-end">
-      <span className={deltaTextClass(delta.carryDeltaYd, "higher")}>
-        {formatSignedYards(delta.carryDeltaYd)}
-      </span>
-      <span className={deltaTextClass(delta.playableRateDelta, "higher")}>
-        {formatSignedRate(delta.playableRateDelta)}
-      </span>
-      <span className={deltaTextClass(delta.coneDeltaYd, "lower")}>
-        {formatSignedYards(delta.coneDeltaYd)}
-      </span>
-    </span>
-  );
-}
-
-function formatShotCount(value: number) {
-  return `${integerFormatter.format(value)} stock shots`;
-}
-
-function formatYards(value: number | null) {
-  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
-}
-
-function formatRate(value: number | null) {
-  return value === null ? "--" : `${numberFormatter.format(value)}%`;
-}
-
-function formatSignedYards(value: number | null) {
-  return value === null ? "--" : `${signed(value)} yd`;
-}
-
-function formatSignedRate(value: number | null) {
-  return value === null ? "--" : `${signed(value)} pts`;
-}
-
-function signed(value: number) {
-  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
-}
-
-function movementTone(value: number | null, direction: "higher" | "lower"): Tone {
-  if (value === null) return "slate";
-  if (Math.round(value * 10) / 10 === 0) return "slate";
-
-  const improved = direction === "higher" ? value > 0 : value < 0;
-  return improved ? "green" : "amber";
-}
-
-function movementLabel(value: number | null, direction: "higher" | "lower") {
-  if (value === null) return "No data";
-  if (Math.round(value * 10) / 10 === 0) return "Steady";
-
-  const improved = direction === "higher" ? value > 0 : value < 0;
-  if (direction === "lower") {
-    return improved ? "Tighter" : "Wider";
-  }
-
-  return improved ? "Gain" : "Drop";
-}
-
-function controlSignalTone(delta: CompareDelta): Tone {
-  const score = controlDeltaScore(delta);
-  if (score >= 1) return "green";
-  if (score <= -1) return "amber";
-  return "slate";
-}
-
-function controlSignalBadge(delta: CompareDelta) {
-  const score = controlDeltaScore(delta);
-  if (score >= 2) return "Control";
-  if (score >= 1) return "Playable";
-  if (score <= -2) return "Risk";
-  if (score <= -1) return "Watch";
-  return "Neutral";
-}
-
-function controlSignalValue(delta: CompareDelta) {
-  const score = controlDeltaScore(delta);
-  if (score >= 2) return "More consistent";
-  if (score >= 1) return "More playable";
-  if (score <= -2) return "Less controlled";
-  if (score <= -1) return "Needs watching";
-  return "No clear move";
-}
-
-function controlSignalDetail(delta: CompareDelta) {
-  const parts = [
-    isNumber(delta.playableRateDelta)
-      ? `${formatSignedRate(delta.playableRateDelta)} playable`
-      : null,
-    isNumber(delta.bigMissRateDelta)
-      ? `${formatSignedRate(delta.bigMissRateDelta)} big misses`
-      : null,
-    isNumber(delta.coneDeltaYd) ? `${formatSignedYards(delta.coneDeltaYd)} cone` : null,
-  ].filter(Boolean);
-
-  return parts.length > 0 ? parts.join("; ") : "Playable shots, misses and dispersion";
-}
-
-function controlDeltaScore(delta: CompareDelta) {
-  let score = 0;
-
-  if (isNumber(delta.playableRateDelta)) {
-    if (delta.playableRateDelta >= 5) score += 1;
-    else if (delta.playableRateDelta <= -5) score -= 1;
-  }
-
-  if (isNumber(delta.bigMissRateDelta)) {
-    if (delta.bigMissRateDelta <= -4) score += 1;
-    else if (delta.bigMissRateDelta >= 4) score -= 1;
-  }
-
-  if (isNumber(delta.coneDeltaYd)) {
-    if (delta.coneDeltaYd <= -4) score += 1;
-    else if (delta.coneDeltaYd >= 4) score -= 1;
-  }
-
-  if (isNumber(delta.offlineDeltaYd)) {
-    if (delta.offlineDeltaYd <= -2) score += 1;
-    else if (delta.offlineDeltaYd >= 2) score -= 1;
-  }
-
-  return score;
+function comparisonConfidence(focusShots: number, baselineShots: number) {
+  const smallestSample = Math.min(focusShots, baselineShots);
+  if (smallestSample >= 10) return { label: "Decision-ready", tone: "green" as const };
+  if (smallestSample >= 3) return { label: "Early", tone: "amber" as const };
+  return { label: "Low sample", tone: "slate" as const };
 }
 
 function scoreTone(row: CompareClubRow): Tone {
@@ -757,6 +503,27 @@ function scoreLabel(row: CompareClubRow) {
   return "Needs work";
 }
 
+function controlDeltaScore(delta: CompareDelta) {
+  let score = 0;
+  if (isNumber(delta.playableRateDelta)) {
+    if (delta.playableRateDelta >= 5) score += 1;
+    else if (delta.playableRateDelta <= -5) score -= 1;
+  }
+  if (isNumber(delta.bigMissRateDelta)) {
+    if (delta.bigMissRateDelta <= -4) score += 1;
+    else if (delta.bigMissRateDelta >= 4) score -= 1;
+  }
+  if (isNumber(delta.coneDeltaYd)) {
+    if (delta.coneDeltaYd <= -4) score += 1;
+    else if (delta.coneDeltaYd >= 4) score -= 1;
+  }
+  if (isNumber(delta.offlineDeltaYd)) {
+    if (delta.offlineDeltaYd <= -2) score += 1;
+    else if (delta.offlineDeltaYd >= 2) score -= 1;
+  }
+  return score;
+}
+
 function hasLowSample(row: CompareClubRow) {
   return row.focus.stockShots < 3 || row.baseline.stockShots < 3;
 }
@@ -774,26 +541,56 @@ function hasStrongImprovement(delta: CompareDelta) {
   if ((carryGain && coneTighter) || (usefulCarryGain && coneTighter && playableGain)) {
     return !severePlayableDrop && !severeConeWidening;
   }
-
   const weightedSignals = [
     playableGain,
     bigMissDrop,
     usefulConeTighter,
     usefulCarryGain && (playableGain || bigMissDrop || usefulConeTighter),
   ].filter(Boolean).length;
-
   return weightedSignals >= 3 && !severePlayableDrop && !severeConeWidening;
 }
 
-function deltaClass(value: number | null, direction: "higher" | "lower") {
-  return `text-right font-semibold ${deltaTextClass(value, direction)}`;
+function periodBenefitTone(verdict: string): Tone {
+  if (verdict === "Beneficial") return "green";
+  if (verdict === "Useful") return "sky";
+  if (verdict === "Mixed") return "amber";
+  return "slate";
 }
 
-function deltaTextClass(value: number | null, direction: "higher" | "lower") {
-  const tone = movementTone(value, direction);
-  if (tone === "green") return "text-emerald-700";
-  if (tone === "amber") return "text-amber-700";
-  return "text-muted-foreground";
+function formatYards(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} yd`;
+}
+
+function formatMph(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} mph`;
+}
+
+function formatDegrees(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)} deg`;
+}
+
+function formatRate(value: number | null) {
+  return value === null ? "--" : `${numberFormatter.format(value)}%`;
+}
+
+function formatSignedYards(value: number | null) {
+  return value === null ? "--" : `${signed(value)} yd`;
+}
+
+function formatSignedMph(value: number | null) {
+  return value === null ? "--" : `${signed(value)} mph`;
+}
+
+function formatSignedDegrees(value: number | null) {
+  return value === null ? "--" : `${signed(value)} deg`;
+}
+
+function formatSignedRate(value: number | null) {
+  return value === null ? "--" : `${signed(value)} pts`;
+}
+
+function signed(value: number) {
+  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
 }
 
 function isNumber(value: number | null | undefined): value is number {

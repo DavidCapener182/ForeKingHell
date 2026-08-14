@@ -38,14 +38,35 @@ describe("admin overview desktop console", () => {
     expect(source).toContain("rail={");
   });
 
-  it("uses a real-status-first mobile operations queue without invented health rows", () => {
-    expect(source).toContain("AdminMobileShell");
-    expect(source).toContain("AdminMobileOverview");
-    expect(source).toContain("AdminOperationsQueue");
-    expect(source).toContain('<DesktopWorkbenchLayout\n        scope="admin"');
-    expect(source).toContain('className="hidden lg:grid"');
+  it("ships only the protected workbench graph on the desktop-only admin route", () => {
+    for (const obsolete of [
+      "AdminMobileShell",
+      "AdminMobileOverview",
+      "AdminOperationsQueue",
+      "MobileStatusAction",
+      "IOSDisclosureGroup",
+      "getRequestAppSurface",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
+    expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).not.toContain("Challenge attempts flagged");
     expect(source).not.toContain('value="Runbook ready"');
     expect(adminDataSource).not.toContain("sessionCount: 0,\n    feedCount: 0");
+  });
+
+  it("keeps operating-page links flat inside the single AdminSection Card", () => {
+    const adminLinkSource =
+      source.match(/export function AdminLink[\s\S]*?function SnapshotRow/)?.[0] ?? "";
+
+    expect(adminLinkSource).toContain("<Item");
+    expect(adminLinkSource).toContain("<ItemMedia");
+    expect(adminLinkSource).toContain("<ItemContent>");
+    expect(adminLinkSource).toContain("<ItemTitle>");
+    expect(adminLinkSource).toContain("<ItemDescription");
+    expect(adminLinkSource).toContain("data-admin-operating-link");
+    expect(adminLinkSource).not.toMatch(/<Card(?:\s|>)/);
+    expect(adminLinkSource).not.toContain("<CardContent");
   });
 });

@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Cuboid, Save, Trash2 } from "lucide-react";
+import { Cuboid, Save, Trash2 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
 import type { HoleStrategy } from "@/lib/course-strategy";
@@ -41,12 +49,25 @@ export function MobileHoleStrategy({
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [savedCopyIsStale, setSavedCopyIsStale] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const strategy = strategies[index];
 
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    const syncIndex = () => setIndex(carouselApi.selectedScrollSnap());
+    syncIndex();
+    carouselApi.on("select", syncIndex);
+    carouselApi.on("reInit", syncIndex);
+    return () => {
+      carouselApi.off("select", syncIndex);
+      carouselApi.off("reInit", syncIndex);
+    };
+  }, [carouselApi]);
 
   useEffect(() => {
     try {
@@ -80,26 +101,20 @@ export function MobileHoleStrategy({
   if (!strategy) return null;
 
   return (
-    <div
-      className="grid gap-3"
+    <Carousel
+      opts={{ align: "start", containScroll: "trimSnaps" }}
+      setApi={setCarouselApi}
+      className="grid min-w-0 gap-3"
       data-mobile-one-hole-strategy
       data-hydrated={hydrated ? "true" : "false"}
-      role="region"
-      aria-roledescription="carousel"
       aria-label="Hole-by-hole course strategy"
     >
       <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-11 rounded-xl"
+        <CarouselPrevious
+          className="static size-11 translate-y-0 rounded-xl"
           disabled={!hydrated || index === 0}
-          onClick={() => setIndex((current) => Math.max(0, current - 1))}
           aria-label="Previous hole"
-        >
-          <ChevronLeft className="size-5" aria-hidden />
-        </Button>
+        />
         <div className="text-center">
           <p className="text-lg font-bold">
             Hole {strategy.holeNumber} of {strategies.length}
@@ -108,17 +123,11 @@ export function MobileHoleStrategy({
             Par {strategy.par} · {strategy.yards} yd
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-11 rounded-xl"
+        <CarouselNext
+          className="static size-11 translate-y-0 rounded-xl"
           disabled={!hydrated || index === strategies.length - 1}
-          onClick={() => setIndex((current) => Math.min(strategies.length - 1, current + 1))}
           aria-label="Next hole"
-        >
-          <ChevronRight className="size-5" aria-hidden />
-        </Button>
+        />
       </div>
 
       <Progress
@@ -127,58 +136,61 @@ export function MobileHoleStrategy({
         className="h-1.5"
       />
 
-      <Card
-        role="group"
-        aria-roledescription="slide"
-        aria-label={`Hole ${strategy.holeNumber} strategy`}
-      >
-        <CardHeader>
-          <CardTitle>Hole {strategy.holeNumber} strategy</CardTitle>
-          <CardAction>
-            <Badge variant={strategy.confidence === "Low" ? "outline" : "secondary"}>
-              {strategy.confidence} confidence
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          <StrategyItem
-            title="Recommended club"
-            value={strategy.recommendedClub}
-            description={strategy.expectedCarryRange}
-          />
-          <StrategyItem
-            title="Safe target"
-            value={strategy.safeTarget}
-            description={`Common miss: ${strategy.commonMiss}`}
-          />
-          <StrategyItem title="Main hazard" description={strategy.hazardWarning} />
-          <StrategyItem
-            title="Conservative alternative"
-            description={strategy.conservativeAlternative}
-          />
-          <StrategyItem
-            title="Expected leave"
-            value={strategy.expectedLeave}
-            description={plannedSequence(strategy)}
-          />
-          {courseTwinAvailable ? (
-            <Button asChild variant="outline" className="mt-1 min-h-11">
-              <Link href={`/play/${course.id}?mode=strategy&hole=${strategy.holeNumber}`}>
-                <Cuboid className="size-4" aria-hidden />
-                View this hole in Course Twin
-              </Link>
-            </Button>
-          ) : (
-            <Alert>
-              <Cuboid aria-hidden />
-              <AlertTitle>Course Twin unavailable</AlertTitle>
-              <AlertDescription>
-                This course has strategy data but no published 3D twin.
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+      <CarouselContent className="-ml-0">
+        {strategies.map((holeStrategy) => (
+          <CarouselItem key={holeStrategy.holeNumber} className="pl-0">
+            <Card aria-label={`Hole ${holeStrategy.holeNumber} strategy`}>
+              <CardHeader>
+                <CardTitle>Hole {holeStrategy.holeNumber} strategy</CardTitle>
+                <CardAction>
+                  <Badge variant={holeStrategy.confidence === "Low" ? "outline" : "secondary"}>
+                    {holeStrategy.confidence} confidence
+                  </Badge>
+                </CardAction>
+              </CardHeader>
+              <CardContent className="grid gap-2">
+                <StrategyItem
+                  title="Recommended club"
+                  value={holeStrategy.recommendedClub}
+                  description={holeStrategy.expectedCarryRange}
+                  valueAsBadge
+                />
+                <StrategyItem
+                  title="Safe target"
+                  value={holeStrategy.safeTarget}
+                  description={`Common miss: ${holeStrategy.commonMiss}`}
+                />
+                <StrategyItem title="Main hazard" description={holeStrategy.hazardWarning} />
+                <StrategyItem
+                  title="Conservative alternative"
+                  description={holeStrategy.conservativeAlternative}
+                />
+                <StrategyItem
+                  title="Expected leave"
+                  value={holeStrategy.expectedLeave}
+                  description={plannedSequence(holeStrategy)}
+                />
+                {courseTwinAvailable ? (
+                  <Button asChild variant="outline" className="mt-1 min-h-11">
+                    <Link href={`/play/${course.id}?mode=strategy&hole=${holeStrategy.holeNumber}`}>
+                      <Cuboid className="size-4" aria-hidden />
+                      View this hole in Course Twin
+                    </Link>
+                  </Button>
+                ) : (
+                  <Alert>
+                    <Cuboid aria-hidden />
+                    <AlertTitle>Course Twin unavailable</AlertTitle>
+                    <AlertDescription>
+                      This course has strategy data but no published 3D twin.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </CarouselItem>
+        ))}
+      </CarouselContent>
 
       <p className="px-1 text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
 
@@ -255,7 +267,7 @@ export function MobileHoleStrategy({
           Clear saved strategy
         </Button>
       ) : null}
-    </div>
+    </Carousel>
   );
 }
 
@@ -263,10 +275,12 @@ function StrategyItem({
   title,
   value,
   description,
+  valueAsBadge = false,
 }: {
   title: string;
   value?: string;
   description: string;
+  valueAsBadge?: boolean;
 }) {
   return (
     <Item variant="muted" size="sm">
@@ -276,7 +290,11 @@ function StrategyItem({
       </ItemContent>
       {value ? (
         <ItemActions>
-          <span className="max-w-32 text-right text-sm font-semibold">{value}</span>
+          {valueAsBadge ? (
+            <Badge variant="secondary">{value}</Badge>
+          ) : (
+            <span className="max-w-32 text-right text-sm font-semibold">{value}</span>
+          )}
         </ItemActions>
       ) : null}
     </Item>

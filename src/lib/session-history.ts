@@ -31,6 +31,8 @@ export async function getRecentSessionHistory(
       playContext: sessions.playContext,
       notes: sessions.notes,
       equipmentNotes: sessions.equipmentNotes,
+      rawUploadId: sessions.rawUploadId,
+      scorecardJson: sessions.scorecardJson,
       practicePlanId: practicePlans.id,
       practiceScore: practicePlans.practiceScore,
       matchConfidence: practicePlans.matchConfidence,
@@ -68,8 +70,28 @@ export async function getRecentSessionHistory(
             ? "Measured review ready"
             : "Activity recorded",
     planLinked: Boolean(row.practicePlanId),
+    importedEvidence: Boolean(row.rawUploadId || row.fileName || row.source !== "manual"),
+    roundScoreLabel:
+      row.type === "round" || row.type === "real_round"
+        ? formatRoundScore(row.scorecardJson)
+        : null,
     evidenceConfidence: evidenceConfidence(Number(row.shotCount ?? 0), row.matchConfidence),
   }));
+}
+
+function formatRoundScore(
+  scorecard: Array<{
+    score?: number | null;
+  }> | null,
+) {
+  const recordedScores = (scorecard ?? []).flatMap((hole) =>
+    typeof hole.score === "number" && Number.isFinite(hole.score) ? [hole.score] : [],
+  );
+  if (recordedScores.length === 0) return null;
+  const gross = recordedScores.reduce((total, score) => total + score, 0);
+  return recordedScores.length === 18
+    ? `${gross} gross`
+    : `${gross} gross · ${recordedScores.length} holes`;
 }
 
 function evidenceConfidence(

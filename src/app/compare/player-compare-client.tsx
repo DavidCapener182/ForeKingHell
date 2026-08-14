@@ -1,28 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { Activity, BarChart3, Medal, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
-import { DataPanel, SectionHeader, StatusPill } from "@/components/premium";
+import {
+  ComparisonWorkspace,
+  type ComparisonTableRow,
+  type SavedWorkspaceComparison,
+} from "@/app/compare/comparison-workspace";
+import { StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { Item, ItemContent } from "@/components/ui/item";
 import type { PlayerCompareData, PlayerCompareDelta, PlayerCompareSide } from "@/lib/compare-data";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
@@ -30,7 +20,13 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export function PlayerCompareClient({ data }: { data: PlayerCompareData }) {
+export function PlayerCompareClient({
+  data,
+  savedComparisons = [],
+}: {
+  data: PlayerCompareData;
+  savedComparisons?: SavedWorkspaceComparison[];
+}) {
   const [draftPlayerAId, setDraftPlayerAId] = useState(data.filters.playerAId);
   const [draftPlayerBId, setDraftPlayerBId] = useState(data.filters.playerBId);
   const [selectedPlayerAId, setSelectedPlayerAId] = useState(data.filters.playerAId);
@@ -45,6 +41,7 @@ export function PlayerCompareClient({ data }: { data: PlayerCompareData }) {
     data.playerSides.find((player) => player.userId !== playerA?.userId) ??
     null;
   const delta = playerA && playerB ? buildPlayerDelta(playerA, playerB) : emptyPlayerDelta();
+  const rows = playerA && playerB ? playerComparisonRows(playerA, playerB, delta) : [];
 
   function applySelection() {
     const nextPlayerAId = draftPlayerAId || data.players[0]?.userId || "";
@@ -69,117 +66,69 @@ export function PlayerCompareClient({ data }: { data: PlayerCompareData }) {
   }
 
   return (
-    <>
-      <DataPanel>
-        <SectionHeader
-          title="Choose players"
-          description="Compare handicap, scoring, shot patterns, stock yardages and recent tournament submissions."
-          action={<Medal className="size-5 text-amber-600" />}
+    <ComparisonWorkspace
+      view="players"
+      focusValue={draftPlayerAId}
+      baselineValue={draftPlayerBId}
+      appliedFocusValue={selectedPlayerAId}
+      appliedBaselineValue={selectedPlayerBId}
+      onFocusValueChange={setDraftPlayerAId}
+      onBaselineValueChange={setDraftPlayerBId}
+      onCompare={applySelection}
+      onReset={resetSelection}
+      focusLabel={playerA?.displayName ?? "Player focus"}
+      baselineLabel={playerB?.displayName ?? "Player baseline"}
+      focusOptions={data.players.map((player) => ({
+        value: player.userId,
+        label: player.displayName,
+        description: playerOptionLabel(player),
+      }))}
+      baselineOptions={data.players.map((player) => ({
+        value: player.userId,
+        label: player.displayName,
+        description: playerOptionLabel(player),
+        disabled: player.userId === draftPlayerAId,
+      }))}
+      rows={rows}
+      sampleReady={Boolean(playerA && playerB && playerA.rounds >= 5 && playerB.rounds >= 5)}
+      sampleTitle={
+        playerA && playerB && playerA.rounds >= 5 && playerB.rounds >= 5
+          ? "Established player samples"
+          : "Mixed player evidence depth"
+      }
+      sampleDescription={
+        playerA && playerB
+          ? `${playerA.displayName} has ${integerFormatter.format(playerA.rounds)} rounds and ${playerB.displayName} has ${integerFormatter.format(playerB.rounds)}. Shot metrics use visible stock-shot evidence and remain provisional when either side is sparse.`
+          : "Choose two visible profiles to compare."
+      }
+      evidenceTitle="Player comparison evidence"
+      evidenceDescription="Profiles and recent tournament submissions support the single metric table."
+      evidence={
+        playerA && playerB ? (
+          <>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <PlayerSummaryCard side="Focus" player={playerA} tone="emerald" />
+              <PlayerSummaryCard side="Baseline" player={playerB} tone="sky" />
+            </div>
+            <RecentTournamentScores playerA={playerA} playerB={playerB} />
+          </>
+        ) : null
+      }
+      savedComparisons={savedComparisons}
+      exportFileName="forekinghell-player-comparison-metrics.csv"
+      empty={
+        <AppEmptyState
+          icon={<Users className="size-5" />}
+          title="Choose two players"
+          description="Public profiles and your own profile are available for one comparison."
+          primaryAction={
+            <Button type="button" variant="outline" onClick={resetSelection}>
+              Use available players
+            </Button>
+          }
         />
-        <CardContent>
-          <form
-            className="apple-panel grid items-end gap-3 p-3 md:grid-cols-[1fr_auto_1fr_auto]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              applySelection();
-            }}
-          >
-            <SelectField label="Player A" value={draftPlayerAId} onChange={setDraftPlayerAId}>
-              {data.players.map((player) => (
-                <SelectItem key={player.userId} value={player.userId}>
-                  {playerOptionLabel(player)}
-                </SelectItem>
-              ))}
-            </SelectField>
-            <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">
-              vs
-            </div>
-            <SelectField label="Player B" value={draftPlayerBId} onChange={setDraftPlayerBId}>
-              {data.players.map((player) => (
-                <SelectItem key={player.userId} value={player.userId}>
-                  {playerOptionLabel(player)}
-                </SelectItem>
-              ))}
-            </SelectField>
-            <div className="flex gap-2">
-              <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                Compare
-              </Button>
-              <Button type="button" variant="outline" onClick={resetSelection}>
-                Reset
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </DataPanel>
-
-      {playerA && playerB ? (
-        <>
-          <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-            <DataPanel>
-              <SectionHeader
-                title="Player side by side"
-                description="Handicap, scoring, stock yardages, accuracy and tournament totals."
-                action={<Users className="size-5 text-sky-500" />}
-              />
-              <CardContent className="grid gap-4 lg:grid-cols-2">
-                <PlayerSummaryCard side="Player A" player={playerA} tone="emerald" />
-                <PlayerSummaryCard side="Player B" player={playerB} tone="sky" />
-              </CardContent>
-            </DataPanel>
-
-            <DataPanel>
-              <SectionHeader
-                title="Player gaps"
-                description="Score and accuracy rows favour the lower number; distance and playable rate favour the higher number."
-                action={<Activity className="size-5 text-emerald-500" />}
-              />
-              <CardContent>
-                <PlayerDeltaTable playerA={playerA} playerB={playerB} delta={delta} />
-              </CardContent>
-            </DataPanel>
-          </section>
-
-          <RecentTournamentScores playerA={playerA} playerB={playerB} />
-        </>
-      ) : (
-        <DataPanel>
-          <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-            <Users className="size-9 text-muted-foreground" />
-            <div>
-              <p className="text-xl font-semibold">Choose two players</p>
-              <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                Public profiles and your own profile are available for player comparisons.
-              </p>
-            </div>
-          </CardContent>
-        </DataPanel>
-      )}
-    </>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: ReactNode;
-}) {
-  return (
-    <label className="grid gap-1 text-sm font-medium">
-      {label}
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10 w-full bg-white/90">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>{children}</SelectContent>
-      </Select>
-    </label>
+      }
+    />
   );
 }
 
@@ -192,63 +141,64 @@ function PlayerSummaryCard({
   player: PlayerCompareSide;
   tone: "emerald" | "sky";
 }) {
-  const dotClass = tone === "emerald" ? "bg-emerald-600" : "bg-sky-600";
+  const dotClass =
+    tone === "emerald"
+      ? "bg-[var(--status-success-foreground)]"
+      : "bg-[var(--status-information-foreground)]";
 
   return (
-    <div className="apple-panel-strong p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            <span className={`size-2 rounded-full ${dotClass}`} />
-            {side}
-          </p>
-          <Link
-            href={`/profile/${player.username}`}
-            prefetch={false}
-            className="mt-2 block truncate text-xl font-semibold tracking-normal hover:underline"
-          >
-            {player.displayName}
-          </Link>
-          <p className="mt-1 truncate text-sm text-muted-foreground">
-            @{player.username}
-            {player.homeCourse ? ` · ${player.homeCourse}` : ""}
-          </p>
+    <Item variant="outline" className="items-start p-4">
+      <ItemContent className="space-y-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <span className={`size-2 rounded-full ${dotClass}`} />
+              {side}
+            </p>
+            <Link
+              href={`/profile/${player.username}`}
+              prefetch={false}
+              className="mt-2 block truncate text-xl font-semibold tracking-normal hover:underline"
+            >
+              {player.displayName}
+            </Link>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              @{player.username}
+              {player.homeCourse ? ` · ${player.homeCourse}` : ""}
+            </p>
+          </div>
+          <StatusPill tone={tone === "emerald" ? "green" : "sky"}>
+            {playerStatusLabel(player)}
+          </StatusPill>
         </div>
-        <StatusPill tone={tone === "emerald" ? "green" : "sky"}>
-          {playerStatusLabel(player)}
-        </StatusPill>
-      </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <MiniStat label="Handicap" value={playerHandicapLabel(player)} />
-        <MiniStat label="Best score" value={formatScore(player.bestScore)} />
-        <MiniStat label="Scoring avg" value={formatScore(player.scoringAverage)} />
-        <MiniStat label="Latest score" value={formatScore(player.latestScore)} />
-        <MiniStat label="Tournament total" value={formatTournamentTotal(player)} />
-        <MiniStat
-          label="Tournament rank"
-          value={
-            player.tournamentRank ? `#${integerFormatter.format(player.tournamentRank)}` : "--"
-          }
-        />
-        <MiniStat label="Driver carry" value={formatYards(player.driverCarryYd)} />
-        <MiniStat label="7i carry" value={formatYards(player.sevenIronCarryYd)} />
-        <MiniStat label="Playable" value={formatRate(player.playableRate)} />
-        <MiniStat label="Offline avg" value={formatYards(player.absoluteOfflineAverageYd)} />
-      </div>
-    </div>
+        <dl className="mt-4 grid gap-x-3 gap-y-4 sm:grid-cols-2">
+          <MiniStat label="Handicap" value={playerHandicapLabel(player)} />
+          <MiniStat label="Best score" value={formatScore(player.bestScore)} />
+          <MiniStat label="Scoring avg" value={formatScore(player.scoringAverage)} />
+          <MiniStat label="Latest score" value={formatScore(player.latestScore)} />
+          <MiniStat label="Tournament total" value={formatTournamentTotal(player)} />
+          <MiniStat
+            label="Tournament rank"
+            value={
+              player.tournamentRank ? `#${integerFormatter.format(player.tournamentRank)}` : "--"
+            }
+          />
+          <MiniStat label="Driver carry" value={formatYards(player.driverCarryYd)} />
+          <MiniStat label="7i carry" value={formatYards(player.sevenIronCarryYd)} />
+          <MiniStat label="Playable" value={formatRate(player.playableRate)} />
+          <MiniStat label="Offline avg" value={formatYards(player.absoluteOfflineAverageYd)} />
+        </dl>
+      </ItemContent>
+    </Item>
   );
 }
 
-function PlayerDeltaTable({
-  playerA,
-  playerB,
-  delta,
-}: {
-  playerA: PlayerCompareSide;
-  playerB: PlayerCompareSide;
-  delta: PlayerCompareDelta;
-}) {
+function playerComparisonRows(
+  playerA: PlayerCompareSide,
+  playerB: PlayerCompareSide,
+  delta: PlayerCompareDelta,
+): ComparisonTableRow[] {
   const playerAHandicap = playerHandicapLabel(playerA);
   const playerBHandicap = playerHandicapLabel(playerB);
   const handicapEstimateDelta = delta.handicapEstimateDelta;
@@ -328,39 +278,22 @@ function PlayerDeltaTable({
     },
   ];
 
-  return (
-    <div className="overflow-hidden rounded-[8px] border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Metric</TableHead>
-            <TableHead className="text-right">Player A</TableHead>
-            <TableHead className="text-right">Player B</TableHead>
-            <TableHead className="text-right">Diff</TableHead>
-            <TableHead className="text-right">Better</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.label}>
-              <TableCell className="font-medium">{row.label}</TableCell>
-              <TableCell className="text-right">{row.a}</TableCell>
-              <TableCell className="text-right">{row.b}</TableCell>
-              <TableCell className={deltaClass(row.outcome.winner)}>{row.diff}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex flex-col items-end gap-1">
-                  <StatusPill tone={row.outcome.tone} className="justify-center">
-                    {row.outcome.label}
-                  </StatusPill>
-                  <span className="text-xs text-muted-foreground">{row.outcome.detail}</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
+  const confidence = playerComparisonConfidence(playerA, playerB);
+  return rows.map((row) => {
+    const rowConfidence =
+      row.outcome.winner === "none" ? { label: "No data", tone: "slate" as const } : confidence;
+    return {
+      id: row.label,
+      metric: row.label,
+      focus: row.a,
+      baseline: row.b,
+      delta: row.diff,
+      direction: playerDirectionLabel(row.outcome.winner),
+      directionTone: row.outcome.tone,
+      confidence: rowConfidence.label,
+      confidenceTone: rowConfidence.tone,
+    };
+  });
 }
 
 function RecentTournamentScores({
@@ -371,17 +304,18 @@ function RecentTournamentScores({
   playerB: PlayerCompareSide;
 }) {
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Recent tournament scores"
-        description="Most recent submitted tournament rounds for each selected player."
-        action={<BarChart3 className="size-5 text-emerald-500" />}
-      />
-      <CardContent className="grid gap-4 lg:grid-cols-2">
+    <section className="grid gap-3" data-player-tournament-comparison>
+      <div>
+        <h3 className="font-semibold">Recent tournament scores</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Most recent submitted tournament rounds for each selected player.
+        </p>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
         <RecentScoresList player={playerA} tone="emerald" />
         <RecentScoresList player={playerB} tone="sky" />
-      </CardContent>
-    </DataPanel>
+      </div>
+    </section>
   );
 }
 
@@ -392,53 +326,50 @@ function RecentScoresList({
   player: PlayerCompareSide;
   tone: "emerald" | "sky";
 }) {
-  const dotClass = tone === "emerald" ? "bg-emerald-600" : "bg-sky-600";
+  const dotClass =
+    tone === "emerald"
+      ? "bg-[var(--status-success-foreground)]"
+      : "bg-[var(--status-information-foreground)]";
 
   return (
-    <div className="apple-panel p-4">
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <span className={`size-2 rounded-full ${dotClass}`} />
-        <Link href={`/profile/${player.username}`} prefetch={false} className="hover:underline">
-          {player.displayName}
-        </Link>
-      </p>
-      <div className="mt-3 overflow-hidden rounded-[8px] border bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Round</TableHead>
-              <TableHead className="text-right">Gross</TableHead>
-              <TableHead className="text-right">Net</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {player.recentTournamentScores.length > 0 ? (
-              player.recentTournamentScores.map((score) => (
-                <TableRow key={`${player.userId}-${score.tournamentTitle}-${score.roundNumber}`}>
-                  <TableCell>R{score.roundNumber}</TableCell>
-                  <TableCell className="text-right font-medium">{score.grossScore}</TableCell>
-                  <TableCell className="text-right">{score.netScore ?? "--"}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
-                  No tournament submissions yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <Item variant="outline" className="items-start p-4">
+      <ItemContent className="space-y-3">
+        <p className="flex items-center gap-2 text-sm font-semibold">
+          <span className={`size-2 rounded-full ${dotClass}`} />
+          <Link href={`/profile/${player.username}`} prefetch={false} className="hover:underline">
+            {player.displayName}
+          </Link>
+        </p>
+        <div className="divide-y divide-border rounded-lg border">
+          {player.recentTournamentScores.length > 0 ? (
+            player.recentTournamentScores.map((score) => (
+              <div
+                key={`${player.userId}-${score.tournamentTitle}-${score.roundNumber}`}
+                className="grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2 text-sm"
+              >
+                <span>Round {score.roundNumber}</span>
+                <span className="font-medium tabular-nums">Gross {score.grossScore}</span>
+                <span className="text-muted-foreground tabular-nums">
+                  Net {score.netScore ?? "--"}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="px-3 py-5 text-sm text-muted-foreground">
+              No tournament submissions yet.
+            </p>
+          )}
+        </div>
+      </ItemContent>
+    </Item>
   );
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-      <p className="truncate text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate font-semibold">{value}</p>
+    <div className="border-l border-border pl-3">
+      <dt className="truncate text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 truncate font-semibold">{value}</dd>
     </div>
   );
 }
@@ -582,10 +513,24 @@ function formatAbsoluteDelta(value: number, unit: "yd" | "pts" | "shots") {
   return `${numberFormatter.format(Math.abs(value))} ${unit}`;
 }
 
-function deltaClass(winner: MetricWinner) {
-  if (winner === "a") return "text-right font-semibold text-emerald-700";
-  if (winner === "b") return "text-right font-semibold text-sky-700";
-  return "text-right font-semibold text-muted-foreground";
+function playerDirectionLabel(winner: MetricWinner) {
+  if (winner === "a") return "Focus";
+  if (winner === "b") return "Baseline";
+  if (winner === "tie") return "Even";
+  if (winner === "context") return "Context";
+  return "No data";
+}
+
+function playerComparisonConfidence(playerA: PlayerCompareSide, playerB: PlayerCompareSide) {
+  const smallestRoundSample = Math.min(playerA.rounds, playerB.rounds);
+  const smallestShotSample = Math.min(playerA.stockShots, playerB.stockShots);
+  if (smallestRoundSample >= 5 && smallestShotSample >= 10) {
+    return { label: "Decision-ready", tone: "green" as const };
+  }
+  if (smallestRoundSample >= 2 || smallestShotSample >= 3) {
+    return { label: "Early", tone: "amber" as const };
+  }
+  return { label: "Low sample", tone: "slate" as const };
 }
 
 function diff(left: number | null, right: number | null) {

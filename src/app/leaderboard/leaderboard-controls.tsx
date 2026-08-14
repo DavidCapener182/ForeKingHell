@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { CalendarDays, Flag, Globe2, Medal, Trophy, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Select,
   SelectContent,
@@ -12,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type LeaderboardTab = "friends" | "monthly" | "courses" | "challenges" | "tournaments" | "public";
@@ -32,22 +33,35 @@ const tabs: Array<{
 
 export function LeaderboardTypeTabs({ activeTab }: { activeTab: LeaderboardTab }) {
   return (
-    <Tabs value={activeTab} className="min-w-0" data-leaderboard-type-tabs>
-      <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
+    <ButtonGroup
+      aria-label="Leaderboard views"
+      className="max-w-full justify-start overflow-x-auto"
+      data-leaderboard-type-tabs
+    >
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const active = tab.value === activeTab;
 
-          return (
-            <TabsTrigger key={tab.value} value={tab.value} asChild>
-              <Link href={`/leaderboard?tab=${tab.value}`} prefetch={false}>
-                <Icon aria-hidden />
-                {tab.label}
-              </Link>
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
-    </Tabs>
+        return (
+          <Button
+            key={tab.value}
+            asChild
+            size="sm"
+            variant={active ? "secondary" : "outline"}
+            className="whitespace-nowrap"
+          >
+            <Link
+              href={`/leaderboard?tab=${tab.value}`}
+              prefetch={false}
+              aria-current={active ? "page" : undefined}
+            >
+              <Icon aria-hidden />
+              {tab.label}
+            </Link>
+          </Button>
+        );
+      })}
+    </ButtonGroup>
   );
 }
 

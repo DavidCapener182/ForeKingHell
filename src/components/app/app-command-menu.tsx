@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -20,6 +21,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
 
@@ -118,32 +120,35 @@ export function AppCommandMenu({
         </p>
         <CommandList aria-label="Command centre results">
           <CommandEmpty>No matching route or golf action.</CommandEmpty>
-          {groups.map((group) => (
-            <CommandGroup key={group.label} heading={group.label}>
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <CommandItem
-                    key={`${group.label}-${item.id}`}
-                    value={[item.label, item.detail, item.href, ...item.aliases].join(" ")}
-                    onSelect={() => selectItem(item)}
-                  >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary group-data-[selected=true]/command-item:bg-white/14 group-data-[selected=true]/command-item:text-primary-foreground">
-                      <Icon className="size-4" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{item.label}</span>
-                      <span className="block truncate text-xs text-muted-foreground group-data-[selected=true]/command-item:text-primary-foreground/75">
-                        {item.detail}
+          {groups.map((group, index) => (
+            <Fragment key={group.label}>
+              {index > 0 ? <CommandSeparator /> : null}
+              <CommandGroup heading={group.label}>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <CommandItem
+                      key={`${group.label}-${item.id}`}
+                      value={[item.label, item.detail, item.href, ...item.aliases].join(" ")}
+                      onSelect={() => selectItem(item)}
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary group-data-[selected=true]/command-item:bg-primary-foreground/15 group-data-[selected=true]/command-item:text-primary-foreground">
+                        <Icon className="size-4" aria-hidden />
                       </span>
-                    </span>
-                    <CommandShortcut>
-                      <ArrowRight className="size-4" aria-hidden />
-                    </CommandShortcut>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{item.label}</span>
+                        <span className="block truncate text-xs text-muted-foreground group-data-[selected=true]/command-item:text-primary-foreground/75">
+                          {item.detail}
+                        </span>
+                      </span>
+                      <CommandShortcut>
+                        <ArrowRight className="size-4" aria-hidden />
+                      </CommandShortcut>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </Fragment>
           ))}
         </CommandList>
       </Command>

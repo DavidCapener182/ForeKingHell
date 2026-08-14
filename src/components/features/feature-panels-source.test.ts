@@ -6,12 +6,16 @@ const source = readFileSync(
   join(process.cwd(), "src/components/features/feature-panels.tsx"),
   "utf8",
 );
+const savedShotViewsSource = readFileSync(
+  join(process.cwd(), "src/app/shots/saved-shot-views-panel.tsx"),
+  "utf8",
+);
 
 describe("feature panel source", () => {
   it("keeps bag fitting alerts readable before the ultra-wide target-selector split", () => {
     const bagPanelBlock =
       source.match(
-        /export function BagFeaturePanel[\s\S]*?export function SavedShotViewsPanel/,
+        /export function BagFeaturePanel[\s\S]*?export function CoachPracticeFeaturePanel/,
       )?.[0] ?? "";
 
     expect(bagPanelBlock).toContain("Bag fitting and target selector");
@@ -42,17 +46,12 @@ describe("feature panel source", () => {
     expect(socialPanelBlock).not.toContain("lg:grid-cols-[minmax(0,1fr)_360px]");
   });
 
-  it("keeps saved-view cards equal height while the form stays collapsed", () => {
-    const savedViewsBlock =
-      source.match(
-        /export function SavedShotViewsPanel[\s\S]*?export function CoachPracticeFeaturePanel/,
-      )?.[0] ?? "";
-
-    expect(savedViewsBlock).toContain("grid auto-rows-fr items-stretch gap-2 md:grid-cols-3");
-    expect(savedViewsBlock).toContain("h-full rounded-lg border border-slate-200 bg-white p-3");
-    expect(savedViewsBlock).toContain("<Collapsible");
-    expect(savedViewsBlock).toContain("<CollapsibleTrigger");
-    expect(savedViewsBlock).toContain("<CollapsibleContent");
-    expect(savedViewsBlock).not.toContain("<details");
+  it("keeps saved views and the save workflow in one stable client composition", () => {
+    expect(savedShotViewsSource).toContain('"use client"');
+    expect(savedShotViewsSource).toContain("<DropdownMenu>");
+    expect(savedShotViewsSource).toContain("<Dialog>");
+    expect(savedShotViewsSource).toContain("Save current filters");
+    expect(savedShotViewsSource).toContain("saveShotViewAction");
+    expect(savedShotViewsSource).not.toMatch(/<details\b|bg-white|text-slate-/);
   });
 });

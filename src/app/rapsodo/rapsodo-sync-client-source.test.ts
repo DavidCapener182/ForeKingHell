@@ -7,6 +7,10 @@ const companion = readFileSync(
   join(process.cwd(), "src/app/rapsodo/rapsodo-companion-client.tsx"),
   "utf8",
 );
+const companionPreview = readFileSync(
+  join(process.cwd(), "src/app/rapsodo/rapsodo-companion-preview.tsx"),
+  "utf8",
+);
 const companionWorkflow = readFileSync(
   join(process.cwd(), "src/lib/rapsodo/companion-workflow.ts"),
   "utf8",
@@ -34,13 +38,43 @@ describe("rapsodo desktop provider console", () => {
     expect(companion).toContain("loadSessions");
     expect(companion).toContain("companionRapsodoInbox");
     expect(companionWorkflow).toContain("!session.importedSessionId");
-    expect(companion).toContain("Session preview");
-    expect(companion).toContain("Confirm uncertain clubs");
-    expect(companion).toContain("practicePlanId");
-    expect(companion).toContain("companionRapsodoResultHref");
+    expect(companionPreview).toContain("Session preview");
+    expect(companionPreview).toContain("Confirm uncertain clubs");
+    expect(companionPreview).toContain("practicePlanId");
+    expect(companionPreview).toContain("companionRapsodoResultHref");
+    expect(companion).toContain("<ScrollArea");
+    expect(companion).toContain(
+      "<Button\n                key={`${session.providerKind}-${session.providerSessionId}`}",
+    );
+    expect(companion).toContain("<Item");
+    expect(companion).toContain("onClick={() => openPreview(session)}");
+    expect(companion).not.toMatch(/<button\b/);
+    expect(companionPreview).toContain("<Drawer");
+    expect(companionPreview).toContain("<Table");
+    expect(companionPreview).toContain("<Field");
+    expect(companionPreview).toContain("<OperationStepper");
+    expect(companionPreview).toContain("<ConnectedMetricBar");
+    expect(companionPreview).toContain("data-rapsodo-preview-summary");
+    expect(companion).toContain("<DropdownMenu");
+    expect(companion).toContain("<AlertDialog");
+    expect(companion).toContain("Use a CSV instead");
     expect(companionWorkflow).toContain("/import/result?sessionId=");
     expect(companion).not.toContain('href="/shots"');
     expect(companion).not.toContain("DesktopWorkflowLayout");
+    expect(companion).not.toContain("IOSGroupedList");
+    expect(companion).not.toContain("IOSMetricRow");
+    expect(companion).not.toContain("IOSSectionHeader");
+  });
+
+  it("loads preview and mapping controls only after a session is opened", () => {
+    expect(companion).toContain('import dynamic from "next/dynamic"');
+    expect(companion).toContain('import("@/app/rapsodo/rapsodo-companion-preview")');
+    expect(companion).toContain("preview={preview}");
+    expect(companion).not.toContain('from "@/components/ui/drawer"');
+    expect(companion).not.toContain('from "@/components/ui/select"');
+    expect(companion).not.toContain('from "@/components/ui/table"');
+    expect(companionPreview).toContain("importRapsodoSessionAction");
+    expect(companionPreview).toContain("uncertainCompanionRapsodoShots");
   });
 
   it("keeps the mocked provider fixture behind the non-production Playwright auth guard", () => {
@@ -49,17 +83,27 @@ describe("rapsodo desktop provider console", () => {
     expect(currentUserSource).toContain('if (process.env.NODE_ENV === "production")');
     expect(currentUserSource).toContain("return false;");
   });
-  it("keeps the specialist import flow mobile-native through the lg breakpoint", () => {
-    expect(source).toContain("IOSGroupedList");
-    expect(source).toContain("MobileRapsodoSessionRows");
-    expect(source).toContain("lg:hidden");
-    expect(source).toContain("hidden lg:block");
-    expect(source).not.toContain('className="hidden sm:block"');
-    expect(source).not.toContain('className="sm:hidden"');
-    expect(source).toContain(
-      '<h2 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">',
-    );
-    expect(source).not.toContain(">\n            Rapsodo Inbox\n          </h1>");
+  it("keeps RapsodoSyncClient workbench-only after the companion runtime split", () => {
+    expect(source).toContain("DesktopWorkflowLayout");
+    expect(source).toContain('data-workbench-scope="rapsodo"');
+    expect(source).not.toContain("IOSGroupedList");
+    expect(source).not.toContain("IOSListRow");
+    expect(source).not.toContain("MobileRapsodoSessionRows");
+    expect(source).not.toContain("RapsodoInboxPrimaryCard");
+    expect(source).not.toContain("RapsodoMobileStepper");
+    expect(source).not.toContain("MobileAccordionSection");
+    expect(source).not.toContain("MobileBentoSummary");
+    expect(source).not.toContain("MobileDataCard");
+    expect(source).not.toContain("StickyMobileAction");
+    expect(source).not.toContain("MobileRouteHeader");
+    expect(source).not.toContain("CompactSummaryTile");
+    expect(source).not.toContain("data-mobile-preserve-dark");
+    expect(source).not.toContain("premium-hero");
+    expect(source).not.toContain("mobileStep");
+    expect(source).not.toContain("lg:hidden");
+    expect(source).not.toContain("hidden lg:");
+    expect(source).not.toMatch(/<button\b/);
+    expect(companion).toContain("RapsodoCompanionClient");
   });
 
   it("uses the desktop workflow template for provider connection and import review", () => {
@@ -91,6 +135,21 @@ describe("rapsodo desktop provider console", () => {
     expect(source).not.toContain("<select");
   });
 
+  it("flattens disconnected benefit tiles into Items instead of nested Cards", () => {
+    expect(source).toContain("data-rapsodo-connect-benefits");
+    expect(source).toContain('<Item key={item.title} variant="muted" size="sm"');
+    expect(source).toContain("<ItemMedia>");
+    expect(source).toContain("<ItemContent>");
+    expect(source).not.toContain('<Card key={item.title} className="p-3 shadow-none">');
+  });
+
+  it("uses the shadcn Textarea for scorecard rows instead of a raw textarea", () => {
+    expect(source).toContain('import { Textarea } from "@/components/ui/textarea"');
+    expect(source).toContain("<Textarea");
+    expect(source).toContain('placeholder="Hole, par, yards"');
+    expect(source).not.toMatch(/<textarea\b/);
+  });
+
   it("keeps remote sessions exportable and configurable without adding an AI rail", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="rapsodo-sessions"');
@@ -113,7 +172,6 @@ describe("rapsodo desktop provider console", () => {
   it("defaults club mapping to recommendations and labels the saved choice accurately", () => {
     expect(source).toContain('useState<ClubSelectionMode>("recommendations")');
     expect(source).toContain('? "Recommended club"');
-    expect(source).toContain('? "Recommended clubs"');
     expect(source).toContain('? "recommended"');
     expect(source).not.toContain("Confirmed club");
     expect(source).not.toContain("confirmed shots");

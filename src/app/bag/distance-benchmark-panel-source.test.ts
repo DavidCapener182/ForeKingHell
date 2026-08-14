@@ -66,4 +66,20 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("Carry, speed and flight benchmarks are loaded.");
     expect(source).toContain("peerBenchmarksLoaded && peerChase");
   });
+
+  it("uses semantic shadcn tabs, alerts, badges and sticky table surfaces", () => {
+    const fixedPalette =
+      /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#|rgba\(|#[0-9a-f]{3,8}/i;
+
+    expect(source).not.toMatch(fixedPalette);
+    expect(source).toContain("<Tabs");
+    expect(source).toContain("<Alert");
+    expect(source).toContain("<AlertTitle");
+    expect(source).toContain("<AlertDescription");
+    expect(source).toContain("<Badge");
+    expect(source).toContain("<Table");
+    expect(source).not.toContain("<table");
+    expect(source).toContain("shadow-[1px_0_0_hsl(var(--border))]");
+    expect(source).toContain("var(--status-information-surface)");
+  });
 });

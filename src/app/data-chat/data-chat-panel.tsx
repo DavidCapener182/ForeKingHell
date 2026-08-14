@@ -7,6 +7,7 @@ import {
   Check,
   Copy,
   Download,
+  ChevronDown,
   FileText,
   Loader2,
   MessageCircle,
@@ -15,20 +16,25 @@ import {
   Trash2,
 } from "lucide-react";
 
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-} from "@/components/app/ios-mobile";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { DataTableFrame } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Command, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -116,7 +122,7 @@ const savedAnswerSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
   {
     title: "Practice-plan source",
-    href: "/data-chat?prompt=Build%20a%20practice%20plan#from-my-data",
+    href: "/data-chat?prompt=Build%20a%20practice%20plan#data-chat-composer",
     detail: "Start from saved advice before turning it into a coach or practice plan.",
   },
   {
@@ -137,12 +143,10 @@ export function DataChatPanel({
   monthlyRemaining,
   questionId,
   initialQuestion,
-  savedAnswerWorkbench = false,
 }: {
   monthlyRemaining: number;
   questionId?: string;
   initialQuestion?: string;
-  savedAnswerWorkbench?: boolean;
 }) {
   const generatedId = useId();
   const inputId = questionId ?? `data-chat-question-${generatedId}`;
@@ -259,29 +263,36 @@ export function DataChatPanel({
     latestAssistant?.role === "assistant" ? latestAssistant.creditsRemaining : monthlyRemaining;
 
   return (
-    <div className="grid min-w-0 gap-3 lg:gap-4" data-data-chat-ready={isReady ? "true" : "false"}>
-      <div
-        className="order-1 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:grid lg:grid-cols-2 lg:overflow-visible lg:px-0 xl:grid-cols-4"
+    <div className="grid min-w-0 gap-4" data-data-chat-ready={isReady ? "true" : "false"}>
+      <Command
+        className="border bg-card shadow-sm"
         aria-label="Suggested Data Chat questions"
+        data-data-chat-starters
       >
-        {starterQuestions.map((starter) => (
-          <Button
-            key={starter}
-            type="button"
-            variant="outline"
-            className="h-auto min-h-11 min-w-[13rem] shrink-0 justify-start whitespace-normal rounded-full px-4 py-2 text-left leading-5 lg:min-w-0 lg:rounded-md"
-            disabled={!isReady || isPending}
-            onClick={() => void submitQuestion(starter)}
+        <CommandList className="max-h-none">
+          <CommandGroup
+            heading="Suggested questions"
+            className="[&_[cmdk-group-items]]:grid [&_[cmdk-group-items]]:grid-cols-2 [&_[cmdk-group-items]]:gap-1 xl:[&_[cmdk-group-items]]:grid-cols-4"
           >
-            <Sparkles className="size-4" />
-            {starter}
-          </Button>
-        ))}
-      </div>
+            {starterQuestions.map((starter) => (
+              <CommandItem
+                key={starter}
+                value={starter}
+                disabled={!isReady || isPending}
+                onSelect={() => void submitQuestion(starter)}
+                className="items-start whitespace-normal"
+              >
+                <Sparkles className="mt-0.5 size-4 text-primary" aria-hidden />
+                <span>{starter}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
 
       {loadedQuestion ? (
         <div
-          className="order-2 flex flex-col gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-3 text-sm leading-6 text-[var(--status-success-foreground)] sm:flex-row sm:items-center sm:justify-between"
+          className="flex items-center justify-between gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-3 text-sm leading-6 text-[var(--status-success-foreground)]"
           data-initial-data-chat-prompt
           role="status"
         >
@@ -305,14 +316,15 @@ export function DataChatPanel({
         </div>
       ) : null}
 
-      <div
-        className="order-4 grid max-h-[46dvh] min-h-48 gap-3 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-3 lg:order-none lg:max-h-none lg:min-h-[22rem] lg:overflow-visible lg:rounded-lg lg:p-4"
+      <ScrollArea
+        className="h-[32rem] min-h-[22rem] rounded-lg border bg-card"
         aria-label="Data Chat conversation"
         aria-live="polite"
+        data-data-chat-conversation
       >
-        {turns.length > 0 ? (
-          <div className="grid content-start gap-3">
-            {turns.map((turn, index) => {
+        <div className="grid min-h-[22rem] content-start gap-3 p-4">
+          {turns.length > 0 ? (
+            turns.map((turn, index) => {
               if (turn.role === "user") {
                 return (
                   <div key={turn.id} className="flex justify-end">
@@ -343,101 +355,94 @@ export function DataChatPanel({
                   disabled={!isReady || isPending}
                 />
               );
-            })}
-          </div>
-        ) : (
-          <div className="grid place-items-center rounded-lg border border-dashed border-border bg-muted p-6 text-center">
-            <div>
-              <MessageCircle className="mx-auto size-8 text-primary" />
-              <p className="mt-3 text-sm font-medium text-foreground">Ask from your golf data</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Stock yardages, shots, rounds, speed work, practice, challenges and achievements.
-              </p>
+            })
+          ) : (
+            <AppEmptyState
+              icon={<MessageCircle className="size-5" />}
+              title="Ask from your golf data"
+              description="Stock yardages, shots, rounds, speed work, practice, challenges and achievements."
+              primaryAction={
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!isReady || isPending}
+                  onClick={() => void submitQuestion(starterQuestions[0])}
+                >
+                  <Sparkles className="size-4" />
+                  Ask what to practise next
+                </Button>
+              }
+              className="min-h-56 border-0 bg-transparent"
+            />
+          )}
+          {isPending ? (
+            <div className="grid max-w-[min(42rem,92%)] gap-2 rounded-lg border bg-muted/40 p-3">
+              <div className="flex items-center gap-2">
+                <Loader2 className="size-4 animate-spin text-primary" aria-hidden />
+                <Skeleton className="h-4 w-28" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
             </div>
-          </div>
-        )}
-      </div>
+          ) : null}
+        </div>
+      </ScrollArea>
 
       {error ? (
-        <div className="order-3 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-sm text-[var(--status-warning-foreground)] lg:order-none">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <MessageCircle className="size-4" aria-hidden />
+          <AlertTitle>Data Chat could not answer</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <form
-        className="order-3 sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 grid gap-2 rounded-xl border border-border bg-background/95 p-2 shadow-sm backdrop-blur-lg lg:static lg:order-none lg:gap-3 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none"
+        id="data-chat-composer"
+        className="grid scroll-mt-28 gap-3"
         onSubmit={onSubmit}
         data-data-chat-composer
       >
-        <label className="grid gap-2 text-sm font-medium" htmlFor={inputId}>
+        <label className="sr-only" htmlFor={inputId}>
           Question
-          <Textarea
+        </label>
+        <InputGroup className="min-h-28 items-stretch bg-card shadow-sm">
+          <InputGroupTextarea
             id={inputId}
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Which part of my game is costing me most right now?"
-            className="min-h-14 resize-y bg-card text-base lg:min-h-24"
+            className="min-h-20 resize-y px-3 pt-3 text-base"
             maxLength={800}
             disabled={!isReady}
             data-page-search
           />
-        </label>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">
-            {remainingCredits.toLocaleString("en-GB")} AI credits left this month
-          </p>
-          <Button
-            type="submit"
-            className="min-h-11"
-            disabled={!isReady || isPending || !question.trim()}
-          >
-            {isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <MessageCircle className="size-4" />
-            )}
-            Ask data chat
-          </Button>
-        </div>
+          <InputGroupAddon align="block-end" className="justify-between border-t px-2.5 pt-2">
+            <span className="text-xs text-muted-foreground">
+              {remainingCredits.toLocaleString("en-GB")} AI credits left this month
+            </span>
+            <Button type="submit" size="sm" disabled={!isReady || isPending || !question.trim()}>
+              {isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <MessageCircle className="size-4" />
+              )}
+              Ask data chat
+            </Button>
+          </InputGroupAddon>
+        </InputGroup>
       </form>
 
-      {savedAnswerWorkbench ? (
-        <PerformanceReportBuilder
-          latestAssistant={latestAssistant?.role === "assistant" ? latestAssistant : null}
-          savedAnswers={savedAnswers}
-          disabled={!isReady}
-        />
-      ) : null}
+      <PerformanceReportBuilder
+        latestAssistant={latestAssistant?.role === "assistant" ? latestAssistant : null}
+        savedAnswers={savedAnswers}
+        disabled={!isReady}
+      />
 
-      {savedAnswerWorkbench ? (
-        <SavedAnswersWorkbench
-          answers={savedAnswers}
-          onReuseQuestion={setQuestion}
-          onRemoveAnswer={removeSavedAnswer}
-        />
-      ) : (
-        <div className="order-5 lg:order-none">
-          <IOSDisclosureGroup
-            label="Saved Data Chat answers"
-            items={[
-              {
-                value: "saved-answers",
-                title: "Saved answers",
-                summary: `${savedAnswers.length}/8`,
-                description: "Reuse useful explanations on this device",
-                content: (
-                  <SavedAnswerCards
-                    answers={savedAnswers}
-                    onReuseQuestion={setQuestion}
-                    onRemoveAnswer={removeSavedAnswer}
-                    embedded
-                  />
-                ),
-              },
-            ]}
-          />
-        </div>
-      )}
+      <SavedAnswersWorkbench
+        answers={savedAnswers}
+        onReuseQuestion={setQuestion}
+        onRemoveAnswer={removeSavedAnswer}
+      />
     </div>
   );
 }
@@ -500,21 +505,17 @@ function PerformanceReportBuilder({
   }
 
   return (
-    <section
-      aria-labelledby="performance-report-builder-title"
-      className="hidden gap-3 rounded-lg border border-emerald-200 bg-emerald-50/45 p-3 lg:grid"
-      data-performance-report-builder
-    >
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <p
+    <Card aria-labelledby="performance-report-builder-title" data-performance-report-builder>
+      <CardHeader className="flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 space-y-1">
+          <CardTitle
             id="performance-report-builder-title"
-            className="flex items-center gap-2 text-sm font-semibold text-emerald-950"
+            className="flex items-center gap-2 text-base"
           >
-            <FileText className="size-4" aria-hidden />
+            <FileText className="size-4 text-primary" aria-hidden />
             Performance report draft
-          </p>
-          <p className="mt-1 text-sm leading-5 text-emerald-950/75">Cited weekly review draft.</p>
+          </CardTitle>
+          <CardDescription>Cited weekly review draft.</CardDescription>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -558,29 +559,31 @@ function PerformanceReportBuilder({
             Share
           </Button>
         </div>
-      </div>
+      </CardHeader>
 
-      <Textarea
-        aria-label="Editable performance report preview"
-        className="min-h-72 resize-y bg-white font-mono text-sm leading-6"
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value);
-          setShareStatus("idle");
-        }}
-        disabled={disabled}
-        data-performance-report-preview
-      />
+      <CardContent className="grid gap-3">
+        <Textarea
+          aria-label="Editable performance report preview"
+          className="min-h-72 resize-y bg-background font-mono text-sm leading-6"
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setShareStatus("idle");
+          }}
+          disabled={disabled}
+          data-performance-report-preview
+        />
 
-      <p
-        className="min-h-5 text-xs font-medium text-emerald-950/75"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {reportShareStatusText(shareStatus)}
-      </p>
-    </section>
+        <p
+          className="min-h-5 text-xs font-medium text-muted-foreground"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {reportShareStatusText(shareStatus)}
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -594,108 +597,124 @@ function SavedAnswersWorkbench({
   onRemoveAnswer: (answerId: string) => void;
 }) {
   return (
-    <section
+    <Card
       id="saved-data-chat-answers"
       aria-label="Saved Data Chat answers"
       data-workbench-scope="data-chat-saved-answers"
-      className="rounded-lg border border-slate-200 bg-white/82 p-3"
     >
-      <SavedAnswersHeader count={answers.length} />
+      <CardHeader>
+        <SavedAnswersHeader count={answers.length} />
+      </CardHeader>
+      <CardContent>
+        <DesktopTableWorkbenchControls
+          viewKey="data-chat-saved-answers"
+          scope="data-chat-saved-answers"
+          currentViewLabel="Saved Data Chat answers"
+          resultLabel={`${answers.length}/8 saved`}
+          columns={savedAnswerColumns}
+          suggestedViews={savedAnswerSuggestedViews}
+          exportTableId="data-chat-saved-answers"
+          exportFileName="lm-world-tour-data-chat-saved-answers.csv"
+          className="mb-3"
+        />
 
-      <DesktopTableWorkbenchControls
-        viewKey="data-chat-saved-answers"
-        scope="data-chat-saved-answers"
-        currentViewLabel="Saved Data Chat answers"
-        resultLabel={`${answers.length}/8 saved`}
-        columns={savedAnswerColumns}
-        suggestedViews={savedAnswerSuggestedViews}
-        exportTableId="data-chat-saved-answers"
-        exportFileName="lm-world-tour-data-chat-saved-answers.csv"
-        className="my-3"
-      />
-
-      <DataTableFrame mainTable mainTableLabel="Saved Data Chat answers table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="data-chat-saved-answers"
-          aria-describedby="saved-data-chat-answers-summary"
-        >
-          <TableCaption id="saved-data-chat-answers-summary" className="sr-only">
-            Saved Data Chat answers table showing question, answer, confidence, cited records, saved
-            date and reuse or remove actions.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-            <TableRow>
-              <TableHead
-                data-column="question"
-                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
-                Question
-              </TableHead>
-              <TableHead data-column="answer">Answer</TableHead>
-              <TableHead data-column="confidence">Confidence</TableHead>
-              <TableHead data-column="citations">Citations</TableHead>
-              <TableHead data-column="saved">Saved</TableHead>
-              <TableHead data-column="action" className="text-right">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {answers.length > 0 ? (
-              answers.map((answer) => (
-                <TableRow key={answer.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="question"
-                    className="sticky left-0 z-10 min-w-72 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                  >
-                    <span className="block max-w-80 truncate">{answer.question}</span>
-                  </TableCell>
-                  <TableCell data-column="answer" className="min-w-96">
-                    <span className="line-clamp-2">{answer.answer}</span>
-                  </TableCell>
-                  <TableCell data-column="confidence" className="capitalize">
-                    {answer.confidence}
-                  </TableCell>
-                  <TableCell data-column="citations">{citationSummary(answer)}</TableCell>
-                  <TableCell data-column="saved">
-                    {formatSavedAnswerDate(answer.generatedAt)}
-                  </TableCell>
-                  <TableCell data-column="action" className="min-w-56 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onReuseQuestion(answer.question)}
-                      >
-                        Reuse
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-700 hover:text-red-800"
-                        onClick={() => onRemoveAnswer(answer.id)}
-                      >
-                        <Trash2 className="size-4" />
-                        Remove
-                      </Button>
-                    </div>
+        <DataTableFrame mainTable mainTableLabel="Saved Data Chat answers table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="data-chat-saved-answers"
+            aria-describedby="saved-data-chat-answers-summary"
+          >
+            <TableCaption id="saved-data-chat-answers-summary" className="sr-only">
+              Saved Data Chat answers table showing question, answer, confidence, cited records,
+              saved date and reuse or remove actions.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+              <TableRow>
+                <TableHead
+                  data-column="question"
+                  className="sticky left-0 z-20 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
+                >
+                  Question
+                </TableHead>
+                <TableHead data-column="answer">Answer</TableHead>
+                <TableHead data-column="confidence">Confidence</TableHead>
+                <TableHead data-column="citations">Citations</TableHead>
+                <TableHead data-column="saved">Saved</TableHead>
+                <TableHead data-column="action" className="text-right">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {answers.length > 0 ? (
+                answers.map((answer) => (
+                  <TableRow key={answer.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="question"
+                      className="sticky left-0 z-10 min-w-72 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
+                    >
+                      <span className="block max-w-80 truncate">{answer.question}</span>
+                    </TableCell>
+                    <TableCell data-column="answer" className="min-w-96">
+                      <span className="line-clamp-2">{answer.answer}</span>
+                    </TableCell>
+                    <TableCell data-column="confidence" className="capitalize">
+                      {answer.confidence}
+                    </TableCell>
+                    <TableCell data-column="citations">{citationSummary(answer)}</TableCell>
+                    <TableCell data-column="saved">
+                      {formatSavedAnswerDate(answer.generatedAt)}
+                    </TableCell>
+                    <TableCell data-column="action" className="min-w-56 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onReuseQuestion(answer.question)}
+                        >
+                          Reuse
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => onRemoveAnswer(answer.id)}
+                        >
+                          <Trash2 className="size-4" />
+                          Remove
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={savedAnswerColumns.length} className="h-24 text-center">
+                    Save an answer after Data Chat responds. Saved items stay on this browser for
+                    report drafts, coach notes and follow-up practice plans.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={savedAnswerColumns.length} className="h-24 text-center">
-                  Save an answer after Data Chat responds. Saved items stay on this browser for
-                  report drafts, coach notes and follow-up practice plans.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
-    </section>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SavedAnswersHeader({ count }: { count: number }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <CardTitle className="text-base">Saved answers</CardTitle>
+        <CardDescription className="mt-1">
+          Keep useful explanations and reuse their questions on this device.
+        </CardDescription>
+      </div>
+      <Badge variant="secondary">{count}/8</Badge>
+    </div>
   );
 }
 
@@ -789,91 +808,6 @@ function reportShareStatusText(status: ReportShareStatus) {
   return "";
 }
 
-function SavedAnswerCards({
-  answers,
-  onReuseQuestion,
-  onRemoveAnswer,
-  embedded = false,
-}: {
-  answers: SavedDataChatAnswer[];
-  onReuseQuestion: (question: string) => void;
-  onRemoveAnswer: (answerId: string) => void;
-  embedded?: boolean;
-}) {
-  return (
-    <section
-      aria-label="Saved Data Chat answers"
-      className={embedded ? "min-w-0" : "rounded-lg border border-border bg-card p-3"}
-    >
-      <SavedAnswersHeader count={answers.length} />
-
-      {answers.length > 0 ? (
-        <div className="mt-3 grid gap-2 lg:grid-cols-2">
-          {answers.map((answer) => (
-            <article
-              key={answer.id}
-              className="grid gap-2 rounded-lg border border-border bg-secondary/45 p-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="line-clamp-2 text-sm font-medium text-foreground">
-                    {answer.question}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
-                    {answer.answer}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="focus-aaa grid size-11 shrink-0 place-items-center rounded-lg text-muted-foreground outline-none hover:bg-card hover:text-destructive"
-                  aria-label="Remove saved answer"
-                  onClick={() => onRemoveAnswer(answer.id)}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-card px-2 py-0.5 text-xs font-medium capitalize text-foreground ring-1 ring-border">
-                  {answer.confidence} confidence
-                </span>
-                <span className="text-xs text-muted-foreground">{citationSummary(answer)}</span>
-                <button
-                  type="button"
-                  className="focus-aaa min-h-11 rounded-full bg-card px-3 py-2 text-xs font-medium text-primary outline-none ring-1 ring-border hover:bg-secondary"
-                  onClick={() => onReuseQuestion(answer.question)}
-                >
-                  Reuse question
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-3 rounded-lg border border-dashed border-border bg-secondary/45 px-3 py-4 text-sm leading-6 text-muted-foreground">
-          Save an answer after Data Chat responds. Saved items stay on this browser and are useful
-          for report drafts, coach notes and follow-up practice plans.
-        </div>
-      )}
-    </section>
-  );
-}
-
-function SavedAnswersHeader({ count }: { count: number }) {
-  return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <p className="text-sm font-semibold text-foreground">Saved answers</p>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Keep useful explanations and reuse their questions on this device.
-        </p>
-      </div>
-      <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-foreground">
-        {count}/8
-      </span>
-    </div>
-  );
-}
-
 function AssistantTurn({
   turn,
   sourceQuestion,
@@ -889,154 +823,124 @@ function AssistantTurn({
   saved: boolean;
   disabled: boolean;
 }) {
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const actionCount = turn.tips.length + turn.drills.length;
+
   return (
-    <div className="max-w-[min(46rem,96%)] rounded-xl border border-primary/15 bg-primary/5 p-3 text-sm leading-6 text-foreground lg:rounded-lg">
-      <div className="flex flex-wrap items-center gap-2">
-        <IOSInlineStatus
-          label={`${turn.confidence} confidence`}
-          tone={assistantConfidenceTone(turn.confidence)}
-          className="capitalize"
-        />
-        <span className="text-xs text-muted-foreground">{turn.creditsCharged} credit charged</span>
-        <Button
-          type="button"
-          variant="outline"
-          className="ml-auto min-h-11 bg-card px-3 text-xs"
-          disabled={disabled && !saved}
-          onClick={() => onSave(turn, sourceQuestion)}
-        >
-          {saved ? <Check className="size-3.5" /> : <BookmarkPlus className="size-3.5" />}
-          {saved ? "Saved" : "Save answer"}
-        </Button>
-      </div>
-      <p className="mt-3">{turn.content}</p>
-
-      <AssistantEvidenceDisclosures turn={turn} />
-
-      {turn.tips.length > 0 || turn.drills.length > 0 ? (
-        <div className="mt-4 hidden gap-3 lg:grid lg:grid-cols-2">
-          {turn.tips.length > 0 ? (
-            <ResponseList title="Tips" items={turn.tips.slice(0, 4)} />
-          ) : null}
-          {turn.drills.length > 0 ? (
-            <ResponseList title="Drills" items={turn.drills.slice(0, 3)} />
-          ) : null}
+    <Card className="max-w-[min(46rem,96%)] border-primary/15 bg-primary/5 shadow-sm">
+      <CardContent className="p-3 text-sm leading-6 text-foreground">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="capitalize">
+            {turn.confidence} confidence
+          </Badge>
+          <span className="text-xs text-muted-foreground">
+            {turn.creditsCharged} credit charged
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            className="ml-auto min-h-11 bg-card px-3 text-xs"
+            disabled={disabled && !saved}
+            onClick={() => onSave(turn, sourceQuestion)}
+          >
+            {saved ? <Check className="size-3.5" /> : <BookmarkPlus className="size-3.5" />}
+            {saved ? "Saved" : "Save answer"}
+          </Button>
         </div>
-      ) : null}
+        <p className="mt-3">{turn.content}</p>
 
-      {turn.citations.length > 0 ? (
-        <div className="mt-4 hidden border-t border-border pt-3 lg:block">
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Cited data
-          </p>
-          <div className="mt-2 grid gap-2">
-            {turn.citations.slice(0, 6).map((citation) =>
-              citation.href ? (
-                <Link
-                  key={citation.id}
-                  href={citation.href}
-                  prefetch={false}
-                  className="rounded-lg bg-card px-3 py-2 hover:bg-secondary"
-                >
-                  <span className="font-medium">{citation.label}</span>
-                  <span className="block text-muted-foreground">{citation.detail}</span>
-                </Link>
-              ) : (
-                <div key={citation.id} className="rounded-lg bg-card px-3 py-2">
-                  <span className="font-medium">{citation.label}</span>
-                  <span className="block text-muted-foreground">{citation.detail}</span>
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-      ) : null}
+        {actionCount > 0 ? (
+          <Collapsible className="group mt-4 rounded-lg border bg-card">
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="ghost" className="h-auto w-full justify-start p-3">
+                <Sparkles className="size-4 text-primary" aria-hidden />
+                <span className="font-medium">Tips and drills</span>
+                <Badge variant="outline" className="ml-auto">
+                  {actionCount}
+                </Badge>
+                <ChevronDown
+                  className="size-4 transition-transform group-data-[state=open]:rotate-180"
+                  aria-hidden
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="grid gap-3 border-t p-3 md:grid-cols-2">
+              {turn.tips.length > 0 ? (
+                <ResponseList title="Tips" items={turn.tips.slice(0, 4)} />
+              ) : null}
+              {turn.drills.length > 0 ? (
+                <ResponseList title="Drills" items={turn.drills.slice(0, 3)} />
+              ) : null}
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
 
-      {turn.followUpQuestions.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {turn.followUpQuestions.slice(0, 3).map((followUp) => (
-            <button
-              key={followUp}
-              type="button"
-              disabled={disabled}
-              onClick={() => onAskFollowUp(followUp)}
-              className="focus-aaa min-h-11 rounded-full bg-card px-3 py-2 text-xs font-medium text-foreground ring-1 ring-border outline-none"
+        {turn.citations.length > 0 ? (
+          <div className="mt-4 border-t pt-3">
+            <ResponsiveDetailPanel
+              open={evidenceOpen}
+              onOpenChange={setEvidenceOpen}
+              title="Cited data"
+              description="Records supporting this answer."
+              trigger={
+                <Button type="button" variant="outline" size="sm">
+                  <FileText className="size-4" />
+                  Review {turn.citations.length} cited record
+                  {turn.citations.length === 1 ? "" : "s"}
+                </Button>
+              }
             >
-              {followUp}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+              <div className="grid gap-2">
+                {turn.citations.slice(0, 6).map((citation) => (
+                  <CitationItem key={citation.id} citation={citation} />
+                ))}
+              </div>
+            </ResponsiveDetailPanel>
+          </div>
+        ) : null}
+
+        {turn.followUpQuestions.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {turn.followUpQuestions.slice(0, 3).map((followUp) => (
+              <Button
+                key={followUp}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                onClick={() => onAskFollowUp(followUp)}
+                className="h-auto min-h-10 whitespace-normal text-left"
+              >
+                {followUp}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 
-function AssistantEvidenceDisclosures({
-  turn,
-}: {
-  turn: Extract<ChatTurn, { role: "assistant" }>;
-}) {
-  const items = [
-    ...(turn.tips.length > 0 || turn.drills.length > 0
-      ? [
-          {
-            value: "actions",
-            title: "Tips and drills",
-            summary: `${turn.tips.length + turn.drills.length}`,
-            description: "Practical actions from this answer",
-            content: (
-              <div className="grid gap-3">
-                {turn.tips.length > 0 ? (
-                  <ResponseList title="Tips" items={turn.tips.slice(0, 4)} />
-                ) : null}
-                {turn.drills.length > 0 ? (
-                  <ResponseList title="Drills" items={turn.drills.slice(0, 3)} />
-                ) : null}
-              </div>
-            ),
-          },
-        ]
-      : []),
-    ...(turn.citations.length > 0
-      ? [
-          {
-            value: "citations",
-            title: "Cited data",
-            summary: `${turn.citations.length}`,
-            description: "Records supporting the conclusion",
-            content: (
-              <IOSGroupedList label="Data Chat citations" className="bg-card">
-                {turn.citations.slice(0, 6).map((citation) => (
-                  <IOSListRow
-                    key={citation.id}
-                    label={citation.label}
-                    detail={citation.detail}
-                    href={citation.href ?? undefined}
-                    icon={FileText}
-                  />
-                ))}
-              </IOSGroupedList>
-            ),
-          },
-        ]
-      : []),
-  ];
+function CitationItem({ citation }: { citation: DataChatCitation }) {
+  const content = (
+    <Item variant="muted" className="items-start transition-colors hover:bg-muted">
+      <ItemMedia className="grid size-8 place-items-center rounded-lg bg-background text-primary">
+        <FileText className="size-4" aria-hidden />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle>{citation.label}</ItemTitle>
+        <ItemDescription className="whitespace-normal">{citation.detail}</ItemDescription>
+      </ItemContent>
+    </Item>
+  );
 
-  return items.length > 0 ? (
-    <IOSDisclosureGroup
-      label="Supporting Data Chat evidence"
-      items={items}
-      className="mt-4 lg:hidden"
-    />
-  ) : null;
-}
-
-function assistantConfidenceTone(
-  confidence: DataChatResponse["confidence"],
-): "positive" | "info" | "attention" {
-  if (confidence === "high") return "positive";
-  if (confidence === "medium") return "info";
-  return "attention";
+  return citation.href ? (
+    <Link href={citation.href} prefetch={false} className="focus-aaa rounded-xl outline-none">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 }
 
 function readSavedAnswers() {
@@ -1065,14 +969,21 @@ function formatSavedAnswerDate(value: string) {
 
 function ResponseList({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="rounded-lg bg-card p-3 ring-1 ring-border">
+    <div className="grid content-start gap-2">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {title}
       </p>
-      <ul className="mt-2 grid gap-2">
+      <ul className="grid gap-2">
         {items.map((item) => (
-          <li key={item} className="text-sm leading-6">
-            {item}
+          <li key={item}>
+            <Item variant="muted" size="sm" className="items-start">
+              <ItemMedia className="mt-1 size-1.5 rounded-full bg-primary" aria-hidden />
+              <ItemContent>
+                <ItemDescription className="whitespace-normal text-sm text-foreground">
+                  {item}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
           </li>
         ))}
       </ul>

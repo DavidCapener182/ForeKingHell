@@ -5,12 +5,23 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/longest/page.tsx"), "utf8");
 
 describe("longest shot desktop PB board", () => {
-  it("uses concise mobile evidence rows while retaining the desktop PB table", () => {
-    expect(source).toContain("MobileLongestShotEvidence");
-    expect(source).toContain("data-mobile-longest-evidence");
-    expect(source).toContain('label="Longest shot evidence rows"');
-    expect(source).toContain('title: "PB evidence"');
-    expect(source).toContain('className="hidden gap-3 lg:grid"');
+  it("ships only the desktop PB board for this desktop-only route", () => {
+    expect(source).toContain('className="grid gap-3"');
+
+    for (const obsoleteSurface of [
+      "MobileLongestShotEvidence",
+      "@/components/app/ios-mobile",
+      "data-mobile-longest-evidence",
+      "lg:hidden",
+      'className="hidden gap-3 lg:grid"',
+    ]) {
+      expect(source).not.toContain(obsoleteSurface);
+    }
+  });
+
+  it("keeps ordinary PB surfaces theme-aware", () => {
+    expect(source).toContain("bg-card");
+    expect(source).not.toMatch(/\b(?:bg-white|text-slate-|border-slate-)/);
   });
 
   it("uses the shared desktop workbench shell without a contextual AI rail", () => {

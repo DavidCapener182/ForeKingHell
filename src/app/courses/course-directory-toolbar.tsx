@@ -2,10 +2,14 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Grid2X2, List } from "lucide-react";
+import { Grid2X2, List, Search } from "lucide-react";
 
 import { DataToolbar } from "@/components/app/data-toolbar";
 import { EntityCombobox } from "@/components/app/entity-combobox";
+import { ResponsiveFilterPanel } from "@/components/app/responsive-filter-panel";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export type CourseDirectoryOption = {
@@ -14,26 +18,32 @@ export type CourseDirectoryOption = {
   description?: string;
 };
 
-export function CourseDirectoryToolbar({
+export function CourseDirectoryControls({
+  surface,
   query: initialQuery,
   activeTab,
-  view,
+  view = "table",
   resultLabel,
-  courses,
+  courses = [],
 }: {
+  surface: "companion" | "workbench";
   query: string;
   activeTab: string;
-  view: "grid" | "table";
+  view?: "grid" | "table";
   resultLabel: string;
-  courses: CourseDirectoryOption[];
+  courses?: CourseDirectoryOption[];
 }) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [selectedCourse, setSelectedCourse] = useState("");
+  const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const initialRender = useRef(true);
+  const activeCount = query.trim() ? 1 : 0;
 
   useEffect(() => {
+    if (surface !== "workbench") return;
+
     if (initialRender.current) {
       initialRender.current = false;
       return;
@@ -46,7 +56,74 @@ export function CourseDirectoryToolbar({
     }, 250);
 
     return () => window.clearTimeout(timeout);
-  }, [activeTab, query, router, view]);
+  }, [activeTab, query, router, surface, view]);
+
+  function navigate(nextQuery: string, nextView: "grid" | "table" = view) {
+    startTransition(() => {
+      router.replace(courseDirectoryHref(activeTab, nextView, nextQuery), { scroll: false });
+    });
+  }
+
+  if (surface === "companion") {
+    return (
+      <div className="flex min-w-0 items-center justify-between gap-3" data-course-companion-filter>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            {pending ? "Updating…" : resultLabel}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {initialQuery ? `Filtered by “${initialQuery}”` : "Search the current course view"}
+          </p>
+        </div>
+        <ResponsiveFilterPanel
+          open={open}
+          onOpenChange={setOpen}
+          activeCount={activeCount}
+          onClear={() => {
+            setQuery("");
+            navigate("");
+          }}
+          title="Course filters"
+          description="Find a course by name, country or provider."
+          applyAction={
+            <Button
+              type="button"
+              onClick={() => {
+                navigate(query);
+                setOpen(false);
+              }}
+              disabled={pending}
+            >
+              Apply filter
+            </Button>
+          }
+        >
+          <Field>
+            <FieldLabel htmlFor="companion-course-search">Course search</FieldLabel>
+            <InputGroup className="h-11 bg-background">
+              <InputGroupAddon>
+                <Search className="size-4" aria-hidden />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="companion-course-search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    navigate(query);
+                    setOpen(false);
+                  }
+                }}
+                placeholder="Course, country or provider"
+                aria-label="Search course, country, or provider"
+              />
+            </InputGroup>
+          </Field>
+        </ResponsiveFilterPanel>
+      </div>
+    );
+  }
 
   return (
     <DataToolbar
@@ -90,7 +167,7 @@ export function CourseDirectoryToolbar({
           aria-label="Course directory view"
           onValueChange={(nextView) => {
             if (nextView !== "grid" && nextView !== "table") return;
-            router.replace(courseDirectoryHref(activeTab, nextView, query), { scroll: false });
+            navigate(query, nextView);
           }}
         >
           <ToggleGroupItem value="grid" aria-label="Grid view">

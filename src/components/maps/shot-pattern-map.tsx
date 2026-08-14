@@ -2,11 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
-import { SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { SegmentedControl } from "@/components/app/segmented-control";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   classifyLandingPoint,
@@ -50,6 +64,7 @@ import {
   type DispersionEllipse,
 } from "@/lib/shot-pattern-signature";
 import { ShotPatternSummaryDrawer } from "@/components/maps/shot-pattern-summary-drawer";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ShotPatternApiData = {
   hole: {
@@ -124,7 +139,6 @@ export function ShotPatternMap({
   const [showEnvelope, setShowEnvelope] = useState(true);
   const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
   const mobileControlsTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const mobileControlsCloseRef = useRef<HTMLButtonElement | null>(null);
   const [teeSetId, setTeeSetId] = useState(defaultControls.teeSetId ?? teeSets[0]?.id ?? "");
   const [holeNumber, setHoleNumber] = useState(
     defaultControls.holeNumber ?? holes[0]?.holeNumber ?? 1,
@@ -822,351 +836,295 @@ export function ShotPatternMap({
     mapMode === "course" || !tileReady || (mapMode === "satellite" && !staticSatelliteReady);
   const showSatelliteMap = mapMode === "satellite";
 
-  useEffect(() => {
-    if (!mobileControlsOpen) {
-      return;
-    }
-
-    mobileControlsCloseRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMobileControlsOpen(false);
-        requestAnimationFrame(() => mobileControlsTriggerRef.current?.focus());
-      }
-    };
-
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [mobileControlsOpen]);
-
-  const closeMobileControls = () => {
-    setMobileControlsOpen(false);
-    requestAnimationFrame(() => mobileControlsTriggerRef.current?.focus());
-  };
-
   return (
     <div className="relative h-[100svh] min-h-[100svh] overflow-hidden bg-slate-950 lg:grid lg:h-auto lg:min-h-0 lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:bg-transparent">
-      {mobileControlsOpen ? (
-        <button
-          type="button"
-          aria-label="Close shot pattern setup"
-          className="absolute inset-0 z-[880] bg-black/45 lg:hidden"
-          onClick={closeMobileControls}
-        />
-      ) : null}
-      <div
-        id="shot-pattern-mobile-controls"
-        role={mobileControlsOpen ? "dialog" : undefined}
-        aria-modal={mobileControlsOpen ? true : undefined}
-        aria-label={mobileControlsOpen ? "Shot pattern setup" : undefined}
-        className={cn(
-          "apple-panel absolute inset-x-2 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[900] max-h-[72dvh] space-y-3 overflow-y-auto rounded-2xl bg-card p-3 text-foreground shadow-2xl lg:static lg:z-auto lg:block lg:max-h-none lg:space-y-4 lg:overflow-visible lg:rounded-lg lg:bg-[var(--surface-soft)] lg:p-4 lg:shadow-none",
-          mobileControlsOpen ? "block" : "hidden lg:block",
-        )}
-        data-mobile-shot-pattern-controls
-      >
-        <div className="flex min-h-11 items-center justify-between gap-3 lg:hidden">
-          <div>
-            <p className="text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
-              Pattern setup
-            </p>
-            <p className="text-[15px] font-medium text-foreground">
-              Hole {selectedHoleNumber} ·{" "}
-              {shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)}
-            </p>
-          </div>
+      <ResponsiveDetailPanel
+        open={mobileControlsOpen}
+        onOpenChange={setMobileControlsOpen}
+        trigger={
           <Button
-            ref={mobileControlsCloseRef}
+            ref={mobileControlsTriggerRef}
             type="button"
-            variant="ghost"
-            size="icon"
-            className="size-11 shrink-0 rounded-full"
-            aria-label="Close shot pattern setup"
-            onClick={closeMobileControls}
+            variant="secondary"
+            className="absolute inset-x-3 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[870] min-h-11 justify-between rounded-xl border border-border bg-card/95 px-3 text-foreground shadow-xl backdrop-blur lg:hidden"
+            aria-expanded={mobileControlsOpen}
+            aria-controls="shot-pattern-mobile-controls"
+            data-mobile-shot-pattern-trigger
           >
-            <X className="size-5" aria-hidden />
+            <span className="min-w-0 truncate text-left">
+              Hole {selectedHoleNumber} ·{" "}
+              {shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)} ·{" "}
+              {targetLineStatusLabel}
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1.5">
+              <SlidersHorizontal className="size-4" aria-hidden />
+              Setup
+            </span>
           </Button>
-        </div>
-        <div className="hidden lg:block">
-          <p className="text-sm font-semibold text-[#0B7A3B]">Shot Pattern Overlay</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-normal">{courseName}</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Pick a hole and club to project your historical dispersion onto the mapped course.
-          </p>
-        </div>
-
-        <label className="grid gap-1.5 text-xs font-medium sm:gap-2 sm:text-sm">
-          Tee set
-          <select
-            value={teeSetId}
-            onChange={(event) => {
-              const nextTeeSetId = event.target.value;
-              const nextHoles = holesByTeeSet[nextTeeSetId] ?? [];
-              setTeeSetId(nextTeeSetId);
-              setHoleNumber(nextHoles[0]?.holeNumber ?? 1);
-            }}
-            className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm text-foreground sm:rounded-xl"
-          >
-            {teeSets.map((teeSet) => (
-              <option key={teeSet.id} value={teeSet.id}>
-                {teeSet.name} · {teeSet.holeCount} mapped
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
-          {visibleHoles.map((hole) => (
-            <Button
-              key={hole.holeNumber}
-              type="button"
-              variant={hole.holeNumber === selectedHoleNumber ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "min-h-11 rounded-lg text-sm font-semibold",
-                hole.holeNumber === selectedHoleNumber && "bg-[#0B7A3B] text-white",
-              )}
-              onClick={() => setHoleNumber(hole.holeNumber)}
-            >
-              {hole.holeNumber}
-            </Button>
-          ))}
-        </div>
-
-        <label className="grid gap-1.5 text-xs font-medium sm:gap-2 sm:text-sm">
-          Playing length
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2">
-            <input
-              aria-label="Playing length yards"
-              type="number"
-              min={50}
-              max={750}
-              value={playingHoleYards}
-              onChange={(event) => updateHoleLength(Number(event.target.value))}
-              className="h-11 min-w-0 rounded-lg border border-input bg-background px-3 text-right text-sm font-semibold text-foreground sm:rounded-xl"
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-11 rounded-lg px-3 sm:rounded-xl"
-              disabled={!isCustomPlayingLength}
-              onClick={() => {
-                setHoleLengthOverride(null);
+        }
+        title={`${courseName} shot pattern`}
+        description={`Hole ${selectedHoleNumber} · ${shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)}. Adjust the target and evidence filter.`}
+        inlineAtDesktop
+        className="lg:rounded-lg lg:bg-[var(--surface-soft)]"
+        contentClassName="space-y-3 lg:space-y-4"
+      >
+        <div
+          id="shot-pattern-mobile-controls"
+          className="contents"
+          data-mobile-shot-pattern-controls
+        >
+          <div className="grid gap-1.5 sm:gap-2">
+            <Label htmlFor="shot-pattern-tee-set">Tee set</Label>
+            <Select
+              value={teeSetId}
+              onValueChange={(nextTeeSetId) => {
+                const nextHoles = holesByTeeSet[nextTeeSetId] ?? [];
+                setTeeSetId(nextTeeSetId);
+                setHoleNumber(nextHoles[0]?.holeNumber ?? 1);
               }}
             >
-              Reset
-            </Button>
+              <SelectTrigger id="shot-pattern-tee-set" className="h-11 w-full min-w-0">
+                <SelectValue placeholder="Choose a tee set" />
+              </SelectTrigger>
+              <SelectContent>
+                {teeSets.map((teeSet) => (
+                  <SelectItem key={teeSet.id} value={teeSet.id}>
+                    {teeSet.name} · {teeSet.holeCount} mapped
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <span className="hidden text-xs font-normal text-muted-foreground sm:block">
-            {isCustomPlayingLength
-              ? `Scorecard length is ${numberFormatter.format(selectedHole?.yards ?? scorecardHoleYards)} yd.`
-              : "Uses the saved tee-to-hole scorecard length."}
-          </span>
-        </label>
 
-        <label className="grid gap-1.5 text-xs font-medium sm:gap-2 sm:text-sm">
-          Club
-          <select
-            value={clubSelectValue}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (value.startsWith("club:")) {
-                const clubId = value.slice("club:".length);
-                const option = renderedClubOptions.find((item) => item.clubId === clubId);
-                setClubSelection({ clubId, clubType: option?.clubType ?? "driver" });
-              } else {
-                setClubSelection({ clubId: null, clubType: value.slice("type:".length) });
-              }
-            }}
-            className="h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-sm text-foreground sm:rounded-xl"
-          >
-            {renderedClubOptions.map((option) => (
-              <option
-                key={`${option.clubId ?? "type"}-${option.clubType}`}
-                value={option.clubId ? `club:${option.clubId}` : `type:${option.clubType}`}
+          <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
+            {visibleHoles.map((hole) => (
+              <Button
+                key={hole.holeNumber}
+                type="button"
+                variant={hole.holeNumber === selectedHoleNumber ? "default" : "outline"}
+                size="sm"
+                className="min-h-11 rounded-lg text-sm font-semibold"
+                onClick={() => setHoleNumber(hole.holeNumber)}
               >
-                {option.label} · {optionSampleLabel(option.sampleSize)}
-              </option>
+                {hole.holeNumber}
+              </Button>
             ))}
-          </select>
-        </label>
-
-        <div className="rounded-lg border border-border bg-card p-3 shadow-sm sm:rounded-xl">
-          <div className="flex items-start justify-between gap-2 sm:gap-3">
-            <div>
-              <p className="text-sm font-semibold">Target line</p>
-              <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
-                Move distance and aim left or right to test where the club pattern crosses.
-              </p>
-            </div>
-            <div
-              className={cn(
-                "whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold sm:px-2.5 sm:py-1",
-                targetLine?.beyondCapability
-                  ? "bg-slate-100 text-slate-700"
-                  : targetLineIsPlayable
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-red-100 text-red-700",
-              )}
-            >
-              {targetLineStatusLabel}
-            </div>
           </div>
-          <div className="mt-2 grid gap-1.5 sm:mt-3 sm:gap-2">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <input
-                aria-label="Target distance"
-                type="range"
-                min={20}
-                max={targetSliderMaxYd}
-                value={targetDistanceYd}
-                onChange={(event) =>
-                  updateTargetPlacement({ distanceYd: Number(event.target.value) })
-                }
-                className="min-h-11 min-w-0 flex-1 accent-[#0B7A3B]"
-              />
-              <input
-                aria-label="Target distance yards"
+
+          <label className="grid gap-1.5 text-xs font-medium sm:gap-2 sm:text-sm">
+            Playing length
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2">
+              <Input
+                aria-label="Playing length yards"
                 type="number"
-                min={20}
-                max={targetSliderMaxYd}
-                value={targetDistanceYd}
-                onChange={(event) =>
-                  updateTargetPlacement({ distanceYd: Number(event.target.value) })
-                }
-                className="h-11 w-20 rounded-lg border border-input bg-background px-2 text-right text-sm font-semibold text-foreground sm:w-24"
+                min={50}
+                max={750}
+                value={playingHoleYards}
+                onChange={(event) => updateHoleLength(Number(event.target.value))}
+                className="h-11 min-w-0 rounded-lg border border-input bg-background px-3 text-right text-sm font-semibold text-foreground sm:rounded-xl"
               />
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <input
-                aria-label="Aim offset"
-                type="range"
-                min={-140}
-                max={140}
-                value={targetAimOffsetYd}
-                onChange={(event) =>
-                  updateTargetPlacement({ aimOffsetYd: Number(event.target.value) })
-                }
-                className="min-h-11 min-w-0 flex-1 accent-[#0B7A3B]"
-              />
-              <input
-                aria-label="Aim offset yards"
-                type="number"
-                min={-140}
-                max={140}
-                value={targetAimOffsetYd}
-                onChange={(event) =>
-                  updateTargetPlacement({ aimOffsetYd: Number(event.target.value) })
-                }
-                className="h-11 w-20 rounded-lg border border-input bg-background px-2 text-right text-sm font-semibold text-foreground sm:w-24"
-              />
-            </div>
-            <div className="hidden grid-cols-2 gap-2 text-sm sm:grid">
-              <TargetMetric label="Target" value={`${targetDistanceYd} yd`} />
-              <TargetMetric label="Aim" value={formatAimOffset(targetAimOffsetYd)} />
-              <TargetMetric label="Swing" value={targetSwingLabel} />
-              <TargetMetric
-                label={mode === "carry" ? "Full carry" : "Full shot"}
-                value={fullShotYd === null ? "--" : `${numberFormatter.format(fullShotYd)} yd`}
-              />
-              <TargetMetric label="Left miss" value={`${targetLine?.leftMissYd ?? "--"}L`} />
-              <TargetMetric label="Right miss" value={`${targetLine?.rightMissYd ?? "--"}R`} />
-            </div>
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              {targetLine?.beyondCapability
-                ? `No line score: recent ${data?.pattern.clubLabel ?? "club"} max is ${numberFormatter.format(targetLine.capabilityDistanceYd ?? 0)} yd.`
-                : targetLine?.surfaceMode === "mapped"
-                  ? "Green means fairway or green from mapped or generated landing-zone polygons; water, bunkers, trees, rough and unknown are red."
-                  : "Green uses the current course-line corridor until fairway polygons are mapped."}
-            </p>
-            {bestTargetClub ? (
               <Button
                 type="button"
                 size="sm"
-                variant={bestTargetClubSelected ? "secondary" : "outline"}
-                className="min-h-11 justify-between rounded-lg text-xs sm:text-sm"
-                onClick={() =>
-                  setClubSelection({
-                    clubId: bestTargetClub.clubId,
-                    clubType: bestTargetClub.clubType,
-                  })
-                }
+                variant="outline"
+                className="h-11 rounded-lg px-3 sm:rounded-xl"
+                disabled={!isCustomPlayingLength}
+                onClick={() => {
+                  setHoleLengthOverride(null);
+                }}
               >
-                <span className="truncate">Best fit: {shortClubLabel(bestTargetClub.label)}</span>
-                <span>{numberFormatter.format(bestTargetClub.playNumberYd ?? 0)} yd</span>
+                Reset
               </Button>
-            ) : null}
+            </div>
+            <span className="hidden text-xs font-normal text-muted-foreground sm:block">
+              {isCustomPlayingLength
+                ? `Scorecard length is ${numberFormatter.format(selectedHole?.yards ?? scorecardHoleYards)} yd.`
+                : "Uses the saved tee-to-hole scorecard length."}
+            </span>
+          </label>
+
+          <div className="grid gap-1.5 sm:gap-2">
+            <Label htmlFor="shot-pattern-club">Club</Label>
+            <Select
+              value={clubSelectValue}
+              onValueChange={(value) => {
+                if (value.startsWith("club:")) {
+                  const clubId = value.slice("club:".length);
+                  const option = renderedClubOptions.find((item) => item.clubId === clubId);
+                  setClubSelection({ clubId, clubType: option?.clubType ?? "driver" });
+                } else {
+                  setClubSelection({ clubId: null, clubType: value.slice("type:".length) });
+                }
+              }}
+            >
+              <SelectTrigger id="shot-pattern-club" className="h-11 w-full min-w-0">
+                <SelectValue placeholder="Choose a club" />
+              </SelectTrigger>
+              <SelectContent>
+                {renderedClubOptions.map((option) => (
+                  <SelectItem
+                    key={`${option.clubId ?? "type"}-${option.clubType}`}
+                    value={option.clubId ? `club:${option.clubId}` : `type:${option.clubType}`}
+                  >
+                    {option.label} · {optionSampleLabel(option.sampleSize)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          <Card size="sm">
+            <CardHeader className="items-start">
+              <div>
+                <CardTitle>Target line</CardTitle>
+                <p className="mt-1 hidden text-xs text-muted-foreground sm:block">
+                  Move distance and aim left or right to test where the club pattern crosses.
+                </p>
+              </div>
+              <CardAction>
+                <Badge
+                  variant={
+                    targetLine?.beyondCapability
+                      ? "outline"
+                      : targetLineIsPlayable
+                        ? "secondary"
+                        : "destructive"
+                  }
+                >
+                  {targetLineStatusLabel}
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="grid gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Slider
+                  aria-label="Target distance"
+                  min={20}
+                  max={targetSliderMaxYd}
+                  value={[targetDistanceYd]}
+                  onValueChange={([value]) =>
+                    updateTargetPlacement({ distanceYd: value ?? targetDistanceYd })
+                  }
+                  className="min-h-11 min-w-0 flex-1"
+                />
+                <Input
+                  aria-label="Target distance yards"
+                  type="number"
+                  min={20}
+                  max={targetSliderMaxYd}
+                  value={targetDistanceYd}
+                  onChange={(event) =>
+                    updateTargetPlacement({ distanceYd: Number(event.target.value) })
+                  }
+                  className="h-11 w-20 rounded-lg border border-input bg-background px-2 text-right text-sm font-semibold text-foreground sm:w-24"
+                />
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <Slider
+                  aria-label="Aim offset"
+                  min={-140}
+                  max={140}
+                  value={[targetAimOffsetYd]}
+                  onValueChange={([value]) =>
+                    updateTargetPlacement({ aimOffsetYd: value ?? targetAimOffsetYd })
+                  }
+                  className="min-h-11 min-w-0 flex-1"
+                />
+                <Input
+                  aria-label="Aim offset yards"
+                  type="number"
+                  min={-140}
+                  max={140}
+                  value={targetAimOffsetYd}
+                  onChange={(event) =>
+                    updateTargetPlacement({ aimOffsetYd: Number(event.target.value) })
+                  }
+                  className="h-11 w-20 rounded-lg border border-input bg-background px-2 text-right text-sm font-semibold text-foreground sm:w-24"
+                />
+              </div>
+              <div className="hidden grid-cols-2 gap-2 text-sm sm:grid">
+                <TargetMetric label="Target" value={`${targetDistanceYd} yd`} />
+                <TargetMetric label="Aim" value={formatAimOffset(targetAimOffsetYd)} />
+                <TargetMetric label="Swing" value={targetSwingLabel} />
+                <TargetMetric
+                  label={mode === "carry" ? "Full carry" : "Full shot"}
+                  value={fullShotYd === null ? "--" : `${numberFormatter.format(fullShotYd)} yd`}
+                />
+                <TargetMetric label="Left miss" value={`${targetLine?.leftMissYd ?? "--"}L`} />
+                <TargetMetric label="Right miss" value={`${targetLine?.rightMissYd ?? "--"}R`} />
+              </div>
+              <p className="hidden text-xs text-muted-foreground sm:block">
+                {targetLine?.beyondCapability
+                  ? `No line score: recent ${data?.pattern.clubLabel ?? "club"} max is ${numberFormatter.format(targetLine.capabilityDistanceYd ?? 0)} yd.`
+                  : targetLine?.surfaceMode === "mapped"
+                    ? "Green means fairway or green from mapped or generated landing-zone polygons; water, bunkers, trees, rough and unknown are red."
+                    : "Green uses the current course-line corridor until fairway polygons are mapped."}
+              </p>
+              {bestTargetClub ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={bestTargetClubSelected ? "secondary" : "outline"}
+                  className="min-h-11 justify-between rounded-lg text-xs sm:text-sm"
+                  onClick={() =>
+                    setClubSelection({
+                      clubId: bestTargetClub.clubId,
+                      clubType: bestTargetClub.clubType,
+                    })
+                  }
+                >
+                  <span className="truncate">Best fit: {shortClubLabel(bestTargetClub.label)}</span>
+                  <span>{numberFormatter.format(bestTargetClub.playNumberYd ?? 0)} yd</span>
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <SegmentedControl
+            label="Distance"
+            options={[
+              { label: "Total", value: "total" },
+              { label: "Carry", value: "carry" },
+            ]}
+            value={mode}
+            onChange={(value) => setMode(value as ShotPatternMode)}
+          />
+
+          <SegmentedControl
+            label="Filter"
+            options={[
+              { label: "Best 90%", value: "best90" },
+              { label: "Best 80%", value: "best80" },
+              { label: "All shots", value: "all" },
+            ]}
+            value={outlierMode}
+            onChange={(value) => setOutlierMode(value as ShotPatternOutlierMode)}
+          />
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant={showDots ? "default" : "outline"}
+              onClick={() => setShowDots((current) => !current)}
+            >
+              Dots
+            </Button>
+            <Button
+              type="button"
+              variant={showEnvelope ? "default" : "outline"}
+              onClick={() => setShowEnvelope((current) => !current)}
+            >
+              Envelope
+            </Button>
+          </div>
+
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
         </div>
-
-        <SegmentedControl
-          label="Distance"
-          options={[
-            { label: "Total", value: "total" },
-            { label: "Carry", value: "carry" },
-          ]}
-          value={mode}
-          onChange={(value) => setMode(value as ShotPatternMode)}
-        />
-
-        <SegmentedControl
-          label="Filter"
-          options={[
-            { label: "Best 90%", value: "best90" },
-            { label: "Best 80%", value: "best80" },
-            { label: "All shots", value: "all" },
-          ]}
-          value={outlierMode}
-          onChange={(value) => setOutlierMode(value as ShotPatternOutlierMode)}
-        />
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant={showDots ? "default" : "outline"}
-            className={cn(showDots && "bg-[#0B7A3B] text-white")}
-            onClick={() => setShowDots((current) => !current)}
-          >
-            Dots
-          </Button>
-          <Button
-            type="button"
-            variant={showEnvelope ? "default" : "outline"}
-            className={cn(showEnvelope && "bg-[#0B7A3B] text-white")}
-            onClick={() => setShowEnvelope((current) => !current)}
-          >
-            Envelope
-          </Button>
-        </div>
-
-        {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        ) : null}
-      </div>
-
-      <Button
-        ref={mobileControlsTriggerRef}
-        type="button"
-        variant="secondary"
-        className="absolute inset-x-3 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[870] min-h-11 justify-between rounded-xl border border-white/20 bg-card/95 px-3 text-foreground shadow-xl backdrop-blur lg:hidden"
-        aria-expanded={mobileControlsOpen}
-        aria-controls="shot-pattern-mobile-controls"
-        onClick={() => setMobileControlsOpen(true)}
-        data-mobile-shot-pattern-trigger
-      >
-        <span className="min-w-0 truncate text-left">
-          Hole {selectedHoleNumber} ·{" "}
-          {shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)} ·{" "}
-          {targetLineStatusLabel}
-        </span>
-        <span className="inline-flex shrink-0 items-center gap-1.5">
-          <SlidersHorizontal className="size-4" aria-hidden />
-          Setup
-        </span>
-      </Button>
+      </ResponsiveDetailPanel>
 
       <div className="min-h-0 space-y-3">
         <div className="map-frame shot-pattern-mobile-map relative h-[100svh] min-h-[100svh] overflow-hidden lg:h-[72vh] lg:min-h-[620px]">
@@ -1209,7 +1167,7 @@ export function ShotPatternMap({
             style={{ backgroundColor: "transparent" }}
           />
           <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 flex flex-wrap items-start justify-between gap-2 lg:top-3">
-            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm">
+            <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm">
               {selectedHole ? (
                 <span className="grid leading-tight">
                   <span>
@@ -1217,7 +1175,7 @@ export function ShotPatternMap({
                     playing
                   </span>
                   {isCustomPlayingLength ? (
-                    <span className="text-[11px] font-medium text-slate-600">
+                    <span className="text-[11px] font-medium text-muted-foreground">
                       Scorecard {numberFormatter.format(selectedHole.yards)} yd
                     </span>
                   ) : null}
@@ -1225,10 +1183,10 @@ export function ShotPatternMap({
                     className={cn(
                       "text-[11px] font-semibold",
                       targetLine?.beyondCapability
-                        ? "text-slate-600"
+                        ? "text-muted-foreground"
                         : targetLineIsPlayable
-                          ? "text-emerald-700"
-                          : "text-red-700",
+                          ? "text-[var(--status-success-foreground)]"
+                          : "text-destructive",
                     )}
                   >
                     {targetLineStatusLabel}
@@ -1238,15 +1196,12 @@ export function ShotPatternMap({
                 "Hole map"
               )}
             </div>
-            <div className="flex w-fit rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+            <div className="flex w-fit rounded-lg border border-border bg-card p-1 shadow-sm">
               <Button
                 type="button"
                 size="sm"
                 variant={mapMode === "course" ? "default" : "ghost"}
-                className={cn(
-                  "min-h-11 rounded-[6px] lg:min-h-8",
-                  mapMode === "course" && "bg-[#0B7A3B] text-white",
-                )}
+                className="min-h-11 rounded-[6px] lg:min-h-8"
                 onClick={() => setMapMode("course")}
               >
                 Course
@@ -1255,10 +1210,7 @@ export function ShotPatternMap({
                 type="button"
                 size="sm"
                 variant={mapMode === "satellite" ? "default" : "ghost"}
-                className={cn(
-                  "min-h-11 rounded-[6px] lg:min-h-8",
-                  mapMode === "satellite" && "bg-[#0B7A3B] text-white",
-                )}
+                className="min-h-11 rounded-[6px] lg:min-h-8"
                 onClick={() => setMapMode("satellite")}
               >
                 Satellite
@@ -1266,7 +1218,8 @@ export function ShotPatternMap({
             </div>
           </div>
           {isLoading ? (
-            <div className="absolute bottom-3 left-3 z-30 rounded-lg bg-black/60 px-3 py-2 text-xs text-white">
+            <div className="absolute bottom-3 left-3 z-30 inline-flex items-center gap-2 rounded-lg border border-border bg-card/95 px-3 py-2 text-xs font-medium text-foreground shadow-sm backdrop-blur">
+              <Spinner className="size-3.5" />
               Updating pattern...
             </div>
           ) : null}
@@ -1295,7 +1248,7 @@ export function ShotPatternMap({
             { key: "surface", label: "Surface" },
           ]}
           rows={courseShotPatternRows(displayProjection.points, projectedPointSurfaces)}
-          className="bg-white/82"
+          className="bg-card/80"
         />
 
         {data ? (
@@ -1305,8 +1258,9 @@ export function ShotPatternMap({
             targetLine={targetLine}
           />
         ) : (
-          <div className="rounded-xl border border-dashed bg-white p-6 text-center text-sm text-muted-foreground">
-            Shot pattern data is loading.
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
+            <Spinner className="size-4" />
+            <span>Shot pattern data is loading.</span>
           </div>
         )}
       </div>
@@ -1415,9 +1369,9 @@ function formatOutlierMode(mode: ShotPatternOutlierMode) {
 
 function TargetMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-slate-50 px-2 py-2 ring-1 ring-slate-200">
+    <div className="rounded-lg bg-muted px-2 py-2 ring-1 ring-border">
       <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-bold text-slate-950">{value}</p>
+      <p className="mt-1 text-sm font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -1446,11 +1400,16 @@ function HoleVectorFallback({
   if (!hole) {
     return (
       <div className={cn("absolute inset-0 z-0 grid place-items-center bg-[#101827]", className)}>
-        <p className="max-w-sm text-center text-sm text-slate-300">
-          {isLoading
-            ? "Loading mapped hole and shot pattern data."
-            : "This course needs mapped hole geometry before shot patterns can be shown."}
-        </p>
+        {isLoading ? (
+          <div className="grid max-w-sm place-items-center gap-3 text-center text-sm text-slate-300">
+            <Spinner className="size-6 text-emerald-300" />
+            <p>Loading mapped hole and shot pattern data.</p>
+          </div>
+        ) : (
+          <p className="max-w-sm text-center text-sm text-slate-300">
+            This course needs mapped hole geometry before shot patterns can be shown.
+          </p>
+        )}
       </div>
     );
   }

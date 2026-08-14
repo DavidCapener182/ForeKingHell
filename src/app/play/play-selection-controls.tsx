@@ -6,7 +6,7 @@ import { LoaderCircle } from "lucide-react";
 
 import { selectCompanionPlayContextAction } from "@/app/play/actions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -15,19 +15,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type SelectionItem = { id: string; name: string; detail?: string };
+export type PlaySelectionItem = { id: string; name: string; detail?: string };
+
+export type PlaySelectionControlsProps = {
+  courses: PlaySelectionItem[];
+  tees: PlaySelectionItem[];
+  selectedCourseId: string | null;
+  selectedTeeId: string | null;
+};
 
 export function PlaySelectionControls({
   courses,
   tees,
   selectedCourseId,
   selectedTeeId,
-}: {
-  courses: SelectionItem[];
-  tees: SelectionItem[];
-  selectedCourseId: string | null;
-  selectedTeeId: string | null;
-}) {
+}: PlaySelectionControlsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [optimisticCourseId, setOptimisticCourseId] = useState(selectedCourseId);
@@ -124,12 +126,12 @@ function SelectionField({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-2 rounded-xl border bg-card p-3">
+    <Field className="rounded-xl border bg-card p-3">
       <span>
-        <Label className="block text-sm font-semibold">{label}</Label>
-        <span className="mt-0.5 block text-xs text-muted-foreground">{detail}</span>
+        <FieldLabel>{label}</FieldLabel>
+        <FieldDescription className="mt-0.5">{detail}</FieldDescription>
       </span>
       {children}
-    </div>
+    </Field>
   );
 }

@@ -103,7 +103,7 @@ export function ProfileMediaEditor({
             type="button"
             variant="secondary"
             size="sm"
-            className="bg-white/95 shadow-sm hover:bg-white"
+            className="bg-background/95 shadow-sm hover:bg-background"
             onClick={() => headerInputRef.current?.click()}
           >
             <ImageIcon className="size-4" />
@@ -114,7 +114,7 @@ export function ProfileMediaEditor({
               type="button"
               variant="secondary"
               size="icon-sm"
-              className="bg-white/95 shadow-sm hover:bg-white"
+              className="bg-background/95 shadow-sm hover:bg-background"
               aria-label="Remove header photo"
               onClick={() => {
                 setHeaderImageUrl("");
@@ -131,20 +131,20 @@ export function ProfileMediaEditor({
         <div className="flex min-w-0 items-start gap-3">
           <button
             type="button"
-            className="group relative -mt-14 shrink-0 rounded-full bg-white p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="group relative -mt-14 shrink-0 rounded-full bg-background p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             aria-label="Choose avatar photo"
             onClick={() => avatarInputRef.current?.click()}
           >
-            <Avatar className="size-20 border-4 border-white bg-white shadow-md ring-1 ring-slate-950/10">
+            <Avatar className="size-20 border-4 border-background bg-background shadow-md ring-1 ring-border">
               {avatarUrl ? (
                 <ProfileEditorAvatarImage src={avatarUrl} />
               ) : (
-                <AvatarFallback className="bg-[#111827] text-lg font-semibold tracking-normal text-white">
+                <AvatarFallback className="bg-primary text-lg font-semibold tracking-normal text-primary-foreground">
                   {initials(displayName, username)}
                 </AvatarFallback>
               )}
             </Avatar>
-            <span className="absolute -bottom-1 -right-1 grid size-8 place-items-center rounded-full border-2 border-white bg-[#0B7A3B] text-white shadow-sm transition-colors group-hover:bg-[#064E3B]">
+            <span className="absolute -bottom-1 -right-1 grid size-8 place-items-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-sm transition-colors group-hover:bg-primary/90">
               <Camera className="size-4" />
             </span>
           </button>
@@ -180,7 +180,7 @@ export function ProfileMediaEditor({
           </div>
         </div>
 
-        <Button asChild variant="outline" className="mb-1 bg-white">
+        <Button asChild variant="outline" className="mb-1 bg-card">
           <Link href={publicHref} prefetch={false}>
             Preview public page
           </Link>

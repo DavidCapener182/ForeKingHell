@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  CheckSquare2,
   GitCompareArrows,
   ListFilter,
   MoreHorizontal,
 } from "lucide-react";
 
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
@@ -73,17 +78,27 @@ export type ShotTableSort = {
 export function ShotsMasterDetailTable({
   shots,
   sorts,
+  groupBy = "none",
 }: {
   shots: ShotMasterDetailRow[];
   sorts: ShotTableSort[];
+  groupBy?: "none" | "club" | "session";
 }) {
   const [selectedId, setSelectedId] = useState(shots[0]?.id ?? "");
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [detailOpen, setDetailOpen] = useState(false);
   const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
   const selectedShot = useMemo(
     () => shots.find((shot) => shot.id === selectedId) ?? shots[0] ?? null,
     [selectedId, shots],
   );
+  const allVisibleSelected = shots.length > 0 && selectedRows.length === shots.length;
+
+  function toggleSelected(id: string) {
+    setSelectedRows((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
 
   function selectRowAt(index: number) {
     const nextShot = shots[index];
@@ -117,160 +132,225 @@ export function ShotsMasterDetailTable({
 
   return (
     <div className="hidden gap-4 sm:grid 2xl:grid-cols-[minmax(0,1fr)_20rem]">
-      <div
-        id="main-table"
-        tabIndex={-1}
-        data-main-table-target="true"
-        aria-label="Shot explorer table"
-        className="apple-panel-strong min-w-0 overflow-hidden scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        <ScrollArea className="w-full">
-          <Table
-            className="min-w-[980px]"
-            data-workbench-scope="shots"
-            data-workbench-export-table="shots"
-            aria-describedby="shots-table-summary"
-          >
-            <TableCaption id="shots-table-summary">
-              Current shot explorer page with the active filters and visible table columns. Select a
-              row to update the desktop shot detail panel.
-            </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-              <TableRow>
-                <TableHead data-column="date" className="sticky left-0 z-20 bg-white">
-                  Date
-                </TableHead>
-                <TableHead data-column="file">File</TableHead>
-                <SortableShotHead sort={sorts.find((item) => item.metric === "shot")} />
-                <TableHead data-column="hole">Hole</TableHead>
-                <TableHead data-column="club">Club</TableHead>
-                <SortableShotHead sort={sorts.find((item) => item.metric === "carry")} />
-                <SortableShotHead sort={sorts.find((item) => item.metric === "total")} />
-                <SortableShotHead sort={sorts.find((item) => item.metric === "side")} />
-                <SortableShotHead sort={sorts.find((item) => item.metric === "launch")} />
-                <SortableShotHead sort={sorts.find((item) => item.metric === "ballSpeed")} />
-                <TableHead data-column="advanced">Advanced</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shots.map((shot, index) => {
-                const selected = shot.id === selectedShot?.id;
+      <div className="grid min-w-0 gap-3">
+        {selectedRows.length > 0 ? (
+          <ShotBulkToolbar
+            selectedCount={selectedRows.length}
+            onInspect={() => {
+              setSelectedId(selectedRows[0] ?? "");
+              setDetailOpen(true);
+            }}
+            onClear={() => setSelectedRows([])}
+          />
+        ) : null}
+        <div
+          id="main-table"
+          tabIndex={-1}
+          data-main-table-target="true"
+          aria-label="Shot explorer table"
+          className="min-w-0 overflow-hidden rounded-xl border bg-card scroll-mt-28 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <ScrollArea className="w-full">
+            <Table
+              className="min-w-[980px]"
+              data-workbench-scope="shots"
+              data-workbench-export-table="shots"
+              aria-describedby="shots-table-summary"
+            >
+              <TableCaption id="shots-table-summary">
+                Current shot explorer page with the active filters and visible table columns. Select
+                a row to update the desktop shot detail panel.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        allVisibleSelected
+                          ? true
+                          : selectedRows.length > 0
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={() =>
+                        setSelectedRows(allVisibleSelected ? [] : shots.map((shot) => shot.id))
+                      }
+                      aria-label="Select all visible shots"
+                    />
+                  </TableHead>
+                  <TableHead data-column="date" className="sticky left-10 z-20 bg-card">
+                    Date
+                  </TableHead>
+                  <TableHead data-column="file">File</TableHead>
+                  <SortableShotHead sort={sorts.find((item) => item.metric === "shot")} />
+                  <TableHead data-column="hole">Hole</TableHead>
+                  <TableHead data-column="club">Club</TableHead>
+                  <SortableShotHead sort={sorts.find((item) => item.metric === "carry")} />
+                  <SortableShotHead sort={sorts.find((item) => item.metric === "total")} />
+                  <SortableShotHead sort={sorts.find((item) => item.metric === "side")} />
+                  <SortableShotHead sort={sorts.find((item) => item.metric === "launch")} />
+                  <SortableShotHead sort={sorts.find((item) => item.metric === "ballSpeed")} />
+                  <TableHead data-column="advanced">Advanced</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shots.map((shot, index) => {
+                  const selected = shot.id === selectedShot?.id;
+                  const groupLabel = shotGroupLabel(shot, groupBy);
+                  const previousGroupLabel =
+                    index > 0 ? shotGroupLabel(shots[index - 1], groupBy) : null;
+                  const beginsGroup = groupBy !== "none" && groupLabel !== previousGroupLabel;
 
-                return (
-                  <TableRow
-                    key={shot.id}
-                    ref={(node) => {
-                      rowRefs.current[index] = node;
-                    }}
-                    tabIndex={0}
-                    aria-label={`${shot.clubLabel} shot ${shot.shotNumberLabel} on ${shot.shotAtLabel}`}
-                    aria-selected={selected}
-                    data-selected-shot={selected ? "true" : undefined}
-                    onClick={() => {
-                      setSelectedId(shot.id);
-                      setDetailOpen(true);
-                    }}
-                    onFocus={() => setSelectedId(shot.id)}
-                    onKeyDown={(event) => handleRowKeyDown(event, index)}
-                    className={cn(
-                      "focus-aaa cursor-pointer border-b outline-none last:border-b-0",
-                      selected && "bg-emerald-50/70",
-                    )}
-                  >
-                    <TableCell
-                      data-column="date"
-                      className={cn("sticky left-0 z-10 bg-white", selected && "bg-emerald-50")}
-                    >
-                      {shot.shotAtLabel}
-                    </TableCell>
-                    <TableCell data-column="file" className="max-w-48 truncate">
-                      {shot.fileNameLabel}
-                    </TableCell>
-                    <TableCell data-column="shot" className="text-right">
-                      {shot.shotNumberLabel}
-                    </TableCell>
-                    <TableCell data-column="hole">{shot.holeLabel}</TableCell>
-                    <TableCell data-column="club" className="font-medium">
-                      <div className="max-w-48">
-                        <p className="truncate">{shot.clubLabel}</p>
-                        {shot.clubLabel !== shot.clubTypeLabel ? (
-                          <p className="truncate text-xs font-normal text-muted-foreground">
-                            {shot.clubTypeLabel}
-                          </p>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell data-column="carry" className="text-right">
-                      {shot.carryLabel}
-                    </TableCell>
-                    <TableCell data-column="total" className="text-right">
-                      {shot.totalLabel}
-                    </TableCell>
-                    <TableCell data-column="side" className="text-right">
-                      {shot.sideLabel}
-                    </TableCell>
-                    <TableCell data-column="launch" className="text-right">
-                      {shot.launchLabel}
-                    </TableCell>
-                    <TableCell data-column="ballSpeed" className="text-right">
-                      {shot.ballSpeedLabel}
-                    </TableCell>
-                    <TableCell data-column="advanced">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Actions for ${shot.clubLabel} shot ${shot.shotNumberLabel}`}
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <MoreHorizontal className="size-4" aria-hidden />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          onClick={(event) => event.stopPropagation()}
+                  return (
+                    <Fragment key={shot.id}>
+                      {beginsGroup ? (
+                        <TableRow
+                          data-shot-group={groupBy}
+                          className="bg-muted/45 hover:bg-muted/45"
                         >
-                          <DropdownMenuLabel>Shot actions</DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onSelect={() => {
-                              setSelectedId(shot.id);
-                              setDetailOpen(true);
-                            }}
+                          <TableCell
+                            colSpan={12}
+                            className="py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                           >
-                            View evidence
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/shots?club=${encodeURIComponent(shot.clubType)}`}
-                              prefetch={false}
+                            {groupBy === "club" ? "Club" : "Session"} · {groupLabel}
+                          </TableCell>
+                        </TableRow>
+                      ) : null}
+                      <TableRow
+                        ref={(node) => {
+                          rowRefs.current[index] = node;
+                        }}
+                        tabIndex={0}
+                        aria-label={`${shot.clubLabel} shot ${shot.shotNumberLabel} on ${shot.shotAtLabel}`}
+                        aria-selected={selected}
+                        data-selected-shot={selected ? "true" : undefined}
+                        onClick={() => {
+                          setSelectedId(shot.id);
+                          setDetailOpen(true);
+                        }}
+                        onFocus={() => setSelectedId(shot.id)}
+                        onKeyDown={(event) => handleRowKeyDown(event, index)}
+                        className={cn(
+                          "focus-aaa cursor-pointer border-b outline-none last:border-b-0",
+                          selected && "bg-primary/5",
+                        )}
+                      >
+                        <TableCell className="w-10" onClick={(event) => event.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedRows.includes(shot.id)}
+                            onCheckedChange={() => toggleSelected(shot.id)}
+                            aria-label={`Select ${shot.clubLabel} shot ${shot.shotNumberLabel}`}
+                          />
+                        </TableCell>
+                        <TableCell
+                          data-column="date"
+                          className={cn("sticky left-10 z-10 bg-card", selected && "bg-primary/5")}
+                        >
+                          {shot.shotAtLabel}
+                        </TableCell>
+                        <TableCell data-column="file" className="max-w-48 truncate">
+                          {shot.fileNameLabel}
+                        </TableCell>
+                        <TableCell data-column="shot" className="text-right">
+                          {shot.shotNumberLabel}
+                        </TableCell>
+                        <TableCell data-column="hole">{shot.holeLabel}</TableCell>
+                        <TableCell data-column="club" className="font-medium">
+                          <div className="max-w-48">
+                            <p className="truncate">{shot.clubLabel}</p>
+                            {shot.clubLabel !== shot.clubTypeLabel ? (
+                              <p className="truncate text-xs font-normal text-muted-foreground">
+                                {shot.clubTypeLabel}
+                              </p>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell data-column="carry" className="text-right">
+                          {shot.carryLabel}
+                        </TableCell>
+                        <TableCell data-column="total" className="text-right">
+                          {shot.totalLabel}
+                        </TableCell>
+                        <TableCell data-column="side" className="text-right">
+                          {shot.sideLabel}
+                        </TableCell>
+                        <TableCell data-column="launch" className="text-right">
+                          {shot.launchLabel}
+                        </TableCell>
+                        <TableCell data-column="ballSpeed" className="text-right">
+                          {shot.ballSpeedLabel}
+                        </TableCell>
+                        <TableCell data-column="advanced">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Actions for ${shot.clubLabel} shot ${shot.shotNumberLabel}`}
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <MoreHorizontal className="size-4" aria-hidden />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              onClick={(event) => event.stopPropagation()}
                             >
-                              Filter this club
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href="/compare" prefetch={false}>
-                              Compare session
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                              <DropdownMenuLabel>Shot actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setSelectedId(shot.id);
+                                  setDetailOpen(true);
+                                }}
+                              >
+                                View evidence
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/shots?club=${encodeURIComponent(shot.clubType)}`}
+                                  prefetch={false}
+                                >
+                                  Filter this club
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href="/compare" prefetch={false}>
+                                  Compare session
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    </Fragment>
+                  );
+                })}
+                {shots.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={12} className="p-4">
+                      <AppEmptyState
+                        title="No shots match these filters"
+                        description="Clear the active filters or import another measured session."
+                        primaryAction={
+                          <Button asChild size="sm">
+                            <Link href="/shots">Clear filters</Link>
+                          </Button>
+                        }
+                        secondaryAction={
+                          <Button asChild size="sm" variant="outline">
+                            <Link href="/import">Import session</Link>
+                          </Button>
+                        }
+                      />
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {shots.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
-                    No shots match these filters.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+                ) : null}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </div>
       </div>
 
       <ResponsiveDetailPanel
@@ -290,6 +370,49 @@ export function ShotsMasterDetailTable({
       </ResponsiveDetailPanel>
     </div>
   );
+}
+
+export function ShotBulkToolbar({
+  selectedCount,
+  onClear,
+  onInspect,
+}: {
+  selectedCount: number;
+  onClear: () => void;
+  onInspect: () => void;
+}) {
+  return (
+    <div
+      role="toolbar"
+      aria-label="Selected shot actions"
+      className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-background/95 p-3 shadow-md backdrop-blur"
+      data-shot-bulk-toolbar
+    >
+      <div className="flex items-center gap-2">
+        <CheckSquare2 className="size-4 text-primary" aria-hidden />
+        <span className="font-semibold">Selected shots</span>
+        <Badge variant="secondary">{selectedCount}</Badge>
+      </div>
+      <ButtonGroup aria-label="Selected shot actions">
+        <Button type="button" size="sm" variant="outline" onClick={onInspect}>
+          Inspect selected
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onClear}>
+          Clear
+        </Button>
+      </ButtonGroup>
+    </div>
+  );
+}
+
+function shotGroupLabel(
+  shot: ShotMasterDetailRow | undefined,
+  groupBy: "none" | "club" | "session",
+) {
+  if (!shot) return "";
+  if (groupBy === "club") return shot.clubLabel;
+  if (groupBy === "session") return shot.fileNameLabel;
+  return "";
 }
 
 function SortableShotHead({ sort }: { sort: ShotTableSort | undefined }) {
@@ -313,7 +436,7 @@ function SortableShotHead({ sort }: { sort: ShotTableSort | undefined }) {
         prefetch={false}
       >
         {sort.label}
-        <Icon className={cn("size-3.5", sort.active ? "text-emerald-700" : "opacity-45")} />
+        <Icon className={cn("size-3.5", sort.active ? "text-primary" : "opacity-45")} />
       </Link>
     </TableHead>
   );
@@ -346,14 +469,15 @@ export function SelectedShotDetail({
     ["Smash", shot?.smashLabel],
     ["Estimate", shot?.estimateLabel],
   ] as const;
+  const Comp = compact ? "section" : Card;
 
   return (
-    <aside
+    <Comp
       role="region"
       aria-label="Selected shot detail"
       className={cn(
-        "premium-command-surface grid min-w-0 rounded-lg border border-emerald-950/10 2xl:sticky 2xl:top-20 2xl:self-start",
-        compact ? "gap-3 p-3" : "gap-4 p-4",
+        "grid min-w-0 2xl:sticky 2xl:top-20 2xl:self-start",
+        compact ? "gap-3" : "gap-4 border-primary/15 bg-card p-4",
       )}
     >
       {shot ? (
@@ -404,7 +528,7 @@ export function SelectedShotDetail({
           </dl>
 
           {compact ? (
-            <Collapsible className="rounded-lg border border-border bg-white/60 px-3 py-2 text-xs">
+            <Collapsible className="rounded-lg border border-border bg-card/60 px-3 py-2 text-xs">
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="w-full justify-start px-0">
                   More delivery and strike data
@@ -433,11 +557,7 @@ export function SelectedShotDetail({
                 <ListFilter className="size-4" />
               </Link>
             </Button>
-            <Button
-              asChild
-              className="justify-between bg-emerald-800 text-white hover:bg-emerald-900"
-              size={compact ? "sm" : "default"}
-            >
+            <Button asChild className="justify-between" size={compact ? "sm" : "default"}>
               <Link href="/compare" prefetch={false}>
                 Compare session
                 <GitCompareArrows className="size-4" />
@@ -447,11 +567,11 @@ export function SelectedShotDetail({
           </div>
         </>
       ) : (
-        <div className="rounded-lg border border-dashed border-border bg-white/70 p-4 text-sm text-muted-foreground">
+        <p className="rounded-lg border border-dashed border-border bg-muted/35 p-4 text-sm text-muted-foreground">
           Select a visible shot row to inspect launch, delivery and strike evidence.
-        </div>
+        </p>
       )}
-    </aside>
+    </Comp>
   );
 }
 
@@ -469,11 +589,11 @@ function ShotDetailMetric({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white/80 text-center",
+        "rounded-lg border bg-muted/35 text-center",
         compact ? "p-1.5" : "p-2",
-        tone === "green" && "border-emerald-200 bg-emerald-50",
-        tone === "amber" && "border-amber-200 bg-amber-50",
-        tone === "red" && "border-rose-200 bg-rose-50",
+        tone === "green" && "border-primary/35 bg-primary/10",
+        tone === "amber" && "border-accent-foreground/25 bg-accent/55",
+        tone === "red" && "border-destructive/35 bg-destructive/10",
       )}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
@@ -505,7 +625,7 @@ function ShotDetailPair({
   return (
     <div
       className={cn(
-        "grid rounded-lg border border-border bg-white/70",
+        "grid rounded-lg border border-border bg-muted/35",
         compact
           ? "grid-cols-[minmax(0,1fr)_auto] gap-1 px-2 py-1.5"
           : "grid-cols-[6.75rem_minmax(0,1fr)] gap-2 px-3 py-2",

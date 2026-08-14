@@ -15,11 +15,9 @@ import {
 import { addTournamentCommentAction, submitTournamentRoundAction } from "@/app/tournaments/actions";
 import { TournamentWithdrawDialog } from "@/app/tournaments/tournament-withdraw-dialog";
 import { OperationStepper } from "@/components/app/operation-stepper";
-import {
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   IOSDisclosureGroup,
@@ -42,7 +40,7 @@ import { ScorecardProofUploader } from "@/components/scorecard-proof-uploader";
 import { TournamentEntryModal } from "@/components/tournament-entry-modal";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -72,6 +70,7 @@ import {
 } from "@/components/ui/table";
 import { hasCurrentTournamentEntryTermsMetadata } from "@/lib/tournament-entry-terms";
 import { formatLabel, getTournamentDetailData } from "@/lib/tournaments";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 
 export const dynamic = "force-dynamic";
 
@@ -138,11 +137,18 @@ export default async function TournamentDetailPage({
   searchParams,
 }: TournamentDetailPageProps) {
   const [{ tournamentId }, query] = await Promise.all([params, searchParams]);
-  const data = await getTournamentDetailData(tournamentId);
+  const [data, surface] = await Promise.all([
+    getTournamentDetailData(tournamentId),
+    getRequestAppSurface(),
+  ]);
 
   if (!data) {
     notFound();
   }
+
+  const workbench =
+    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
 
   const hideTourPlayers = query?.hideTour === "1";
   const tourStandingCount = data.standings.filter(({ profile }) =>
@@ -165,562 +171,81 @@ export default async function TournamentDetailPage({
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar
-          title={data.tournament.title}
-          actions={<ProofBadge tier={data.tournament.directRapsodoRequired ? "gold" : "silver"} />}
-        />
-        <MobileStatusAction
-          label="Your entry"
-          value={
-            data.viewerEntered
-              ? data.nextRoundNumber
-                ? `Round ${data.nextRoundNumber} needed`
-                : "Complete"
-              : "Not entered"
-          }
-          detail={`${data.viewerSubmissions.length}/${data.tournament.roundCount} rounds submitted · ${data.entries.length} entries`}
-          action={
-            data.viewerEntered && viewerTermsCurrent ? (
-              <BottomSheet
-                label={
-                  <>
-                    <Send className="size-4" /> Submit
-                  </>
-                }
-                title="Submit tournament round"
-              >
-                <div className="grid gap-4">
-                  <MatchingRoundSubmitList
-                    rounds={data.matchingRounds}
-                    tournamentId={data.tournament.id}
-                    roundNumber={data.nextRoundNumber}
-                    courseName={data.course?.name ?? null}
-                    compact
-                  />
-                  <div className="grid gap-2 border-t border-[#E5E7EB] pt-4">
-                    <p className="text-sm font-semibold">Manual score</p>
-                    <p className="text-xs leading-5 text-[#6B7280]">
-                      Use this only if the saved round has not appeared yet.
-                    </p>
-                    <form
-                      action={submitTournamentRoundAction}
-                      className="grid gap-3"
-                      data-tournament-submit-form
-                    >
-                      <input type="hidden" name="tournamentId" value={data.tournament.id} />
-                      <Input
-                        name="roundNumber"
-                        type="number"
-                        min={1}
-                        max={data.tournament.roundCount}
-                        defaultValue={data.nextRoundNumber ?? data.tournament.roundCount}
-                        className="h-11 rounded-lg bg-white"
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          name="grossScore"
-                          inputMode="numeric"
-                          placeholder="Gross"
-                          className="h-11 rounded-lg bg-white"
-                          required
-                        />
-                        <Input
-                          name="netScore"
-                          inputMode="numeric"
-                          placeholder="Net"
-                          className="h-11 rounded-lg bg-white"
-                        />
-                      </div>
-                      <Input
-                        name="sessionId"
-                        placeholder="Linked imported round"
-                        className="h-11 rounded-lg bg-white"
-                      />
-                      <ScorecardProofUploader
-                        proofScopeType="tournament"
-                        proofScopeId={data.tournament.id}
-                        screenshotFieldName="scorecardScreenshotPath"
-                        extractedTotalFieldName="extractedScorecardTotal"
-                        screenshotLabel="Scorecard image"
-                        extractedTotalLabel="Extracted total"
-                      />
-                      <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs leading-5 text-[#6B7280]">
-                        Manual scores remain pending until the server can match owned round
-                        evidence. Only verified submissions enter standings.
-                      </p>
-                      <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
-                        <Send className="size-4" />
-                        Submit
-                      </Button>
-                    </form>
-                  </div>
-                </div>
-              </BottomSheet>
-            ) : data.viewerEntered ? (
-              <TournamentEntryModal
-                tournamentId={data.tournament.id}
-                tournamentTitle={data.tournament.title}
-                courseName={data.course?.name ?? "Course TBD"}
-                teeSetName={data.teeSet?.name ?? "Any tee"}
-                roundCount={data.tournament.roundCount}
-                triggerLabel="Accept terms"
-              />
-            ) : (
-              <TournamentEntryModal
-                tournamentId={data.tournament.id}
-                tournamentTitle={data.tournament.title}
-                courseName={data.course?.name ?? "Course TBD"}
-                teeSetName={data.teeSet?.name ?? "Any tee"}
-                roundCount={data.tournament.roundCount}
-                triggerLabel="Enter"
-              />
-            )
-          }
-        />
-        <section className="rounded-lg border border-[#E5E7EB] bg-white p-3">
-          <p className="text-sm font-semibold text-[#0B7A3B]">
-            {formatLabel(data.tournament.format)}
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal">{data.tournament.title}</h2>
-          <p className="mt-1 text-sm leading-5 text-[#6B7280]">
-            {data.course?.name ?? "Course TBD"} · {data.teeSet?.name ?? "Any tee"} ·{" "}
-            {data.tournament.roundCount} rounds
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-            {Array.from({ length: data.tournament.roundCount }, (_, index) => {
-              const roundNumber = index + 1;
-              const submitted = data.viewerSubmissions.some(
-                (submission) => submission.roundNumber === roundNumber,
-              );
-              const needed = data.nextRoundNumber === roundNumber;
-
-              return (
-                <div key={roundNumber} className="rounded-lg bg-[#F5F6F4] px-3 py-2">
-                  <p className="font-semibold">Round {roundNumber}</p>
-                  <p className="text-xs text-[#6B7280]">
-                    {submitted ? "Submitted" : needed ? "Needed" : "Locked"}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-        <MobileTabBar
-          activeKey={activeTab}
-          tabs={[
-            {
-              key: "board",
-              label: "Board",
-              href: `/tournaments/${data.tournament.id}?tab=board`,
-            },
-            {
-              key: "submit",
-              label: "Submit",
-              href: `/tournaments/${data.tournament.id}?tab=submit`,
-            },
-            { key: "rules", label: "Rules", href: `/tournaments/${data.tournament.id}?tab=rules` },
-            { key: "chat", label: "Chat", href: `/tournaments/${data.tournament.id}?tab=chat` },
-          ]}
-        />
-        {activeTab === "rules" ? (
-          <NativeListSection title="Rules">
-            <Rule label="Format" value={formatLabel(data.tournament.format)} />
-            <Rule label="Rounds" value={String(data.tournament.roundCount)} />
-            <Rule label="Mulligans" value="Not allowed in any tournament round" />
-            <Rule label="Proof" value="Direct Rapsodo and scorecard screenshot when required." />
-          </NativeListSection>
-        ) : activeTab === "chat" ? (
-          <NativeListSection title="Chat">
-            {data.comments.map(({ comment, profile }) => (
-              <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                <ProfileNameLink profile={profile} className="font-semibold hover:underline" />
-                <p className="mt-1 text-[#6B7280]">{comment.body}</p>
-              </div>
-            ))}
-            <form action={addTournamentCommentAction} className="grid gap-2">
-              <input type="hidden" name="tournamentId" value={data.tournament.id} />
-              <Input name="body" placeholder="Add a comment" className="h-11 rounded-lg bg-white" />
-              <Button type="submit" variant="outline" className="rounded-full">
-                Comment
-              </Button>
-            </form>
-          </NativeListSection>
-        ) : activeTab === "submit" ? (
-          <NativeListSection title="Submit">
-            {data.viewerEntered && viewerTermsCurrent ? (
-              <MatchingRoundSubmitList
-                rounds={data.matchingRounds}
-                tournamentId={data.tournament.id}
-                roundNumber={data.nextRoundNumber}
-                courseName={data.course?.name ?? null}
-                compact
-              />
-            ) : (
-              <p className="rounded-lg border border-[#E5E7EB] p-3 text-sm text-[#6B7280]">
-                {data.viewerEntered
-                  ? "Accept the current no-mulligans terms before submitting."
-                  : "Enter the tournament before submitting."}
-              </p>
-            )}
-          </NativeListSection>
-        ) : (
-          <NativeListSection title="Podium">
-            {tourStandingCount > 0 ? (
-              <div className="mb-3 flex justify-end">
-                <Button asChild variant="outline" size="sm" className="h-9 rounded-full">
-                  <Link href={leaderboardToggleHref} prefetch={false}>
-                    {hideTourPlayers ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                    {hideTourPlayers ? "Show tour" : "Hide tour"}
-                  </Link>
-                </Button>
-              </div>
-            ) : null}
-            <CompactLeaderboard
-              current={
-                viewerStanding
-                  ? `You are #${viewerStanding.standing.rank} · ${viewerStanding.standing.grossTotal}`
-                  : "Enter to appear on the board"
-              }
-              items={podium.map(({ standing, profile }) => ({
-                rank: standing.rank,
-                name: profile?.displayName ?? "Player",
-                href: profileHref(profile),
-                value: standing.grossTotal,
-                detail: `${standing.roundsCompleted}/${data.tournament.roundCount} rounds`,
-              }))}
-            />
-            <MobileTournamentStandings
-              visibleStandings={visibleStandings}
-              roundCount={data.tournament.roundCount}
-              viewerUserId={data.viewerUserId}
-            />
-          </NativeListSection>
-        )}
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="tournament-detail" className="hidden lg:grid">
-        <div className="flex items-center justify-between gap-3">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/tournaments" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Tournaments
-            </Link>
-          </Button>
-          <Badge variant={data.tournament.directRapsodoRequired ? "secondary" : "outline"}>
-            {data.tournament.directRapsodoRequired ? "Gold verification" : "Mixed verification"}
-          </Badge>
-        </div>
-
-        <header className="premium-hero p-4 sm:p-5">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
-            <div>
-              <StatusPill tone="amber">{formatLabel(data.tournament.format)}</StatusPill>
-              <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">
-                {data.tournament.title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {data.course?.name ?? "Course TBD"} · {data.teeSet?.name ?? "Any tee"} ·{" "}
-                {data.tournament.roundCount} rounds
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {data.course?.id && data.viewerEntered && viewerTermsCurrent ? (
-                  <Button asChild size="sm" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                    <Link
-                      href={`/play/${data.course.id}?tournamentId=${data.tournament.id}&roundNumber=${data.nextRoundNumber ?? data.tournament.roundCount}`}
-                      prefetch={false}
-                    >
-                      <Cuboid className="size-4" /> Play verified 3D round
-                    </Link>
-                  </Button>
-                ) : null}
-                {data.tournament.endsAt ? (
-                  <Badge variant="outline" className="gap-1">
-                    <CalendarDays className="size-3" />
-                    Closes {dateFormatter.format(data.tournament.endsAt)}
-                  </Badge>
-                ) : null}
-                <Badge variant="outline">{data.entries.length} entries</Badge>
-                <Badge variant="outline">{data.submissions.length} submissions</Badge>
-                {query?.joined ? <Badge variant="secondary">Entered</Badge> : null}
-                {query?.submission ? <Badge variant="secondary">Submission saved</Badge> : null}
-              </div>
-              {query?.entryError === "terms" ? (
-                <Alert variant="destructive" className="mt-4 max-w-2xl">
-                  <AlertTitle>Terms must be accepted</AlertTitle>
-                  <AlertDescription>
-                    Accept the tournament entry terms before registering.
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-            </div>
-            <Card size="sm">
-              <CardHeader>
-                <CardTitle>Your entry</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {data.viewerEntered ? (
-                  <div className="grid gap-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary">
-                        {viewerStanding ? `Rank #${viewerStanding.standing.rank}` : "Entered"}
-                      </Badge>
-                      <Badge variant={viewerTermsCurrent ? "secondary" : "outline"}>
-                        {viewerTermsCurrent ? "Terms accepted" : "Terms update needed"}
-                      </Badge>
-                    </div>
-                    <p className="text-2xl font-semibold tracking-normal">
-                      Round {data.nextRoundNumber ?? data.tournament.roundCount}:{" "}
-                      {data.nextRoundNumber ? "Needed" : "Complete"}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {data.viewerSubmissions.length}/{data.tournament.roundCount} rounds submitted
-                    </p>
-                    <OperationStepper
-                      compact
-                      label="Tournament round progression"
-                      steps={Array.from({ length: data.tournament.roundCount }, (_, index) => {
-                        const roundNumber = index + 1;
-                        const submitted = data.viewerSubmissions.some(
-                          (submission) => submission.roundNumber === roundNumber,
-                        );
-                        return {
-                          id: `round-${roundNumber}`,
-                          label: `R${roundNumber}`,
-                          status: submitted
-                            ? ("complete" as const)
-                            : data.nextRoundNumber === roundNumber
-                              ? ("current" as const)
-                              : ("upcoming" as const),
-                        };
-                      })}
-                    />
-                    {viewerTermsCurrent ? (
-                      <Button
-                        asChild
-                        className="mt-3 w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                      >
-                        <a href="#submit-round">Submit round</a>
-                      </Button>
-                    ) : (
-                      <div className="mt-3 grid gap-3">
-                        <p className="rounded-xl border border-dashed bg-white p-3 text-sm text-muted-foreground">
-                          Accept the current no-mulligans tournament terms before submitting.
-                        </p>
-                        <TournamentEntryModal
-                          tournamentId={data.tournament.id}
-                          tournamentTitle={data.tournament.title}
-                          courseName={data.course?.name ?? "Course TBD"}
-                          teeSetName={data.teeSet?.name ?? "Any tee"}
-                          roundCount={data.tournament.roundCount}
-                          triggerLabel="Review & accept terms"
-                        />
-                      </div>
-                    )}
-                    {data.tournament.createdByUserId !== data.viewerUserId ? (
-                      <TournamentWithdrawDialog
-                        tournamentId={data.tournament.id}
-                        tournamentTitle={data.tournament.title}
-                      />
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="mt-3">
-                    <p className="mb-3 rounded-xl border border-dashed bg-white p-3 text-sm text-muted-foreground">
-                      Open the entry terms, confirm the simulator setup rules, then accept to
-                      register.
-                    </p>
-                    <TournamentEntryModal
-                      tournamentId={data.tournament.id}
-                      tournamentTitle={data.tournament.title}
-                      courseName={data.course?.name ?? "Course TBD"}
-                      teeSetName={data.teeSet?.name ?? "Any tee"}
-                      roundCount={data.tournament.roundCount}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </header>
-
-        <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Tournament views">
-          <Anchor href="#overview" label="Overview" />
-          <Anchor href="#submit-round" label="My rounds" />
-          <Anchor href="#standings" label="Standings" />
-          <Sheet>
-            <span id="rules" className="scroll-mt-28">
-              <SheetTrigger asChild>
-                <Button type="button" variant="outline" size="sm" className="min-h-11 rounded-xl">
-                  <ShieldCheck className="size-4" />
-                  Rules
-                </Button>
-              </SheetTrigger>
-            </span>
-            <SheetContent className="overflow-y-auto sm:max-w-lg">
-              <SheetHeader>
-                <SheetTitle>Tournament rules</SheetTitle>
-                <SheetDescription>
-                  Event scoring, proof, mulligan and tiebreaker requirements.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="grid gap-2 px-4 pb-4">
-                <Rule label="Format" value={formatLabel(data.tournament.format)} />
-                <Rule label="Rounds" value={String(data.tournament.roundCount)} />
-                <Rule label="Mulligans" value="Not allowed in any tournament round" />
-                <Rule
-                  label="Gimmes"
-                  value="10 ft for 1-putt, 20 ft for 2-putt; outside that, hole out or use event scoring."
-                />
-                <Rule label="Cut" value={formatCutRule(data.tournament.cutRuleJson)} />
-                <Rule
-                  label="Tiebreaker"
-                  value={formatTiebreakerRule(data.tournament.playoffRuleJson)}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-          <Anchor href="#chat" label="Chat" />
-        </nav>
-
-        <section
-          id="overview"
-          className="grid scroll-mt-28 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]"
-        >
-          <article className="premium-card p-4">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <Trophy className="size-4 text-amber-600" />
-              Podium
-            </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {podium.length > 0 ? (
-                podium.map(({ standing, profile }) => (
-                  <div
-                    key={standing.id}
-                    className={
-                      standing.rank === 1
-                        ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
-                        : "rounded-lg border bg-[#F5F6F4] p-4"
-                    }
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={standing.rank === 1 ? "default" : "outline"}>
-                        #{standing.rank ?? "--"}
-                      </Badge>
-                      {isTourPlayerProfile(profile) ? (
-                        <Badge variant="secondary">Tour</Badge>
-                      ) : null}
-                    </div>
-                    <ProfileNameLink
-                      profile={profile}
-                      className="mt-3 block font-semibold tracking-normal hover:underline"
-                    />
-                    <p className="mt-1 text-2xl font-semibold tracking-normal">
-                      {standing.grossTotal}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {standing.roundsCompleted} rounds
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground md:col-span-3">
-                  No accepted submissions yet.
-                </p>
-              )}
-            </div>
-          </article>
-
-          <article className="premium-card p-4">
-            <p className="flex items-center gap-2 text-sm font-semibold">
-              <ShieldCheck className="size-4 text-emerald-600" />
-              Proof model
-            </p>
-            <div className="mt-3 grid gap-2 text-sm">
-              <ProofRow label="Rapsodo direct" active={data.tournament.directRapsodoRequired} />
-              <ProofRow label="Scorecard screenshot" active={data.tournament.screenshotRequired} />
-              <ProofRow label="Course/date/tee match" active />
-              <ProofRow label="Duplicate import check" active />
-              <ProofRow label="No mulligans" active />
-            </div>
-          </article>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <section id="submit-round" className="scroll-mt-28">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button type="button" className="w-full">
-                  <Send className="size-4" />
-                  Submit tournament round
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-4xl">
-                <DialogHeader>
-                  <DialogTitle>Submit tournament round</DialogTitle>
-                  <DialogDescription>
-                    Choose a matching saved round or submit a scorecard with its proof.
-                  </DialogDescription>
-                </DialogHeader>
-                {data.viewerEntered && viewerTermsCurrent ? (
+      {surface === "companion" ? (
+        <MobileAppShell>
+          <MobileTopBar
+            title={data.tournament.title}
+            actions={
+              <ProofBadge tier={data.tournament.directRapsodoRequired ? "gold" : "silver"} />
+            }
+          />
+          <MobileStatusAction
+            label="Your entry"
+            value={
+              data.viewerEntered
+                ? data.nextRoundNumber
+                  ? `Round ${data.nextRoundNumber} needed`
+                  : "Complete"
+                : "Not entered"
+            }
+            detail={`${data.viewerSubmissions.length}/${data.tournament.roundCount} rounds submitted · ${data.entries.length} entries`}
+            action={
+              data.viewerEntered && viewerTermsCurrent ? (
+                <BottomSheet
+                  label={
+                    <>
+                      <Send className="size-4" /> Submit
+                    </>
+                  }
+                  title="Submit tournament round"
+                >
                   <div className="grid gap-4">
                     <MatchingRoundSubmitList
                       rounds={data.matchingRounds}
                       tournamentId={data.tournament.id}
                       roundNumber={data.nextRoundNumber}
                       courseName={data.course?.name ?? null}
+                      compact
                     />
-                    <div className="grid gap-3 border-t border-[#E5E7EB] pt-4">
-                      <div>
-                        <p className="text-sm font-semibold">Manual score</p>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                          Keep this for scorecards that have not been imported yet.
-                        </p>
-                      </div>
+                    <div className="grid gap-2 border-t border-border pt-4">
+                      <p className="text-sm font-semibold">Manual score</p>
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        Use this only if the saved round has not appeared yet.
+                      </p>
                       <form
                         action={submitTournamentRoundAction}
                         className="grid gap-3"
                         data-tournament-submit-form
                       >
                         <input type="hidden" name="tournamentId" value={data.tournament.id} />
-                        <label className="grid gap-1 text-sm font-medium">
-                          Round
-                          <Input
-                            name="roundNumber"
-                            type="number"
-                            min={1}
-                            max={data.tournament.roundCount}
-                            defaultValue={data.nextRoundNumber ?? data.tournament.roundCount}
-                            className="h-10 rounded-xl bg-white"
-                          />
-                        </label>
+                        <Input
+                          name="roundNumber"
+                          type="number"
+                          min={1}
+                          max={data.tournament.roundCount}
+                          defaultValue={data.nextRoundNumber ?? data.tournament.roundCount}
+                          className="h-11 rounded-lg bg-background"
+                        />
                         <div className="grid grid-cols-2 gap-2">
-                          <label className="grid gap-1 text-sm font-medium">
-                            Gross
-                            <Input
-                              name="grossScore"
-                              inputMode="numeric"
-                              className="h-10 rounded-xl bg-white"
-                              required
-                            />
-                          </label>
-                          <label className="grid gap-1 text-sm font-medium">
-                            Net
-                            <Input
-                              name="netScore"
-                              inputMode="numeric"
-                              className="h-10 rounded-xl bg-white"
-                            />
-                          </label>
-                        </div>
-                        <label className="grid gap-1 text-sm font-medium">
-                          Linked imported round
                           <Input
-                            name="sessionId"
-                            placeholder="Optional imported round reference"
-                            className="h-10 rounded-xl bg-white"
+                            name="grossScore"
+                            inputMode="numeric"
+                            placeholder="Gross"
+                            className="h-11 rounded-lg bg-background"
+                            required
                           />
-                        </label>
+                          <Input
+                            name="netScore"
+                            inputMode="numeric"
+                            placeholder="Net"
+                            className="h-11 rounded-lg bg-background"
+                          />
+                        </div>
+                        <Input
+                          name="sessionId"
+                          placeholder="Linked imported round"
+                          className="h-11 rounded-lg bg-background"
+                        />
                         <ScorecardProofUploader
                           proofScopeType="tournament"
                           proofScopeId={data.tournament.id}
@@ -729,94 +254,611 @@ export default async function TournamentDetailPage({
                           screenshotLabel="Scorecard image"
                           extractedTotalLabel="Extracted total"
                         />
-                        <p className="rounded-lg bg-[#F5F6F4] p-3 text-xs leading-5 text-muted-foreground">
+                        <p className="rounded-lg bg-muted/55 px-3 py-2 text-xs leading-5 text-muted-foreground">
                           Manual scores remain pending until the server can match owned round
                           evidence. Only verified submissions enter standings.
                         </p>
-                        <Button
-                          type="submit"
-                          className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                        >
+                        <Button type="submit" className="rounded-full">
                           <Send className="size-4" />
-                          Submit manual score
+                          Submit
                         </Button>
                       </form>
                     </div>
                   </div>
-                ) : (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    {data.viewerEntered
-                      ? "Accept the current no-mulligans terms before submitting."
-                      : "Enter the tournament before submitting."}
-                  </p>
-                )}
-              </DialogContent>
-            </Dialog>
-          </section>
+                </BottomSheet>
+              ) : data.viewerEntered ? (
+                <TournamentEntryModal
+                  tournamentId={data.tournament.id}
+                  tournamentTitle={data.tournament.title}
+                  courseName={data.course?.name ?? "Course TBD"}
+                  teeSetName={data.teeSet?.name ?? "Any tee"}
+                  roundCount={data.tournament.roundCount}
+                  triggerLabel="Accept terms"
+                />
+              ) : (
+                <TournamentEntryModal
+                  tournamentId={data.tournament.id}
+                  tournamentTitle={data.tournament.title}
+                  courseName={data.course?.name ?? "Course TBD"}
+                  teeSetName={data.teeSet?.name ?? "Any tee"}
+                  roundCount={data.tournament.roundCount}
+                  triggerLabel="Enter"
+                />
+              )
+            }
+          />
+          <section className="rounded-lg border border-border bg-card p-3">
+            <p className="text-sm font-semibold text-primary">
+              {formatLabel(data.tournament.format)}
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-normal">{data.tournament.title}</h2>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              {data.course?.name ?? "Course TBD"} · {data.teeSet?.name ?? "Any tee"} ·{" "}
+              {data.tournament.roundCount} rounds
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+              {Array.from({ length: data.tournament.roundCount }, (_, index) => {
+                const roundNumber = index + 1;
+                const submitted = data.viewerSubmissions.some(
+                  (submission) => submission.roundNumber === roundNumber,
+                );
+                const needed = data.nextRoundNumber === roundNumber;
 
-          <section className="grid gap-4">
-            <section
-              id="standings"
-              className="premium-card scroll-mt-28 p-4"
-              data-workbench-scope="tournament-standings"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Standings</p>
-                  {hideTourPlayers && hiddenTourStandingCount > 0 ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {hiddenTourStandingCount} tour players hidden
+                return (
+                  <div key={roundNumber} className="rounded-lg bg-muted/55 px-3 py-2">
+                    <p className="font-semibold">Round {roundNumber}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {submitted ? "Submitted" : needed ? "Needed" : "Locked"}
                     </p>
-                  ) : null}
-                </div>
-                {tourStandingCount > 0 ? (
-                  <Button asChild variant="outline" size="sm" className="rounded-full">
-                    <Link href={leaderboardToggleHref} prefetch={false}>
-                      {hideTourPlayers ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                      {hideTourPlayers ? "Show tour players" : "Hide tour players"}
-                    </Link>
-                  </Button>
-                ) : null}
-              </div>
-              <TournamentStandingsTable
-                rows={visibleStandings}
-                roundCount={data.tournament.roundCount}
-                tournamentId={data.tournament.id}
-              />
-            </section>
-
-            <section id="chat" className="premium-card scroll-mt-28 p-4">
-              <p className="flex items-center gap-2 text-sm font-semibold">
-                <MessageCircle className="size-4 text-sky-600" />
-                Chat
-              </p>
-              <div className="mt-4 grid gap-2">
-                {data.comments.map(({ comment, profile }) => (
-                  <div key={comment.id} className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
-                    <ProfileNameLink profile={profile} className="font-medium hover:underline" />
-                    <p className="text-muted-foreground">{comment.body}</p>
                   </div>
-                ))}
-              </div>
-              <form
-                action={addTournamentCommentAction}
-                className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]"
-              >
+                );
+              })}
+            </div>
+          </section>
+          <MobileTabBar
+            activeKey={activeTab}
+            tabs={[
+              {
+                key: "board",
+                label: "Board",
+                href: `/tournaments/${data.tournament.id}?tab=board`,
+              },
+              {
+                key: "submit",
+                label: "Submit",
+                href: `/tournaments/${data.tournament.id}?tab=submit`,
+              },
+              {
+                key: "rules",
+                label: "Rules",
+                href: `/tournaments/${data.tournament.id}?tab=rules`,
+              },
+              { key: "chat", label: "Chat", href: `/tournaments/${data.tournament.id}?tab=chat` },
+            ]}
+          />
+          {activeTab === "rules" ? (
+            <NativeListSection title="Rules">
+              <Rule label="Format" value={formatLabel(data.tournament.format)} />
+              <Rule label="Rounds" value={String(data.tournament.roundCount)} />
+              <Rule label="Mulligans" value="Not allowed in any tournament round" />
+              <Rule label="Proof" value="Direct Rapsodo and scorecard screenshot when required." />
+            </NativeListSection>
+          ) : activeTab === "chat" ? (
+            <NativeListSection title="Chat">
+              {data.comments.map(({ comment, profile }) => (
+                <div key={comment.id} className="rounded-lg bg-muted/55 px-3 py-2 text-sm">
+                  <ProfileNameLink profile={profile} className="font-semibold hover:underline" />
+                  <p className="mt-1 text-muted-foreground">{comment.body}</p>
+                </div>
+              ))}
+              <form action={addTournamentCommentAction} className="grid gap-2">
                 <input type="hidden" name="tournamentId" value={data.tournament.id} />
                 <Input
                   name="body"
                   placeholder="Add a comment"
-                  className="h-10 rounded-xl bg-white"
+                  className="h-11 rounded-lg bg-background"
                 />
-                <Button type="submit" variant="outline">
-                  <MessageCircle className="size-4" />
+                <Button type="submit" variant="outline" className="rounded-full">
                   Comment
                 </Button>
               </form>
+            </NativeListSection>
+          ) : activeTab === "submit" ? (
+            <NativeListSection title="Submit">
+              {data.viewerEntered && viewerTermsCurrent ? (
+                <MatchingRoundSubmitList
+                  rounds={data.matchingRounds}
+                  tournamentId={data.tournament.id}
+                  roundNumber={data.nextRoundNumber}
+                  courseName={data.course?.name ?? null}
+                  compact
+                />
+              ) : (
+                <p className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
+                  {data.viewerEntered
+                    ? "Accept the current no-mulligans terms before submitting."
+                    : "Enter the tournament before submitting."}
+                </p>
+              )}
+            </NativeListSection>
+          ) : (
+            <NativeListSection title="Podium">
+              {tourStandingCount > 0 ? (
+                <div className="mb-3 flex justify-end">
+                  <Button asChild variant="outline" size="sm" className="h-9 rounded-full">
+                    <Link href={leaderboardToggleHref} prefetch={false}>
+                      {hideTourPlayers ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                      {hideTourPlayers ? "Show tour" : "Hide tour"}
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
+              <CompactLeaderboard
+                current={
+                  viewerStanding
+                    ? `You are #${viewerStanding.standing.rank} · ${viewerStanding.standing.grossTotal}`
+                    : "Enter to appear on the board"
+                }
+                items={podium.map(({ standing, profile }) => ({
+                  rank: standing.rank,
+                  name: profile?.displayName ?? "Player",
+                  href: profileHref(profile),
+                  value: standing.grossTotal,
+                  detail: `${standing.roundsCompleted}/${data.tournament.roundCount} rounds`,
+                }))}
+              />
+              <MobileTournamentStandings
+                visibleStandings={visibleStandings}
+                roundCount={data.tournament.roundCount}
+                viewerUserId={data.viewerUserId}
+              />
+            </NativeListSection>
+          )}
+        </MobileAppShell>
+      ) : null}
+
+      {surface === "workbench" && DesktopWorkbenchLayout ? (
+        <DesktopWorkbenchLayout scope="tournament-detail">
+          <div className="flex items-center justify-between gap-3">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/tournaments" prefetch={false}>
+                <ArrowLeft className="size-4" />
+                Tournaments
+              </Link>
+            </Button>
+            <Badge variant={data.tournament.directRapsodoRequired ? "secondary" : "outline"}>
+              {data.tournament.directRapsodoRequired ? "Gold verification" : "Mixed verification"}
+            </Badge>
+          </div>
+
+          <header className="premium-hero p-4 sm:p-5">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+              <div>
+                <StatusPill tone="amber">{formatLabel(data.tournament.format)}</StatusPill>
+                <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">
+                  {data.tournament.title}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  {data.course?.name ?? "Course TBD"} · {data.teeSet?.name ?? "Any tee"} ·{" "}
+                  {data.tournament.roundCount} rounds
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {data.course?.id && data.viewerEntered && viewerTermsCurrent ? (
+                    <Button asChild size="sm">
+                      <Link
+                        href={`/play/${data.course.id}?tournamentId=${data.tournament.id}&roundNumber=${data.nextRoundNumber ?? data.tournament.roundCount}`}
+                        prefetch={false}
+                      >
+                        <Cuboid className="size-4" /> Play verified 3D round
+                      </Link>
+                    </Button>
+                  ) : null}
+                  {data.tournament.endsAt ? (
+                    <Badge variant="outline" className="gap-1">
+                      <CalendarDays className="size-3" />
+                      Closes {dateFormatter.format(data.tournament.endsAt)}
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline">{data.entries.length} entries</Badge>
+                  <Badge variant="outline">{data.submissions.length} submissions</Badge>
+                  {query?.joined ? <Badge variant="secondary">Entered</Badge> : null}
+                  {query?.submission ? <Badge variant="secondary">Submission saved</Badge> : null}
+                </div>
+                {query?.entryError === "terms" ? (
+                  <Alert variant="destructive" className="mt-4 max-w-2xl">
+                    <AlertTitle>Terms must be accepted</AlertTitle>
+                    <AlertDescription>
+                      Accept the tournament entry terms before registering.
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+              </div>
+              <Card size="sm">
+                <CardHeader>
+                  <CardTitle>Your entry</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {data.viewerEntered ? (
+                    <div className="grid gap-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary">
+                          {viewerStanding ? `Rank #${viewerStanding.standing.rank}` : "Entered"}
+                        </Badge>
+                        <Badge variant={viewerTermsCurrent ? "secondary" : "outline"}>
+                          {viewerTermsCurrent ? "Terms accepted" : "Terms update needed"}
+                        </Badge>
+                      </div>
+                      <p className="text-2xl font-semibold tracking-normal">
+                        Round {data.nextRoundNumber ?? data.tournament.roundCount}:{" "}
+                        {data.nextRoundNumber ? "Needed" : "Complete"}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {data.viewerSubmissions.length}/{data.tournament.roundCount} rounds
+                        submitted
+                      </p>
+                      <OperationStepper
+                        compact
+                        label="Tournament round progression"
+                        steps={Array.from({ length: data.tournament.roundCount }, (_, index) => {
+                          const roundNumber = index + 1;
+                          const submitted = data.viewerSubmissions.some(
+                            (submission) => submission.roundNumber === roundNumber,
+                          );
+                          return {
+                            id: `round-${roundNumber}`,
+                            label: `R${roundNumber}`,
+                            status: submitted
+                              ? ("complete" as const)
+                              : data.nextRoundNumber === roundNumber
+                                ? ("current" as const)
+                                : ("upcoming" as const),
+                          };
+                        })}
+                      />
+                      {viewerTermsCurrent ? (
+                        <Button asChild className="mt-3 w-full rounded-lg">
+                          <a href="#submit-round">Submit round</a>
+                        </Button>
+                      ) : (
+                        <div className="mt-3 grid gap-3">
+                          <p className="rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
+                            Accept the current no-mulligans tournament terms before submitting.
+                          </p>
+                          <TournamentEntryModal
+                            tournamentId={data.tournament.id}
+                            tournamentTitle={data.tournament.title}
+                            courseName={data.course?.name ?? "Course TBD"}
+                            teeSetName={data.teeSet?.name ?? "Any tee"}
+                            roundCount={data.tournament.roundCount}
+                            triggerLabel="Review & accept terms"
+                          />
+                        </div>
+                      )}
+                      {data.tournament.createdByUserId !== data.viewerUserId ? (
+                        <TournamentWithdrawDialog
+                          tournamentId={data.tournament.id}
+                          tournamentTitle={data.tournament.title}
+                        />
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="mt-3">
+                      <p className="mb-3 rounded-xl border border-dashed bg-card p-3 text-sm text-muted-foreground">
+                        Open the entry terms, confirm the simulator setup rules, then accept to
+                        register.
+                      </p>
+                      <TournamentEntryModal
+                        tournamentId={data.tournament.id}
+                        tournamentTitle={data.tournament.title}
+                        courseName={data.course?.name ?? "Course TBD"}
+                        teeSetName={data.teeSet?.name ?? "Any tee"}
+                        roundCount={data.tournament.roundCount}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </header>
+
+          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Tournament views">
+            <Anchor href="#overview" label="Overview" />
+            <Anchor href="#submit-round" label="My rounds" />
+            <Anchor href="#standings" label="Standings" />
+            <Sheet>
+              <span id="rules" className="scroll-mt-28">
+                <SheetTrigger
+                  type="button"
+                  data-variant="outline"
+                  data-size="sm"
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "sm",
+                    className: "min-h-11 rounded-xl",
+                  })}
+                >
+                  <ShieldCheck className="size-4" />
+                  Rules
+                </SheetTrigger>
+              </span>
+              <SheetContent className="overflow-y-auto sm:max-w-lg">
+                <SheetHeader>
+                  <SheetTitle>Tournament rules</SheetTitle>
+                  <SheetDescription>
+                    Event scoring, proof, mulligan and tiebreaker requirements.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="grid gap-2 px-4 pb-4">
+                  <Rule label="Format" value={formatLabel(data.tournament.format)} />
+                  <Rule label="Rounds" value={String(data.tournament.roundCount)} />
+                  <Rule label="Mulligans" value="Not allowed in any tournament round" />
+                  <Rule
+                    label="Gimmes"
+                    value="10 ft for 1-putt, 20 ft for 2-putt; outside that, hole out or use event scoring."
+                  />
+                  <Rule label="Cut" value={formatCutRule(data.tournament.cutRuleJson)} />
+                  <Rule
+                    label="Tiebreaker"
+                    value={formatTiebreakerRule(data.tournament.playoffRuleJson)}
+                  />
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Anchor href="#chat" label="Chat" />
+          </nav>
+
+          <section
+            id="overview"
+            className="grid scroll-mt-28 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]"
+          >
+            <Card className="gap-0 py-0">
+              <CardContent className="p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Trophy className="size-4 text-[var(--status-warning-foreground)]" />
+                  Podium
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {podium.length > 0 ? (
+                    podium.map(({ standing, profile }) => (
+                      <div
+                        key={standing.id}
+                        className={
+                          standing.rank === 1
+                            ? "rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4"
+                            : "rounded-lg border bg-muted/55 p-4"
+                        }
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant={standing.rank === 1 ? "default" : "outline"}>
+                            #{standing.rank ?? "--"}
+                          </Badge>
+                          {isTourPlayerProfile(profile) ? (
+                            <Badge variant="secondary">Tour</Badge>
+                          ) : null}
+                        </div>
+                        <ProfileNameLink
+                          profile={profile}
+                          className="mt-3 block font-semibold tracking-normal hover:underline"
+                        />
+                        <p className="mt-1 text-2xl font-semibold tracking-normal">
+                          {standing.grossTotal}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {standing.roundsCompleted} rounds
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground md:col-span-3">
+                      No accepted submissions yet.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-0">
+              <CardContent className="p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <ShieldCheck className="size-4 text-primary" />
+                  Proof model
+                </p>
+                <div className="mt-3 grid gap-2 text-sm">
+                  <ProofRow label="Rapsodo direct" active={data.tournament.directRapsodoRequired} />
+                  <ProofRow
+                    label="Scorecard screenshot"
+                    active={data.tournament.screenshotRequired}
+                  />
+                  <ProofRow label="Course/date/tee match" active />
+                  <ProofRow label="Duplicate import check" active />
+                  <ProofRow label="No mulligans" active />
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
+            <section id="submit-round" className="scroll-mt-28">
+              <Dialog>
+                <DialogTrigger
+                  type="button"
+                  data-variant="default"
+                  className={buttonVariants({ className: "w-full" })}
+                >
+                  <Send className="size-4" />
+                  Submit tournament round
+                </DialogTrigger>
+                <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>Submit tournament round</DialogTitle>
+                    <DialogDescription>
+                      Choose a matching saved round or submit a scorecard with its proof.
+                    </DialogDescription>
+                  </DialogHeader>
+                  {data.viewerEntered && viewerTermsCurrent ? (
+                    <div className="grid gap-4">
+                      <MatchingRoundSubmitList
+                        rounds={data.matchingRounds}
+                        tournamentId={data.tournament.id}
+                        roundNumber={data.nextRoundNumber}
+                        courseName={data.course?.name ?? null}
+                      />
+                      <div className="grid gap-3 border-t border-border pt-4">
+                        <div>
+                          <p className="text-sm font-semibold">Manual score</p>
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            Keep this for scorecards that have not been imported yet.
+                          </p>
+                        </div>
+                        <form
+                          action={submitTournamentRoundAction}
+                          className="grid gap-3"
+                          data-tournament-submit-form
+                        >
+                          <input type="hidden" name="tournamentId" value={data.tournament.id} />
+                          <label className="grid gap-1 text-sm font-medium">
+                            Round
+                            <Input
+                              name="roundNumber"
+                              type="number"
+                              min={1}
+                              max={data.tournament.roundCount}
+                              defaultValue={data.nextRoundNumber ?? data.tournament.roundCount}
+                              className="h-10 rounded-xl bg-background"
+                            />
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <label className="grid gap-1 text-sm font-medium">
+                              Gross
+                              <Input
+                                name="grossScore"
+                                inputMode="numeric"
+                                className="h-10 rounded-xl bg-background"
+                                required
+                              />
+                            </label>
+                            <label className="grid gap-1 text-sm font-medium">
+                              Net
+                              <Input
+                                name="netScore"
+                                inputMode="numeric"
+                                className="h-10 rounded-xl bg-background"
+                              />
+                            </label>
+                          </div>
+                          <label className="grid gap-1 text-sm font-medium">
+                            Linked imported round
+                            <Input
+                              name="sessionId"
+                              placeholder="Optional imported round reference"
+                              className="h-10 rounded-xl bg-background"
+                            />
+                          </label>
+                          <ScorecardProofUploader
+                            proofScopeType="tournament"
+                            proofScopeId={data.tournament.id}
+                            screenshotFieldName="scorecardScreenshotPath"
+                            extractedTotalFieldName="extractedScorecardTotal"
+                            screenshotLabel="Scorecard image"
+                            extractedTotalLabel="Extracted total"
+                          />
+                          <p className="rounded-lg bg-muted/55 p-3 text-xs leading-5 text-muted-foreground">
+                            Manual scores remain pending until the server can match owned round
+                            evidence. Only verified submissions enter standings.
+                          </p>
+                          <Button type="submit" className="rounded-lg">
+                            <Send className="size-4" />
+                            Submit manual score
+                          </Button>
+                        </form>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                      {data.viewerEntered
+                        ? "Accept the current no-mulligans terms before submitting."
+                        : "Enter the tournament before submitting."}
+                    </p>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </section>
+
+            <section className="grid gap-4">
+              <Card
+                id="standings"
+                className="scroll-mt-28 gap-0 py-0"
+                data-workbench-scope="tournament-standings"
+              >
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Standings</p>
+                      {hideTourPlayers && hiddenTourStandingCount > 0 ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {hiddenTourStandingCount} tour players hidden
+                        </p>
+                      ) : null}
+                    </div>
+                    {tourStandingCount > 0 ? (
+                      <Button asChild variant="outline" size="sm" className="rounded-full">
+                        <Link href={leaderboardToggleHref} prefetch={false}>
+                          {hideTourPlayers ? (
+                            <Eye className="size-4" />
+                          ) : (
+                            <EyeOff className="size-4" />
+                          )}
+                          {hideTourPlayers ? "Show tour players" : "Hide tour players"}
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                  <TournamentStandingsTable
+                    rows={visibleStandings}
+                    roundCount={data.tournament.roundCount}
+                    tournamentId={data.tournament.id}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card id="chat" className="scroll-mt-28 gap-0 py-0">
+                <CardContent className="p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <MessageCircle className="size-4 text-[var(--status-information-foreground)]" />
+                    Chat
+                  </p>
+                  <div className="mt-4 grid gap-2">
+                    {data.comments.map(({ comment, profile }) => (
+                      <div key={comment.id} className="rounded-lg bg-muted/55 px-3 py-2 text-sm">
+                        <ProfileNameLink
+                          profile={profile}
+                          className="font-medium hover:underline"
+                        />
+                        <p className="text-muted-foreground">{comment.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <form
+                    action={addTournamentCommentAction}
+                    className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]"
+                  >
+                    <input type="hidden" name="tournamentId" value={data.tournament.id} />
+                    <Input
+                      name="body"
+                      placeholder="Add a comment"
+                      className="h-10 rounded-xl bg-background"
+                    />
+                    <Button type="submit" variant="outline">
+                      <MessageCircle className="size-4" />
+                      Comment
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
             </section>
           </section>
-        </section>
-      </DesktopWorkbenchLayout>
+        </DesktopWorkbenchLayout>
+      ) : null}
     </PageShell>
   );
 }
@@ -880,7 +922,7 @@ function MobileTournamentStandings({
   );
 }
 
-function TournamentStandingsTable({
+async function TournamentStandingsTable({
   rows,
   roundCount,
   tournamentId,
@@ -889,6 +931,8 @@ function TournamentStandingsTable({
   roundCount: number;
   tournamentId: string;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
     <div className="mt-4 grid gap-3">
       <DesktopTableWorkbenchControls
@@ -910,11 +954,11 @@ function TournamentStandingsTable({
             Tournament standings table showing rank, player, gross total, net total, stableford
             total, rounds completed, status, last updated and profile action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
             <TableRow>
               <TableHead
                 data-column="rank"
-                className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
               >
                 Rank
               </TableHead>
@@ -936,7 +980,7 @@ function TournamentStandingsTable({
                 <TableRow key={standing.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="rank"
-                    className="sticky left-0 z-10 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     #{standing.rank ?? "--"}
                   </TableCell>
@@ -944,7 +988,7 @@ function TournamentStandingsTable({
                     <div className="flex min-w-56 items-center gap-2">
                       <ProfileNameLink
                         profile={profile}
-                        className="font-medium text-emerald-700 hover:underline"
+                        className="font-medium text-primary hover:underline"
                       />
                       {isTourPlayerProfile(profile) ? (
                         <Badge variant="secondary" className="shrink-0">
@@ -1030,7 +1074,7 @@ function Anchor({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
-      className="inline-flex min-h-11 shrink-0 items-center rounded-xl border bg-white px-3 text-sm font-semibold"
+      className="inline-flex min-h-11 shrink-0 items-center rounded-xl border bg-card px-3 text-sm font-semibold"
     >
       {label}
     </a>
@@ -1039,7 +1083,7 @@ function Anchor({ href, label }: { href: string; label: string }) {
 
 function ProofRow({ label, active }: { label: string; active: boolean }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+    <div className="flex items-center justify-between rounded-lg bg-card px-3 py-2 ring-1 ring-border">
       <span>{label}</span>
       <Badge variant={active ? "secondary" : "outline"}>{active ? "On" : "Optional"}</Badge>
     </div>
@@ -1082,7 +1126,7 @@ function MatchingRoundSubmitList({
                 : `Submit as round ${roundNumber}`;
 
             return (
-              <div key={round.id} className="rounded-xl border border-[#E5E7EB] bg-white p-3">
+              <div key={round.id} className="rounded-xl border border-border bg-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{round.title}</p>
@@ -1132,11 +1176,7 @@ function MatchingRoundSubmitList({
                   {round.hasRapsodoDirect ? (
                     <input type="hidden" name="hasRapsodoDirect" value="on" />
                   ) : null}
-                  <Button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                  >
+                  <Button type="submit" disabled={!canSubmit} className="w-full rounded-lg">
                     <Send className="size-4" />
                     {buttonLabel}
                   </Button>
@@ -1146,7 +1186,7 @@ function MatchingRoundSubmitList({
           })}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-3 text-sm leading-5 text-muted-foreground">
+        <p className="rounded-xl border border-dashed bg-muted/35 p-3 text-sm leading-5 text-muted-foreground">
           No saved scored rounds for {courseLabel} yet. Once you upload or import a matching round,
           it will be ready to submit here.
         </p>
@@ -1250,7 +1290,7 @@ function listText(items: string[]) {
 
 function Rule({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">
+    <div className="rounded-lg bg-muted/55 px-3 py-2 text-sm">
       <p className="text-xs font-semibold uppercase text-muted-foreground">{label}</p>
       <p className="mt-1 break-words">{value}</p>
     </div>

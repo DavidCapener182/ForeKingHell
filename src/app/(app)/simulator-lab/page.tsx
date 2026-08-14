@@ -21,32 +21,20 @@ import { GappingMatrixClient } from "@/app/simulator-lab/gapping-matrix-client";
 import { SessionRoastPanel } from "@/app/simulator-lab/session-roast-panel";
 import { WhatIfClient } from "@/app/simulator-lab/what-if-client";
 import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import {
-  CompactReadoutGrid,
-  DataPanel,
-  DataTableFrame,
-  MobileDataCard,
-  MobileDataList,
-  MobileFilterSheet,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
-import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
-import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import {
+  CompactReadoutGrid,
+  DataPanel,
+  DataTableFrame,
+  PageHeader,
+  PageShell,
+  SectionHeader,
+  StatusPill,
+} from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -62,9 +50,7 @@ import {
 import {
   getSimulatorLabData,
   type EquipmentChangeImpact,
-  type GappingMatrixRow,
   type SessionDeltaRow,
-  type SimulatorLabData,
 } from "@/lib/simulator-lab";
 import type {
   CostlyShotGroup,
@@ -135,23 +121,13 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
   if (!process.env.DATABASE_URL?.trim()) {
     return (
       <PageShell>
-        <MobileAppShell className="gap-4">
-          <MobileRouteHeader title="Performance Lab" group="analyse" activeKey="simulator-lab" />
-          <section className="ios-grouped-list p-5">
-            <IOSInlineStatus label="Setup required" tone="attention" />
-            <h2 className="mt-2 text-xl font-semibold">Performance Lab is unavailable</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Connect the database before launch-monitor analysis can load.
-            </p>
-          </section>
-        </MobileAppShell>
-        <div className="hidden lg:block">
+        <DesktopWorkbenchLayout scope="simulator-lab">
           <PageHeader
             eyebrow={<StatusPill tone="amber">Setup</StatusPill>}
             title="Performance Lab"
             description="Database connection required before launch-monitor analytics can load."
           />
-        </div>
+        </DesktopWorkbenchLayout>
       </PageShell>
     );
   }
@@ -165,15 +141,8 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
     : "No simulator session";
 
   return (
-    <PageShell contentClassName="pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
-      <MobilePerformanceLab
-        data={data}
-        latestSessionLabel={latestSessionLabel}
-        rangeClub={rangeClub}
-        rangeMiss={rangeMiss}
-      />
-
-      <DesktopWorkbenchLayout scope="simulator-lab" className="hidden lg:grid">
+    <PageShell contentClassName="pb-5">
+      <DesktopWorkbenchLayout scope="simulator-lab">
         <PageHeader
           eyebrow={<StatusPill tone="sky">Performance Lab</StatusPill>}
           title="Performance Lab"
@@ -186,7 +155,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
                   Import CSV
                 </Link>
               </Button>
-              <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+              <Button asChild>
                 <Link href="/equipment" prefetch={false}>
                   <Wrench className="size-4" />
                   Log setup
@@ -219,13 +188,13 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
         />
 
         {data.dataIssues?.length ? (
-          <DataPanel className="border-amber-200 bg-amber-50/70">
+          <DataPanel className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]">
             <SectionHeader
               title="Simulator data caveat"
               description="The lab rendered with partial data rather than blocking the workspace."
-              action={<AlertTriangle className="size-5 text-amber-700" />}
+              action={<AlertTriangle className="size-5 text-[var(--status-warning-foreground)]" />}
             />
-            <CardContent className="grid gap-2 text-sm leading-6 text-amber-950/80">
+            <CardContent className="grid gap-2 text-sm leading-6 text-[var(--status-warning-foreground)]">
               {data.dataIssues.map((issue) => (
                 <p key={issue}>{issue}</p>
               ))}
@@ -244,7 +213,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
             <SectionHeader
               title="WITB gapping matrix"
               description="Recommended carry is plotted first; best stock and latest reliable stay visible for trust checks."
-              action={<Target className="size-5 text-emerald-600" />}
+              action={<Target className="size-5 text-primary" />}
             />
             <CardContent>
               <GappingMatrixClient rows={data.gappingRows} />
@@ -257,7 +226,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
             <SectionHeader
               title="Session deltas"
               description="Latest indoor session against the prior 30 days for the same clubs."
-              action={<Activity className="size-5 text-sky-600" />}
+              action={<Activity className="size-5 text-[var(--status-information-foreground)]" />}
             />
             <CardContent>
               <SessionDeltaTable rows={data.sessionDeltas} />
@@ -269,7 +238,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
               <SectionHeader
                 title="Tinkering ledger"
                 description="Dated setup changes compared with 30-day before and after windows."
-                action={<SlidersHorizontal className="size-5 text-emerald-600" />}
+                action={<SlidersHorizontal className="size-5 text-primary" />}
               />
               <CardContent>
                 <EquipmentImpactTable impacts={data.equipmentImpacts} />
@@ -280,7 +249,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
               <SectionHeader
                 title="Next actions"
                 description="Keep the lab useful by feeding it comparable sessions and dated setup changes."
-                action={<Radar className="size-5 text-slate-700" />}
+                action={<Radar className="size-5 text-muted-foreground" />}
               />
               <CardContent>
                 <CompactReadoutGrid
@@ -312,10 +281,10 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
           <SectionHeader
             title="Community extras"
             description="Optional, private session banter kept away from the coaching workflow."
-            action={<Flame className="size-5 text-rose-500" />}
+            action={<Flame className="size-5 text-destructive" />}
           />
           <CardContent>
-            <Collapsible className="rounded-lg border bg-white/70 p-3">
+            <Collapsible className="rounded-lg border bg-card/70 p-3">
               <CollapsibleTrigger className="w-full cursor-pointer text-left text-sm font-semibold">
                 Roast draft
               </CollapsibleTrigger>
@@ -327,346 +296,6 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
         </DataPanel>
       </DesktopWorkbenchLayout>
     </PageShell>
-  );
-}
-
-function MobilePerformanceLab({
-  data,
-  latestSessionLabel,
-  rangeClub,
-  rangeMiss,
-}: {
-  data: SimulatorLabData;
-  latestSessionLabel: string;
-  rangeClub: string | null;
-  rangeMiss: string | null;
-}) {
-  const reality = data.rangeReality;
-  const estimate = reality.estimate;
-  const topGroup = reality.costlyShotGroups[0] ?? null;
-  const practice = reality.prescriptions[0] ?? null;
-  const health = buildGolfHealth(reality);
-  const readiness = buildReadiness(reality, health);
-  const trendValue =
-    estimate.trend.delta === null
-      ? estimate.trend.label
-      : `${estimate.trend.direction === "improving" ? "−" : estimate.trend.direction === "worse" ? "+" : ""}${numberFormatter.format(Math.abs(estimate.trend.delta))}`;
-  const whatIfGroups = reality.costlyShotGroups.slice(0, 2).map((group) => ({
-    clubLabel: group.clubLabel,
-    mainMiss: group.mainMisses[0] ?? "pattern",
-    potentialGain: group.potentialGain,
-  }));
-
-  return (
-    <MobileAppShell className="gap-4">
-      <MobileRouteHeader title="Performance Lab" group="analyse" activeKey="simulator-lab" />
-
-      <section className="premium-command-surface grid min-w-0 gap-4 rounded-lg p-4">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Launch monitor handicap
-            </p>
-            <p className="mt-1 text-5xl font-semibold tracking-normal">{estimate.label}</p>
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">
-              {topGroup
-                ? `${topGroup.clubLabel} is the biggest supported leak. ${topGroup.mainMisses[0] ?? "Its miss pattern"} appears in ${topGroup.occurrenceCount} scored misses.`
-                : estimate.value === null
-                  ? "Add full-swing carry and offline data before trusting the estimate."
-                  : "No single miss pattern dominates the latest supported sample."}
-            </p>
-          </div>
-          <IOSInlineStatus
-            label={estimate.confidenceLabel}
-            tone={estimate.confidenceScore >= 70 ? "positive" : "attention"}
-            className="shrink-0"
-          />
-        </div>
-        <IOSGroupedList label="Current performance lab summary">
-          <IOSMetricRow
-            label="Expected range"
-            value={estimate.expectedRangeLabel}
-            detail={`Movement ${trendValue} · ${estimate.trend.label}`}
-            tone="info"
-          />
-          <IOSMetricRow
-            label="Today's readiness"
-            value={`${readiness.score}%`}
-            detail={readiness.summary}
-            tone={readiness.score >= 70 ? "positive" : "attention"}
-          />
-        </IOSGroupedList>
-      </section>
-
-      {data.dataIssues?.length ? (
-        <section
-          role="status"
-          className="ios-grouped-list border-amber-300/60 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100"
-        >
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <div>
-              <p className="text-sm font-semibold">Partial simulator evidence</p>
-              {data.dataIssues.slice(0, 2).map((issue) => (
-                <p key={issue} className="mt-1 text-sm leading-5 opacity-80">
-                  {issue}
-                </p>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="grid gap-2" aria-labelledby="mobile-lab-practice-title">
-        <IOSSectionHeader
-          title={<span id="mobile-lab-practice-title">Do this next</span>}
-          description="The strongest current practice decision from supported range evidence."
-        />
-        <div className="ios-grouped-list p-4">
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold">
-                {practice?.title ?? "Build a comparable baseline"}
-              </h2>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                {practice?.detail ??
-                  "Import a full-swing simulator session before changing technique or equipment."}
-              </p>
-              {practice ? <p className="mt-2 text-sm font-medium">{practice.drill}</p> : null}
-            </div>
-            {practice ? (
-              <IOSInlineStatus
-                label={practicePriorityLabel(practice.tone)}
-                tone={practice.tone === "green" ? "positive" : "attention"}
-                className="shrink-0"
-              />
-            ) : null}
-          </div>
-          <Button asChild className="mt-4 min-h-11 w-full rounded-lg">
-            <Link href={practice ? "/practice" : "/import"} prefetch={false}>
-              {practice ? "Open practice planner" : "Import simulator data"}
-              <ArrowRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-lab-evidence-title">
-        <IOSSectionHeader
-          title={<span id="mobile-lab-evidence-title">Evidence and tools</span>}
-          description="Open one supporting view at a time. Specialist charts keep their analytical canvas."
-        />
-        <IOSDisclosureGroup
-          label="Performance Lab evidence and tools"
-          items={[
-            {
-              value: "biggest-leaks",
-              title: "Biggest leaks",
-              summary: topGroup
-                ? `+${numberFormatter.format(topGroup.potentialGain)} potential`
-                : "Building",
-              description: `${reality.costlyShotGroups.length} supported miss ${reality.costlyShotGroups.length === 1 ? "group" : "groups"}`,
-              contentClassName: "px-0 pb-0 pt-0",
-              content: <MobileCostlyShotRows groups={reality.costlyShotGroups} />,
-            },
-            {
-              value: "shot-pattern",
-              title: "Shot pattern map",
-              summary: `${reality.flightLines.length} shots`,
-              description: "Flight lines, corridor split and miss filters",
-              content: (
-                <FlightLineMap
-                  lines={reality.flightLines}
-                  rangeClub={rangeClub}
-                  rangeMiss={rangeMiss}
-                  mobile
-                />
-              ),
-            },
-            {
-              value: "bag-gapping",
-              title: "Bag gaps",
-              summary: `${data.totals.gapFlags} flags`,
-              description: `${data.gappingRows.length} clubs with recommended and reliable carry evidence`,
-              contentClassName: "px-0 pb-0 pt-0",
-              content: <MobileGappingRows rows={data.gappingRows} />,
-            },
-            {
-              value: "recent-evidence",
-              title: "Latest session and setup",
-              summary: `${data.sessionDeltas.length + data.equipmentImpacts.length} reads`,
-              description: latestSessionLabel,
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <MobileSimulatorEvidenceRows
-                  sessionDeltas={data.sessionDeltas}
-                  equipmentImpacts={data.equipmentImpacts}
-                />
-              ),
-            },
-            {
-              value: "what-if",
-              title: "What if?",
-              summary: whatIfGroups.length > 0 ? "Model upside" : "Needs evidence",
-              description: "Explore the likely effect of reducing the biggest leaks",
-              content:
-                whatIfGroups.length > 0 ? (
-                  <WhatIfClient
-                    estimate={estimate.value}
-                    confidenceScore={estimate.confidenceScore}
-                    groups={whatIfGroups}
-                  />
-                ) : (
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    Import enough comparable range shots to identify a supported leak first.
-                  </p>
-                ),
-            },
-            {
-              value: "handicap-trend",
-              title: "Handicap trend and method",
-              summary: `${estimate.timeline.length} checkpoints`,
-              description: "Confidence timeline, method and current caveats",
-              content: (
-                <div className="grid gap-3">
-                  <ConfidenceTimeline reality={reality} />
-                  <div className="ios-grouped-list p-3 text-sm leading-6 text-muted-foreground">
-                    <p>{estimate.methodLabel}</p>
-                    {estimate.caveats.slice(0, 3).map((caveat) => (
-                      <p key={caveat} className="mt-2">
-                        {caveat}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ),
-            },
-            {
-              value: "community-extra",
-              title: "Private session roast",
-              summary: data.latestSession ? "Optional" : "No session",
-              description: "Community banter kept separate from coaching decisions",
-              content: <SessionRoastPanel session={data.latestSession} facts={data.roastFacts} />,
-            },
-          ]}
-        />
-      </section>
-    </MobileAppShell>
-  );
-}
-
-function MobileCostlyShotRows({ groups }: { groups: CostlyShotGroup[] }) {
-  if (groups.length === 0) {
-    return (
-      <p className="p-4 text-sm leading-6 text-muted-foreground">
-        Import range shots with carry and side data to rank costly misses.
-      </p>
-    );
-  }
-
-  return (
-    <IOSGroupedList label="Supported costly shot patterns" className="rounded-none">
-      {groups.map((group) => (
-        <IOSListRow
-          key={group.id}
-          label={group.clubLabel}
-          value={`+${numberFormatter.format(group.potentialGain)}`}
-          detail={`${group.mainMisses[0] ?? "Miss pattern"} · ${group.occurrenceCount} occurrences`}
-          href={costGroupHref(group)}
-          status={
-            <IOSInlineStatus label={`${group.scoreLossSharePct}% of score loss`} tone="attention" />
-          }
-          ariaLabel={`${group.clubLabel}, ${group.mainMisses[0] ?? "miss pattern"}, ${numberFormatter.format(group.potentialGain)} potential gain. Open pattern`}
-        />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function MobileSimulatorEvidenceRows({
-  sessionDeltas,
-  equipmentImpacts,
-}: {
-  sessionDeltas: SessionDeltaRow[];
-  equipmentImpacts: EquipmentChangeImpact[];
-}) {
-  if (sessionDeltas.length === 0 && equipmentImpacts.length === 0) {
-    return (
-      <p className="p-4 text-sm leading-6 text-muted-foreground">
-        Import a simulator session or log a setup change to build comparable evidence.
-      </p>
-    );
-  }
-
-  return (
-    <IOSGroupedList label="Latest simulator and equipment evidence" className="rounded-none">
-      {sessionDeltas.map((row) => (
-        <IOSListRow
-          key={`session-${row.clubType}`}
-          label={row.clubLabel}
-          value={verdictLabel(row.verdict)}
-          detail={`Carry ${formatDelta(row.carryDeltaYd, "yd")} · Offline ${formatDelta(row.offlineDeltaYd, "yd")} · ${row.latestShotCount}/${row.baselineShotCount} shots`}
-          status={<IOSInlineStatus label="Latest vs 30-day baseline" tone="info" />}
-        />
-      ))}
-      {equipmentImpacts.map((impact) => (
-        <IOSListRow
-          key={`equipment-${impact.id}`}
-          label={`${impact.clubLabel} setup`}
-          value={impact.verdict}
-          detail={`${impact.equipmentLabel} · Carry ${formatDelta(impact.carryDeltaYd, "yd")} · ${impact.beforeShotCount}/${impact.afterShotCount} shots`}
-          href="/equipment"
-          status={<IOSInlineStatus label="Equipment retest" tone="info" />}
-        />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function MobileGappingRows({ rows }: { rows: GappingMatrixRow[] }) {
-  if (rows.length === 0) {
-    return (
-      <p className="p-4 text-sm leading-6 text-muted-foreground">
-        Import simulator stock shots to build supported carry and gapping evidence.
-      </p>
-    );
-  }
-
-  return (
-    <IOSGroupedList label="Simulator bag gaps" className="rounded-none">
-      {rows.map((row) => {
-        const carry = row.latestReliableCarryYd ?? row.bestStockCarryYd ?? row.recommendedCarryYd;
-        const detail = [
-          row.brandModel,
-          `${row.sampleSize} shots`,
-          row.gapToNextYd === null ? null : `${numberFormatter.format(row.gapToNextYd)} yd gap`,
-        ]
-          .filter(Boolean)
-          .join(" · ");
-
-        return (
-          <IOSListRow
-            key={row.clubId}
-            label={row.clubLabel}
-            value={carry === null ? "--" : `${numberFormatter.format(carry)} yd`}
-            detail={detail}
-            href={`/bag/${row.clubId}`}
-            status={
-              <IOSInlineStatus
-                label={`${row.gapLabel} · ${row.confidenceScore}% confidence`}
-                tone={
-                  row.tone === "green"
-                    ? "positive"
-                    : row.tone === "amber" || row.tone === "pink"
-                      ? "attention"
-                      : "info"
-                }
-              />
-            }
-          />
-        );
-      })}
-    </IOSGroupedList>
   );
 }
 
@@ -693,7 +322,7 @@ function RangeRealityCockpit({
 
   return (
     <section id="range-reality" className="grid scroll-mt-28 gap-5">
-      <DataPanel className="border-emerald-200 bg-emerald-50/50">
+      <DataPanel className="border-[var(--status-success-border)] bg-[var(--status-success-surface)]">
         <SectionHeader
           title="Range reality handicap"
           description={estimate.disclaimer}
@@ -723,13 +352,13 @@ function RangeRealityCockpit({
                 {estimate.label}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <div className="rounded-lg border bg-white/70 p-3">
+                <div className="rounded-lg border bg-card/70 p-3">
                   <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">
                     Expected
                   </p>
                   <p className="mt-1 text-xl font-semibold">{estimate.expectedRangeLabel}</p>
                 </div>
-                <div className="rounded-lg border bg-white/70 p-3">
+                <div className="rounded-lg border bg-card/70 p-3">
                   <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Trend</p>
                   <p
                     className={cn(
@@ -743,9 +372,9 @@ function RangeRealityCockpit({
                   </p>
                 </div>
               </div>
-              <Collapsible className="mt-4 rounded-lg border bg-white/70 p-3 text-sm">
+              <Collapsible className="mt-4 rounded-lg border bg-card/70 p-3 text-sm">
                 <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-2 text-left font-medium">
-                  <Info className="size-4 text-emerald-700" />
+                  <Info className="size-4 text-primary" />
                   How is this calculated?
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 leading-6 text-muted-foreground">
@@ -753,11 +382,7 @@ function RangeRealityCockpit({
                 </CollapsibleContent>
               </Collapsible>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                >
+                <Button asChild size="sm">
                   <Link href="/practice" prefetch={false}>
                     <Target className="size-4" />
                     Build practice
@@ -773,7 +398,7 @@ function RangeRealityCockpit({
             </div>
             <CoachSummaryCard reality={reality} />
             {estimate.caveats.length > 0 ? (
-              <Collapsible className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950/80">
+              <Collapsible className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-3 py-2 text-sm text-[var(--status-warning-foreground)]">
                 <CollapsibleTrigger className="w-full cursor-pointer text-left font-medium">
                   Estimate caveats ({estimate.caveats.length})
                 </CollapsibleTrigger>
@@ -797,9 +422,9 @@ function RangeRealityCockpit({
                 <span className="font-semibold">{estimate.confidenceLabel.toLowerCase()}</span>;
                 trend is <span className="font-semibold">{estimate.trend.label}</span>.
               </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-[#0B7A3B]"
+                  className="h-full rounded-full bg-primary"
                   style={{ width: `${estimate.confidenceScore}%` }}
                 />
               </div>
@@ -817,7 +442,7 @@ function RangeRealityCockpit({
           <SectionHeader
             title="What cost shots"
             description="Grouped coaching causes ranked by likely score damage."
-            action={<AlertTriangle className="size-5 text-rose-600" />}
+            action={<AlertTriangle className="size-5 text-destructive" />}
           />
           <CardContent>
             {reality.costlyShotGroups.length > 0 ? (
@@ -826,7 +451,7 @@ function RangeRealityCockpit({
                   <CostGroupCard key={group.id} group={group} />
                 ))}
                 {reality.costlyShots.length > 0 ? (
-                  <div className="rounded-lg border border-rose-100 bg-rose-50/60 p-3 text-sm leading-6 text-rose-950/80">
+                  <div className="rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-surface)] p-3 text-sm leading-6 text-destructive">
                     Worst single shot: {reality.costlyShots[0]?.reason} (+
                     {numberFormatter.format(reality.costlyShots[0]?.scoreCost ?? 0)})
                   </div>
@@ -846,7 +471,7 @@ function RangeRealityCockpit({
             <SectionHeader
               title="Shot pattern map"
               description="Filter recent launch-monitor flight lines by club or miss pattern."
-              action={<Radar className="size-5 text-emerald-700" />}
+              action={<Radar className="size-5 text-primary" />}
             />
             <CardContent>
               <FlightLineMap
@@ -860,7 +485,7 @@ function RangeRealityCockpit({
           <DataPanel>
             <SectionHeader
               title="Score killers"
-              action={<Flame className="size-5 text-rose-600" />}
+              action={<Flame className="size-5 text-destructive" />}
             />
             <CardContent className="grid gap-3 lg:grid-cols-3">
               {reality.disasterScenarios.map((scenario) => (
@@ -879,10 +504,7 @@ function RangeRealityCockpit({
 
       <section className="grid items-start gap-5 xl:grid-cols-[0.9fr_1.1fr]">
         <DataPanel>
-          <SectionHeader
-            title="Bag truth"
-            action={<Target className="size-5 text-emerald-700" />}
-          />
+          <SectionHeader title="Bag truth" action={<Target className="size-5 text-primary" />} />
           <CardContent className="grid gap-3">
             {reality.bagTruth.length > 0 ? (
               reality.bagTruth.slice(0, 4).map((item) => (
@@ -914,7 +536,7 @@ function RangeRealityCockpit({
         <DataPanel>
           <SectionHeader
             title="Today's practice"
-            action={<Activity className="size-5 text-sky-700" />}
+            action={<Activity className="size-5 text-[var(--status-information-foreground)]" />}
           />
           <CardContent className="grid gap-3">
             {reality.prescriptions.map((item) => (
@@ -948,7 +570,7 @@ function RangeRealityCockpit({
         <SectionHeader
           title="What if?"
           description="Explore how fixing the biggest practice leaks could move the range-handicap estimate."
-          action={<SlidersHorizontal className="size-5 text-emerald-700" />}
+          action={<SlidersHorizontal className="size-5 text-primary" />}
         />
         <CardContent>
           <WhatIfClient
@@ -967,7 +589,7 @@ function RangeRealityCockpit({
         <SectionHeader
           title="Handicap confidence timeline"
           description="Monthly range-handicap checkpoints from usable launch-monitor sessions."
-          action={<LineChart className="size-5 text-emerald-700" />}
+          action={<LineChart className="size-5 text-primary" />}
         />
         <CardContent>
           <ConfidenceTimeline reality={reality} />
@@ -986,8 +608,8 @@ function CoachSummaryCard({ reality }: { reality: RangeRealityHandicapData }) {
   return (
     <div className="apple-panel p-4">
       <div className="flex items-center gap-2">
-        <Brain className="size-4 text-emerald-700" />
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900">
+        <Brain className="size-4 text-primary" />
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
           AI coach summary
         </p>
       </div>
@@ -1027,7 +649,7 @@ function ReadinessCard({ readiness }: { readiness: Readiness }) {
     <div className="apple-panel p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
             Today&apos;s readiness
           </p>
           <p className="mt-1 text-sm text-muted-foreground">{readiness.summary}</p>
@@ -1037,7 +659,7 @@ function ReadinessCard({ readiness }: { readiness: Readiness }) {
           <p className={cn("mt-1 text-xs", toneTextClass(readiness.tone))}>{readiness.label}</p>
         </div>
       </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
         <div
           className={cn("h-full rounded-full", healthBarClass(readiness.tone))}
           style={{ width: `${readiness.score}%` }}
@@ -1053,7 +675,7 @@ function GolfHealthCard({ health }: { health: GolfHealth }) {
     <div className="apple-panel p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
             Playing profile
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -1072,7 +694,7 @@ function GolfHealthCard({ health }: { health: GolfHealth }) {
             className="grid grid-cols-[5.75rem_minmax(0,1fr)_4.75rem] items-center gap-2 text-xs"
           >
             <span className="truncate font-medium">{metric.label}</span>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
                 className={cn("h-full rounded-full", healthBarClass(metric.tone))}
                 style={{ width: `${metric.score ?? 8}%` }}
@@ -1093,7 +715,7 @@ function CostGroupCard({ group }: { group: CostlyShotGroup }) {
     <Link
       href={costGroupHref(group)}
       prefetch={false}
-      className="apple-panel block rounded-lg p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+      className="apple-panel block rounded-lg p-4 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -1115,7 +737,7 @@ function CostGroupCard({ group }: { group: CostlyShotGroup }) {
             Average costly miss: {group.averageOfflineYd} yd offline
           </p>
         ) : null}
-        <p className="text-xs font-medium text-emerald-700">Open pattern</p>
+        <p className="text-xs font-medium text-primary">Open pattern</p>
       </div>
     </Link>
   );
@@ -1233,12 +855,10 @@ function FlightLineMap({
   lines,
   rangeClub,
   rangeMiss,
-  mobile = false,
 }: {
   lines: RealityFlightLine[];
   rangeClub: string | null;
   rangeMiss: string | null;
-  mobile?: boolean;
 }) {
   if (lines.length === 0) {
     return (
@@ -1317,28 +937,13 @@ function FlightLineMap({
 
   return (
     <div className="space-y-3">
-      {mobile ? (
-        <MobileFilterSheet
-          label={`Shot filter · ${activeLabel.trim()}`}
-          activeCount={rangeClub || rangeMiss ? 1 : 0}
-        >
-          <div className="grid grid-cols-2 gap-2 pb-4">
-            {filterOptions.map((option) => (
-              <FilterChip key={option.key} href={option.href} active={option.active} mobile>
-                {option.label}
-              </FilterChip>
-            ))}
-          </div>
-        </MobileFilterSheet>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {filterOptions.map((option) => (
-            <FilterChip key={option.key} href={option.href} active={option.active}>
-              {option.label}
-            </FilterChip>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2" aria-label={`Shot filter · ${activeLabel.trim()}`}>
+        {filterOptions.map((option) => (
+          <FilterChip key={option.key} href={option.href} active={option.active}>
+            {option.label}
+          </FilterChip>
+        ))}
+      </div>
       <div className="overflow-hidden rounded-lg border bg-white">
         <svg
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
@@ -1523,9 +1128,9 @@ function CorridorSplit({
   const total = buckets[0]?.total ?? 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-2">
+    <div className="rounded-lg border bg-card p-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <p className="font-semibold text-slate-950">Corridor split</p>
+        <p className="font-semibold text-foreground">Corridor split</p>
         <p className="text-[11px] text-muted-foreground">{total} plotted shots</p>
       </div>
       <div
@@ -1579,30 +1184,7 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
         exportTableId="simulator-session-deltas"
         exportFileName="forekinghell-simulator-session-deltas.csv"
       />
-      <DataTableFrame
-        mainTable
-        mainTableLabel="Simulator session delta table"
-        stickyFirstColumn
-        mobile={
-          <MobileDataList>
-            {rows.map((row) => (
-              <MobileDataCard
-                key={row.clubType}
-                title={row.clubLabel}
-                subtitle={row.summary}
-                action={
-                  <span className={toneTextClass(row.tone)}>{verdictLabel(row.verdict)}</span>
-                }
-              >
-                <MobileMetric label="Carry" value={formatDelta(row.carryDeltaYd, "yd")} />
-                <MobileMetric label="Ball" value={formatDelta(row.ballSpeedDeltaMph, "mph")} />
-                <MobileMetric label="Smash" value={formatDelta(row.smashDelta, "")} />
-                <MobileMetric label="Offline" value={formatDelta(row.offlineDeltaYd, "yd")} />
-              </MobileDataCard>
-            ))}
-          </MobileDataList>
-        }
-      >
+      <DataTableFrame mainTable mainTableLabel="Simulator session delta table" stickyFirstColumn>
         <Table
           data-workbench-export-table="simulator-session-deltas"
           aria-describedby="simulator-session-deltas-summary"
@@ -1610,12 +1192,9 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
           <TableCaption id="simulator-session-deltas-summary" className="sr-only">
             Latest simulator session deltas against prior 30-day club baselines.
           </TableCaption>
-          <TableHeader className="sticky top-0 z-10 bg-white">
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
-              <TableHead
-                data-column="club"
-                className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
+              <TableHead data-column="club" className="sticky left-0 z-20 border-r bg-card">
                 Club
               </TableHead>
               <TableHead data-column="samples">Samples</TableHead>
@@ -1643,9 +1222,12 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
               >
                 <TableCell
                   data-column="club"
-                  className="sticky left-0 z-10 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-10 border-r bg-card font-medium"
                 >
-                  {row.clubLabel}
+                  <div>{row.clubLabel}</div>
+                  <div className="max-w-sm truncate text-xs font-normal text-muted-foreground">
+                    {row.summary}
+                  </div>
                 </TableCell>
                 <TableCell data-column="samples">
                   {row.latestShotCount}/{row.baselineShotCount}
@@ -1697,30 +1279,7 @@ function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] })
         exportTableId="simulator-equipment-impact"
         exportFileName="forekinghell-simulator-equipment-impact.csv"
       />
-      <DataTableFrame
-        label="Simulator equipment impact table"
-        stickyFirstColumn
-        mobile={
-          <MobileDataList>
-            {impacts.map((impact) => (
-              <MobileDataCard
-                key={impact.id}
-                title={`${impact.clubLabel} / ${dateFormatter.format(impact.effectiveFrom)}`}
-                subtitle={impact.equipmentLabel}
-                action={<span className={toneTextClass(impact.tone)}>{impact.verdict}</span>}
-              >
-                <MobileMetric
-                  label="Before/after"
-                  value={`${impact.beforeShotCount}/${impact.afterShotCount}`}
-                />
-                <MobileMetric label="Carry" value={formatDelta(impact.carryDeltaYd, "yd")} />
-                <MobileMetric label="Ball" value={formatDelta(impact.ballSpeedDeltaMph, "mph")} />
-                <MobileMetric label="Offline" value={formatDelta(impact.offlineDeltaYd, "yd")} />
-              </MobileDataCard>
-            ))}
-          </MobileDataList>
-        }
-      >
+      <DataTableFrame label="Simulator equipment impact table" stickyFirstColumn>
         <Table
           data-workbench-export-table="simulator-equipment-impact"
           aria-describedby="simulator-equipment-impact-summary"
@@ -1728,12 +1287,9 @@ function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] })
           <TableCaption id="simulator-equipment-impact-summary" className="sr-only">
             Equipment changes with before and after simulator performance windows.
           </TableCaption>
-          <TableHeader className="sticky top-0 z-10 bg-white">
+          <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
-              <TableHead
-                data-column="change"
-                className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
+              <TableHead data-column="change" className="sticky left-0 z-20 border-r bg-card">
                 Change
               </TableHead>
               <TableHead data-column="samples">Samples</TableHead>
@@ -1759,10 +1315,7 @@ function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] })
                 tabIndex={0}
                 className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <TableCell
-                  data-column="change"
-                  className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                >
+                <TableCell data-column="change" className="sticky left-0 z-10 border-r bg-card">
                   <div className="font-medium">
                     {impact.clubLabel} / {dateFormatter.format(impact.effectiveFrom)}
                   </div>
@@ -1812,15 +1365,6 @@ function EmptyPanel({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
   );
 }
 
-function MobileMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-mono font-semibold">{value}</span>
-    </div>
-  );
-}
-
 function formatDelta(value: number | null, unit: string) {
   if (value === null) return "--";
   const suffix = unit ? ` ${unit}` : "";
@@ -1837,21 +1381,24 @@ function verdictLabel(value: SessionDeltaRow["verdict"]) {
 function toneTextClass(tone: "green" | "sky" | "amber" | "pink" | "slate") {
   return cn(
     "font-medium",
-    tone === "green" && "text-emerald-700",
-    tone === "sky" && "text-sky-700",
-    tone === "amber" && "text-amber-700",
-    tone === "pink" && "text-rose-700",
-    tone === "slate" && "text-slate-600",
+    tone === "green" && "text-[var(--status-success-foreground)]",
+    tone === "sky" && "text-[var(--status-information-foreground)]",
+    tone === "amber" && "text-[var(--status-warning-foreground)]",
+    tone === "pink" && "text-destructive",
+    tone === "slate" && "text-muted-foreground",
   );
 }
 
 function toneBadgeClass(tone: "green" | "sky" | "amber" | "pink" | "slate") {
   return cn(
-    tone === "green" && "bg-emerald-100 text-emerald-800",
-    tone === "sky" && "bg-sky-100 text-sky-800",
-    tone === "amber" && "bg-amber-100 text-amber-800",
-    tone === "pink" && "bg-rose-100 text-rose-800",
-    tone === "slate" && "bg-slate-100 text-slate-700",
+    tone === "green" &&
+      "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+    tone === "sky" &&
+      "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]",
+    tone === "amber" &&
+      "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
+    tone === "pink" && "bg-[var(--status-error-surface)] text-destructive",
+    tone === "slate" && "bg-muted text-muted-foreground",
   );
 }
 
@@ -2017,22 +1564,20 @@ function healthLabel(score: number) {
 }
 
 function healthBarClass(tone: "green" | "sky" | "amber" | "pink" | "slate") {
-  if (tone === "green") return "bg-emerald-600";
-  if (tone === "sky") return "bg-sky-500";
-  if (tone === "amber") return "bg-amber-500";
-  if (tone === "pink") return "bg-rose-500";
-  return "bg-slate-400";
+  if (tone === "green") return "bg-[var(--status-success-foreground)]";
+  if (tone === "sky") return "bg-[var(--status-information-foreground)]";
+  if (tone === "amber") return "bg-[var(--status-warning-foreground)]";
+  if (tone === "pink") return "bg-destructive";
+  return "bg-muted-foreground";
 }
 
 function FilterChip({
   href,
   active,
-  mobile = false,
   children,
 }: {
   href: string;
   active: boolean;
-  mobile?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -2040,11 +1585,7 @@ function FilterChip({
       asChild
       size="sm"
       variant={active ? "default" : "outline"}
-      className={cn(
-        "rounded-lg px-3 text-xs",
-        mobile ? "min-h-11 w-full" : "h-8",
-        active && "bg-[#0B7A3B] text-white hover:bg-[#064E3B]",
-      )}
+      className="h-8 rounded-lg px-3 text-xs"
     >
       <Link href={href} prefetch={false} aria-current={active ? "page" : undefined}>
         {children}
@@ -2159,12 +1700,12 @@ function shortCorridorLabel(id: string, label: string) {
 
 function corridorBucketClass(tone: "left" | "target" | "right") {
   if (tone === "target") {
-    return "bg-emerald-50 text-emerald-950 ring-1 ring-emerald-100";
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-1 ring-[var(--status-success-border)]";
   }
 
   if (tone === "left") {
-    return "bg-rose-50 text-rose-950";
+    return "bg-[var(--status-error-surface)] text-destructive";
   }
 
-  return "bg-sky-50 text-sky-950";
+  return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
 }

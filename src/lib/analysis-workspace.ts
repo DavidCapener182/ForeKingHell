@@ -124,7 +124,7 @@ export function buildDataQualityIssues(counts: DataQualityCounts) {
     detail:
       "A queued device action reached a permanent server failure and was not silently replayed.",
     severity: "high",
-    href: "/settings#offline-storage",
+    href: "/settings?section=offline#offline-storage",
     action: "Review action",
   });
 

@@ -38,8 +38,8 @@ export function CourseOverlay({
 }) {
   if (!inference) {
     return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-white/70 p-6 text-center">
-        <MapPinned className="size-8 text-emerald-600" />
+      <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-card p-6 text-center">
+        <MapPinned className="size-8 text-primary" />
         <div className="space-y-1">
           <p className="font-medium">Waiting for a CSV and scorecard</p>
           <p className="text-sm text-muted-foreground">
@@ -101,7 +101,13 @@ function CourseMetric({
   tone?: "default" | "warning";
 }) {
   return (
-    <div className={cn("apple-panel p-3", tone === "warning" && "border-amber-300 bg-amber-50")}>
+    <div
+      className={cn(
+        "apple-panel p-3",
+        tone === "warning" &&
+          "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]",
+      )}
+    >
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-semibold tracking-normal">{value}</p>
     </div>
@@ -134,7 +140,7 @@ function HoleOverlay({
 
   return (
     <div className="apple-panel-strong overflow-hidden">
-      <div className="flex items-start justify-between gap-3 border-b bg-slate-50/80 px-3 py-2">
+      <div className="flex items-start justify-between gap-3 border-b bg-muted/50 px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">
             Hole {hole.holeNumber}
@@ -145,7 +151,7 @@ function HoleOverlay({
             {review?.strokeIndex ? ` - SI ${review.strokeIndex}` : ""}
           </p>
         </div>
-        <Flag className="size-4 shrink-0 text-emerald-600" />
+        <Flag className="size-4 shrink-0 text-primary" />
       </div>
       <svg
         viewBox="0 0 300 104"
@@ -204,7 +210,7 @@ function HoleOverlay({
         summary={holeOverlaySummary(hole)}
         columns={holeOverlayColumns}
         rows={holeOverlayRows(hole)}
-        className="rounded-none border-x-0 border-b-0 bg-emerald-50/25"
+        className="rounded-none border-x-0 border-b-0 bg-muted/30"
       />
       <div className="grid grid-cols-3 border-t px-3 py-2 text-xs">
         <span className="text-muted-foreground">Progress</span>
@@ -213,7 +219,7 @@ function HoleOverlay({
           {formatMetric(hole.distanceRemainingYd)} left
         </span>
       </div>
-      <div className="grid gap-2 border-t bg-slate-50/80 p-3 text-sm sm:grid-cols-3">
+      <div className="grid gap-2 border-t bg-muted/50 p-3 text-sm sm:grid-cols-3">
         <NumberField
           label="CSV shots"
           value={hole.shots.length}
@@ -244,7 +250,7 @@ function HoleOverlay({
           max={8}
           onChange={(value) => onUpdate({ penalties: value })}
         />
-        <div className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
+        <div className="rounded-lg bg-card p-2 ring-1 ring-border">
           <p className="text-xs text-muted-foreground">Fairway</p>
           <p className="mt-1 text-lg font-semibold tracking-normal">
             {review?.fairwayHit === null || review?.fairwayHit === undefined
@@ -254,7 +260,7 @@ function HoleOverlay({
                 : "Miss"}
           </p>
         </div>
-        <div className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
+        <div className="rounded-lg bg-card p-2 ring-1 ring-border">
           <p className="text-xs text-muted-foreground">GIR</p>
           <p className="mt-1 text-lg font-semibold tracking-normal">
             {review?.gir === null || review?.gir === undefined ? "-" : review.gir ? "Hit" : "Miss"}
@@ -310,7 +316,7 @@ function NumberField({
   onChange: (value: number | null) => void;
 }) {
   return (
-    <label className="rounded-lg bg-white/90 p-2 ring-1 ring-slate-200/80">
+    <label className="rounded-lg bg-card p-2 ring-1 ring-border">
       <span className="text-xs text-muted-foreground">{label}</span>
       <Input
         type="number"

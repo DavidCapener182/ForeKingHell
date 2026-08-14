@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { purgePrivateClientData } from "@/lib/service-worker-cache";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetClose,
@@ -405,12 +406,13 @@ async function clearPrivateDataBeforeSignOut(event: FormEvent<HTMLFormElement>) 
 function MobileNavGroup({ group, pathname }: { group: AppNavGroup; pathname: string }) {
   return (
     <section className="ios-drawer-group overflow-hidden border border-border/80 bg-card shadow-sm">
-      <div className="border-b border-border/70 px-4 py-3">
+      <div className="px-4 py-3">
         <p className="text-sm font-semibold text-foreground">{group.label}</p>
         <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
           {mobileGroupDescription(group.label)}
         </p>
       </div>
+      <Separator />
       <div className="grid sm:grid-cols-2">
         {group.items.map((item) => {
           const Icon = item.icon;

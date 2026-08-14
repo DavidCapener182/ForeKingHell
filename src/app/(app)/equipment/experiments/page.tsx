@@ -1,25 +1,11 @@
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
-import {
-  ArrowLeft,
-  CheckCircle2,
-  FlaskConical,
-  Save,
-  ShieldAlert,
-  SlidersHorizontal,
-} from "lucide-react";
+import { ArrowLeft, FlaskConical, Save, ShieldAlert } from "lucide-react";
 
 import { saveSessionComparisonAction } from "@/app/analyse/compare/actions";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { BottomSheet, MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -69,20 +55,9 @@ export default async function EquipmentExperimentPage({
   ]);
   const metrics = buildComparisonProvenance(data);
   const differentDays = data.focus.detail !== data.baseline.detail;
-  const mobileVerdict = experimentVerdict(metrics);
-  const keyMetrics = experimentKeyMetrics(metrics);
   return (
     <PageShell>
-      <MobileEquipmentExperiment
-        data={data}
-        differentDays={differentDays}
-        keyMetrics={keyMetrics}
-        metrics={metrics}
-        saved={saved}
-        verdict={mobileVerdict}
-      />
-
-      <div className="hidden gap-4 lg:grid" data-equipment-experiment-desktop>
+      <div className="grid gap-4" data-equipment-experiment-desktop>
         <Button asChild variant="ghost" className="w-fit px-0">
           <Link href="/equipment">
             <ArrowLeft className="size-4" aria-hidden />
@@ -129,208 +104,6 @@ export default async function EquipmentExperimentPage({
         </section>
       </div>
     </PageShell>
-  );
-}
-
-function MobileEquipmentExperiment({
-  data,
-  differentDays,
-  keyMetrics,
-  metrics,
-  saved,
-  verdict,
-}: {
-  data: Awaited<ReturnType<typeof getCompareData>>;
-  differentDays: boolean;
-  keyMetrics: ReturnType<typeof experimentKeyMetrics>;
-  metrics: ReturnType<typeof buildComparisonProvenance>;
-  saved: Array<typeof analysisSnapshots.$inferSelect>;
-  verdict: ReturnType<typeof experimentVerdict>;
-}) {
-  return (
-    <MobileAppShell className="gap-4">
-      <MobileTopBar title="Experiment lab" />
-
-      <section
-        className="ios-grouped-list overflow-hidden px-4 py-4"
-        aria-labelledby="experiment-answer"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <IOSInlineStatus label={verdict.label} tone={verdict.tone} />
-          <ExperimentSelectionSheet data={data} />
-        </div>
-        <h2
-          id="experiment-answer"
-          className="mt-2 text-[1.75rem] font-semibold leading-8 tracking-tight text-foreground"
-        >
-          {verdict.headline}
-        </h2>
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">
-          Test setup against current setup · {data.focus.stockShots} vs {data.baseline.stockShots}
-          stock shots. {verdict.detail}
-        </p>
-        <ExperimentDecisionSheet data={data} />
-      </section>
-
-      {differentDays ? <FairTestWarning compact /> : null}
-
-      <section className="grid gap-2" aria-labelledby="experiment-key-signals">
-        <IOSSectionHeader
-          title="Decision signals"
-          description="The three most useful measured changes"
-        />
-        <IOSGroupedList label="Key equipment experiment metrics">
-          {keyMetrics.map((metric) => (
-            <IOSListRow
-              key={metric.key}
-              label={metric.label}
-              value={formatMetric(metric)}
-              detail={metric.confidenceLabel}
-              status={
-                <IOSInlineStatus
-                  label={metricSignalLabel(metric)}
-                  tone={directionTone(metric.direction)}
-                />
-              }
-            />
-          ))}
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="experiment-saved-decisions">
-        <IOSSectionHeader
-          title="Saved decisions"
-          description="Your latest frozen equipment calls"
-        />
-        <IOSGroupedList label="Recent saved equipment decisions">
-          {saved.length > 0 ? (
-            saved
-              .slice(0, 3)
-              .map((snapshot) => (
-                <IOSListRow
-                  key={snapshot.id}
-                  label={snapshot.name}
-                  detail={snapshot.notes ?? "No decision note"}
-                  leading={<CheckCircle2 className="size-5 shrink-0 text-primary" aria-hidden />}
-                />
-              ))
-          ) : (
-            <IOSListRow
-              label="No saved decision yet"
-              detail="Record the result only after reviewing sample confidence and test conditions."
-            />
-          )}
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="experiment-depth">
-        <IOSSectionHeader title="Evidence" />
-        <IOSDisclosureGroup
-          label="Equipment experiment evidence"
-          items={[
-            {
-              value: "all-metrics",
-              title: "All measured changes",
-              summary: `${metrics.length}`,
-              description: "Distance, speed, control and launch",
-              content: (
-                <IOSGroupedList label="All equipment experiment metrics">
-                  {metrics.map((metric) => (
-                    <IOSListRow
-                      key={metric.key}
-                      label={metric.label}
-                      value={formatMetric(metric)}
-                      detail={metric.method}
-                      status={
-                        <IOSInlineStatus
-                          label={metricSignalLabel(metric)}
-                          tone={directionTone(metric.direction)}
-                        />
-                      }
-                    />
-                  ))}
-                </IOSGroupedList>
-              ),
-            },
-            {
-              value: "confidence",
-              title: "Confidence and methodology",
-              summary: metrics[0]?.confidenceLabel ?? "No data",
-              description: "What this result can and cannot prove",
-              content: (
-                <div className="grid gap-3 text-sm leading-6 text-muted-foreground">
-                  <p>{metrics[0]?.source ?? "No comparable stock-shot samples are available."}</p>
-                  <p>
-                    {metrics[0]?.caveat ??
-                      "Import comparable sessions before making an equipment decision."}
-                  </p>
-                </div>
-              ),
-            },
-            ...(saved.length > 3
-              ? [
-                  {
-                    value: "older-decisions",
-                    title: "Older saved decisions",
-                    summary: `${saved.length - 3}`,
-                    content: (
-                      <IOSGroupedList label="Older equipment decisions">
-                        {saved.slice(3).map((snapshot) => (
-                          <IOSListRow
-                            key={snapshot.id}
-                            label={snapshot.name}
-                            detail={snapshot.notes ?? "No decision note"}
-                          />
-                        ))}
-                      </IOSGroupedList>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-        />
-      </section>
-    </MobileAppShell>
-  );
-}
-
-function ExperimentSelectionSheet({ data }: { data: Awaited<ReturnType<typeof getCompareData>> }) {
-  return (
-    <BottomSheet
-      label={
-        <>
-          <SlidersHorizontal className="size-4" aria-hidden />
-          Setups
-        </>
-      }
-      title="Choose measured setups"
-      triggerClassName="min-h-11 rounded-xl border border-border bg-secondary px-3 text-foreground"
-    >
-      <ExperimentSelectionForm
-        data={data}
-        className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
-      />
-    </BottomSheet>
-  );
-}
-
-function ExperimentDecisionSheet({ data }: { data: Awaited<ReturnType<typeof getCompareData>> }) {
-  return (
-    <BottomSheet
-      label={
-        <>
-          <Save className="size-4" aria-hidden />
-          Record decision
-        </>
-      }
-      title="Record equipment decision"
-      triggerClassName="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 text-primary-foreground"
-    >
-      <ExperimentDecisionForm
-        data={data}
-        className="px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
-      />
-    </BottomSheet>
   );
 }
 
@@ -442,98 +215,23 @@ function ExperimentDecisionForm({
   );
 }
 
-function FairTestWarning({ compact = false }: { compact?: boolean }) {
+function FairTestWarning() {
   return (
-    <div
-      role="alert"
-      className={`flex gap-3 border border-amber-300 bg-amber-50 text-sm text-amber-950 dark:border-amber-500/45 dark:bg-amber-500/10 dark:text-amber-100 ${compact ? "ios-grouped-list p-4" : "rounded-2xl p-4"}`}
-    >
-      <ShieldAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
-      <div>
-        <p className="font-semibold">Check whether the test is fair</p>
-        <p className="mt-1 leading-5">
-          These samples came from separate sessions. If ball, location, target, warm-up or
-          conditions changed, lower the confidence and record it in the decision.
-        </p>
-      </div>
-    </div>
+    <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]">
+      <ShieldAlert className="size-4" aria-hidden />
+      <AlertTitle>Check whether the test is fair</AlertTitle>
+      <AlertDescription>
+        These samples came from separate sessions. If ball, location, target, warm-up or conditions
+        changed, lower the confidence and record it in the decision.
+      </AlertDescription>
+    </Alert>
   );
-}
-
-function experimentVerdict(metrics: ReturnType<typeof buildComparisonProvenance>) {
-  const improved = metrics.filter((metric) => metric.direction === "better").length;
-  const worse = metrics.filter((metric) => metric.direction === "worse").length;
-  const available = metrics.filter((metric) => metric.direction !== "unavailable").length;
-
-  if (available === 0) {
-    return {
-      label: "No comparison yet",
-      headline: "Choose two measured sessions",
-      detail:
-        "Comparable stock-shot evidence is required before the experiment can answer anything.",
-      tone: "neutral" as const,
-    };
-  }
-  if (improved >= worse + 2) {
-    return {
-      label: "Test setup leads",
-      headline: "The test setup looks better",
-      detail: `${improved} measured signals improved and ${worse} moved backwards.`,
-      tone: "positive" as const,
-    };
-  }
-  if (worse >= improved + 2) {
-    return {
-      label: "Current setup leads",
-      headline: "The current setup remains stronger",
-      detail: `${worse} measured signals moved backwards and ${improved} improved.`,
-      tone: "attention" as const,
-    };
-  }
-  if (improved === 0 && worse === 0) {
-    return {
-      label: "Steady result",
-      headline: "No measurable equipment difference",
-      detail: "No measured signal moved beyond the current rounding threshold.",
-      tone: "neutral" as const,
-    };
-  }
-  return {
-    label: "Mixed result",
-    headline: "The equipment decision is not clear yet",
-    detail: `${improved} measured signals improved and ${worse} moved backwards.`,
-    tone: "attention" as const,
-  };
-}
-
-function experimentKeyMetrics(metrics: ReturnType<typeof buildComparisonProvenance>) {
-  const preferred = ["playableRateDelta", "coneDeltaYd", "carryDeltaYd"];
-  return preferred
-    .map((key) => metrics.find((metric) => metric.key === key))
-    .filter((metric): metric is NonNullable<typeof metric> => Boolean(metric));
 }
 
 function formatMetric(metric: ReturnType<typeof buildComparisonProvenance>[number]) {
   if (metric.value === null) return "—";
   const value = Math.round(metric.value * 10) / 10;
   return `${value > 0 ? "+" : ""}${value} ${metric.unit}`;
-}
-
-function metricSignalLabel(metric: ReturnType<typeof buildComparisonProvenance>[number]) {
-  if (metric.direction === "better") return "Improved";
-  if (metric.direction === "worse") return "Moved backwards";
-  if (metric.direction === "mixed") {
-    return metric.key === "launchDeltaDeg" ? "Context only" : "Steady";
-  }
-  return "No data";
-}
-
-function directionTone(
-  direction: ReturnType<typeof buildComparisonProvenance>[number]["direction"],
-) {
-  if (direction === "better") return "positive" as const;
-  if (direction === "worse") return "attention" as const;
-  return "neutral" as const;
 }
 
 function SessionSelect({

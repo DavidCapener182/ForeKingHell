@@ -6,13 +6,18 @@ const source = readFileSync(
   join(process.cwd(), "src/app/(app)/groups/[groupSlug]/page.tsx"),
   "utf8",
 );
+const memberDialogSource = readFileSync(
+  join(process.cwd(), "src/app/groups/group-members-dialog.tsx"),
+  "utf8",
+);
 
 describe("group detail desktop route", () => {
   it("keeps group detail pages as desktop operations workspaces", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="group-detail" className="hidden lg:grid">',
-    );
+    expect(source).toContain('<DesktopWorkbenchLayout scope="group-detail">');
+    expect(source).not.toContain("getRequestAppSurface");
+    expect(source).not.toContain('surface === "companion"');
+    expect(source).toContain('await import("@/components/app/desktop-workbench")');
     expect(source).toContain('id="group-operations"');
     expect(source).toContain('data-workbench-scope="group-members"');
     expect(source).toContain('data-workbench-export-table="group-member-roster"');
@@ -21,23 +26,36 @@ describe("group detail desktop route", () => {
     expect(source).toContain('data-workbench-scope="group-challenges"');
     expect(source).toContain('data-workbench-export-table="group-linked-challenges"');
     expect(source).toContain('label="Group linked challenges table" stickyFirstColumn');
-    expect(source).toContain("Desktop roster, rivalry and linked challenge review");
     expect(source).toContain("tabIndex={0}");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
 
-  it("has a native mobile group feed with secondary disclosures and real authority", () => {
-    expect(source).toContain("<MobileAppShell>");
-    expect(source).toContain("MobileGroupFeed");
-    expect(source).toContain("MobileGroupDetails");
+  it("renders exactly one Overview, Activity or Members work surface from the active tab", () => {
+    expect(source).toContain("const activeSection = parseGroupDetailSection(flags?.section)");
+    expect(source).toContain(
+      "<GroupSectionTabs activeSection={activeSection} baseHref={sectionBaseHref} />",
+    );
+    expect(source).toContain('activeSection === "overview"');
+    expect(source).toContain('activeSection === "activity"');
+    expect(source).toContain("<GroupActivitySection data={data} />");
+    expect(source).toContain("<GroupMemberTable");
+    expect(source).toContain("<GroupChallengeTable");
+    expect(source).not.toContain("<GroupOperationsBoard");
+  });
+
+  it("preserves real group authority without shipping a companion duplicate", () => {
+    expect(source).not.toMatch(
+      /MobileAppShell|MobileTabBar|MobileGroupFeed|MobileGroupOverviewDetails|MobileGroupMembers|IOSGroupedList/,
+    );
     expect(source).toContain("data.canAdmin");
     expect(source).toContain("data.canAdmin && data.group.inviteCode");
     expect(source).toContain("value={data.group.memberCount}");
-    expect(source).toContain('[overflow-wrap:anywhere]">{data.group.name}</h1>');
-    expect(source).not.toContain('aria-label="Back to groups"');
+    expect(source).toContain("<GroupDangerActions");
+    expect(source).toContain("<GroupMembersDialog");
     expect(source).not.toContain("records ready");
     expect(source).not.toContain('data.group.ownerUserId ? "Admin controls ready" : "Member view"');
+    expect(memberDialogSource).toContain("AppEmptyState");
   });
 });

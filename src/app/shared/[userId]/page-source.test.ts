@@ -9,7 +9,7 @@ const routeMetadataSource = readFileSync(
 );
 
 describe("shared account desktop workspace source", () => {
-  it("keeps shared access and recent sessions concise on mobile", () => {
+  it("keeps shared access concise while selecting exactly one request surface", () => {
     expect(source).toContain("MobileSharedAccount");
     expect(source).toContain("MobileSharedSessionRows");
     expect(source).toContain("IOSGroupedList");
@@ -17,7 +17,16 @@ describe("shared account desktop workspace source", () => {
     expect(source).toContain('<MobileTopBar title="Shared account" />');
     expect(routeMetadataSource).toContain("if (/^\\/shared\\/[^/]+\\/?$/.test(pathname))");
     expect(routeMetadataSource).toContain('return { href: "/settings", label: "Settings" };');
-    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).toContain("getRequestAppSurface");
+    expect(source).toContain('surface === "companion" ? <MobileSharedAccount');
+    expect(source).toContain(
+      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+    );
+    expect(source).toContain(
+      'surface === "workbench" && DesktopWorkbenchLayout && DesktopTableWorkbenchControls',
+    );
+    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).not.toContain('className="hidden gap-4 sm:grid');
   });
 
   it("keeps shared account review inside the desktop workbench shell", () => {
@@ -44,5 +53,12 @@ describe("shared account desktop workspace source", () => {
     for (const column of ["date", "type", "session", "score", "holes"]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("uses semantic table surfaces in both themes", () => {
+    expect(source).toContain("[&_th]:bg-card");
+    expect(source).toContain("bg-card shadow-[1px_0_0_hsl(var(--border))]");
+    expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
+    expect(source).not.toMatch(/#[0-9a-f]{6}/i);
   });
 });

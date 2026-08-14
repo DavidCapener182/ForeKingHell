@@ -40,10 +40,7 @@ export function TournamentEntryModal({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button
-          type="button"
-          className="min-h-11 w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-        >
+        <Button type="button" className="min-h-11 w-full rounded-lg">
           {triggerLabel}
         </Button>
       </DrawerTrigger>
@@ -85,10 +82,7 @@ export function TournamentEntryModal({
                   Cancel
                 </Button>
               </DrawerClose>
-              <Button
-                type="submit"
-                className="min-h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
+              <Button type="submit" className="min-h-11 rounded-lg">
                 Accept & enter tournament
               </Button>
             </DrawerFooter>

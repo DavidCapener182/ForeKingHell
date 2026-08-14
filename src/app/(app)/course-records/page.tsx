@@ -1,25 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft, Medal, Search, ShieldCheck, Trophy } from "lucide-react";
 
-import {
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileStatusAction,
-  MobileTabBar,
-  MobileTopBar,
-  NativeListSection,
-} from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-} from "@/components/app/ios-mobile";
 import { CourseRecordFeaturePanel } from "@/components/features/feature-panels";
 import { DataFirstFlowPanel, ProofChecklistPanel } from "@/components/product-polish";
 import { CourseLogoArtwork } from "@/components/visuals/course-logo-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -124,152 +111,6 @@ export default async function CourseRecordsPage() {
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar title="Course Records" />
-        <MobileRouteTabs group="play" activeKey="records" />
-        <MobileTabBar
-          activeKey="all"
-          className="-mt-4"
-          tabs={[
-            { key: "all", label: "All", href: "/course-records" },
-            { key: "friends", label: "Friends", href: "/leaderboard?tab=courses" },
-            { key: "monthly", label: "Monthly", href: "/leaderboard?tab=monthly" },
-            { key: "mine", label: "Mine", href: "/profile?tab=records" },
-          ]}
-        />
-        <MobileStatusAction
-          label="Verified course champions"
-          value={integerFormatter.format(data.verifiedChampions)}
-          detail={`${integerFormatter.format(data.totalRecords)} record boards across visible courses`}
-          action={
-            featured ? (
-              <Button
-                asChild
-                className="min-h-11 rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
-                <Link href={`/courses/${featured.id}/records`} prefetch={false}>
-                  Open
-                </Link>
-              </Button>
-            ) : null
-          }
-        />
-        <NativeListSection title="Honours boards">
-          <IOSGroupedList label="Course record boards">
-            {data.courses.map((course) => (
-              <IOSListRow
-                key={course.id}
-                icon={Trophy}
-                label={course.name}
-                value={course.champion?.scoreLabel ?? `${course.recordCount} boards`}
-                detail={
-                  course.champion
-                    ? `${course.champion.displayName} · ${course.liveAttemptCount} live attempts`
-                    : `No verified champion · ${course.liveAttemptCount} live attempts`
-                }
-                href={`/courses/${course.id}/records`}
-                status={
-                  <IOSInlineStatus
-                    label={
-                      course.champion
-                        ? verificationTierLabel(course.champion.verificationTier)
-                        : "Open board"
-                    }
-                    tone={course.champion ? "positive" : "attention"}
-                  />
-                }
-              />
-            ))}
-          </IOSGroupedList>
-          {data.courses.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
-              No courses are available yet. Seed known courses from Courses.
-            </p>
-          ) : null}
-        </NativeListSection>
-        <IOSDisclosureGroup
-          label="Course record supporting detail"
-          items={[
-            {
-              value: "proof",
-              title: "Proof requirements",
-              summary: "4 tiers",
-              description: "What makes a course record trusted",
-              content: (
-                <IOSGroupedList label="Course record proof requirements">
-                  {proofItems.map((item) => (
-                    <IOSListRow
-                      key={item.label}
-                      label={item.label}
-                      detail={item.detail}
-                      href={item.href}
-                      status={
-                        <IOSInlineStatus
-                          label={
-                            item.status === "ready"
-                              ? "Ready"
-                              : item.status === "needed"
-                                ? "Needed"
-                                : "Optional"
-                          }
-                          tone={
-                            item.status === "ready"
-                              ? "positive"
-                              : item.status === "needed"
-                                ? "attention"
-                                : "neutral"
-                          }
-                        />
-                      }
-                    />
-                  ))}
-                </IOSGroupedList>
-              ),
-              contentClassName: "px-0",
-            },
-            {
-              value: "goal",
-              title: "Plan a record attempt",
-              summary: featured?.champion?.scoreLabel ?? "Open",
-              description: "Target, friend benchmark and saved-round proof",
-              content: (
-                <IOSGroupedList label="Course record goal steps">
-                  <IOSListRow
-                    label="Goal score"
-                    value={featured?.champion?.scoreLabel ?? "First mark"}
-                    detail={
-                      featured?.champion
-                        ? `Beat ${featured.champion.displayName}`
-                        : "Set the first verified score"
-                    }
-                    href={featured ? `/courses/${featured.id}/records` : "/courses"}
-                  />
-                  <IOSListRow
-                    label="Submit saved round"
-                    detail="Use scorecard proof before the score counts"
-                    href="/rounds"
-                  />
-                  <IOSListRow
-                    label="Friend benchmark"
-                    detail="Compare against friends on the leaderboard"
-                    href="/leaderboard?tab=courses"
-                  />
-                </IOSGroupedList>
-              ),
-              contentClassName: "px-0",
-            },
-            {
-              value: "alerts",
-              title: "Record alerts",
-              summary: "Optional",
-              description: "Follow boards without crowding the honours list",
-              content: <CourseRecordFeaturePanel data={featureData} />,
-              contentClassName: "px-2",
-            },
-          ]}
-        />
-      </MobileAppShell>
-
       <DesktopWorkbenchLayout
         scope="course-records"
         rail={
@@ -342,7 +183,7 @@ export default async function CourseRecordsPage() {
           />
         }
       >
-        <div className="hidden items-center justify-between gap-3 lg:flex">
+        <div className="flex items-center justify-between gap-3">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/courses" prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -357,7 +198,7 @@ export default async function CourseRecordsPage() {
           </Button>
         </div>
 
-        <div className="hidden lg:contents">
+        <div className="contents">
           <header className="premium-hero overflow-hidden">
             <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
               <div>
@@ -379,7 +220,7 @@ export default async function CourseRecordsPage() {
                   <Badge variant="outline">Gold · Silver · Bronze proof</Badge>
                 </div>
               </div>
-              <div className="rounded-lg border bg-[#F5F6F4] p-3">
+              <div className="rounded-lg border border-border bg-muted/45 p-3">
                 <p className="text-sm font-semibold">Today’s board</p>
                 {featured ? (
                   <Link
@@ -462,53 +303,50 @@ export default async function CourseRecordsPage() {
 
           <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.courses.map((course, index) => (
-              <Link
-                key={course.id}
-                href={`/courses/${course.id}/records`}
-                prefetch={false}
-                className="premium-card p-4 transition hover:border-emerald-300"
-              >
-                <CourseLogoArtwork
-                  courseName={course.name}
-                  country={course.country}
-                  alt=""
-                  logoLookupEnabled={logoLookupEnabled}
-                  className="mb-3 block h-24 min-h-0 rounded-lg"
-                  sizes="(min-width: 1024px) 33vw, 90vw"
-                  priority={index === 0}
-                />
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold tracking-normal">{course.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {course.country ?? "Course board"}
-                    </p>
+              <Card key={course.id} className="gap-0 py-0 transition hover:ring-primary/40">
+                <Link href={`/courses/${course.id}/records`} prefetch={false} className="block p-4">
+                  <CourseLogoArtwork
+                    courseName={course.name}
+                    country={course.country}
+                    alt=""
+                    logoLookupEnabled={logoLookupEnabled}
+                    className="mb-3 block h-24 min-h-0 rounded-lg"
+                    sizes="(min-width: 1024px) 33vw, 90vw"
+                    priority={index === 0}
+                  />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold tracking-normal">{course.name}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {course.country ?? "Course board"}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{course.recordCount}</Badge>
                   </div>
-                  <Badge variant="outline">{course.recordCount}</Badge>
-                </div>
-                <div className="mt-3 rounded-lg bg-[#F5F6F4] p-3 text-sm">
-                  {course.champion ? (
-                    <>
-                      <p className="flex items-center gap-2 font-medium">
-                        <Medal className="size-4 text-amber-600" />
-                        {course.champion.displayName}
+                  <div className="mt-3 rounded-lg bg-muted/45 p-3 text-sm">
+                    {course.champion ? (
+                      <>
+                        <p className="flex items-center gap-2 font-medium">
+                          <Medal className="size-4 text-[var(--status-warning-foreground)]" />
+                          {course.champion.displayName}
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          {course.champion.scoreLabel} ·{" "}
+                          {verificationTierLabel(course.champion.verificationTier)}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="flex items-center gap-2 text-muted-foreground">
+                        <ShieldCheck className="size-4" />
+                        No verified champion yet
                       </p>
-                      <p className="mt-1 text-muted-foreground">
-                        {course.champion.scoreLabel} ·{" "}
-                        {verificationTierLabel(course.champion.verificationTier)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="flex items-center gap-2 text-muted-foreground">
-                      <ShieldCheck className="size-4" />
-                      No verified champion yet
-                    </p>
-                  )}
-                </div>
-              </Link>
+                    )}
+                  </div>
+                </Link>
+              </Card>
             ))}
             {data.courses.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-white p-6 text-sm text-muted-foreground">
+              <div className="rounded-xl border border-dashed bg-card p-6 text-sm text-muted-foreground">
                 No courses are available yet. Seed known courses from the Courses page.
               </div>
             ) : null}
@@ -559,11 +397,11 @@ function CourseRecordBoardTable({ courses }: { courses: CourseRecordsHubCourse[]
             Course records board table showing course, champion, score, proof tier, board count, tee
             count, live attempts and action links.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="course"
-                className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-64 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Course
               </TableHead>
@@ -590,12 +428,12 @@ function CourseRecordBoardTable({ courses }: { courses: CourseRecordsHubCourse[]
                 <TableRow key={course.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="course"
-                    className="sticky left-0 z-10 min-w-64 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-64 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     <Link
                       href={`/courses/${course.id}/records`}
                       prefetch={false}
-                      className="text-emerald-700 hover:underline"
+                      className="text-primary hover:underline"
                     >
                       {course.name}
                     </Link>

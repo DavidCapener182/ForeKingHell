@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-import { MobileAppShell, MobileRouteHeader } from "@/components/mobile-sports";
-import { DataPair, DataPanel, PageHeader, PageShell, StatusPill } from "@/components/premium";
-import {
-  MobileTrainingLoadRangeView,
-  TrainingLoadRangeView,
-} from "@/components/training/TrainingLoadRangeView";
+import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { TrainingLoadRangeView } from "@/components/training/TrainingLoadRangeView";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlannerProgressSummary } from "@/lib/practice-planner";
@@ -39,41 +37,13 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-4">
-        <MobileRouteHeader title="Training Load" group="analyse" activeKey="training" />
-
-        {saved ? (
-          <div
-            role="status"
-            className="ios-grouped-list border-emerald-300/60 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-100"
-          >
-            Golf load saved. Golf Form, Training Fitness and Recent Load have been recalculated.
-          </div>
-        ) : null}
-
-        <MobileTrainingLoadRangeView
-          data={data}
-          initialRangeKey={rangeKey}
-          practiceSummary={{
-            completedCount: practiceSummary.completedCount,
-            averageScore: practiceSummary.averageScore,
-            latestCompleted: practiceSummary.latestCompleted
-              ? {
-                  title: practiceSummary.latestCompleted.title,
-                  score: practiceSummary.latestCompleted.score,
-                }
-              : null,
-          }}
-        />
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="training-load" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="training-load">
         <PageHeader
           eyebrow={<StatusPill tone="green">Training management</StatusPill>}
           title="Training Load"
           description="Golf Form, Training Fitness and Recent Load over time"
           actions={
-            <Button asChild className="premium-action">
+            <Button asChild>
               <Link href="#log-load">
                 <Plus className="size-4" />
                 Log Training
@@ -96,6 +66,15 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
           recentLoad={latestFatigue}
         />
 
+        {latestFatigue >= 120 ? (
+          <Alert variant="destructive" data-training-load-warning>
+            <AlertTitle>Recent load is high</AlertTitle>
+            <AlertDescription>
+              Keep the next plan technical or recovery-led until the recent-load signal eases.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
         <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} />
       </DesktopWorkbenchLayout>
     </PageShell>
@@ -115,30 +94,38 @@ function TrainingPracticePlannerPanel({
   const suitability = loadHigh ? "Technical plans preferred" : "Practice load appropriate";
 
   return (
-    <DataPanel>
-      <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+    <Card className="shadow-sm" data-training-practice-recommendation>
+      <CardHeader>
         <div>
           <StatusPill tone={loadHigh ? "amber" : "green"}>{suitability}</StatusPill>
-          <h2 className="mt-3 text-2xl font-semibold tracking-normal">Practice Planner load fit</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          <CardTitle className="mt-3 text-2xl tracking-normal">Practice Planner load fit</CardTitle>
+          <CardDescription className="mt-2 max-w-3xl text-sm leading-6">
             {practiceSummary.latestCompleted
               ? `${practiceSummary.latestCompleted.title} finished with a ${practiceSummary.latestCompleted.score ?? "--"} practice score while Training Load read ${statusLabel}.`
               : `No completed structured plan yet. Training Load currently reads ${statusLabel}.`}
-          </p>
+          </CardDescription>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[28rem]">
-          <DataPair
-            label="Completed plans"
-            value={integerFormatter.format(practiceSummary.completedCount)}
-          />
-          <DataPair
-            label="Average score"
-            value={practiceSummary.averageScore === null ? "--" : `${practiceSummary.averageScore}`}
-          />
-          <DataPair label="Recent Load" value={formatMetric(recentLoad)} />
-        </div>
-      </div>
-    </DataPanel>
+      </CardHeader>
+      <CardContent>
+        <ConnectedMetricBar
+          embedded
+          label="Practice planner load fit metrics"
+          className="sm:grid-cols-3 xl:grid-cols-3"
+          metrics={[
+            {
+              label: "Completed plans",
+              value: integerFormatter.format(practiceSummary.completedCount),
+            },
+            {
+              label: "Average score",
+              value:
+                practiceSummary.averageScore === null ? "--" : `${practiceSummary.averageScore}`,
+            },
+            { label: "Recent Load", value: formatMetric(recentLoad) },
+          ]}
+        />
+      </CardContent>
+    </Card>
   );
 }
 

@@ -653,7 +653,7 @@ function ProfileDropdown({
           variant={isTopbar ? "outline" : "ghost"}
           className={cn(
             isTopbar
-              ? "focus-aaa h-9 w-auto shrink-0 justify-start gap-2 rounded-lg border-emerald-950/10 bg-white/76 px-2 shadow-sm outline-none hover:border-emerald-300 hover:bg-white"
+              ? "focus-aaa h-9 w-auto shrink-0 justify-start gap-2 rounded-lg border-border bg-card/80 px-2 shadow-sm outline-none hover:border-primary/40 hover:bg-card"
               : "h-auto w-full justify-start gap-2 border border-sidebar-border bg-sidebar-accent px-2 py-2 text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             compact && "gap-1.5 py-1.5",
           )}
@@ -736,10 +736,15 @@ function ProfileDropdown({
         <DropdownMenuSeparator />
         <form action="/auth/sign-out" method="post" onSubmit={clearPrivateDataBeforeSignOut}>
           <DropdownMenuItem asChild variant="destructive">
-            <button type="submit" className="w-full">
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="h-auto w-full justify-start rounded-md px-1.5 py-1 font-normal text-destructive hover:bg-destructive/10 hover:text-destructive focus-visible:ring-0"
+            >
               <LogOut className="size-4" />
               Sign out
-            </button>
+            </Button>
           </DropdownMenuItem>
         </form>
       </DropdownMenuContent>

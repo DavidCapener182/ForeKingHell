@@ -10,4 +10,14 @@ describe("RpeSelector desktop layout", () => {
     expect(source).toContain('"grid-cols-2 sm:grid-cols-5 min-[1700px]:grid-cols-10"');
     expect(source).not.toContain('"grid-cols-2 sm:grid-cols-5 xl:grid-cols-10"');
   });
+
+  it("uses one semantic shadcn selector while preserving form submission", () => {
+    expect(source).toContain('from "@/components/ui/toggle-group"');
+    expect(source).toContain('<ToggleGroup\n        type="single"');
+    expect(source).toContain("<ToggleGroupItem");
+    expect(source).toContain('<input type="hidden" name={name} value={value} />');
+    expect(source).toContain("data-[state=on]:border-primary");
+    expect(source).not.toContain('type="radio"');
+    expect(source).not.toContain("emerald-");
+  });
 });

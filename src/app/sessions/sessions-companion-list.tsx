@@ -6,7 +6,8 @@ import type { SessionTimelineItem } from "@/app/sessions/session-timeline";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusTimeline } from "@/components/app/status-timeline";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type Filter = "all" | "practice" | "round";
 
@@ -43,46 +44,61 @@ export function SessionsCompanionList({
 
   return (
     <div className="grid gap-3">
-      <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
-        <TabsList className="grid w-full grid-cols-3" aria-label="Session type">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="practice">Practice</TabsTrigger>
-          <TabsTrigger value="round">Rounds</TabsTrigger>
-        </TabsList>
-      </Tabs>
-      <section className="ios-grouped-list p-4" aria-label="Session history">
-        <StatusTimeline
-          label="Session timeline"
-          empty={
-            <AppEmptyState
-              title="No sessions in this view"
-              description="Choose another session type or import measured data."
-              primaryAction={
-                <Button type="button" size="sm" onClick={() => setFilter("all")}>
-                  Show all sessions
-                </Button>
-              }
-              className="border-0 bg-transparent p-4 shadow-none"
-            />
-          }
-          items={visible.map((session) => ({
-            id: session.id,
-            dateGroup: session.dateLabel,
-            timestamp: session.timeLabel,
-            title: session.title,
-            description: `${session.typeLabel} · ${session.shotCount} shot${session.shotCount === 1 ? "" : "s"}`,
-            meta: `${session.verdict}${session.planLinked ? " · Plan linked" : ""}`,
-            status: `${session.evidenceConfidence} confidence`,
-            kind:
-              session.evidenceConfidence === "Low"
-                ? "warning"
-                : session.isRound
-                  ? "round"
-                  : "practice",
-            href: session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`,
-          }))}
-        />
-      </section>
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Recent sessions</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Review measured practice and rounds in one timeline.
+        </p>
+      </div>
+      <ToggleGroup
+        type="single"
+        value={filter}
+        variant="outline"
+        spacing={0}
+        className="grid w-full grid-cols-3"
+        aria-label="Session type"
+        onValueChange={(value) => {
+          if (value) setFilter(value as Filter);
+        }}
+      >
+        <ToggleGroupItem value="all">All</ToggleGroupItem>
+        <ToggleGroupItem value="practice">Practice</ToggleGroupItem>
+        <ToggleGroupItem value="round">Rounds</ToggleGroupItem>
+      </ToggleGroup>
+      <Card size="sm" aria-label="Session history">
+        <CardContent>
+          <StatusTimeline
+            label="Session timeline"
+            empty={
+              <AppEmptyState
+                title="No sessions in this view"
+                description="Choose another session type or import measured data."
+                primaryAction={
+                  <Button type="button" size="sm" onClick={() => setFilter("all")}>
+                    Show all sessions
+                  </Button>
+                }
+                className="border-0 bg-transparent p-4 shadow-none"
+              />
+            }
+            items={visible.map((session) => ({
+              id: session.id,
+              dateGroup: session.dateLabel,
+              timestamp: session.timeLabel,
+              title: session.title,
+              description: `${session.typeLabel} · ${session.shotCount} shot${session.shotCount === 1 ? "" : "s"}`,
+              meta: `${session.verdict}${session.planLinked ? " · Plan linked" : ""}`,
+              status: session.isRound
+                ? (session.roundScoreLabel ?? "Score not recorded")
+                : session.importedEvidence
+                  ? `Review · ${session.evidenceConfidence}`
+                  : `${session.evidenceConfidence} confidence`,
+              kind: session.isRound ? "round" : session.importedEvidence ? "import" : "practice",
+              href: session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`,
+            }))}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

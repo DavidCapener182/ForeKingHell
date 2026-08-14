@@ -4,11 +4,9 @@ import { ArrowLeft, Flag, MapPinned, Save, Search } from "lucide-react";
 
 import { createCourseAction } from "@/app/courses/actions";
 import { GoogleCourseImporter } from "@/app/courses/google-course-importer";
-import { MobileCourseSourceChooser } from "@/app/courses/new/mobile-course-source-chooser";
 import { OsmCourseImporter } from "@/app/courses/osm-course-importer";
 import { DesktopWorkflowLayout } from "@/components/app/desktop-workbench";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
-import { MobileMetricStrip } from "@/components/visuals/mobile-metric-strip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -58,7 +56,7 @@ const courseWorkflowHelpItems = [
 export default function NewCoursePage() {
   return (
     <PageShell>
-      <div className="hidden items-center justify-between gap-4 lg:flex">
+      <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/courses" prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -104,16 +102,7 @@ export default function NewCoursePage() {
         ]}
       />
 
-      <MobileMetricStrip
-        items={[
-          { label: "Step", value: "Course", detail: "Name and tee", tone: "green" },
-          { label: "Next", value: "Hole map", detail: "Tee and green points", tone: "sky" },
-          { label: "Unit", value: "Yards", detail: "Course yardage", tone: "slate" },
-        ]}
-      />
-
       <DesktopWorkflowLayout
-        className="hidden lg:grid"
         steps={courseWorkflowSteps}
         helpTitle="Course setup help"
         helpDescription="Build trustworthy course data"
@@ -124,18 +113,18 @@ export default function NewCoursePage() {
             <SectionHeader
               title="Google import"
               description="Find the real Google Place, store its canonical ID, address, coordinates, website and media signals."
-              action={<Search className="size-5 text-emerald-600" />}
+              action={<Search className="size-5 text-primary" />}
             />
             <CardContent>
               <GoogleCourseImporter />
             </CardContent>
           </DataPanel>
 
-          <DataPanel className="hidden sm:block">
+          <DataPanel>
             <SectionHeader
               title="Course details"
               description="Start with the tee set you normally play. Extra tee sets can be added later."
-              action={<Flag className="size-5 text-emerald-600" />}
+              action={<Flag className="size-5 text-primary" />}
             />
             <CardContent>
               <form action={createCourseAction} className="grid gap-4">
@@ -180,11 +169,7 @@ export default function NewCoursePage() {
                   <FormField label="Yards" name="yards" type="number" min={1} placeholder="5839" />
                 </div>
 
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:w-fit"
-                >
+                <Button type="submit" size="lg" className="w-full rounded-lg sm:w-fit">
                   <Save className="size-4" />
                   Create course
                 </Button>
@@ -196,7 +181,7 @@ export default function NewCoursePage() {
             <SectionHeader
               title="OpenStreetMap import"
               description="Search OSM/Nominatim, pull tagged golf-hole geometry from Overpass, then manually correct anything that needs work."
-              action={<MapPinned className="size-5 text-sky-600" />}
+              action={<MapPinned className="size-5 text-primary" />}
             />
             <CardContent>
               <OsmCourseImporter />
@@ -204,14 +189,14 @@ export default function NewCoursePage() {
           </DataPanel>
         </section>
 
-        <DataPanel className="hidden sm:block">
+        <DataPanel>
           <SectionHeader
             title="Overlay notes"
             description="How this connects to the course maps."
-            action={<MapPinned className="size-5 text-sky-600" />}
+            action={<MapPinned className="size-5 text-primary" />}
           />
           <CardContent className="grid gap-3 lg:grid-cols-2">
-            <Alert className="border-emerald-200 bg-emerald-50/70">
+            <Alert className="border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]">
               <MapPinned className="size-4" />
               <AlertTitle>Hole geometry drives the map</AlertTitle>
               <AlertDescription>
@@ -229,7 +214,6 @@ export default function NewCoursePage() {
           </CardContent>
         </DataPanel>
       </DesktopWorkflowLayout>
-      <MobileCourseSourceChooser />
     </PageShell>
   );
 }
@@ -245,7 +229,7 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="h-11 rounded-xl bg-white" {...props} />
+      <Input name={name} className="h-11 rounded-xl bg-background" {...props} />
     </label>
   );
 }

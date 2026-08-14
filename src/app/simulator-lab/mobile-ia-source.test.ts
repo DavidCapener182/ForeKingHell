@@ -12,45 +12,48 @@ function componentBody(name: string, nextName: string) {
   return source.slice(start, end);
 }
 
-describe("Performance Lab native mobile information architecture", () => {
-  it("puts the estimate and next practice decision ahead of supporting evidence", () => {
-    const mobile = componentBody("MobilePerformanceLab", "MobileCostlyShotRows");
-
-    expect(mobile.indexOf("Launch monitor handicap")).toBeLessThan(mobile.indexOf("Do this next"));
-    expect(mobile.indexOf("Do this next")).toBeLessThan(mobile.indexOf("Evidence and tools"));
-    expect(mobile).toContain("expectedRangeLabel");
-    expect(mobile).toContain("Open practice planner");
-    expect(mobile).toContain('label="Performance Lab evidence and tools"');
+describe("Performance Lab desktop-only workbench architecture", () => {
+  it("does not ship the obsolete companion and iOS render graph", () => {
+    expect(source).toContain("DesktopWorkbenchLayout");
+    expect(source).not.toMatch(/getRequestAppSurface|MobileAppShell|MobileRouteHeader/);
+    expect(source).not.toMatch(/IOS[A-Z]|MobilePerformanceLab|MobileFilterSheet/);
+    expect(source).not.toMatch(/lg:hidden|hidden lg:|mobile=\{/);
   });
 
-  it("keeps specialist tools one disclosure level deep and replaces phone tables with rows", () => {
-    const mobile = componentBody("MobilePerformanceLab", "MobileCostlyShotRows");
-
-    for (const section of [
-      "Biggest leaks",
-      "Shot pattern map",
-      "Bag gaps",
-      "Latest session and setup",
-      "What if?",
-      "Handicap trend and method",
+  it("preserves the decision-first workbench, specialist charts and evidence tables", () => {
+    for (const feature of [
+      "RangeRealityCockpit",
+      "GappingMatrixClient",
+      "SessionDeltaTable",
+      "EquipmentImpactTable",
+      "FlightLineMap",
+      "WhatIfClient",
+      "ConfidenceTimeline",
     ]) {
-      expect(mobile).toContain(section);
+      expect(source).toContain(feature);
     }
 
-    expect(mobile).toContain("<FlightLineMap");
-    expect(mobile).toContain("mobile");
-    expect(mobile).not.toContain("<Table");
-    expect(source).toContain("SessionDeltaTable");
-    expect(source).toContain("EquipmentImpactTable");
-    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).toContain("DesktopTableWorkbenchControls");
+    expect(source).toContain("data-workbench-export-table");
+    expect(source).toContain("aria-current");
   });
 
-  it("moves the dense shot filter into a labelled mobile sheet", () => {
-    const map = componentBody("FlightLineMap", "CorridorSplit");
+  it("uses semantic theme tokens for ordinary status and table surfaces", () => {
+    const cockpit = componentBody("RangeRealityCockpit", "CoachSummaryCard");
+    const tones = componentBody("toneTextClass", "practicePriorityLabel");
+    const sessionTable = componentBody("SessionDeltaTable", "EquipmentImpactTable");
 
-    expect(map).toContain("MobileFilterSheet");
-    expect(map).toContain("Shot filter ·");
-    expect(map).toContain("filterOptions");
-    expect(source).toContain('aria-current={active ? "page" : undefined}');
+    expect(cockpit).toContain("var(--status-success-surface)");
+    expect(cockpit).toContain("var(--status-warning-surface)");
+    expect(tones).toContain("var(--status-information-foreground)");
+    expect(tones).not.toMatch(/(?:text|bg)-(?:emerald|sky|amber|rose|slate)-/);
+    expect(sessionTable).toContain("bg-card");
+    expect(sessionTable).not.toContain("bg-white");
+  });
+
+  it("retains the deliberate specialist chart palette", () => {
+    const chart = componentBody("ConfidenceTimeline", "FlightLineMap");
+    expect(chart).toContain('fill="white"');
+    expect(chart).toContain('stroke="#0B7A3B"');
   });
 });

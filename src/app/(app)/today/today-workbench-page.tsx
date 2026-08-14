@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import {
   ArrowRight,
   Award,
-  CalendarDays,
   ChevronDown,
   Crosshair,
   Database,
@@ -19,28 +18,15 @@ import {
 
 import {
   ActiveFilterChips,
-  DataPair,
   DataPanel,
   DataTableFrame,
-  MobileDataCard,
-  MobileFilterSheet,
-  MobileHorizontalRail,
   PageHeader,
   PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -52,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { DataToolbar } from "@/components/app/data-toolbar";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -71,12 +58,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   TodayShotCharts,
   type TodayChartClubStatus,
   type TodayChartShot,
 } from "@/app/today/today-shot-charts";
-import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateClubFaceAngleDeg } from "@/lib/club-face-angle";
@@ -99,7 +86,6 @@ import {
 import {
   type ClubDayComparison,
   type ClubMainStatMetric,
-  type ClubMainStats,
   type TodayPracticeData,
   type TodayPracticeShot,
   getTodayPracticeData,
@@ -118,18 +104,7 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 const integerFormatter = new Intl.NumberFormat("en-GB");
-const smashFormatter = new Intl.NumberFormat("en-GB", {
-  maximumFractionDigits: 2,
-});
-const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
 const MIN_CONFIDENT_CLUB_SHOTS = 5;
-type MetricUnit = "yd" | "mph" | "deg" | "ft" | "ratio";
-type HighlightDirection = "higher" | "lower";
-type HighlightKind = "record" | "tie" | "close";
 type ClubSort = "bag" | "best" | "worst";
 type ReviewTone = "green" | "sky" | "pink" | "amber" | "slate";
 type PracticeReviewMode = "clean" | "raw";
@@ -177,31 +152,6 @@ const todaySavedViews: DesktopSavedViewSuggestion[] = [
     detail: "Open the underlying launch-monitor rows with full filters and export.",
   },
 ];
-
-type ClubHighlight = {
-  id: string;
-  kind: HighlightKind;
-  clubType: string;
-  clubLabel: string;
-  clubBrand: string | null;
-  clubModel: string | null;
-  metricLabel: string;
-  value: string;
-  detail: string;
-  target?: string;
-  priority: number;
-  closeness: number;
-};
-
-type ClubHighlightDescriptor = {
-  key: string;
-  label: string;
-  metric: ClubMainStatMetric;
-  unit: MetricUnit;
-  direction: HighlightDirection;
-  closeThreshold: number;
-  priority: number;
-};
 
 type PracticeScoreSummary = {
   score: number;
@@ -300,7 +250,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     challenges: challengeData?.active ?? [],
   };
   const reviewMode = parsePracticeReviewMode(first(params.evidence));
-  const selectedReviewOverall = reviewOverall(data, reviewMode);
   const selectedReviewComparisons = reviewComparisons(data, reviewMode);
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(reviewShots(data, reviewMode));
@@ -313,43 +262,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   return (
     <PageShell size="full" className="today-review-page" contentClassName="pb-4 sm:pb-5">
       <TodayHoverStyles comparisons={data.clubComparisons} />
-      <MobileAppShell className="min-h-0 pb-0">
-        <MobileTopBar title="Today" />
-        <TodayMobileVerdictCard
-          data={data}
-          reviewMode={reviewMode}
-          linkedPracticePlan={linkedPracticePlan}
-        />
-        <TodayPrescriptionCard data={data} shotDatabaseHref={shotDatabaseHref} />
-        <TodayMobileIntent
-          data={data}
-          linkedPracticePlan={linkedPracticePlan}
-          shotDatabaseHref={shotDatabaseHref}
-        />
-        <TodayMobileScopeSheet
-          data={data}
-          activeFilterChips={activeFilterChips}
-          reviewMode={reviewMode}
-          clubSort={clubSort}
-        />
-        {data.shots.length > 0 ? (
-          <TodayMobileEvidence
-            data={data}
-            reviewMode={reviewMode}
-            selectedReviewOverall={selectedReviewOverall}
-            comparisons={sortedClubComparisons}
-            clubSort={clubSort}
-            chartShots={chartShots}
-            chartClubStatuses={chartClubStatuses}
-            chartPatternInsight={chartPatternInsight}
-            shotDatabaseHref={shotDatabaseHref}
-            linkedPracticePlan={linkedPracticePlan}
-          />
-        ) : (
-          <TodayMobileEmpty />
-        )}
-      </MobileAppShell>
-
       <TodayDesktopDashboard
         data={data}
         socialContext={socialContext}
@@ -359,600 +271,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         chartPatternInsight={chartPatternInsight}
         comparisons={sortedClubComparisons}
         clubSort={clubSort}
+        reviewMode={reviewMode}
         activeFilterChips={activeFilterChips}
         linkedPracticePlan={linkedPracticePlan}
       />
     </PageShell>
-  );
-}
-
-function TodayMobileIntent({
-  data,
-  linkedPracticePlan,
-  shotDatabaseHref,
-}: {
-  data: TodayPracticeData;
-  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
-  shotDatabaseHref: string;
-}) {
-  const focus = practiceFocus(data);
-  const planResult = buildPlanResultReadout(linkedPracticePlan);
-
-  return (
-    <section className="grid gap-3 lg:hidden" aria-labelledby="today-intent-heading">
-      <IOSSectionHeader
-        title={<span id="today-intent-heading">Today&apos;s plan</span>}
-        description="The next useful move, followed by the evidence only when you need it."
-      />
-      <IOSGroupedList label="Today plan">
-        <IOSListRow
-          label="Practice intent"
-          value={data.shots.length > 0 ? focus.clubText : "Set up"}
-          detail={
-            data.shots.length > 0
-              ? "Open the focused task flow for the first drill."
-              : "Import a measured session before choosing a drill."
-          }
-          href={data.shots.length > 0 ? "/practice" : "/import"}
-          icon={Dumbbell}
-          status={
-            <IOSInlineStatus
-              label={data.shots.length > 0 ? "Ready to practise" : "Evidence needed"}
-              tone={data.shots.length > 0 ? "positive" : "attention"}
-            />
-          }
-        />
-        {linkedPracticePlan ? (
-          <IOSListRow
-            label="Planned drill"
-            value={planResult?.label ?? "Linked"}
-            detail={linkedPracticePlan.title}
-            href={linkedPracticePlan.href}
-            icon={CalendarDays}
-          />
-        ) : null}
-        <IOSListRow
-          label="Latest review"
-          value={`${integerFormatter.format(data.shots.length)} clean`}
-          detail="Open the complete filtered shot explorer."
-          href={shotDatabaseHref}
-          icon={Database}
-        />
-        {data.dataCleaning.excludedShotCount > 0 ? (
-          <IOSListRow
-            label="Scoring sample"
-            value={`${integerFormatter.format(data.dataCleaning.excludedShotCount)} held out`}
-            detail={`${integerFormatter.format(data.dataCleaning.cleanShotCount)} of ${integerFormatter.format(
-              data.dataCleaning.importedShotCount,
-            )} imported shots drive this recommendation.`}
-            status={<IOSInlineStatus label={data.dataCleaning.reasonLabel} tone="attention" />}
-          />
-        ) : null}
-      </IOSGroupedList>
-    </section>
-  );
-}
-
-function TodayMobileScopeSheet({
-  data,
-  activeFilterChips,
-  reviewMode,
-  clubSort,
-}: {
-  data: TodayPracticeData;
-  activeFilterChips: { label: string; href: string }[];
-  reviewMode: PracticeReviewMode;
-  clubSort: ClubSort;
-}) {
-  return (
-    <section className="grid gap-2 lg:hidden" aria-label="Today review scope">
-      <MobileFilterSheet label="Review scope" activeCount={activeFilterChips.length}>
-        <form className="grid gap-4 pb-3 [&_input]:min-h-11 [&_select]:min-h-11">
-          <TodayScopeFields data={data} />
-          <input type="hidden" name="evidence" value={reviewMode} />
-          <input type="hidden" name="clubSort" value={clubSort} />
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="submit" className="min-h-11 rounded-lg">
-              Apply scope
-            </Button>
-            <Button asChild variant="outline" className="min-h-11 rounded-lg">
-              <Link href="/today" prefetch={false}>
-                Reset
-              </Link>
-            </Button>
-          </div>
-        </form>
-        <TodayReviewControls data={data} mode={reviewMode} clubSort={clubSort} />
-      </MobileFilterSheet>
-      {activeFilterChips.length > 0 ? (
-        <p className="px-1 text-[13px] text-muted-foreground">
-          {activeFilterChips.map((chip) => chip.label).join(" · ")}
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
-function TodayMobileEvidence({
-  data,
-  reviewMode,
-  selectedReviewOverall,
-  comparisons,
-  clubSort,
-  chartShots,
-  chartClubStatuses,
-  chartPatternInsight,
-  shotDatabaseHref,
-  linkedPracticePlan,
-}: {
-  data: TodayPracticeData;
-  reviewMode: PracticeReviewMode;
-  selectedReviewOverall: ReturnType<typeof reviewOverall>;
-  comparisons: ClubDayComparison[];
-  clubSort: ClubSort;
-  chartShots: TodayChartShot[];
-  chartClubStatuses: TodayChartClubStatus[];
-  chartPatternInsight: string;
-  shotDatabaseHref: string;
-  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
-}) {
-  const highlights = buildClubHighlights(data.clubStats, buildClubEquipmentMap(data.shots));
-
-  return (
-    <section className="grid gap-3 lg:hidden" aria-labelledby="today-depth-heading">
-      <IOSSectionHeader
-        title={<span id="today-depth-heading">Evidence and detail</span>}
-        description="Open one section at a time. The recommendation above stays the main task."
-      />
-      <IOSDisclosureGroup
-        label="Today evidence sections"
-        items={[
-          {
-            value: "numbers",
-            title: "Current numbers",
-            summary: `${integerFormatter.format(data.shots.length)} shots`,
-            description:
-              reviewMode === "clean" ? "Trusted scoring sample" : "All imported evidence",
-            content: (
-              <TodayMobileMetricRows
-                data={data}
-                reviewMode={reviewMode}
-                selectedReviewOverall={selectedReviewOverall}
-                linkedPracticePlan={linkedPracticePlan}
-              />
-            ),
-          },
-          {
-            value: "clubs",
-            title: "Club performance",
-            summary: `${comparisons.length} clubs`,
-            description: "Scan the call first; open the full explorer only for deeper data.",
-            content: (
-              <TodayMobileClubRows data={data} comparisons={comparisons} clubSort={clubSort} />
-            ),
-          },
-          {
-            value: "charts",
-            title: "Dispersion and trajectory",
-            summary: `${integerFormatter.format(chartShots.length)} shots`,
-            description: "Specialist visual evidence for the current selection.",
-            content: (
-              <div className="-mx-2 min-w-0 overflow-x-clip">
-                <TodayShotCharts
-                  shots={chartShots}
-                  clubStatuses={chartClubStatuses}
-                  patternInsight={chartPatternInsight}
-                />
-              </div>
-            ),
-          },
-          {
-            value: "highlights",
-            title: "Highlights",
-            summary: `${highlights.length} signals`,
-            description: "Personal bests, close calls and the straightest shot.",
-            content: (
-              <TodayMobileHighlightRows
-                highlights={highlights}
-                bestShot={data.bestStraightShots[0] ?? null}
-              />
-            ),
-          },
-          {
-            value: "shots",
-            title: "Imported shot rows",
-            summary: integerFormatter.format(data.rawShots.length),
-            description: "A concise preview with clean-scoring exclusions labelled.",
-            content: <TodayMobileShotRows data={data} shotDatabaseHref={shotDatabaseHref} />,
-          },
-        ]}
-      />
-    </section>
-  );
-}
-
-function TodayMobileMetricRows({
-  data,
-  reviewMode,
-  selectedReviewOverall,
-  linkedPracticePlan,
-}: {
-  data: TodayPracticeData;
-  reviewMode: PracticeReviewMode;
-  selectedReviewOverall: ReturnType<typeof reviewOverall>;
-  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
-}) {
-  const planResult = buildPlanResultReadout(linkedPracticePlan);
-
-  return (
-    <IOSGroupedList label="Current practice numbers" className="bg-card">
-      <IOSMetricRow
-        label="Offline"
-        value={formatYards(selectedReviewOverall.today.offlineAverageYd)}
-        detail={offlineDeltaText(selectedReviewOverall.offlineDeltaYd)}
-      />
-      <IOSMetricRow
-        label="Straight"
-        value={formatRate(selectedReviewOverall.today.straightRate)}
-        detail={deltaText(selectedReviewOverall.straightRateDelta, "pp", true)}
-      />
-      <IOSMetricRow
-        label="Lateral window"
-        value={formatRate(selectedReviewOverall.today.playableRate)}
-        detail={deltaText(selectedReviewOverall.playableRateDelta, "pp", true)}
-      />
-      <IOSMetricRow
-        label="Carry"
-        value={formatYards(selectedReviewOverall.today.carryAverageYd)}
-        detail={deltaText(selectedReviewOverall.carryDeltaYd, "yd", true)}
-      />
-      <IOSListRow
-        label="Evidence mode"
-        value={reviewMode === "clean" ? "Trusted shots" : "All imported"}
-        detail={`${integerFormatter.format(data.dataCleaning.cleanShotCount)} clean · ${integerFormatter.format(
-          data.dataCleaning.excludedShotCount,
-        )} held out`}
-      />
-      {planResult ? (
-        <IOSListRow
-          label="Plan versus actual"
-          value={planResult.label}
-          detail={planResult.detail}
-          href={linkedPracticePlan?.href}
-        />
-      ) : null}
-    </IOSGroupedList>
-  );
-}
-
-function TodayMobileClubRows({
-  data,
-  comparisons,
-  clubSort,
-}: {
-  data: TodayPracticeData;
-  comparisons: ClubDayComparison[];
-  clubSort: ClubSort;
-}) {
-  return (
-    <div className="grid gap-3">
-      <nav aria-label="Sort club performance" className="ios-route-tabs grid grid-cols-3">
-        {(
-          [
-            ["worst", "Needs work"],
-            ["best", "Best"],
-            ["bag", "Bag order"],
-          ] as const
-        ).map(([value, label]) => (
-          <Link
-            key={value}
-            href={todaySortHref(data, value)}
-            prefetch={false}
-            aria-current={clubSort === value ? "page" : undefined}
-            className="ios-route-tab focus-aaa inline-flex min-h-11 items-center justify-center px-2 text-center outline-none"
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-      <IOSGroupedList label="Club performance rows" className="bg-card">
-        {comparisons.map((comparison) => (
-          <IOSListRow
-            key={comparison.clubType}
-            label={comparison.clubLabel}
-            value={clubComparisonCallLabel(comparison)}
-            detail={`${comparison.today.shotCount} shots · ${formatYards(
-              comparison.today.carryAverageYd,
-            )} carry · ${formatYards(comparison.today.offlineAverageYd)} offline`}
-            status={
-              <span className="text-[13px] leading-[1.15rem] text-muted-foreground">
-                {clubComparisonSignalText(comparison)}
-              </span>
-            }
-          />
-        ))}
-      </IOSGroupedList>
-    </div>
-  );
-}
-
-function TodayMobileHighlightRows({
-  highlights,
-  bestShot,
-}: {
-  highlights: ClubHighlight[];
-  bestShot: TodayPracticeShot | null;
-}) {
-  return (
-    <IOSGroupedList label="Latest practice highlights" className="bg-card">
-      {bestShot ? (
-        <IOSListRow
-          label="Shot of the day"
-          value={formatYards(bestShot.carryYd)}
-          detail={`${formatClubType(bestShot.clubType)} · ${formatSignedYards(
-            bestShot.sideCarryYd,
-          )} side`}
-          icon={Crosshair}
-          status={<IOSInlineStatus label="Straightest selected shot" tone="info" />}
-        />
-      ) : null}
-      {highlights.slice(0, 8).map((highlight) => (
-        <IOSListRow
-          key={highlight.id}
-          label={`${highlight.clubLabel} · ${highlight.metricLabel}`}
-          value={highlight.value}
-          detail={highlight.detail}
-          status={
-            <IOSInlineStatus
-              label={highlight.kind === "close" ? "Close to PB" : "Personal best"}
-              tone={highlight.kind === "close" ? "attention" : "positive"}
-            />
-          }
-        />
-      ))}
-      {highlights.length === 0 && !bestShot ? (
-        <IOSListRow
-          label="No highlight yet"
-          detail="The selected practice does not contain a PB or directional highlight."
-        />
-      ) : null}
-    </IOSGroupedList>
-  );
-}
-
-function TodayMobileShotRows({
-  data,
-  shotDatabaseHref,
-}: {
-  data: TodayPracticeData;
-  shotDatabaseHref: string;
-}) {
-  return (
-    <IOSGroupedList label="Imported shot preview" className="bg-card">
-      {data.rawShots.slice(0, 10).map((shot) => {
-        const heldOut = isExcludedPracticeQualityTag(shot.qualityTag);
-
-        return (
-          <IOSListRow
-            key={shot.id}
-            label={`${formatClubType(shot.clubType)} · shot ${shot.shotNumber ?? "--"}`}
-            value={formatYards(shot.carryYd)}
-            detail={`${formatSignedYards(shot.sideCarryYd)} side · ${formatYards(
-              shot.totalYd,
-            )} total`}
-            status={
-              <IOSInlineStatus
-                label={formatShotQualityLabel(shot)}
-                tone={heldOut ? "attention" : "positive"}
-              />
-            }
-          />
-        );
-      })}
-      <IOSListRow
-        label="Open every shot"
-        value={integerFormatter.format(data.rawShots.length)}
-        detail="Use the full explorer for filters, audit detail and export."
-        href={shotDatabaseHref}
-        icon={Database}
-      />
-    </IOSGroupedList>
-  );
-}
-
-function TodayMobileEmpty() {
-  return (
-    <section className="grid gap-3 lg:hidden" aria-labelledby="today-empty-heading">
-      <IOSSectionHeader title={<span id="today-empty-heading">Get a useful read today</span>} />
-      <IOSGroupedList label="Today first-use actions">
-        <IOSListRow
-          label="Import launch-monitor shots"
-          detail="Add a measured practice session to unlock the recommendation."
-          href="/import"
-          icon={Upload}
-        />
-        <IOSListRow
-          label="Connect Rapsodo"
-          detail="Bring the newest session in from R-Cloud."
-          href="/rapsodo"
-          icon={Database}
-        />
-      </IOSGroupedList>
-    </section>
-  );
-}
-
-function TodayPrescriptionCard({
-  data,
-  shotDatabaseHref,
-}: {
-  data: TodayPracticeData;
-  shotDatabaseHref: string;
-}) {
-  const focus = practiceFocus(data);
-
-  return (
-    <section id="focus" className="ios-grouped-list grid gap-3 p-4 lg:hidden">
-      <div>
-        <p className="text-sm font-semibold text-[#0B7A3B]">Latest practice prescription</p>
-        <h2 className="mt-1 text-2xl font-semibold leading-7 tracking-normal text-[#050505]">
-          {data.shots.length > 0 ? `Tighten ${focus.clubText}` : "Import a practice session"}
-        </h2>
-        <p className="mt-2 text-sm leading-5 text-[#6B7280]">
-          {data.shots.length > 0
-            ? focus.problem
-            : "A fresh import unlocks filtered shots, club deltas, PBs and a practice prescription."}
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2" data-primary-action>
-        <Button asChild className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-          <Link href={data.shots.length > 0 ? shotDatabaseHref : "/import"} prefetch={false}>
-            {data.shots.length > 0 ? "Open shots" : "Import"}
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="rounded-lg">
-          <Link href={data.shots.length > 0 ? "/coach" : "/rapsodo"} prefetch={false}>
-            {data.shots.length > 0 ? "Start drill" : "Connect"}
-          </Link>
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-function TodayMobileVerdictCard({
-  data,
-  reviewMode,
-  linkedPracticePlan,
-}: {
-  data: TodayPracticeData;
-  reviewMode: PracticeReviewMode;
-  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
-}) {
-  const score = practiceScoreSummary(data, reviewMode);
-  const comparisons = reviewComparisons(data, reviewMode);
-  const best = bestClubComparison(comparisons);
-  const work = needsWorkComparison(comparisons);
-  const planResult = buildPlanResultReadout(linkedPracticePlan);
-
-  return (
-    <section id="verdict" className="ios-grouped-list lg:hidden">
-      <div className="ios-grouped-row flex items-start justify-between gap-3 px-4 py-4">
-        <div className="min-w-0">
-          <p className="text-[13px] text-muted-foreground">Latest session</p>
-          <h2 className="mt-1 text-[22px] font-bold leading-7 tracking-[-0.02em]">
-            {heroVerdictTitle(data, reviewMode)}
-          </h2>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-[13px] text-muted-foreground">Practice usefulness</p>
-          <p className="mt-0.5 text-[28px] font-semibold leading-none tracking-tight tabular-nums">
-            {score.score}
-          </p>
-          <p className="text-xs text-muted-foreground">out of 100</p>
-        </div>
-      </div>
-      <TodayVerdictRow label="Best current form" value={best?.clubLabel ?? score.strong} />
-      <TodayVerdictRow label="Practise first" value={work?.clubLabel ?? score.weak} />
-      {planResult ? <TodayVerdictRow label="Planned drill" value={planResult.label} /> : null}
-      <Link
-        href={data.shots.length > 0 ? "/practice" : "/import"}
-        prefetch={false}
-        aria-label={`${score.recommendation}. ${data.shots.length > 0 ? "Open practice" : "Import a session"}`}
-        className="focus-aaa grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 bg-secondary/55 px-4 py-2.5 outline-none transition-colors active:bg-secondary motion-reduce:transition-none"
-      >
-        <span className="min-w-0">
-          <span className="block text-[13px] text-muted-foreground">Recommendation</span>
-          <span className="mt-0.5 block text-[15px] font-semibold leading-5">
-            {score.recommendation}
-          </span>
-        </span>
-        <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      </Link>
-    </section>
-  );
-}
-
-function TodayVerdictRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="ios-grouped-row grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5">
-      <span className="text-[15px] text-muted-foreground">{label}</span>
-      <span className="max-w-48 truncate text-right text-[15px] font-semibold tabular-nums">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function TodayReviewControls({
-  data,
-  mode,
-  clubSort,
-}: {
-  data: TodayPracticeData;
-  mode: PracticeReviewMode;
-  clubSort: ClubSort;
-}) {
-  const sessionId =
-    data.sessions.find((session) => session.id === data.filters.sessionId)?.id ??
-    data.sessions[0]?.id ??
-    null;
-
-  return (
-    <section aria-labelledby="today-review-controls" className="ios-grouped-list lg:hidden">
-      <div className="ios-grouped-row px-4 py-3">
-        <h2 id="today-review-controls" className="text-[17px] font-semibold">
-          Review controls
-        </h2>
-        <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
-          Switch the evidence set without deleting imported shots.
-        </p>
-      </div>
-      <div className="ios-grouped-row px-4 py-3">
-        <p className="mb-2 text-[13px] text-muted-foreground">Evidence</p>
-        <nav aria-label="Session evidence view" className="ios-route-tabs flex">
-          {(["clean", "raw"] as const).map((value) => (
-            <Link
-              key={value}
-              href={todayReviewModeHref(data, clubSort, value)}
-              aria-current={mode === value ? "page" : undefined}
-              className="ios-route-tab focus-aaa inline-flex min-w-0 flex-1 items-center justify-center outline-none"
-            >
-              {value === "clean" ? "Trusted shots" : "All imported"}
-            </Link>
-          ))}
-        </nav>
-      </div>
-      <dl>
-        <TodayReviewControlRow label="Distance" value="Carry or total in Charts" />
-        <TodayReviewControlRow
-          label="Direction"
-          value="Centreline; no separate target offset was imported"
-        />
-        <TodayReviewControlRow
-          label="Values"
-          value="Provider rows normalised to the stored yard and mph schema"
-        />
-      </dl>
-      {sessionId ? (
-        <div className="px-4 py-3">
-          <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
-            <Link href={`/analyse/session-impact?sessionId=${encodeURIComponent(sessionId)}`}>
-              Simulate outlier exclusions
-            </Link>
-          </Button>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function TodayReviewControlRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="ios-grouped-row grid grid-cols-[auto_minmax(0,1fr)] gap-3 px-4 py-3">
-      <dt className="text-[13px] text-muted-foreground">{label}</dt>
-      <dd className="text-right text-[13px] font-medium leading-5">{value}</dd>
-    </div>
   );
 }
 
@@ -965,6 +288,7 @@ function TodayDesktopDashboard({
   chartPatternInsight,
   comparisons,
   clubSort,
+  reviewMode,
   activeFilterChips,
   linkedPracticePlan,
 }: {
@@ -976,6 +300,7 @@ function TodayDesktopDashboard({
   chartPatternInsight: string;
   comparisons: ClubDayComparison[];
   clubSort: ClubSort;
+  reviewMode: PracticeReviewMode;
   activeFilterChips: { label: string; href: string }[];
   linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
 }) {
@@ -984,7 +309,6 @@ function TodayDesktopDashboard({
   return (
     <DesktopWorkbenchLayout
       scope="today"
-      className="hidden lg:grid"
       railBreakpoint="wide"
       rail={
         <DesktopInsightRail
@@ -1025,7 +349,10 @@ function TodayDesktopDashboard({
                 View shot rows
               </Link>
             </Button>
-            <Button asChild className="bg-emerald-700 text-white hover:bg-emerald-800">
+            <Button
+              asChild
+              className="bg-[var(--status-success-surface)] text-primary-foreground hover:bg-[var(--status-success-surface)]"
+            >
               <Link href="/import" prefetch={false}>
                 <Upload className="size-4" />
                 Import CSV
@@ -1086,16 +413,16 @@ function TodayDesktopDashboard({
           </TabsContent>
 
           <TabsContent value="evidence" className="grid min-w-0 gap-5">
-            <TodayDesktopFilterBar data={data} activeFilterChips={activeFilterChips} />
+            <TodayDesktopFilterBar
+              data={data}
+              activeFilterChips={activeFilterChips}
+              reviewMode={reviewMode}
+              clubSort={clubSort}
+            />
             {hasShots ? (
               <>
                 <SessionSignalStrip data={data} />
                 <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
-                <TodayHighlightsPanel
-                  stats={data.clubStats}
-                  shots={data.shots}
-                  bestStraightShots={data.bestStraightShots}
-                />
                 <div className="grid items-start gap-5 xl:grid-cols-2">
                   <TodaySocialLine
                     data={data}
@@ -1112,17 +439,22 @@ function TodayDesktopDashboard({
             {data.dataCleaning.excludedShotCount > 0 ? (
               <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
             ) : (
-              <section className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-5">
-                <div className="flex items-center gap-2 text-emerald-950">
+              <section className="rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-5">
+                <div className="flex items-center gap-2 text-[var(--status-success-foreground)]">
                   <ShieldCheck className="size-5" />
                   <h2 className="font-semibold">All imported rows are in the trusted sample</h2>
                 </div>
-                <p className="mt-2 text-sm leading-6 text-emerald-900">
+                <p className="mt-2 text-sm leading-6 text-[var(--status-success-foreground)]">
                   No shot rows were held out of today&apos;s scoring, comparisons or highlights.
                 </p>
               </section>
             )}
-            <TodayDesktopFilterBar data={data} activeFilterChips={activeFilterChips} />
+            <TodayDesktopFilterBar
+              data={data}
+              activeFilterChips={activeFilterChips}
+              reviewMode={reviewMode}
+              clubSort={clubSort}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -1236,41 +568,78 @@ function todayInsightEvidence(
 function TodayDesktopFilterBar({
   data,
   activeFilterChips,
+  reviewMode,
+  clubSort,
   className = "",
 }: {
   data: TodayPracticeData;
   activeFilterChips: { label: string; href: string }[];
+  reviewMode: PracticeReviewMode;
+  clubSort: ClubSort;
   className?: string;
 }) {
+  const sessionId =
+    data.sessions.find((session) => session.id === data.filters.sessionId)?.id ??
+    data.sessions[0]?.id ??
+    null;
+
   return (
-    <section
-      id="scope"
-      className={`scroll-mt-28 rounded-xl border border-[#d9ded8] bg-white px-3 py-2 shadow-sm ${className}`}
-    >
-      <form className="grid gap-2 md:grid-cols-[auto_minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
-        <div className="hidden pb-2 pr-1 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground md:block">
-          Filters
-        </div>
-        <TodayScopeFields data={data} />
-        <Button type="submit" className="h-9 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-          Apply
-        </Button>
-        <Button
-          asChild
-          variant="ghost"
-          className="h-9 rounded-lg text-muted-foreground hover:text-slate-950"
-        >
-          <Link href="/today" prefetch={false}>
-            Reset
-          </Link>
-        </Button>
-      </form>
+    <div id="today-review-controls" className={`scroll-mt-28 ${className}`}>
+      <DataToolbar
+        resultLabel={`${integerFormatter.format(data.shots.length)} ${reviewMode === "clean" ? "trusted" : "imported"} shots`}
+        filters={
+          <form className="grid min-w-0 flex-1 gap-2 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
+            <input type="hidden" name="evidence" value={reviewMode === "raw" ? "raw" : ""} />
+            <TodayScopeFields data={data} />
+            <Button type="submit" className="h-9 rounded-lg">
+              Apply
+            </Button>
+            <Button asChild variant="ghost" className="h-9 rounded-lg">
+              <Link href="/today" prefetch={false}>
+                Reset
+              </Link>
+            </Button>
+          </form>
+        }
+        actions={
+          <>
+            <ToggleGroup
+              type="single"
+              value={reviewMode}
+              variant="outline"
+              spacing={0}
+              aria-label="Session evidence view"
+            >
+              <ToggleGroupItem value="clean" asChild>
+                <Link href={todayReviewModeHref(data, clubSort, "clean")} prefetch={false}>
+                  Trusted shots
+                </Link>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="raw" asChild>
+                <Link href={todayReviewModeHref(data, clubSort, "raw")} prefetch={false}>
+                  All imported
+                </Link>
+              </ToggleGroupItem>
+            </ToggleGroup>
+            {sessionId ? (
+              <Button asChild variant="outline" size="sm">
+                <Link
+                  href={`/analyse/session-impact?sessionId=${encodeURIComponent(sessionId)}`}
+                  prefetch={false}
+                >
+                  Simulate outlier exclusions
+                </Link>
+              </Button>
+            ) : null}
+          </>
+        }
+      />
       {activeFilterChips.length > 0 ? (
         <div className="mt-2">
           <ActiveFilterChips items={activeFilterChips} />
         </div>
       ) : null}
-    </section>
+    </div>
   );
 }
 
@@ -1299,17 +668,22 @@ function TodayDataCleaningImpactCard({
 
   return (
     <section
-      className={`grid gap-3 rounded-lg border border-emerald-100 bg-emerald-50/45 p-3 shadow-sm ${className}`}
+      className={`grid gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3 shadow-sm ${className}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-emerald-950">Data cleaning impact</p>
-          <p className="mt-1 text-sm leading-5 text-emerald-900">
+          <p className="text-sm font-semibold text-[var(--status-success-foreground)]">
+            Data cleaning impact
+          </p>
+          <p className="mt-1 text-sm leading-5 text-[var(--status-success-foreground)]">
             Rows held for review stay in raw history and are held out of clean scoring, session
             comparisons and highlights.
           </p>
         </div>
-        <Badge variant="outline" className="border-emerald-200 bg-white/80 text-emerald-800">
+        <Badge
+          variant="outline"
+          className="border-[var(--status-success-border)] bg-card/80 text-[var(--status-success-foreground)]"
+        >
           {integerFormatter.format(data.dataCleaning.excludedShotCount)} held out
         </Badge>
       </div>
@@ -1328,13 +702,13 @@ function TodayDataCleaningImpactCard({
         />
         <DataCleaningMetric label="Reason" value={data.dataCleaning.reasonLabel} />
       </div>
-      <div className="grid gap-2 rounded-lg border border-emerald-100 bg-white/75 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <p className="font-semibold leading-5 text-emerald-950">
+      <div className="grid gap-2 rounded-lg border border-[var(--status-success-border)] bg-card/75 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <p className="font-semibold leading-5 text-[var(--status-success-foreground)]">
           Impact: carry {formatImpactDelta(carryDelta, "yd")} · session score{" "}
           {formatImpactDelta(scoreDelta, "points")} · scoring control{" "}
           {formatImpactDelta(scoringDelta, "points")}
         </p>
-        <p className="leading-5 text-emerald-900">
+        <p className="leading-5 text-[var(--status-success-foreground)]">
           {verdictUnchanged
             ? `Verdict unchanged: ${cleanHeadline}.`
             : `Verdict moved from ${rawHeadline} to ${cleanHeadline}.`}
@@ -1346,7 +720,7 @@ function TodayDataCleaningImpactCard({
             <Badge
               key={item.clubType}
               variant="outline"
-              className="border-emerald-200 bg-white/80 text-emerald-900"
+              className="border-[var(--status-success-border)] bg-card/80 text-[var(--status-success-foreground)]"
             >
               {item.clubLabel}: {item.cleanShotCount}/{item.importedShotCount} clean
             </Badge>
@@ -1354,7 +728,7 @@ function TodayDataCleaningImpactCard({
         </div>
       ) : null}
       {planNote ? (
-        <p className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
+        <p className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-3 py-2 text-sm font-medium leading-5 text-[var(--status-warning-foreground)]">
           {planNote}
         </p>
       ) : null}
@@ -1364,11 +738,11 @@ function TodayDataCleaningImpactCard({
 
 function DataCleaningMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-emerald-100 bg-white/80 px-3 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-emerald-700">
+    <div className="min-w-0 rounded-lg border border-[var(--status-success-border)] bg-card/80 px-3 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--status-success-foreground)]">
         {label}
       </p>
-      <p className="mt-1 truncate text-base font-semibold text-slate-950">{value}</p>
+      <p className="mt-1 truncate text-base font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -1444,26 +818,26 @@ function TodayPracticeModePanel({
   const progress = Math.round((readyCount / steps.length) * 100);
 
   return (
-    <DataPanel className="@container/today-mode h-full self-stretch gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+    <DataPanel className="@container/today-mode h-full self-stretch gap-0 border-border bg-card py-0 shadow-sm">
       <div className="grid h-full content-between gap-3 p-3 lg:p-4">
         <div className="today-mode-header flex flex-col gap-3">
           <div className="flex min-w-0 gap-3">
             <PracticeCardIllustration kind="target" tone="green" size="sm" />
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[#0B7A3B]">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">
                 Practice mode
               </p>
-              <h2 className="mt-1 text-xl font-semibold leading-tight tracking-normal text-slate-950">
+              <h2 className="mt-1 text-xl font-semibold leading-tight tracking-normal text-foreground">
                 Current loop
               </h2>
-              <p className="mt-1 text-sm font-medium leading-5 text-slate-600">
+              <p className="mt-1 text-sm font-medium leading-5 text-muted-foreground">
                 Drill, capture the next shots, then compare before sharing.
               </p>
             </div>
           </div>
           <Button
             asChild
-            className="h-10 rounded-lg bg-[#0B7A3B] px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(11,122,59,0.18)] hover:bg-[#064E3B]"
+            className="h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
           >
             <Link href={hasShots ? "/coach" : "/import"} prefetch={false}>
               {hasShots ? "Start drill" : "Import shots"}
@@ -1477,30 +851,33 @@ function TodayPracticeModePanel({
           <PracticeLoopRow label="Next action" step={nextStep} index={1} />
         </div>
 
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2">
-          <div className="flex items-center justify-between gap-3 text-xs font-semibold text-emerald-950">
+        <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-2">
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold text-[var(--status-success-foreground)]">
             <span>Progress</span>
             <span>{readyCount}/5 ready</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-card">
             <span
-              className="block h-full rounded-full bg-emerald-500"
+              className="block h-full rounded-full bg-[var(--status-success-foreground)]"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
-        <Collapsible className="group rounded-lg border border-slate-200 bg-white">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50"
-            >
-              <span>Full 5-step workflow</span>
-              <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-            </button>
+        <Collapsible className="group rounded-lg border border-border bg-card">
+          <CollapsibleTrigger
+            type="button"
+            data-variant="ghost"
+            className={buttonVariants({
+              variant: "ghost",
+              className:
+                "h-auto w-full cursor-pointer justify-between gap-3 rounded-none px-3 py-2.5 text-left text-sm font-semibold text-muted-foreground",
+            })}
+          >
+            <span>Full 5-step workflow</span>
+            <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
           </CollapsibleTrigger>
-          <CollapsibleContent className="grid gap-2 border-t border-slate-100 p-3">
+          <CollapsibleContent className="grid gap-2 border-t border-border p-3">
             {steps.map((step, index) => {
               const card = <PracticeStepCard step={step} index={index} />;
 
@@ -1531,14 +908,14 @@ function PracticePlanFollowedCard({
   if (!plan) {
     return (
       <section
-        className={`@container/today-plan h-full rounded-lg border border-[#E5E7EB] bg-white p-3 ${className}`}
+        className={`@container/today-plan h-full rounded-lg border border-border bg-card p-3 ${className}`}
       >
         <div className="today-plan-grid grid h-full grid-rows-[auto_1fr_auto] gap-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-[#050505]">Practice plan link</p>
+            <p className="text-sm font-semibold text-foreground">Practice plan link</p>
             <StatusPill tone="slate">Waiting</StatusPill>
           </div>
-          <p className="text-sm leading-5 text-[#6B7280]">
+          <p className="text-sm leading-5 text-muted-foreground">
             Complete a saved Practice Planner session and link the import to compare plan against
             actual results.
           </p>
@@ -1577,7 +954,7 @@ function PracticePlanFollowedCard({
             {planResult ? `${planResult.scoreLabel} - ${planResult.detail}` : plan.verdict}
           </p>
           {cleanSampleNote ? (
-            <p className="mt-2 rounded-lg border border-white/65 bg-white/70 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+            <p className="mt-2 rounded-lg border border-border bg-card/70 px-3 py-2 text-sm font-medium leading-5 text-muted-foreground">
               {cleanSampleNote}
             </p>
           ) : null}
@@ -1606,14 +983,14 @@ function PracticeLoopRow({
   index: number;
 }) {
   const content = (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-sm">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-muted px-3 py-2.5 text-sm">
       <span className={practiceStepNumberClass(step.status)}>{index + 1}</span>
       <span className="min-w-0">
         <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           {label}
         </span>
-        <span className="mt-0.5 block truncate font-semibold text-slate-950">{step.title}</span>
-        <span className="mt-0.5 block line-clamp-2 text-xs leading-4 text-slate-600">
+        <span className="mt-0.5 block truncate font-semibold text-foreground">{step.title}</span>
+        <span className="mt-0.5 block line-clamp-2 text-xs leading-4 text-muted-foreground">
           {step.detail}
         </span>
       </span>
@@ -1636,7 +1013,7 @@ function PracticeStepCard({ step, index }: { step: PracticeFlowStep; index: numb
 
   return (
     <article
-      className={`grid min-h-24 content-start gap-2 rounded-lg border bg-white p-3 text-sm transition-colors hover:border-emerald-200 ${practiceStepCardClass(
+      className={`grid min-h-24 content-start gap-2 rounded-lg border bg-card p-3 text-sm transition-colors hover:border-[var(--status-success-border)] ${practiceStepCardClass(
         step.status,
       )}`}
     >
@@ -1647,8 +1024,8 @@ function PracticeStepCard({ step, index }: { step: PracticeFlowStep; index: numb
       <div className="flex items-center gap-3">
         <PracticeCardIllustration kind={step.icon} tone={visualTone} size="sm" />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold leading-5 text-slate-950">{step.title}</p>
-          <p className="mt-1 leading-5 text-slate-600">{step.detail}</p>
+          <p className="font-semibold leading-5 text-foreground">{step.title}</p>
+          <p className="mt-1 leading-5 text-muted-foreground">{step.detail}</p>
         </div>
       </div>
     </article>
@@ -1658,7 +1035,7 @@ function PracticeStepCard({ step, index }: { step: PracticeFlowStep; index: numb
 function PracticeStepStatus({ status }: { status: PracticeCardStatus }) {
   if (status === "ready") {
     return (
-      <span className="grid size-5 place-items-center rounded-full bg-[#0B7A3B] text-white">
+      <span className="grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
         <svg viewBox="0 0 20 20" aria-hidden="true" className="size-3.5" fill="none">
           <path
             d="M5.2 10.2 8.4 13.4 14.8 6.6"
@@ -1675,7 +1052,7 @@ function PracticeStepStatus({ status }: { status: PracticeCardStatus }) {
   return (
     <span
       className={`size-5 rounded-full border-2 border-dashed ${
-        status === "needed" ? "border-amber-600/70" : "border-slate-500/70"
+        status === "needed" ? "border-[var(--status-warning-border)]" : "border-border"
       }`}
       aria-hidden="true"
     />
@@ -1866,7 +1243,7 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
       return `
         .today-review-page:has([data-club-hover="${club}"]:hover) [data-dispersion-club="${club}"] {
           opacity: 1;
-          filter: drop-shadow(0 0 5px rgba(15, 23, 42, 0.28));
+          filter: drop-shadow(0 0 5px color-mix(in srgb, var(--foreground) 28%, transparent));
         }
       `;
     })
@@ -1881,10 +1258,10 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
         opacity: 0.18;
       }
       .today-review-page [data-club-hover]:hover {
-        background: rgba(248, 250, 252, 0.92);
+        background: color-mix(in srgb, var(--muted) 92%, transparent);
       }
       .today-review-page [data-club-hover]:hover td:first-child {
-        color: #334155;
+        color: var(--foreground);
       }
       .today-practice-grid-has-prescription {
         grid-template-areas:
@@ -1905,16 +1282,6 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
       }
       .today-practice-plan {
         grid-area: plan;
-      }
-      @container today-highlight-list (min-width: 36rem) {
-        .today-highlight-card-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-      @container today-highlight-list (min-width: 54rem) {
-        .today-highlight-card-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
       }
       @container today-prescription (min-width: 36rem) {
         .today-prescription-grid {
@@ -1940,15 +1307,6 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
         .today-practice-grid-no-prescription {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-areas: "mode plan";
-        }
-        .today-highlights-grid {
-          grid-template-columns: repeat(12, minmax(0, 1fr));
-        }
-        .today-highlights-list {
-          grid-column: span 8 / span 8;
-        }
-        .today-highlights-rail {
-          grid-column: span 4 / span 4;
         }
         .today-summary-grid {
           grid-template-columns: 8rem minmax(0, 1fr);
@@ -2000,17 +1358,17 @@ function TodayVerdictHero({
 
   return (
     <section
-      className={`@container/today-hero overflow-hidden rounded-[20px] border border-[#d9ded8] bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf8_100%)] p-5 shadow-sm lg:p-6 ${className}`}
+      className={`@container/today-hero overflow-hidden rounded-[20px] border border-border bg-card p-5 shadow-sm lg:p-6 ${className}`}
     >
       <div className="grid min-w-0 items-start gap-5 @5xl/today-hero:grid-cols-[minmax(0,1.35fr)_minmax(21rem,0.65fr)]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill tone={verdictTone(data.overall.verdict)}>Session verdict</StatusPill>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+            <span className="rounded-full border border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
               {data.dateLabel}
             </span>
           </div>
-          <h1 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-[1.04] tracking-normal text-slate-950 @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
+          <h1 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-[1.04] tracking-normal text-foreground @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
             {heroVerdictTitle(data)}
           </h1>
           {storyChips.length > 0 ? (
@@ -2020,7 +1378,7 @@ function TodayVerdictHero({
               ))}
             </div>
           ) : null}
-          <p className="mt-3 max-w-3xl text-base font-medium leading-6 text-slate-700">
+          <p className="mt-3 max-w-3xl text-base font-medium leading-6 text-muted-foreground">
             {reviewNarrative(data, linkedPracticePlan)}
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -2127,15 +1485,19 @@ function VerdictStoryCard({
   return (
     <div className={`min-h-28 rounded-lg border px-3 py-2.5 shadow-sm ${verdictCardClass(tone)}`}>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
+        <p
+          className={`text-xs font-semibold uppercase tracking-[0.08em] ${reviewLabelClass(tone)}`}
+        >
+          {label}
+        </p>
         <span className={`grid size-8 place-items-center rounded-full ${reviewIconClass(tone)}`}>
           {icon}
         </span>
       </div>
-      <p className="mt-2 text-xl font-semibold leading-tight tracking-normal text-slate-950">
+      <p className="mt-2 text-xl font-semibold leading-tight tracking-normal text-foreground">
         {value}
       </p>
-      <p className="mt-1 text-sm font-medium leading-5 text-slate-700">{detail}</p>
+      <p className="mt-1 text-sm font-medium leading-5 text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -2156,10 +1518,12 @@ function PracticeScoreHeroCard({
     <div className={`rounded-lg border px-4 py-3 shadow-sm ${verdictCardClass(score.tone)}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
+          <p
+            className={`text-xs font-semibold uppercase tracking-[0.08em] ${reviewLabelClass(score.tone)}`}
+          >
             Practice usefulness
           </p>
-          <p className="mt-1 text-sm font-medium text-slate-700">
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
             How useful the session was; scoring control and planned-drill result stay separate.
           </p>
         </div>
@@ -2170,12 +1534,14 @@ function PracticeScoreHeroCard({
         </span>
       </div>
       <div className="mt-3 flex items-end gap-2">
-        <p className="text-5xl font-semibold leading-none tracking-normal text-slate-950">
+        <p className="text-5xl font-semibold leading-none tracking-normal text-foreground">
           {score.score}
         </p>
-        <p className="pb-1 text-xl font-semibold text-slate-700">/100</p>
+        <p className="pb-1 text-xl font-semibold text-muted-foreground">/100</p>
       </div>
-      <p className="mt-1 text-sm font-semibold text-slate-700">{score.sessionQualityLabel}</p>
+      <p className="mt-1 text-sm font-semibold text-muted-foreground">
+        {score.sessionQualityLabel}
+      </p>
       <div className={`mt-3 grid gap-2 ${planResult ? "grid-cols-2" : "grid-cols-3"}`}>
         <ScoreMiniMetric label="Lateral window" value={score.playableRateLabel} />
         <ScoreMiniMetric label="Strike quality" value={`${score.strikeScore}/10`} />
@@ -2185,7 +1551,7 @@ function PracticeScoreHeroCard({
         />
         {planResult ? <ScoreMiniMetric label="Planned drill" value={planResult.label} /> : null}
       </div>
-      <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+      <p className="mt-3 rounded-lg border border-border bg-card/65 px-3 py-2 text-sm font-medium leading-5 text-muted-foreground">
         {reliableReadout.label}: {reliable?.clubLabel ?? "building signal"}.{" "}
         {planResult ? planResult.detail : (reliableReadout.detail ?? score.sessionQualityDetail)}
       </p>
@@ -2195,11 +1561,11 @@ function PracticeScoreHeroCard({
 
 function ScoreMiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-16 rounded-lg border border-white/60 bg-white/65 px-2.5 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+    <div className="min-h-16 rounded-lg border border-border bg-card/65 px-2.5 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 truncate text-sm font-semibold text-slate-950">{value}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -2212,18 +1578,18 @@ function WhatChangedCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-3 shadow-sm ${className}`}>
+    <div className={`rounded-lg border border-border bg-card p-3 shadow-sm ${className}`}>
       <div className="today-summary-grid grid gap-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               Compared with prior same-club shots
             </p>
-            <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+            <h2 className="mt-1 text-xl font-semibold tracking-normal text-foreground">
               What changed
             </h2>
           </div>
-          <Route className="size-5 text-sky-600 @sm/today-summary:hidden" />
+          <Route className="size-5 text-[var(--status-information-foreground)] @sm/today-summary:hidden" />
         </div>
         <div className="grid gap-2 md:grid-cols-3">
           {items.map((item) => (
@@ -2231,11 +1597,13 @@ function WhatChangedCard({
               key={`${item.label}-${item.value}`}
               className={`rounded-lg border px-3 py-2 ${verdictCardClass(item.tone)}`}
             >
-              <p className="text-sm font-semibold text-slate-950">{item.label}</p>
-              <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+              <p className="text-sm font-semibold text-foreground">{item.label}</p>
+              <p className="mt-1 text-xl font-semibold tracking-normal text-foreground">
                 {item.value}
               </p>
-              <p className="mt-1 text-xs font-medium leading-4 text-slate-600">{item.detail}</p>
+              <p className="mt-1 text-xs font-medium leading-4 text-muted-foreground">
+                {item.detail}
+              </p>
             </div>
           ))}
         </div>
@@ -2257,10 +1625,12 @@ function DriverHealthCard({
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">
+          <p
+            className={`text-xs font-semibold uppercase tracking-[0.08em] ${reviewLabelClass(summary.tone)}`}
+          >
             Driver delivery
           </p>
-          <h2 className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
+          <h2 className="mt-1 text-xl font-semibold tracking-normal text-foreground">
             {summary.status}
           </h2>
         </div>
@@ -2277,11 +1647,11 @@ function DriverHealthCard({
         <DriverHealthMetric label="Modelled face" value={formatDegrees(summary.faceAngle)} />
         <DriverHealthMetric label="Modelled F-to-P" value={formatDegrees(summary.faceToPath)} />
       </div>
-      <p className="mt-3 rounded-lg border border-white/60 bg-white/65 px-3 py-2 text-sm font-medium leading-5 text-slate-800">
+      <p className="mt-3 rounded-lg border border-border bg-card/65 px-3 py-2 text-sm font-medium leading-5 text-muted-foreground">
         {summary.detail}
       </p>
       {summary.totalShotCount > 0 ? (
-        <p className="mt-2 text-xs font-medium leading-5 text-slate-700">
+        <p className="mt-2 text-xs font-medium leading-5 text-muted-foreground">
           Delivery evidence: {summary.measuredShotCount}/{summary.totalShotCount} driver rows had
           measured club data. Face and face-to-path are modelled from path and launch direction.
         </p>
@@ -2292,11 +1662,11 @@ function DriverHealthCard({
 
 function DriverHealthMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/60 bg-white/65 px-2.5 py-2">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+    <div className="rounded-lg border border-border bg-card/65 px-2.5 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-base font-semibold tabular-nums text-slate-950">{value}</p>
+      <p className="mt-1 text-base font-semibold tabular-nums text-foreground">{value}</p>
     </div>
   );
 }
@@ -2308,13 +1678,13 @@ function SessionCoachingCard({ summary }: { summary: SessionCoachingSummary }) {
   const opportunityTone = deltaTone(opportunityEffect, "higher");
 
   return (
-    <div className="@container/session-coaching h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="@container/session-coaching h-full rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Session coaching
           </p>
-          <h2 className="mt-1 text-lg font-semibold tracking-normal text-slate-950">
+          <h2 className="mt-1 text-lg font-semibold tracking-normal text-foreground">
             Strike quality vs scoring control
           </h2>
         </div>
@@ -2354,7 +1724,7 @@ function SessionCoachingCard({ summary }: { summary: SessionCoachingSummary }) {
           tone="pink"
         />
       </div>
-      <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-sm font-medium leading-5 text-amber-950">
+      <p className="mt-3 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-3 py-2 text-sm font-medium leading-5 text-[var(--status-warning-foreground)]">
         {summary.opportunityCause} {summary.opportunityTarget}
       </p>
     </div>
@@ -2374,11 +1744,15 @@ function QualityReadoutCard({
 }) {
   return (
     <div className={`rounded-lg border px-3 py-2 ${verdictCardClass(tone)}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-75">{label}</p>
-      <p className="mt-1 text-2xl font-semibold leading-tight tracking-normal text-slate-950">
+      <p className={`text-xs font-semibold uppercase tracking-[0.08em] ${reviewLabelClass(tone)}`}>
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold leading-tight tracking-normal text-foreground">
         {value}
       </p>
-      <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-slate-700">{detail}</p>
+      <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-muted-foreground">
+        {detail}
+      </p>
     </div>
   );
 }
@@ -2395,17 +1769,21 @@ function CoachingReadoutBlock({
   tone: ReviewTone;
 }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+    <div className="rounded-lg border border-border bg-muted px-3 py-2">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {label}
+        </p>
         <span
           className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${reviewStatusClass(tone)}`}
         >
           {tone === "green" ? "Maintain" : "Focus"}
         </span>
       </div>
-      <p className="mt-1 text-lg font-semibold tracking-normal text-slate-950">{value}</p>
-      <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-slate-600">{detail}</p>
+      <p className="mt-1 text-lg font-semibold tracking-normal text-foreground">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs font-medium leading-4 text-muted-foreground">
+        {detail}
+      </p>
     </div>
   );
 }
@@ -2414,27 +1792,27 @@ function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
   const visibleItems = items.slice(0, 3);
 
   return (
-    <div className="h-full rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="h-full rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             Confidence meter
           </p>
-          <h2 className="mt-1 text-lg font-semibold tracking-normal text-slate-950">
+          <h2 className="mt-1 text-lg font-semibold tracking-normal text-foreground">
             Scoring trust
           </h2>
         </div>
-        <ShieldCheck className="size-5 text-emerald-700" />
+        <ShieldCheck className="size-5 text-[var(--status-success-foreground)]" />
       </div>
       <div className="mt-3 grid gap-2">
         {items.length > 0 ? (
           visibleItems.map((item) => (
             <div
               key={item.clubLabel}
-              className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2"
+              className="rounded-lg border border-border bg-muted px-3 py-2"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <p className="font-semibold text-slate-950">{item.clubLabel}</p>
+                <p className="font-semibold text-foreground">{item.clubLabel}</p>
                 <span
                   className={`max-w-full rounded-full px-2 py-0.5 text-right text-[11px] font-semibold leading-4 ${reviewStatusClass(
                     item.tone,
@@ -2443,19 +1821,19 @@ function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
                   {item.label}
                 </span>
               </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-card">
                 <span
                   className={`block h-full rounded-full ${rateBarClass(item.tone)}`}
                   style={{ width: `${clamp(item.score ?? 0, 0, 100)}%` }}
                 />
               </div>
-              <p className="mt-2 line-clamp-2 text-xs font-medium leading-4 text-slate-600">
+              <p className="mt-2 line-clamp-2 text-xs font-medium leading-4 text-muted-foreground">
                 {item.reason}
               </p>
             </div>
           ))
         ) : (
-          <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-3 text-sm font-medium text-slate-600">
+          <div className="rounded-lg border border-border bg-muted px-3 py-3 text-sm font-medium text-muted-foreground">
             Confidence appears once this review has club-level shot data.
           </div>
         )}
@@ -2471,8 +1849,8 @@ function ConfidenceMeterCard({ items }: { items: ConfidenceMeterItem[] }) {
 
 function HeroScopePill({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs shadow-sm">
-      <span className="font-semibold text-slate-950">{label}</span>
+    <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-3 py-1.5 text-xs shadow-sm">
+      <span className="font-semibold text-foreground">{label}</span>
       <span className="text-muted-foreground">{value}</span>
     </span>
   );
@@ -2870,15 +2248,15 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
   const focus = practiceFocus(data);
 
   return (
-    <DataPanel className="@container/today-prescription flex h-full flex-col self-stretch gap-0 border-[#d9ded8] bg-white py-0 shadow-[0_14px_36px_rgba(15,23,42,0.06)]">
+    <DataPanel className="@container/today-prescription flex h-full flex-col self-stretch gap-0 border-border bg-card py-0 shadow-sm">
       <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-start sm:justify-between lg:px-4">
         <div className="flex min-w-0 gap-3">
           <PracticeCardIllustration kind="target" tone="green" size="sm" />
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold leading-tight tracking-normal text-slate-950">
+            <h2 className="text-xl font-semibold leading-tight tracking-normal text-foreground">
               Latest practice prescription
             </h2>
-            <p className="mt-1 text-sm font-medium leading-5 text-slate-600">
+            <p className="mt-1 text-sm font-medium leading-5 text-muted-foreground">
               A simple drill target from the session pattern.
             </p>
           </div>
@@ -2888,7 +2266,7 @@ function TodayPracticePrescription({ data }: { data: TodayPracticeData }) {
             asChild
             size="sm"
             variant="outline"
-            className="h-9 rounded-lg border-[#0B7A3B] bg-white px-3 text-sm font-semibold text-[#0B7A3B] shadow-sm hover:bg-emerald-50 hover:text-[#064E3B]"
+            className="h-9 rounded-lg border-border bg-card px-3 text-sm font-semibold text-primary shadow-sm hover:bg-[var(--status-success-surface)] hover:text-primary"
           >
             <Link href="/coach" prefetch={false}>
               <Dumbbell className="size-4" />
@@ -2937,14 +2315,14 @@ function PrescriptionBlock({
 }) {
   return (
     <div
-      className={`flex min-h-24 items-center gap-3 rounded-lg border px-3 py-2.5 shadow-[0_8px_22px_rgba(15,23,42,0.035)] ${prescriptionToneClass(
+      className={`flex min-h-24 items-center gap-3 rounded-lg border px-3 py-2.5 shadow-sm ${prescriptionToneClass(
         tone,
       )}`}
     >
       <PracticeCardIllustration kind={icon} tone={tone} size="sm" />
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold uppercase tracking-[0.08em]">{label}</p>
-        <p className="mt-1.5 text-sm font-medium leading-5 text-slate-950">{value}</p>
+        <p className="mt-1.5 text-sm font-medium leading-5 text-foreground">{value}</p>
       </div>
     </div>
   );
@@ -2970,8 +2348,8 @@ function ClubPerformancePanel({
       />
       <CardContent className="space-y-3">
         <ClubPerformanceSummaryCards data={data} />
-        <div className="flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium leading-5 text-emerald-950">
+        <div className="flex flex-col gap-3 rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium leading-5 text-[var(--status-success-foreground)]">
             Latest read: {clubPerformanceRead(data)}
           </p>
           <ClubSortControls data={data} activeSort={sort} />
@@ -2993,56 +2371,6 @@ function ClubPerformancePanel({
           label="Club performance comparison table"
           stickyFirstColumn
           className="[&_[data-slot=scroll-area-viewport]]:overflow-x-hidden [&_[data-slot=table-container]]:overflow-x-visible"
-          mobile={
-            <MobileHorizontalRail
-              title="Club performance"
-              description="This session against up to 50 earlier clean shots for the same club."
-            >
-              {comparisons.map((comparison) => (
-                <MobileDataCard
-                  key={comparison.clubType}
-                  title={comparison.clubLabel}
-                  subtitle={`${comparison.today.shotCount}/${comparison.previous.shotCount} shots`}
-                  action={
-                    <Badge className={clubComparisonBadgeClass(comparison)}>
-                      {clubComparisonCallLabel(comparison)}
-                    </Badge>
-                  }
-                >
-                  <DataPair
-                    label="Carry"
-                    value={formatDeltaPair(
-                      comparison.today.carryAverageYd,
-                      comparison.carryDeltaYd,
-                      "yd",
-                      true,
-                    )}
-                  />
-                  <DataPair
-                    label="Offline"
-                    value={formatDeltaPair(
-                      comparison.today.offlineAverageYd,
-                      comparison.offlineDeltaYd,
-                      "yd",
-                      false,
-                    )}
-                  />
-                  <DataPair
-                    label="Straight"
-                    value={formatDeltaPair(
-                      comparison.today.straightRate,
-                      comparison.straightRateDelta,
-                      "pp",
-                      true,
-                    )}
-                  />
-                  <p className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm leading-5 text-muted-foreground">
-                    {clubComparisonSignalText(comparison)}
-                  </p>
-                </MobileDataCard>
-              ))}
-            </MobileHorizontalRail>
-          }
         >
           <Table
             className="w-full"
@@ -3055,11 +2383,11 @@ function ClubPerformancePanel({
               Latest practice club comparison table showing current and previous shot counts, carry,
               offline, straight, lateral-window and signal values.
             </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
               <TableRow>
                 <TableHead
                   data-column="club"
-                  className="sticky left-0 z-20 h-8 bg-white px-2 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 h-8 bg-card px-2 shadow-sm"
                 >
                   Club
                 </TableHead>
@@ -3137,8 +2465,8 @@ function SortLink({
       prefetch={false}
       className={
         active
-          ? "inline-flex min-h-8 items-center rounded-lg border border-emerald-800 bg-emerald-800 px-2.5 text-xs font-semibold text-white shadow-sm"
-          : "inline-flex min-h-8 items-center rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900"
+          ? "inline-flex min-h-8 items-center rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-2.5 text-xs font-semibold text-primary-foreground shadow-sm"
+          : "inline-flex min-h-8 items-center rounded-lg border border-border bg-card px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-[var(--status-success-border)] hover:bg-[var(--status-success-surface)] hover:text-[var(--status-success-foreground)]"
       }
       aria-current={active ? "true" : undefined}
     >
@@ -3195,17 +2523,17 @@ function ClubSummaryCard({
   subdetail?: string | null;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+    <div className="rounded-lg border border-border bg-card px-3 py-2.5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         <span className={`grid size-8 place-items-center rounded-full ${summaryIconClass(tone)}`}>
           {icon}
         </span>
       </div>
-      <p className="mt-2 text-xl font-semibold tracking-normal text-slate-950">
+      <p className="mt-2 text-xl font-semibold tracking-normal text-foreground">
         {comparison?.clubLabel ?? "--"}
       </p>
-      <p className="mt-1 text-sm text-slate-700">
+      <p className="mt-1 text-sm text-muted-foreground">
         {detail ??
           (comparison
             ? `${formatRate(comparison.today.straightRate)} straight · ${formatRate(comparison.today.playableRate)} in lateral window`
@@ -3229,13 +2557,13 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
           type="date"
           name="date"
           defaultValue={data.dateKey}
-          className="h-9 w-full min-w-0 bg-white/90 text-sm"
+          className="h-9 w-full min-w-0 bg-card/90 text-sm"
         />
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Session
         <Select name="session" defaultValue={data.filters.sessionId || "all"}>
-          <SelectTrigger className="h-9 w-full min-w-0 bg-white/90">
+          <SelectTrigger className="h-9 w-full min-w-0 bg-card/90">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -3251,7 +2579,7 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Club
         <Select name="club" defaultValue={data.filters.club || "all"}>
-          <SelectTrigger className="h-9 w-full min-w-0 bg-white/90">
+          <SelectTrigger className="h-9 w-full min-w-0 bg-card/90">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -3293,12 +2621,12 @@ function TodaySocialLine({
   return (
     <section
       id="social-context"
-      className={`scroll-mt-28 rounded-xl border bg-white p-3 shadow-sm ${className}`}
+      className={`scroll-mt-28 rounded-xl border bg-card p-3 shadow-sm ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Compare this session</p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
             {!socialContext.loaded
               ? `Social comparison is on demand. Load challenge context when ${bestClub} is ready for records, events or tour-style challenges.`
               : challenge
@@ -3352,12 +2680,12 @@ function TodayRawShotListPanel({
   return (
     <section
       id="shots"
-      className={`scroll-mt-28 rounded-xl border bg-white p-3 shadow-sm ${className}`}
+      className={`scroll-mt-28 rounded-xl border bg-card p-3 shadow-sm ${className}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Raw shot list</p>
-          <p className="mt-1 text-sm font-medium text-slate-800">
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
             {integerFormatter.format(data.rawShots.length)} imported rows ·{" "}
             {integerFormatter.format(data.shots.length)} clean selected.
           </p>
@@ -3369,17 +2697,20 @@ function TodayRawShotListPanel({
           </Link>
         </Button>
       </div>
-      <Collapsible className="group mt-2 rounded-lg border border-slate-200 bg-slate-50/55">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm font-semibold text-slate-800"
-          >
-            <span>Preview table</span>
-            <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-          </button>
+      <Collapsible className="group mt-2 rounded-lg border border-border bg-muted">
+        <CollapsibleTrigger
+          type="button"
+          data-variant="ghost"
+          className={buttonVariants({
+            variant: "ghost",
+            className:
+              "h-auto w-full cursor-pointer justify-between gap-3 rounded-none px-3 py-2 text-left text-sm font-semibold text-muted-foreground",
+          })}
+        >
+          <span>Preview table</span>
+          <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
-        <CollapsibleContent className="border-t border-slate-200 p-3">
+        <CollapsibleContent className="border-t border-border p-3">
           <div data-workbench-scope="today-raw-shot-preview" className="mb-3">
             <DesktopTableWorkbenchControls
               viewKey="today-raw-shot-preview"
@@ -3403,12 +2734,9 @@ function TodayRawShotListPanel({
                 Raw shot preview table for the selected latest-practice shots with session, club,
                 shot type, quality, carry, total, side, start, launch, ball speed and smash values.
               </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                 <TableRow>
-                  <TableHead
-                    data-column="session"
-                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                  >
+                  <TableHead data-column="session" className="sticky left-0 z-20 bg-card shadow-sm">
                     Session
                   </TableHead>
                   <TableHead data-column="shot" className="text-right">
@@ -3445,7 +2773,7 @@ function TodayRawShotListPanel({
                   <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
                     <TableCell
                       data-column="session"
-                      className="sticky left-0 z-10 max-w-52 truncate bg-white py-1.5 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 max-w-52 truncate bg-card py-1.5 shadow-sm"
                     >
                       {shot.fileName ?? shot.courseName ?? "Session"}
                     </TableCell>
@@ -3495,421 +2823,6 @@ function TodayRawShotListPanel({
   );
 }
 
-function TodayHighlightsPanel({
-  stats,
-  shots,
-  bestStraightShots,
-}: {
-  stats: ClubMainStats[];
-  shots: TodayPracticeShot[];
-  bestStraightShots: TodayPracticeShot[];
-}) {
-  const highlights = buildClubHighlights(stats, buildClubEquipmentMap(shots));
-  const records = highlights.filter((highlight) => highlight.kind !== "close");
-  const closeCalls = highlights.filter((highlight) => highlight.kind === "close").slice(0, 6);
-  const bestShot = bestStraightShots[0] ?? null;
-
-  return (
-    <DataPanel className="@container/today-highlights">
-      <SectionHeader
-        title="Latest practice highlights"
-        description={`${records.length} PB moments · ${closeCalls.length} close to PB`}
-        action={<Trophy className="size-5 text-amber-600" />}
-      />
-      <CardContent>
-        {stats.length === 0 || highlights.length === 0 ? (
-          <div className="apple-panel p-3 text-sm text-muted-foreground">
-            No PBs or close calls for this selection.
-          </div>
-        ) : (
-          <div
-            data-equal-height-row="today-highlights"
-            className="today-highlights-grid grid items-stretch gap-3"
-          >
-            <div className="today-highlights-list @container/today-highlight-list h-full">
-              {records.length > 0 ? (
-                <HighlightGroup title="PB moments" highlights={records.slice(0, 6)} />
-              ) : (
-                <div className="apple-panel p-3 text-sm text-muted-foreground">
-                  No PBs in this selection yet.
-                </div>
-              )}
-            </div>
-
-            <aside className="today-highlights-rail @container/today-highlight-rail grid h-full auto-rows-fr gap-3">
-              <section className="flex h-full flex-col gap-2 rounded-lg border border-sky-100 bg-sky-50/45 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
-                      Shot of the day
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Best single shot by offline and start line.
-                    </p>
-                  </div>
-                  <Crosshair className="size-4 text-sky-600" />
-                </div>
-                {bestShot ? (
-                  <div className="grid min-h-0 flex-1 gap-2 @sm/today-highlight-rail:grid-cols-[minmax(0,1fr)_12rem]">
-                    <StraightShotCard
-                      shot={bestShot}
-                      featured
-                      className="flex h-full flex-col justify-between"
-                    />
-                    <div
-                      data-media-container
-                      className="relative min-h-28 overflow-hidden rounded-lg border border-sky-200 bg-emerald-950"
-                    >
-                      <HeroFairwayVisual shot={bestShot} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-muted-foreground">
-                    No directional shot data for this selection.
-                  </div>
-                )}
-              </section>
-
-              <div className="h-full">
-                {closeCalls.length > 0 ? (
-                  <Collapsible className="group h-full rounded-lg border border-amber-100 bg-amber-50/35">
-                    <CollapsibleTrigger asChild>
-                      <button
-                        type="button"
-                        className="grid h-full min-h-36 w-full cursor-pointer content-center gap-3 px-3 py-3 text-left"
-                      >
-                        <span className="flex min-w-0 items-center justify-between gap-3">
-                          <span className="min-w-0">
-                            <span className="block text-sm font-semibold text-amber-950">
-                              Close to PB
-                            </span>
-                            <span className="block text-xs text-amber-800">
-                              {closeCalls.length} near misses from this practice.
-                            </span>
-                          </span>
-                          <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-amber-900">
-                            View all
-                            <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
-                          </span>
-                        </span>
-                        <span className="grid gap-1.5 @sm/today-highlight-rail:grid-cols-2">
-                          {closeCalls.slice(0, 4).map((highlight) => (
-                            <span
-                              key={`summary-${highlight.id}`}
-                              className="flex min-w-0 items-center justify-between gap-2 rounded-md border border-amber-100 bg-white/70 px-2 py-1.5"
-                            >
-                              <span className="min-w-0 truncate text-xs font-medium text-amber-900">
-                                {highlight.clubLabel} · {highlight.metricLabel}
-                              </span>
-                              <span className="shrink-0 text-sm font-semibold text-amber-950">
-                                {highlight.value}
-                              </span>
-                            </span>
-                          ))}
-                        </span>
-                      </button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="grid gap-2 border-t border-amber-100 p-3">
-                      {closeCalls.map((highlight) => (
-                        <HighlightCard key={highlight.id} highlight={highlight} />
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <div className="rounded-lg border border-amber-100 bg-amber-50/35 px-3 py-2.5 text-sm text-amber-900">
-                    No close-to-PB calls for this selection.
-                  </div>
-                )}
-              </div>
-            </aside>
-          </div>
-        )}
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function HighlightGroup({ title, highlights }: { title: string; highlights: ClubHighlight[] }) {
-  const gridClass =
-    title === "Close to PB"
-      ? "today-highlight-card-grid grid flex-1 auto-rows-fr items-stretch gap-2"
-      : highlights.length <= 4
-        ? "today-highlight-card-grid grid flex-1 auto-rows-fr items-stretch gap-3"
-        : "today-highlight-card-grid grid flex-1 auto-rows-fr items-stretch gap-3";
-
-  return (
-    <section className="flex h-full flex-col gap-2">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold uppercase tracking-normal text-muted-foreground">
-          {title}
-        </h3>
-        <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
-          {highlights.length}
-        </Badge>
-      </div>
-      <div data-equal-height-row="today-highlight-cards" className={gridClass}>
-        {highlights.map((highlight) => (
-          <HighlightCard key={highlight.id} highlight={highlight} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function HighlightCard({ highlight }: { highlight: ClubHighlight }) {
-  const close = highlight.kind === "close";
-  const statusLabel = highlight.kind === "tie" ? "Tied PB" : close ? "Close" : "New PB";
-  const imageAlt = clubImageAlt(highlight);
-
-  if (close) {
-    return (
-      <div className="flex h-full min-h-24 items-center gap-3 rounded-lg border border-amber-100 bg-amber-50/45 px-3 py-2.5">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-amber-200 bg-white/70 text-amber-800">
-              {highlight.clubLabel}
-            </Badge>
-            <span className="text-xs font-medium text-amber-800">{statusLabel}</span>
-          </div>
-          <div className="mt-2 flex items-end justify-between gap-3">
-            <p className="text-xs font-medium text-muted-foreground">{highlight.metricLabel}</p>
-            <p className="shrink-0 text-lg font-semibold tracking-normal text-slate-950">
-              {highlight.value}
-            </p>
-          </div>
-          <p className="mt-1 text-xs leading-5 text-slate-700">
-            {highlight.detail}
-            {highlight.target ? (
-              <span className="text-muted-foreground"> · {highlight.target}</span>
-            ) : null}
-          </p>
-        </div>
-        <ClubArtwork
-          clubType={highlight.clubType}
-          brand={highlight.clubBrand}
-          model={highlight.clubModel}
-          alt={imageAlt}
-          className="h-16 min-h-0 w-20 shrink-0 border-0 bg-transparent"
-          imageClassName="px-1 py-1"
-          sizes="88px"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full min-h-28 items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 shadow-sm">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3">
-          <Badge variant="outline" className="border-emerald-200 bg-white/70 text-emerald-700">
-            {highlight.clubLabel}
-          </Badge>
-          <span className="text-xs font-medium text-emerald-700">{statusLabel}</span>
-        </div>
-        <p className="mt-3 text-sm font-medium text-muted-foreground">{highlight.metricLabel}</p>
-        <p className="mt-1 text-xl font-semibold tracking-normal text-slate-950">
-          {highlight.value}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-slate-700">{highlight.detail}</p>
-        {highlight.target ? (
-          <p className="mt-1 text-xs font-medium text-muted-foreground">{highlight.target}</p>
-        ) : null}
-      </div>
-      <ClubArtwork
-        clubType={highlight.clubType}
-        brand={highlight.clubBrand}
-        model={highlight.clubModel}
-        alt={imageAlt}
-        className="h-20 min-h-0 w-24 shrink-0 border-0 bg-transparent sm:w-28"
-        imageClassName="px-1 py-1"
-        sizes="120px"
-      />
-    </div>
-  );
-}
-
-function clubImageAlt(highlight: ClubHighlight) {
-  return [highlight.clubBrand, highlight.clubModel, highlight.clubLabel].filter(Boolean).join(" ");
-}
-
-function buildClubHighlights(
-  stats: ClubMainStats[],
-  equipmentByClub: Map<string, { brand: string | null; model: string | null }>,
-) {
-  return stats
-    .flatMap((stat) =>
-      statHighlightDescriptors(stat).flatMap((descriptor) =>
-        buildMetricHighlights(stat, descriptor, equipmentByClub.get(stat.clubType)),
-      ),
-    )
-    .sort((left, right) => left.priority - right.priority || left.closeness - right.closeness);
-}
-
-function buildClubEquipmentMap(shots: TodayPracticeShot[]) {
-  const equipmentByClub = new Map<string, { brand: string | null; model: string | null }>();
-
-  for (const shot of shots) {
-    const current = equipmentByClub.get(shot.clubType);
-
-    if (!current || (!current.brand && !current.model)) {
-      equipmentByClub.set(shot.clubType, {
-        brand: shot.clubBrand,
-        model: shot.clubModel,
-      });
-    }
-  }
-
-  return equipmentByClub;
-}
-
-function statHighlightDescriptors(stat: ClubMainStats): ClubHighlightDescriptor[] {
-  return [
-    {
-      key: "total",
-      label: "Longest total",
-      metric: stat.totalYd,
-      unit: "yd",
-      direction: "higher",
-      closeThreshold: 5,
-      priority: 1,
-    },
-    {
-      key: "carry",
-      label: "Carry PB",
-      metric: stat.carryYd,
-      unit: "yd",
-      direction: "higher",
-      closeThreshold: 5,
-      priority: 2,
-    },
-    {
-      key: "ball-speed",
-      label: "Ball speed PB",
-      metric: stat.ballSpeedMph,
-      unit: "mph",
-      direction: "higher",
-      closeThreshold: 2,
-      priority: 3,
-    },
-    {
-      key: "club-speed",
-      label: "Club speed PB",
-      metric: stat.clubSpeedMph,
-      unit: "mph",
-      direction: "higher",
-      closeThreshold: 2,
-      priority: 4,
-    },
-    {
-      key: "smash",
-      label: "Smash PB",
-      metric: stat.smashFactor,
-      unit: "ratio",
-      direction: "higher",
-      closeThreshold: 0.03,
-      priority: 5,
-    },
-    {
-      key: "offline",
-      label: "Straightest shot",
-      metric: stat.offlineYd,
-      unit: "yd",
-      direction: "lower",
-      closeThreshold: 2,
-      priority: 6,
-    },
-  ];
-}
-
-function buildMetricHighlights(
-  stat: ClubMainStats,
-  descriptor: ClubHighlightDescriptor,
-  equipment: { brand: string | null; model: string | null } | undefined,
-): ClubHighlight[] {
-  const { metric, direction, unit } = descriptor;
-  if (metric.bestStatus === "new" || metric.bestStatus === "tied") {
-    return [
-      {
-        id: `${stat.clubType}-${descriptor.key}-${metric.bestStatus}`,
-        kind: metric.bestStatus === "new" ? "record" : "tie",
-        clubType: stat.clubType,
-        clubLabel: stat.clubLabel,
-        clubBrand: equipment?.brand ?? null,
-        clubModel: equipment?.model ?? null,
-        metricLabel: descriptor.label,
-        value: formatMetricValue(metric.todayBest, unit),
-        detail: recordDetail(metric, direction, unit),
-        priority: descriptor.priority,
-        closeness: 0,
-      },
-    ];
-  }
-
-  const gap = gapToBest(metric, direction);
-  if (gap === null || gap <= 0 || gap > descriptor.closeThreshold) {
-    return [];
-  }
-
-  if (direction === "lower" && isNumber(metric.allTimeBest) && metric.allTimeBest <= 0) {
-    return [];
-  }
-
-  return [
-    {
-      id: `${stat.clubType}-${descriptor.key}-close`,
-      kind: "close",
-      clubType: stat.clubType,
-      clubLabel: stat.clubLabel,
-      clubBrand: equipment?.brand ?? null,
-      clubModel: equipment?.model ?? null,
-      metricLabel: descriptor.label,
-      value: formatMetricValue(metric.todayBest, unit),
-      detail: `${formatMetricValue(gap, unit)} ${direction === "higher" ? "short of" : "away from"} your PB.`,
-      target: `Target: ${formatMetricValue(metric.allTimeBest, unit)}`,
-      priority: 20 + descriptor.priority,
-      closeness: gap / descriptor.closeThreshold,
-    },
-  ];
-}
-
-function recordDetail(metric: ClubMainStatMetric, direction: HighlightDirection, unit: MetricUnit) {
-  if (metric.bestStatus === "tied") {
-    return "Tied your previous best.";
-  }
-
-  const improvement = improvementOverPrevious(metric, direction);
-  if (improvement === null) {
-    return "New tracked best.";
-  }
-
-  const betterText = direction === "higher" ? "better than" : "tighter than";
-  return `${formatMetricValue(improvement, unit)} ${betterText} your previous best.`;
-}
-
-function gapToBest(metric: ClubMainStatMetric, direction: HighlightDirection) {
-  if (!isNumber(metric.todayBest) || !isNumber(metric.allTimeBest)) {
-    return null;
-  }
-
-  const gap =
-    direction === "higher"
-      ? metric.allTimeBest - metric.todayBest
-      : metric.todayBest - metric.allTimeBest;
-  return Math.round(gap * 100) / 100;
-}
-
-function improvementOverPrevious(metric: ClubMainStatMetric, direction: HighlightDirection) {
-  if (!isNumber(metric.todayBest) || !isNumber(metric.previousBest)) {
-    return null;
-  }
-
-  const improvement =
-    direction === "higher"
-      ? metric.todayBest - metric.previousBest
-      : metric.previousBest - metric.todayBest;
-  return improvement > 0 ? Math.round(improvement * 100) / 100 : null;
-}
-
 function ClubComparisonRow({
   comparison,
   bestClubType,
@@ -3930,7 +2843,7 @@ function ClubComparisonRow({
     >
       <TableCell
         data-column="club"
-        className={`sticky left-0 z-10 px-2 py-1.5 font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)] ${rowTone.stickyClass}`}
+        className={`sticky left-0 z-10 px-2 py-1.5 font-medium shadow-sm ${rowTone.stickyClass}`}
       >
         {comparison.clubLabel}
       </TableCell>
@@ -3986,22 +2899,6 @@ function ClubComparisonRow({
   );
 }
 
-function formatDeltaPair(
-  value: number | null,
-  delta: number | null,
-  unit: "yd" | "pp",
-  higherIsGood: boolean,
-) {
-  const direction = higherIsGood ? "higher" : "lower";
-
-  return (
-    <span className="inline-flex flex-col items-end leading-tight">
-      <span>{unit === "pp" ? formatRate(value) : formatYards(value)}</span>
-      <span className={deltaClass(delta, direction)}>{deltaText(delta, unit, true)}</span>
-    </span>
-  );
-}
-
 function buildSignalLines(comparison: ClubDayComparison) {
   if (isLowSampleComparison(comparison)) {
     return [clubComparisonSignalText(comparison)];
@@ -4036,7 +2933,7 @@ function clubComparisonBadgeClass(comparison: ClubDayComparison) {
   const readout = clubSessionBadgeReadout(comparison.clubType, comparison.today);
 
   if (readout.tone === "slate") {
-    return "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100";
+    return "border-border bg-muted text-muted-foreground hover:bg-muted";
   }
 
   return verdictToneBadgeClass(readout.tone);
@@ -4091,7 +2988,7 @@ function RateDeltaCell({
   return (
     <TableCell data-column={column} className="whitespace-normal px-2 py-1.5 text-right">
       <div className="font-medium">{formatRate(value)}</div>
-      <div className="ml-auto mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
+      <div className="ml-auto mt-1 h-1.5 w-20 overflow-hidden rounded-full bg-muted">
         <span
           className={`block h-full rounded-full ${rateBarClass(tone)}`}
           style={{ width: `${clamp(value ?? 0, 0, 100)}%` }}
@@ -4099,59 +2996,6 @@ function RateDeltaCell({
       </div>
       <div className={deltaClass(delta, direction)}>{deltaText(delta, "pp", true)}</div>
     </TableCell>
-  );
-}
-
-function StraightShotCard({
-  shot,
-  featured = false,
-  className = "",
-}: {
-  shot: TodayPracticeShot;
-  featured?: boolean;
-  className?: string;
-}) {
-  return (
-    <article
-      className={`${
-        featured
-          ? "rounded-lg border border-sky-200 bg-sky-50/70 px-3 py-2 shadow-sm"
-          : "rounded-lg border border-slate-200/80 bg-white px-3 py-2"
-      } ${className}`}
-    >
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <h4 className="text-sm font-semibold leading-tight text-slate-950">
-          {formatClubType(shot.clubType)}
-          {shot.shotNumber ? ` shot ${shot.shotNumber}` : ""}
-        </h4>
-        <Badge
-          variant="outline"
-          className="h-5 shrink-0 border-sky-200 bg-white px-1.5 text-[11px] font-medium text-sky-700"
-        >
-          {formatOfflineYards(shot.sideCarryYd)}
-        </Badge>
-      </div>
-      <p className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground">
-        {shotSessionLabel(shot)}
-      </p>
-      <dl className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-        <StraightShotMetric label="Carry" value={formatYards(shot.carryYd)} />
-        <StraightShotMetric label="Total" value={formatYards(shot.totalYd)} />
-        <StraightShotMetric label="Start" value={formatDegrees(shot.launchDirectionDeg)} />
-        <StraightShotMetric label="Ball" value={formatMph(shot.ballSpeedMph)} />
-      </dl>
-    </article>
-  );
-}
-
-function StraightShotMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline gap-1 text-xs">
-      <dt className="text-[10px] font-medium uppercase tracking-normal text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="font-semibold text-slate-950">{value}</dd>
-    </div>
   );
 }
 
@@ -5280,81 +4124,99 @@ function valueOrZero(value: number | null) {
 }
 
 function reviewIconClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
-  if (tone === "green") return "bg-emerald-50 text-emerald-700";
-  if (tone === "pink") return "bg-pink-50 text-pink-700";
-  if (tone === "amber") return "bg-amber-50 text-amber-800";
-  if (tone === "sky") return "bg-sky-50 text-sky-700";
-  return "bg-slate-100 text-slate-600";
+  if (tone === "green")
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "bg-[var(--status-error-surface)] text-destructive";
+  if (tone === "amber")
+    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
+  if (tone === "sky")
+    return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
+  return "bg-muted text-muted-foreground";
+}
+
+function reviewLabelClass(tone: ReviewTone) {
+  if (tone === "green") return "text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "text-destructive";
+  if (tone === "amber") return "text-[var(--status-warning-foreground)]";
+  if (tone === "sky") return "text-[var(--status-information-foreground)]";
+  return "text-foreground";
 }
 
 function reviewStatusClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
-  if (tone === "green") return "bg-emerald-50 text-emerald-700";
-  if (tone === "pink") return "bg-pink-50 text-pink-700";
-  if (tone === "amber") return "bg-amber-50 text-amber-800";
-  if (tone === "sky") return "bg-sky-50 text-sky-700";
-  return "bg-slate-100 text-slate-600";
+  if (tone === "green")
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "bg-[var(--status-error-surface)] text-destructive";
+  if (tone === "amber")
+    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
+  if (tone === "sky")
+    return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
+  return "bg-muted text-muted-foreground";
 }
 
 function practiceStepCardClass(status: PracticeCardStatus) {
   if (status === "ready") {
-    return "border-[#dbe4de] border-b-[#0B7A3B] shadow-[0_10px_24px_rgba(15,23,42,0.055),inset_0_-1px_0_#0B7A3B]";
+    return "border-border border-b-primary shadow-sm";
   }
 
   if (status === "needed") {
-    return "border-amber-200 border-b-amber-500 shadow-[0_8px_20px_rgba(146,64,14,0.06)]";
+    return "border-[var(--status-warning-border)] border-b-[var(--status-warning-border)] shadow-sm";
   }
 
-  return "border-[#d9ded8] border-b-slate-400 shadow-[0_8px_20px_rgba(15,23,42,0.045)]";
+  return "border-border border-b-border shadow-sm";
 }
 
 function practiceStepNumberClass(status: PracticeCardStatus) {
   if (status === "ready") {
-    return "grid size-8 place-items-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-800";
+    return "grid size-8 place-items-center rounded-full bg-[var(--status-success-surface)] text-sm font-semibold text-[var(--status-success-foreground)]";
   }
 
   if (status === "needed") {
-    return "grid size-8 place-items-center rounded-full bg-amber-50 text-sm font-semibold text-amber-800";
+    return "grid size-8 place-items-center rounded-full bg-[var(--status-warning-surface)] text-sm font-semibold text-[var(--status-warning-foreground)]";
   }
 
-  return "grid size-8 place-items-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700";
+  return "grid size-8 place-items-center rounded-full bg-muted text-sm font-semibold text-muted-foreground";
 }
 
 function practiceIllustrationClass(tone: PracticeCardTone) {
-  if (tone === "green") return "bg-emerald-50 text-emerald-700";
-  if (tone === "pink") return "bg-pink-50 text-pink-700";
-  if (tone === "amber") return "bg-amber-50 text-amber-800";
-  if (tone === "sky") return "bg-sky-50 text-sky-700";
-  return "bg-slate-100 text-slate-500";
+  if (tone === "green")
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "bg-[var(--status-error-surface)] text-destructive";
+  if (tone === "amber")
+    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
+  if (tone === "sky")
+    return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
+  return "bg-muted text-muted-foreground";
 }
 
 function prescriptionToneClass(tone: "green" | "sky" | "pink" | "amber") {
   if (tone === "green") {
-    return "border-emerald-100 bg-[linear-gradient(135deg,#f6fbf7_0%,#ffffff_100%)] text-emerald-800";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
   }
 
   if (tone === "pink") {
-    return "border-pink-100 bg-[linear-gradient(135deg,#fff5f8_0%,#ffffff_100%)] text-pink-800";
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive";
   }
 
   if (tone === "amber") {
-    return "border-amber-100 bg-[linear-gradient(135deg,#fff9ed_0%,#ffffff_100%)] text-amber-900";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
 
-  return "border-sky-100 bg-[linear-gradient(135deg,#f2f8ff_0%,#ffffff_100%)] text-sky-800";
+  return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
 }
 
 function summaryIconClass(tone: "green" | "pink" | "sky") {
-  if (tone === "green") return "bg-emerald-50 text-emerald-700";
-  if (tone === "pink") return "bg-pink-50 text-pink-700";
-  return "bg-sky-50 text-sky-700";
+  if (tone === "green")
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "bg-[var(--status-error-surface)] text-destructive";
+  return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
 }
 
 function rateBarClass(tone: "green" | "sky" | "pink" | "amber" | "slate") {
-  if (tone === "green") return "bg-emerald-500";
-  if (tone === "pink") return "bg-pink-500";
-  if (tone === "amber") return "bg-amber-500";
-  if (tone === "sky") return "bg-sky-500";
-  return "bg-slate-400";
+  if (tone === "green") return "bg-[var(--status-success-foreground)]";
+  if (tone === "pink") return "bg-destructive";
+  if (tone === "amber") return "bg-[var(--status-warning-foreground)]";
+  if (tone === "sky") return "bg-[var(--status-information-foreground)]";
+  return "bg-muted-foreground";
 }
 
 function clubRowTone(
@@ -5364,35 +4226,35 @@ function clubRowTone(
 ) {
   if (isLowSampleComparison(comparison)) {
     return {
-      rowClass: "bg-slate-50/70 text-slate-500 hover:bg-slate-50",
-      stickyClass: "bg-slate-50 text-slate-600",
+      rowClass: "bg-muted text-muted-foreground hover:bg-muted",
+      stickyClass: "bg-muted text-muted-foreground",
     };
   }
 
   if (comparison.clubType === focusClubType) {
     return {
-      rowClass: "bg-amber-50/45 hover:bg-amber-50",
-      stickyClass: "bg-amber-50",
+      rowClass: "bg-[var(--status-warning-surface)] hover:bg-[var(--status-warning-surface)]",
+      stickyClass: "bg-[var(--status-warning-surface)]",
     };
   }
 
   if (comparison.clubType === bestClubType) {
     return {
-      rowClass: "bg-emerald-50/35 hover:bg-emerald-50",
-      stickyClass: "bg-emerald-50",
+      rowClass: "bg-[var(--status-success-surface)] hover:bg-[var(--status-success-surface)]",
+      stickyClass: "bg-[var(--status-success-surface)]",
     };
   }
 
   if (comparison.verdict === "worse") {
     return {
-      rowClass: "hover:bg-pink-50/45",
-      stickyClass: "bg-white",
+      rowClass: "hover:bg-[var(--status-error-surface)]",
+      stickyClass: "bg-card",
     };
   }
 
   return {
-    rowClass: "hover:bg-slate-50/80",
-    stickyClass: "bg-white",
+    rowClass: "hover:bg-muted",
+    stickyClass: "bg-card",
   };
 }
 
@@ -5414,11 +4276,15 @@ function rateValueTone(
 }
 
 function verdictCardClass(tone: ReviewTone) {
-  if (tone === "green") return "border-emerald-100 bg-emerald-50/65 text-emerald-950";
-  if (tone === "pink") return "border-pink-100 bg-pink-50/65 text-pink-950";
-  if (tone === "amber") return "border-amber-100 bg-amber-50/70 text-amber-950";
-  if (tone === "sky") return "border-sky-100 bg-sky-50/70 text-sky-950";
-  return "border-slate-200 bg-slate-50 text-slate-950";
+  if (tone === "green")
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
+  if (tone === "pink")
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive";
+  if (tone === "amber")
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
+  if (tone === "sky")
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
+  return "border-border bg-muted text-foreground";
 }
 
 function verdictTone(verdict: TodayPracticeData["overall"]["verdict"]) {
@@ -5450,59 +4316,67 @@ function playableKpiTone(value: number | null) {
 }
 
 function practicePlanResultCardClass(tone: ReviewTone) {
-  if (tone === "green") return "border-emerald-200 bg-emerald-50/80";
-  if (tone === "pink") return "border-pink-200 bg-pink-50/75";
-  if (tone === "amber") return "border-amber-200 bg-amber-50/80";
-  if (tone === "sky") return "border-sky-200 bg-sky-50/75";
-  return "border-slate-200 bg-slate-50";
+  if (tone === "green")
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)]";
+  if (tone === "pink")
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)]";
+  if (tone === "amber")
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]";
+  if (tone === "sky")
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)]";
+  return "border-border bg-muted";
 }
 
 function practicePlanResultHeadingClass(tone: ReviewTone) {
-  if (tone === "green") return "text-emerald-950";
-  if (tone === "pink") return "text-pink-950";
-  if (tone === "amber") return "text-amber-950";
-  if (tone === "sky") return "text-sky-950";
-  return "text-slate-950";
+  if (tone === "green") return "text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "text-destructive";
+  if (tone === "amber") return "text-[var(--status-warning-foreground)]";
+  if (tone === "sky") return "text-[var(--status-information-foreground)]";
+  return "text-foreground";
 }
 
 function practicePlanResultBodyClass(tone: ReviewTone) {
-  if (tone === "green") return "text-emerald-900";
-  if (tone === "pink") return "text-pink-900";
-  if (tone === "amber") return "text-amber-900";
-  if (tone === "sky") return "text-sky-900";
-  return "text-slate-700";
+  if (tone === "green") return "text-[var(--status-success-foreground)]";
+  if (tone === "pink") return "text-destructive";
+  if (tone === "amber") return "text-[var(--status-warning-foreground)]";
+  if (tone === "sky") return "text-[var(--status-information-foreground)]";
+  return "text-muted-foreground";
 }
 
 function practicePlanResultButtonClass(tone: ReviewTone) {
   if (tone === "pink")
-    return "border-pink-200 text-pink-950 hover:border-pink-300 hover:bg-pink-50";
+    return "border-[var(--status-error-border)] text-destructive hover:border-[var(--status-error-border)] hover:bg-[var(--status-error-surface)]";
   if (tone === "amber") {
-    return "border-amber-200 text-amber-950 hover:border-amber-300 hover:bg-amber-50";
+    return "border-[var(--status-warning-border)] text-[var(--status-warning-foreground)] hover:border-[var(--status-warning-border)] hover:bg-[var(--status-warning-surface)]";
   }
-  if (tone === "sky") return "border-sky-200 text-sky-950 hover:border-sky-300 hover:bg-sky-50";
-  return "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100";
+  if (tone === "sky")
+    return "border-[var(--status-information-border)] text-[var(--status-information-foreground)] hover:border-[var(--status-information-border)] hover:bg-[var(--status-information-surface)]";
+  return "border-border bg-muted text-muted-foreground hover:bg-muted";
 }
 
 function verdictToneBadgeClass(tone: ReviewTone) {
   if (tone === "green") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] hover:bg-[var(--status-success-surface)]";
   }
 
-  if (tone === "pink") return "border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-50";
-  if (tone === "sky") return "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50";
-  if (tone === "amber") return "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50";
-  return "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100";
+  if (tone === "pink")
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive hover:bg-[var(--status-error-surface)]";
+  if (tone === "sky")
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] hover:bg-[var(--status-information-surface)]";
+  if (tone === "amber")
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] hover:bg-[var(--status-warning-surface)]";
+  return "border-border bg-muted text-muted-foreground hover:bg-muted";
 }
 
 function deltaClass(value: number | null, direction: "higher" | "lower") {
   const tone = deltaTone(value, direction);
   const color =
     tone === "green"
-      ? "text-emerald-800"
+      ? "text-[var(--status-success-foreground)]"
       : tone === "pink"
-        ? "text-pink-700"
+        ? "text-destructive"
         : tone === "amber"
-          ? "text-amber-800"
+          ? "text-[var(--status-warning-foreground)]"
           : "text-muted-foreground";
   return `text-xs ${color}`;
 }
@@ -5569,50 +4443,8 @@ function formatOfflineYards(value: number | null) {
   return `${numberFormatter.format(Math.abs(value))} yd offline`;
 }
 
-function shotSessionLabel(shot: TodayPracticeShot) {
-  const date = shortDateFormatter.format(shot.sessionDate);
-
-  if (shot.courseName) {
-    return `${shot.courseName} · ${date}`;
-  }
-
-  if (!shot.fileName) {
-    return `Range session · ${date}`;
-  }
-
-  const cleanName = shot.fileName
-    .replace(/\.[^.]+$/, "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const lowerName = cleanName.toLowerCase();
-  const label =
-    lowerName.includes("rapsodo") && lowerName.includes("range")
-      ? "Range session"
-      : titleCase(cleanName).slice(0, 36);
-
-  return `${label} · ${date}`;
-}
-
 function formatMph(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)} mph`;
-}
-
-function formatMetricValue(value: number | null, unit: MetricUnit) {
-  if (value === null) return "--";
-  return `${formatMetricNumber(value, unit)}${metricUnitSuffix(unit)}`;
-}
-
-function formatMetricNumber(value: number, unit: MetricUnit) {
-  return unit === "ratio" ? smashFormatter.format(value) : numberFormatter.format(value);
-}
-
-function metricUnitSuffix(unit: MetricUnit) {
-  if (unit === "yd") return " yd";
-  if (unit === "mph") return " mph";
-  if (unit === "deg") return "°";
-  if (unit === "ft") return " ft";
-  return "";
 }
 
 function formatDegrees(value: number | null) {
@@ -5646,10 +4478,10 @@ function formatClubOptionShotCount(club: TodayPracticeData["clubs"][number]) {
 
 function shotQualityBadgeClass(shot: TodayPracticeShot) {
   if (isShotExcluded(shot)) {
-    return "border-amber-200 bg-amber-50 text-amber-900";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
 
-  return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
 }
 
 function formatShotQualityLabel(shot: TodayPracticeShot) {
@@ -5740,14 +4572,6 @@ function delta(current: number | null, previous: number | null) {
   }
 
   return Math.round((current - previous) * 10) / 10;
-}
-
-function titleCase(value: string) {
-  return value
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
 }
 
 function clamp(value: number, min: number, max: number) {

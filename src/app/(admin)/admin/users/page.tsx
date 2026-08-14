@@ -1,21 +1,17 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, ShieldCheck, UserPlus, Zap } from "lucide-react";
 
-import {
-  deactivateAdminAccessAction,
-  grantAdminAccessAction,
-  grantLifetimeFullAction,
-} from "@/app/admin/actions";
+import { grantAdminAccessAction, grantLifetimeFullAction } from "@/app/admin/actions";
 import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
 import { AdminUserActions } from "@/app/admin/admin-user-actions";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
-  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -24,14 +20,6 @@ import {
   label,
   PlanBadge,
 } from "@/app/admin/admin-components";
-import { BottomSheet, MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +32,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getAdminUsers, requireAdminUser } from "@/lib/admin";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -117,38 +114,15 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const sortedUsers = sortAdminUsers(users, sortState);
   const adminCount = users.filter((user) => user.adminRole).length;
   const lifetimeCount = users.filter((user) => user.activePlan === "full").length;
-  const mobileView = parseAdminUserMobileView(params?.view);
-  const mobileUsers = sortedUsers.filter((user) => {
-    if (mobileView === "admins") return Boolean(user.adminRole);
-    if (mobileView === "paid") return user.activePlan !== "free";
-    return true;
-  });
 
   return (
     <PageShell>
-      <AdminMobileShell
-        title="Users"
-        active="/admin/users"
-        status={params?.adminStatus}
-        error={params?.adminError}
-      >
-        <AdminMobileUsers
-          users={mobileUsers}
-          allUsers={users}
-          actorUserId={actor.userId}
-          canManageOwners={canManageOwners}
-          query={params?.q ?? ""}
-          mobileView={mobileView}
-          sortState={sortState}
-        />
-      </AdminMobileShell>
-
-      <div className="hidden gap-3 lg:grid">
+      <div className="grid gap-3">
         <AdminNav active="/admin/users" />
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
-      <DesktopWorkbenchLayout scope="admin-users" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="admin-users">
         <AdminPageHeader
           eyebrow="Admin users"
           title="Users and access"
@@ -186,9 +160,9 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   name="q"
                   defaultValue={params?.q ?? ""}
                   placeholder="Email, name or username"
-                  className="h-10 rounded-xl bg-slate-50"
+                  className="h-10 rounded-xl bg-background"
                 />
-                <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                <Button type="submit" className="rounded-xl">
                   <Search className="size-4" />
                   Search
                 </Button>
@@ -206,12 +180,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                     name="email"
                     type="email"
                     placeholder="user@example.com"
-                    className="h-10 rounded-xl bg-slate-50"
+                    className="h-10 rounded-xl bg-background"
                     required
                   />
                   <AdminConfirmSubmitButton
                     type="submit"
-                    className="rounded-xl bg-[#111827] text-white"
+                    className="rounded-xl"
                     confirmTitle="Grant lifetime full access"
                     confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
                     confirmActionLabel="Grant full access"
@@ -233,11 +207,11 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   name="email"
                   type="email"
                   placeholder="user@example.com"
-                  className="h-10 rounded-xl bg-slate-50"
+                  className="h-10 rounded-xl bg-background"
                   required
                 />
                 <Select name="role" defaultValue="operator">
-                  <SelectTrigger className="w-full bg-slate-50" aria-label="Admin role">
+                  <SelectTrigger className="w-full bg-background" aria-label="Admin role">
                     <SelectValue placeholder="Choose admin role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -280,23 +254,23 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               stickyFirstColumn
               className="overflow-x-auto"
             >
-              <table
+              <Table
                 className="w-full min-w-[900px] text-left text-sm"
                 data-workbench-scope="admin-users"
                 data-workbench-export-table="admin-users"
                 aria-describedby="admin-users-table-summary"
               >
-                <caption id="admin-users-table-summary" className="sr-only">
+                <TableCaption id="admin-users-table-summary" className="sr-only">
                   Admin user accounts with plan, activity, admin role, creation date and actions.
-                </caption>
-                <thead className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                  <tr>
+                </TableCaption>
+                <TableHeader className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                  <TableRow>
                     <SortableAdminUserHead
                       columnId="user"
                       metric="user"
                       query={params?.q ?? ""}
                       sortState={sortState}
-                      className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                     />
                     <SortableAdminUserHead
                       columnId="plan"
@@ -322,313 +296,98 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                       query={params?.q ?? ""}
                       sortState={sortState}
                     />
-                    <th data-column="action" className="px-3 py-2 font-medium">
+                    <TableHead data-column="action" className="px-3 py-2 font-medium">
                       Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      tabIndex={0}
-                      className="focus-aaa border-b outline-none last:border-b-0"
-                    >
-                      <td
-                        data-column="user"
-                        className="sticky left-0 z-10 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedUsers.length > 0 ? (
+                    sortedUsers.map((user) => (
+                      <TableRow
+                        key={user.id}
+                        tabIndex={0}
+                        className="focus-aaa border-b outline-none last:border-b-0"
                       >
-                        <p className="font-medium">{user.displayName}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {user.email ?? "No email"}
-                        </p>
-                        {user.username ? (
-                          <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
-                        ) : null}
-                      </td>
-                      <td data-column="plan" className="px-3 py-3">
-                        <PlanBadge plan={user.activePlan} />
-                      </td>
-                      <td data-column="activity" className="px-3 py-3 text-muted-foreground">
-                        {user.sessionCount} sessions · {user.feedCount} cards
-                      </td>
-                      <td data-column="admin" className="px-3 py-3">
-                        {user.adminRole && canManageOwners && user.id !== actor.userId ? (
-                          <div className="flex flex-wrap gap-2">
-                            <Badge variant="secondary">{label(user.adminRole)}</Badge>
-                            <Badge variant="outline">{label(user.adminStatus ?? "active")}</Badge>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">No admin access</span>
-                        )}
-                      </td>
-                      <td data-column="created" className="px-3 py-3 text-xs text-muted-foreground">
-                        {formatDateTime(user.createdAt)}
-                      </td>
-                      <td data-column="action" className="px-3 py-3">
-                        <AdminUserActions
-                          user={{
-                            id: user.id,
-                            displayName: user.displayName,
-                            email: user.email,
-                            username: user.username,
-                            activePlan: user.activePlan,
-                            sessionCount: user.sessionCount,
-                            feedCount: user.feedCount,
-                            adminRole: user.adminRole,
-                            adminStatus: user.adminStatus,
-                            createdLabel: formatDateTime(user.createdAt),
-                          }}
+                        <TableCell
+                          data-column="user"
+                          className="sticky left-0 z-10 bg-card px-3 py-3 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                        >
+                          <p className="font-medium">{user.displayName}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {user.email ?? "No email"}
+                          </p>
+                          {user.username ? (
+                            <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
+                          ) : null}
+                        </TableCell>
+                        <TableCell data-column="plan" className="px-3 py-3">
+                          <PlanBadge plan={user.activePlan} />
+                        </TableCell>
+                        <TableCell
+                          data-column="activity"
+                          className="px-3 py-3 text-muted-foreground"
+                        >
+                          {user.sessionCount} sessions · {user.feedCount} cards
+                        </TableCell>
+                        <TableCell data-column="admin" className="px-3 py-3">
+                          {user.adminRole && canManageOwners && user.id !== actor.userId ? (
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="secondary">{label(user.adminRole)}</Badge>
+                              <Badge variant="outline">{label(user.adminStatus ?? "active")}</Badge>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">No admin access</span>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          data-column="created"
+                          className="px-3 py-3 text-xs text-muted-foreground"
+                        >
+                          {formatDateTime(user.createdAt)}
+                        </TableCell>
+                        <TableCell data-column="action" className="px-3 py-3">
+                          <AdminUserActions
+                            user={{
+                              id: user.id,
+                              displayName: user.displayName,
+                              email: user.email,
+                              username: user.username,
+                              activePlan: user.activePlan,
+                              sessionCount: user.sessionCount,
+                              feedCount: user.feedCount,
+                              adminRole: user.adminRole,
+                              adminStatus: user.adminStatus,
+                              createdLabel: formatDateTime(user.createdAt),
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="p-4">
+                        <AppEmptyState
+                          icon={<Search className="size-5" />}
+                          title="No users match this view"
+                          description="Clear the current search and filters to return to the full account directory."
+                          primaryAction={
+                            <Button asChild variant="outline" size="sm">
+                              <a href="/admin/users">Clear filters</a>
+                            </Button>
+                          }
                         />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </DataTableFrame>
           </AdminSection>
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
   );
-}
-
-type AdminUserMobileView = "all" | "admins" | "paid";
-
-function AdminMobileUsers({
-  users,
-  allUsers,
-  actorUserId,
-  canManageOwners,
-  query,
-  mobileView,
-  sortState,
-}: {
-  users: AdminUserListItem[];
-  allUsers: AdminUserListItem[];
-  actorUserId: string;
-  canManageOwners: boolean;
-  query: string;
-  mobileView: AdminUserMobileView;
-  sortState: AdminUserSortState;
-}) {
-  const primaryUsers = users.slice(0, 12);
-  const olderUsers = users.slice(12);
-  const adminUsers = allUsers.filter((user) => user.adminRole && user.id !== actorUserId);
-  const paidCount = allUsers.filter((user) => user.activePlan !== "free").length;
-
-  return (
-    <>
-      <MobileStatusAction
-        label={query ? "Search results" : "Accounts in view"}
-        value={users.length}
-        detail={`${adminUsers.length} manageable admins · ${paidCount} paid/full accounts`}
-        action={
-          <BottomSheet label="Search" title="Find user">
-            <MobileAdminUserSearchForm query={query} sortState={sortState} />
-          </BottomSheet>
-        }
-      />
-
-      <MobileTabBar
-        activeKey={mobileView}
-        ariaLabel="Filter admin users"
-        tabs={[
-          { key: "all", label: "All", href: adminUserMobileHref("all", query) },
-          { key: "admins", label: "Admins", href: adminUserMobileHref("admins", query) },
-          { key: "paid", label: "Paid", href: adminUserMobileHref("paid", query) },
-        ]}
-      />
-
-      <section className="grid gap-2" aria-label="Admin user directory">
-        <IOSSectionHeader
-          title="User directory"
-          description={query ? `Filtered by “${query}”` : "Latest accounts first"}
-          action={<MobileUserTools canManageOwners={canManageOwners} />}
-        />
-        <MobileAdminUserRows users={primaryUsers} />
-        {olderUsers.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More admin users"
-            items={[
-              {
-                value: "more-admin-users",
-                title: "More accounts",
-                summary: olderUsers.length,
-                description: "Additional users in this view",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobileAdminUserRows users={olderUsers} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-
-      {adminUsers.length > 0 && canManageOwners ? (
-        <IOSDisclosureGroup
-          label="Admin access management"
-          items={[
-            {
-              value: "admin-access-management",
-              title: "Manage admin access",
-              summary: adminUsers.length,
-              description: "Deactivate an owner or operator role",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <IOSGroupedList label="Manage admin access rows" className="border-0">
-                  {adminUsers.map((user) => (
-                    <IOSListRow
-                      key={user.id}
-                      label={user.displayName}
-                      detail={`${user.email ?? "No email"} · ${label(user.adminRole ?? "admin")}`}
-                      trailing={
-                        <form action={deactivateAdminAccessAction}>
-                          <input type="hidden" name="userId" value={user.id} />
-                          <AdminConfirmSubmitButton
-                            confirmMessage={`Deactivate admin access for ${user.displayName}? This removes their active admin role and writes an audit entry.`}
-                            variant="outline"
-                            className="min-h-11"
-                          >
-                            Deactivate
-                          </AdminConfirmSubmitButton>
-                        </form>
-                      }
-                    />
-                  ))}
-                </IOSGroupedList>
-              ),
-            },
-          ]}
-        />
-      ) : null}
-    </>
-  );
-}
-
-function MobileAdminUserRows({ users }: { users: AdminUserListItem[] }) {
-  return (
-    <IOSGroupedList label="Admin user account rows">
-      {users.length > 0 ? (
-        users.map((user) => (
-          <IOSListRow
-            key={user.id}
-            label={user.displayName}
-            value={label(user.activePlan)}
-            detail={`${user.email ?? "No email"} · ${user.sessionCount} sessions · ${user.feedCount} cards`}
-            href={`/admin/users?q=${encodeURIComponent(user.email ?? user.displayName)}`}
-            status={
-              user.adminRole ? (
-                <IOSInlineStatus label={label(user.adminRole)} tone="info" />
-              ) : undefined
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow label="No accounts found" detail="Try a different search or account filter." />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function MobileAdminUserSearchForm({
-  query,
-  sortState,
-}: {
-  query: string;
-  sortState: AdminUserSortState;
-}) {
-  return (
-    <form action="/admin/users" className="grid gap-3">
-      <input type="hidden" name="sort" value={sortState.metric} />
-      <input type="hidden" name="dir" value={sortState.dir} />
-      <label className="grid gap-1 text-sm font-medium">
-        Email, name or username
-        <Input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search accounts"
-          autoCapitalize="none"
-          autoCorrect="off"
-          className="h-11"
-        />
-      </label>
-      <Button type="submit" className="min-h-11">
-        <Search className="size-4" />
-        Search
-      </Button>
-    </form>
-  );
-}
-
-function MobileUserTools({ canManageOwners }: { canManageOwners: boolean }) {
-  return (
-    <div className="flex flex-wrap justify-end gap-2">
-      {canManageOwners ? (
-        <BottomSheet label="Full" title="Grant lifetime full">
-          <form action={grantLifetimeFullAction} className="grid gap-3">
-            <input type="hidden" name="returnTo" value="/admin/users" />
-            <label className="grid gap-1 text-sm font-medium">
-              User email
-              <Input name="email" type="email" className="h-11" required />
-            </label>
-            <AdminConfirmSubmitButton
-              type="submit"
-              className="min-h-11"
-              confirmTitle="Grant lifetime full access"
-              confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
-              confirmActionLabel="Grant full access"
-            >
-              <Zap className="size-4" />
-              Grant full access
-            </AdminConfirmSubmitButton>
-          </form>
-        </BottomSheet>
-      ) : null}
-      <BottomSheet label="Admin" title="Grant admin access">
-        <form action={grantAdminAccessAction} className="grid gap-3">
-          <input type="hidden" name="returnTo" value="/admin/users" />
-          <label className="grid gap-1 text-sm font-medium">
-            User email
-            <Input name="email" type="email" className="h-11" required />
-          </label>
-          <label className="grid gap-1 text-sm font-medium">
-            Admin role
-            <Select name="role" defaultValue="operator">
-              <SelectTrigger className="min-h-11 w-full" aria-label="Admin role">
-                <SelectValue placeholder="Choose admin role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="operator">Operator</SelectItem>
-                {canManageOwners ? <SelectItem value="owner">Owner</SelectItem> : null}
-              </SelectContent>
-            </Select>
-          </label>
-          <AdminConfirmSubmitButton
-            type="submit"
-            className="min-h-11"
-            confirmTitle="Grant admin access"
-            confirmMessage="Grant admin access to this email? Owner and operator roles can change platform operations."
-            confirmActionLabel="Grant admin"
-          >
-            <UserPlus className="size-4" />
-            Grant admin
-          </AdminConfirmSubmitButton>
-        </form>
-      </BottomSheet>
-    </div>
-  );
-}
-
-function parseAdminUserMobileView(value: string | undefined): AdminUserMobileView {
-  return value === "admins" || value === "paid" ? value : "all";
-}
-
-function adminUserMobileHref(view: AdminUserMobileView, query: string) {
-  const params = new URLSearchParams();
-  params.set("view", view);
-  if (query.trim()) params.set("q", query.trim());
-  return `/admin/users?${params.toString()}`;
 }
 
 function SortableAdminUserHead({
@@ -647,13 +406,13 @@ function SortableAdminUserHead({
   const active = sortState.metric === metric;
 
   return (
-    <th
+    <TableHead
       data-column={columnId}
       className={["px-3 py-2 font-medium", className].filter(Boolean).join(" ")}
       aria-sort={active ? adminUserSortAriaValue(sortState.dir) : "none"}
     >
       <SortableAdminUserHeadLink metric={metric} query={query} sortState={sortState} />
-    </th>
+    </TableHead>
   );
 }
 
@@ -682,7 +441,7 @@ function SortableAdminUserHeadLink({
       aria-label={`Sort admin users by ${label}, ${adminUserSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </a>
   );
 }

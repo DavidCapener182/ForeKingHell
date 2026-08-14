@@ -7,7 +7,8 @@ import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { DataFirstFlowPanel } from "@/components/product-polish";
 import { AchievementArtwork } from "@/components/visuals/achievement-artwork";
 import { Button } from "@/components/ui/button";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
+import { Card, CardContent } from "@/components/ui/card";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { getDashboardFeedPreview } from "@/lib/social";
 import { getAchievementPageData } from "@/lib/achievements/service";
 
@@ -15,11 +16,51 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default async function AchievementsPage({ searchParams }: { searchParams: SearchParams }) {
-  const focusAchievementId = first((await searchParams).achievement)
-    .trim()
-    .slice(0, 140);
-  const [data, feedItems] = await Promise.all([
+  const [params, surface, data] = await Promise.all([
+    searchParams,
+    getRequestAppSurface(),
     getAchievementPageData(),
+  ]);
+  const focusAchievementId = first(params.achievement).trim().slice(0, 140);
+
+  if (surface === "companion") {
+    return (
+      <PageShell>
+        <MobileRouteHeader title="Achievements" group="improve" activeKey="achievements" />
+        <Card className="gap-0 py-0" data-achievements-companion>
+          <CardContent className="p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Achievements
+                </p>
+                <h2 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h2>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                  {data.unlockedCount}/{data.totalCount} badges unlocked ·{" "}
+                  {data.totalXp.toLocaleString("en-GB")} XP
+                </p>
+              </div>
+              <StatusPill tone="green">Progress</StatusPill>
+            </div>
+            <Button asChild size="sm" className="mt-3 w-full" data-primary-action>
+              <Link href="/today" prefetch={false}>
+                Open today&apos;s practice
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+        <AchievementsClient
+          key={focusAchievementId || "achievement-hub"}
+          data={data}
+          focusAchievementId={focusAchievementId || null}
+          presentation="companion"
+        />
+      </PageShell>
+    );
+  }
+
+  const [{ DesktopWorkbenchLayout }, feedItems] = await Promise.all([
+    import("@/components/app/desktop-workbench"),
     getDashboardFeedPreview(12),
   ]);
   const latestAchievementFeedItem =
@@ -29,10 +70,11 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
 
   return (
     <PageShell>
-      <MobileRouteHeader title="Achievements" group="improve" activeKey="achievements" />
-
       <DesktopWorkbenchLayout scope="achievements">
-        <div className="hidden flex-col items-start gap-3 lg:flex lg:flex-row lg:items-center lg:justify-between">
+        <div
+          className="flex flex-col items-start gap-3 lg:flex-row lg:items-center lg:justify-between"
+          data-achievements-workbench
+        >
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard">
               <ArrowLeft className="size-4" />
@@ -73,48 +115,21 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
           </div>
         </div>
 
-        <section className="premium-card p-3 lg:hidden">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Achievements
-              </p>
-              <h2 className="mt-1 text-xl font-semibold tracking-normal">Next unlock</h2>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                {data.unlockedCount}/{data.totalCount} badges unlocked ·{" "}
-                {data.totalXp.toLocaleString("en-GB")} XP
-              </p>
-            </div>
-            <StatusPill tone="green">Progress</StatusPill>
-          </div>
-          <Button
-            asChild
-            size="sm"
-            className="mt-3 w-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            data-primary-action
-          >
-            <Link href="/today" prefetch={false}>
-              Open today&apos;s practice
-            </Link>
-          </Button>
-        </section>
-
-        <div className="hidden lg:block">
-          <PageHeader
-            eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
-            title="Progress worth tracking"
-            description="Launch monitor metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
-            visual={<AchievementArtwork className="h-full min-h-44" priority />}
-          />
-        </div>
+        <PageHeader
+          eyebrow={<StatusPill tone="slate">Achievement system</StatusPill>}
+          title="Progress worth tracking"
+          description="Launch monitor metrics and completed round scorecards unlock XP, major badges, club mileage, and generated mastery ladders."
+          visual={<AchievementArtwork className="h-full min-h-44" priority />}
+        />
 
         <AchievementsClient
           key={focusAchievementId || "achievement-hub"}
           data={data}
           focusAchievementId={focusAchievementId || null}
+          presentation="workbench"
         />
 
-        <div className="hidden lg:contents">
+        <div className="contents">
           <DataFirstFlowPanel
             title="Achievement categories"
             description="The badge catalogue is grouped by golfer progress, not generic activity."
@@ -183,54 +198,56 @@ function AchievementSocialPanel({
     data.totalCount > 0 ? Math.round((data.unlockedCount / data.totalCount) * 100) : 0;
 
   return (
-    <section className="premium-card grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <div>
-        <p className="text-sm font-semibold">Achievement social layer</p>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          {rarePercent}% unlocked. Course champions, verified records and major-style finishes now
-          live on this identity layer.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline" size="sm">
-          <Link
-            href={
-              latestFeedItemId
-                ? `/api/share-cards/feed/${latestFeedItemId}`
-                : "/feed?filter=achievements"
-            }
-            target={latestFeedItemId ? "_blank" : undefined}
-            prefetch={false}
-          >
-            <Share2 className="size-4" />
-            Share achievement
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/course-records" prefetch={false}>
-            <Award className="size-4" />
-            Course badges
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/tournaments" prefetch={false}>
-            <Trophy className="size-4" />
-            Major badges
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/leaderboard?tab=friends" prefetch={false}>
-            <Users className="size-4" />
-            Compare friends
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/challenges" prefetch={false}>
-            <Trophy className="size-4" />
-            Challenge badge
-          </Link>
-        </Button>
-      </div>
-    </section>
+    <Card className="gap-0 py-0">
+      <CardContent className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div>
+          <p className="text-sm font-semibold">Achievement social layer</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {rarePercent}% unlocked. Course champions, verified records and major-style finishes now
+            live on this identity layer.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link
+              href={
+                latestFeedItemId
+                  ? `/api/share-cards/feed/${latestFeedItemId}`
+                  : "/feed?filter=achievements"
+              }
+              target={latestFeedItemId ? "_blank" : undefined}
+              prefetch={false}
+            >
+              <Share2 className="size-4" />
+              Share achievement
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/course-records" prefetch={false}>
+              <Award className="size-4" />
+              Course badges
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/tournaments" prefetch={false}>
+              <Trophy className="size-4" />
+              Major badges
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/leaderboard?tab=friends" prefetch={false}>
+              <Users className="size-4" />
+              Compare friends
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href="/challenges" prefetch={false}>
+              <Trophy className="size-4" />
+              Challenge badge
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

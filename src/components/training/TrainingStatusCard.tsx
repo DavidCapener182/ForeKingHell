@@ -30,9 +30,15 @@ export function TrainingStatusCard({
         action={<StatusPill tone={status.tone}>{status.label}</StatusPill>}
       />
       <CardContent className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="premium-hero rounded-lg p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-950">
-            <CheckCircle2 className="size-4" aria-hidden="true" />
+        <section
+          className="rounded-lg border border-border bg-muted/35 p-4"
+          aria-labelledby="training-latest-read-title"
+        >
+          <div
+            id="training-latest-read-title"
+            className="flex items-center gap-2 text-sm font-semibold text-foreground"
+          >
+            <CheckCircle2 className="size-4 text-primary" aria-hidden="true" />
             Latest read
           </div>
           <p className="mt-3 text-xl font-semibold tracking-normal text-foreground">
@@ -43,10 +49,17 @@ export function TrainingStatusCard({
               ? status.advice
               : "Golf Form, Training Fitness and Recent Load will become more useful once several rounds or practice sessions have a load score."}
           </p>
-        </div>
-        <div className="rounded-lg border border-sky-200 bg-sky-50/80 p-5 text-sky-950">
+        </section>
+        <section
+          className="rounded-lg border border-[var(--status-information-border)] bg-[var(--status-information-surface)] p-5 text-[var(--status-information-foreground)]"
+          aria-labelledby="training-coach-summary-title"
+          data-training-coach-summary
+        >
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-semibold">
+            <div
+              id="training-coach-summary-title"
+              className="flex items-center gap-2 text-sm font-semibold"
+            >
               <Sparkles className="size-4" aria-hidden="true" />
               Coach summary
             </div>
@@ -58,19 +71,22 @@ export function TrainingStatusCard({
           <div className="mt-4 grid gap-2">
             {coachSummaryLines({ latest, trend, confidence, sessionFormSignal }).map((line) => (
               <div key={line} className="flex gap-2 text-sm leading-5">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-sky-700" aria-hidden="true" />
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
                 <span>{line}</span>
               </div>
             ))}
-            <div className="flex gap-2 text-sm leading-5 text-sky-900/80">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
+            <div className="flex gap-2 text-sm leading-5 opacity-85">
+              <AlertTriangle
+                className="mt-0.5 size-4 shrink-0 text-[var(--status-warning-foreground)]"
+                aria-hidden="true"
+              />
               <span>
                 This guides practice intensity and recovery. It is not a medical or injury
                 diagnosis.
               </span>
             </div>
           </div>
-        </div>
+        </section>
       </CardContent>
     </DataPanel>
   );

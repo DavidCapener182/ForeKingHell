@@ -38,7 +38,7 @@ export function ImportStepper({
   ];
 
   return (
-    <Card className="premium-card">
+    <Card className="shadow-sm" data-import-stepper>
       <CardContent className="p-4">
         <CompactReadoutGrid
           columnsClassName="sm:grid-cols-4"
@@ -58,7 +58,10 @@ export function ChecklistItem({ complete, children }: { complete: boolean; child
   return (
     <div className="flex items-center gap-2">
       <CheckCircle2
-        className={cn("size-4", complete ? "text-emerald-600" : "text-muted-foreground")}
+        className={cn(
+          "size-4",
+          complete ? "text-[var(--status-success-foreground)]" : "text-muted-foreground",
+        )}
       />
       <span className={complete ? "font-medium" : "text-muted-foreground"}>{children}</span>
     </div>

@@ -107,7 +107,7 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
       contentClassName="gap-0 lg:gap-6"
     >
       <DesktopWorkbenchLayout scope="course-shot-pattern">
-        <div className="hidden items-center justify-between gap-4 lg:flex">
+        <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href={`/courses/${courseId}/holes`} prefetch={false}>
               <ArrowLeft className="size-4" />
@@ -122,47 +122,45 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
           </Button>
         </div>
 
-        <div className="hidden lg:block">
-          <PageHeader
-            eyebrow={
-              <StatusPill tone={hasMappedHoles ? "green" : "amber"}>On-course tool</StatusPill>
-            }
-            title={`${setup.course.name} shot pattern`}
-            description="Project your real club dispersion over the selected hole before choosing a line."
-            visual={
-              <PageArtwork
-                variant="fairway"
-                alt=""
-                crop="random"
-                cropKey={`${courseId}-shot-pattern`}
-                className="h-full min-h-44"
-                priority
-              />
-            }
-            metrics={[
-              {
-                label: "Mapped holes",
-                value: String(setup.holes.length),
-                detail: "Current tee set",
-              },
-              {
-                label: "Club choices",
-                value: String(setup.clubOptions.length),
-                detail: "Type and club-specific patterns",
-              },
-              {
-                label: "Default",
-                value: setup.defaultControls.clubType,
-                detail: "Best 90% · total",
-              },
-              {
-                label: "Privacy",
-                value: "Private",
-                detail: "Uses your own shot history",
-              },
-            ]}
-          />
-        </div>
+        <PageHeader
+          eyebrow={
+            <StatusPill tone={hasMappedHoles ? "green" : "amber"}>On-course tool</StatusPill>
+          }
+          title={`${setup.course.name} shot pattern`}
+          description="Project your real club dispersion over the selected hole before choosing a line."
+          visual={
+            <PageArtwork
+              variant="fairway"
+              alt=""
+              crop="random"
+              cropKey={`${courseId}-shot-pattern`}
+              className="h-full min-h-44"
+              priority
+            />
+          }
+          metrics={[
+            {
+              label: "Mapped holes",
+              value: String(setup.holes.length),
+              detail: "Current tee set",
+            },
+            {
+              label: "Club choices",
+              value: String(setup.clubOptions.length),
+              detail: "Type and club-specific patterns",
+            },
+            {
+              label: "Default",
+              value: setup.defaultControls.clubType,
+              detail: "Best 90% · total",
+            },
+            {
+              label: "Privacy",
+              value: "Private",
+              detail: "Uses your own shot history",
+            },
+          ]}
+        />
 
         {hasMappedHoles ? (
           <>
@@ -181,7 +179,7 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
         ) : (
           <div className="apple-panel grid min-h-80 place-items-center p-6 text-center">
             <div>
-              <MapPinned className="mx-auto size-10 text-slate-500" />
+              <MapPinned className="mx-auto size-10 text-muted-foreground" />
               <h2 className="mt-3 text-xl font-semibold tracking-normal">
                 Map hole geometry first
               </h2>
@@ -189,10 +187,7 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
                 This course needs tee-to-green hole geometry before club dispersion can be projected
                 onto the map.
               </p>
-              <Button
-                asChild
-                className="mt-4 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-              >
+              <Button asChild className="mt-4 rounded-lg">
                 <Link href={`/courses/${courseId}/holes`} prefetch={false}>
                   <MapPinned className="size-4" />
                   Open hole editor
@@ -212,7 +207,7 @@ function ShotPatternSetupBoard({ courseId, setup }: { courseId: string; setup: S
   return (
     <section
       id="shot-pattern-setup"
-      className="hidden scroll-mt-28 gap-4 lg:grid"
+      className="grid scroll-mt-28 gap-4"
       data-workbench-scope="shot-pattern-setup"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -284,11 +279,11 @@ function ShotPatternHoleTable({
             Shot pattern mapped holes table showing hole, tee set, par, yards, mapping status and
             action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="hole"
-                className="sticky left-0 z-20 min-w-28 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-28 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Hole
               </TableHead>
@@ -311,7 +306,7 @@ function ShotPatternHoleTable({
                 >
                   <TableCell
                     data-column="hole"
-                    className="sticky left-0 z-10 min-w-28 bg-white font-semibold shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-28 bg-card font-semibold shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     {hole.holeNumber}
                   </TableCell>
@@ -389,11 +384,11 @@ function ShotPatternClubTable({
             Shot pattern club evidence table showing club, club type, sample size, play number,
             default state and action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="club"
-                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Club
               </TableHead>
@@ -419,7 +414,7 @@ function ShotPatternClubTable({
                   >
                     <TableCell
                       data-column="club"
-                      className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                     >
                       <p className="font-semibold">{club.label}</p>
                       <p className="mt-1 text-xs text-muted-foreground">

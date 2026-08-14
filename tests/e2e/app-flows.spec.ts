@@ -158,5 +158,5 @@ async function gotoAppRoute(page: Page, path: string) {
 }
 
 function responsiveImportSurface(page: Page) {
-  return page.locator((page.viewportSize()?.width ?? 0) < 1024 ? "#csv-import" : "#rapsodo-import");
+  return page.locator("#csv-import");
 }

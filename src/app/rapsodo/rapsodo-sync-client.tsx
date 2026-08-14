@@ -40,23 +40,17 @@ import {
   syncRapsodoShotClubsAction,
 } from "@/app/rapsodo/actions";
 import { notifyAchievementUnlocks } from "@/components/achievement-notifications";
-import { IOSGroupedList, IOSInlineStatus, IOSListRow } from "@/components/app/ios-mobile";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { CourseScorecardSvg } from "@/components/course-scorecard-svg";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DataTableFrame,
-  DataPair,
-  MobileAccordionSection,
-  MobileBentoSummary,
-  MobileDataCard,
-  StickyMobileAction,
-} from "@/components/premium";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { DataTableFrame } from "@/components/premium";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import {
   Table,
   TableBody,
@@ -151,15 +145,6 @@ type HoleReviewState = Record<
 type ClubSelectionMode = "recommendations" | "rapsodo" | "custom";
 type CourseImportMode = "shot_only" | "scored_round";
 type BrowserNotificationState = NotificationPermission | "unsupported";
-type RapsodoMobileStep =
-  | "connect"
-  | "sessions"
-  | "preview"
-  | "clubs"
-  | "course"
-  | "import"
-  | "review";
-
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 const RAPSODO_SESSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const SAVE_CONFIRMATION_DISMISS_MS = 14000;
@@ -228,7 +213,6 @@ export function RapsodoSyncClient({
   const [clubSelectionMode, setClubSelectionMode] = useState<ClubSelectionMode>("recommendations");
   const [updateRapsodoClubs, setUpdateRapsodoClubs] = useState(false);
   const [courseImportMode, setCourseImportMode] = useState<CourseImportMode>("shot_only");
-  const [mobileStep, setMobileStep] = useState<RapsodoMobileStep>("connect");
   const [courseName, setCourseName] = useState("");
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
@@ -377,12 +361,6 @@ export function RapsodoSyncClient({
       : clubSelectionMode === "rapsodo"
         ? "Rapsodo club"
         : "Selected club";
-  const clubMappingPluralLabel =
-    clubSelectionMode === "recommendations"
-      ? "Recommended clubs"
-      : clubSelectionMode === "rapsodo"
-        ? "Rapsodo clubs"
-        : "Selected clubs";
   const clubMappingStatusLabel =
     clubSelectionMode === "recommendations"
       ? "recommended"
@@ -455,36 +433,6 @@ export function RapsodoSyncClient({
       : `Save ${clubMappingStatusLabel} shots`;
   const canSave = Boolean(
     preview && everyShotHasClub && courseReady && !isPending && !previewAlreadyImported,
-  );
-  const mobileSteps = useMemo(
-    () => [
-      { id: "connect" as const, label: "Connect/upload" },
-      { id: "sessions" as const, label: "Choose" },
-      { id: "preview" as const, label: "Preview" },
-      { id: "clubs" as const, label: "Map clubs" },
-      ...(isCoursePreview ? [{ id: "course" as const, label: "Course" }] : []),
-      { id: "import" as const, label: "Import" },
-      { id: "review" as const, label: "Review trust" },
-    ],
-    [isCoursePreview],
-  );
-  const visibleMobileStep = mobileSteps.some((step) => step.id === mobileStep)
-    ? mobileStep
-    : "preview";
-  const activeMobileStepIndex = mobileSteps.findIndex((step) => step.id === visibleMobileStep);
-  const isMobileReviewStep = ["preview", "clubs", "course", "import", "review"].includes(
-    visibleMobileStep,
-  );
-  const showStickyReviewBar = Boolean(preview && isMobileReviewStep);
-  const showMobileReviewChrome = Boolean(preview);
-  const showMobileConnectionCard = !status.connected || visibleMobileStep === "connect";
-  const showMobileSessionsCard = status.connected && (!preview || visibleMobileStep === "sessions");
-  const latestUnimportedSession = useMemo(
-    () =>
-      [...availableSessions].sort(
-        (left, right) => sessionTimestamp(right) - sessionTimestamp(left),
-      )[0] ?? null,
-    [availableSessions],
   );
   const rapsodoWorkflowSteps = buildRapsodoWorkflowSteps({
     availableCount: availableSessions.length,
@@ -635,7 +583,6 @@ export function RapsodoSyncClient({
       }
 
       setPreview(result.data);
-      setMobileStep("preview");
       setCourseName(result.data.courseName || result.data.session.title);
       setScorecardText(
         result.data.courseScorecard.length > 0
@@ -827,7 +774,6 @@ export function RapsodoSyncClient({
         message: saveNotice.message,
         sessionId: result.data.sessionId,
       });
-      setMobileStep("review");
       setSessions((current) =>
         current.map((session) =>
           session.providerKind === preview.session.providerKind &&
@@ -846,25 +792,15 @@ export function RapsodoSyncClient({
   }
 
   return (
-    <main
-      id="main-content"
-      className={cn(
-        "min-h-0 px-4 py-5 sm:px-6 sm:py-6 lg:px-8",
-        showStickyReviewBar
-          ? "pb-[calc(7.75rem+env(safe-area-inset-bottom))] lg:pb-6"
-          : "pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-6",
-      )}
-    >
+    <main id="main-content" className="min-h-0 px-4 py-5 pb-6 sm:px-6 sm:py-6 lg:px-8">
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
-        <MobileRouteHeader title="Analyse" group="analyse" activeKey="rapsodo" />
-
         <DesktopWorkflowLayout
           steps={rapsodoWorkflowSteps}
           helpTitle="Rapsodo sync help"
           helpDescription="Keep provider imports deterministic"
           helpItems={rapsodoWorkflowHelpItems}
         >
-          <div className="hidden items-center justify-between gap-4 lg:flex">
+          <div className="flex items-center justify-between gap-4">
             <Button asChild variant="ghost" className="px-0">
               <Link href="/dashboard">
                 <ArrowLeft className="size-4" />
@@ -879,19 +815,7 @@ export function RapsodoSyncClient({
             </Button>
           </div>
 
-          <RapsodoInboxPrimaryCard
-            session={latestUnimportedSession}
-            connected={status.connected}
-            availableCount={availableSessions.length}
-            newSessionCount={newSessionCount}
-            isPending={isPending}
-            loadingLabel={loadingLabel}
-            onConnect={() => setMobileStep("connect")}
-            onLoadSessions={() => void loadSessions()}
-            onPreviewSession={previewSession}
-          />
-
-          <Card className="hidden lg:flex" data-rapsodo-connection-card>
+          <Card data-rapsodo-connection-card>
             <CardHeader className="grid gap-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-2xl space-y-2">
@@ -958,6 +882,7 @@ export function RapsodoSyncClient({
                 </div>
               </div>
               <ConnectedMetricBar
+                embedded
                 label="R-Cloud connection metrics"
                 metrics={[
                   { label: "Connection", value: status.connected ? "Connected" : "Signed out" },
@@ -970,9 +895,12 @@ export function RapsodoSyncClient({
           </Card>
 
           {!status.connected ? (
-            <section className="premium-command-surface hidden rounded-2xl p-5 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center lg:gap-4">
+            <Card
+              className="grid gap-4 p-5 shadow-sm lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)] lg:items-center"
+              data-rapsodo-connect-benefits
+            >
               <div className="space-y-2">
-                <Badge className="w-fit bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                <Badge variant="secondary" className="w-fit">
                   Why connect
                 </Badge>
                 <h2 className="text-2xl font-semibold tracking-normal text-foreground">
@@ -1001,97 +929,18 @@ export function RapsodoSyncClient({
                     icon: Sparkles,
                   },
                 ].map((item) => (
-                  <div key={item.title} className="rounded-xl border bg-white/80 p-3">
-                    <item.icon className="size-5 text-emerald-700" />
-                    <p className="mt-3 text-sm font-semibold">{item.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
-                  </div>
+                  <Item key={item.title} variant="muted" size="sm" className="items-start">
+                    <ItemMedia>
+                      <item.icon className="size-5 text-primary" />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{item.title}</ItemTitle>
+                      <ItemDescription className="whitespace-normal">{item.detail}</ItemDescription>
+                    </ItemContent>
+                  </Item>
                 ))}
               </div>
-            </section>
-          ) : null}
-
-          {showMobileReviewChrome ? (
-            <RapsodoMobileStepper
-              steps={mobileSteps}
-              step={visibleMobileStep}
-              onStepChange={setMobileStep}
-            />
-          ) : null}
-
-          {showMobileReviewChrome ? (
-            <MobileBentoSummary
-              items={[
-                {
-                  label: "Connection",
-                  value: status.connected ? "On" : "Off",
-                  detail: "R-Cloud",
-                  tone: status.connected ? "green" : "slate",
-                },
-                {
-                  label: "Available",
-                  value: availableSessions.length.toString(),
-                  detail: "Sessions",
-                  tone: "sky",
-                },
-                {
-                  label: "New",
-                  value: newSessionCount.toString(),
-                  detail: "Since last sync",
-                  tone: newSessionCount > 0 ? "amber" : "slate",
-                },
-                {
-                  label: "Preview",
-                  value: preview ? preview.shotCount.toString() : "--",
-                  detail: "Shots",
-                  tone: "pink",
-                },
-              ]}
-            />
-          ) : null}
-
-          {status.connected ? (
-            <MobileAccordionSection
-              title="Filters"
-              description="Date range and session type."
-              count={sessionFilter === "all" ? "All" : sessionFilter}
-            >
-              <div className="grid gap-2">
-                <Select
-                  value={sessionFilter}
-                  onValueChange={(value) => setSessionFilter(value as typeof sessionFilter)}
-                >
-                  <SelectTrigger aria-label="Remote session type" className="h-10 w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="range">Range</SelectItem>
-                    <SelectItem value="course">Course</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Input
-                    aria-label="Session start date"
-                    type="date"
-                    className="min-h-11"
-                    value={dateFilter.startDate}
-                    onChange={(event) =>
-                      setDateFilter((current) => ({ ...current, startDate: event.target.value }))
-                    }
-                  />
-                  <Input
-                    aria-label="Session end date"
-                    type="date"
-                    className="min-h-11"
-                    value={dateFilter.endDate}
-                    onChange={(event) =>
-                      setDateFilter((current) => ({ ...current, endDate: event.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-            </MobileAccordionSection>
+            </Card>
           ) : null}
 
           {notice.kind !== "idle" ? (
@@ -1129,9 +978,7 @@ export function RapsodoSyncClient({
             id="rapsodo-sessions"
             className="grid scroll-mt-28 gap-4 lg:grid-cols-[0.9fr_1.1fr]"
           >
-            <Card
-              className={cn("premium-card", showMobileConnectionCard ? "flex" : "hidden lg:flex")}
-            >
+            <Card className="shadow-sm" data-rapsodo-login-card>
               <CardHeader>
                 <CardTitle>Connection</CardTitle>
                 <CardDescription>
@@ -1147,7 +994,7 @@ export function RapsodoSyncClient({
                         <ShieldCheck className="size-4" />
                         Token saved
                       </div>
-                      <p className="mt-1 text-emerald-800">
+                      <p className="mt-1 text-muted-foreground">
                         {status.expiresAt
                           ? `Expires ${formatDateTime(status.expiresAt)}.`
                           : "Expires automatically."}
@@ -1219,7 +1066,7 @@ export function RapsodoSyncClient({
                         required
                       />
                     </label>
-                    <Button type="submit" className="premium-action w-full" disabled={isPending}>
+                    <Button type="submit" className="w-full" disabled={isPending}>
                       {loadingLabel === "Signing in" ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
@@ -1230,7 +1077,7 @@ export function RapsodoSyncClient({
                   </form>
                 )}
 
-                <div className="hidden gap-2 lg:grid lg:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   <Input
                     aria-label="Session start date"
                     type="date"
@@ -1251,9 +1098,7 @@ export function RapsodoSyncClient({
               </CardContent>
             </Card>
 
-            <Card
-              className={cn("premium-card", showMobileSessionsCard ? "flex" : "hidden lg:flex")}
-            >
+            <Card className="shadow-sm" data-rapsodo-session-inbox>
               <CardHeader>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -1267,7 +1112,7 @@ export function RapsodoSyncClient({
                     value={sessionFilter}
                     onValueChange={(value) => setSessionFilter(value as typeof sessionFilter)}
                   >
-                    <SelectTrigger aria-label="Remote session type" className="hidden w-36 lg:flex">
+                    <SelectTrigger aria-label="Remote session type" className="w-36">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1279,13 +1124,7 @@ export function RapsodoSyncClient({
                 </div>
               </CardHeader>
               <CardContent>
-                <MobileRapsodoSessionRows
-                  sessions={filteredSessions}
-                  connected={status.connected}
-                  isPending={isPending}
-                  onPreview={previewSession}
-                />
-                <div className="hidden lg:block" data-workbench-scope="rapsodo">
+                <div data-workbench-scope="rapsodo">
                   <DesktopTableWorkbenchControls
                     viewKey="rapsodo-sessions"
                     scope="rapsodo"
@@ -1310,11 +1149,11 @@ export function RapsodoSyncClient({
                         Unimported Rapsodo cloud sessions with type, date, shot count and preview
                         action.
                       </TableCaption>
-                      <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                      <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                         <TableRow>
                           <TableHead
                             data-column="session"
-                            className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            className="sticky left-0 z-20 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                           >
                             Session
                           </TableHead>
@@ -1337,21 +1176,19 @@ export function RapsodoSyncClient({
                           >
                             <TableCell
                               data-column="session"
-                              className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                              className="sticky left-0 z-10 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                             >
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium">{session.title}</span>
                                 {session.isNew && !session.importedSessionId ? (
-                                  <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">
-                                    New
-                                  </Badge>
+                                  <Badge variant="secondary">New</Badge>
                                 ) : null}
                               </div>
                               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                                 {session.importedSessionId ? (
                                   <Link
                                     href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
-                                    className="text-emerald-700 underline-offset-4 hover:underline"
+                                    className="text-primary underline-offset-4 hover:underline"
                                   >
                                     Imported
                                   </Link>
@@ -1385,13 +1222,41 @@ export function RapsodoSyncClient({
                         ))}
                         {filteredSessions.length === 0 ? (
                           <TableRow>
-                            <TableCell
-                              colSpan={5}
-                              className="h-24 text-center text-muted-foreground"
-                            >
-                              {status.connected
-                                ? "No unimported R-Cloud sessions found for these dates. Imported sessions are hidden here."
-                                : "Sign in to load sessions."}
+                            <TableCell colSpan={5} className="p-4">
+                              <AppEmptyState
+                                icon={<Cloud className="size-5" />}
+                                title={status.connected ? "R-Cloud inbox clear" : "Connect R-Cloud"}
+                                description={
+                                  status.connected
+                                    ? "No unimported sessions match these dates. Imported sessions stay hidden from this inbox."
+                                    : "Sign in from the connection card to load waiting sessions."
+                                }
+                                primaryAction={
+                                  status.connected ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={() => void loadSessions()}
+                                      disabled={isPending}
+                                    >
+                                      <RefreshCw className="size-4" />
+                                      Refresh sessions
+                                    </Button>
+                                  ) : (
+                                    <Button asChild variant="outline">
+                                      <a href="#rapsodo-sessions">Open connection</a>
+                                    </Button>
+                                  )
+                                }
+                                secondaryAction={
+                                  <Button asChild variant="ghost">
+                                    <Link href="/import?source=csv#csv-import">
+                                      Use CSV instead
+                                    </Link>
+                                  </Button>
+                                }
+                                className="border-0 bg-transparent"
+                              />
                             </TableCell>
                           </TableRow>
                         ) : null}
@@ -1403,39 +1268,12 @@ export function RapsodoSyncClient({
             </Card>
           </section>
 
-          <MobileAccordionSection
-            title="Provider health"
-            description="Connection and latest sync status."
-            count={status.connected ? "Connected" : "Signed out"}
-          >
-            <section className="premium-command-surface grid gap-2 rounded-lg p-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-semibold">Provider import health</span>
-                <Badge
-                  className={cn(
-                    status.connected
-                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-100",
-                  )}
-                >
-                  {status.connected ? "Connected" : "Signed out"}
-                </Badge>
-              </div>
-              <p className="text-xs leading-5 text-muted-foreground">
-                {status.connected
-                  ? `${availableSessions.length} sessions available · ${newSessionCount} new since last sync.`
-                  : "Sign in or use manual CSV import when R-Cloud is unavailable."}
-              </p>
-            </section>
-          </MobileAccordionSection>
-
           {preview ? (
             <ResponsiveDetailPanel
               open
               onOpenChange={(open) => {
                 if (open) return;
                 setPreview(null);
-                setMobileStep("sessions");
               }}
               title={preview.session.title}
               description={`${preview.shotCount} shots · ${preview.rawRowCount} raw rows · ${preview.distanceUnit}`}
@@ -1447,7 +1285,7 @@ export function RapsodoSyncClient({
                 ref={previewSectionRef}
                 className="space-y-4 scroll-mt-4"
               >
-                <Card className="premium-card">
+                <Card className="shadow-sm" data-rapsodo-preview-card>
                   <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
@@ -1476,12 +1314,7 @@ export function RapsodoSyncClient({
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {visibleSaveStatus ? <SaveStatusPanel status={visibleSaveStatus} /> : null}
-                    <div
-                      className={cn(
-                        "premium-command-surface grid gap-2 rounded-lg p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]",
-                        visibleMobileStep === "clubs" ? "grid" : "hidden lg:grid",
-                      )}
-                    >
+                    <div className="grid gap-2 rounded-lg border bg-muted/25 p-3 lg:grid-cols-[auto_auto_minmax(220px,1fr)]">
                       <Button
                         type="button"
                         variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
@@ -1503,7 +1336,7 @@ export function RapsodoSyncClient({
                         Use Rapsodo clubs
                       </Button>
                       <label
-                        className={`flex min-h-10 items-center gap-3 rounded-md border bg-white/75 px-3 py-2 text-sm ${
+                        className={`flex min-h-10 items-center gap-3 rounded-md border bg-card px-3 py-2 text-sm ${
                           rapsodoWritebackRows.updatableCount === 0 ? "opacity-60" : ""
                         }`}
                       >
@@ -1525,71 +1358,24 @@ export function RapsodoSyncClient({
                         </span>
                       </label>
                     </div>
-                    <div
-                      className={cn(
-                        "grid gap-2 sm:grid-cols-4",
-                        visibleMobileStep === "preview" ||
-                          visibleMobileStep === "import" ||
-                          visibleMobileStep === "review"
-                          ? "grid"
-                          : "hidden lg:grid",
-                      )}
-                    >
-                      <CompactSummaryTile
-                        label="Type"
-                        value={
-                          courseShotOnlyImport
+                    <ConnectedMetricBar
+                      embedded
+                      label="Rapsodo preview summary"
+                      metrics={[
+                        {
+                          label: "Type",
+                          value: courseShotOnlyImport
                             ? "Shot-only"
-                            : formatPreviewType(preview.sessionType)
-                        }
-                      />
-                      <CompactSummaryTile label="Date" value={formatDate(preview.sessionDate)} />
-                      <CompactSummaryTile
-                        label="Clubs"
-                        value={`${selectedClubCount(preview, selectedClubByRow)}/${preview.shotCount}`}
-                      />
-                      <CompactSummaryTile
-                        label="Duplicate"
-                        value={preview.rawCsvHash.slice(0, 12)}
-                      />
-                    </div>
-                    {visibleMobileStep === "review" ? (
-                      <div className="premium-command-surface grid gap-3 rounded-lg p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold">Review trust</p>
-                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                              {clubMappingPluralLabel}, duplicate hash, warnings and save status
-                              decide whether this session is trusted for bag numbers, coach scoring
-                              and challenge proof.
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              visibleSaveStatus?.kind === "success" ? "default" : "secondary"
-                            }
-                          >
-                            {visibleSaveStatus?.kind === "success" ? "Trusted" : "Reviewing"}
-                          </Badge>
-                        </div>
-                        <div className="grid gap-2 text-sm">
-                          <DataPair
-                            label="Club mapping"
-                            value={`${selectedClubCount(preview, selectedClubByRow)}/${preview.shotCount} ${clubMappingStatusLabel}`}
-                          />
-                          <DataPair
-                            label="Warnings"
-                            value={
-                              preview.warnings.length === 0 ? "None" : `${preview.warnings.length}`
-                            }
-                          />
-                          <DataPair
-                            label="Save status"
-                            value={visibleSaveStatus?.title ?? "Not imported yet"}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
+                            : formatPreviewType(preview.sessionType),
+                        },
+                        { label: "Date", value: formatDate(preview.sessionDate) },
+                        {
+                          label: "Clubs",
+                          value: `${selectedClubCount(preview, selectedClubByRow)}/${preview.shotCount}`,
+                        },
+                        { label: "Duplicate", value: preview.rawCsvHash.slice(0, 12) },
+                      ]}
+                    />
                     {preview.warnings.length > 0 ? (
                       <Alert>
                         <AlertCircle className="size-4" />
@@ -1597,64 +1383,7 @@ export function RapsodoSyncClient({
                         <AlertDescription>{preview.warnings.join(" ")}</AlertDescription>
                       </Alert>
                     ) : null}
-                    <MobileAccordionSection
-                      title="Review shots"
-                      description="Raw row audit and club confirmation."
-                      count={preview.shots.length}
-                    >
-                      <div className="grid gap-2">
-                        {preview.shots.slice(0, 8).map((shot) => (
-                          <MobileDataCard
-                            key={shot.rowNumber}
-                            title={`Shot ${shot.shotNumber ?? shot.rowNumber}`}
-                            subtitle={shot.reportedClubLabel}
-                            action={
-                              <Badge
-                                variant={
-                                  shot.suggestion.confidence === "low" ? "secondary" : "default"
-                                }
-                              >
-                                {shot.suggestion.confidenceScore}%
-                              </Badge>
-                            }
-                          >
-                            <DataPair label="Carry" value={formatMetric(shot.carryYd)} />
-                            <DataPair label="Total" value={formatMetric(shot.totalYd)} />
-                            <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-                              {clubMappingLabel}
-                              <Select
-                                value={selectedClubByRow[shot.rowNumber] || undefined}
-                                onValueChange={(value) => {
-                                  setClubSelectionMode("custom");
-                                  setSelectedClubByRow((current) => ({
-                                    ...current,
-                                    [shot.rowNumber]: value,
-                                  }));
-                                }}
-                              >
-                                <SelectTrigger
-                                  aria-label={`${clubMappingLabel} for shot ${shot.shotNumber ?? shot.rowNumber}`}
-                                  className="h-10 w-full"
-                                >
-                                  <SelectValue placeholder="Choose club" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {preview.clubChoices.map((choice) => (
-                                    <SelectItem
-                                      key={`${shot.rowNumber}-${choice.clubKey}`}
-                                      value={choice.clubKey}
-                                    >
-                                      {choice.clubLabel}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </label>
-                          </MobileDataCard>
-                        ))}
-                      </div>
-                    </MobileAccordionSection>
-                    <div className="hidden rounded-lg border lg:block">
+                    <div className="rounded-lg border">
                       <Table className="text-xs">
                         <TableHeader>
                           <TableRow>
@@ -1738,12 +1467,7 @@ export function RapsodoSyncClient({
                 </Card>
 
                 {isCoursePreview ? (
-                  <Card
-                    className={cn(
-                      "premium-card",
-                      visibleMobileStep === "course" ? "flex" : "hidden lg:flex",
-                    )}
-                  >
+                  <Card className="shadow-sm">
                     <CardHeader>
                       <CardTitle>Course import</CardTitle>
                       <CardDescription>
@@ -1755,7 +1479,7 @@ export function RapsodoSyncClient({
                         <Button
                           type="button"
                           variant={courseImportMode === "shot_only" ? "default" : "outline"}
-                          className={courseImportMode === "shot_only" ? "premium-action" : ""}
+                          className={courseImportMode === "shot_only" ? "shadow-sm" : ""}
                           onClick={() => setCourseImportMode("shot_only")}
                           disabled={isPending}
                         >
@@ -1765,7 +1489,7 @@ export function RapsodoSyncClient({
                         <Button
                           type="button"
                           variant={courseImportMode === "scored_round" ? "default" : "outline"}
-                          className={courseImportMode === "scored_round" ? "premium-action" : ""}
+                          className={courseImportMode === "scored_round" ? "shadow-sm" : ""}
                           onClick={() => setCourseImportMode("scored_round")}
                           disabled={isPending}
                         >
@@ -1774,7 +1498,7 @@ export function RapsodoSyncClient({
                         </Button>
                       </div>
                       {courseImportMode === "shot_only" ? (
-                        <div className="premium-command-surface rounded-lg p-3 text-sm text-muted-foreground">
+                        <div className="rounded-lg border bg-muted/25 p-3 text-sm text-muted-foreground">
                           These shots will save as a shot-linked course round without scorecard
                           detail.
                         </div>
@@ -1792,7 +1516,7 @@ export function RapsodoSyncClient({
                               onChange={(event) => setCourseName(event.target.value)}
                             />
                             {usingSavedCourseScorecard ? (
-                              <div className="premium-command-surface rounded-lg px-3 py-2 text-sm">
+                              <div className="rounded-lg border bg-muted/25 px-3 py-2 text-sm">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <span className="font-medium">
                                     {scorecard.holes.length} saved holes
@@ -1803,15 +1527,15 @@ export function RapsodoSyncClient({
                                 </div>
                               </div>
                             ) : (
-                              <textarea
-                                className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                              <Textarea
+                                className="min-h-24 w-full"
                                 placeholder="Hole, par, yards"
                                 value={scorecardText}
                                 onChange={(event) => setScorecardText(event.target.value)}
                               />
                             )}
                           </div>
-                          <div className="premium-command-surface rounded-lg p-3 text-sm">
+                          <div className="rounded-lg border bg-muted/25 p-3 text-sm">
                             {scorecard.holes.length === 0 ? (
                               <p className="text-muted-foreground">
                                 Add scorecard rows before saving this course session.
@@ -1836,7 +1560,7 @@ export function RapsodoSyncClient({
                                         : ""}
                                     </p>
                                     {!courseScoringSummary.isComplete ? (
-                                      <p className="text-xs font-medium text-amber-700">
+                                      <p className="text-xs font-medium text-[var(--status-warning-foreground)]">
                                         Enter a score for every hole before saving as a scored
                                         round.
                                       </p>
@@ -1846,7 +1570,9 @@ export function RapsodoSyncClient({
                               </div>
                             )}
                             {scorecard.warnings.length > 0 ? (
-                              <p className="mt-2 text-amber-700">{scorecard.warnings.join(" ")}</p>
+                              <p className="mt-2 text-[var(--status-warning-foreground)]">
+                                {scorecard.warnings.join(" ")}
+                              </p>
                             ) : null}
                           </div>
                         </>
@@ -1910,71 +1636,13 @@ export function RapsodoSyncClient({
             </AlertDialogContent>
           </AlertDialog>
 
-          {showStickyReviewBar ? (
-            <StickyMobileAction>
-              <div className="grid grid-cols-[auto_1fr] gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="rounded-xl"
-                  disabled={activeMobileStepIndex <= 0}
-                  onClick={() =>
-                    setMobileStep(mobileSteps[Math.max(0, activeMobileStepIndex - 1)].id)
-                  }
-                >
-                  Back
-                </Button>
-                {visibleMobileStep === "review" ? (
-                  <Button asChild className="premium-action rounded-lg">
-                    <Link
-                      href={
-                        visibleSaveStatus?.kind === "success" && visibleSaveStatus.sessionId
-                          ? `/shots?sessionId=${encodeURIComponent(visibleSaveStatus.sessionId)}`
-                          : "/shots"
-                      }
-                    >
-                      View trusted shots
-                    </Link>
-                  </Button>
-                ) : visibleMobileStep === "import" ? (
-                  <Button
-                    type="button"
-                    disabled={!canSave}
-                    onClick={savePreview}
-                    className="premium-action rounded-lg"
-                  >
-                    {isSavingPreview ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : previewAlreadyImported ? (
-                      <CheckCircle2 className="size-4" />
-                    ) : (
-                      <Upload className="size-4" />
-                    )}
-                    {saveButtonLabel}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    className="premium-action rounded-lg"
-                    onClick={() =>
-                      setMobileStep(
-                        mobileSteps[Math.min(mobileSteps.length - 1, activeMobileStepIndex + 1)].id,
-                      )
-                    }
-                  >
-                    Next
-                  </Button>
-                )}
-              </div>
-            </StickyMobileAction>
-          ) : null}
           {saveConfirmation ? (
             <SaveConfirmationToast
               confirmation={saveConfirmation}
               onDismiss={() => setSaveConfirmation(null)}
             />
           ) : null}
-          {children ? <div className="hidden lg:block">{children}</div> : null}
+          {children ? <div>{children}</div> : null}
         </DesktopWorkflowLayout>
       </div>
     </main>
@@ -2003,57 +1671,33 @@ export function RapsodoSyncClient({
 
 function SaveStatusPanel({ status }: { status: SaveStatus }) {
   return (
-    <div
+    <Alert
+      variant={status.kind === "error" ? "destructive" : "default"}
       role={status.kind === "error" ? "alert" : "status"}
       aria-live="polite"
       aria-atomic="true"
-      className={cn(
-        "grid gap-3 rounded-lg border px-3 py-3 text-sm sm:grid-cols-[auto_1fr_auto] sm:items-center",
-        status.kind === "error"
-          ? "border-destructive/30 bg-destructive/5 text-destructive"
-          : status.kind === "success"
-            ? "border-emerald-300 bg-emerald-50/70 text-emerald-950"
-            : "border-amber-300 bg-amber-50/70 text-amber-950",
-      )}
+      className={status.kind === "success" ? "border-primary/30 bg-primary/5" : undefined}
     >
-      <div
-        className={cn(
-          "grid size-9 place-items-center rounded-[8px]",
-          status.kind === "error"
-            ? "bg-destructive/10"
-            : status.kind === "success"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-amber-100 text-amber-700",
-        )}
-      >
-        {status.kind === "saving" ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : status.kind === "error" ? (
-          <AlertCircle className="size-4" />
-        ) : (
-          <CheckCircle2 className="size-4" />
-        )}
-      </div>
-      <div className="min-w-0">
-        <p className="font-semibold">{status.title}</p>
-        <p
-          className={cn(
-            "mt-0.5 text-xs leading-5",
-            status.kind === "error" ? "text-destructive/90" : "text-muted-foreground",
-          )}
-        >
-          {status.message}
-        </p>
-      </div>
-      {status.kind === "success" && status.sessionId ? (
-        <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
-          <Link href={`/shots?sessionId=${encodeURIComponent(status.sessionId)}`}>
-            <Database className="size-4" />
-            View saved shots
-          </Link>
-        </Button>
-      ) : null}
-    </div>
+      {status.kind === "saving" ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : status.kind === "error" ? (
+        <AlertCircle className="size-4" />
+      ) : (
+        <CheckCircle2 className="size-4" />
+      )}
+      <AlertTitle>{status.title}</AlertTitle>
+      <AlertDescription className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <span>{status.message}</span>
+        {status.kind === "success" && status.sessionId ? (
+          <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+            <Link href={`/shots?sessionId=${encodeURIComponent(status.sessionId)}`}>
+              <Database className="size-4" />
+              View saved shots
+            </Link>
+          </Button>
+        ) : null}
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -2070,23 +1714,20 @@ function SaveConfirmationToast({
       aria-atomic="true"
       className="fixed inset-x-3 top-[calc(5rem+env(safe-area-inset-top))] z-[70] mx-auto max-w-md sm:inset-x-auto sm:right-4 sm:top-24"
     >
-      <div
-        data-mobile-preserve-dark
-        className="overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl"
-      >
+      <div className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-2xl">
         <div className="flex items-start gap-3 px-4 py-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-emerald-400/15 text-emerald-300">
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]">
             <CheckCircle2 className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">{confirmation.title}</p>
-            <p className="mt-0.5 text-xs leading-5 text-slate-300">{confirmation.message}</p>
+            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{confirmation.message}</p>
           </div>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="shrink-0 text-slate-300 hover:bg-white/10 hover:text-white"
+            className="shrink-0"
             onClick={onDismiss}
             aria-label="Dismiss save confirmation"
           >
@@ -2094,36 +1735,21 @@ function SaveConfirmationToast({
           </Button>
         </div>
         {confirmation.sessionId ? (
-          <div className="grid gap-2 border-t border-white/10 px-4 py-3">
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-            >
+          <div className="grid gap-2 border-t px-4 py-3">
+            <Button asChild variant="outline" size="sm" className="w-full">
               <Link href={`/shots?sessionId=${encodeURIComponent(confirmation.sessionId)}`}>
                 <Database className="size-4" />
                 View saved shots
               </Link>
             </Button>
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-              >
+              <Button asChild variant="outline" size="sm">
                 <Link href="/course-records">
                   <Trophy className="size-4" />
                   Boards
                 </Link>
               </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
-              >
+              <Button asChild variant="outline" size="sm">
                 <Link href="/tournaments">
                   <ShieldCheck className="size-4" />
                   Events
@@ -2133,206 +1759,6 @@ function SaveConfirmationToast({
           </div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function MobileRapsodoSessionRows({
-  sessions,
-  connected,
-  isPending,
-  onPreview,
-}: {
-  sessions: RapsodoSessionListItem[];
-  connected: boolean;
-  isPending: boolean;
-  onPreview: (session: RapsodoSessionListItem) => void;
-}) {
-  return (
-    <IOSGroupedList label="Remote Rapsodo sessions" className="lg:hidden">
-      {sessions.length > 0 ? (
-        sessions.map((session) => (
-          <IOSListRow
-            key={`${session.providerKind}-${session.providerSessionId}`}
-            label={session.title}
-            detail={`${session.dateIso ? formatDate(session.dateIso) : "No date"} · ${formatSessionKind(session)} · ${session.shotCount === null ? "shots pending preview" : `${session.shotCount} shots`}`}
-            status={
-              session.isNew ? (
-                <IOSInlineStatus label="New session" tone="info" />
-              ) : (
-                <IOSInlineStatus label="Ready to review" tone="positive" />
-              )
-            }
-            trailing={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11 px-3"
-                aria-label={`Review ${session.title}`}
-                onClick={() => onPreview(session)}
-                disabled={isPending}
-              >
-                Review
-              </Button>
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow
-          label={connected ? "No sessions waiting" : "R-Cloud is not connected"}
-          detail={
-            connected
-              ? "No unimported sessions match these filters. Imported sessions stay out of this inbox."
-              : "Sign in to load sessions, or use the manual CSV import."
-          }
-          status={
-            <IOSInlineStatus
-              label={connected ? "Inbox clear" : "Action required"}
-              tone={connected ? "positive" : "attention"}
-            />
-          }
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function RapsodoInboxPrimaryCard({
-  session,
-  connected,
-  availableCount,
-  newSessionCount,
-  isPending,
-  loadingLabel,
-  onConnect,
-  onLoadSessions,
-  onPreviewSession,
-}: {
-  session: RapsodoSessionListItem | null;
-  connected: boolean;
-  availableCount: number;
-  newSessionCount: number;
-  isPending: boolean;
-  loadingLabel: string | null;
-  onConnect: () => void;
-  onLoadSessions: () => void;
-  onPreviewSession: (session: RapsodoSessionListItem) => void;
-}) {
-  const latestCopy = session
-    ? `Latest: ${session.title} · ${
-        session.shotCount === null ? "shots pending preview" : `${session.shotCount} shots`
-      }`
-    : connected
-      ? "No unimported sessions waiting"
-      : "Connect R-Cloud to open the inbox";
-
-  return (
-    <section className="premium-hero grid gap-2 p-2.5 lg:hidden">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Badge className="w-fit bg-primary/10 text-primary hover:bg-primary/10">Inbox</Badge>
-          <h2 className="mt-2 text-xl font-semibold leading-tight tracking-normal text-balance">
-            Rapsodo Inbox
-          </h2>
-          <p className="sr-only">Review sessions from R-Cloud.</p>
-        </div>
-        <div className="premium-command-surface min-w-20 rounded-lg px-2.5 py-2 text-right">
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-            Available
-          </p>
-          <p className="mt-0.5 text-xl font-semibold tracking-normal">{availableCount}</p>
-          <p className="mt-0.5 text-xs leading-4 text-muted-foreground">
-            {connected ? `${newSessionCount} new` : "Signed out"}
-          </p>
-        </div>
-      </div>
-
-      <div className="premium-command-surface grid gap-2 rounded-lg p-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-              Newest unimported
-            </p>
-            <h3 className="mt-1 line-clamp-1 text-xl font-semibold leading-tight tracking-normal">
-              {session ? session.title : connected ? "No sessions waiting" : "Connect R-Cloud"}
-            </h3>
-            <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
-              {session
-                ? latestCopy
-                : connected
-                  ? latestCopy
-                  : "Sign in once, then review the latest practice session."}
-            </p>
-          </div>
-          {session?.isNew ? (
-            <Badge className="shrink-0 bg-sky-100 text-sky-700 hover:bg-sky-100">New</Badge>
-          ) : null}
-        </div>
-        <Button
-          type="button"
-          data-primary-action
-          className="premium-action w-full rounded-lg"
-          disabled={isPending}
-          onClick={
-            session ? () => onPreviewSession(session) : connected ? onLoadSessions : onConnect
-          }
-        >
-          {loadingLabel === "Loading sessions" || loadingLabel === "Exporting CSV" ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : session ? (
-            <Sparkles className="size-4" />
-          ) : connected ? (
-            <RefreshCw className="size-4" />
-          ) : (
-            <Cloud className="size-4" />
-          )}
-          {session ? "Review latest" : connected ? "Load sessions" : "Connect R-Cloud"}
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-function RapsodoMobileStepper({
-  steps,
-  step,
-  onStepChange,
-}: {
-  steps: Array<{ id: RapsodoMobileStep; label: string }>;
-  step: RapsodoMobileStep;
-  onStepChange: (step: RapsodoMobileStep) => void;
-}) {
-  return (
-    <nav
-      aria-label="Rapsodo steps"
-      tabIndex={0}
-      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
-    >
-      {steps.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => onStepChange(item.id)}
-          className={cn(
-            "focus-aaa min-h-11 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm outline-none",
-            item.id === step
-              ? "premium-route-tab-active"
-              : "border-border bg-white/80 text-slate-700",
-          )}
-        >
-          {item.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-function CompactSummaryTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="premium-command-surface flex min-w-0 items-center justify-between gap-3 rounded-lg px-3 py-2">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <span className="truncate text-sm font-semibold">{value}</span>
     </div>
   );
 }
@@ -2452,13 +1878,6 @@ function buildRapsodoWorkflowSteps({
       value: saveComplete ? "Open evidence" : undefined,
     },
   ];
-}
-
-function sessionTimestamp(session: RapsodoSessionListItem) {
-  const date = session.dateIso ?? session.firstSeenAt ?? "";
-  const timestamp = Date.parse(date);
-
-  return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 function formatSessionKind(session: RapsodoSessionListItem) {

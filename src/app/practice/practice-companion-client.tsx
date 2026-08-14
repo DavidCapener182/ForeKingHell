@@ -15,7 +15,6 @@ import {
   IOSDisclosureGroup,
   IOSGroupedList,
   IOSListRow,
-  IOSMetricRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { OperationStatus } from "@/components/app/operation-status";
@@ -33,6 +32,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import {
   Card,
   CardAction,
@@ -50,7 +58,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { Label } from "@/components/ui/label";
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -118,6 +126,7 @@ export function PracticeCompanionClient({
   const [finished, setFinished] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [blockCarouselApi, setBlockCarouselApi] = useState<CarouselApi>();
   const [isPending, startTransition] = useTransition();
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const selectedBlock = plan.blocks[selectedIndex] ?? plan.blocks[0] ?? null;
@@ -138,6 +147,22 @@ export function PracticeCompanionClient({
     }, 0);
     return () => window.clearTimeout(timer);
   }, [activeCachedPlan, plan.blocks.length, savedPlanId]);
+
+  useEffect(() => {
+    if (!blockCarouselApi) return;
+    const syncSelectedBlock = () => setSelectedIndex(blockCarouselApi.selectedScrollSnap());
+    blockCarouselApi.on("select", syncSelectedBlock);
+    blockCarouselApi.on("reInit", syncSelectedBlock);
+    return () => {
+      blockCarouselApi.off("select", syncSelectedBlock);
+      blockCarouselApi.off("reInit", syncSelectedBlock);
+    };
+  }, [blockCarouselApi]);
+
+  useEffect(() => {
+    if (!blockCarouselApi || blockCarouselApi.selectedScrollSnap() === selectedIndex) return;
+    blockCarouselApi.scrollTo(selectedIndex);
+  }, [blockCarouselApi, selectedIndex]);
 
   useEffect(() => {
     if (!rangeMode || !("wakeLock" in navigator)) return;
@@ -325,9 +350,9 @@ export function PracticeCompanionClient({
             <Badge variant="secondary">{plan.confidenceLabel}</Badge>
           </CardAction>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2">
-          <IOSMetricRow label="Time" value={`${plan.estimatedTimeMinutes} min`} />
-          <IOSMetricRow
+        <CardContent className="grid min-w-0 grid-cols-2 gap-2">
+          <PlanMetric label="Time" value={`${plan.estimatedTimeMinutes} min`} />
+          <PlanMetric
             label="Volume"
             value={plan.totalBalls === null ? "Time based" : `${plan.totalBalls} balls`}
           />
@@ -363,29 +388,38 @@ export function PracticeCompanionClient({
           title="Practice blocks"
           description={`${plan.blocks.length} focused tasks`}
         />
-        <ToggleGroup
-          type="single"
-          value={String(selectedIndex)}
-          onValueChange={(value) => {
-            if (value) setSelectedIndex(Number(value));
-          }}
-          variant="outline"
-          className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1"
+        <Carousel
+          opts={{ align: "start", containScroll: "trimSnaps", dragFree: false }}
+          setApi={setBlockCarouselApi}
+          className="w-full min-w-0 max-w-full overflow-hidden px-10"
           aria-label="Practice blocks"
+          data-practice-block-carousel
         >
-          {plan.blocks.map((block, index) => (
-            <ToggleGroupItem
-              key={block.id}
-              value={String(index)}
-              disabled={!hydrated}
-              className="h-auto min-h-20 w-40 shrink-0 snap-start flex-col items-start rounded-xl p-3 text-left"
-            >
-              <span className="text-xs opacity-75">Block {block.order}</span>
-              <span className="mt-1 block text-sm font-semibold">{block.title}</span>
-              <span className="mt-1 block text-xs opacity-75">{blockVolume(block)}</span>
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+          <CarouselContent className="-ml-2">
+            {plan.blocks.map((block, index) => (
+              <CarouselItem key={block.id} className="basis-[88%] pl-2 sm:basis-1/2">
+                <Button
+                  type="button"
+                  variant={selectedIndex === index ? "default" : "outline"}
+                  disabled={!hydrated}
+                  aria-pressed={selectedIndex === index}
+                  onClick={() => setSelectedIndex(index)}
+                  className="h-full min-h-24 w-full min-w-0 justify-start whitespace-normal rounded-xl p-3 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-xs opacity-75">Block {block.order}</span>
+                    <span className="mt-1 block break-words text-sm font-semibold">
+                      {block.title}
+                    </span>
+                    <span className="mt-1 block text-xs opacity-75">{blockVolume(block)}</span>
+                  </span>
+                </Button>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="left-0 size-9" />
+          <CarouselNext className="right-0 size-9" />
+        </Carousel>
       </section>
 
       {selectedBlock ? <BlockCard block={selectedBlock} /> : null}
@@ -429,16 +463,41 @@ export function PracticeCompanionClient({
                   summary: `${measuredResult.practiceScore}/100`,
                   description: measuredResult.verdict,
                   content: (
-                    <IOSGroupedList label="Measured plan result" className="bg-card">
-                      <IOSListRow label="Verdict" detail={measuredResult.verdict} />
-                      <IOSListRow label="Next action" detail={measuredResult.nextAction} />
-                    </IOSGroupedList>
+                    <Card size="sm" data-plan-versus-actual>
+                      <CardHeader>
+                        <CardTitle>Measured plan result</CardTitle>
+                        <CardAction>
+                          <Badge variant="secondary">{measuredResult.practiceScore}/100</Badge>
+                        </CardAction>
+                      </CardHeader>
+                      <CardContent className="grid gap-3">
+                        <Progress
+                          value={measuredResult.practiceScore}
+                          aria-label={`Practice plan score: ${measuredResult.practiceScore} out of 100`}
+                        />
+                        <IOSGroupedList label="Measured plan result" className="bg-card">
+                          <IOSListRow label="Verdict" detail={measuredResult.verdict} />
+                          <IOSListRow label="Next action" detail={measuredResult.nextAction} />
+                        </IOSGroupedList>
+                      </CardContent>
+                    </Card>
                   ),
                 },
               ]
             : []),
         ]}
       />
+    </div>
+  );
+}
+
+function PlanMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-background/70 p-3">
+      <span className="block break-words text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        {label}
+      </span>
+      <span className="mt-1 block break-words text-sm font-semibold text-foreground">{value}</span>
     </div>
   );
 }
@@ -500,46 +559,50 @@ function QuickAdjustments({
           </DrawerDescription>
         </DrawerHeader>
         <div className="min-h-0 overflow-y-auto px-4 pb-4">
-          <div className="grid gap-4">
-            <ChoiceGroup
-              label="Time"
-              options={timeOptions.map((value) => ({
-                value: String(value),
-                label: `${value} min`,
-              }))}
-              selected={String(draft.timeMinutes)}
-              onSelect={(value) =>
-                setDraft({ ...draft, timeMinutes: Number(value), ballCount: null })
-              }
-              disabled={pending}
-            />
-            <ChoiceGroup
-              label="Energy"
-              options={energyOptions}
-              selected={draft.energy}
-              onSelect={(value) => setDraft({ ...draft, energy: value as PracticeEnergyLevel })}
-              disabled={pending}
-            />
-            <ChoiceGroup
-              label="Intent"
-              options={intentOptions}
-              selected={draft.intent}
-              onSelect={(value) => setDraft({ ...draft, intent: value as PracticeIntent })}
-              disabled={pending}
-            />
-            <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <FieldGroup>
+            <Field>
+              <ChoiceGroup
+                label="Time"
+                options={timeOptions.map((value) => ({
+                  value: String(value),
+                  label: `${value} min`,
+                }))}
+                selected={String(draft.timeMinutes)}
+                onSelect={(value) =>
+                  setDraft({ ...draft, timeMinutes: Number(value), ballCount: null })
+                }
+                disabled={pending}
+              />
+            </Field>
+            <Field>
+              <ChoiceGroup
+                label="Energy"
+                options={energyOptions}
+                selected={draft.energy}
+                onSelect={(value) => setDraft({ ...draft, energy: value as PracticeEnergyLevel })}
+                disabled={pending}
+              />
+            </Field>
+            <Field>
+              <ChoiceGroup
+                label="Intent"
+                options={intentOptions}
+                selected={draft.intent}
+                onSelect={(value) => setDraft({ ...draft, intent: value as PracticeIntent })}
+                disabled={pending}
+              />
+            </Field>
+            <FieldSet>
+              <FieldLegend className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Available facilities
-              </p>
-              <div className="grid grid-cols-2 gap-2">
+              </FieldLegend>
+              <div data-slot="checkbox-group" className="grid grid-cols-2 gap-2">
                 {facilityOptions.map((facility) => {
                   const selected = Boolean(draft.facility?.[facility.key]);
                   return (
-                    <Label
-                      key={facility.key}
-                      className="min-h-11 cursor-pointer rounded-xl border bg-card px-3"
-                    >
+                    <Field key={facility.key} orientation="horizontal">
                       <Checkbox
+                        id={`practice-facility-${facility.key}`}
                         checked={selected}
                         disabled={pending}
                         onCheckedChange={(checked) =>
@@ -549,24 +612,43 @@ function QuickAdjustments({
                           })
                         }
                       />
-                      {facility.label}
-                    </Label>
+                      <FieldLabel
+                        htmlFor={`practice-facility-${facility.key}`}
+                        className="min-h-11 cursor-pointer rounded-xl border bg-card px-3"
+                      >
+                        {facility.label}
+                      </FieldLabel>
+                    </Field>
                   );
                 })}
               </div>
-            </div>
-            <Button
-              type="button"
-              className="min-h-11 rounded-xl"
-              disabled={pending}
-              onClick={() => {
-                setOpen(false);
-                onChange(draft);
-              }}
-            >
-              Apply adjustments
-            </Button>
-          </div>
+            </FieldSet>
+            <ButtonGroup className="w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1"
+                disabled={pending}
+                onClick={() => {
+                  setDraft(options);
+                  setOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="min-h-11 flex-1"
+                disabled={pending}
+                onClick={() => {
+                  setOpen(false);
+                  onChange(draft);
+                }}
+              >
+                Apply adjustments
+              </Button>
+            </ButtonGroup>
+          </FieldGroup>
         </div>
       </DrawerContent>
     </Drawer>
@@ -702,12 +784,12 @@ function ActiveRangeMode({
             </p>
             <p className="mt-1 text-[15px] leading-6">{block?.drill ?? plan.summary}</p>
           </div>
-          <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
+          <ButtonGroup className="w-full">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="size-11 rounded-xl"
+              className="size-11 shrink-0"
               disabled={blockIndex <= 0}
               onClick={onPrevious}
               aria-label="Previous block"
@@ -716,7 +798,7 @@ function ActiveRangeMode({
             </Button>
             <Button
               type="button"
-              className="min-h-11 rounded-xl"
+              className="min-h-11 flex-1"
               disabled={!block}
               onClick={onComplete}
             >
@@ -727,14 +809,14 @@ function ActiveRangeMode({
               type="button"
               variant="outline"
               size="icon"
-              className="size-11 rounded-xl"
+              className="size-11 shrink-0"
               disabled={blockIndex >= plan.blocks.length - 1}
               onClick={onNext}
               aria-label="Next block"
             >
               <ChevronRight className="size-5" />
             </Button>
-          </div>
+          </ButtonGroup>
           <p className="text-xs leading-5 text-muted-foreground">
             Manual completion records activity only. A target remains unmeasured until matching
             launch-monitor evidence arrives.
@@ -789,7 +871,7 @@ function ActiveRangeMode({
           />
         </CardContent>
       </Card>
-      <div className="grid grid-cols-2 gap-2">
+      <ButtonGroup className="w-full">
         <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={onPause}>
           <Pause className="size-4" />
           Pause
@@ -802,7 +884,7 @@ function ActiveRangeMode({
         >
           Finish Practice
         </Button>
-      </div>
+      </ButtonGroup>
       <Drawer open={finishOpen} onOpenChange={setFinishOpen} repositionInputs={false}>
         <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <DrawerHeader className="text-left">
@@ -889,23 +971,27 @@ function practiceWorkflowSteps({
 
 function FinishedActions({ message }: { message: string | null }) {
   return (
-    <section className="ios-grouped-list grid gap-3 p-5" data-practice-finished>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-          Practice complete
-        </p>
-        <h2 className="mt-1 text-xl font-bold">Add evidence when it is ready</h2>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">{message}</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button asChild className="min-h-11 rounded-xl">
-          <Link href="/rapsodo">Sync Rapsodo</Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/import">Upload CSV</Link>
-        </Button>
-      </div>
-    </section>
+    <Card data-practice-finished>
+      <CardHeader>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Practice complete
+          </p>
+          <CardTitle className="mt-1 text-xl">Add evidence when it is ready</CardTitle>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{message}</p>
+        </div>
+      </CardHeader>
+      <CardFooter className="p-3">
+        <ButtonGroup className="w-full">
+          <Button asChild className="min-h-11 flex-1">
+            <Link href="/rapsodo">Sync Rapsodo</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11 flex-1">
+            <Link href="/import">Upload CSV</Link>
+          </Button>
+        </ButtonGroup>
+      </CardFooter>
+    </Card>
   );
 }
 

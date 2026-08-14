@@ -7,17 +7,21 @@ function source(path: string) {
 }
 
 describe("composable analysis design primitives", () => {
-  it("uses one accessible segmented control in analysis and map surfaces", () => {
+  it("uses one shadcn ToggleGroup-backed segmented control in analysis and map surfaces", () => {
     const segmented = source("src/components/app/segmented-control.tsx");
     const impact = source("src/app/analyse/session-impact/session-impact-client.tsx");
     const map = source("src/components/maps/shot-pattern-map.tsx");
 
-    expect(segmented).toContain('role="group"');
-    expect(segmented).toContain("aria-pressed");
+    expect(segmented).toContain('from "@/components/ui/toggle-group"');
+    expect(segmented).toContain('<ToggleGroup\n        type="single"');
+    expect(segmented).toContain("<ToggleGroupItem");
     expect(segmented).toContain("min-h-11");
+    expect(segmented).not.toContain("<button");
     expect(impact).toContain("@/components/app/segmented-control");
     expect(map).toContain("@/components/app/segmented-control");
     expect(impact).not.toContain("function SegmentedControl(");
+    expect(impact).toContain('<ToggleGroup\n              type="single"');
+    expect(impact).not.toContain("<button");
     expect(map).not.toContain("function SegmentedControl(");
   });
 
@@ -67,6 +71,25 @@ describe("composable analysis design primitives", () => {
     expect(analyse).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
     expect(analyse).toContain("<ConnectedMetricBar");
     expect(analyse).toContain("<AnalyseProvenancePanel");
+  });
+
+  it("supports flat connected metrics inside an existing Card", () => {
+    const metrics = source("src/components/app/connected-metric-bar.tsx");
+    const nestedCallers = [
+      source("src/app/(app)/practice/practice-workbench-page.tsx"),
+      source("src/app/(app)/goals/page.tsx"),
+      source("src/app/(app)/stats/training-over-time/page.tsx"),
+      source("src/app/(app)/courses/page.tsx"),
+      source("src/app/(app)/providers/page.tsx"),
+      source("src/app/rapsodo/rapsodo-sync-client.tsx"),
+    ];
+
+    expect(metrics).toContain("embedded = false");
+    expect(metrics).toContain("data-connected-metric-bar-embedded");
+    expect(metrics).toContain('embedded ? "rounded-lg border border-border shadow-none"');
+    for (const caller of nestedCallers) {
+      expect(caller).toMatch(/<ConnectedMetricBar\n\s+embedded/);
+    }
   });
 
   it("keeps app shells full-width and centralises semantic surface tokens", () => {

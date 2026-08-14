@@ -1,11 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Crosshair, Filter, Layers3 } from "lucide-react";
+import { Crosshair, Filter, Layers3 } from "lucide-react";
 
-import { IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
 import { StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -41,9 +50,10 @@ export function ShotPatternExplorer({
   const active = clusters.find((cluster) => cluster.key === selected) ?? null;
 
   return (
-    <section
-      className="grid gap-4 lg:rounded-2xl lg:border lg:bg-card lg:p-4"
+    <Card
+      className="grid gap-4 p-4"
       aria-labelledby="pattern-explorer-title"
+      data-shot-pattern-explorer
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -85,53 +95,15 @@ export function ShotPatternExplorer({
         </label>
       </div>
       {clusters.length ? (
-        <div className="ios-grouped-list overflow-hidden lg:hidden" aria-label="Shot clusters">
-          {clusters.map((cluster) => {
-            const expanded = cluster.key === selected;
-
-            return (
-              <button
-                key={cluster.key}
-                type="button"
-                onClick={() => setSelected(expanded ? null : cluster.key)}
-                aria-expanded={expanded}
-                aria-controls="mobile-pattern-cluster-detail"
-                className="ios-grouped-row focus-aaa flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left outline-none"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-medium leading-5 text-foreground">
-                    {cluster.label}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground">
-                    {cluster.patternLabel}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right">
-                  <span className="block text-[15px] tabular-nums text-muted-foreground">
-                    {cluster.averageCarry === null ? "—" : `${cluster.averageCarry} yd`}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">{cluster.count} shots</span>
-                </span>
-                <ChevronDown
-                  className={`size-4 shrink-0 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none ${
-                    expanded ? "rotate-180" : ""
-                  }`}
-                  aria-hidden
-                />
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      {clusters.length ? (
-        <div className="hidden gap-3 lg:grid lg:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4" aria-label="Shot clusters">
           {clusters.map((cluster) => (
-            <button
+            <Button
               key={cluster.key}
               type="button"
+              variant="outline"
               onClick={() => setSelected(cluster.key === selected ? null : cluster.key)}
               aria-expanded={cluster.key === selected}
-              className="rounded-xl border bg-background p-4 text-left hover:border-primary focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="h-auto min-h-28 flex-col items-stretch justify-start whitespace-normal p-4 text-left hover:border-primary"
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-semibold">{cluster.label}</p>
@@ -143,19 +115,18 @@ export function ShotPatternExplorer({
                 {cluster.averageCarry === null ? "—" : `${cluster.averageCarry} yd`}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{cluster.patternLabel}</p>
-            </button>
+            </Button>
           ))}
         </div>
       ) : (
-        <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">
-          No matching measured shots to cluster.
-        </p>
+        <Alert>
+          <Crosshair aria-hidden="true" />
+          <AlertTitle>No matching shot clusters</AlertTitle>
+          <AlertDescription>No matching measured shots to cluster.</AlertDescription>
+        </Alert>
       )}
       {active ? (
-        <div
-          id="mobile-pattern-cluster-detail"
-          className="rounded-xl border bg-background p-3 lg:p-4"
-        >
+        <div id="pattern-cluster-detail" className="rounded-xl border bg-background p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-primary">Contributing shots</p>
@@ -165,42 +136,31 @@ export function ShotPatternExplorer({
               Close
             </Button>
           </div>
-          <IOSGroupedList label={`${active.label} contributing shots`} className="mt-3 lg:hidden">
-            {active.shots.map((shot) => (
-              <IOSListRow
-                key={shot.id}
-                label={`${shot.club} · ${shot.date}`}
-                value={shot.carry}
-                detail={`${shot.finish} · ${shot.start}`}
-                status={<span className="text-xs text-muted-foreground">{shot.evidence}</span>}
-              />
-            ))}
-          </IOSGroupedList>
-          <div className="mt-3 hidden max-h-80 overflow-auto lg:block">
-            <table className="w-full min-w-[42rem] text-left text-sm">
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="p-2">Date</th>
-                  <th className="p-2">Club</th>
-                  <th className="p-2">Carry</th>
-                  <th className="p-2">Finish</th>
-                  <th className="p-2">Start</th>
-                  <th className="p-2">Evidence</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="mt-3 max-h-80 overflow-auto">
+            <Table className="min-w-[42rem]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Club</TableHead>
+                  <TableHead>Carry</TableHead>
+                  <TableHead>Finish</TableHead>
+                  <TableHead>Start</TableHead>
+                  <TableHead>Evidence</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {active.shots.map((shot) => (
-                  <tr key={shot.id} className="border-t">
-                    <td className="p-2">{shot.date}</td>
-                    <td className="p-2 font-semibold">{shot.club}</td>
-                    <td className="p-2">{shot.carry}</td>
-                    <td className="p-2">{shot.finish}</td>
-                    <td className="p-2">{shot.start}</td>
-                    <td className="p-2">{shot.evidence}</td>
-                  </tr>
+                  <TableRow key={shot.id}>
+                    <TableCell>{shot.date}</TableCell>
+                    <TableCell className="font-semibold">{shot.club}</TableCell>
+                    <TableCell>{shot.carry}</TableCell>
+                    <TableCell>{shot.finish}</TableCell>
+                    <TableCell>{shot.start}</TableCell>
+                    <TableCell>{shot.evidence}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       ) : null}
@@ -209,6 +169,6 @@ export function ShotPatternExplorer({
         Automatic labels describe repeated geometry in the selected cluster. They do not diagnose
         swing mechanics and low-sample clusters remain provisional.
       </p>
-    </section>
+    </Card>
   );
 }

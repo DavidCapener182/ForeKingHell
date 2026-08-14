@@ -18,8 +18,10 @@ import {
 } from "lucide-react";
 
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Drawer,
   DrawerClose,
@@ -30,7 +32,9 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { Item } from "@/components/ui/item";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetClose,
@@ -419,17 +423,17 @@ function SocialFeedRailContent() {
       <Button
         type="button"
         variant="outline"
-        className="fixed bottom-5 right-5 z-40 hidden h-11 gap-2 rounded-full border-slate-200 bg-white px-4 text-slate-950 shadow-lg shadow-slate-950/10 hover:bg-slate-50 lg:inline-flex"
+        className="fixed bottom-5 right-5 z-40 hidden h-11 gap-2 rounded-full border-border bg-card px-4 text-card-foreground shadow-lg hover:bg-muted lg:inline-flex"
         onClick={openRail}
         aria-expanded={expanded}
         aria-controls="social-feed-preview"
         aria-label="Open social feed preview"
       >
-        <Radio className="size-4 text-emerald-600" />
+        <Radio className="size-4 text-primary" />
         <span className="lg:hidden">Feed</span>
         <span className="hidden lg:inline">Social feed</span>
         {newCount > 0 ? (
-          <span className="rounded-full bg-[#0B7A3B] px-2 py-0.5 text-xs font-semibold text-white">
+          <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
             {newCount > 99 ? "99+" : numberFormatter.format(newCount)}
           </span>
         ) : null}
@@ -442,7 +446,7 @@ function SocialFeedRailContent() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <DrawerTitle className="flex items-center gap-2">
-                    <Radio className="size-4 text-emerald-600" />
+                    <Radio className="size-4 text-primary" />
                     Social feed
                   </DrawerTitle>
                   <DrawerDescription>Daily digests match the full feed.</DrawerDescription>
@@ -488,11 +492,11 @@ function SocialFeedRailContent() {
             showCloseButton={false}
             className="w-[min(420px,calc(100vw-1rem))] max-w-none gap-0 p-0 sm:max-w-none"
           >
-            <SheetHeader className="border-b border-slate-100 p-4 text-left">
+            <SheetHeader className="border-b border-border p-4 text-left">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <SheetTitle className="flex items-center gap-2">
-                    <Radio className="size-4 text-emerald-600" />
+                    <Radio className="size-4 text-primary" />
                     Social feed
                   </SheetTitle>
                   <SheetDescription>Daily digests match the full feed.</SheetDescription>
@@ -520,7 +524,7 @@ function SocialFeedRailContent() {
               </div>
             </SheetHeader>
             <ScrollArea className="min-h-0 flex-1 px-3 py-3">{feedContent}</ScrollArea>
-            <SheetFooter className="border-t border-slate-100 p-3">
+            <SheetFooter className="border-t border-border p-3">
               <Button asChild className="w-full">
                 <Link href="/feed" prefetch={false}>
                   Open feed
@@ -569,7 +573,7 @@ function SocialFeedPreviewContent({
     return (
       <div className="grid gap-2 py-3">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-24 animate-pulse rounded-xl bg-slate-100" />
+          <Skeleton key={index} className="h-24 rounded-xl" />
         ))}
       </div>
     );
@@ -577,17 +581,17 @@ function SocialFeedPreviewContent({
 
   if (status === "error") {
     return (
-      <div className="my-3 rounded-xl border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
-        Feed preview is unavailable.
-      </div>
+      <Alert variant="destructive" className="my-3">
+        <AlertDescription>Feed preview is unavailable.</AlertDescription>
+      </Alert>
     );
   }
 
   if (groups.length === 0) {
     return (
-      <div className="my-3 rounded-xl border border-dashed bg-slate-50 p-3 text-sm text-muted-foreground">
-        No visible activity yet.
-      </div>
+      <Alert className="my-3">
+        <AlertDescription>No visible activity yet.</AlertDescription>
+      </Alert>
     );
   }
 
@@ -655,61 +659,63 @@ function RailDayDigest({
   }
 
   return (
-    <article className="rounded-xl border border-border bg-card p-2.5 text-sm text-card-foreground shadow-sm">
-      <header>
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" className="gap-1">
-              <CalendarDays className="size-3" />
-              {group.label}
-            </Badge>
-            <Link
-              href={`/profile/${firstItem.profile.username}`}
-              prefetch={false}
-              className="text-xs font-semibold hover:underline"
-            >
-              {firstItem.profile.displayName}
-            </Link>
-            <span className="text-xs text-muted-foreground">@{firstItem.profile.username}</span>
+    <Card role="article" size="sm" className="gap-0 py-0 shadow-sm">
+      <CardContent className="p-2.5">
+        <header>
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <Badge variant="secondary" className="gap-1">
+                <CalendarDays className="size-3" />
+                {group.label}
+              </Badge>
+              <Link
+                href={`/profile/${firstItem.profile.username}`}
+                prefetch={false}
+                className="text-xs font-semibold hover:underline"
+              >
+                {firstItem.profile.displayName}
+              </Link>
+              <span className="text-xs text-muted-foreground">@{firstItem.profile.username}</span>
+            </div>
+            <p className="mt-2 font-semibold leading-5">
+              {digestHeadline(group, achievements.length)}
+            </p>
           </div>
-          <p className="mt-2 font-semibold leading-5">
-            {digestHeadline(group, achievements.length)}
-          </p>
+        </header>
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {group.xpGained > 0 ? (
+            <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary">
+              <Zap className="size-3" />+{numberFormatter.format(group.xpGained)} XP
+            </Badge>
+          ) : null}
+          {group.typeSummaries.map((summary) => (
+            <Badge key={summary.type} variant="outline">
+              {summary.label}
+            </Badge>
+          ))}
         </div>
-      </header>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {group.xpGained > 0 ? (
-          <Badge variant="secondary" className="gap-1 bg-emerald-50 text-emerald-800">
-            <Zap className="size-3" />+{numberFormatter.format(group.xpGained)} XP
-          </Badge>
-        ) : null}
-        {group.typeSummaries.map((summary) => (
-          <Badge key={summary.type} variant="outline">
-            {summary.label}
-          </Badge>
-        ))}
-      </div>
-
-      <div className="mt-3 grid gap-2">
-        {highlights.map((item) => (
-          <RailActivityItem
-            key={item.id}
-            busy={busyItemId === item.id}
-            busyCommentId={busyCommentId}
-            commenting={commentingItemId === item.id}
-            commentDraft={commentDrafts[item.id] ?? ""}
-            item={item}
-            onCommentDraftChange={(value) => onCommentDraftChange(item.id, value)}
-            onCommentDelete={(comment) => onCommentDelete(item.id, comment)}
-            onCommentReactionToggle={(comment) => onCommentReactionToggle(item.id, comment)}
-            onCommentToggle={() => onCommentToggle(item.id)}
-            onReactionToggle={() => onReactionToggle(item)}
-            onSubmitComment={(event) => onSubmitComment(event, item.id)}
-          />
-        ))}
-      </div>
-    </article>
+        <div className="mt-3 grid gap-2">
+          {highlights.map((item) => (
+            <RailActivityItem
+              key={item.id}
+              busy={busyItemId === item.id}
+              busyCommentId={busyCommentId}
+              commenting={commentingItemId === item.id}
+              commentDraft={commentDrafts[item.id] ?? ""}
+              item={item}
+              onCommentDraftChange={(value) => onCommentDraftChange(item.id, value)}
+              onCommentDelete={(comment) => onCommentDelete(item.id, comment)}
+              onCommentReactionToggle={(comment) => onCommentReactionToggle(item.id, comment)}
+              onCommentToggle={() => onCommentToggle(item.id)}
+              onReactionToggle={() => onReactionToggle(item)}
+              onSubmitComment={(event) => onSubmitComment(event, item.id)}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -741,7 +747,7 @@ function RailActivityItem({
   const isStatusUpdate = item.itemType === "status_update";
 
   return (
-    <div className="rounded-xl border border-border bg-secondary/70 p-2">
+    <Item variant="muted" className="block bg-secondary/70 p-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="line-clamp-2 text-sm font-medium leading-5">
@@ -848,7 +854,7 @@ function RailActivityItem({
           </form>
         </div>
       ) : null}
-    </div>
+    </Item>
   );
 }
 

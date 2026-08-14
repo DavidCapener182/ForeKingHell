@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { Cloud, FileClock, FileUp, PenLine, PlugZap } from "lucide-react";
+import { ChevronRight, Cloud, FileClock, FileUp, PenLine, PlugZap, Settings2 } from "lucide-react";
 
-import { CompanionRangeImport } from "@/app/import/companion-range-import";
 import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import { CompanionSyncStatus } from "@/components/app/companion-sync-status";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusTimeline } from "@/components/app/status-timeline";
-import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,13 +19,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getSavedPracticePlan } from "@/lib/practice-planner";
 import { companionReviewRoute } from "@/lib/session-review-route";
 
-type ImportSearchParams = Promise<{ source?: string; practicePlanId?: string }> | undefined;
+type ImportSearchParams = Promise<{ practicePlanId?: string }> | undefined;
 
 export default async function ImportCompanionPage({
   searchParams,
@@ -44,26 +51,6 @@ export default async function ImportCompanionPage({
     !practicePlan.sourceSessionId
       ? practicePlan
       : null;
-
-  if (params?.source === "csv") {
-    return (
-      <PageShell>
-        <MobileAppShell
-          className="gap-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
-          data-import-companion-csv
-        >
-          <MobileTopBar title="CSV import" />
-          {validPlan ? (
-            <p className="rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
-              This upload will be scored against {validPlan.title}.
-            </p>
-          ) : null}
-          <CompanionRangeImport practicePlanId={validPlan?.id ?? null} />
-          <CompanionSyncStatus accountId={userId} />
-        </MobileAppShell>
-      </PageShell>
-    );
-  }
 
   const [status, recent] = await Promise.all([
     getRapsodoConnectionStatusAction(),
@@ -93,12 +80,12 @@ export default async function ImportCompanionPage({
         <CompanionSyncStatus accountId={userId} />
 
         <section className="grid gap-2.5">
-          <IOSSectionHeader
-            title="Import a session"
-            description={
-              validPlan ? `Evidence for ${validPlan.title}` : "Choose one measured source"
-            }
-          />
+          <div className="px-1">
+            <h2 className="text-sm font-semibold">Import a session</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {validPlan ? `Evidence for ${validPlan.title}` : "Choose one measured source"}
+            </p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Card size="sm">
               <CardHeader>
@@ -139,47 +126,77 @@ export default async function ImportCompanionPage({
               </CardContent>
             </Card>
           </div>
+          <Alert>
+            <PlugZap aria-hidden />
+            <AlertTitle>
+              Connection status · R-Cloud {connected ? "connected" : "is not connected"}
+            </AlertTitle>
+            <AlertDescription className="grid gap-2">
+              <span>
+                {connected
+                  ? "Recent provider sessions can be checked without uploading another file."
+                  : "Connect R-Cloud, or continue with a CSV without changing your provider settings."}
+              </span>
+              <Button asChild size="sm" variant="outline" className="w-fit">
+                <Link href={`/rapsodo${planQuery}`}>
+                  {connected ? "Review connection" : "Connect R-Cloud"}
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
         </section>
 
-        <section className="grid gap-2.5">
-          <IOSSectionHeader title="Other" />
-          <IOSGroupedList label="Other import actions">
-            <IOSListRow icon={PenLine} label="Add a manual round" href="/rounds/new" />
-            <IOSListRow
-              icon={PlugZap}
-              label="Connection status"
-              value={connected ? "Connected" : "Not connected"}
-              href={`/rapsodo${planQuery}`}
+        <Card size="sm" data-import-other-actions>
+          <CardHeader>
+            <CardTitle>Other import actions</CardTitle>
+            <CardDescription>Round entry, history and storage preferences.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <ImportActionItem
+              icon={PenLine}
+              title="Add a manual round"
+              description="Enter a scored round without an upload."
+              href="/rounds/new"
             />
-            <IOSListRow
-              icon={FileClock}
-              label="Import history"
-              detail={`${recent.length} recent imports`}
-              href="#recent-imports"
+            {recent.length > 0 ? (
+              <ImportActionItem
+                icon={FileClock}
+                title="Import history"
+                description={`${recent.length} recent imports`}
+                href="#recent-imports"
+              />
+            ) : null}
+            <ImportActionItem
+              icon={Settings2}
+              title="Local import storage"
+              description="Choose whether this phone may queue uploads offline."
+              href="/settings?section=offline#offline-storage"
             />
-          </IOSGroupedList>
-        </section>
+          </CardContent>
+        </Card>
 
         {recent.length > 0 ? (
           <section id="recent-imports" className="grid gap-2.5 scroll-mt-20">
-            <IOSSectionHeader title="Recent imports" />
-            <div className="ios-grouped-list p-4">
-              <StatusTimeline
-                label="Recent import timeline"
-                items={recent.map((session) => ({
-                  id: session.id,
-                  title: session.courseName ?? session.fileName ?? "Measured session",
-                  timestamp: formatRecentImportDate(session.date),
-                  description:
-                    session.type === "round"
-                      ? "Round evidence imported"
-                      : "Practice evidence imported",
-                  status: session.type === "round" ? "Round" : "Practice",
-                  kind: session.type === "round" ? "round" : "import",
-                  href: companionReviewRoute(session),
-                }))}
-              />
-            </div>
+            <h2 className="px-1 text-sm font-semibold">Recent imports</h2>
+            <Card size="sm">
+              <CardContent>
+                <StatusTimeline
+                  label="Recent import timeline"
+                  items={recent.map((session) => ({
+                    id: session.id,
+                    title: session.courseName ?? session.fileName ?? "Measured session",
+                    timestamp: formatRecentImportDate(session.date),
+                    description:
+                      session.type === "round"
+                        ? "Round evidence imported"
+                        : "Practice evidence imported",
+                    status: session.type === "round" ? "Round" : "Practice",
+                    kind: session.type === "round" ? "round" : "import",
+                    href: companionReviewRoute(session),
+                  }))}
+                />
+              </CardContent>
+            </Card>
           </section>
         ) : (
           <AppEmptyState
@@ -192,15 +209,37 @@ export default async function ImportCompanionPage({
             }
           />
         )}
-
-        <Link
-          href="/settings#offline-storage"
-          className="focus-aaa px-1 text-xs text-muted-foreground underline underline-offset-4"
-        >
-          Local import storage settings
-        </Link>
       </MobileAppShell>
     </PageShell>
+  );
+}
+
+function ImportActionItem({
+  icon: Icon,
+  title,
+  description,
+  href,
+}: {
+  icon: typeof PenLine;
+  title: string;
+  description: string;
+  href: string;
+}) {
+  return (
+    <Link href={href} className="focus-aaa rounded-xl outline-none">
+      <Item variant="outline" size="sm">
+        <ItemMedia>
+          <Icon className="size-4 text-primary" aria-hidden />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{title}</ItemTitle>
+          <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+        </ItemActions>
+      </Item>
+    </Link>
   );
 }
 

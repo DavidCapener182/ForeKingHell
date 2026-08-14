@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowRight, FolderClock, MoreHorizontal } from "lucide-react";
+import { ArrowRight, FolderClock, MoreHorizontal, RefreshCw } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,11 @@ export function TodayPrimaryAnswer({
     ? syncFacts(actions, isOnline, syncState.status === "Needs attention")
     : facts;
 
+  function retrySync() {
+    window.dispatchEvent(new Event("fkh-offline-retry-requested"));
+    window.setTimeout(refresh, 500);
+  }
+
   return (
     <Card
       size="sm"
@@ -120,6 +125,17 @@ export function TodayPrimaryAnswer({
                 aria-label={`${syncState.status}: ${syncProgress(syncState.status)}%`}
                 className="h-1.5"
               />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-fit"
+                disabled={!isOnline}
+                onClick={retrySync}
+              >
+                <RefreshCw className="size-3.5" aria-hidden />
+                {isOnline ? "Retry sync" : "Retry when online"}
+              </Button>
             </AlertDescription>
           </Alert>
         ) : null}

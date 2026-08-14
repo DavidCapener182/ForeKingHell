@@ -103,4 +103,14 @@ describe("app shell desktop accessibility", () => {
       "window.addEventListener(ACHIEVEMENT_UNLOCK_EVENT, handleAchievementUnlock)",
     );
   });
+
+  it("uses the shared Button for the account sign-out menu item", () => {
+    const signOutForm = source.match(/<form action="\/auth\/sign-out"[\s\S]*?<\/form>/)?.[0] ?? "";
+
+    expect(signOutForm).toContain('<DropdownMenuItem asChild variant="destructive">');
+    expect(signOutForm).toContain("<Button");
+    expect(signOutForm).toContain('type="submit"');
+    expect(signOutForm).toContain("clearPrivateDataBeforeSignOut");
+    expect(signOutForm).not.toContain("<button");
+  });
 });

@@ -6,25 +6,10 @@ import {
   recordOfferClickAction,
 } from "@/app/partners/actions";
 import {
-  DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import {
-  BottomSheet,
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileStatusAction,
-  MobileTopBar,
-} from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import {
   DataPair,
   DataPanel,
@@ -34,7 +19,9 @@ import {
   StatusPill,
 } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -105,29 +92,18 @@ export default async function PartnersPage({
   const sponsorAssetCount = data.sponsors.filter(
     (sponsor) => Boolean(sponsor.websiteUrl) || Boolean(sponsor.contactEmail),
   ).length;
+  const status =
+    params?.sponsor === "created"
+      ? "Sponsor added"
+      : params?.offer === "created"
+        ? "Offer created"
+        : params?.offer === "clicked"
+          ? "Offer click recorded"
+          : null;
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar title="Partners" />
-        <MobileRouteTabs group="platform" activeKey="partners" />
-        <MobilePartnersOperations
-          data={data}
-          sponsorAssetCount={sponsorAssetCount}
-          activeContextualOffers={activeContextualOffers}
-          status={
-            params?.sponsor === "created"
-              ? "Sponsor added"
-              : params?.offer === "created"
-                ? "Offer created"
-                : params?.offer === "clicked"
-                  ? "Offer click recorded"
-                  : undefined
-          }
-        />
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="partners" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="partners">
         <PageHeader
           eyebrow={<StatusPill tone="amber">Sponsored growth</StatusPill>}
           title="Sponsors and partner offers"
@@ -140,6 +116,13 @@ export default async function PartnersPage({
           ]}
         />
 
+        {status ? (
+          <Alert>
+            <AlertTitle>{status}</AlertTitle>
+            <AlertDescription>Partner operations have been refreshed.</AlertDescription>
+          </Alert>
+        ) : null}
+
         <PartnerOperationsSummary
           activeContextualOffers={activeContextualOffers}
           offerCount={data.offers.length}
@@ -150,38 +133,38 @@ export default async function PartnersPage({
 
         <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
           <section id="partner-setup" className="grid scroll-mt-28 gap-4 lg:sticky lg:top-28">
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <section className="rounded-xl border bg-card p-4 shadow-sm">
               <p className="text-sm font-semibold">Add sponsor prospect</p>
               <form action={createSponsorAction} className="mt-3 grid gap-3">
                 <Input
                   name="name"
                   placeholder="Local range / golf shop"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                   required
                 />
                 <Input
                   name="websiteUrl"
                   placeholder="https://example.com"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                 />
                 <Input
                   name="contactEmail"
                   type="email"
                   placeholder="partner@example.com"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                 />
-                <Button type="submit" className="rounded-xl bg-[#111827] text-white">
+                <Button type="submit" className="rounded-xl">
                   <Plus className="size-4" />
                   Add sponsor
                 </Button>
               </form>
             </section>
 
-            <section className="rounded-xl border bg-white p-4 shadow-sm">
+            <section className="rounded-xl border bg-card p-4 shadow-sm">
               <p className="text-sm font-semibold">Create offer</p>
               <form action={createPartnerOfferAction} className="mt-3 grid gap-3">
                 <Select name="sponsorId" defaultValue={data.ownedSponsors[0]?.id} required>
-                  <SelectTrigger aria-label="Sponsor" className="h-9 w-full bg-slate-50">
+                  <SelectTrigger aria-label="Sponsor" className="h-9 w-full bg-muted/40">
                     <SelectValue placeholder="Choose sponsor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -195,17 +178,17 @@ export default async function PartnersPage({
                 <Input
                   name="title"
                   placeholder="Winter range credit"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                   required
                 />
                 <Textarea
                   name="description"
                   rows={3}
-                  className="rounded-xl border bg-slate-50 px-3 py-2 text-sm"
+                  className="rounded-xl border bg-muted/40 px-3 py-2 text-sm"
                   placeholder="Short labelled offer copy"
                 />
                 <Select name="offerType" defaultValue="affiliate">
-                  <SelectTrigger aria-label="Offer type" className="h-9 w-full bg-slate-50">
+                  <SelectTrigger aria-label="Offer type" className="h-9 w-full bg-muted/40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -218,17 +201,17 @@ export default async function PartnersPage({
                 <Input
                   name="targetContext"
                   placeholder="spin_missing, wedge, challenge"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                 />
                 <Input
                   name="offerUrl"
                   placeholder="https://example.com/offer"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                 />
                 <Input
                   name="couponCode"
                   placeholder="Optional code"
-                  className="h-9 rounded-xl bg-slate-50"
+                  className="h-9 rounded-xl bg-muted/40"
                 />
                 <Button type="submit" disabled={data.ownedSponsors.length === 0}>
                   <TicketPercent className="size-4" />
@@ -239,376 +222,56 @@ export default async function PartnersPage({
           </section>
 
           <section className="grid gap-4">
-            <section id="offers" className="premium-card p-4">
-              <p className="text-sm font-semibold">Active contextual offers</p>
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {data.offers.length === 0 ? (
-                  <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    No partner offers yet.
-                  </p>
-                ) : (
-                  data.offers.map((offer) => (
-                    <article key={offer.id} className="rounded-xl border bg-slate-50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <Badge variant="outline">{label(offer.offerType)}</Badge>
-                          <h2 className="mt-3 font-semibold">{offer.title}</h2>
+            <Card id="offers" className="gap-0 py-0">
+              <CardContent className="p-4">
+                <p className="text-sm font-semibold">Active contextual offers</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {data.offers.length === 0 ? (
+                    <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                      No partner offers yet.
+                    </p>
+                  ) : (
+                    data.offers.map((offer) => (
+                      <article key={offer.id} className="rounded-xl border bg-muted/40 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <Badge variant="outline">{label(offer.offerType)}</Badge>
+                            <h2 className="mt-3 font-semibold">{offer.title}</h2>
+                          </div>
+                          {offer.couponCode ? (
+                            <Badge variant="secondary">{offer.couponCode}</Badge>
+                          ) : null}
                         </div>
-                        {offer.couponCode ? (
-                          <Badge variant="secondary">{offer.couponCode}</Badge>
-                        ) : null}
-                      </div>
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
-                        {offer.description ?? "No description."}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {offer.targetContext ? (
-                          <Badge variant="outline">{offer.targetContext}</Badge>
-                        ) : null}
-                        {offer.offerUrl ? (
-                          <form action={recordOfferClickAction}>
-                            <input type="hidden" name="offerId" value={offer.id} />
-                            <input type="hidden" name="offerUrl" value={offer.offerUrl} />
-                            <input type="hidden" name="source" value="partners_page" />
-                            <Button type="submit" size="sm">
-                              Open offer
-                            </Button>
-                          </form>
-                        ) : null}
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
-            </section>
+                        <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                          {offer.description ?? "No description."}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {offer.targetContext ? (
+                            <Badge variant="outline">{offer.targetContext}</Badge>
+                          ) : null}
+                          {offer.offerUrl ? (
+                            <form action={recordOfferClickAction}>
+                              <input type="hidden" name="offerId" value={offer.id} />
+                              <input type="hidden" name="offerUrl" value={offer.offerUrl} />
+                              <input type="hidden" name="source" value="partners_page" />
+                              <Button type="submit" size="sm">
+                                Open offer
+                              </Button>
+                            </form>
+                          ) : null}
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             <SponsorPipelineTable sponsors={data.sponsors} currentUserId={data.userId} />
           </section>
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
-  );
-}
-
-function MobilePartnersOperations({
-  data,
-  sponsorAssetCount,
-  activeContextualOffers,
-  status,
-}: {
-  data: PartnersPageData;
-  sponsorAssetCount: number;
-  activeContextualOffers: number;
-  status?: string;
-}) {
-  const sponsorsNeedingContact = data.sponsors.filter(
-    (sponsor) => !sponsor.websiteUrl && !sponsor.contactEmail,
-  );
-  const primaryOffers = data.offers.slice(0, 6);
-  const olderOffers = data.offers.slice(6);
-  const primarySponsors = data.sponsors.slice(0, 10);
-  const olderSponsors = data.sponsors.slice(10);
-
-  return (
-    <>
-      {status ? (
-        <IOSGroupedList label="Partner update status">
-          <IOSListRow
-            label={status}
-            detail="Partner operations have been refreshed."
-            status={<IOSInlineStatus label="Saved" tone="positive" />}
-          />
-        </IOSGroupedList>
-      ) : null}
-
-      <MobileStatusAction
-        label="Prospects needing contact"
-        value={sponsorsNeedingContact.length}
-        detail={`${data.sponsors.length} sponsors · ${data.offers.length} active offers · ${activeContextualOffers} contextual`}
-        action={
-          <BottomSheet label="Sponsor" title="Add sponsor prospect">
-            <MobileSponsorForm />
-          </BottomSheet>
-        }
-      />
-
-      <section className="grid gap-2" aria-label="Active partner offers">
-        <IOSSectionHeader
-          title="Active offers"
-          description={`${data.offers.length} labelled partner ${data.offers.length === 1 ? "offer" : "offers"}`}
-          action={
-            <BottomSheet label="Offer" title="Create partner offer">
-              <MobilePartnerOfferForm sponsors={data.ownedSponsors} />
-            </BottomSheet>
-          }
-        />
-        <MobilePartnerOfferRows offers={primaryOffers} />
-        {olderOffers.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More active partner offers"
-            items={[
-              {
-                value: "more-partner-offers",
-                title: "More active offers",
-                summary: olderOffers.length,
-                description: "Additional offers in this account",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobilePartnerOfferRows offers={olderOffers} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-
-      <section className="grid gap-2" aria-label="Sponsor pipeline">
-        <IOSSectionHeader
-          title="Sponsor pipeline"
-          description={`${sponsorAssetCount} of ${data.sponsors.length} have a contact route`}
-        />
-        <MobileSponsorRows sponsors={primarySponsors} currentUserId={data.userId} />
-        {olderSponsors.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More sponsor prospects"
-            items={[
-              {
-                value: "more-sponsors",
-                title: "More sponsors",
-                summary: olderSponsors.length,
-                description: "Additional prospects in the pipeline",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobileSponsorRows sponsors={olderSponsors} currentUserId={data.userId} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-
-      {data.recentClicks.length > 0 ? (
-        <IOSDisclosureGroup
-          label="Recent partner click evidence"
-          items={[
-            {
-              value: "recent-partner-clicks",
-              title: "Recent clicks",
-              summary: data.recentClicks.length,
-              description: "Click rows recorded for this admin account",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <IOSGroupedList label="Recent partner click rows" className="border-0">
-                  {data.recentClicks.map((click) => (
-                    <IOSListRow
-                      key={click.id}
-                      label="Recorded offer click"
-                      value={dateFormatter.format(click.createdAt)}
-                      detail={
-                        <span className="[overflow-wrap:anywhere]">
-                          {click.source ? `${click.source} · ` : ""}
-                          {click.offerId}
-                        </span>
-                      }
-                    />
-                  ))}
-                </IOSGroupedList>
-              ),
-            },
-          ]}
-        />
-      ) : null}
-    </>
-  );
-}
-
-function MobilePartnerOfferRows({ offers }: { offers: PartnersPageData["offers"] }) {
-  return (
-    <IOSGroupedList label="Active partner offer rows">
-      {offers.length > 0 ? (
-        offers.map((offer) => (
-          <IOSListRow
-            key={offer.id}
-            label={offer.title}
-            detail={
-              <>
-                <span className="block font-medium text-foreground">
-                  {label(offer.offerType)}
-                  {offer.couponCode ? ` · Code ${offer.couponCode}` : ""}
-                </span>
-                <span className="mt-0.5 line-clamp-2 block">
-                  {offer.targetContext ? `${offer.targetContext} · ` : ""}
-                  {offer.description ?? "No description supplied"}
-                </span>
-              </>
-            }
-            status={
-              <IOSInlineStatus
-                label={offer.targetContext ? "Contextual offer" : "General offer"}
-                tone={offer.targetContext ? "positive" : "neutral"}
-              />
-            }
-            trailing={
-              offer.offerUrl ? (
-                <form action={recordOfferClickAction}>
-                  <input type="hidden" name="offerId" value={offer.id} />
-                  <input type="hidden" name="offerUrl" value={offer.offerUrl} />
-                  <input type="hidden" name="source" value="partners_mobile" />
-                  <Button type="submit" variant="outline" className="min-h-11">
-                    Open
-                  </Button>
-                </form>
-              ) : undefined
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow
-          label="No active offers"
-          detail="Create an offer after adding a sponsor owned by this account."
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function MobileSponsorRows({
-  sponsors,
-  currentUserId,
-}: {
-  sponsors: Sponsor[];
-  currentUserId: string;
-}) {
-  return (
-    <IOSGroupedList label="Sponsor pipeline rows">
-      {sponsors.length > 0 ? (
-        sponsors.map((sponsor) => (
-          <IOSListRow
-            key={sponsor.id}
-            label={sponsor.name}
-            value={label(sponsor.status)}
-            detail={`${sponsor.ownerUserId === currentUserId ? "Owned by you" : "Other admin"} · ${sponsorContactLabel(sponsor)}`}
-            status={
-              <IOSInlineStatus
-                label={
-                  sponsor.websiteUrl || sponsor.contactEmail
-                    ? "Contact route available"
-                    : "Contact needed"
-                }
-                tone={sponsor.websiteUrl || sponsor.contactEmail ? "positive" : "attention"}
-              />
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow
-          label="No sponsor prospects"
-          detail="Add a sponsor to start the partner pipeline."
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function MobileSponsorForm() {
-  return (
-    <form action={createSponsorAction} className="grid gap-3">
-      <label className="grid gap-1 text-sm font-medium">
-        Sponsor name
-        <Input name="name" placeholder="Local range or golf shop" className="h-11" required />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Website
-        <Input
-          name="websiteUrl"
-          type="url"
-          inputMode="url"
-          placeholder="https://example.com"
-          className="h-11"
-        />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Contact email
-        <Input
-          name="contactEmail"
-          type="email"
-          placeholder="partner@example.com"
-          className="h-11"
-        />
-      </label>
-      <Button type="submit" className="min-h-11">
-        <Plus className="size-4" />
-        Add sponsor
-      </Button>
-    </form>
-  );
-}
-
-function MobilePartnerOfferForm({ sponsors }: { sponsors: PartnersPageData["ownedSponsors"] }) {
-  if (sponsors.length === 0) {
-    return (
-      <IOSGroupedList label="Partner offer first-use state">
-        <IOSListRow
-          label="Add an owned sponsor first"
-          detail="Offers can only be attached to sponsors owned by this admin account."
-          status={<IOSInlineStatus label="Sponsor required" tone="attention" />}
-        />
-      </IOSGroupedList>
-    );
-  }
-
-  return (
-    <form action={createPartnerOfferAction} className="grid gap-3">
-      <label className="grid gap-1 text-sm font-medium">
-        Sponsor
-        <Select name="sponsorId" defaultValue={sponsors[0]?.id} required>
-          <SelectTrigger className="min-h-11 w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {sponsors.map((sponsor) => (
-              <SelectItem key={sponsor.id} value={sponsor.id}>
-                {sponsor.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Offer title
-        <Input name="title" className="h-11" required />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Description
-        <Textarea name="description" rows={3} />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Offer type
-        <Select name="offerType" defaultValue="affiliate">
-          <SelectTrigger className="min-h-11 w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="affiliate">Affiliate</SelectItem>
-            <SelectItem value="discount">Discount</SelectItem>
-            <SelectItem value="prize">Prize</SelectItem>
-            <SelectItem value="range_credit">Range credit</SelectItem>
-          </SelectContent>
-        </Select>
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Golf context
-        <Input name="targetContext" placeholder="wedge, challenge, range credit" className="h-11" />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Offer URL
-        <Input name="offerUrl" type="url" inputMode="url" className="h-11" />
-      </label>
-      <label className="grid gap-1 text-sm font-medium">
-        Coupon code
-        <Input name="couponCode" autoCapitalize="characters" className="h-11" />
-      </label>
-      <Button type="submit" className="min-h-11">
-        <TicketPercent className="size-4" />
-        Save offer
-      </Button>
-    </form>
   );
 }
 
@@ -655,108 +318,112 @@ function PartnerOperationsSummary({
   );
 }
 
-function SponsorPipelineTable({
+async function SponsorPipelineTable({
   sponsors,
   currentUserId,
 }: {
   sponsors: Sponsor[];
   currentUserId: string;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
-    <section
+    <Card
       id="sponsor-pipeline"
       data-workbench-scope="partner-sponsors"
-      className="premium-card scroll-mt-28 p-4"
+      className="scroll-mt-28 gap-0 py-0"
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold">Sponsor pipeline</p>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">
-            Review sponsor owner, contact and status before attaching offers to golf contexts.
-          </p>
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Sponsor pipeline</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              Review sponsor owner, contact and status before attaching offers to golf contexts.
+            </p>
+          </div>
+          <StatusPill tone={sponsors.length > 0 ? "green" : "slate"}>
+            {sponsors.length} sponsors
+          </StatusPill>
         </div>
-        <StatusPill tone={sponsors.length > 0 ? "green" : "slate"}>
-          {sponsors.length} sponsors
-        </StatusPill>
-      </div>
 
-      <DesktopTableWorkbenchControls
-        viewKey="partner-sponsors"
-        scope="partner-sponsors"
-        currentViewLabel="Sponsor pipeline"
-        resultLabel={`${sponsors.length} sponsors`}
-        columns={sponsorPipelineColumns}
-        suggestedViews={sponsorPipelineSuggestedViews}
-        exportTableId="partner-sponsors"
-        exportFileName="forekinghell-sponsor-pipeline.csv"
-        className="my-3"
-      />
+        <DesktopTableWorkbenchControls
+          viewKey="partner-sponsors"
+          scope="partner-sponsors"
+          currentViewLabel="Sponsor pipeline"
+          resultLabel={`${sponsors.length} sponsors`}
+          columns={sponsorPipelineColumns}
+          suggestedViews={sponsorPipelineSuggestedViews}
+          exportTableId="partner-sponsors"
+          exportFileName="forekinghell-sponsor-pipeline.csv"
+          className="my-3"
+        />
 
-      <DataTableFrame mainTable mainTableLabel="Sponsor pipeline table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="partner-sponsors"
-          aria-describedby="partner-sponsors-summary"
-        >
-          <TableCaption id="partner-sponsors-summary" className="sr-only">
-            Sponsor pipeline table with sponsor name, status, owner, contact, created date and
-            updated date.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-            <TableRow>
-              <TableHead
-                data-column="sponsor"
-                className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
-                Sponsor
-              </TableHead>
-              <TableHead data-column="status">Status</TableHead>
-              <TableHead data-column="owner">Owner</TableHead>
-              <TableHead data-column="contact">Contact</TableHead>
-              <TableHead data-column="created">Created</TableHead>
-              <TableHead data-column="updated">Updated</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sponsors.length > 0 ? (
-              sponsors.map((sponsor) => (
-                <TableRow key={sponsor.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="sponsor"
-                    className="sticky left-0 z-10 min-w-64 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                  >
-                    <span className="block max-w-72 truncate">{sponsor.name}</span>
-                    <span className="mt-1 block truncate text-xs text-muted-foreground">
-                      {sponsor.slug}
-                    </span>
-                  </TableCell>
-                  <TableCell data-column="status">
-                    <Badge variant={sponsor.status === "active" ? "secondary" : "outline"}>
-                      {label(sponsor.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell data-column="owner">
-                    {sponsor.ownerUserId === currentUserId ? "You" : "Other admin"}
-                  </TableCell>
-                  <TableCell data-column="contact">{sponsorContactLabel(sponsor)}</TableCell>
-                  <TableCell data-column="created">
-                    {dateFormatter.format(sponsor.createdAt)}
-                  </TableCell>
-                  <TableCell data-column="updated">
-                    {dateFormatter.format(sponsor.updatedAt)}
+        <DataTableFrame mainTable mainTableLabel="Sponsor pipeline table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="partner-sponsors"
+            aria-describedby="partner-sponsors-summary"
+          >
+            <TableCaption id="partner-sponsors-summary" className="sr-only">
+              Sponsor pipeline table with sponsor name, status, owner, contact, created date and
+              updated date.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+              <TableRow>
+                <TableHead
+                  data-column="sponsor"
+                  className="sticky left-0 z-20 min-w-64 bg-card shadow-[1px_0_0_hsl(var(--border))]"
+                >
+                  Sponsor
+                </TableHead>
+                <TableHead data-column="status">Status</TableHead>
+                <TableHead data-column="owner">Owner</TableHead>
+                <TableHead data-column="contact">Contact</TableHead>
+                <TableHead data-column="created">Created</TableHead>
+                <TableHead data-column="updated">Updated</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sponsors.length > 0 ? (
+                sponsors.map((sponsor) => (
+                  <TableRow key={sponsor.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="sponsor"
+                      className="sticky left-0 z-10 min-w-64 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
+                    >
+                      <span className="block max-w-72 truncate">{sponsor.name}</span>
+                      <span className="mt-1 block truncate text-xs text-muted-foreground">
+                        {sponsor.slug}
+                      </span>
+                    </TableCell>
+                    <TableCell data-column="status">
+                      <Badge variant={sponsor.status === "active" ? "secondary" : "outline"}>
+                        {label(sponsor.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell data-column="owner">
+                      {sponsor.ownerUserId === currentUserId ? "You" : "Other admin"}
+                    </TableCell>
+                    <TableCell data-column="contact">{sponsorContactLabel(sponsor)}</TableCell>
+                    <TableCell data-column="created">
+                      {dateFormatter.format(sponsor.createdAt)}
+                    </TableCell>
+                    <TableCell data-column="updated">
+                      {dateFormatter.format(sponsor.updatedAt)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    No sponsor prospects yet.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  No sponsor prospects yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
-    </section>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </CardContent>
+    </Card>
   );
 }
 

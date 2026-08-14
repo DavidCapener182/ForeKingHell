@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
-  ChevronLeft,
+  AlertCircle,
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
@@ -32,15 +32,11 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { DataTableFrame, MobileFilterSheet } from "@/components/premium";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
+import { DataTableFrame } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,6 +68,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -116,7 +113,6 @@ import {
 import { cn } from "@/lib/utils";
 
 type PracticePlannerClientProps = {
-  accountId: string;
   context: PracticePlannerContext;
   initialPlan: PracticePlan;
   savedPlans: SavedPracticePlan[];
@@ -137,6 +133,11 @@ type PracticeDrillSuggestion = Pick<
 };
 
 type PracticeDrillOptionsByBlock = Record<string, PracticeDrillSuggestion[]>;
+
+type PracticePlannerOutcome = {
+  message: string;
+  status: "error" | "success";
+};
 
 type CanvasTextOptions = {
   x: number;
@@ -203,8 +204,15 @@ const practiceBlockSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
+function successOutcome(message: string): PracticePlannerOutcome {
+  return { message, status: "success" };
+}
+
+function errorOutcome(message: string): PracticePlannerOutcome {
+  return { message, status: "error" };
+}
+
 export function PracticePlannerClient({
-  accountId,
   context,
   initialPlan,
   savedPlans,
@@ -239,19 +247,15 @@ export function PracticePlannerClient({
       ? scoreFromSavedPlan(initialSavedPlan)
       : (latestSessionReview?.score ?? null),
   );
-  const [message, setMessage] = useState<string | null>(
+  const [outcome, setOutcome] = useState<PracticePlannerOutcome | null>(
     latestSessionReview && !initialSavedPlan?.result
-      ? `Latest ${latestSessionReview.importedSession.shotCount}-shot session is being used to review this plan. Incomplete planned clubs still count, but they pull the score down.`
+      ? successOutcome(
+          `Latest ${latestSessionReview.importedSession.shotCount}-shot session is being used to review this plan. Incomplete planned clubs still count, but they pull the score down.`,
+        )
       : null,
   );
   const [savedImageDialogOpen, setSavedImageDialogOpen] = useState(false);
   const [savedImagePreviewUrl, setSavedImagePreviewUrl] = useState<string | null>(null);
-  const [rangeModeActive, setRangeModeActive] = useState(false);
-  const [rangePaused, setRangePaused] = useState(false);
-  const [rangeFinished, setRangeFinished] = useState(false);
-  const [completedBlockIds, setCompletedBlockIds] = useState<string[]>([]);
-  const [rangeNote, setRangeNote] = useState("");
-  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const [isPending, startTransition] = useTransition();
   const sessionSummary = useMemo(
     () => summarizePracticeImportControl(plan, comparison),
@@ -262,39 +266,6 @@ export function PracticePlannerClient({
     () => plan.blocks.find((block) => block.id === selectedBlockId) ?? plan.blocks[0] ?? null,
     [plan.blocks, selectedBlockId],
   );
-
-  useEffect(() => {
-    const cached = readActivePractice(accountId);
-    if (!cached || cached.planId !== savedPlanId) return;
-    const timer = window.setTimeout(() => {
-      setRangeModeActive(true);
-      setCompletedBlockIds(cached.completedBlockIds);
-      setRangeNote(cached.note);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [accountId, savedPlanId]);
-
-  useEffect(() => {
-    if (!rangeModeActive || !("wakeLock" in navigator)) return;
-    let cancelled = false;
-    const wakeLock = navigator.wakeLock as {
-      request: (type: "screen") => Promise<{ release: () => Promise<void> }>;
-    };
-    void wakeLock
-      .request("screen")
-      .then((sentinel) => {
-        if (cancelled) return sentinel.release();
-        wakeLockRef.current = sentinel;
-      })
-      .catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-      const sentinel = wakeLockRef.current;
-      wakeLockRef.current = null;
-      if (sentinel) void sentinel.release().catch(() => undefined);
-    };
-  }, [rangeModeActive]);
 
   function updateOptions(patch: Partial<GeneratePracticePlanOptions>) {
     setOptions((current) => ({ ...current, ...patch }));
@@ -308,7 +279,7 @@ export function PracticePlannerClient({
   }
 
   function generatePlanWithOptions(nextOptions: GeneratePracticePlanOptions) {
-    setMessage(null);
+    setOutcome(null);
     startTransition(async () => {
       const generated = await generatePracticePlanAction(nextOptions);
       setPlan(generated);
@@ -345,7 +316,7 @@ export function PracticePlannerClient({
     setSavedPlanId(null);
     setComparison(null);
     setPracticeScore(null);
-    setMessage(messageText);
+    setOutcome(successOutcome(messageText));
   }
 
   function updateSelectedBlockBalls(ballCount: number) {
@@ -369,7 +340,7 @@ export function PracticePlannerClient({
     setSavedPlanId(null);
     setComparison(null);
     setPracticeScore(null);
-    setMessage("Practice volume rebalanced. Save the edited plan before upload.");
+    setOutcome(successOutcome("Practice volume rebalanced. Save the edited plan before upload."));
   }
 
   function swapSelectedBlockDrill(suggestionId: string) {
@@ -413,58 +384,43 @@ export function PracticePlannerClient({
   }
 
   function savePlan() {
-    setMessage(null);
+    setOutcome(null);
     startTransition(async () => {
       const result = await savePracticePlanAction(plan);
       setSavedPlanId(result.planId);
       setPlan((current) => ({ ...current, id: result.planId, status: "planned" }));
       setComparison(null);
       setPracticeScore(null);
-      setMessage(
-        "Plan saved. It is waiting for the next uploaded range session; older uploads will not score this practice.",
+      setOutcome(
+        successOutcome(
+          "Plan saved. It is waiting for the next uploaded range session; older uploads will not score this practice.",
+        ),
       );
       openSavedImageDialog(false);
     });
   }
 
-  function saveAndStartPractice() {
-    setMessage(null);
-    startTransition(async () => {
-      const result = await savePracticePlanAction(plan);
-      await startPracticePlanAction(result.planId);
-      setSavedPlanId(result.planId);
-      setPlan((current) => ({ ...current, id: result.planId, status: "awaiting_import" }));
-      setComparison(null);
-      setPracticeScore(null);
-      setRangeModeActive(true);
-      setRangePaused(false);
-      setRangeFinished(false);
-      setCompletedBlockIds([]);
-      setSelectedBlockId(defaultSelectedPracticeBlockId(plan.blocks));
-      cacheActivePractice(accountId, result.planId, [], "");
-      setMessage(
-        "Practice saved and Range Mode started. Manual completion records activity, not measured success.",
-      );
-    });
-  }
-
   function linkSelectedSession() {
     if (!selectedImportId) {
-      setMessage("Choose an uploaded session first.");
+      setOutcome(errorOutcome("Choose an uploaded session first."));
       return;
     }
 
     if (!savedPlanId) {
-      setMessage("Save this practice plan before importing a session into it.");
+      setOutcome(errorOutcome("Save this practice plan before importing a session into it."));
       return;
     }
 
-    setMessage(null);
+    setOutcome(null);
     startTransition(async () => {
       const result = await linkPracticePlanSessionAction(savedPlanId, selectedImportId);
 
       if (!result.latestSessionReview) {
-        setMessage(result.error ?? "That uploaded session could not be scored against this plan.");
+        setOutcome(
+          errorOutcome(
+            result.error ?? "That uploaded session could not be scored against this plan.",
+          ),
+        );
         return;
       }
 
@@ -474,8 +430,10 @@ export function PracticePlannerClient({
         ...current,
         status: "analysed",
       }));
-      setMessage(
-        `Selected ${result.latestSessionReview.importedSession.shotCount}-shot session is now scoring this practice. Incomplete planned clubs still pull the score down.`,
+      setOutcome(
+        successOutcome(
+          `Selected ${result.latestSessionReview.importedSession.shotCount}-shot session is now scoring this practice. Incomplete planned clubs still pull the score down.`,
+        ),
       );
     });
   }
@@ -485,52 +443,16 @@ export function PracticePlannerClient({
       return;
     }
 
-    setMessage(null);
+    setOutcome(null);
     startTransition(async () => {
       await startPracticePlanAction(savedPlanId);
       setPlan((current) => ({ ...current, status: "awaiting_import" }));
-      setRangeModeActive(true);
-      setRangePaused(false);
-      setRangeFinished(false);
-      cacheActivePractice(accountId, savedPlanId, completedBlockIds, rangeNote);
-      setMessage(
-        "Practice started. Upload or sync the matching launch-monitor session when finished.",
+      setOutcome(
+        successOutcome(
+          "Practice started. Upload or sync the matching launch-monitor session when finished.",
+        ),
       );
     });
-  }
-
-  function updateRangeNote(note: string) {
-    setRangeNote(note);
-    if (savedPlanId) cacheActivePractice(accountId, savedPlanId, completedBlockIds, note);
-  }
-
-  function completeCurrentRangeBlock() {
-    if (!selectedBlock) return;
-    const nextCompleted = completedBlockIds.includes(selectedBlock.id)
-      ? completedBlockIds
-      : [...completedBlockIds, selectedBlock.id];
-    setCompletedBlockIds(nextCompleted);
-    if (savedPlanId) cacheActivePractice(accountId, savedPlanId, nextCompleted, rangeNote);
-    const currentIndex = plan.blocks.findIndex((block) => block.id === selectedBlock.id);
-    const nextBlock = plan.blocks[currentIndex + 1];
-    if (nextBlock) setSelectedBlockId(nextBlock.id);
-  }
-
-  function moveRangeBlock(direction: -1 | 1) {
-    if (!selectedBlock) return;
-    const currentIndex = plan.blocks.findIndex((block) => block.id === selectedBlock.id);
-    const nextBlock = plan.blocks[currentIndex + direction];
-    if (nextBlock) setSelectedBlockId(nextBlock.id);
-  }
-
-  function finishRangeWithoutUpload() {
-    clearActivePractice(accountId);
-    setRangeModeActive(false);
-    setRangePaused(false);
-    setRangeFinished(true);
-    setMessage(
-      "Activity completed manually. No block has been marked as measured success; import evidence when available.",
-    );
   }
 
   function abandonPlan() {
@@ -538,11 +460,11 @@ export function PracticePlannerClient({
       return;
     }
 
-    setMessage(null);
+    setOutcome(null);
     startTransition(async () => {
       await abandonPracticePlanAction(savedPlanId);
       setPlan((current) => ({ ...current, status: "abandoned" }));
-      setMessage("Plan abandoned. Generate a new plan when you are ready.");
+      setOutcome(successOutcome("Plan abandoned. Generate a new plan when you are ready."));
     });
   }
 
@@ -588,105 +510,7 @@ export function PracticePlannerClient({
       id="practice-plan"
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 scroll-mt-28 lg:gap-4"
     >
-      <div className="grid gap-3 lg:hidden">
-        {rangeModeActive ? (
-          <ActiveRangeMode
-            plan={plan}
-            block={selectedBlock}
-            completedBlockIds={completedBlockIds}
-            note={rangeNote}
-            onNoteChange={updateRangeNote}
-            onPrevious={() => moveRangeBlock(-1)}
-            onNext={() => moveRangeBlock(1)}
-            onCompleteBlock={completeCurrentRangeBlock}
-            onPause={() => {
-              setRangeModeActive(false);
-              setRangePaused(true);
-            }}
-            onFinishWithoutUpload={finishRangeWithoutUpload}
-          />
-        ) : (
-          <>
-            {rangeFinished ? <PracticeFinishedActions /> : null}
-            {rangePaused ? (
-              <Button
-                type="button"
-                className="min-h-12 rounded-xl"
-                onClick={() => {
-                  setRangeModeActive(true);
-                  setRangePaused(false);
-                }}
-              >
-                Resume Range Mode
-              </Button>
-            ) : null}
-            <PracticeMobileTask
-              plan={plan}
-              block={selectedBlock}
-              comparison={comparison}
-              score={practiceScore}
-              savedPlanId={savedPlanId}
-              message={message}
-              isPending={isPending}
-              onSaveAndStart={saveAndStartPractice}
-              onStart={startPractice}
-              onGenerate={generatePlan}
-            />
-
-            <PracticeMobileBlockPicker
-              blocks={plan.blocks}
-              selectedBlockId={selectedBlock?.id ?? null}
-              comparison={comparison}
-              onSelect={setSelectedBlockId}
-            />
-
-            <MobileFilterSheet label="Quick adjustments">
-              <div className="pb-3 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11">
-                <PracticeSetupBar
-                  options={options}
-                  updateOptions={updateOptions}
-                  updateFacility={updateFacility}
-                  generatePlan={generatePlan}
-                  isPending={isPending}
-                  trainingBlocked={context.trainingLoad.highRecentLoad}
-                />
-              </div>
-            </MobileFilterSheet>
-
-            <IOSDisclosureGroup
-              label="Practice plan support"
-              items={[
-                {
-                  value: "why",
-                  title: "Why this plan?",
-                  summary: `${plan.why.length} signals`,
-                  description: "Latest weakness, bag trust and training context",
-                  content: <PracticeMobileWhy plan={plan} context={context} />,
-                },
-                ...(comparison || practiceScore
-                  ? [
-                      {
-                        value: "result",
-                        title: "Plan versus actual",
-                        summary: practiceScore ? `${practiceScore.score}/100` : "Measured",
-                        description: "Imported evidence and the next recommendation",
-                        content: (
-                          <PracticeMobileResult
-                            comparison={comparison}
-                            score={practiceScore}
-                            summary={sessionSummary}
-                          />
-                        ),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </>
-        )}
-      </div>
-
-      <div className="hidden min-w-0 grid-cols-[minmax(0,1fr)] gap-4 lg:grid">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
         <PracticeSetupBar
           options={options}
           updateOptions={updateOptions}
@@ -706,7 +530,7 @@ export function PracticePlannerClient({
           isPending={isPending}
         />
 
-        <PracticeTodayCard plan={plan} focusSummary={focusSummary} message={message} />
+        <PracticeTodayCard plan={plan} focusSummary={focusSummary} outcome={outcome} />
         <PracticeResultsOverview
           comparison={comparison}
           score={practiceScore}
@@ -773,499 +597,6 @@ export function PracticePlannerClient({
   );
 }
 
-function ActiveRangeMode({
-  plan,
-  block,
-  completedBlockIds,
-  note,
-  onNoteChange,
-  onPrevious,
-  onNext,
-  onCompleteBlock,
-  onPause,
-  onFinishWithoutUpload,
-}: {
-  plan: PracticePlan;
-  block: PracticeBlock | null;
-  completedBlockIds: string[];
-  note: string;
-  onNoteChange: (note: string) => void;
-  onPrevious: () => void;
-  onNext: () => void;
-  onCompleteBlock: () => void;
-  onPause: () => void;
-  onFinishWithoutUpload: () => void;
-}) {
-  const currentIndex = block ? plan.blocks.findIndex((item) => item.id === block.id) : -1;
-  const row = block ? compactPracticeBlockRow(block, null) : null;
-  const allBlocksComplete =
-    plan.blocks.length > 0 && plan.blocks.every((item) => completedBlockIds.includes(item.id));
-
-  return (
-    <section className="grid min-h-[calc(100dvh-9rem)] content-start gap-4" data-active-range-mode>
-      <div className="ios-grouped-list grid gap-4 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              Range Mode · Block {Math.max(1, currentIndex + 1)} of {plan.blocks.length}
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">
-              {row?.clubLabel || "Mixed clubs"}
-            </h1>
-            <p className="mt-1 text-base text-muted-foreground">
-              {row?.volumeLabel ?? "Timed block"}
-            </p>
-          </div>
-          <IOSInlineStatus
-            label={`${completedBlockIds.length}/${plan.blocks.length} complete`}
-            tone={allBlocksComplete ? "positive" : "info"}
-          />
-        </div>
-
-        <div className="rounded-xl bg-secondary/60 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Target
-          </p>
-          <p className="mt-1 text-lg font-semibold leading-6">
-            {block?.successTarget ?? "Choose a block"}
-          </p>
-          <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Do this now
-          </p>
-          <p className="mt-1 text-[15px] leading-6">{block?.drill ?? plan.summary}</p>
-        </div>
-
-        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-11 rounded-xl"
-            disabled={currentIndex <= 0}
-            onClick={onPrevious}
-            aria-label="Previous block"
-          >
-            <ChevronLeft className="size-5" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            className="min-h-11 rounded-xl"
-            onClick={onCompleteBlock}
-            disabled={!block}
-          >
-            <CheckCircle2 className="size-4" aria-hidden />
-            Complete block
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-11 rounded-xl"
-            disabled={currentIndex < 0 || currentIndex >= plan.blocks.length - 1}
-            onClick={onNext}
-            aria-label="Next block"
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </Button>
-        </div>
-        <p className="text-xs leading-5 text-muted-foreground">
-          Completing a block records the activity only. Targets remain unmeasured until matching
-          launch-monitor evidence is imported.
-        </p>
-      </div>
-
-      <label className="ios-grouped-list grid gap-2 p-4 text-sm font-semibold">
-        Short note
-        <textarea
-          value={note}
-          onChange={(event) => onNoteChange(event.target.value)}
-          rows={2}
-          maxLength={300}
-          placeholder="Feel, strike or context"
-          className="min-h-20 resize-none rounded-xl border bg-background px-3 py-2 font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-      </label>
-
-      <div className="grid gap-2">
-        <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={onPause}>
-          Pause session
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/rapsodo">Sync Rapsodo</Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/import">Upload CSV</Link>
-        </Button>
-        <Button type="button" className="min-h-11 rounded-xl" onClick={onFinishWithoutUpload}>
-          Finish without upload
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-function PracticeFinishedActions() {
-  return (
-    <section className="ios-grouped-list grid gap-3 p-5" data-practice-finished>
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-          Practice complete
-        </p>
-        <h2 className="mt-1 text-xl font-bold">Add evidence when it is ready</h2>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          Manual block completion is recorded separately from measured target success.
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button asChild className="min-h-11 rounded-xl">
-          <Link href="/rapsodo">Sync Rapsodo</Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/import">Upload CSV</Link>
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-type CachedActivePractice = {
-  planId: string;
-  completedBlockIds: string[];
-  note: string;
-};
-
-function activePracticeStorageKey(accountId: string) {
-  return `fkh:active-practice:${accountId}`;
-}
-
-function cacheActivePractice(
-  accountId: string,
-  planId: string,
-  completedBlockIds: string[],
-  note: string,
-) {
-  try {
-    window.localStorage.setItem(
-      activePracticeStorageKey(accountId),
-      JSON.stringify({ planId, completedBlockIds, note } satisfies CachedActivePractice),
-    );
-  } catch {
-    // Storage can be unavailable in strict or private browsing modes.
-  }
-}
-
-function readActivePractice(accountId: string): CachedActivePractice | null {
-  try {
-    const value = window.localStorage.getItem(activePracticeStorageKey(accountId));
-    if (!value) return null;
-    const parsed = JSON.parse(value) as Partial<CachedActivePractice>;
-    if (typeof parsed.planId !== "string") return null;
-    return {
-      planId: parsed.planId,
-      completedBlockIds: Array.isArray(parsed.completedBlockIds)
-        ? parsed.completedBlockIds.filter((id): id is string => typeof id === "string")
-        : [],
-      note: typeof parsed.note === "string" ? parsed.note : "",
-    };
-  } catch {
-    return null;
-  }
-}
-
-function clearActivePractice(accountId: string) {
-  try {
-    window.localStorage.removeItem(activePracticeStorageKey(accountId));
-  } catch {
-    // Storage can be unavailable in strict or private browsing modes.
-  }
-}
-
-function PracticeMobileTask({
-  plan,
-  block,
-  comparison,
-  score,
-  savedPlanId,
-  message,
-  isPending,
-  onSaveAndStart,
-  onStart,
-  onGenerate,
-}: {
-  plan: PracticePlan;
-  block: PracticeBlock | null;
-  comparison: PracticeComparison | null;
-  score: PracticeScore | null;
-  savedPlanId: string | null;
-  message: string | null;
-  isPending: boolean;
-  onSaveAndStart: () => void;
-  onStart: () => void;
-  onGenerate: () => void;
-}) {
-  const status = plan.status ?? (savedPlanId ? "planned" : "draft");
-  const hasImport = Boolean(score || comparison?.sourceSessionId);
-  const row = block ? compactPracticeBlockRow(block, comparison) : null;
-  const decision = block
-    ? (comparison?.decisions.find((item) => item.blockId === block.id) ?? null)
-    : null;
-
-  return (
-    <section
-      className="overflow-hidden rounded-[1rem] border border-border bg-card shadow-sm"
-      aria-labelledby="practice-current-task"
-      data-practice-mobile-task
-    >
-      <div className="grid gap-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.035em] text-primary">
-              {block ? `Block ${block.order} · ${row?.typeLabel}` : "Today's practice"}
-            </p>
-            <h2
-              id="practice-current-task"
-              className="mt-1 text-[26px] font-bold leading-8 tracking-[-0.025em]"
-            >
-              {block?.title ?? plan.title}
-            </h2>
-            <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
-              {row ? `${row.clubLabel || "Mixed"} · ${row.volumeLabel}` : plan.summary}
-            </p>
-          </div>
-          <IOSInlineStatus
-            label={practiceMobileStatusLabel(plan, savedPlanId, score, comparison)}
-            tone={hasImport ? "positive" : status === "abandoned" ? "attention" : "info"}
-          />
-        </div>
-
-        {block ? (
-          <div className="grid gap-2 rounded-xl bg-secondary/60 px-3 py-3">
-            <div>
-              <p className="text-[13px] text-muted-foreground">Target</p>
-              <p className="mt-0.5 text-[16px] font-semibold leading-5">{block.successTarget}</p>
-            </div>
-            <div className="border-t border-border/70 pt-2">
-              <p className="text-[13px] text-muted-foreground">Do this now</p>
-              <p className="mt-0.5 text-[15px] leading-5">{block.drill}</p>
-            </div>
-            {decision ? (
-              <IOSInlineStatus
-                label={`${practiceComparisonResultLabel(decision)} · ${decision.actualBalls} shots`}
-                tone={decision.result === "passed" ? "positive" : "attention"}
-              />
-            ) : null}
-          </div>
-        ) : null}
-
-        <div data-primary-action>
-          {hasImport ? (
-            <Button asChild className="min-h-12 w-full rounded-xl">
-              <Link href="/today" prefetch={false}>
-                <Target className="size-4" />
-                Review measured result
-              </Link>
-            </Button>
-          ) : status === "draft" ? (
-            <Button
-              type="button"
-              onClick={onSaveAndStart}
-              disabled={isPending || Boolean(savedPlanId)}
-              className="min-h-12 w-full rounded-xl"
-            >
-              <Save className="size-4" />
-              Save &amp; Start Practice
-            </Button>
-          ) : status === "planned" ? (
-            <Button
-              type="button"
-              onClick={onStart}
-              disabled={isPending || !savedPlanId}
-              className="min-h-12 w-full rounded-xl"
-            >
-              <ClipboardCheck className="size-4" />
-              Resume Range Mode
-            </Button>
-          ) : status === "awaiting_import" || status === "match_found" ? (
-            <Button asChild className="min-h-12 w-full rounded-xl">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import practice evidence
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              onClick={onGenerate}
-              disabled={isPending}
-              className="min-h-12 w-full rounded-xl"
-            >
-              <WandSparkles className="size-4" />
-              Generate a fresh plan
-            </Button>
-          )}
-        </div>
-      </div>
-      {message ? (
-        <p
-          aria-live="polite"
-          className="border-t border-border/70 bg-secondary/45 px-4 py-3 text-[13px] leading-5"
-        >
-          {message}
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
-function PracticeMobileBlockPicker({
-  blocks,
-  selectedBlockId,
-  comparison,
-  onSelect,
-}: {
-  blocks: PracticeBlock[];
-  selectedBlockId: string | null;
-  comparison: PracticeComparison | null;
-  onSelect: (blockId: string) => void;
-}) {
-  return (
-    <section className="grid gap-2" aria-labelledby="practice-block-picker">
-      <IOSSectionHeader
-        title={<span id="practice-block-picker">Practice blocks</span>}
-        description="Switch the active task without scrolling through every drill."
-      />
-      <div
-        className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1"
-        role="toolbar"
-        aria-label="Choose a practice block"
-      >
-        {blocks.map((block) => {
-          const selected = block.id === selectedBlockId;
-          const row = compactPracticeBlockRow(block, comparison);
-
-          return (
-            <button
-              key={block.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onSelect(block.id)}
-              className={cn(
-                "focus-aaa min-h-11 w-[8.5rem] shrink-0 snap-start rounded-xl border px-3 py-2 text-left outline-none",
-                selected
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground",
-              )}
-            >
-              <span className="block text-xs font-medium opacity-75">Block {block.order}</span>
-              <span className="mt-0.5 block line-clamp-1 text-sm font-semibold">{block.title}</span>
-              <span className="mt-0.5 block text-xs opacity-75">{row.volumeLabel}</span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function PracticeMobileWhy({
-  plan,
-  context,
-}: {
-  plan: PracticePlan;
-  context: PracticePlannerContext;
-}) {
-  return (
-    <IOSGroupedList label="Practice selection evidence" className="bg-card">
-      {plan.why.map((line, index) => (
-        <IOSListRow key={`${index}-${line}`} label={line} icon={CheckCircle2} />
-      ))}
-      <IOSListRow
-        label="Training load"
-        value={context.trainingLoad.statusLabel}
-        detail={context.trainingLoad.recommendation}
-        status={
-          <IOSInlineStatus
-            label={
-              context.trainingLoad.highRecentLoad ? "Protect recovery" : "Load supports practice"
-            }
-            tone={context.trainingLoad.highRecentLoad ? "attention" : "positive"}
-          />
-        }
-      />
-    </IOSGroupedList>
-  );
-}
-
-function PracticeMobileResult({
-  comparison,
-  score,
-  summary,
-}: {
-  comparison: PracticeComparison | null;
-  score: PracticeScore | null;
-  summary: ReturnType<typeof summarizePracticeImportControl>;
-}) {
-  if (!comparison?.decisions.length) {
-    return (
-      <IOSGroupedList label="Practice result state" className="bg-card">
-        <IOSListRow
-          label="Waiting for measured evidence"
-          detail="Save and complete the practice, then link the matching launch-monitor session."
-          href="/import"
-          icon={Upload}
-        />
-      </IOSGroupedList>
-    );
-  }
-
-  return (
-    <IOSGroupedList label="Plan versus actual result" className="bg-card">
-      <IOSListRow
-        label="Planned drill score"
-        value={score ? `${score.score}/100` : "--"}
-        detail={score?.nextAction ?? comparison.nextRecommendation}
-        status={
-          <IOSInlineStatus
-            label={`${summary.matchedBlocks}/${summary.totalBlocks} blocks met planned volume`}
-            tone={summary.matchedBlocks === summary.totalBlocks ? "positive" : "attention"}
-          />
-        }
-      />
-      {comparison.decisions.map((decision) => (
-        <IOSListRow
-          key={decision.blockId}
-          label={decision.title}
-          value={practiceComparisonResultLabel(decision)}
-          detail={`${decision.actual} · ${decision.summary}`}
-          status={
-            <IOSInlineStatus
-              label={`${decision.actualBalls}/${decision.plannedBalls ?? "--"} planned shots`}
-              tone={decision.result === "passed" ? "positive" : "attention"}
-            />
-          }
-        />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function practiceMobileStatusLabel(
-  plan: PracticePlan,
-  savedPlanId: string | null,
-  score: PracticeScore | null,
-  comparison: PracticeComparison | null,
-) {
-  if (score || comparison?.sourceSessionId) return "Measured";
-
-  const status = plan.status ?? (savedPlanId ? "planned" : "draft");
-
-  if (status === "awaiting_import" || status === "match_found") return "Awaiting upload";
-  if (status === "planned") return "Ready to start";
-  if (status === "abandoned") return "Abandoned";
-  if (status === "completed" || status === "analysed") return "Complete";
-  return "Draft";
-}
-
 function PracticePlanImageDialog({
   open,
   onOpenChange,
@@ -1315,21 +646,21 @@ function PracticePlanImageDialog({
         </DialogHeader>
 
         <div className="grid min-h-0 overflow-hidden lg:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.1fr)]">
-          <div className="min-h-0 overflow-y-auto bg-muted p-3 lg:bg-[#f8f7ed]">
+          <div className="min-h-0 overflow-y-auto bg-muted p-3 lg:bg-background">
             <div className="overflow-hidden rounded-lg border bg-card shadow-inner">
-              <div className="rounded-t-lg border-b border-border bg-card p-4 text-foreground lg:border-transparent lg:bg-[#0b5130] lg:text-white">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:text-emerald-100">
+              <div className="rounded-t-lg border-b border-border bg-card p-4 text-foreground lg:border-transparent lg:bg-primary lg:text-primary-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground lg:text-primary-foreground/75">
                   LM World Tour
                 </p>
                 <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-2xl font-semibold tracking-normal">{plan.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground lg:text-emerald-50">
+                    <p className="mt-1 text-sm text-muted-foreground lg:text-primary-foreground/85">
                       {plan.summary}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border bg-muted px-3 py-2 text-right lg:border-white/20 lg:bg-white/10">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground lg:text-emerald-100">
+                  <div className="rounded-lg border border-border bg-muted px-3 py-2 text-right lg:border-primary-foreground/20 lg:bg-card/10">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground lg:text-primary-foreground/75">
                       Reference
                     </p>
                     <p className="text-sm font-semibold">{plannedVolume}</p>
@@ -1345,7 +676,7 @@ function PracticePlanImageDialog({
 
               <div className="grid gap-2 bg-card px-3 pb-3">
                 {plan.blocks.map((block) => (
-                  <div key={block.id} className="rounded-lg border bg-emerald-50/30 p-3">
+                  <div key={block.id} className="rounded-lg border bg-primary/5 p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -1371,7 +702,7 @@ function PracticePlanImageDialog({
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto border-t bg-muted p-3 lg:border-l lg:border-t-0 lg:bg-[#f6f4e7]">
+          <div className="min-h-0 overflow-y-auto border-t bg-muted p-3 lg:border-l lg:border-t-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-semibold">PNG preview</p>
               <Badge variant="outline">{pngPreviewUrl ? "Generated" : "Not generated"}</Badge>
@@ -1391,7 +722,7 @@ function PracticePlanImageDialog({
             ) : (
               <div className="mt-3 grid min-h-80 place-items-center rounded-lg border border-dashed bg-card p-6 text-center">
                 <div className="max-w-sm">
-                  <Eye className="mx-auto size-8 text-emerald-700" />
+                  <Eye className="mx-auto size-8 text-primary" />
                   <p className="mt-3 text-sm font-semibold">Generate the practice PNG</p>
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">
                     The image version appears here, ready to save or screenshot before practice.
@@ -1442,10 +773,10 @@ function PracticeBlockLedger({
     matchedRows > 0 ? `${matchedRows}/${rows.length} blocks matched` : `${rows.length} blocks`;
 
   return (
-    <section
+    <Card
       id="practice-block-ledger"
       data-workbench-scope="practice-blocks"
-      className="scroll-mt-28 rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5"
+      className="scroll-mt-28 p-3 shadow-sm"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
@@ -1481,11 +812,11 @@ function PracticeBlockLedger({
             Practice block ledger showing block, type, club, planned volume, target, upload status,
             imported evidence and recommended action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="block"
-                className="sticky left-0 z-20 min-w-56 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-56 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Block
               </TableHead>
@@ -1506,7 +837,7 @@ function PracticeBlockLedger({
                 <TableRow key={block.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="block"
-                    className="sticky left-0 z-10 min-w-56 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-56 bg-card font-medium shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     <span className="block max-w-64 truncate">{row.blockLabel}</span>
                     <span className="mt-1 block max-w-64 truncate text-xs text-muted-foreground">
@@ -1544,7 +875,7 @@ function PracticeBlockLedger({
           </TableBody>
         </Table>
       </DataTableFrame>
-    </section>
+    </Card>
   );
 }
 
@@ -1592,7 +923,7 @@ function PracticeSetupBar({
     : String(options.ballCount ?? 80);
 
   return (
-    <section className="rounded-xl border bg-white/80 p-2.5 shadow-sm ring-1 ring-emerald-950/5">
+    <Card className="p-2.5 shadow-sm" data-practice-setup-card>
       <div className="flex flex-wrap items-end gap-2">
         <CompactSelect
           label="Session"
@@ -1742,7 +1073,7 @@ function PracticeSetupBar({
           ) : null}
         </CollapsibleContent>
       </Collapsible>
-    </section>
+    </Card>
   );
 }
 
@@ -1766,7 +1097,7 @@ function PracticeSessionImportBar({
   const selectedSession = importOptions.find((option) => option.id === selectedImportId) ?? null;
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
+    <Card className="min-w-0 overflow-hidden p-3 shadow-sm" data-practice-import-card>
       <div className="flex min-w-0 flex-wrap items-end gap-3">
         <div className="min-w-0 flex-[1_1_16rem]">
           <p className="text-sm font-semibold">Score the planned drill</p>
@@ -1815,41 +1146,44 @@ function PracticeSessionImportBar({
           </>
         ) : (
           <>
-            <div className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
-              No uploaded sessions found yet.
-            </div>
-            <Button asChild className="h-9 rounded-lg">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import data
-              </Link>
-            </Button>
+            <AppEmptyState
+              icon={<Upload className="size-5" />}
+              title="No uploaded sessions yet"
+              description="Import the matching launch-monitor session before scoring this plan."
+              primaryAction={
+                <Button asChild size="sm">
+                  <Link href="/import" prefetch={false}>
+                    <Upload className="size-4" />
+                    Import data
+                  </Link>
+                </Button>
+              }
+              className="min-w-[18rem] flex-1 py-3"
+            />
           </>
         )}
       </div>
-    </section>
+    </Card>
   );
 }
 
 function PracticeTodayCard({
   plan,
   focusSummary,
-  message,
+  outcome,
 }: {
   plan: PracticePlan;
   focusSummary: ReturnType<typeof buildPracticeFocusSummary>;
-  message: string | null;
+  outcome: PracticePlannerOutcome | null;
 }) {
   const plannedBalls = plan.totalBalls === null ? "Timed" : `${plan.totalBalls} balls`;
 
   return (
-    <section className="rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
+    <Card className="p-3 shadow-sm" data-practice-answer-card>
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0">
           <div className="flex flex-wrap gap-2">
-            <Badge className="bg-emerald-900 text-white hover:bg-emerald-900">
-              Practise this today
-            </Badge>
+            <Badge>Practise this today</Badge>
             <Badge variant="outline">{plannedBalls}</Badge>
             <Badge variant="outline">{plan.estimatedTimeMinutes} min</Badge>
             <Badge variant="outline">{plan.trainingStatus}</Badge>
@@ -1870,7 +1204,7 @@ function PracticeTodayCard({
           <div className="grid gap-1.5">
             {plan.why.slice(0, 4).map((line) => (
               <div key={line} className="flex gap-2 text-xs leading-5 text-muted-foreground">
-                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-700" />
+                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
                 <span className="line-clamp-1">{line}</span>
               </div>
             ))}
@@ -1882,12 +1216,27 @@ function PracticeTodayCard({
         </div>
       </div>
 
-      {message ? (
-        <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-950">
-          {message}
-        </div>
+      {outcome ? (
+        <Alert
+          variant={outcome.status === "error" ? "destructive" : "default"}
+          role={outcome.status === "error" ? "alert" : "status"}
+          aria-live={outcome.status === "error" ? "assertive" : "polite"}
+          className={cn(
+            "mt-3",
+            outcome.status === "success" &&
+              "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]",
+          )}
+          data-practice-outcome={outcome.status}
+        >
+          {outcome.status === "error" ? (
+            <AlertCircle className="size-4" aria-hidden />
+          ) : (
+            <CheckCircle2 className="size-4" aria-hidden />
+          )}
+          <AlertDescription className="font-medium">{outcome.message}</AlertDescription>
+        </Alert>
       ) : null}
-    </section>
+    </Card>
   );
 }
 
@@ -1918,25 +1267,23 @@ function PracticeResultsOverview({
     : `${comparison.planVsActual.actualShots} imported shots`;
 
   return (
-    <section className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-3 shadow-sm ring-1 ring-emerald-950/5 max-lg:border-slate-200 max-lg:bg-white max-lg:shadow-none max-lg:ring-0">
+    <Card className="border-primary/25 bg-primary/5 p-3 shadow-sm" data-practice-result-card>
       <div className="grid gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge className="bg-emerald-900 text-white hover:bg-emerald-900">
-              Analysed from upload
-            </Badge>
+            <Badge>Analysed from upload</Badge>
             <Badge variant="outline">{importedSessionLabel}</Badge>
             <Badge variant="outline">{comparison.matchConfidence ?? "--"}% match</Badge>
           </div>
           <h3 className="mt-2 text-xl font-semibold tracking-normal">
             Practice result: {score ? `${score.score}/100` : "session matched"}
           </h3>
-          <p className="mt-1 max-w-5xl text-sm leading-5 text-emerald-950/80 max-lg:text-slate-600">
+          <p className="mt-1 max-w-5xl text-sm leading-5 text-muted-foreground">
             {comparison.summary}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-background/60 md:grid-cols-4 md:divide-x md:divide-border">
           <MiniMetric
             label="Matched balls"
             value={`${summary.importedBalls}/${summary.totalBalls}`}
@@ -1950,7 +1297,7 @@ function PracticeResultsOverview({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem]">
+      <div className="mt-3 grid overflow-hidden rounded-lg border border-border bg-background/60 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem] lg:divide-x lg:divide-border">
         <ResultCallout
           label="Worked"
           value={
@@ -1976,13 +1323,13 @@ function PracticeResultsOverview({
           }
         />
       </div>
-    </section>
+    </Card>
   );
 }
 
 function ResultCallout({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border bg-white/75 p-3">
+    <div className="min-w-0 border-b border-border p-3 last:border-b-0 lg:border-b-0">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 line-clamp-3 text-sm leading-5 text-foreground">{value}</p>
     </div>
@@ -2020,7 +1367,7 @@ function PracticeAgenda({
   const totalBalls = blocks.reduce((total, block) => total + (block.ballCount ?? 0), 0);
 
   return (
-    <section className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
+    <Card className="p-3 shadow-sm" data-practice-agenda>
       <div className="mb-2 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold tracking-normal">Practice agenda</h3>
@@ -2037,15 +1384,14 @@ function PracticeAgenda({
           const selected = block.id === selectedBlockId;
 
           return (
-            <button
+            <Button
               key={block.id}
               type="button"
+              variant={selected ? "secondary" : "outline"}
               onClick={() => onSelect(block.id)}
               className={cn(
-                "rounded-lg border p-2.5 text-left transition-colors",
-                selected
-                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
-                  : "bg-white/75 hover:border-emerald-300 hover:bg-emerald-50/60",
+                "h-auto w-full justify-start whitespace-normal rounded-lg p-2.5 text-left transition-colors",
+                selected ? "border-primary/30 shadow-sm" : "bg-card hover:bg-muted/50",
               )}
               aria-pressed={selected}
             >
@@ -2073,11 +1419,11 @@ function PracticeAgenda({
                   ) : null}
                 </div>
               </div>
-            </button>
+            </Button>
           );
         })}
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -2098,13 +1444,15 @@ function SelectedBlockDetail({
   onSuggestDrill: () => void;
   isPending: boolean;
 }) {
+  const [detailOpen, setDetailOpen] = useState(false);
+
   if (!block) {
     return (
-      <section className="rounded-xl border bg-white/85 p-3 shadow-sm ring-1 ring-emerald-950/5">
+      <Card className="p-3 shadow-sm">
         <p className="text-sm text-muted-foreground">
           Generate a plan to see the main practice block.
         </p>
-      </section>
+      </Card>
     );
   }
 
@@ -2113,56 +1461,90 @@ function SelectedBlockDetail({
   const options = drillOptions.length > 0 ? drillOptions : buildPracticeDrillOptions(block);
 
   return (
-    <section className="rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{row.blockLabel}</Badge>
-            <Badge className={blockTone(block.type)}>{row.typeLabel}</Badge>
-            <Badge variant="outline" className={importStatusTone(row.importStatus)}>
-              {row.statusLabel}
-            </Badge>
-          </div>
-          <h3 className="mt-2 text-2xl font-semibold tracking-normal">{block.title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {row.clubLabel || "Mixed"} · {row.volumeLabel}
-          </p>
-        </div>
-        <MiniMetric label="Target" value={shortTarget(block.successTarget)} />
-      </div>
-
-      <div className="mt-3 grid gap-2">
-        <DetailLine label="Why" value={block.purpose} />
-        <DetailLine label="How to practise" value={block.drill} />
-        <DetailLine label="Success" value={block.successTarget} />
-        <DetailLine label="Record" value={block.recordPrompt} />
-        <DetailLine label="Scored from" value={scoredFromLabel(block)} />
-      </div>
-
-      <PracticeBlockEditControls
-        block={block}
-        options={options}
-        onBallCountChange={onBallCountChange}
-        onSwapDrill={onSwapDrill}
-        onSuggestDrill={onSuggestDrill}
-        disabled={isPending}
-      />
-
-      <div className="mt-3 rounded-lg border border-dashed bg-muted/20 p-3 text-sm leading-5 text-muted-foreground">
-        {decision ? (
-          <>
-            <p className="font-semibold text-foreground">
-              Uploaded result: {decision.result.replace("_", " ")}
+    <div className="grid gap-2" data-selected-practice-block>
+      <Card className="p-3 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{row.blockLabel}</Badge>
+              <Badge className={blockTone(block.type)}>{row.typeLabel}</Badge>
+              <Badge variant="outline" className={importStatusTone(row.importStatus)}>
+                {row.statusLabel}
+              </Badge>
+            </div>
+            <h3 className="mt-2 text-xl font-semibold tracking-normal">{block.title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {row.clubLabel || "Mixed"} · {row.volumeLabel}
             </p>
-            <p className="mt-1 font-medium text-foreground">{row.resultNote}</p>
-            <p className="mt-1">Actual: {decision.actual}</p>
-            <p>{decision.summary}</p>
-          </>
-        ) : (
-          "Upload the matching Rapsodo session and LM World Tour will score this block from the shot data."
-        )}
-      </div>
-    </section>
+          </div>
+          <MiniMetric label="Target" value={shortTarget(block.successTarget)} />
+        </div>
+      </Card>
+      <ResponsiveDetailPanel
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title={block.title}
+        description={`${row.blockLabel} · ${row.clubLabel || "Mixed"} · ${row.volumeLabel}`}
+        trigger={
+          <Button type="button" variant="outline" className="w-full justify-between">
+            Open selected block controls
+            <ChevronRight className="size-4" />
+          </Button>
+        }
+        contentClassName="grid gap-3"
+      >
+        <div className="grid gap-3" data-selected-block-sheet-content>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{row.blockLabel}</Badge>
+                <Badge className={blockTone(block.type)}>{row.typeLabel}</Badge>
+                <Badge variant="outline" className={importStatusTone(row.importStatus)}>
+                  {row.statusLabel}
+                </Badge>
+              </div>
+              <h3 className="mt-2 text-2xl font-semibold tracking-normal">{block.title}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {row.clubLabel || "Mixed"} · {row.volumeLabel}
+              </p>
+            </div>
+            <MiniMetric label="Target" value={shortTarget(block.successTarget)} />
+          </div>
+
+          <div className="grid gap-2">
+            <DetailLine label="Why" value={block.purpose} />
+            <DetailLine label="How to practise" value={block.drill} />
+            <DetailLine label="Success" value={block.successTarget} />
+            <DetailLine label="Record" value={block.recordPrompt} />
+            <DetailLine label="Scored from" value={scoredFromLabel(block)} />
+          </div>
+
+          <PracticeBlockEditControls
+            block={block}
+            options={options}
+            onBallCountChange={onBallCountChange}
+            onSwapDrill={onSwapDrill}
+            onSuggestDrill={onSuggestDrill}
+            disabled={isPending}
+          />
+
+          <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm leading-5 text-muted-foreground">
+            {decision ? (
+              <>
+                <p className="font-semibold text-foreground">
+                  Uploaded result: {decision.result.replace("_", " ")}
+                </p>
+                <p className="mt-1 font-medium text-foreground">{row.resultNote}</p>
+                <p className="mt-1">Actual: {decision.actual}</p>
+                <p>{decision.summary}</p>
+              </>
+            ) : (
+              "Upload the matching Rapsodo session and LM World Tour will score this block from the shot data."
+            )}
+          </div>
+        </div>
+      </ResponsiveDetailPanel>
+    </div>
   );
 }
 
@@ -2186,7 +1568,7 @@ function PracticeBlockEditControls({
   const nextSuggestion = nextPracticeDrillSuggestion(block, options);
 
   return (
-    <div className="mt-3 rounded-lg border bg-emerald-50/40 p-3 max-lg:border-slate-200 max-lg:bg-[#F2F2F7]">
+    <div className="mt-3 rounded-lg border bg-muted/30 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold">Tune block</p>
         <Button
@@ -2319,7 +1701,7 @@ function SessionControlPanel({
         <CardHeader className="gap-3 pb-3">
           <div>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <ClipboardCheck className="size-5 text-emerald-700" />
+              <ClipboardCheck className="size-5 text-primary" />
               Session Control
             </CardTitle>
             <CardDescription>{statusLabel}</CardDescription>
@@ -2458,7 +1840,7 @@ function ScorecardPanel({
           {summary.totalBlocks} blocks met planned volume.
         </p>
       </div>
-      <div className="rounded-lg border bg-white/70 p-3">
+      <div className="rounded-lg border bg-card/70 p-3">
         <p className="text-sm font-semibold">Planned drill score</p>
         {score ? (
           <>
@@ -2484,14 +1866,13 @@ function ScorecardPanel({
 
 function PlanVsActual({ comparison }: { comparison: PracticeComparison | null }) {
   return (
-    <section className="rounded-xl border bg-white/90 p-3 shadow-sm ring-1 ring-emerald-950/5">
-      <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+    <Card data-plan-vs-actual>
+      <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-lg font-semibold tracking-normal">Plan vs Actual</h3>
-          <p className="mt-1 max-w-4xl text-sm leading-5 text-muted-foreground">
-            Every block is scored from the matched upload so the review uses the whole page width,
-            not the side rail.
-          </p>
+          <CardTitle>Plan vs Actual</CardTitle>
+          <CardDescription>
+            Every block is scored from matched launch-monitor rows, never from a checked note.
+          </CardDescription>
         </div>
         {comparison?.decisions.length ? (
           <Badge variant="outline" className="w-fit">
@@ -2499,69 +1880,85 @@ function PlanVsActual({ comparison }: { comparison: PracticeComparison | null })
             {comparison.decisions.length} blocks scored
           </Badge>
         ) : null}
-      </div>
-      {comparison?.decisions.length ? (
-        <>
-          <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-              <MiniMetric
-                label="Planned"
-                value={
-                  comparison.planVsActual.plannedBalls
-                    ? `${comparison.planVsActual.plannedBalls} balls`
-                    : "Timed"
-                }
-              />
-              <MiniMetric label="Actual" value={`${comparison.planVsActual.actualShots} shots`} />
-              <MiniMetric label="Match" value={`${comparison.matchConfidence ?? "--"}%`} />
-              <MiniMetric label="Mode" value={comparison.scoringMode} />
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {comparison?.decisions.length ? (
+          <>
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableCaption>
+                  Planned {comparison.planVsActual.plannedBalls ?? "timed"} · Actual{" "}
+                  {comparison.planVsActual.actualShots} shots · Match{" "}
+                  {comparison.matchConfidence ?? "--"}% · {comparison.scoringMode} · Clubs{" "}
+                  {comparison.planVsActual.actualClubs
+                    .map((club) => club.toUpperCase())
+                    .join(", ") || "none"}
+                </TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Block</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Actual</TableHead>
+                    <TableHead>Volume</TableHead>
+                    <TableHead>Result</TableHead>
+                    <TableHead>Evidence summary</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {comparison.decisions.map((item) => (
+                    <TableRow key={item.blockId}>
+                      <TableCell className="font-medium">{item.title}</TableCell>
+                      <TableCell className="max-w-64 whitespace-normal">{item.target}</TableCell>
+                      <TableCell className="max-w-64 whitespace-normal">{item.actual}</TableCell>
+                      <TableCell>
+                        {item.actualBalls}/{item.plannedBalls ?? "timed"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={practiceComparisonResultTone(item.result)}
+                        >
+                          {practiceComparisonResultLabel(item)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="min-w-72 whitespace-normal text-muted-foreground">
+                        {item.summary}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Clubs:{" "}
-              {comparison.planVsActual.actualClubs.map((club) => club.toUpperCase()).join(", ") ||
-                "No clubs"}
-            </p>
-          </div>
-          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {comparison.decisions.map((item) => (
-              <div key={item.blockId} className="rounded-lg border bg-muted/20 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <Badge variant="outline" className={practiceComparisonResultTone(item.result)}>
-                    {practiceComparisonResultLabel(item)}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Target: {item.target}
-                </p>
-                <p className="text-xs leading-5 text-muted-foreground">Actual: {item.actual}</p>
-                {!item.matchedPlannedVolume && item.actualBalls > 0 ? (
-                  <p className="text-xs leading-5 text-amber-900">
-                    Volume: {item.actualBalls}/{item.plannedBalls ?? "planned"} planned balls found.
-                  </p>
-                ) : null}
-                <p className="text-xs leading-5 text-muted-foreground">Summary: {item.summary}</p>
-              </div>
-            ))}
-          </div>
-          {comparison.whatWorked.length || comparison.needsWork.length ? (
-            <div className="mt-3 grid gap-2 lg:grid-cols-3">
+            <div className="grid gap-2" aria-label="Plan versus actual recommendations">
               {comparison.whatWorked.length ? (
-                <ResultCallout label="Worked" value={comparison.whatWorked.join(" ")} />
+                <PracticeResultItem label="Worked" value={comparison.whatWorked.join(" ")} />
               ) : null}
               {comparison.needsWork.length ? (
-                <ResultCallout label="Repeat" value={comparison.needsWork.join(" ")} />
+                <PracticeResultItem label="Repeat" value={comparison.needsWork.join(" ")} />
               ) : null}
-              <ResultCallout label="Next" value={comparison.nextRecommendation} />
+              <PracticeResultItem label="Next" value={comparison.nextRecommendation} />
             </div>
-          ) : null}
-        </>
-      ) : (
-        <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-          Upload the matching launch-monitor session to see whether the practice worked.
-        </div>
-      )}
-    </section>
+          </>
+        ) : (
+          <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+            Upload the matching launch-monitor session to see whether the practice worked.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PracticeResultItem({ label, value }: { label: string; value: string }) {
+  return (
+    <Item variant="muted" size="sm" className="items-start">
+      <ItemContent>
+        <ItemTitle>{label}</ItemTitle>
+        <ItemDescription className="overflow-visible whitespace-normal text-clip">
+          {value}
+        </ItemDescription>
+      </ItemContent>
+    </Item>
   );
 }
 
@@ -2690,17 +2087,18 @@ function TemplatesPanel({
     <div className="grid gap-2">
       <p className="text-sm font-semibold">Templates</p>
       {templates.slice(0, 5).map((template) => (
-        <button
+        <Button
           key={template.id}
           type="button"
+          variant="outline"
           onClick={() => onUseTemplate(template)}
-          className="rounded-lg border bg-white/70 p-2.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/60"
+          className="h-auto w-full flex-col items-stretch justify-start whitespace-normal bg-card/70 p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
         >
           <span className="block text-sm font-semibold">{template.title}</span>
           <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
             {template.description}
           </span>
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -2718,11 +2116,12 @@ function SavedPlansPanel({
       <p className="text-sm font-semibold">Saved plans</p>
       {plans.length > 0 ? (
         plans.slice(0, 5).map((plan) => (
-          <button
+          <Button
             key={plan.id}
             type="button"
+            variant="outline"
             onClick={() => onLoad(plan)}
-            className="rounded-lg border bg-white/70 p-2.5 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-50/60"
+            className="h-auto w-full flex-col items-stretch justify-start whitespace-normal bg-card/70 p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary/5"
           >
             <span className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-semibold">{plan.title}</span>
@@ -2738,7 +2137,7 @@ function SavedPlansPanel({
               {plan.totalBalls ? `${plan.totalBalls} balls | ` : ""}
               {plan.timeMinutes} min | {plan.focusClubs.join(", ") || "Baseline"}
             </span>
-          </button>
+          </Button>
         ))
       ) : (
         <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
@@ -2802,7 +2201,7 @@ function FacilityToggle({
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border bg-white/70 px-2.5 py-2">
+    <div className="min-w-0 border-b border-border px-3 py-2.5 even:border-l md:border-b-0 md:border-l-0">
       <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
@@ -2817,7 +2216,7 @@ function shortTarget(target: string) {
 
 function DetailLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border bg-white/60 p-2.5">
+    <div className="min-w-0 rounded-lg border bg-card/60 p-2.5">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-sm leading-5 text-foreground">{value}</p>
     </div>
@@ -2828,27 +2227,29 @@ function blockTone(type: PracticeBlock["type"]) {
   switch (type) {
     case "warmup":
     case "warmup_round":
-      return "bg-sky-100 text-sky-900 hover:bg-sky-100";
+      return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] hover:bg-[var(--status-information-surface)]";
     case "scoring":
     case "short_game":
     case "putting":
-      return "bg-emerald-100 text-emerald-900 hover:bg-emerald-100";
+      return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] hover:bg-[var(--status-success-surface)]";
     case "speed":
-      return "bg-amber-100 text-amber-950 hover:bg-amber-100";
+      return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] hover:bg-[var(--status-warning-surface)]";
     case "random":
     case "test":
-      return "bg-violet-100 text-violet-950 hover:bg-violet-100";
+      return "bg-secondary text-secondary-foreground hover:bg-secondary";
     default:
-      return "bg-slate-100 text-slate-900 hover:bg-slate-100";
+      return "bg-muted text-foreground hover:bg-muted";
   }
 }
 
 function importStatusTone(status: PracticeBlockImportStatus) {
   return cn(
-    status === "matched_from_upload" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-    status === "needs_more_data" && "border-amber-200 bg-amber-50 text-amber-900",
-    status === "no_matching_shots" && "border-slate-200 bg-slate-50 text-slate-700",
-    status === "waiting_for_upload" && "border-slate-200 bg-slate-50 text-slate-700",
+    status === "matched_from_upload" &&
+      "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+    status === "needs_more_data" &&
+      "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
+    status === "no_matching_shots" && "border-border bg-muted text-foreground",
+    status === "waiting_for_upload" && "border-border bg-muted text-foreground",
   );
 }
 
@@ -2890,10 +2291,13 @@ function practiceComparisonResultTone(
   result: NonNullable<PracticeComparison>["decisions"][number]["result"],
 ) {
   return cn(
-    result === "passed" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-    result === "mixed" && "border-amber-200 bg-amber-50 text-amber-900",
-    result === "failed" && "border-rose-200 bg-rose-50 text-rose-800",
-    result === "insufficient_data" && "border-slate-200 bg-slate-50 text-slate-700",
+    result === "passed" &&
+      "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+    result === "mixed" &&
+      "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
+    result === "failed" &&
+      "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive",
+    result === "insufficient_data" && "border-border bg-muted text-foreground",
   );
 }
 

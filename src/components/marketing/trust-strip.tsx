@@ -1,5 +1,8 @@
 import { Check, LockKeyhole, MonitorSmartphone, ScanSearch, Sparkles } from "lucide-react";
 
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
 import styles from "./marketing.module.css";
 
 const proof = [
@@ -12,16 +15,19 @@ const proof = [
 
 export function TrustStrip() {
   return (
-    <section className={styles.trustStrip} aria-label="Product trust and availability">
-      {proof.map(([Icon, title, detail]) => (
-        <div key={title} className={styles.trustItem}>
+    <Card className={styles.trustStrip} aria-label="Product trust and availability">
+      {proof.map(([Icon, title, detail], index) => (
+        <CardContent key={title} className={styles.trustItem}>
           <Icon className="size-4" aria-hidden />
           <span>
             <strong>{title}</strong>
             <small>{detail}</small>
           </span>
-        </div>
+          {index < proof.length - 1 ? (
+            <Separator orientation="vertical" className={styles.trustSeparator} />
+          ) : null}
+        </CardContent>
       ))}
-    </section>
+    </Card>
   );
 }

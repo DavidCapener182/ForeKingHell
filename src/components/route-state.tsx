@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, SearchX } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { DelayedGolfLoader } from "@/components/visuals/delayed-golf-loader";
 import { BRAND_NAME } from "@/lib/brand";
 
@@ -63,22 +64,26 @@ export function RouteNotFoundState() {
       id="main-content"
       className="grid min-h-[70dvh] place-items-center px-4 py-10 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:min-h-screen lg:pb-10"
     >
-      <section className="premium-card ios-grouped-list w-full max-w-xl overflow-hidden text-center lg:p-6">
-        <div className="px-5 py-6">
+      <Card className="w-full max-w-xl text-center" data-route-not-found-state>
+        <CardHeader className="items-center gap-2 px-5 py-6">
           <div className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
             <SearchX className="size-6" />
           </div>
-          <h1 className="mt-4 text-[2rem] font-bold leading-tight tracking-[-0.025em] lg:text-3xl">
-            Page not found
-          </h1>
-          <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+          <CardTitle>
+            <h1 className="mt-2 text-[2rem] font-bold leading-tight tracking-[-0.025em] lg:text-3xl">
+              Page not found
+            </h1>
+          </CardTitle>
+          <CardDescription className="text-[15px] leading-6">
             That route does not match an {BRAND_NAME} screen.
-          </p>
-        </div>
-        <Button asChild className="min-h-12 w-full rounded-none lg:mt-5 lg:w-auto lg:rounded-md">
-          <Link href="/dashboard">Open dashboard</Link>
-        </Button>
-      </section>
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="justify-center">
+          <Button asChild className="min-h-12 w-full sm:w-auto">
+            <Link href="/dashboard">Open dashboard</Link>
+          </Button>
+        </CardFooter>
+      </Card>
     </main>
   );
 }

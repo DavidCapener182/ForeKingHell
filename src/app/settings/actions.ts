@@ -298,11 +298,13 @@ export async function deleteAccountDataAction(formData: FormData) {
   const expectedConfirmation = currentUser.email?.toLowerCase() ?? currentUser.id;
 
   if (confirmation !== expectedConfirmation) {
-    redirect("/settings?deleteError=confirmation");
+    redirect("/settings?section=danger&deleteError=confirmation#danger-zone");
   }
 
   if (!isRecentSignIn(currentUser.lastSignInAt)) {
-    redirect("/login?reason=reauth_required&next=/settings%3Freauth%3D1%23danger-zone");
+    redirect(
+      "/login?reason=reauth_required&next=/settings%3Fsection%3Ddanger%26reauth%3D1%23danger-zone",
+    );
   }
 
   const userId = currentUser.id;
@@ -415,7 +417,7 @@ export async function deleteAccountDataAction(formData: FormData) {
 export async function resetGolfDataAction(formData: FormData) {
   const userId = await requireCurrentUserId();
   if (nullableString(formData, "confirmation") !== "RESET") {
-    redirect("/settings?resetError=confirmation#danger-zone");
+    redirect("/settings?section=danger&resetError=confirmation#danger-zone");
   }
 
   await getDb().transaction(async (tx) => {
@@ -469,7 +471,7 @@ export async function resetGolfDataAction(formData: FormData) {
   });
 
   revalidatePath("/", "layout");
-  redirect("/settings?reset=1#danger-zone");
+  redirect("/settings?section=danger&reset=1#danger-zone");
 }
 
 function nullableString(formData: FormData, key: string) {

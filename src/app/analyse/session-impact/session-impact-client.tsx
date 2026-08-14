@@ -11,15 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { SegmentedControl } from "@/components/app/segmented-control";
-import { MobileFilterSheet, StatusPill } from "@/components/premium";
+import { StatusPill } from "@/components/premium";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import {
   calculateSessionImpact,
@@ -79,8 +73,8 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
-      <aside className="ios-grouped-list order-1 grid content-start gap-3 overflow-hidden p-4 lg:order-3 lg:col-start-2 lg:row-start-3 lg:rounded-2xl lg:border lg:border-border lg:bg-card sm:p-5">
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]">
+      <aside className="order-3 grid content-start gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 lg:col-start-2 lg:row-start-3 sm:p-5">
         <div className="flex items-center gap-2">
           <ShieldCheck className="size-5 text-primary" aria-hidden />
           <h2 className="font-semibold">What changes next</h2>
@@ -89,10 +83,11 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
         <p className="text-sm leading-6 text-muted-foreground">
           {impact.after.repeatability.explanation}
         </p>
-        <IOSInlineStatus
-          label={confidenceDisplayLabel(impact.after.repeatability.confidence.label)}
-          tone={impact.after.repeatability.confidence.label === "early" ? "attention" : "positive"}
-        />
+        <StatusPill
+          tone={impact.after.repeatability.confidence.label === "early" ? "amber" : "green"}
+        >
+          {confidenceDisplayLabel(impact.after.repeatability.confidence.label)}
+        </StatusPill>
         <p className="text-xs leading-5 text-muted-foreground">
           Confidence uses sample size, session count, recency, metric coverage and variance. This
           single-session view remains conservative about across-session consistency.
@@ -123,103 +118,7 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
         </div>
       </aside>
 
-      <section className="order-2 grid gap-3 lg:hidden">
-        <IOSSectionHeader
-          title="Test the evidence"
-          description="The raw session is always preserved."
-        />
-        <SegmentedControl
-          label="Distance metric"
-          value={metric}
-          options={[
-            { value: "carry", label: "Carry" },
-            { value: "total", label: "Total" },
-          ]}
-          onChange={(value) => setMetric(value as SessionImpactMetric)}
-        />
-        <IOSGroupedList>
-          <IOSListRow
-            label="Included evidence"
-            value={`${impact.after.shotCount} / ${impact.before.shotCount}`}
-            detail={
-              excludeSelected
-                ? "One selected shot is temporarily excluded"
-                : filterOptions[filterIndex]?.label
-            }
-            status={
-              <IOSInlineStatus
-                label={`${impact.excludedShotIds.length} excluded`}
-                tone={impact.excludedShotIds.length ? "attention" : "positive"}
-              />
-            }
-          />
-        </IOSGroupedList>
-        <MobileFilterSheet
-          label="Change evidence filter"
-          activeCount={impact.excludedShotIds.length ? 1 : 0}
-        >
-          <div className="grid gap-4 pb-2">
-            <fieldset className="grid gap-2">
-              <legend className="text-sm font-semibold">Analysis filter</legend>
-              <div className="grid grid-cols-2 gap-2">
-                {filterOptions.map((option, index) => (
-                  <button
-                    key={option.label}
-                    type="button"
-                    onClick={() => {
-                      setExcludeSelected(false);
-                      setFilterIndex(index);
-                    }}
-                    aria-pressed={!excludeSelected && filterIndex === index}
-                    className={cn(
-                      "focus-aaa min-h-11 rounded-xl border px-3 text-sm font-medium transition-colors motion-reduce:transition-none",
-                      !excludeSelected && filterIndex === index
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-background text-foreground",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-            <label className="grid gap-1.5 text-sm font-medium">
-              Test one shot
-              <Select value={selectedShotId} onValueChange={setSelectedShotId}>
-                <SelectTrigger className="focus-aaa min-h-11 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {shots.map((shot, index) => (
-                    <SelectItem key={shot.id} value={shot.id}>
-                      Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
-                      {formatValue(
-                        metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
-                        "yd",
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <Button
-              type="button"
-              variant={excludeSelected ? "default" : "outline"}
-              className="min-h-11 rounded-xl"
-              onClick={() => setExcludeSelected((value) => !value)}
-            >
-              {excludeSelected ? (
-                <RotateCcw className="size-4" aria-hidden />
-              ) : (
-                <Target className="size-4" aria-hidden />
-              )}
-              {excludeSelected ? "Restore shot" : "Exclude selected"}
-            </Button>
-          </div>
-        </MobileFilterSheet>
-      </section>
-
-      <section className="order-1 hidden gap-4 rounded-2xl border border-border bg-card p-4 lg:col-span-2 lg:grid sm:p-5">
+      <section className="order-1 grid gap-4 rounded-2xl border border-border bg-card p-4 lg:col-span-2 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold">Reversible filter</h2>
@@ -247,27 +146,28 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Analysis filter
             </p>
-            <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ToggleGroup
+              type="single"
+              value={excludeSelected ? "" : filterIndex.toString()}
+              onValueChange={(value) => {
+                if (!value) return;
+                setExcludeSelected(false);
+                setFilterIndex(Number(value));
+              }}
+              variant="outline"
+              aria-label="Analysis filter"
+              className="flex w-full snap-x justify-start gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
               {filterOptions.map((option, index) => (
-                <button
+                <ToggleGroupItem
                   key={option.label}
-                  type="button"
-                  onClick={() => {
-                    setExcludeSelected(false);
-                    setFilterIndex(index);
-                  }}
-                  aria-pressed={!excludeSelected && filterIndex === index}
-                  className={cn(
-                    "focus-aaa min-h-11 shrink-0 rounded-xl border px-3 text-sm font-medium transition-colors motion-reduce:transition-none",
-                    !excludeSelected && filterIndex === index
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-foreground",
-                  )}
+                  value={index.toString()}
+                  className="focus-aaa min-h-11 shrink-0 rounded-xl px-3 text-sm font-medium"
                 >
                   {option.label}
-                </button>
+                </ToggleGroupItem>
               ))}
-            </div>
+            </ToggleGroup>
           </div>
         </div>
 
@@ -307,24 +207,9 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
         </div>
       </section>
 
-      <div className="order-3 lg:hidden">
-        <IOSDisclosureGroup
-          label="Before and after metrics"
-          items={[
-            {
-              value: "impact-metrics",
-              title: "Before and after",
-              summary: `${impact.after.sessionScore}/100`,
-              description: `${impact.before.shotCount} raw · ${impact.after.shotCount} included`,
-              content: <MobileImpactMetrics impact={impact} />,
-            },
-          ]}
-        />
-      </div>
-
       <section
         aria-labelledby="impact-results"
-        className="order-3 hidden overflow-hidden rounded-2xl border border-border bg-card lg:order-2 lg:col-span-2 lg:block"
+        className="order-2 overflow-hidden rounded-2xl border border-border bg-card lg:col-span-2"
       >
         <div className="border-b border-border p-4 sm:p-5">
           <h2 id="impact-results" className="text-xl font-semibold">
@@ -421,37 +306,6 @@ function ComparisonMetric({
         <strong className="text-lg">{formatValue(after, unit)}</strong>
       </div>
     </div>
-  );
-}
-
-function MobileImpactMetrics({ impact }: { impact: ReturnType<typeof calculateSessionImpact> }) {
-  const rows = [
-    ["Average", impact.before.averageYd, impact.after.averageYd, "yd"],
-    ["Median", impact.before.medianYd, impact.after.medianYd, "yd"],
-    [
-      "Standard deviation",
-      impact.before.standardDeviationYd,
-      impact.after.standardDeviationYd,
-      "yd",
-    ],
-    ["Carry range", impact.before.distanceRangeYd, impact.after.distanceRangeYd, "yd"],
-    ["Landing area", impact.before.dispersionAreaSqYd, impact.after.dispersionAreaSqYd, "sq yd"],
-    ["Offline bias", impact.before.offlineBiasYd, impact.after.offlineBiasYd, "yd"],
-    ["Session score", impact.before.sessionScore, impact.after.sessionScore, "/100"],
-    ["Repeatability", impact.before.repeatability.score, impact.after.repeatability.score, "/100"],
-  ] as const;
-
-  return (
-    <IOSGroupedList>
-      {rows.map(([label, before, after, unit]) => (
-        <IOSListRow
-          key={label}
-          label={label}
-          value={formatValue(after, unit)}
-          detail={`Raw ${formatValue(before, unit)}`}
-        />
-      ))}
-    </IOSGroupedList>
   );
 }
 

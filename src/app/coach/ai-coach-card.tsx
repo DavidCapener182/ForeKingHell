@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 
 import { InsightBlock } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import type { AiCoachGeneratedSummary, AiCoachPayload } from "@/lib/ai-coach-summary";
 
@@ -51,7 +51,7 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
   }
 
   return (
-    <CardContent className="space-y-4">
+    <div className="space-y-4 px-4">
       <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
         <div>
           <p className="text-sm leading-6 text-muted-foreground">
@@ -72,9 +72,11 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <Sparkles className="size-4" aria-hidden />
+          <AlertTitle>Coach note unavailable</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       {summary ? (
@@ -103,7 +105,7 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
             <AiEvidenceTile label="Time needed" value={summary.timeNeeded} />
             <AiEvidenceTile label="Retest" value={summary.retest} />
           </div>
-          <div className="apple-panel-strong p-4">
+          <section className="rounded-lg border bg-muted/30 p-4">
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Practice steps
             </p>
@@ -113,16 +115,16 @@ export function AiCoachCard({ payload }: AiCoachCardProps) {
               ))}
             </ol>
             <p className="mt-3 border-t pt-3 text-sm text-muted-foreground">{summary.watchOut}</p>
-          </div>
+          </section>
         </div>
       ) : null}
-    </CardContent>
+    </div>
   );
 }
 
 function AiEvidenceTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white/85 px-3 py-2">
+    <div className="min-w-0 rounded-lg border bg-muted/30 px-3 py-2">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>

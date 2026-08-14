@@ -10,9 +10,7 @@ const source = readFileSync(
 describe("admin challenges desktop console source", () => {
   it("uses the shared challenge operations workbench without adding a contextual AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="admin-challenges" className="hidden lg:grid">',
-    );
+    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-challenges">');
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -29,7 +27,7 @@ describe("admin challenges desktop console source", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('data-workbench-scope="admin-challenges"');
     expect(source).toContain('data-workbench-export-table="admin-challenges"');
-    expect(source).toContain("<caption");
+    expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("<a\n      href={`/admin/challenges?sort=${metric}&dir=${nextDir}`}");
 
@@ -38,11 +36,17 @@ describe("admin challenges desktop console source", () => {
     }
   });
 
-  it("uses a status-filtered mobile challenge queue with templates disclosed", () => {
-    expect(source).toContain("AdminMobileShell");
-    expect(source).toContain("AdminMobileChallenges");
-    expect(source).toContain("MobileAdminChallengeRows");
-    expect(source).toContain("MobileTabBar");
-    expect(source).toContain("IOSDisclosureGroup");
+  it("excludes the obsolete companion challenge queue from this desktop-only route", () => {
+    for (const obsolete of [
+      "AdminMobileShell",
+      "AdminMobileChallenges",
+      "MobileAdminChallengeRows",
+      "MobileTabBar",
+      "IOSDisclosureGroup",
+      "getRequestAppSurface",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
   });
 });

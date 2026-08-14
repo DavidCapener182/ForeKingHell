@@ -9,6 +9,34 @@ const panelSource = readFileSync(
 );
 
 describe("data chat desktop workbench", () => {
+  it("uses the shadcn conversation, suggestion, composer and evidence primitives", () => {
+    for (const primitive of [
+      "<Command",
+      "<ScrollArea",
+      "<InputGroup",
+      "<InputGroupTextarea",
+      "<Skeleton",
+      "<Alert",
+      "<AppEmptyState",
+      "<Collapsible",
+      "<Item",
+      "<ResponsiveDetailPanel",
+    ]) {
+      expect(panelSource).toContain(primitive);
+    }
+
+    const assistantTurn =
+      panelSource.match(/function AssistantTurn[\s\S]*?function CitationItem/)?.[0] ?? "";
+    expect(assistantTurn).toContain("<CitationItem");
+    expect(assistantTurn).not.toContain("IOSDisclosureGroup");
+    expect(assistantTurn).not.toContain("IOSGroupedList");
+    expect(panelSource).toContain('id="data-chat-composer"');
+    expect(panelSource).toContain(
+      'href: "/data-chat?prompt=Build%20a%20practice%20plan#data-chat-composer"',
+    );
+    expect(panelSource).not.toContain("#from-my-data");
+  });
+
   it("uses the data chat artwork variant in the desktop header", () => {
     expect(pageSource).toContain('variant="dataChat"');
     expect(pageSource).toContain('<PageArtwork variant="dataChat"');
@@ -23,7 +51,6 @@ describe("data chat desktop workbench", () => {
     expect(pageSource).toContain("ConnectedMetricBar");
     expect(pageSource).toContain("<Alert");
     expect(pageSource).toContain('scope="data-chat"');
-    expect(pageSource).toContain("savedAnswerWorkbench");
     expect(pageSource).toContain("normalizePrompt");
   });
 
@@ -44,10 +71,11 @@ describe("data chat desktop workbench", () => {
     }
   });
 
-  it("keeps mobile saved answers on cards instead of the desktop main table", () => {
-    expect(panelSource).toContain("SavedAnswerCards");
+  it("keeps one desktop saved-answer table and no duplicate card list", () => {
     expect(panelSource).toContain("SavedAnswersWorkbench");
-    expect(panelSource).toContain("savedAnswerWorkbench = false");
+    expect(panelSource).not.toContain("SavedAnswerCards");
+    expect(panelSource).not.toContain("savedAnswerWorkbench");
+    expect(panelSource).not.toContain("IOSDisclosureGroup");
   });
 
   it("keeps a desktop performance report builder with edit, export and share controls", () => {

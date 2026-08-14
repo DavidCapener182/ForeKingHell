@@ -5,6 +5,7 @@ import { ImageIcon, Loader2, MapPinned } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { ScorecardExtractState } from "@/app/import/import-types";
 
@@ -34,7 +35,7 @@ export function ScorecardExtractionPanel({
   return (
     <div className="apple-panel space-y-4 p-4">
       <div className="flex items-start gap-3">
-        <MapPinned className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+        <MapPinned className="mt-0.5 size-4 shrink-0 text-primary" />
         <div className="flex-1 space-y-3">
           <div className="space-y-1">
             <p className="text-sm font-medium">Course scorecard</p>
@@ -57,7 +58,7 @@ export function ScorecardExtractionPanel({
               event.currentTarget.value = "";
             }}
           />
-          <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2 rounded-lg bg-card p-3 ring-1 ring-border sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-medium">Scorecard screenshot</p>
               <p className="text-xs leading-5 text-muted-foreground">
@@ -113,12 +114,12 @@ export function ScorecardExtractionPanel({
           <label className="text-sm font-medium" htmlFor="scorecard">
             Scorecard rows
           </label>
-          <textarea
+          <Textarea
             id="scorecard"
             value={scorecardText}
             onChange={(event) => onScorecardTextChange(event.target.value)}
             placeholder={"1,4,423,Opening\n2,5,532\n3,3,177"}
-            className="min-h-28 w-full resize-y rounded-lg border border-input bg-white/90 px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="min-h-28 resize-y"
           />
           <p className="text-xs text-muted-foreground">
             {holeCount > 0

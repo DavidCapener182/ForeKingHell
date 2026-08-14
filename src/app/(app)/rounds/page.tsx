@@ -16,13 +16,10 @@ import {
 import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { createLatestRoundRecapAction } from "@/app/feature-actions";
-import {
-  DesktopInsightRail,
-  DesktopWorkbenchLayout,
-  commonAiPrompts,
-} from "@/components/app/desktop-workbench";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { RoundOpportunityFeaturePanel } from "@/components/features/feature-panels";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { MobileSectionChips, PageShell, StatusPill } from "@/components/premium";
 import { MobileRouteHeader } from "@/components/mobile-sports";
 import {
@@ -36,6 +33,7 @@ import {
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
@@ -46,11 +44,9 @@ import {
   formatHandicapValue,
   type HandicapSummary,
 } from "@/lib/round-handicap";
-import {
-  RoundsMobileList,
-  RoundsWorkspace,
-  type RoundsWorkspaceRound,
-} from "@/app/rounds/rounds-workspace";
+import { RoundsMobileList } from "@/app/rounds/rounds-mobile-list";
+import { RoundMetricItem, RoundTaskItem } from "@/app/rounds/round-summary-surfaces";
+import type { RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +56,7 @@ const handicapDeltaFormatter = new Intl.NumberFormat("en-GB", {
   minimumFractionDigits: 1,
 });
 
-const roundWorkbenchPrompts = [
+const roundWorkbenchPromptSeed = [
   {
     label: "Explain latest round",
     prompt:
@@ -85,11 +81,10 @@ const roundWorkbenchPrompts = [
       "Generate a round performance report with latest result, handicap context, scorecard-only caveats, and one practice action.",
     icon: FileText,
   },
-  ...commonAiPrompts("rounds"),
 ];
 
 export default async function RoundsPage() {
-  const [rounds, featureData] = await Promise.all([getRounds(), getFeatureIdeasData()]);
+  const [surface, rounds] = await Promise.all([getRequestAppSurface(), getRounds()]);
   const latestRound = rounds[0] ?? null;
   const realRounds = rounds.filter((round) => round.type === "real_round");
   const simulatorRounds = rounds.filter((round) => round.type !== "real_round");
@@ -107,21 +102,39 @@ export default async function RoundsPage() {
   );
   const roundsForWorkspace = rounds.map(toWorkspaceRound);
 
+  if (surface === "companion") {
+    return (
+      <PageShell>
+        <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
+        <RoundsMobileOverview
+          rounds={roundsForWorkspace}
+          latestRound={latestRound}
+          combinedHandicap={combinedHandicap}
+          realRounds={realRounds.length}
+          simulatorRounds={simulatorRounds.length}
+          scorecardOnlyRounds={scorecardOnlyRounds}
+          shotLinkedRounds={shotLinkedRounds.length}
+          shotCountTotal={shotCountTotal}
+        />
+      </PageShell>
+    );
+  }
+
+  const [workbench, workspace, featureData] = await Promise.all([
+    import("@/components/app/desktop-workbench"),
+    import("@/app/rounds/rounds-workspace"),
+    getFeatureIdeasData(),
+  ]);
+  const { DesktopInsightRail, DesktopWorkbenchLayout, commonAiPrompts } = workbench;
+  const { RoundsWorkspace } = workspace;
+  const roundWorkbenchPrompts = [...roundWorkbenchPromptSeed, ...commonAiPrompts("rounds")];
+
   return (
     <PageShell>
-      <MobileRouteHeader title="Play" group="play" activeKey="rounds" />
-      <RoundsMobileOverview
-        rounds={roundsForWorkspace}
-        latestRound={latestRound}
-        combinedHandicap={combinedHandicap}
-        realRounds={realRounds.length}
-        simulatorRounds={simulatorRounds.length}
-        scorecardOnlyRounds={scorecardOnlyRounds}
-        shotLinkedRounds={shotLinkedRounds.length}
-        shotCountTotal={shotCountTotal}
-      />
-
-      <div className="hidden flex-col items-start gap-3 lg:flex lg:flex-row lg:items-center lg:justify-between">
+      <div
+        className="flex flex-col items-start gap-3 lg:flex-row lg:items-center lg:justify-between"
+        data-rounds-workbench
+      >
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard">
             <ArrowLeft className="size-4" />
@@ -132,7 +145,6 @@ export default async function RoundsPage() {
 
       <DesktopWorkbenchLayout
         scope="rounds"
-        className="hidden lg:grid"
         rail={
           <DesktopInsightRail
             title="AI round rail"
@@ -246,7 +258,7 @@ function RoundsMobileOverview({
   const firstScorecardOnlyRound = scorecardOnlyRounds[0] ?? null;
 
   return (
-    <section className="grid gap-4 lg:hidden" aria-label="Rounds mobile overview">
+    <section className="grid gap-4" aria-label="Rounds mobile overview" data-rounds-companion>
       <section className="grid gap-3" aria-labelledby="latest-round-mobile">
         <IOSSectionHeader
           title={<span id="latest-round-mobile">Latest round</span>}
@@ -407,83 +419,89 @@ function RoundsHero({
   simulatorRounds: number;
 }) {
   return (
-    <section className="premium-hero min-w-0 overflow-hidden p-4 sm:p-5">
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-        <div className="order-2 min-w-0 space-y-4 xl:order-none">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 space-y-2">
-              <StatusPill tone="sky">Round tracker</StatusPill>
-              <div>
-                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance">
-                  Saved rounds
-                </h1>
-                {latestRound ? (
-                  <Button asChild size="sm" className="mt-3 w-fit" data-primary-action>
-                    <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
-                      <Flag className="size-4" />
-                      Open latest round
-                    </Link>
-                  </Button>
-                ) : null}
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  {roundsDatabaseCopy(roundsSaved, realRounds, simulatorRounds)}
-                </p>
-                <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  {roundsScoringCopy(combinedHandicap, realHandicap, simHandicap)}
-                </p>
+    <Card className="min-w-0 overflow-hidden border-primary/20 shadow-sm" data-rounds-hero>
+      <CardContent className="p-4 sm:p-5">
+        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
+          <div className="order-2 min-w-0 space-y-4 xl:order-none">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0 space-y-2">
+                <StatusPill tone="sky">Round tracker</StatusPill>
+                <div>
+                  <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance">
+                    Saved rounds
+                  </h1>
+                  {latestRound ? (
+                    <Button asChild size="sm" className="mt-3 w-fit" data-primary-action>
+                      <Link href={`/rounds/${latestRound.id}`} prefetch={false}>
+                        <Flag className="size-4" />
+                        Open latest round
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {roundsDatabaseCopy(roundsSaved, realRounds, simulatorRounds)}
+                  </p>
+                  <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {roundsScoringCopy(combinedHandicap, realHandicap, simHandicap)}
+                  </p>
+                </div>
+              </div>
+              <div className="grid min-w-0 grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap lg:justify-end">
+                <Button asChild className="w-full sm:w-auto">
+                  <Link href="/rounds/new">
+                    <Plus className="size-4" />
+                    Add real round
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <Link href="/import">
+                    <Upload className="size-4" />
+                    Import round CSV
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="hidden w-full sm:inline-flex sm:w-auto"
+                >
+                  <Link href="/achievements">
+                    <Award className="size-4" />
+                    Achievements
+                  </Link>
+                </Button>
               </div>
             </div>
-            <div className="grid min-w-0 grid-cols-1 gap-2 min-[380px]:grid-cols-2 sm:flex sm:flex-wrap lg:justify-end">
-              <Button asChild className="w-full sm:w-auto">
-                <Link href="/rounds/new">
-                  <Plus className="size-4" />
-                  Add real round
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href="/import">
-                  <Upload className="size-4" />
-                  Import round CSV
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="hidden w-full sm:inline-flex sm:w-auto">
-                <Link href="/achievements">
-                  <Award className="size-4" />
-                  Achievements
-                </Link>
-              </Button>
+
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+              <HeroMetric
+                label="Rounds saved"
+                value={integerFormatter.format(roundsSaved)}
+                detail={`${integerFormatter.format(realRounds)} real · ${integerFormatter.format(simulatorRounds)} simulator`}
+              />
+              <HeroMetric
+                label="Best form"
+                value={formatHandicapValue(combinedHandicap.value)}
+                detail={handicapTrendText(combinedHandicap)}
+              />
+              <HeroMetric
+                label="Real ceiling"
+                value={formatHandicapValue(realHandicap.value)}
+                detail={handicapTrendText(realHandicap)}
+              />
+              <HeroMetric
+                label="Sim ceiling"
+                value={formatHandicapValue(simHandicap.value)}
+                detail={handicapTrendText(simHandicap)}
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
-            <HeroMetric
-              label="Rounds saved"
-              value={integerFormatter.format(roundsSaved)}
-              detail={`${integerFormatter.format(realRounds)} real · ${integerFormatter.format(simulatorRounds)} simulator`}
-            />
-            <HeroMetric
-              label="Best form"
-              value={formatHandicapValue(combinedHandicap.value)}
-              detail={handicapTrendText(combinedHandicap)}
-            />
-            <HeroMetric
-              label="Real ceiling"
-              value={formatHandicapValue(realHandicap.value)}
-              detail={handicapTrendText(realHandicap)}
-            />
-            <HeroMetric
-              label="Sim ceiling"
-              value={formatHandicapValue(simHandicap.value)}
-              detail={handicapTrendText(simHandicap)}
-            />
+          <div className="order-1 min-w-0 xl:order-none">
+            <LatestRoundSpotlight latestRound={latestRound} />
           </div>
         </div>
-
-        <div className="order-1 min-w-0 xl:order-none">
-          <LatestRoundSpotlight latestRound={latestRound} />
-        </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -494,23 +512,29 @@ function LatestRoundSpotlight({
 }) {
   if (!latestRound) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
-        <p className="text-sm font-semibold">Latest round</p>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Real and simulator rounds will appear here after they are saved.
-        </p>
-        <Button asChild variant="outline" className="mt-4 w-full">
-          <Link href="/rounds/new">
-            <Plus className="size-4" />
-            Add real round
-          </Link>
-        </Button>
-      </div>
+      <AppEmptyState
+        icon={<Flag className="size-5" />}
+        title="No latest round yet"
+        description="Real and simulator rounds will appear here after they are saved."
+        primaryAction={
+          <Button asChild variant="outline">
+            <Link href="/rounds/new">
+              <Plus className="size-4" />
+              Add real round
+            </Link>
+          </Button>
+        }
+        className="bg-card"
+      />
     );
   }
 
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section
+      className="min-w-0 rounded-xl border bg-muted/20 p-3"
+      aria-label="Latest round"
+      data-latest-round-spotlight
+    >
       <PageArtwork
         variant="fairway"
         alt=""
@@ -538,7 +562,7 @@ function LatestRoundSpotlight({
             </Link>
           </Button>
         </div>
-        <div className="apple-panel-strong p-3">
+        <div className="rounded-lg border bg-muted/30 p-3">
           <p className="text-2xl font-semibold tracking-normal">
             {formatScoreSummary(latestRound)}
           </p>
@@ -559,20 +583,12 @@ function LatestRoundSpotlight({
           </Link>
         </Button>
       </div>
-    </div>
+    </section>
   );
 }
 
 function HeroMetric({ detail, label, value }: { detail: string; label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-      <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 truncate text-xl font-semibold tracking-normal sm:text-2xl">{value}</p>
-      <p className="mt-1 truncate text-sm text-muted-foreground">{detail}</p>
-    </div>
-  );
+  return <RoundMetricItem label={label} value={value} detail={detail} />;
 }
 
 function RoundTasks({
@@ -585,7 +601,7 @@ function RoundTasks({
   const firstScorecardOnlyRound = scorecardOnlyRounds[0] ?? null;
 
   return (
-    <section id="tasks" className="premium-card scroll-mt-28 p-4">
+    <Card id="tasks" className="scroll-mt-28 p-4 shadow-sm" data-round-tasks>
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold tracking-normal">Round tasks</h2>
@@ -600,18 +616,17 @@ function RoundTasks({
 
       {latestRound ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <form
-            action={createLatestRoundRecapAction}
-            className="grid min-h-28 grid-rows-[1fr_auto] gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm"
-          >
-            <RoundTaskHeader
+          <form action={createLatestRoundRecapAction} className="min-w-0">
+            <RoundTaskItem
               icon={ClipboardCheck}
               title="Latest recap"
               detail={`Create a recap from ${roundTitle(latestRound)}.`}
+              action={
+                <Button type="submit" variant="outline" size="sm">
+                  Create recap
+                </Button>
+              }
             />
-            <Button type="submit" variant="outline" size="sm" className="w-fit">
-              Create recap
-            </Button>
           </form>
 
           <RoundTaskLink
@@ -633,11 +648,11 @@ function RoundTasks({
           </RoundTaskLink>
         </div>
       ) : (
-        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 text-sm leading-6 text-muted-foreground">
+        <div className="mt-4 rounded-lg border bg-muted/30 p-3 text-sm leading-6 text-muted-foreground">
           No active round tasks. Add or import a new round to unlock recap, PB and record prompts.
         </div>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -655,36 +670,18 @@ function RoundTaskLink({
   title: string;
 }) {
   return (
-    <div className="grid min-h-28 grid-rows-[1fr_auto] gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm">
-      <RoundTaskHeader icon={Icon} title={title} detail={detail} />
-      <Button asChild variant="outline" size="sm" className="w-fit">
-        <Link href={href} prefetch={false}>
-          {children}
-        </Link>
-      </Button>
-    </div>
-  );
-}
-
-function RoundTaskHeader({
-  detail,
-  icon: Icon,
-  title,
-}: {
-  detail: string;
-  icon: typeof ClipboardCheck;
-  title: string;
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-        <Icon className="size-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block font-semibold leading-5">{title}</span>
-        <span className="mt-1 block line-clamp-2 leading-5 text-muted-foreground">{detail}</span>
-      </span>
-    </div>
+    <RoundTaskItem
+      icon={Icon}
+      title={title}
+      detail={detail}
+      action={
+        <Button asChild variant="outline" size="sm">
+          <Link href={href} prefetch={false}>
+            {children}
+          </Link>
+        </Button>
+      }
+    />
   );
 }
 
@@ -702,7 +699,7 @@ function RoundTypeBreakdown({
   simulatorRounds: number;
 }) {
   return (
-    <section id="types" className="premium-card scroll-mt-28 p-4">
+    <Card id="types" className="scroll-mt-28 p-4 shadow-sm" data-round-type-breakdown>
       <div>
         <h2 className="text-lg font-semibold tracking-normal">Round type breakdown</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
@@ -732,21 +729,18 @@ function RoundTypeBreakdown({
           detail={`${integerFormatter.format(shotCountTotal)} club shots can support strokes gained, club review and recap insights.`}
         />
       </div>
-    </section>
+    </Card>
   );
 }
 
 function BreakdownCard({ detail, label, value }: { detail: string; label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-semibold tracking-normal">
-        {integerFormatter.format(value)}
-      </p>
-      <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
-    </div>
+    <RoundMetricItem
+      label={label}
+      value={integerFormatter.format(value)}
+      detail={detail}
+      className="[&_[data-slot=item-title]]:text-3xl"
+    />
   );
 }
 

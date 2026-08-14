@@ -8,23 +8,32 @@ const source = readFileSync(
 );
 
 describe("club analytics desktop evidence ledger", () => {
-  it("gives phones an answer-first analytics composition without the desktop ledger", () => {
-    const mobileStart = source.indexOf("data-mobile-club-analytics");
-    const shotCloud = source.indexOf("<ShotCloud", mobileStart);
-    const disclosures = source.indexOf("<IOSDisclosureGroup", mobileStart);
-
-    expect(source).toContain("data-mobile-club-analytics");
+  it("ships only the desktop workbench for this desktop-only route", () => {
     expect(source).toContain("data-desktop-club-analytics");
-    expect(source).toContain("MobileAnalyticsEvidenceRows");
-    expect(source).toContain("data-mobile-club-evidence-rows");
-    expect(source).toContain('title: "Measured shot evidence"');
-    expect(source).toContain("MOBILE_EVIDENCE_LIMIT = 12");
-    expect(source).toContain("slice(0, MOBILE_EVIDENCE_LIMIT)");
-    expect(source).toContain("/shots?club=${encodeURIComponent(clubType)}");
-    expect(source).toContain('className="hidden gap-4 lg:grid"');
-    expect(mobileStart).toBeGreaterThan(-1);
-    expect(shotCloud).toBeGreaterThan(mobileStart);
-    expect(disclosures).toBeGreaterThan(shotCloud);
+    expect(source).toContain('className="grid gap-4" data-desktop-club-analytics');
+
+    for (const obsoleteSurface of [
+      "MobileClubAnalytics",
+      "MobileAnalyticsMetricGroups",
+      "MobileAnalyticsEvidenceRows",
+      "@/components/app/ios-mobile",
+      "data-mobile-club-analytics",
+      "lg:hidden",
+      'className="hidden gap-4 lg:grid"',
+    ]) {
+      expect(source).not.toContain(obsoleteSurface);
+    }
+  });
+
+  it("uses semantic theme surfaces outside the custom golf charts", () => {
+    const ordinaryUi = source.replace(
+      /function ShotCloud[\s\S]*?function shotCloudChartSummary/,
+      "function shotCloudChartSummary",
+    );
+
+    expect(ordinaryUi).toContain("bg-card");
+    expect(ordinaryUi).toContain("var(--status-warning-surface)");
+    expect(ordinaryUi).not.toMatch(/\b(?:bg-white|text-slate-|border-slate-|bg-\[#)/);
   });
 
   it("keeps club shots in an exportable desktop workbench table", () => {

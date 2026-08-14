@@ -109,6 +109,28 @@ describe("Apple mobile shell contract", () => {
     expect(`${mobileSportsSource}${premiumSource}${drawerSource}`).not.toContain("max-h-[86vh]");
   });
 
+  it("keeps shared bottom-sheet and proof-badge chrome on semantic theme tokens", () => {
+    const bottomSheetBlock =
+      mobileSportsSource.match(
+        /export function BottomSheet[\s\S]*?export function ProofBadge/,
+      )?.[0] ?? "";
+    const proofBadgeBlock =
+      mobileSportsSource.match(/export function ProofBadge[\s\S]*?type ActivityCardProps/)?.[0] ??
+      "";
+
+    expect(bottomSheetBlock).toContain("text-muted-foreground");
+    expect(proofBadgeBlock).toContain("bg-primary/10 text-primary");
+    expect(proofBadgeBlock).toContain("bg-muted text-foreground");
+    expect(proofBadgeBlock).toContain("bg-accent text-accent-foreground");
+
+    for (const block of [bottomSheetBlock, proofBadgeBlock]) {
+      expect(block).not.toMatch(/#[0-9a-f]{3,8}/i);
+      expect(block).not.toMatch(
+        /(?:bg|text|border)-(?:orange|amber|yellow|emerald|green|red|rose)-/,
+      );
+    }
+  });
+
   it("ignores saved product themes on mobile and follows the system appearance instead", () => {
     expect(appleCssSource).toContain("@media (prefers-color-scheme: dark)");
     expect(appleCssSource).not.toContain("data-theme");
@@ -181,6 +203,14 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("min-width: 2.75rem;");
   });
 
+  it("builds More from semantic items, badges and separated account actions", () => {
+    expect(mobileNavSource).toContain("<Item");
+    expect(mobileNavSource).toContain("<Badge");
+    expect(mobileNavSource).toContain("<Separator");
+    expect(mobileNavSource).toContain("<AlertDialog");
+    expect(mobileNavSource).toContain("Open full desktop site");
+  });
+
   it("gives portalled controls and data surfaces the same mobile material contract", () => {
     expect(appleCssSource).toContain('[data-slot="dialog-content"]');
     expect(appleCssSource).toContain('[data-slot="alert-dialog-content"]');
@@ -195,6 +225,26 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain('[class*="bg-white"]');
     expect(appleCssSource).toContain('[class*="text-[#6B7280]"]');
     expect(appleCssSource).toContain("background-color: var(--ios-grouped-surface) !important;");
+  });
+
+  it("keeps shared mobile sports cards on semantic product tokens", () => {
+    for (const fixedToken of [
+      "bg-white",
+      "#F5F6F4",
+      "#E5E7EB",
+      "#050505",
+      "#6B7280",
+      "#0B7A3B",
+      "#064E3B",
+      "#C7972B",
+      "#16A34A",
+      "text-white",
+    ]) {
+      expect(mobileSportsSource).not.toContain(fixedToken);
+    }
+    expect(mobileSportsSource).toContain("bg-card");
+    expect(mobileSportsSource).toContain("bg-muted");
+    expect(mobileSportsSource).toContain("text-muted-foreground");
   });
 
   it("locks immersive Course Twin to the safe mobile viewport without changing desktop", () => {

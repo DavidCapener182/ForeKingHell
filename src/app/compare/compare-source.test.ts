@@ -2,129 +2,149 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const pageSource = readFileSync(join(process.cwd(), "src/app/(app)/compare/page.tsx"), "utf8");
-const clubClientSource = readFileSync(
-  join(process.cwd(), "src/app/compare/club-compare-client.tsx"),
-  "utf8",
-);
-const progressClientSource = readFileSync(
-  join(process.cwd(), "src/app/compare/progress-compare-client.tsx"),
-  "utf8",
-);
+const readSource = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
+const pageSource = readSource("src/app/(app)/compare/page.tsx");
+const workspaceSource = readSource("src/app/compare/comparison-workspace.tsx");
+const actionsSource = readSource("src/app/compare/actions.ts");
+const clubClientSource = readSource("src/app/compare/club-compare-client.tsx");
+const progressClientSource = readSource("src/app/compare/progress-compare-client.tsx");
+const playerClientSource = readSource("src/app/compare/player-compare-client.tsx");
 
-describe("compare desktop workbench", () => {
-  it("keeps the contextual AI compare rail on the route", () => {
+describe("compare structural acceptance", () => {
+  it("keeps one query-selected desktop comparison mode", () => {
     expect(pageSource).toContain("DesktopInsightRail");
-    expect(pageSource).toContain('title="AI compare rail"');
     expect(pageSource).toContain('scope="compare"');
-    expect(pageSource).toContain('railBreakpoint="wide"');
-    expect(pageSource).toContain("compareWorkbenchPrompts");
-    expect(pageSource).toContain("comparisonBenefitTone");
-  });
-
-  it("uses one answer-first comparison mode on mobile while preserving the desktop workbench", () => {
-    expect(pageSource).toContain("MobileCompareWorkspace");
-    expect(pageSource).toContain("parseMobileView");
     expect(pageSource).toContain("data-compare-desktop-workbench");
-    expect(pageSource).toContain('className="hidden lg:block"');
+    expect(pageSource).toContain("data-compare-active-view");
+    expect(pageSource).toContain("<ButtonGroup");
+    expect(pageSource).toContain('aria-label="Comparison view"');
+    expect(pageSource).toContain("href={`/compare?view=${view}`}");
+    expect(pageSource).toContain('aria-current={active ? "page" : undefined}');
+    expect(pageSource).toContain('variant={active ? "secondary" : "outline"}');
+    expect(pageSource).not.toContain("TabsTrigger");
+    expect(pageSource).not.toContain("TabsList");
+    expect(pageSource).not.toContain("TabsContent");
+    expect(pageSource).not.toContain('from "@/components/ui/tabs"');
+    expect(pageSource).toContain('activeView === "progress"');
+    expect(pageSource).toContain('activeView === "clubs"');
+    expect(pageSource.match(/<ProgressCompareClient/g)).toHaveLength(1);
+    expect(pageSource.match(/<ClubCompareClient/g)).toHaveLength(1);
+    expect(pageSource.match(/<PlayerCompareClient/g)).toHaveLength(1);
+    expect(pageSource).toContain("workspace_comparison");
+    expect(pageSource).toContain("savedWorkspaceComparison");
+    expect(pageSource).not.toContain("ResultHero");
 
-    const mobileSource = readFileSync(
-      join(process.cwd(), "src/app/compare/mobile-compare-workspace.tsx"),
-      "utf8",
-    );
-
-    expect(mobileSource).toContain('aria-label="Comparison type"');
-    expect(mobileSource).toContain('view === "progress"');
-    expect(mobileSource).toContain('view === "clubs"');
-    expect(mobileSource).toContain('view === "players"');
-    expect(mobileSource).toContain("IOSDisclosureGroup");
-    expect(mobileSource).toContain("CompareRadarChart");
-    expect(mobileSource).toContain("ClubDispersionPlot");
-    expect(mobileSource).toContain('method="get"');
-    expect(mobileSource).toContain("min-h-11");
-    expect(mobileSource).not.toContain("min-w-[920px]");
-    expect(mobileSource).not.toContain("min-w-[980px]");
-  });
-
-  it("keeps club comparison metrics as an exportable desktop table", () => {
-    expect(clubClientSource).toContain("DesktopTableWorkbenchControls");
-    expect(clubClientSource).toContain('viewKey="club-comparison-metrics"');
-    expect(clubClientSource).toContain('scope="club-comparison-metrics"');
-    expect(clubClientSource).toContain('data-workbench-scope="club-comparison-metrics"');
-    expect(clubClientSource).toContain('exportTableId="club-comparison-metrics"');
-    expect(clubClientSource).toContain('data-workbench-export-table="club-comparison-metrics"');
-    expect(clubClientSource).toContain('mainTableLabel="Club comparison metrics table"');
-    expect(clubClientSource).toContain(
-      'mainTableLabel="Club comparison metrics table" stickyFirstColumn',
-    );
-    expect(clubClientSource).toContain('className="min-w-[920px]"');
-    expect(clubClientSource).toContain("<TableCaption");
-    expect(clubClientSource).toContain("tabIndex={0}");
-
-    for (const column of ["metric", "club-a", "club-b", "difference", "better"]) {
-      expect(clubClientSource).toContain(`data-column="${column}"`);
-    }
-  });
-
-  it("keeps chart text alternatives alongside the visual compare charts", () => {
-    expect(clubClientSource).toContain("ChartAccessibleFallback");
-    expect(clubClientSource).toContain('title="Compare radar"');
-    expect(clubClientSource).toContain('title="Club dispersion"');
-  });
-
-  it("keeps the period comparison table wide enough for stacked deltas", () => {
-    expect(progressClientSource).toContain("DesktopTableWorkbenchControls");
-    expect(progressClientSource).toContain("DataTableFrame");
-    expect(progressClientSource).toContain("compareFocusClubColumns");
-    expect(progressClientSource).toContain("comparePeriodColumns");
-    expect(progressClientSource).toContain("compareProgressSuggestedViews");
-    expect(progressClientSource).toContain(
-      'className="grid gap-4 min-[1900px]:grid-cols-[0.8fr_1.2fr]"',
-    );
-    expect(progressClientSource).toContain('viewKey="compare-focus-clubs"');
-    expect(progressClientSource).toContain('scope="compare-focus-clubs"');
-    expect(progressClientSource).toContain('data-workbench-scope="compare-focus-clubs"');
-    expect(progressClientSource).toContain('exportTableId="compare-focus-clubs"');
-    expect(progressClientSource).toContain('data-workbench-export-table="compare-focus-clubs"');
-    expect(progressClientSource).toContain('label="Compare focus-club movement table"');
-    expect(progressClientSource).toContain(
-      'label="Compare focus-club movement table" stickyFirstColumn',
-    );
-    expect(progressClientSource).toContain('id="compare-focus-clubs-summary"');
-    expect(progressClientSource).toContain('viewKey="compare-period-history"');
-    expect(progressClientSource).toContain('scope="compare-period-history"');
-    expect(progressClientSource).toContain('data-workbench-scope="compare-period-history"');
-    expect(progressClientSource).toContain('exportTableId="compare-period-history"');
-    expect(progressClientSource).toContain('data-workbench-export-table="compare-period-history"');
-    expect(progressClientSource).toContain('label="Compare period history table"');
-    expect(progressClientSource).toContain(
-      'label="Compare period history table" stickyFirstColumn',
-    );
-    expect(progressClientSource).toContain('id="compare-period-history-summary"');
-    expect(progressClientSource).toContain("tabIndex={0}");
-
-    const periodTableBlock =
-      progressClientSource.match(/function PeriodTable[\s\S]*?function StackedValue/)?.[0] ?? "";
-
-    expect(periodTableBlock).toContain('className="min-w-[980px]"');
-    expect(periodTableBlock).toContain('className="min-w-36 text-right"');
-    expect(periodTableBlock).toContain("<StackedDelta delta={period.deltaFromPrevious} />");
-
-    for (const column of [
-      "club",
-      "current",
-      "baseline",
-      "carry",
-      "playable",
-      "big-misses",
-      "shot-cone",
-      "signal",
-      "period",
-      "shots",
-      "clubs",
-      "previous",
+    for (const obsoleteSource of [
+      "MobileCompareWorkspace",
+      "mobile-compare-workspace",
+      "parseMobileView",
+      "lg:hidden",
+      "hidden lg:",
     ]) {
-      expect(progressClientSource).toContain(`data-column="${column}"`);
+      expect(pageSource).not.toContain(obsoleteSource);
     }
+  });
+
+  it("uses one connected shadcn comparison composition for all three clients", () => {
+    expect(workspaceSource.match(/<DataToolbar\b/g)).toHaveLength(1);
+    expect(workspaceSource.match(/<EntityCombobox\b/g)).toHaveLength(2);
+    expect(workspaceSource.match(/<ButtonGroup\b/g)).toHaveLength(1);
+    expect(workspaceSource.match(/<DesktopTableWorkbenchControls\b/g)).toHaveLength(1);
+    expect(workspaceSource.match(/<DataTableFrame\b/g)).toHaveLength(1);
+    expect(workspaceSource.match(/<Table\b/g)).toHaveLength(1);
+    expect(workspaceSource).toContain("data-comparison-table");
+    expect(workspaceSource).toContain("data-workbench-export-table={exportTableId}");
+    expect(workspaceSource).toContain("exportTableId={exportTableId}");
+    expect(workspaceSource).toContain("exportFileName={exportFileName}");
+    for (const column of ["metric", "focus", "baseline", "delta", "direction", "confidence"]) {
+      expect(workspaceSource).toContain(`data-column="${column}"`);
+    }
+    expect(workspaceSource).toContain("<Alert");
+    expect(workspaceSource).toContain("<ResponsiveDetailPanel");
+    expect(workspaceSource).toContain("<Dialog>");
+    expect(workspaceSource).toContain("<StatusTimeline");
+    expect(workspaceSource).toContain("<AlertDialog>");
+    expect(workspaceSource).toContain("saveWorkspaceComparisonAction");
+    expect(workspaceSource).toContain("deleteWorkspaceComparisonAction");
+
+    for (const [view, source] of [
+      ["progress", progressClientSource],
+      ["clubs", clubClientSource],
+      ["players", playerClientSource],
+    ] as const) {
+      expect(source.match(/<ComparisonWorkspace\b/g)).toHaveLength(1);
+      expect(source).toContain(`view="${view}"`);
+      expect(source).toContain("savedComparisons={savedComparisons}");
+      expect(source).not.toContain("DesktopTableWorkbenchControls");
+      expect(source).not.toContain("DataTableFrame");
+      expect(source).not.toMatch(/<Card(?:\s|>)/);
+      expect(source).not.toMatch(/<Table(?:\s|>)/);
+      expect(source).not.toContain("data-club-compare-filters");
+      expect(source).not.toContain("data-player-compare-filters");
+    }
+
+    expect(clubClientSource).toContain('exportFileName="forekinghell-club-comparison-metrics.csv"');
+    expect(playerClientSource).toContain(
+      'exportFileName="forekinghell-player-comparison-metrics.csv"',
+    );
+    expect(progressClientSource).toContain(
+      "exportFileName={`forekinghell-compare-${appliedWindow}-history.csv`}",
+    );
+    expect(progressClientSource).toContain('appliedWindow === "week"');
+    expect(progressClientSource).toContain("data.weeklyPeriods");
+    expect(progressClientSource).toContain("data.monthlyPeriods");
+    expect(progressClientSource).not.toContain("function FocusClubTable");
+    expect(progressClientSource).not.toContain("function PeriodTable");
+  });
+
+  it("persists user-scoped workspace comparisons without reusing session-only actions", () => {
+    expect(actionsSource).toContain('view: "workspace_comparison"');
+    expect(actionsSource).toContain("compareView: view");
+    expect(actionsSource).toContain("buildAnalysisSnapshot");
+    expect(actionsSource).toContain("requireCurrentUserId");
+    expect(actionsSource).toContain("getClubCompareData");
+    expect(actionsSource).toContain("getPlayerCompareData");
+    expect(actionsSource).toContain("eq(analysisSnapshots.userId, userId)");
+    expect(actionsSource).toContain('revalidatePath("/compare")');
+    expect(actionsSource).not.toContain("saveSessionComparisonAction");
+    expect(actionsSource).not.toContain("deleteSessionComparisonAction");
+  });
+
+  it("moves specialist evidence behind the detail panel without losing calculations", () => {
+    expect(clubClientSource).toContain("CompareRadarChart");
+    expect(clubClientSource).toContain("ClubDispersionPlot");
+    expect(clubClientSource).toContain("ChartAccessibleFallback");
+    expect(clubClientSource).toContain("compareMetricRows");
+    expect(clubClientSource).toContain("buildDelta");
+
+    expect(progressClientSource).toContain("FocusClubEvidence");
+    expect(progressClientSource).toContain("PeriodTrendStrip");
+    expect(progressClientSource).toContain("PeriodHistory");
+    expect(progressClientSource).toContain("ChartAccessibleFallback");
+    expect(progressClientSource).toContain("controlDeltaScore");
+    expect(progressClientSource).toContain("hasStrongImprovement");
+
+    expect(playerClientSource).toContain("PlayerSummaryCard");
+    expect(playerClientSource).toContain("RecentTournamentScores");
+    expect(playerClientSource).toContain("buildPlayerDelta");
+    expect(playerClientSource).not.toContain("apple-panel");
+  });
+
+  it("keeps ordinary compare chrome semantic while preserving specialist chart palettes", () => {
+    for (const source of [workspaceSource, progressClientSource, playerClientSource]) {
+      expect(source).not.toMatch(/(?:text|bg|ring|border)-(?:emerald|sky|amber|slate)-\d{2,3}/);
+      expect(source).not.toMatch(/(?:bg|text|border)-\[#[0-9a-fA-F]{3,8}\]/);
+    }
+
+    const clubOrdinarySource = clubClientSource.slice(
+      0,
+      clubClientSource.indexOf("export function CompareRadarChart"),
+    );
+    expect(clubOrdinarySource).not.toMatch(
+      /(?:text|bg|ring|border)-(?:emerald|sky|amber|slate)-\d{2,3}/,
+    );
+    expect(clubOrdinarySource).not.toMatch(/(?:bg|text|border)-\[#[0-9a-fA-F]{3,8}\]/);
+    expect(clubClientSource).toContain('fill="#059669"');
+    expect(clubClientSource).toContain('fill="#0284c7"');
   });
 });

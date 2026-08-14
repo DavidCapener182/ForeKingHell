@@ -1,7 +1,14 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ThemePreferenceSelect } from "@/components/theme-preference-select";
+
+const source = readFileSync(
+  join(process.cwd(), "src/components/theme-preference-select.tsx"),
+  "utf8",
+);
 
 describe("ThemePreferenceSelect", () => {
   it("labels product themes as a saved desktop preference while mobile follows the system", () => {
@@ -18,15 +25,30 @@ describe("ThemePreferenceSelect", () => {
     expect(markup).toContain("hidden text-xs");
     expect(markup).toContain("lg:inline");
 
-    expect(markup).toContain("Use device setting");
-    expect(markup).toContain("Light");
-    expect(markup).toContain("Dark");
     expect(markup).toContain("Clubhouse Manager");
-    expect(markup).toContain("Outdoor Mode");
-    expect(markup).toContain("Range Night");
-    expect(markup).toContain("Tour Broadcast");
-    expect(markup).toContain("High Contrast");
-    expect(markup).toMatch(/<input[^>]*checked=""[^>]*value="clubhouse"/);
-    expect(markup).toMatch(/<input[^>]*name="theme"[^>]*value="tour-broadcast"/);
+    expect(markup).not.toContain('data-slot="card"');
+    expect(markup).toContain('data-slot="select-trigger"');
+    expect(markup).toContain('name="theme"');
+    expect(markup).toContain('data-theme-swatch="clubhouse"');
+
+    expect(source).toContain("themeOptions.map");
+    expect(source).toContain("<SelectItem");
+    expect(source).toContain("previewThemePreference(value as ThemePreference)");
+    expect(source).not.toContain("@/components/ui/card");
+    expect(source).not.toContain("<Card");
+    expect(source).not.toContain('type="radio"');
+
+    for (const theme of [
+      "system",
+      "light",
+      "dark",
+      "clubhouse",
+      "outdoor",
+      "range-night",
+      "tour-broadcast",
+      "high-contrast",
+    ]) {
+      expect(source).toContain(theme);
+    }
   });
 });

@@ -11,16 +11,16 @@ import {
 import { grantLifetimeFullAction } from "@/app/admin/actions";
 import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
 import { AdminBillingActions } from "@/app/admin/admin-billing-actions";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusTimeline } from "@/components/app/status-timeline";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
-  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -30,17 +30,19 @@ import {
   PlanBadge,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { BottomSheet, MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAdminBillingData, requireAdminUser } from "@/lib/admin";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -107,13 +109,6 @@ const adminBillingSortDefaultDirections: Record<AdminBillingSortMetric, AdminBil
     created: "desc",
   };
 
-const billingAttentionStatuses = new Set([
-  "past_due",
-  "unpaid",
-  "incomplete",
-  "incomplete_expired",
-]);
-
 export default async function AdminBillingPage({ searchParams }: AdminBillingPageProps) {
   const params = await searchParams;
   const sortState = parseAdminBillingSort(params?.sort, params?.dir);
@@ -126,42 +121,15 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
   const activeSubscriptions = data.subscriptions.filter(
     (row) => row.status === "active" || row.status === "trialing",
   );
-  const attentionSubscriptions = sortedSubscriptions.filter((row) =>
-    billingAttentionStatuses.has(row.status),
-  );
-  const mobileView = parseAdminBillingMobileView(params?.view);
-  const mobileSubscriptions =
-    mobileView === "attention"
-      ? attentionSubscriptions
-      : mobileView === "active"
-        ? sortedSubscriptions.filter((row) => row.status === "active" || row.status === "trialing")
-        : sortedSubscriptions;
 
   return (
     <PageShell>
-      <AdminMobileShell
-        title="Billing"
-        active="/admin/billing"
-        status={params?.adminStatus}
-        error={params?.adminError}
-      >
-        <AdminMobileBilling
-          data={data}
-          subscriptions={mobileSubscriptions}
-          activeCount={activeSubscriptions.length}
-          attentionCount={attentionSubscriptions.length}
-          canGrantLifetime={canGrantLifetime}
-          lifetimeCount={lifetimeEntitlements.length}
-          mobileView={mobileView}
-        />
-      </AdminMobileShell>
-
-      <div className="hidden gap-3 lg:grid">
+      <div className="grid gap-3">
         <AdminNav active="/admin/billing" />
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
-      <DesktopWorkbenchLayout scope="admin-billing" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="admin-billing">
         <AdminPageHeader
           eyebrow="Admin billing"
           title="Billing and entitlements"
@@ -208,12 +176,12 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                     name="email"
                     type="email"
                     placeholder="user@example.com"
-                    className="h-10 rounded-xl bg-slate-50"
+                    className="h-10 rounded-xl bg-background"
                     required
                   />
                   <AdminConfirmSubmitButton
                     type="submit"
-                    className="rounded-xl bg-[#111827] text-white"
+                    className="rounded-xl"
                     confirmTitle="Grant lifetime full access"
                     confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
                     confirmActionLabel="Grant full access"
@@ -230,7 +198,7 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                 {data.planLimits
                   .filter((limit) => limit.planKey === "full")
                   .map((limit) => (
-                    <div key={limit.id} className="rounded-lg bg-slate-50 px-3 py-2">
+                    <div key={limit.id} className="rounded-lg bg-muted/55 px-3 py-2">
                       <p className="font-medium">{label(limit.limitKey)}</p>
                       <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                         {JSON.stringify(limit.limitValueJson)}
@@ -263,31 +231,28 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                 stickyFirstColumn
                 className="overflow-x-auto"
               >
-                <table
+                <Table
                   className="w-full min-w-[780px] text-left text-sm"
                   data-workbench-scope="admin-billing"
                   data-workbench-export-table="admin-billing"
                   aria-describedby="admin-billing-table-summary"
                 >
-                  <caption id="admin-billing-table-summary" className="sr-only">
+                  <TableCaption id="admin-billing-table-summary" className="sr-only">
                     Admin subscription rows with user, plan, status, renewal and creation date.
-                  </caption>
-                  <thead className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                    <tr>
+                  </TableCaption>
+                  <TableHeader className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                    <TableRow>
                       <SortableAdminBillingHead
                         columnId="user"
                         metric="user"
                         sortState={sortState}
-                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       />
                       <SortableAdminBillingHead
                         columnId="plan"
                         metric="plan"
                         sortState={sortState}
                       />
-                      <th data-column="action" className="px-3 py-2 font-medium">
-                        Action
-                      </th>
                       <SortableAdminBillingHead
                         columnId="status"
                         metric="status"
@@ -303,64 +268,84 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
                         metric="created"
                         sortState={sortState}
                       />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedSubscriptions.map((subscription) => (
-                      <tr
-                        key={subscription.id}
-                        tabIndex={0}
-                        className="focus-aaa border-b outline-none last:border-b-0"
-                      >
-                        <td
-                          data-column="user"
-                          className="sticky left-0 z-10 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      <TableHead data-column="action" className="px-3 py-2 font-medium">
+                        Action
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedSubscriptions.length > 0 ? (
+                      sortedSubscriptions.map((subscription) => (
+                        <TableRow
+                          key={subscription.id}
+                          tabIndex={0}
+                          className="focus-aaa border-b outline-none last:border-b-0"
                         >
-                          <p className="font-medium">{subscription.displayName}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {subscription.email ?? "No email"}
-                          </p>
-                        </td>
-                        <td data-column="plan" className="px-3 py-3">
-                          <PlanBadge plan={subscription.planKey} />
-                        </td>
-                        <td data-column="status" className="px-3 py-3">
-                          <StatusBadge status={subscription.status} />
-                        </td>
-                        <td
-                          data-column="renews"
-                          className="px-3 py-3 text-xs text-muted-foreground"
-                        >
-                          {subscription.currentPeriodEnd
-                            ? formatDateTime(subscription.currentPeriodEnd)
-                            : "No renewal"}
-                          {subscription.cancelAtPeriodEnd ? " · cancels" : ""}
-                        </td>
-                        <td
-                          data-column="created"
-                          className="px-3 py-3 text-xs text-muted-foreground"
-                        >
-                          {formatDateTime(subscription.createdAt)}
-                        </td>
-                        <td data-column="action" className="px-3 py-3">
-                          <AdminBillingActions
-                            subscription={{
-                              displayName: subscription.displayName,
-                              email: subscription.email,
-                              plan: subscription.planKey,
-                              status: subscription.status,
-                              renewal: subscription.currentPeriodEnd
-                                ? formatDateTime(subscription.currentPeriodEnd)
-                                : "No renewal",
-                              created: formatDateTime(subscription.createdAt),
-                              cancels: subscription.cancelAtPeriodEnd,
-                            }}
+                          <TableCell
+                            data-column="user"
+                            className="sticky left-0 z-10 bg-card px-3 py-3 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                          >
+                            <p className="font-medium">{subscription.displayName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {subscription.email ?? "No email"}
+                            </p>
+                          </TableCell>
+                          <TableCell data-column="plan" className="px-3 py-3">
+                            <PlanBadge plan={subscription.planKey} />
+                          </TableCell>
+                          <TableCell data-column="status" className="px-3 py-3">
+                            <StatusBadge status={subscription.status} />
+                          </TableCell>
+                          <TableCell
+                            data-column="renews"
+                            className="px-3 py-3 text-xs text-muted-foreground"
+                          >
+                            {subscription.currentPeriodEnd
+                              ? formatDateTime(subscription.currentPeriodEnd)
+                              : "No renewal"}
+                            {subscription.cancelAtPeriodEnd ? " · cancels" : ""}
+                          </TableCell>
+                          <TableCell
+                            data-column="created"
+                            className="px-3 py-3 text-xs text-muted-foreground"
+                          >
+                            {formatDateTime(subscription.createdAt)}
+                          </TableCell>
+                          <TableCell data-column="action" className="px-3 py-3">
+                            <AdminBillingActions
+                              subscription={{
+                                displayName: subscription.displayName,
+                                email: subscription.email,
+                                plan: subscription.planKey,
+                                status: subscription.status,
+                                renewal: subscription.currentPeriodEnd
+                                  ? formatDateTime(subscription.currentPeriodEnd)
+                                  : "No renewal",
+                                created: formatDateTime(subscription.createdAt),
+                                cancels: subscription.cancelAtPeriodEnd,
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="p-4">
+                          <AppEmptyState
+                            icon={<CreditCard className="size-5" />}
+                            title="No subscriptions in this view"
+                            description="Subscription records will appear after billing creates a paid or trial account."
+                            primaryAction={
+                              <Button asChild variant="outline" size="sm">
+                                <a href="/admin/users">Open users</a>
+                              </Button>
+                            }
                           />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </DataTableFrame>
             </AdminSection>
 
@@ -388,193 +373,6 @@ export default async function AdminBillingPage({ searchParams }: AdminBillingPag
   );
 }
 
-type AdminBillingMobileView = "attention" | "active" | "all";
-
-function AdminMobileBilling({
-  data,
-  subscriptions,
-  activeCount,
-  attentionCount,
-  canGrantLifetime,
-  lifetimeCount,
-  mobileView,
-}: {
-  data: AdminBillingData;
-  subscriptions: AdminBillingSubscription[];
-  activeCount: number;
-  attentionCount: number;
-  canGrantLifetime: boolean;
-  lifetimeCount: number;
-  mobileView: AdminBillingMobileView;
-}) {
-  const primarySubscriptions = subscriptions.slice(0, 12);
-  const olderSubscriptions = subscriptions.slice(12);
-
-  return (
-    <>
-      <MobileStatusAction
-        label="Billing attention"
-        value={attentionCount}
-        detail={`${activeCount} active or trialing · ${lifetimeCount} lifetime full grants`}
-        action={canGrantLifetime ? <MobileBillingGrant /> : undefined}
-      />
-
-      <MobileTabBar
-        activeKey={mobileView}
-        ariaLabel="Filter subscription rows"
-        tabs={[
-          { key: "attention", label: "Attention", href: "/admin/billing?view=attention" },
-          { key: "active", label: "Active", href: "/admin/billing?view=active" },
-          { key: "all", label: "All", href: "/admin/billing?view=all" },
-        ]}
-      />
-
-      <section className="grid gap-2" aria-label="Mobile subscription directory">
-        <IOSSectionHeader
-          title="Subscriptions"
-          description={`${subscriptions.length} ${mobileView} ${subscriptions.length === 1 ? "row" : "rows"}`}
-        />
-        <MobileBillingRows subscriptions={primarySubscriptions} />
-        {olderSubscriptions.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More billing subscriptions"
-            items={[
-              {
-                value: "more-subscriptions",
-                title: "More subscriptions",
-                summary: olderSubscriptions.length,
-                description: "Additional rows in this filter",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobileBillingRows subscriptions={olderSubscriptions} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-
-      <IOSDisclosureGroup
-        label="Billing supporting detail"
-        items={[
-          {
-            value: "recent-entitlements",
-            title: "Recent entitlements",
-            summary: data.entitlements.length,
-            description: "Current feature-access rows and sources",
-            contentClassName: "px-0 pb-0 pt-0",
-            content: (
-              <IOSGroupedList label="Recent entitlement rows" className="border-0">
-                {data.entitlements.length > 0 ? (
-                  data.entitlements
-                    .slice(0, 40)
-                    .map((entitlement) => (
-                      <IOSListRow
-                        key={entitlement.id}
-                        label={entitlement.displayName}
-                        value={label(entitlement.source)}
-                        detail={`${label(entitlement.entitlementKey)} · ${entitlement.email ?? "No email"}`}
-                      />
-                    ))
-                ) : (
-                  <IOSListRow
-                    label="No entitlement rows"
-                    detail="Entitlements appear after feature access is granted."
-                  />
-                )}
-              </IOSGroupedList>
-            ),
-          },
-          {
-            value: "full-plan-limits",
-            title: "Full plan limits",
-            summary: data.planLimits.filter((row) => row.planKey === "full").length,
-            description: "Configured limit values used by feature checks",
-            contentClassName: "px-0 pb-0 pt-0",
-            content: (
-              <IOSGroupedList label="Full plan limit rows" className="border-0">
-                {data.planLimits
-                  .filter((row) => row.planKey === "full")
-                  .map((limit) => (
-                    <IOSListRow
-                      key={limit.id}
-                      label={label(limit.limitKey)}
-                      detail={JSON.stringify(limit.limitValueJson)}
-                    />
-                  ))}
-              </IOSGroupedList>
-            ),
-          },
-        ]}
-      />
-    </>
-  );
-}
-
-function MobileBillingRows({ subscriptions }: { subscriptions: AdminBillingSubscription[] }) {
-  return (
-    <IOSGroupedList label="Subscription rows">
-      {subscriptions.length > 0 ? (
-        subscriptions.map((subscription) => {
-          const needsAttention = billingAttentionStatuses.has(subscription.status);
-          const renewal = subscription.currentPeriodEnd
-            ? `${subscription.cancelAtPeriodEnd ? "Cancels" : "Renews"} ${formatDateTime(subscription.currentPeriodEnd)}`
-            : "No renewal date";
-
-          return (
-            <IOSListRow
-              key={subscription.id}
-              label={subscription.displayName}
-              value={label(subscription.planKey)}
-              detail={`${subscription.email ?? "No email"} · ${renewal}`}
-              status={
-                <IOSInlineStatus
-                  label={label(subscription.status)}
-                  tone={needsAttention ? "critical" : "positive"}
-                />
-              }
-            />
-          );
-        })
-      ) : (
-        <IOSListRow
-          label="No subscription rows"
-          detail={
-            "No subscriptions match this filter. Switch filters to inspect active or historical rows."
-          }
-          status={<IOSInlineStatus label="No action in this view" tone="positive" />}
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function MobileBillingGrant() {
-  return (
-    <BottomSheet label="Grant" title="Grant lifetime full">
-      <form action={grantLifetimeFullAction} className="grid gap-3">
-        <input type="hidden" name="returnTo" value="/admin/billing" />
-        <label className="grid gap-1 text-sm font-medium">
-          User email
-          <Input name="email" type="email" className="h-11" required />
-        </label>
-        <AdminConfirmSubmitButton
-          type="submit"
-          className="min-h-11"
-          confirmTitle="Grant lifetime full access"
-          confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
-          confirmActionLabel="Grant full access"
-        >
-          <Zap className="size-4" />
-          Grant full access
-        </AdminConfirmSubmitButton>
-      </form>
-    </BottomSheet>
-  );
-}
-
-function parseAdminBillingMobileView(value: string | undefined): AdminBillingMobileView {
-  return value === "active" || value === "all" ? value : "attention";
-}
-
 function SortableAdminBillingHead({
   className,
   columnId,
@@ -589,13 +387,13 @@ function SortableAdminBillingHead({
   const active = sortState.metric === metric;
 
   return (
-    <th
+    <TableHead
       data-column={columnId}
       className={["px-3 py-2 font-medium", className].filter(Boolean).join(" ")}
       aria-sort={active ? adminBillingSortAriaValue(sortState.dir) : "none"}
     >
       <SortableAdminBillingHeadLink metric={metric} sortState={sortState} />
-    </th>
+    </TableHead>
   );
 }
 
@@ -622,7 +420,7 @@ function SortableAdminBillingHeadLink({
       aria-label={`Sort admin billing by ${label}, ${adminBillingSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </a>
   );
 }

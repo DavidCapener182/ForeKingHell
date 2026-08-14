@@ -7,6 +7,8 @@ import {
   formatSignedDegrees,
   type FacePathDeliveryDatum,
 } from "@/components/visuals/face-path-delivery-chart";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { PathTrendTracking } from "@/lib/bag-intelligence";
 import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club-benchmarks";
 import { cn } from "@/lib/utils";
@@ -39,7 +41,7 @@ export function FacePathClubSelector({
     return (
       <div
         className={cn(
-          "rounded-[18px] bg-[#F7FBF8] px-4 py-4 text-sm text-[#667085] shadow-[inset_0_0_0_1px_rgba(213,229,218,0.82)]",
+          "rounded-lg border border-dashed border-border bg-muted/35 px-4 py-4 text-sm text-muted-foreground",
           className,
         )}
       >
@@ -51,7 +53,7 @@ export function FacePathClubSelector({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[18px] bg-[#F7FBF8] px-3 shadow-[inset_0_0_0_1px_rgba(213,229,218,0.82)]",
+        "relative overflow-hidden rounded-lg border border-border bg-card px-3 shadow-sm",
         compact ? "py-2.5" : "py-3",
         className,
       )}
@@ -65,51 +67,48 @@ export function FacePathClubSelector({
         <div className="grid h-full gap-2">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-bold uppercase tracking-normal text-[#087A3D]">
+              <p className="text-xs font-bold uppercase tracking-normal text-primary">
                 Club delivery
               </p>
-              <span className="inline-flex min-h-6 items-center rounded-full bg-[#E8F7EE] px-2.5 text-xs font-medium text-[#087A3D] ring-1 ring-[#CFE7D6]">
+              <Badge variant="secondary">
                 {selected.isPriorityClub ? "Priority read" : "Club read"}
-              </span>
+              </Badge>
             </div>
             <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <p
                 className={cn(
-                  "font-bold tracking-normal text-[#111827]",
+                  "font-bold tracking-normal text-foreground",
                   compact ? "text-[20px] leading-6" : "text-[22px] leading-7",
                 )}
               >
                 {selected.patternLabel}
               </p>
-              <p className="text-sm leading-5 text-[#667085]">
+              <p className="text-sm leading-5 text-muted-foreground">
                 {selected.label} · {selected.sampleSize} measured shots
               </p>
             </div>
           </div>
 
           {clubs.length > 1 ? (
-            <div className="-mx-0.5 flex gap-1.5 overflow-x-auto pb-1">
-              {clubs.map((club) => {
-                const isSelected = club.clubId === selected.clubId;
-
-                return (
-                  <button
-                    key={club.clubId}
-                    type="button"
-                    onClick={() => setSelectedClubId(club.clubId)}
-                    className={cn(
-                      "shrink-0 rounded-full px-3 py-1.5 text-xs font-bold leading-4 transition-colors",
-                      isSelected
-                        ? "bg-[#087A3D] text-white shadow-sm"
-                        : "bg-white text-[#526071] ring-1 ring-[#DFE7DF] hover:text-[#111827]",
-                    )}
-                    aria-pressed={isSelected}
-                  >
-                    {club.label}
-                  </button>
-                );
-              })}
-            </div>
+            <ToggleGroup
+              type="single"
+              value={selected.clubId}
+              onValueChange={(value) => value && setSelectedClubId(value)}
+              variant="outline"
+              size="sm"
+              aria-label="Club delivery"
+              className="-mx-0.5 w-auto justify-start overflow-x-auto px-0.5 pb-1"
+            >
+              {clubs.map((club) => (
+                <ToggleGroupItem
+                  key={club.clubId}
+                  value={club.clubId}
+                  className="shrink-0 rounded-full px-3 text-xs font-bold leading-4"
+                >
+                  {club.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           ) : null}
 
           <div className="grid grid-cols-3 gap-1.5 text-xs font-bold leading-4">
@@ -122,8 +121,8 @@ export function FacePathClubSelector({
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white/70 px-3 py-2 text-xs leading-5 text-[#667085] 2xl:block 2xl:space-y-1">
-            <span className="font-medium text-[#111827]">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/45 px-3 py-2 text-xs leading-5 text-muted-foreground 2xl:block 2xl:space-y-1">
+            <span className="font-medium text-foreground">
               {selected.faceToPathDeg === null
                 ? "Face-to-path needs face angle or launch-direction rows."
                 : `${selected.label} face is ${formatSignedDegrees(selected.faceToPathDeg)} relative to path.`}
@@ -138,7 +137,7 @@ export function FacePathClubSelector({
           datum={selected}
           idPrefix={`dashboard-${selected.clubId}`}
           compact={compact}
-          chartClassName="bg-white"
+          chartClassName="bg-background"
           showAccessibleFallback={!compact}
           showMetricPills={!compact}
           targetWindow={targetWindow ?? undefined}
@@ -160,8 +159,8 @@ function MetricPill({
   return (
     <span
       className={cn(
-        "rounded-full bg-white px-2.5 py-1.5 text-[#111827]",
-        tone === "green" ? "text-[#087A3D]" : null,
+        "rounded-full bg-muted px-2.5 py-1.5 text-foreground",
+        tone === "green" ? "text-primary" : null,
       )}
     >
       {label} {value}

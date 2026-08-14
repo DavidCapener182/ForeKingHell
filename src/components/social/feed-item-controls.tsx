@@ -61,10 +61,15 @@ export function FeedItemControls({
                     <form action={updateFeedItemVisibilityAction} className="w-full">
                       <input type="hidden" name="feedItemId" value={feedItemId} />
                       <input type="hidden" name="visibility" value={option} />
-                      <button type="submit" className="w-full text-left">
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto w-full justify-start rounded-none p-0 text-left font-normal hover:bg-transparent focus-visible:ring-0"
+                      >
                         {titleCase(option)}
                         {option === visibility ? " · Current" : ""}
-                      </button>
+                      </Button>
                     </form>
                   </DropdownMenuItem>
                 ))}
@@ -75,25 +80,40 @@ export function FeedItemControls({
               <DropdownMenuItem asChild>
                 <form action={hideFeedItemAction} className="w-full">
                   <input type="hidden" name="feedItemId" value={feedItemId} />
-                  <button type="submit" className="flex w-full items-center gap-2 text-left">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto w-full justify-start rounded-none p-0 text-left font-normal hover:bg-transparent focus-visible:ring-0"
+                  >
                     <EyeOff className="size-4" /> Hide post
-                  </button>
+                  </Button>
                 </form>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <form action={hideFeedItemTypeAction} className="w-full">
                   <input type="hidden" name="feedItemId" value={feedItemId} />
-                  <button type="submit" className="flex w-full items-center gap-2 text-left">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto w-full justify-start rounded-none p-0 text-left font-normal hover:bg-transparent focus-visible:ring-0"
+                  >
                     <EyeOff className="size-4" /> Hide this type
-                  </button>
+                  </Button>
                 </form>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <form action={muteFeedItemUserAction} className="w-full">
                   <input type="hidden" name="feedItemId" value={feedItemId} />
-                  <button type="submit" className="flex w-full items-center gap-2 text-left">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto w-full justify-start rounded-none p-0 text-left font-normal hover:bg-transparent focus-visible:ring-0"
+                  >
                     <Users className="size-4" /> Mute user
-                  </button>
+                  </Button>
                 </form>
               </DropdownMenuItem>
             </>
@@ -114,9 +134,14 @@ export function FeedItemControls({
                   <form action={reportFeedItemAction} className="w-full" data-feed-report-form>
                     <input type="hidden" name="feedItemId" value={feedItemId} />
                     <input type="hidden" name="reason" value={value} />
-                    <button type="submit" className="w-full text-left">
+                    <Button
+                      type="submit"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto w-full justify-start rounded-none p-0 text-left font-normal hover:bg-transparent focus-visible:ring-0"
+                    >
                       {label}
-                    </button>
+                    </Button>
                   </form>
                 </DropdownMenuItem>
               ))}

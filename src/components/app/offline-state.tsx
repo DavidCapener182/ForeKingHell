@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { WifiOff } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 export function OfflineState({
@@ -15,22 +16,19 @@ export function OfflineState({
   className?: string;
 }) {
   return (
-    <section
+    <Alert
       className={cn(
-        "rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950",
+        "rounded-2xl border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4 text-[var(--status-warning-foreground)]",
         className,
       )}
-      role="status"
       aria-live="polite"
     >
-      <div className="flex items-start gap-3">
-        <WifiOff className="mt-0.5 size-5 shrink-0" aria-hidden />
-        <div className="min-w-0">
-          <h2 className="font-semibold">{title}</h2>
-          <p className="mt-1 text-sm leading-6">{description}</p>
-          {action ? <div className="mt-3">{action}</div> : null}
-        </div>
-      </div>
-    </section>
+      <WifiOff className="size-5" aria-hidden />
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription className="text-current">
+        {description}
+        {action ? <div className="mt-3">{action}</div> : null}
+      </AlertDescription>
+    </Alert>
   );
 }

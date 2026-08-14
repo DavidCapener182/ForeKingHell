@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 
-import {
-  AdminMobileShell,
-  AdminNav,
-  AdminPageHeader,
-  AdminSection,
-} from "@/app/admin/admin-components";
+import { AdminNav, AdminPageHeader, AdminSection } from "@/app/admin/admin-components";
 import { AdminRetryButton } from "@/app/admin/admin-retry-button";
 import { StatusTimeline } from "@/components/app/status-timeline";
 import {
@@ -15,14 +10,6 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { MobileStatusAction } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -30,6 +17,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { getAdminOperationsSnapshot } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -80,15 +76,9 @@ export default async function AdminSystemChecksPage() {
 
   return (
     <PageShell>
-      <AdminMobileShell title="System checks" active="/admin/system-checks">
-        <AdminMobileSystemChecks operations={operations} rows={systemCheckRows} />
-      </AdminMobileShell>
+      <AdminNav active="/admin/system-checks" />
 
-      <div className="hidden lg:block">
-        <AdminNav active="/admin/system-checks" />
-      </div>
-
-      <DesktopWorkbenchLayout scope="admin-system-checks" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="admin-system-checks">
         <AdminPageHeader
           eyebrow="Admin system checks"
           title="Provider status and platform checks"
@@ -184,7 +174,7 @@ export default async function AdminSystemChecksPage() {
           description="Provider, billing, social, partner and access-control signals in one keyboardable desktop table."
           action={
             <Button asChild variant="outline" size="sm">
-              <Link href="/providers#provider-health">Open provider console</Link>
+              <Link href="/providers?tab=diagnostics#provider-health">Open provider console</Link>
             </Button>
           }
         >
@@ -205,68 +195,54 @@ export default async function AdminSystemChecksPage() {
             stickyFirstColumn
             className="overflow-x-auto"
           >
-            <table
+            <Table
               id="admin-system-checks-table"
               className="w-full min-w-[920px] text-left text-sm"
               data-workbench-scope="admin-system-checks"
               data-workbench-export-table="admin-system-checks"
               aria-describedby="admin-system-checks-summary"
             >
-              <caption id="admin-system-checks-summary" className="sr-only">
+              <TableCaption id="admin-system-checks-summary" className="sr-only">
                 Admin system checks table with check, area, status, count, impact and action.
-              </caption>
-              <thead className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                <tr>
-                  <th
+              </TableCaption>
+              <TableHeader className="text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                <TableRow>
+                  <TableHead
                     data-column="check"
-                    className="sticky left-0 z-20 bg-white px-3 py-2 font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     Check
-                  </th>
-                  <th data-column="area" className="px-3 py-2 font-medium">
-                    Area
-                  </th>
-                  <th data-column="status" className="px-3 py-2 font-medium">
-                    Status
-                  </th>
-                  <th data-column="count" className="px-3 py-2 font-medium">
-                    Count
-                  </th>
-                  <th data-column="impact" className="px-3 py-2 font-medium">
-                    Impact
-                  </th>
-                  <th data-column="action" className="px-3 py-2 font-medium">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead data-column="area">Area</TableHead>
+                  <TableHead data-column="status">Status</TableHead>
+                  <TableHead data-column="count">Count</TableHead>
+                  <TableHead data-column="impact">Impact</TableHead>
+                  <TableHead data-column="action">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {systemCheckRows.map((row) => (
-                  <tr
-                    key={row.id}
-                    tabIndex={0}
-                    className="focus-aaa border-b outline-none last:border-b-0"
-                  >
-                    <td
+                  <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
                       data-column="check"
-                      className="sticky left-0 z-10 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                     >
                       <p className="font-medium">{row.label}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{row.detail}</p>
-                    </td>
-                    <td data-column="area" className="px-3 py-3">
+                    </TableCell>
+                    <TableCell data-column="area">
                       <StatusPill tone="slate">{row.area}</StatusPill>
-                    </td>
-                    <td data-column="status" className="px-3 py-3">
+                    </TableCell>
+                    <TableCell data-column="status">
                       <StatusPill tone={row.tone}>{row.status}</StatusPill>
-                    </td>
-                    <td data-column="count" className="px-3 py-3 font-mono text-xs">
+                    </TableCell>
+                    <TableCell data-column="count" className="font-mono text-xs">
                       {row.count}
-                    </td>
-                    <td data-column="impact" className="px-3 py-3 text-sm text-muted-foreground">
+                    </TableCell>
+                    <TableCell data-column="impact" className="text-sm text-muted-foreground">
                       {row.impact}
-                    </td>
-                    <td data-column="action" className="px-3 py-3">
+                    </TableCell>
+                    <TableCell data-column="action">
                       {row.href && row.action ? (
                         <Button asChild variant="outline" size="sm">
                           <Link href={row.href}>{row.action}</Link>
@@ -274,18 +250,21 @@ export default async function AdminSystemChecksPage() {
                       ) : (
                         <span className="text-xs text-muted-foreground">No live result</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </DataTableFrame>
         </AdminSection>
 
         <section className="grid gap-4 lg:grid-cols-3">
           <AdminSection title="Next admin actions">
             <div className="grid gap-2">
-              <AdminAction href="/providers#provider-jobs" label="Review provider jobs" />
+              <AdminAction
+                href="/providers?tab=diagnostics#provider-jobs"
+                label="Review provider jobs"
+              />
               <AdminAction href="/admin/billing" label="Inspect billing failures" />
               <AdminAction href="/admin/moderation" label="Open moderation queue" />
             </div>
@@ -307,86 +286,6 @@ export default async function AdminSystemChecksPage() {
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
-  );
-}
-
-function AdminMobileSystemChecks({
-  operations,
-  rows,
-}: {
-  operations: Awaited<ReturnType<typeof getAdminOperationsSnapshot>>;
-  rows: SystemCheckTableRow[];
-}) {
-  const attentionRows = rows.filter((row) => row.tone === "amber");
-  const observedRows = rows.filter((row) => row.tone !== "amber");
-
-  return (
-    <>
-      <MobileStatusAction
-        label="Checks needing review"
-        value={attentionRows.length}
-        detail={`${operations.providerImportFailures} failed imports · ${operations.billingFailures} billing failures`}
-        action={
-          <Button asChild className="min-h-11">
-            <Link href="/providers#provider-jobs">Provider jobs</Link>
-          </Button>
-        }
-      />
-
-      <section className="grid gap-2" aria-label="System checks requiring attention">
-        <IOSSectionHeader
-          title="Review first"
-          description="Counts that can affect data confidence or account access"
-        />
-        {attentionRows.length > 0 ? (
-          <MobileSystemCheckRows rows={attentionRows} />
-        ) : (
-          <IOSGroupedList label="System checks with no current failures">
-            <IOSListRow
-              label="No operational failures flagged"
-              detail="The snapshot found no failed provider imports or billing failure rows."
-              status={<IOSInlineStatus label="No action required" tone="positive" />}
-            />
-          </IOSGroupedList>
-        )}
-      </section>
-
-      <IOSDisclosureGroup
-        label="Observed platform signals"
-        items={[
-          {
-            value: "observed-platform-signals",
-            title: "Observed platform signals",
-            summary: observedRows.length,
-            description: "Provider, social, partner, AI and verification context",
-            contentClassName: "px-0 pb-0 pt-0",
-            content: <MobileSystemCheckRows rows={observedRows} />,
-          },
-        ]}
-      />
-    </>
-  );
-}
-
-function MobileSystemCheckRows({ rows }: { rows: SystemCheckTableRow[] }) {
-  return (
-    <IOSGroupedList label="Admin system check rows">
-      {rows.map((row) => (
-        <IOSListRow
-          key={row.id}
-          label={row.label}
-          value={row.count}
-          detail={`${row.detail} ${row.impact}`}
-          href={row.href}
-          status={
-            <IOSInlineStatus
-              label={row.status}
-              tone={row.tone === "amber" ? "attention" : row.tone === "green" ? "positive" : "info"}
-            />
-          }
-        />
-      ))}
-    </IOSGroupedList>
   );
 }
 
@@ -419,7 +318,7 @@ function buildSystemCheckRows(
         operations.providerAccounts > 0
           ? "Sync checks can compare accounts against import jobs."
           : "Provider advice should stay cautious until accounts exist.",
-      href: "/providers#provider-health",
+      href: "/providers?tab=diagnostics#provider-health",
       action: "Provider console",
     },
     {
@@ -444,7 +343,7 @@ function buildSystemCheckRows(
         operations.providerImportFailures > 0
           ? "Review failed jobs before trusting fresh launch-monitor advice."
           : "No failed provider jobs are currently flagged.",
-      href: "/providers#provider-jobs",
+      href: "/providers?tab=diagnostics#provider-jobs",
       action: "Review jobs",
     },
     {
@@ -459,7 +358,7 @@ function buildSystemCheckRows(
         operations.providerImportFailures > 0
           ? "Treat recent provider data as lower confidence until resolved."
           : "No provider failure rows are currently flagged.",
-      href: "/providers#provider-jobs",
+      href: "/providers?tab=diagnostics#provider-jobs",
       action: "Open failures",
     },
     {

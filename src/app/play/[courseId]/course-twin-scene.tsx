@@ -16,6 +16,7 @@ import * as THREE from "three";
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CarFront,
   CirclePause,
   CirclePlay,
@@ -38,6 +39,7 @@ import {
 import mobileStyles from "@/app/play/[courseId]/course-twin-mobile.module.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CourseTwinComms } from "@/app/play/[courseId]/course-twin-comms";
 import type {
   CourseTwinEvidenceValue,
@@ -2973,11 +2975,12 @@ export function CourseTwinScene({
             </div>
           )}
 
-          <details className="mt-4 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/50">
-            <summary className="cursor-pointer font-medium text-emerald-100/65">
+          <Collapsible className="group/attribution mt-4 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/50">
+            <CollapsibleTrigger className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 text-left font-medium text-emerald-100/65">
               Course data & licences
-            </summary>
-            <div className="mt-2 leading-5">
+              <ChevronDown className="size-4 transition-transform group-data-[state=open]/attribution:rotate-180 motion-reduce:transition-none" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 leading-5">
               {manifest.attribution.map((item) => (
                 <a
                   key={item.url}
@@ -2989,8 +2992,8 @@ export function CourseTwinScene({
                   {item.label} · {item.licence}
                 </a>
               ))}
-            </div>
-          </details>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </aside>
 

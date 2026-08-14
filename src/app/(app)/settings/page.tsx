@@ -30,11 +30,9 @@ import { OfflineStoragePanel } from "@/app/settings/offline-storage-panel";
 import { SettingsMobileDisclosure } from "@/app/settings/settings-mobile-disclosure";
 import { SettingsDirtyForm } from "@/app/settings/settings-dirty-form";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
-import {
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { DataHealthFeaturePanel, SocialFeaturePanel } from "@/components/features/feature-panels";
 import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
@@ -49,7 +47,8 @@ import {
 import { PlausibleEventOnMount } from "@/components/plausible-event-on-mount";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -60,7 +59,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { ThemePreferenceSelect } from "@/components/theme-preference-select";
 import {
@@ -75,6 +74,7 @@ import {
 import { accountInvitations, accountMemberships, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getSiteOrigin } from "@/lib/site-origin";
 import {
@@ -147,17 +147,17 @@ const settingsAccessColumns: DesktopWorkbenchColumn[] = [
 const settingsAccessSuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Pending invitations",
-    href: "/settings#sharing-settings",
+    href: "/settings?section=sharing#sharing-settings",
     detail: "Coach, viewer and editor invites that have not been accepted.",
   },
   {
     title: "Shared by me",
-    href: "/settings#sharing-settings",
+    href: "/settings?section=sharing#sharing-settings",
     detail: "Accepted collaborators who can access this account.",
   },
   {
     title: "Shared with me",
-    href: "/settings#sharing-settings",
+    href: "/settings?section=sharing#sharing-settings",
     detail: "Accounts this login can open through role-scoped access.",
   },
 ];
@@ -165,7 +165,11 @@ const settingsAccessSuggestedViews: DesktopSavedViewSuggestion[] = [
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const activeSection = parseSettingsSection(params?.section);
-  const [settingsData, featureData] = await Promise.all([getSettingsData(), getFeatureIdeasData()]);
+  const [settingsData, featureData, surface] = await Promise.all([
+    getSettingsData(),
+    getFeatureIdeasData(),
+    getRequestAppSurface(),
+  ]);
   const { profile, ownedInvitations, ownedMemberships, receivedMemberships, relatedUsersById } =
     settingsData;
   const privacy = normalizePrivacy(profile.privacySettingsJson);
@@ -232,112 +236,118 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     <PageShell>
       {params?.inviteAccepted ? <PlausibleEventOnMount eventName="Invite Accepted" /> : null}
 
-      <DesktopWorkbenchLayout scope="settings">
-        <div className="grid gap-5 lg:hidden">
-          <header className="px-1 pt-1">
-            <p className="text-sm font-medium text-primary">Your account</p>
-            <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-[-0.025em]">
-              Settings
-            </h1>
-            <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
-              Account, preferences, privacy and golf data.
-            </p>
-          </header>
+      <SettingsSurfaceLayout surface={surface}>
+        {surface === "companion" ? (
+          <div className="grid gap-5">
+            <header className="px-1 pt-1">
+              <p className="text-sm font-medium text-primary">Your account</p>
+              <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-[-0.025em]">
+                Settings
+              </h1>
+              <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
+                Account, preferences, privacy and golf data.
+              </p>
+            </header>
 
-          <section className="grid gap-2" aria-label="Account settings">
-            <IOSSectionHeader title="Account" />
-            <IOSGroupedList label="Account">
-              <IOSListRow
-                label="Profile"
-                value={profile.name ?? profile.email ?? "Golfer"}
-                detail="Name and public golf identity"
-                href="/profile"
-                icon={UserCog}
-              />
-              <IOSListRow
-                label="Membership"
-                value="Account"
-                detail="Plan, subscription and billing"
-                href="/billing"
-                icon={CreditCard}
-              />
-            </IOSGroupedList>
-          </section>
+            <section className="grid gap-2" aria-label="Account settings">
+              <IOSSectionHeader title="Account" />
+              <IOSGroupedList label="Account">
+                <IOSListRow
+                  label="Profile"
+                  value={profile.name ?? profile.email ?? "Golfer"}
+                  detail="Name and public golf identity"
+                  href="/profile"
+                  icon={UserCog}
+                />
+                <IOSListRow
+                  label="Membership"
+                  value="Account"
+                  detail="Plan, subscription and billing"
+                  href="/billing"
+                  icon={CreditCard}
+                />
+              </IOSGroupedList>
+            </section>
 
-          <section className="grid gap-2" aria-label="Preferences">
-            <IOSSectionHeader title="Preferences" />
-            <IOSGroupedList label="Preferences">
-              <IOSListRow
-                label="Units"
-                value={titleCase(profile.preferredUnits)}
-                detail="Distance and speed display"
-                href="/settings?section=general"
-                icon={SlidersHorizontal}
-              />
-              <IOSListRow
-                label="Appearance"
-                value={titleCase(profile.theme)}
-                detail="Follow system or choose a desktop theme"
-                href="/settings?section=appearance"
-                icon={Palette}
-              />
-              <IOSListRow
-                label="Notifications"
-                detail="Email and in-app preferences"
-                href="/settings/notifications"
-                icon={Bell}
-              />
-            </IOSGroupedList>
-          </section>
+            <section className="grid gap-2" aria-label="Preferences">
+              <IOSSectionHeader title="Preferences" />
+              <IOSGroupedList label="Preferences">
+                <IOSListRow
+                  label="Units"
+                  value={titleCase(profile.preferredUnits)}
+                  detail="Distance and speed display"
+                  href="/settings?section=general"
+                  icon={SlidersHorizontal}
+                />
+                <IOSListRow
+                  label="Appearance"
+                  value={titleCase(profile.theme)}
+                  detail="Follow system or choose a desktop theme"
+                  href="/settings?section=appearance"
+                  icon={Palette}
+                />
+                <IOSListRow
+                  label="Notifications"
+                  detail="Email and in-app preferences"
+                  href="/settings/notifications"
+                  icon={Bell}
+                />
+              </IOSGroupedList>
+            </section>
 
-          <section className="grid gap-2" aria-label="Data settings">
-            <IOSSectionHeader title="Data" />
-            <IOSGroupedList label="Data">
-              <IOSListRow
-                label="Connected data"
-                value="Providers"
-                detail="Launch monitors and import sources"
-                href="/providers"
-                icon={Database}
-              />
-              <IOSListRow
-                label="Import history"
-                detail="Upload or reconnect measured sessions"
-                href="/import"
-                icon={Download}
-              />
-              <IOSListRow
-                label="Shared access"
-                value={accessRows.length > 0 ? String(accessRows.length) : "None"}
-                detail="Coaches, viewers and editors"
-                href="/settings?section=sharing"
-                icon={ShieldCheck}
-              />
-            </IOSGroupedList>
-          </section>
+            <section className="grid gap-2" aria-label="Data settings">
+              <IOSSectionHeader title="Data" />
+              <IOSGroupedList label="Data">
+                <IOSListRow
+                  label="Connected data"
+                  value="Providers"
+                  detail="Launch monitors and import sources"
+                  href="/providers"
+                  icon={Database}
+                />
+                <IOSListRow
+                  label="Import history"
+                  detail="Upload or reconnect measured sessions"
+                  href="/import"
+                  icon={Download}
+                />
+                <IOSListRow
+                  label="Shared access"
+                  value={accessRows.length > 0 ? String(accessRows.length) : "None"}
+                  detail="Coaches, viewers and editors"
+                  href="/settings?section=sharing"
+                  icon={ShieldCheck}
+                />
+              </IOSGroupedList>
+            </section>
 
-          <IOSSectionHeader
-            title="Advanced settings"
-            description="Open only the section you need."
-          />
-        </div>
+            <IOSSectionHeader
+              title="Advanced settings"
+              description="Open only the section you need."
+            />
+          </div>
+        ) : null}
 
-        <div className="hidden lg:block">
-          <PageHeader
-            eyebrow={<StatusPill tone="sky">Account</StatusPill>}
-            title="Settings"
-            description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
-            visual={<PageArtwork variant="settings" alt="" className="h-full min-h-36" priority />}
-            actions={
-              <Button asChild size="sm" className="rounded-lg">
-                <Link href="/settings?section=general">
-                  <UserCog className="size-4" />
-                  Profile
-                </Link>
-              </Button>
-            }
-          />
-        </div>
+        {surface === "workbench" ? (
+          <div>
+            <PageHeader
+              eyebrow={<StatusPill tone="sky">Account</StatusPill>}
+              title="Settings"
+              description="Manage profile preferences, privacy defaults, and data portability for your LM World Tour account."
+              visual={
+                <PageArtwork variant="settings" alt="" className="h-full min-h-36" priority />
+              }
+              actions={
+                <Button asChild size="sm" className="rounded-lg">
+                  <Link href="/settings?section=general">
+                    <UserCog className="size-4" />
+                    Profile
+                  </Link>
+                </Button>
+              }
+            />
+          </div>
+        ) : null}
 
         <SettingsStatusToast saved={Boolean(params?.saved)} />
 
@@ -423,24 +433,26 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </Alert>
         ) : null}
 
-        <section className="hidden gap-5 lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
-          <SettingsSectionNavigation activeSection={activeSection} />
-          <section className="premium-card p-4" aria-label="Current account summary">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">{settingsSectionLabel(activeSection)}</p>
-              <StatusPill tone="sky">Current section</StatusPill>
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-4">
-              <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
-              <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
-              <SettingsPreviewRow label="Theme" value={titleCase(profile.theme)} />
-              <SettingsPreviewRow
-                label="Privacy"
-                value={privacy.publicProfile ? "Public" : "Private"}
-              />
-            </div>
+        {surface === "workbench" ? (
+          <section className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)] lg:items-start">
+            <SettingsSectionNavigation activeSection={activeSection} />
+            <Card className="p-4 py-4" aria-label="Current account summary">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">{settingsSectionLabel(activeSection)}</p>
+                <StatusPill tone="sky">Current section</StatusPill>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                <SettingsPreviewRow label="Email" value={profile.email ?? "No email"} />
+                <SettingsPreviewRow label="Units" value={profile.preferredUnits} />
+                <SettingsPreviewRow label="Theme" value={titleCase(profile.theme)} />
+                <SettingsPreviewRow
+                  label="Privacy"
+                  value={privacy.publicProfile ? "Public" : "Private"}
+                />
+              </div>
+            </Card>
           </section>
-        </section>
+        ) : null}
 
         <div className={activeSection === "data" ? "contents" : "lg:hidden"}>
           <SettingsMobileDisclosure
@@ -492,7 +504,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <SectionHeader
                 title="Profile and preferences"
                 description="These settings are stored with your user profile and control appearance, dashboard pins, units, and table density."
-                action={<SlidersHorizontal className="size-5 text-sky-600" />}
+                action={<SlidersHorizontal className="size-5 text-primary" />}
               />
               <CardContent>
                 <SettingsDirtyForm action={updateUserSettingsAction} className="grid gap-5">
@@ -573,14 +585,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <SectionHeader
                 title="Sharing and collaboration"
                 description="Invite a coach, viewer, or editor. Invitations create role-scoped memberships before social and team features are enabled."
-                action={<UserPlus className="size-5 text-emerald-600" />}
+                action={<UserPlus className="size-5 text-primary" />}
               />
               <CardContent className="grid gap-5">
                 <div className="flex justify-end">
                   <SettingsInvitationDialog />
                 </div>
 
-                <AccessManagementTable rows={accessRows} />
+                <AccessManagementTable rows={accessRows} workbench={surface === "workbench"} />
               </CardContent>
             </DataPanel>
           </SettingsMobileDisclosure>
@@ -600,7 +612,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             description="Choose which account and practice updates reach you."
             href="/settings/notifications"
             action="Open notification settings"
-            icon={<Bell className="size-5 text-sky-600" />}
+            icon={<Bell className="size-5 text-primary" />}
           />
         ) : null}
 
@@ -610,7 +622,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             description="Review the current plan, invoices and subscription controls."
             href="/billing"
             action="Open billing"
-            icon={<CreditCard className="size-5 text-sky-600" />}
+            icon={<CreditCard className="size-5 text-primary" />}
           />
         ) : null}
 
@@ -625,7 +637,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 <SectionHeader
                   title="Data export"
                   description="Download a JSON copy of your user-owned data, including shots, rounds, clubs, achievements, and private courses."
-                  action={<Download className="size-5 text-emerald-600" />}
+                  action={<Download className="size-5 text-primary" />}
                 />
                 <CardContent>
                   <Button asChild variant="outline" className="rounded-xl">
@@ -645,17 +657,33 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               title="Danger zone"
               description="Delete app data."
             >
-              <DataPanel>
-                <SectionHeader
-                  title="Reset or delete"
-                  description="Reset golf activity while keeping the login, or permanently delete the account and authentication identity. Export first if you want a copy."
-                  action={<Trash2 className="size-5 text-destructive" />}
-                />
-                <CardContent className="grid gap-6">
-                  <div className="grid gap-3 rounded-lg border p-3">
+              <Card className="ring-destructive/35">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold">Reset golf data</p>
+                      <CardTitle>Reset or delete</CardTitle>
                       <p className="mt-1 text-sm text-muted-foreground">
+                        Reset golf activity while keeping the login, or permanently delete the
+                        account and authentication identity. Export first if you want a copy.
+                      </p>
+                    </div>
+                    <Trash2 className="size-5 shrink-0 text-destructive" />
+                  </div>
+                </CardHeader>
+                <CardContent className="grid gap-6">
+                  <Alert variant="destructive">
+                    <Trash2 className="size-4" />
+                    <AlertTitle>Permanent account actions</AlertTitle>
+                    <AlertDescription>
+                      Export anything you need before resetting golf data or deleting the account.
+                    </AlertDescription>
+                  </Alert>
+                  <section className="grid gap-3" aria-labelledby="reset-golf-data-title">
+                    <div>
+                      <h3 id="reset-golf-data-title" className="font-semibold">
+                        Reset golf data
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
                         Removes sessions, shots, bag history, plans, achievements and authored
                         social activity. Keeps your login, preferences, provider links and billing
                         account.
@@ -679,11 +707,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                         Reset golf data
                       </ConfirmSubmitButton>
                     </form>
-                  </div>
-                  <div className="grid gap-3 rounded-lg border border-destructive/30 p-3">
+                  </section>
+                  <Separator />
+                  <section className="grid gap-3" aria-labelledby="delete-account-title">
                     <div>
-                      <p className="font-semibold">Delete account permanently</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <h3 id="delete-account-title" className="font-semibold">
+                        Delete account permanently
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
                         Revokes active sessions, removes application data and deletes the Supabase
                         Auth identity. A recent sign-in and typed confirmation are required.
                       </p>
@@ -706,15 +737,30 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                         Delete account permanently
                       </ConfirmSubmitButton>
                     </form>
-                  </div>
+                  </section>
                 </CardContent>
-              </DataPanel>
+              </Card>
             </SettingsMobileDisclosure>
           </div>
         </section>
-      </DesktopWorkbenchLayout>
+      </SettingsSurfaceLayout>
     </PageShell>
   );
+}
+
+async function SettingsSurfaceLayout({
+  surface,
+  children,
+}: {
+  surface: "companion" | "workbench";
+  children: ReactNode;
+}) {
+  if (surface === "companion") {
+    return <div className="grid min-w-0 gap-5">{children}</div>;
+  }
+
+  const { DesktopWorkbenchLayout } = await import("@/components/app/desktop-workbench");
+  return <DesktopWorkbenchLayout scope="settings">{children}</DesktopWorkbenchLayout>;
 }
 
 const settingsSections: Array<{ value: SettingsSection; label: string }> = [
@@ -731,27 +777,40 @@ const settingsSections: Array<{ value: SettingsSection; label: string }> = [
 
 function SettingsSectionNavigation({ activeSection }: { activeSection: SettingsSection }) {
   return (
-    <Tabs
-      value={activeSection}
-      orientation="vertical"
-      className="premium-card sticky top-28 min-w-0 p-3"
-    >
-      <p className="px-2 pb-2 text-sm font-semibold">Settings</p>
-      <TabsList variant="line" className="w-full items-stretch" aria-label="Settings sections">
-        {settingsSections.map((section) => (
-          <TabsTrigger
-            key={section.value}
-            value={section.value}
-            asChild
-            className={section.value === "danger" ? "text-destructive" : undefined}
+    <nav className="sticky top-28 min-w-0" aria-label="Settings sections">
+      <Card className="gap-0 p-3">
+        <CardContent className="p-0">
+          <p className="px-2 pb-2 text-sm font-semibold">Settings</p>
+          <ButtonGroup
+            orientation="vertical"
+            className="w-full items-stretch"
+            data-settings-section-navigation
           >
-            <Link href={`/settings?section=${section.value}`} prefetch={false}>
-              {section.label}
-            </Link>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+            {settingsSections.map((section) => (
+              <Button
+                key={section.value}
+                asChild
+                size="sm"
+                variant={section.value === activeSection ? "secondary" : "ghost"}
+                className={
+                  section.value === "danger"
+                    ? "w-full justify-start text-destructive"
+                    : "w-full justify-start"
+                }
+              >
+                <Link
+                  href={`/settings?section=${section.value}`}
+                  prefetch={false}
+                  aria-current={section.value === activeSection ? "page" : undefined}
+                >
+                  {section.label}
+                </Link>
+              </Button>
+            ))}
+          </ButtonGroup>
+        </CardContent>
+      </Card>
+    </nav>
   );
 }
 
@@ -936,7 +995,16 @@ function DataControlStatusPanel({
   );
 }
 
-function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
+async function AccessManagementTable({
+  rows,
+  workbench,
+}: {
+  rows: SettingsAccessRow[];
+  workbench: boolean;
+}) {
+  const workbenchModule = workbench ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopTableWorkbenchControls = workbenchModule?.DesktopTableWorkbenchControls;
+
   return (
     <section
       id="settings-access-table"
@@ -955,103 +1023,112 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
         </StatusPill>
       </div>
 
-      <div className="lg:hidden">
-        <IOSGroupedList label="Account access">
-          {rows.length > 0 ? (
-            rows.map((row) => (
+      {!workbench ? (
+        <div>
+          <IOSGroupedList label="Account access">
+            {rows.length > 0 ? (
+              rows.map((row) => (
+                <IOSListRow
+                  key={row.id}
+                  label={row.party}
+                  value={row.role}
+                  detail={`${row.scope} · ${row.status} · ${row.detail}`}
+                  trailing={row.action}
+                />
+              ))
+            ) : (
               <IOSListRow
-                key={row.id}
-                label={row.party}
-                value={row.role}
-                detail={`${row.scope} · ${row.status} · ${row.detail}`}
-                trailing={row.action}
+                label="No shared access"
+                detail="Create an invite when a coach, viewer or editor needs access."
               />
-            ))
-          ) : (
-            <IOSListRow
-              label="No shared access"
-              detail="Create an invite when a coach, viewer or editor needs access."
-            />
-          )}
-        </IOSGroupedList>
-      </div>
+            )}
+          </IOSGroupedList>
+        </div>
+      ) : null}
 
-      <div className="hidden lg:block">
-        <DesktopTableWorkbenchControls
-          viewKey="settings-access"
-          scope="settings-access"
-          currentViewLabel="Account access"
-          resultLabel={`${rows.length} access rows`}
-          columns={settingsAccessColumns}
-          suggestedViews={settingsAccessSuggestedViews}
-          exportTableId="settings-access"
-          exportFileName="forekinghell-account-access.csv"
-        />
-      </div>
+      {workbench && DesktopTableWorkbenchControls ? (
+        <div>
+          <DesktopTableWorkbenchControls
+            viewKey="settings-access"
+            scope="settings-access"
+            currentViewLabel="Account access"
+            resultLabel={`${rows.length} access rows`}
+            columns={settingsAccessColumns}
+            suggestedViews={settingsAccessSuggestedViews}
+            exportTableId="settings-access"
+            exportFileName="forekinghell-account-access.csv"
+          />
+        </div>
+      ) : null}
 
-      <div className="hidden lg:block">
-        <DataTableFrame mainTable mainTableLabel="Account access table" stickyFirstColumn>
-          <Table
-            data-workbench-export-table="settings-access"
-            aria-describedby="settings-access-summary"
-          >
-            <TableCaption id="settings-access-summary" className="sr-only">
-              Account access table showing invitation and membership scope, person or account, role,
-              status, detail and action.
-            </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-              <TableRow>
-                <TableHead
-                  data-column="scope"
-                  className="sticky left-0 z-20 min-w-48 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                >
-                  Scope
-                </TableHead>
-                <TableHead data-column="party">Person or account</TableHead>
-                <TableHead data-column="role">Role</TableHead>
-                <TableHead data-column="status">Status</TableHead>
-                <TableHead data-column="detail">Detail</TableHead>
-                <TableHead data-column="action" className="text-right">
-                  Action
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length > 0 ? (
-                rows.map((row) => (
-                  <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+      {workbench ? (
+        <div>
+          <DataTableFrame mainTable mainTableLabel="Account access table" stickyFirstColumn>
+            <Table
+              data-workbench-export-table="settings-access"
+              aria-describedby="settings-access-summary"
+            >
+              <TableCaption id="settings-access-summary" className="sr-only">
+                Account access table showing invitation and membership scope, person or account,
+                role, status, detail and action.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                <TableRow>
+                  <TableHead
+                    data-column="scope"
+                    className="sticky left-0 z-20 min-w-48 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                  >
+                    Scope
+                  </TableHead>
+                  <TableHead data-column="party">Person or account</TableHead>
+                  <TableHead data-column="role">Role</TableHead>
+                  <TableHead data-column="status">Status</TableHead>
+                  <TableHead data-column="detail">Detail</TableHead>
+                  <TableHead data-column="action" className="text-right">
+                    Action
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.length > 0 ? (
+                  rows.map((row) => (
+                    <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell
+                        data-column="scope"
+                        className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                      >
+                        {row.scope}
+                      </TableCell>
+                      <TableCell data-column="party">
+                        <span className="block max-w-72 truncate">{row.party}</span>
+                      </TableCell>
+                      <TableCell data-column="role">{row.role}</TableCell>
+                      <TableCell data-column="status">
+                        <StatusPill tone={row.status === "Pending" ? "amber" : "green"}>
+                          {row.status}
+                        </StatusPill>
+                      </TableCell>
+                      <TableCell data-column="detail">{row.detail}</TableCell>
+                      <TableCell data-column="action" className="text-right">
+                        {row.action}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
                     <TableCell
-                      data-column="scope"
-                      className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                      colSpan={6}
+                      className="py-8 text-center text-sm text-muted-foreground"
                     >
-                      {row.scope}
-                    </TableCell>
-                    <TableCell data-column="party">
-                      <span className="block max-w-72 truncate">{row.party}</span>
-                    </TableCell>
-                    <TableCell data-column="role">{row.role}</TableCell>
-                    <TableCell data-column="status">
-                      <StatusPill tone={row.status === "Pending" ? "amber" : "green"}>
-                        {row.status}
-                      </StatusPill>
-                    </TableCell>
-                    <TableCell data-column="detail">{row.detail}</TableCell>
-                    <TableCell data-column="action" className="text-right">
-                      {row.action}
+                      No invitations or shared account access yet.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                    No invitations or shared account access yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
-      </div>
+                )}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
+      ) : null}
     </section>
   );
 }

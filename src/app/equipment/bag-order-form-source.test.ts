@@ -15,11 +15,21 @@ describe("bag order form desktop layout", () => {
     expect(source).toContain("onValueChange={(value) => moveToSection(club.id, value)}");
     expect(source).toContain("<SelectTrigger");
     expect(source).toContain("Move ${club.label} to bag section");
-    expect(source).toContain('className="grid size-11');
+    expect(source).toContain('size="icon"');
     expect(source).toContain('type="button"');
     expect(source).toContain("min-h-11");
     expect(source).toContain("initializeBagOrder(clubs)");
     expect(source).toContain("moveBagClubWithinSection(current, clubId, direction)");
     expect(source).toContain("moveBagClub(current, clubId, section)");
+    expect(source).not.toContain("IconButton");
+    expect(source).not.toMatch(/<button\b/);
+  });
+
+  it("uses theme tokens for ordinary bag-order surfaces", () => {
+    expect(source).toContain("bg-gradient-to-br from-card to-muted/40");
+    expect(source).toContain("hover:border-primary/50");
+    expect(source).not.toMatch(
+      /(?:bg|text|border|hover:bg|hover:border)-(?:white|slate|emerald)-\d*|bg-\[#[0-9A-Fa-f]+\]/,
+    );
   });
 });

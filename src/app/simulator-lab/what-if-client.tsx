@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
+import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 type WhatIfGroup = {
@@ -41,14 +43,12 @@ export function WhatIfClient({
     <div className="rounded-lg border border-border bg-card p-4 text-card-foreground">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-900 dark:text-emerald-300">
-            What if?
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">What if?</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Model likely upside from the biggest leaks.
           </p>
         </div>
-        <SlidersHorizontal className="size-5 text-emerald-700" />
+        <SlidersHorizontal className="size-5 text-primary" />
       </div>
       <div className="mt-4 grid gap-4">
         {groups.map((group, index) => (
@@ -59,18 +59,17 @@ export function WhatIfClient({
               </span>
               <span className="font-mono text-muted-foreground">{values[index]}%</span>
             </div>
-            <input
-              type="range"
+            <Slider
+              aria-label={`${group.clubLabel} ${group.mainMiss} improvement`}
               min={0}
               max={30}
               step={5}
-              value={values[index] ?? 0}
-              onChange={(event) => {
+              value={[values[index] ?? 0]}
+              onValueChange={([value]) => {
                 const next = [...values];
-                next[index] = Number(event.target.value);
+                next[index] = value ?? 0;
                 setValues(next);
               }}
-              className="accent-[#0B7A3B]"
             />
           </label>
         ))}
@@ -85,17 +84,17 @@ export function WhatIfClient({
         <div
           className={cn(
             "rounded-lg p-3",
-            predicted !== null ? "bg-emerald-50 dark:bg-emerald-950/35" : "bg-muted/55",
+            predicted !== null ? "bg-[var(--status-success-surface)]" : "bg-muted/55",
           )}
         >
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Projected</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-800 transition-colors duration-300 motion-reduce:transition-none dark:text-emerald-200">
+          <p className="mt-1 text-2xl font-semibold text-[var(--status-success-foreground)] transition-colors duration-300 motion-reduce:transition-none">
             {displayPredicted === null ? "--" : displayPredicted.toFixed(1)}
           </p>
         </div>
         <div className="rounded-lg bg-background p-3 ring-1 ring-border">
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Four rounds</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-800 dark:text-emerald-200">
+          <p className="mt-1 text-2xl font-semibold text-[var(--status-success-foreground)]">
             {shotsSaved === null ? "--" : `${Math.round(shotsSaved)} shots`}
           </p>
         </div>
@@ -105,12 +104,7 @@ export function WhatIfClient({
           <span>Confidence</span>
           <span>{confidenceScore}%</span>
         </div>
-        <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-[#0B7A3B] transition-[width] duration-300 motion-reduce:transition-none"
-            style={{ width: `${confidenceScore}%` }}
-          />
-        </div>
+        <Progress value={confidenceScore} aria-label="Model confidence" className="mt-1 h-2" />
       </div>
     </div>
   );

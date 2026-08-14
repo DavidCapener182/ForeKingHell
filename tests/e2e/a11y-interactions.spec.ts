@@ -52,7 +52,7 @@ test.describe("accessible mobile interactions", () => {
 
   test("reduced motion removes navigation and segmented-control transitions", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await openCompanionRoute(page, "/sessions", /Recent sessions/i);
+    await openCompanionRoute(page, "/sessions", /Sessions/i);
 
     const transitionDurations = await page.evaluate(() => {
       const elements = [

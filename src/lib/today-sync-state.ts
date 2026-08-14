@@ -25,7 +25,7 @@ export function getTodaySyncOverride(
       reason: `${needsAttention} session upload${needsAttention === 1 ? " needs" : "s need"} a decision before analysis can continue.`,
       status: "Needs attention",
       tone: "attention",
-      href: "/settings#offline-storage",
+      href: "/settings?section=offline#offline-storage",
       action: "Review upload",
     };
   }

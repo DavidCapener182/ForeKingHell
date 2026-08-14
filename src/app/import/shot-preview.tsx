@@ -39,7 +39,7 @@ const importShotPreviewColumns: DesktopWorkbenchColumn[] = [
 const importShotPreviewSuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Import library",
-    href: "/import#files",
+    href: "/import#import-library",
     detail: "Return to file status, parse results and saved import batches.",
   },
   {
@@ -81,7 +81,7 @@ export function ShotPreview({
   isCourseUpload: boolean;
 }) {
   return (
-    <Card className="premium-card">
+    <Card className="shadow-sm" data-import-shot-preview>
       <CardHeader>
         <CardTitle>Step 3: Review shots</CardTitle>
         <CardDescription>
@@ -153,11 +153,11 @@ export function ShotPreview({
               Parsed shot preview before import. Distances are stored in yards and course uploads
               include hole mapping when available.
             </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
               <TableRow>
                 <TableHead
                   data-column="file"
-                  className="sticky left-0 z-20 min-w-40 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 min-w-40 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                 >
                   File
                 </TableHead>
@@ -197,7 +197,7 @@ export function ShotPreview({
                   >
                     <TableCell
                       data-column="file"
-                      className="sticky left-0 z-10 max-w-40 truncate bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 max-w-40 truncate bg-card shadow-[1px_0_0_hsl(var(--border))]"
                     >
                       {shot.fileName}
                     </TableCell>

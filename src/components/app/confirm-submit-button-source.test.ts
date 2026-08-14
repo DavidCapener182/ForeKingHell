@@ -10,8 +10,20 @@ const adminUsersSource = readFileSync(
   join(process.cwd(), "src/app/(admin)/admin/users/page.tsx"),
   "utf8",
 );
+const adminUserActionsSource = readFileSync(
+  join(process.cwd(), "src/app/admin/admin-user-actions.tsx"),
+  "utf8",
+);
 const adminModerationSource = readFileSync(
   join(process.cwd(), "src/app/(admin)/admin/moderation/page.tsx"),
+  "utf8",
+);
+const adminBulkActionSource = readFileSync(
+  join(process.cwd(), "src/app/admin/admin-bulk-action-submit.tsx"),
+  "utf8",
+);
+const moderationRowActionsSource = readFileSync(
+  join(process.cwd(), "src/app/admin/moderation-row-actions.tsx"),
   "utf8",
 );
 
@@ -28,13 +40,17 @@ describe("confirm submit button", () => {
 
   it("guards admin destructive actions with clear confirmation copy", () => {
     expect(adminUsersSource).toContain("AdminConfirmSubmitButton");
-    expect(adminUsersSource).toContain("Deactivate admin access");
-    expect(adminUsersSource).toContain("writes an audit entry");
+    expect(adminUsersSource).toContain("<AdminUserActions");
+    expect(adminUserActionsSource).toContain("<AlertDialog");
+    expect(adminUserActionsSource).toContain("Deactivate admin");
+    expect(adminUserActionsSource).toContain("writes an audit entry");
 
-    expect(adminModerationSource).toContain("AdminConfirmSubmitButton");
     expect(adminModerationSource).toContain("AdminBulkActionSubmit");
     expect(adminModerationSource).toContain("Resolve selected reports");
-    expect(adminModerationSource).toContain('Resolve ${isReport ? "report" : "moderation event"}');
     expect(adminModerationSource).toContain("writes an admin audit entry");
+    expect(adminBulkActionSource).toContain("<AdminConfirmSubmitButton");
+    expect(moderationRowActionsSource).toContain("<AlertDialog");
+    expect(moderationRowActionsSource).toContain("Resolve {record.label}?");
+    expect(moderationRowActionsSource).toContain("writes an admin audit entry");
   });
 });

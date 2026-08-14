@@ -9,6 +9,15 @@ const gappingSource = readFileSync(
 );
 
 describe("simulator lab desktop workbench", () => {
+  it("ships one desktop-only workbench tree", () => {
+    expect(source).toContain("DesktopWorkbenchLayout");
+    expect(source).not.toMatch(/getRequestAppSurface|MobileAppShell|MobileRouteHeader|IOS[A-Z]/);
+    expect(source).not.toMatch(
+      /MobilePerformanceLab|MobileFilterSheet|MobileDataCard|MobileDataList/,
+    );
+    expect(source).not.toMatch(/lg:hidden|hidden lg:|mobile=\{/);
+  });
+
   it("keeps simulator session deltas as an exportable desktop workbench table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("sessionDeltaColumns");

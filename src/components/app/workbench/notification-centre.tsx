@@ -112,7 +112,7 @@ export function NotificationCentre({ embedded = false }: { embedded?: boolean })
           <Bell className="size-4" />
           {embedded ? <span>Notifications</span> : null}
           {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-emerald-700 px-1 text-[10px] font-semibold leading-4 text-white">
+            <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           ) : null}
@@ -174,20 +174,22 @@ function NotificationRow({
   return (
     <div
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-white/74",
-        notification.unread ? "border-emerald-200" : "border-border",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-stretch rounded-lg border bg-card",
+        notification.unread ? "border-primary/35" : "border-border",
       )}
     >
       <Link
         href={notification.href}
         prefetch={false}
         onClick={() => onMarkRead(notification.id)}
-        className="focus-aaa grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 rounded-l-lg p-3 outline-none hover:bg-white"
+        className="focus-aaa grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-2 rounded-l-lg p-3 outline-none hover:bg-muted"
       >
         <span
           className={cn(
             "mt-1 size-2 rounded-full",
-            notification.unread ? notificationToneClass(notification.tone) : "bg-slate-300",
+            notification.unread
+              ? notificationToneClass(notification.tone)
+              : "bg-muted-foreground/45",
           )}
           aria-hidden
         />
@@ -228,7 +230,7 @@ function NotificationRow({
 
 function NotificationStatus({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-border bg-white/60 p-3">
+    <div className="rounded-lg border border-dashed border-border bg-muted/35 p-3">
       <p className="text-sm font-semibold">{title}</p>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
     </div>
@@ -308,8 +310,8 @@ function isNotificationTone(value: unknown): value is NotificationTone {
 }
 
 function notificationToneClass(tone: NotificationTone) {
-  if (tone === "green") return "bg-emerald-500";
-  if (tone === "amber") return "bg-amber-500";
-  if (tone === "blue") return "bg-blue-500";
-  return "bg-slate-400";
+  if (tone === "green") return "bg-[var(--confidence-high)]";
+  if (tone === "amber") return "bg-[var(--confidence-medium)]";
+  if (tone === "blue") return "bg-[var(--chart-2)]";
+  return "bg-muted-foreground";
 }

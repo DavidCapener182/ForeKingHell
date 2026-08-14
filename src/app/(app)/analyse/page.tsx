@@ -3,7 +3,6 @@ import {
   ArrowRight,
   BarChart3,
   Brain,
-  ClipboardCheck,
   CloudSun,
   Database,
   ShieldCheck,
@@ -17,16 +16,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RecommendedAction } from "@/components/app/evidence-status";
 import { AnalyseProvenancePanel } from "@/app/analyse/analyse-provenance-panel";
 import { AppCommandContentTrigger } from "@/components/app/app-command-trigger";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import {
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -63,7 +65,7 @@ export default async function AnalysePage() {
         title="Analyse"
         description="See the strength of your evidence, the clearest signal, and what to open next."
         actions={
-          <Button asChild className="premium-action hidden min-h-11 rounded-xl lg:inline-flex">
+          <Button asChild className="premium-action min-h-11 rounded-xl">
             <Link href={nextAction.href}>
               {nextAction.label}
               <ArrowRight className="size-4" aria-hidden />
@@ -72,332 +74,193 @@ export default async function AnalysePage() {
         }
       />
 
-      <MobileAnalyseOverview data={data} nextAction={nextAction} />
+      <div>
+        {data.totalShots === 0 ? (
+          <AppEmptyState
+            icon={<Database className="size-6" aria-hidden />}
+            title="Import measured evidence to start analysis"
+            description="Analysis, comparisons and coaching recommendations stay unavailable until a trusted launch-monitor session is present."
+            primaryAction={
+              <Button asChild>
+                <Link href="/import">Import a session</Link>
+              </Button>
+            }
+            secondaryAction={
+              <Button asChild variant="outline">
+                <Link href="/providers">Connect a provider</Link>
+              </Button>
+            }
+          />
+        ) : (
+          <Tabs defaultValue="overview" className="grid min-w-0 gap-5" data-analyse-workspace-tabs>
+            <TabsList variant="line" aria-label="Analyse workspace">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="compare">Compare</TabsTrigger>
+              <TabsTrigger value="shots">Shots</TabsTrigger>
+              <TabsTrigger value="conditions">Conditions</TabsTrigger>
+              <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
+            </TabsList>
 
-      <div className="hidden lg:block">
-        <Tabs defaultValue="overview" className="grid min-w-0 gap-5" data-analyse-workspace-tabs>
-          <TabsList variant="line" aria-label="Analyse workspace">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="compare">Compare</TabsTrigger>
-            <TabsTrigger value="shots">Shots</TabsTrigger>
-            <TabsTrigger value="conditions">Conditions</TabsTrigger>
-            <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="grid min-w-0 gap-5">
-            <Card className="premium-card overflow-hidden">
-              <CardHeader className="border-b border-border/70 pb-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-primary">Primary insight</p>
-                    <CardTitle className="mt-1 text-2xl tracking-tight">
-                      {confidenceHeadline(data.confidence.label)}
-                    </CardTitle>
+            <TabsContent value="overview" className="grid min-w-0 gap-5">
+              <Card className="premium-card overflow-hidden">
+                <CardHeader className="border-b border-border/70 pb-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-primary">Primary insight</p>
+                      <CardTitle className="mt-1 text-2xl tracking-tight">
+                        {confidenceHeadline(data.confidence.label)}
+                      </CardTitle>
+                    </div>
+                    <ConfidenceBadge confidence={data.confidence.label} />
                   </div>
-                  <ConfidenceBadge confidence={data.confidence.label} />
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
-                <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-                  {confidenceExplanation(data.confidence.label)}
-                </p>
-                <AnalyseProvenancePanel
-                  trustedShots={data.trustedShots}
-                  sessions={data.sessionCount}
-                  activeClubs={data.clubCount}
-                  excludedShots={data.excludedShots}
-                  dateRange={data.dateRange}
-                  explanation={confidenceExplanation(data.confidence.label)}
-                />
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
+                  <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+                    {confidenceExplanation(data.confidence.label)}
+                  </p>
+                  <AnalyseProvenancePanel
+                    trustedShots={data.trustedShots}
+                    sessions={data.sessionCount}
+                    activeClubs={data.clubCount}
+                    excludedShots={data.excludedShots}
+                    dateRange={data.dateRange}
+                    explanation={confidenceExplanation(data.confidence.label)}
+                  />
+                </CardContent>
+              </Card>
 
-            <ConnectedMetricBar
-              label="Analyse evidence coverage"
-              metrics={[
-                {
-                  label: "Trusted shots",
-                  value: data.trustedShots.toLocaleString("en-GB"),
-                  detail: data.dateRange,
-                },
-                {
-                  label: "Sessions",
-                  value: data.sessionCount.toLocaleString("en-GB"),
-                  detail: "Measured session history",
-                },
-                {
-                  label: "Active clubs",
-                  value: data.clubCount.toLocaleString("en-GB"),
-                  detail: "Coverage in the active bag",
-                },
-              ]}
-            />
+              <ConnectedMetricBar
+                label="Analyse evidence coverage"
+                metrics={[
+                  {
+                    label: "Trusted shots",
+                    value: data.trustedShots.toLocaleString("en-GB"),
+                    detail: data.dateRange,
+                  },
+                  {
+                    label: "Sessions",
+                    value: data.sessionCount.toLocaleString("en-GB"),
+                    detail: "Measured session history",
+                  },
+                  {
+                    label: "Active clubs",
+                    value: data.clubCount.toLocaleString("en-GB"),
+                    detail: "Coverage in the active bag",
+                  },
+                ]}
+              />
 
-            <Alert className="border-amber-200 bg-amber-50/60 px-4 py-3 text-amber-950">
-              <ShieldCheck className="size-5" aria-hidden />
-              <AlertTitle>Data health</AlertTitle>
-              <AlertDescription className="text-amber-900">
-                {data.excludedShots > 0
-                  ? `${data.excludedShots} shot${data.excludedShots === 1 ? " is" : "s are"} excluded from trusted record evidence by quality, category or source rules.`
-                  : data.totalShots > 0
-                    ? "No current shots are excluded by the trusted-record rules."
-                    : "No launch-monitor evidence has been imported yet."}
-              </AlertDescription>
-            </Alert>
+              <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-[var(--status-warning-foreground)]">
+                <ShieldCheck className="size-5" aria-hidden />
+                <AlertTitle>Data health</AlertTitle>
+                <AlertDescription>
+                  {data.excludedShots > 0
+                    ? `${data.excludedShots} shot${data.excludedShots === 1 ? " is" : "s are"} excluded from trusted record evidence by quality, category or source rules.`
+                    : data.totalShots > 0
+                      ? "No current shots are excluded by the trusted-record rules."
+                      : "No launch-monitor evidence has been imported yet."}
+                </AlertDescription>
+              </Alert>
 
-            <RecommendedAction
-              title={nextAction.label}
-              detail={nextAction.detail}
-              href={nextAction.href}
-              actionLabel={nextAction.label}
-            />
-          </TabsContent>
+              <RecommendedAction
+                title={nextAction.label}
+                detail={nextAction.detail}
+                href={nextAction.href}
+                actionLabel={nextAction.label}
+              />
+            </TabsContent>
 
-          <TabsContent value="compare">
-            <AnalyseDestinationList
-              title="Compare performance"
-              items={[
-                {
-                  icon: BarChart3,
-                  title: "Compare sessions and periods",
-                  detail: "Use matched evidence and sample confidence before accepting a change.",
-                  href: "/analyse/compare",
-                },
-                {
-                  icon: TrendingUp,
-                  title: "Review long-term progress",
-                  detail: "Separate performance, consistency and volume from one another.",
-                  href: "/progress",
-                },
-              ]}
-            />
-          </TabsContent>
+            <TabsContent value="compare">
+              <AnalyseDestinationList
+                title="Compare performance"
+                items={[
+                  {
+                    icon: BarChart3,
+                    title: "Compare sessions and periods",
+                    detail: "Use matched evidence and sample confidence before accepting a change.",
+                    href: "/analyse/compare",
+                  },
+                  {
+                    icon: TrendingUp,
+                    title: "Review long-term progress",
+                    detail: "Separate performance, consistency and volume from one another.",
+                    href: "/progress",
+                  },
+                  {
+                    icon: Target,
+                    title: "Build a practice plan",
+                    detail: "Turn the comparison evidence into one measured practice action.",
+                    href: "/practice",
+                  },
+                ]}
+              />
+            </TabsContent>
 
-          <TabsContent value="shots">
-            <AnalyseDestinationList
-              title="Inspect measured shots"
-              items={[
-                {
-                  icon: Target,
-                  title: "Open Shot Explorer",
-                  detail: "Filter dispersion, direction and shot outcomes at row level.",
-                  href: "/shots",
-                },
-                {
-                  icon: ShieldCheck,
-                  title: "Review club confidence",
-                  detail: `${confidenceDisplayLabel(data.confidence.label)} across ${data.clubCount} active clubs.`,
-                  href: "/bag",
-                },
-              ]}
-            />
-          </TabsContent>
+            <TabsContent value="shots">
+              <AnalyseDestinationList
+                title="Inspect measured shots"
+                items={[
+                  {
+                    icon: Target,
+                    title: "Open Shot Explorer",
+                    detail: "Filter dispersion, direction and shot outcomes at row level.",
+                    href: "/shots",
+                  },
+                  {
+                    icon: ShieldCheck,
+                    title: "Review club confidence",
+                    detail: `${confidenceDisplayLabel(data.confidence.label)} across ${data.clubCount} active clubs.`,
+                    href: "/bag",
+                  },
+                ]}
+              />
+            </TabsContent>
 
-          <TabsContent value="conditions">
-            <AnalyseDestinationList
-              title="Compare conditions"
-              items={[
-                {
-                  icon: CloudSun,
-                  title: "Open condition analysis",
-                  detail:
-                    "Keep venue, weather, surface and ball samples separate before accepting a carry difference.",
-                  href: "/analyse/conditions",
-                },
-              ]}
-            />
-          </TabsContent>
+            <TabsContent value="conditions">
+              <AnalyseDestinationList
+                title="Compare conditions"
+                items={[
+                  {
+                    icon: CloudSun,
+                    title: "Open condition analysis",
+                    detail:
+                      "Keep venue, weather, surface and ball samples separate before accepting a carry difference.",
+                    href: "/analyse/conditions",
+                  },
+                ]}
+              />
+            </TabsContent>
 
-          <TabsContent value="data-quality" className="grid gap-5">
-            <AppCommandContentTrigger label="Search data-quality actions" className="max-w-md" />
-            <AnalyseDestinationList
-              title="Manage analysis evidence"
-              items={[
-                {
-                  icon: Database,
-                  title: "Open analysis workspace",
-                  detail: "Fix data issues, add context and preserve point-in-time snapshots.",
-                  href: "/analyse/workspace",
-                },
-                {
-                  icon: Target,
-                  title: "Test session impact",
-                  detail: "See whether one shot or trust filter is changing the story.",
-                  href: "/analyse/session-impact",
-                },
-                {
-                  icon: Brain,
-                  title: "Build the next practice action",
-                  detail: "Turn the measured weakness into a success threshold.",
-                  href: "/coach",
-                },
-              ]}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="data-quality" className="grid gap-5">
+              <AppCommandContentTrigger label="Search data-quality actions" className="max-w-md" />
+              <AnalyseDestinationList
+                title="Manage analysis evidence"
+                items={[
+                  {
+                    icon: Database,
+                    title: "Open analysis workspace",
+                    detail: "Fix data issues, add context and preserve point-in-time snapshots.",
+                    href: "/analyse/workspace",
+                  },
+                  {
+                    icon: Target,
+                    title: "Test session impact",
+                    detail: "See whether one shot or trust filter is changing the story.",
+                    href: "/analyse/session-impact",
+                  },
+                  {
+                    icon: Brain,
+                    title: "Build the next practice action",
+                    detail: "Turn the measured weakness into a success threshold.",
+                    href: "/coach",
+                  },
+                ]}
+              />
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
     </PageShell>
-  );
-}
-
-function MobileAnalyseOverview({
-  data,
-  nextAction,
-}: {
-  data: Awaited<ReturnType<typeof getAnalyseOverview>>;
-  nextAction: { href: string; label: string; detail: string };
-}) {
-  const questions = [
-    {
-      icon: TrendingUp,
-      label: "What is improving?",
-      detail: "Performance, consistency and volume trends",
-      value: "Progress",
-      href: "/progress",
-    },
-    {
-      icon: BarChart3,
-      label: "What is getting worse?",
-      detail: "Compare matched sessions before accepting a decline",
-      value: "Compare",
-      href: "/analyse/compare",
-    },
-    {
-      icon: Target,
-      label: "Which pattern costs the most?",
-      detail: "Inspect dispersion, direction and shot outcomes",
-      value: "Shots",
-      href: "/shots",
-    },
-    {
-      icon: ShieldCheck,
-      label: "How confident is the system?",
-      detail: `${data.sessionCount} session${data.sessionCount === 1 ? "" : "s"} · ${data.trustedShots} trusted shots`,
-      value: confidenceDisplayLabel(data.confidence.label),
-      href: "/bag",
-    },
-    {
-      icon: Brain,
-      label: "What should I practise next?",
-      detail: "Turn the measured weakness into a success threshold",
-      value: "Coach",
-      href: "/coach",
-    },
-    {
-      icon: CloudSun,
-      label: "Do conditions change the result?",
-      detail: "Keep venue, weather, surface and ball samples separate",
-      value: "Conditions",
-      href: "/analyse/conditions",
-    },
-  ];
-
-  return (
-    <div className="grid min-w-0 gap-4 lg:hidden">
-      <section className="ios-grouped-list min-w-0 overflow-hidden px-4 py-4">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-primary">Primary insight</p>
-            <h2 className="mt-1 text-balance text-xl font-semibold tracking-tight">
-              {confidenceHeadline(data.confidence.label)}
-            </h2>
-          </div>
-          <IOSInlineStatus
-            label={confidenceDisplayLabel(data.confidence.label)}
-            tone={data.confidence.label === "early" ? "attention" : "positive"}
-            className="shrink-0"
-          />
-        </div>
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">{nextAction.detail}</p>
-        <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
-          <Link href={nextAction.href}>
-            {nextAction.label}
-            <ArrowRight className="size-4" aria-hidden />
-          </Link>
-        </Button>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-analysis-evidence">
-        <IOSSectionHeader
-          title={<span id="mobile-analysis-evidence">Evidence coverage</span>}
-          description="The numbers supporting the current analysis."
-        />
-        <IOSGroupedList>
-          <IOSMetricRow
-            label="Trusted shots"
-            value={data.trustedShots.toLocaleString("en-GB")}
-            detail={data.dateRange}
-          />
-          <IOSMetricRow
-            label="Sessions"
-            value={data.sessionCount.toLocaleString("en-GB")}
-            detail="Measured session history"
-          />
-          <IOSMetricRow
-            label="Active clubs"
-            value={data.clubCount.toLocaleString("en-GB")}
-            detail="Clubs with evidence in the active bag"
-          />
-          <IOSListRow
-            icon={ShieldCheck}
-            label="Data health"
-            detail={
-              data.totalShots > 0
-                ? "Review quality, category and source rules"
-                : "Import measured data to begin analysis"
-            }
-            status={
-              <IOSInlineStatus
-                label={
-                  data.excludedShots > 0
-                    ? `${data.excludedShots} excluded · review`
-                    : "Evidence checked"
-                }
-                tone={data.excludedShots > 0 ? "attention" : "positive"}
-              />
-            }
-            href="/analyse/workspace"
-          />
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-analysis-questions">
-        <IOSSectionHeader
-          title={<span id="mobile-analysis-questions">Choose a question</span>}
-          description="Open only the evidence needed for the decision."
-        />
-        <IOSGroupedList>
-          {questions.map((question) => (
-            <IOSListRow key={question.href} {...question} />
-          ))}
-          <IOSListRow
-            icon={ClipboardCheck}
-            label="Where is the next action?"
-            detail={nextAction.detail}
-            value="Practice"
-            href="/practice"
-          />
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-analysis-tools">
-        <IOSSectionHeader title={<span id="mobile-analysis-tools">Evidence tools</span>} />
-        <IOSGroupedList>
-          <IOSListRow
-            icon={Database}
-            label="Analysis workspace"
-            detail="Fix data issues, add context and preserve snapshots"
-            href="/analyse/workspace"
-          />
-          <IOSListRow
-            icon={Target}
-            label="Session impact"
-            detail="Test how filters or one shot change the result"
-            href="/analyse/session-impact"
-          />
-        </IOSGroupedList>
-      </section>
-    </div>
   );
 }
 
@@ -500,11 +363,9 @@ function confidenceHeadline(confidence: AnalysisConfidenceLabel) {
 
 function ConfidenceBadge({ confidence }: { confidence: AnalysisConfidenceLabel }) {
   return (
-    <StatusPill
-      tone={confidence === "early" ? "amber" : confidence === "developing" ? "sky" : "green"}
-    >
+    <Badge variant={confidence === "early" ? "outline" : "secondary"}>
       {confidenceDisplayLabel(confidence)}
-    </StatusPill>
+    </Badge>
   );
 }
 
@@ -516,28 +377,27 @@ function AnalyseDestinationList({
   items: Array<{ icon: typeof Database; title: string; detail: string; href: string }>;
 }) {
   return (
-    <section
-      className="overflow-hidden rounded-xl border bg-card"
-      aria-labelledby={`analyse-${title}`}
-    >
-      <div className="border-b px-4 py-3">
+    <section className="grid gap-3" aria-labelledby={`analyse-${title}`}>
+      <div>
         <h2 id={`analyse-${title}`} className="font-semibold">
           {title}
         </h2>
       </div>
-      <nav aria-label={title}>
+      <nav aria-label={title} className="grid gap-2">
         {items.map(({ icon: Icon, title: itemTitle, detail, href }) => (
-          <Link
-            key={href}
-            href={href}
-            className="focus-aaa flex min-h-16 items-center gap-3 border-b px-4 py-3 outline-none last:border-b-0 hover:bg-muted/40"
-          >
-            <Icon className="size-5 shrink-0 text-primary" aria-hidden />
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold">{itemTitle}</span>
-              <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">{detail}</span>
-            </span>
-            <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <Link key={href} href={href} className="focus-aaa block rounded-xl outline-none">
+            <Item className="min-h-16 hover:bg-muted/40">
+              <ItemMedia>
+                <Icon className="size-5 text-primary" aria-hidden />
+              </ItemMedia>
+              <ItemContent>
+                <ItemTitle>{itemTitle}</ItemTitle>
+                <ItemDescription className="whitespace-normal">{detail}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
+              </ItemActions>
+            </Item>
           </Link>
         ))}
       </nav>

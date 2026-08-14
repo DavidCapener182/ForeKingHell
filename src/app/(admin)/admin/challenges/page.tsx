@@ -4,12 +4,11 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Flag, ListChecks, Target, Trophy } fro
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
-  AdminMobileShell,
   AdminNav,
   AdminPageHeader,
   AdminSection,
@@ -18,18 +17,20 @@ import {
   StatusBadge,
 } from "@/app/admin/admin-components";
 import { AdminChallengeActions } from "@/app/admin/admin-challenge-actions";
-import { MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getAdminChallengesData } from "@/lib/admin";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -104,31 +105,12 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
   const openChallenges = data.challenges.filter((challenge) => challenge.status === "open");
   const totalEntries = data.challenges.reduce((sum, challenge) => sum + challenge.entryCount, 0);
   const totalAttempts = data.challenges.reduce((sum, challenge) => sum + challenge.attemptCount, 0);
-  const mobileView = parseAdminChallengeMobileView(params?.view);
-  const mobileChallenges = sortedChallenges.filter((challenge) => {
-    if (mobileView === "open") return challenge.status === "open";
-    if (mobileView === "scheduled") return challenge.status === "scheduled";
-    return true;
-  });
 
   return (
     <PageShell>
-      <AdminMobileShell title="Challenges" active="/admin/challenges">
-        <AdminMobileChallenges
-          data={data}
-          challenges={mobileChallenges}
-          mobileView={mobileView}
-          openCount={openChallenges.length}
-          totalEntries={totalEntries}
-          totalAttempts={totalAttempts}
-        />
-      </AdminMobileShell>
+      <AdminNav active="/admin/challenges" />
 
-      <div className="hidden lg:block">
-        <AdminNav active="/admin/challenges" />
-      </div>
-
-      <DesktopWorkbenchLayout scope="admin-challenges" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="admin-challenges">
         <AdminPageHeader
           eyebrow="Admin challenges"
           title="Challenges and tournaments"
@@ -170,7 +152,7 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
           >
             <div className="grid gap-2">
               {data.templates.map((template) => (
-                <div key={template.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                <div key={template.id} className="rounded-xl bg-muted/55 px-3 py-2 text-sm">
                   <p className="font-medium">{template.name}</p>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                     {template.description ?? "No description"}
@@ -210,22 +192,22 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
                 stickyFirstColumn
                 className="overflow-x-auto"
               >
-                <table
+                <Table
                   className="w-full min-w-[860px] text-left text-sm"
                   data-workbench-scope="admin-challenges"
                   data-workbench-export-table="admin-challenges"
                   aria-describedby="admin-challenges-table-summary"
                 >
-                  <caption id="admin-challenges-table-summary" className="sr-only">
+                  <TableCaption id="admin-challenges-table-summary" className="sr-only">
                     Admin challenge boards with owner, status, participation, end date and action.
-                  </caption>
-                  <thead className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                    <tr>
+                  </TableCaption>
+                  <TableHeader className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                    <TableRow>
                       <SortableAdminChallengeHead
                         columnId="challenge"
                         metric="challenge"
                         sortState={sortState}
-                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       />
                       <SortableAdminChallengeHead
                         columnId="owner"
@@ -247,64 +229,87 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
                         metric="ends"
                         sortState={sortState}
                       />
-                      <th data-column="action" className="px-3 py-2 font-medium">
+                      <TableHead data-column="action" className="px-3 py-2 font-medium">
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedChallenges.map((challenge) => (
-                      <tr
-                        key={challenge.id}
-                        tabIndex={0}
-                        className="focus-aaa border-b outline-none last:border-b-0"
-                      >
-                        <td
-                          data-column="challenge"
-                          className="sticky left-0 z-10 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedChallenges.length > 0 ? (
+                      sortedChallenges.map((challenge) => (
+                        <TableRow
+                          key={challenge.id}
+                          tabIndex={0}
+                          className="focus-aaa border-b outline-none last:border-b-0"
                         >
-                          <p className="font-medium">{challenge.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {challenge.templateName}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <Badge variant="outline">{label(challenge.visibility)}</Badge>
-                          </div>
-                        </td>
-                        <td data-column="owner" className="px-3 py-3">
-                          <p className="font-medium">{challenge.creatorDisplayName}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {challenge.creatorEmail ?? "No email"}
-                          </p>
-                        </td>
-                        <td data-column="status" className="px-3 py-3">
-                          <StatusBadge status={challenge.status} />
-                        </td>
-                        <td data-column="participation" className="px-3 py-3 text-muted-foreground">
-                          {challenge.entryCount} entries · {challenge.attemptCount} attempts ·{" "}
-                          {challenge.resultCount} results
-                        </td>
-                        <td data-column="ends" className="px-3 py-3 text-xs text-muted-foreground">
-                          {formatDateTime(challenge.endsAt)}
-                        </td>
-                        <td data-column="action" className="px-3 py-3">
-                          <AdminChallengeActions
-                            challenge={{
-                              id: challenge.id,
-                              title: challenge.title,
-                              templateName: challenge.templateName,
-                              status: challenge.status,
-                              visibility: challenge.visibility,
-                              owner: challenge.creatorDisplayName,
-                              participation: `${challenge.entryCount} entries · ${challenge.attemptCount} attempts · ${challenge.resultCount} results`,
-                              endsLabel: formatDateTime(challenge.endsAt),
-                            }}
+                          <TableCell
+                            data-column="challenge"
+                            className="sticky left-0 z-10 bg-card px-3 py-3 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                          >
+                            <p className="font-medium">{challenge.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {challenge.templateName}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <Badge variant="outline">{label(challenge.visibility)}</Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell data-column="owner" className="px-3 py-3">
+                            <p className="font-medium">{challenge.creatorDisplayName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {challenge.creatorEmail ?? "No email"}
+                            </p>
+                          </TableCell>
+                          <TableCell data-column="status" className="px-3 py-3">
+                            <StatusBadge status={challenge.status} />
+                          </TableCell>
+                          <TableCell
+                            data-column="participation"
+                            className="px-3 py-3 text-muted-foreground"
+                          >
+                            {challenge.entryCount} entries · {challenge.attemptCount} attempts ·{" "}
+                            {challenge.resultCount} results
+                          </TableCell>
+                          <TableCell
+                            data-column="ends"
+                            className="px-3 py-3 text-xs text-muted-foreground"
+                          >
+                            {formatDateTime(challenge.endsAt)}
+                          </TableCell>
+                          <TableCell data-column="action" className="px-3 py-3">
+                            <AdminChallengeActions
+                              challenge={{
+                                id: challenge.id,
+                                title: challenge.title,
+                                templateName: challenge.templateName,
+                                status: challenge.status,
+                                visibility: challenge.visibility,
+                                owner: challenge.creatorDisplayName,
+                                participation: `${challenge.entryCount} entries · ${challenge.attemptCount} attempts · ${challenge.resultCount} results`,
+                                endsLabel: formatDateTime(challenge.endsAt),
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="p-4">
+                          <AppEmptyState
+                            icon={<Target className="size-5" />}
+                            title="No challenge boards in this view"
+                            description="Change the status view or open the participant challenge centre."
+                            primaryAction={
+                              <Button asChild variant="outline" size="sm">
+                                <Link href="/challenges">Open challenges</Link>
+                              </Button>
+                            }
                           />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </DataTableFrame>
             </div>
           </AdminSection>
@@ -312,143 +317,6 @@ export default async function AdminChallengesPage({ searchParams }: AdminChallen
       </DesktopWorkbenchLayout>
     </PageShell>
   );
-}
-
-type AdminChallengeMobileView = "open" | "scheduled" | "all";
-
-function AdminMobileChallenges({
-  data,
-  challenges,
-  mobileView,
-  openCount,
-  totalEntries,
-  totalAttempts,
-}: {
-  data: AdminChallengesData;
-  challenges: AdminChallengeBoard[];
-  mobileView: AdminChallengeMobileView;
-  openCount: number;
-  totalEntries: number;
-  totalAttempts: number;
-}) {
-  const primaryChallenges = challenges.slice(0, 12);
-  const olderChallenges = challenges.slice(12);
-
-  return (
-    <>
-      <MobileStatusAction
-        label="Open boards"
-        value={openCount}
-        detail={`${totalEntries} entries · ${totalAttempts} submitted attempts`}
-        action={
-          <Button asChild className="min-h-11">
-            <Link href="/challenges">Public view</Link>
-          </Button>
-        }
-      />
-
-      <MobileTabBar
-        activeKey={mobileView}
-        ariaLabel="Filter admin challenges"
-        tabs={[
-          { key: "open", label: "Open", href: "/admin/challenges?view=open" },
-          { key: "scheduled", label: "Scheduled", href: "/admin/challenges?view=scheduled" },
-          { key: "all", label: "All", href: "/admin/challenges?view=all" },
-        ]}
-      />
-
-      <section className="grid gap-2" aria-label="Admin challenge boards">
-        <IOSSectionHeader
-          title="Challenge boards"
-          description={`${challenges.length} ${mobileView} ${challenges.length === 1 ? "board" : "boards"}`}
-        />
-        <MobileAdminChallengeRows challenges={primaryChallenges} />
-        {olderChallenges.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More challenge boards"
-            items={[
-              {
-                value: "more-challenge-boards",
-                title: "More challenge boards",
-                summary: olderChallenges.length,
-                description: "Additional boards in this filter",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobileAdminChallengeRows challenges={olderChallenges} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-
-      <IOSDisclosureGroup
-        label="Challenge templates"
-        items={[
-          {
-            value: "challenge-templates",
-            title: "Templates",
-            summary: data.templates.length,
-            description: "Seeded formats available for new boards",
-            contentClassName: "px-0 pb-0 pt-0",
-            content: (
-              <IOSGroupedList label="Challenge template rows" className="border-0">
-                {data.templates.length > 0 ? (
-                  data.templates.map((template) => (
-                    <IOSListRow
-                      key={template.id}
-                      label={template.name}
-                      value={label(template.challengeType)}
-                      detail={template.description ?? "No description supplied"}
-                    />
-                  ))
-                ) : (
-                  <IOSListRow
-                    label="No templates"
-                    detail="Challenge formats will appear after they are configured."
-                  />
-                )}
-              </IOSGroupedList>
-            ),
-          },
-        ]}
-      />
-    </>
-  );
-}
-
-function MobileAdminChallengeRows({ challenges }: { challenges: AdminChallengeBoard[] }) {
-  return (
-    <IOSGroupedList label="Admin challenge board rows">
-      {challenges.length > 0 ? (
-        challenges.map((challenge) => (
-          <IOSListRow
-            key={challenge.id}
-            label={challenge.title}
-            value={challenge.entryCount}
-            detail={`${challenge.templateName} · ${challenge.creatorDisplayName} · ends ${formatDateTime(challenge.endsAt)}`}
-            href={`/challenges/${challenge.id}`}
-            status={
-              <IOSInlineStatus
-                label={`${label(challenge.status)} · ${challenge.attemptCount} attempts · ${challenge.resultCount} results`}
-                tone={
-                  challenge.status === "open"
-                    ? "positive"
-                    : challenge.status === "scheduled"
-                      ? "info"
-                      : "neutral"
-                }
-              />
-            }
-          />
-        ))
-      ) : (
-        <IOSListRow label="No challenge boards" detail="No boards match this status filter." />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function parseAdminChallengeMobileView(value: string | undefined): AdminChallengeMobileView {
-  return value === "scheduled" || value === "all" ? value : "open";
 }
 
 function SortableAdminChallengeHead({
@@ -465,13 +333,13 @@ function SortableAdminChallengeHead({
   const active = sortState.metric === metric;
 
   return (
-    <th
+    <TableHead
       data-column={columnId}
       className={["px-3 py-2 font-medium", className].filter(Boolean).join(" ")}
       aria-sort={active ? adminChallengeSortAriaValue(sortState.dir) : "none"}
     >
       <SortableAdminChallengeHeadLink metric={metric} sortState={sortState} />
-    </th>
+    </TableHead>
   );
 }
 
@@ -498,7 +366,7 @@ function SortableAdminChallengeHeadLink({
       aria-label={`Sort admin challenges by ${label}, ${adminChallengeSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </a>
   );
 }

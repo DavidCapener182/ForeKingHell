@@ -8,17 +8,26 @@ const source = readFileSync(
 );
 
 describe("course record detail desktop board", () => {
-  it("keeps the native detail active through tablet widths with global back navigation", () => {
-    const mobileSource = source.slice(
-      source.indexOf("<MobileAppShell>"),
-      source.indexOf("</MobileAppShell>"),
-    );
+  it("keeps the desktop-only detail free of its obsolete mobile board", () => {
+    for (const obsoleteSymbol of [
+      "BottomSheet",
+      "CompactLeaderboard",
+      "MobileAppShell",
+      "MobileStatusAction",
+      "MobileTabBar",
+      "MobileTopBar",
+      "NativeListSection",
+      "ProofBadge",
+      "parseRecordDetailTab",
+    ]) {
+      expect(source).not.toContain(obsoleteSymbol);
+    }
 
-    expect(mobileSource).toContain("<MobileTopBar");
-    expect(mobileSource).not.toContain("<ArrowLeft");
-    expect(mobileSource).not.toContain("leading=");
-    expect(source).toContain('className="hidden lg:grid"');
-    expect(source).not.toContain('scope="course-record-detail" className="hidden sm:grid"');
+    expect(source).not.toContain("@/components/mobile-sports");
+    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="course-record-detail">');
+    expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
+    expect(source).not.toMatch(/#[0-9a-f]{6}/i);
   });
 
   it("keeps the verified leaderboard table exportable, captioned and keyboard-focusable", () => {

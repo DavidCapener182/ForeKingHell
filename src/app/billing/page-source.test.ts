@@ -34,26 +34,39 @@ describe("billing desktop plan limits ledger", () => {
     expect(source).not.toContain("rail={");
   });
 
-  it("puts the current membership and entitlements before collapsed plan comparisons on mobile", () => {
-    const currentPlan = source.indexOf('aria-label="Current membership"');
-    const includedAccess = source.indexOf('title="Included access"');
-    const comparePlans = source.indexOf('title="Compare plans"');
-
-    expect(currentPlan).toBeGreaterThan(0);
-    expect(includedAccess).toBeGreaterThan(currentPlan);
-    expect(comparePlans).toBeGreaterThan(includedAccess);
-    expect(source).toContain("IOSGroupedList");
-    expect(source).toContain("IOSDisclosureGroup");
-    expect(source).toContain("activePlanLimits");
-    expect(source).toContain("primaryActivePlanLimits");
-    expect(source).toContain('title: "All plan entitlements"');
-    expect(source).toContain("hidden lg:contents");
+  it("excludes the obsolete companion membership graph from the desktop-only route", () => {
+    for (const obsolete of [
+      "MobileAppShell",
+      "IOSGroupedList",
+      "IOSDisclosureGroup",
+      "activePlanLimits",
+      "primaryActivePlanLimits",
+      "getRequestAppSurface",
+      'surface === "companion"',
+      "hidden lg:contents",
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
+    expect(source).toContain('<DesktopWorkbenchLayout scope="billing">');
   });
 
-  it("keeps mobile checkout controls at a practical touch size", () => {
+  it("keeps checkout controls at a practical touch size", () => {
     expect(source).toContain('<Select name="interval"');
     expect(source).toContain('className="min-h-11 w-full"');
     expect(source).toContain('className="min-h-11"');
     expect(source).not.toContain("ready for desktop review");
+  });
+
+  it("routes every cancellation or downgrade handoff through the AlertDialog", () => {
+    const dialog = readFileSync(
+      join(process.cwd(), "src/app/billing/billing-manage-dialog.tsx"),
+      "utf8",
+    );
+
+    expect(source.match(/<BillingManageDialog/g)).toHaveLength(1);
+    expect(source).not.toContain("<form action={openCustomerPortalAction}");
+    expect(dialog).toContain("<AlertDialog>");
+    expect(dialog).toContain("downgrade, cancel at period end");
+    expect(dialog).toContain("No plan changes happen until you confirm them there");
   });
 });

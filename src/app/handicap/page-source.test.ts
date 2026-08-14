@@ -5,12 +5,27 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/handicap/page.tsx"), "utf8");
 
 describe("handicap desktop score differential table", () => {
+  it("branches companion and workbench trees at request time", () => {
+    expect(source).toContain("getRequestAppSurface()");
+    expect(source).toContain(
+      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+    );
+    expect(source).toContain('surface === "companion" ? (');
+    expect(source).toContain(
+      'surface === "workbench" && DesktopWorkbenchLayout && DesktopTableWorkbenchControls ? (',
+    );
+    expect(source).not.toMatch(
+      /import \{[^}]*Desktop(?:TableWorkbenchControls|WorkbenchLayout)[^}]*\} from "@\/components\/app\/desktop-workbench"/,
+    );
+    expect(source).not.toContain('className="hidden lg:grid"');
+  });
+
   it("keeps score differentials in a desktop workbench table", () => {
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('data-workbench-scope="handicap-rounds"');
     expect(source).toContain('data-workbench-export-table="handicap-rounds"');
     expect(source).toContain('mainTableLabel="Score differential table"');
-    expect(source).toContain('mainTableLabel="Score differential table" stickyFirstColumn');
+    expect(source).toMatch(/mainTableLabel="Score differential table"\s+stickyFirstColumn/);
     expect(source).toContain("forekinghell-handicap-score-differentials.csv");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('data-column="eligibility"');
@@ -24,6 +39,19 @@ describe("handicap desktop score differential table", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
+  });
+
+  it("keeps ordinary workbench controls and tables semantic across themes", () => {
+    const ordinarySource = source.slice(0, source.indexOf("function HandicapTrendChart"));
+    const chartSource = source.slice(source.indexOf("function HandicapTrendChart"));
+
+    expect(ordinarySource).toContain("var(--status-warning-surface)");
+    expect(ordinarySource).toContain("var(--status-success-surface)");
+    expect(ordinarySource).toContain("color-mix(in_oklab,var(--border)");
+    expect(ordinarySource).not.toMatch(
+      /(?:bg|text|border)-(?:white|slate|emerald|green|amber|orange|red|rose|sky|blue|indigo|violet|purple)(?:-\d+|\/)|bg-\[#/,
+    );
+    expect(chartSource).toContain('stroke="#22c55e"');
   });
 });
 
@@ -55,6 +83,6 @@ describe("handicap mobile information architecture", () => {
     }
     expect(mobileBlock).toContain("<HandicapTrendChart");
     expect(mobileBlock).toContain('label="Score differential history"');
-    expect(source).toContain('scope="handicap" className="hidden lg:grid"');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="handicap">');
   });
 });

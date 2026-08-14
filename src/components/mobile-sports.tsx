@@ -268,7 +268,7 @@ export function BottomSheet({
                 Complete the selected mobile action without leaving this page.
               </DrawerDescription>
             </div>
-            <MoreHorizontal className="size-5 text-[#6B7280]" aria-hidden />
+            <MoreHorizontal className="size-5 text-muted-foreground" aria-hidden />
           </DrawerHeader>
           <ScrollArea className="overflow-y-auto px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
             {children}
@@ -303,12 +303,12 @@ export function ProofBadge({
       className={cn(
         "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
         normalized === "gold"
-          ? "bg-[#C7972B]/15 text-[#7A5410]"
+          ? "bg-primary/10 text-primary"
           : normalized === "silver"
-            ? "bg-[#F5F6F4] text-[#050505]"
+            ? "bg-muted text-foreground"
             : normalized === "bronze"
-              ? "bg-orange-50 text-orange-700"
-              : "bg-[#F5F6F4] text-[#6B7280]",
+              ? "bg-accent text-accent-foreground"
+              : "bg-muted text-muted-foreground",
         className,
       )}
     >
@@ -346,39 +346,39 @@ export function ActivityCard({
   action,
 }: ActivityCardProps) {
   const content = (
-    <article className="overflow-hidden border-b border-[#E5E7EB] bg-white pb-4">
+    <article className="overflow-hidden border-b border-border bg-card pb-4">
       <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
         <div className="pt-0.5">{avatar}</div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#050505]">{actor}</p>
-          <p className="truncate text-xs text-[#6B7280]">{meta}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{actor}</p>
+          <p className="truncate text-xs text-muted-foreground">{meta}</p>
         </div>
-        {action ?? <MoreHorizontal className="size-5 text-[#6B7280]" />}
+        {action ?? <MoreHorizontal className="size-5 text-muted-foreground" />}
       </div>
       <div className="mt-3 grid gap-3">
         <div>
-          <h2 className="text-xl font-semibold leading-6 tracking-normal text-[#050505]">
+          <h2 className="text-xl font-semibold leading-6 tracking-normal text-foreground">
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 text-sm leading-5 text-[#6B7280]">{description}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
           ) : null}
         </div>
         {metric ? (
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-[#F5F6F4] px-3 py-2">
-            <div className="min-w-0 text-sm font-semibold text-[#050505]">{metric}</div>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg bg-muted px-3 py-2">
+            <div className="min-w-0 text-sm font-semibold text-foreground">{metric}</div>
             <ProofBadge tier="gold" />
           </div>
         ) : null}
         {media ? (
           <div
             data-media-container
-            className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]"
+            className="relative aspect-[16/9] overflow-hidden rounded-lg bg-muted"
           >
             {media}
           </div>
         ) : null}
-        <div className="flex items-center gap-5 text-sm font-semibold text-[#6B7280]">
+        <div className="flex items-center gap-5 text-sm font-semibold text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <ThumbsUp className="size-4" />
             Kudos{reactionCount ? ` ${reactionCount}` : ""}
@@ -427,25 +427,25 @@ export function EventHeroCard({
   joined?: ReactNode;
 }) {
   return (
-    <article className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-white">
+    <article className="overflow-hidden rounded-lg border border-border bg-card">
       {media ? (
-        <div data-media-container className="relative aspect-[16/9] overflow-hidden bg-[#F5F6F4]">
+        <div data-media-container className="relative aspect-[16/9] overflow-hidden bg-muted">
           {media}
         </div>
       ) : null}
       <div className="grid gap-3 p-3">
-        {eyebrow ? <p className="text-sm font-semibold text-[#0B7A3B]">{eyebrow}</p> : null}
+        {eyebrow ? <p className="text-sm font-semibold text-primary">{eyebrow}</p> : null}
         <div>
-          <h2 className="text-2xl font-semibold leading-7 tracking-normal text-[#050505]">
+          <h2 className="text-2xl font-semibold leading-7 tracking-normal text-foreground">
             {title}
           </h2>
           {description ? (
-            <p className="mt-1 text-sm leading-5 text-[#6B7280]">{description}</p>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
           ) : null}
         </div>
-        {meta ? <div className="text-sm text-[#6B7280]">{meta}</div> : null}
+        {meta ? <div className="text-sm text-muted-foreground">{meta}</div> : null}
         <div className="flex items-center justify-between gap-3">
-          <Button asChild className="rounded-full bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+          <Button asChild className="rounded-full">
             <Link href={href} prefetch={false}>
               {actionLabel}
               <ArrowRight className="size-4" />
@@ -479,30 +479,34 @@ export function ChallengeCard({
     <Link
       href={href}
       prefetch={false}
-      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+      className="grid gap-3 rounded-lg border border-border bg-card p-3"
     >
       {media ? (
         <div
           data-media-container
-          className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F5F6F4]"
+          className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted"
         >
           {media}
         </div>
       ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-lg font-semibold tracking-normal text-[#050505]">{title}</h3>
+          <h3 className="truncate text-lg font-semibold tracking-normal text-foreground">
+            {title}
+          </h3>
           {description ? (
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-[#6B7280]">{description}</p>
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+              {description}
+            </p>
           ) : null}
         </div>
-        <Trophy className="size-5 shrink-0 text-[#C7972B]" />
+        <Trophy className="size-5 shrink-0 text-[var(--status-warning-foreground)]" />
       </div>
-      <div className="flex flex-wrap gap-2 text-xs font-medium text-[#6B7280]">{meta}</div>
+      <div className="flex flex-wrap gap-2 text-xs font-medium text-muted-foreground">{meta}</div>
       {leader ? (
-        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm text-[#050505]">{leader}</div>
+        <div className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground">{leader}</div>
       ) : null}
-      <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#0B7A3B]">
+      <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
         {cta}
         <ArrowRight className="size-4" />
       </span>
@@ -534,30 +538,34 @@ export function CourseCard({
       {media ? (
         <div
           data-media-container
-          className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[#F5F6F4]"
+          className="relative aspect-[16/9] overflow-hidden rounded-lg bg-muted"
         >
           {media}
         </div>
       ) : null}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
-          <h2 className="truncate text-xl font-semibold tracking-normal text-[#050505]">{title}</h2>
-          {subtitle ? <p className="mt-1 truncate text-sm text-[#6B7280]">{subtitle}</p> : null}
+          <h2 className="truncate text-xl font-semibold tracking-normal text-foreground">
+            {title}
+          </h2>
+          {subtitle ? (
+            <p className="mt-1 truncate text-sm text-muted-foreground">{subtitle}</p>
+          ) : null}
         </div>
-        <span className="rounded-full bg-[#F5F6F4] px-3 py-1 text-sm font-semibold text-[#0B7A3B]">
+        <span className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-primary">
           Open
         </span>
       </div>
-      {champion ? (
-        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm">{champion}</div>
+      {champion ? <div className="rounded-lg bg-muted px-3 py-2 text-sm">{champion}</div> : null}
+      {stats ? (
+        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">{stats}</div>
       ) : null}
-      {stats ? <div className="flex flex-wrap gap-2 text-xs text-[#6B7280]">{stats}</div> : null}
     </>
   );
 
   if (actions) {
     return (
-      <article className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4">
+      <article className="grid gap-3 border-b border-border bg-card pb-4">
         <Link href={href} prefetch={false} className="grid gap-3">
           {content}
         </Link>
@@ -567,11 +575,7 @@ export function CourseCard({
   }
 
   return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="grid gap-3 border-b border-[#E5E7EB] bg-white pb-4"
-    >
+    <Link href={href} prefetch={false} className="grid gap-3 border-b border-border bg-card pb-4">
       {content}
     </Link>
   );
@@ -596,22 +600,22 @@ export function CourseRecordCard({
     <Link
       href={href}
       prefetch={false}
-      className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3"
+      className="grid gap-3 rounded-lg border border-border bg-card p-3"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0B7A3B]">{title}</p>
-          <h3 className="mt-2 truncate text-2xl font-semibold tracking-normal text-[#050505]">
+          <p className="text-sm font-semibold text-primary">{title}</p>
+          <h3 className="mt-2 truncate text-2xl font-semibold tracking-normal text-foreground">
             {champion ?? "Open board"}
           </h3>
         </div>
-        <p className="shrink-0 text-3xl font-semibold tracking-normal text-[#050505]">
+        <p className="shrink-0 text-3xl font-semibold tracking-normal text-foreground">
           {score ?? "--"}
         </p>
       </div>
       <div className="flex items-center justify-between gap-3">
         <ProofBadge tier={proof} />
-        <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#0B7A3B]">
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
           {cta}
           <ArrowRight className="size-4" />
         </span>
@@ -633,7 +637,7 @@ export function PodiumStrip({
 }) {
   if (items.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[#E5E7EB] bg-white p-4 text-sm text-[#6B7280]">
+      <div className="rounded-lg border border-dashed border-border bg-card p-4 text-sm text-muted-foreground">
         No entries yet.
       </div>
     );
@@ -646,7 +650,9 @@ export function PodiumStrip({
           key={`${item.rank}-${item.href ?? String(item.name)}`}
           className={cn(
             "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-3 py-2",
-            item.rank === 1 ? "bg-[#C7972B]/12 text-[#050505]" : "bg-[#F5F6F4] text-[#050505]",
+            item.rank === 1
+              ? "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]"
+              : "bg-muted text-foreground",
           )}
         >
           <Badge variant={item.rank === 1 ? "default" : "outline"}>#{item.rank ?? "--"}</Badge>
@@ -662,7 +668,9 @@ export function PodiumStrip({
             ) : (
               <p className="truncate text-sm font-semibold">{item.name}</p>
             )}
-            {item.detail ? <p className="truncate text-xs text-[#6B7280]">{item.detail}</p> : null}
+            {item.detail ? (
+              <p className="truncate text-xs text-muted-foreground">{item.detail}</p>
+            ) : null}
           </div>
           <p className="font-semibold">{item.value}</p>
         </div>
@@ -687,15 +695,15 @@ export function CompactLeaderboard({
   viewAllHref?: string;
 }) {
   return (
-    <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <section className="grid gap-3 rounded-lg border border-border bg-card p-3">
       {current ? (
-        <div className="rounded-lg bg-[#F5F6F4] px-3 py-2 text-sm font-semibold text-[#050505]">
+        <div className="rounded-lg bg-muted px-3 py-2 text-sm font-semibold text-foreground">
           {current}
         </div>
       ) : null}
       <PodiumStrip items={items} />
       {viewAllHref ? (
-        <Button asChild variant="outline" className="rounded-full border-[#E5E7EB]">
+        <Button asChild variant="outline" className="rounded-full">
           <Link href={viewAllHref} prefetch={false}>
             View full leaderboard
           </Link>
@@ -717,14 +725,14 @@ export function ProgressCard({
   children?: ReactNode;
 }) {
   return (
-    <article className="ios-progress-card grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3">
+    <article className="ios-progress-card grid gap-3 rounded-lg border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#6B7280]">{title}</p>
-          <p className="mt-1 text-3xl font-semibold tracking-normal text-[#050505]">{value}</p>
-          {detail ? <p className="mt-1 text-sm leading-5 text-[#6B7280]">{detail}</p> : null}
+          <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+          <p className="mt-1 text-3xl font-semibold tracking-normal text-foreground">{value}</p>
+          {detail ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p> : null}
         </div>
-        <span className="size-2 rounded-full bg-[#16A34A] ring-4 ring-[#16A34A]/15" />
+        <span className="size-2 rounded-full bg-[var(--status-success-foreground)] ring-4 ring-[var(--status-success-surface)]" />
       </div>
       {children}
     </article>
@@ -743,10 +751,10 @@ export function PBCard({
   href?: string;
 }) {
   const content = (
-    <article className="rounded-lg bg-[#F5F6F4] px-3 py-2">
-      <p className="text-xs font-semibold text-[#6B7280]">{title}</p>
-      <p className="mt-1 text-lg font-semibold tracking-normal text-[#050505]">{value}</p>
-      {detail ? <p className="mt-1 text-xs text-[#6B7280]">{detail}</p> : null}
+    <article className="rounded-lg bg-muted px-3 py-2">
+      <p className="text-xs font-semibold text-muted-foreground">{title}</p>
+      <p className="mt-1 text-lg font-semibold tracking-normal text-foreground">{value}</p>
+      {detail ? <p className="mt-1 text-xs text-muted-foreground">{detail}</p> : null}
     </article>
   );
 

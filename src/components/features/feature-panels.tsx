@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Flag,
-  ListFilter,
   Megaphone,
   Share2,
   Target,
@@ -20,14 +19,17 @@ import {
   featureCourseRecordAction,
   followCourseAction,
   saveCurrentWeeklyRecapAction,
-  saveShotViewAction,
   updateFeaturePreferencesAction,
   upsertCourseRecordGoalAction,
 } from "@/app/feature-actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import {
   Select,
   SelectContent,
@@ -115,8 +117,8 @@ function ActionInsightCard({ item, compact = false }: { item: FeatureInsight; co
     <div
       className={
         compact
-          ? "grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50/35"
-          : "grid min-h-28 gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50/35"
+          ? "grid gap-2 rounded-lg border border-border bg-card p-3 text-sm transition-colors hover:border-primary/35 hover:bg-muted/45"
+          : "grid min-h-28 gap-3 rounded-lg border border-border bg-card p-3 text-sm transition-colors hover:border-primary/35 hover:bg-muted/45"
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -154,27 +156,55 @@ export function ImportQualityFeaturePanel({
   }
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Import quality score"
-        description="Checks club mapping, duplicate files, missing metrics and event eligibility before data reaches records or coach."
-        action={
-          <StatusPill tone={data.importQuality.tone as Tone}>
+    <div className="grid gap-3" data-import-quality-feature>
+      <Alert variant={data.importQuality.tone === "pink" ? "destructive" : "default"}>
+        <ClipboardCheck className="size-4" aria-hidden />
+        <AlertTitle className="flex flex-wrap items-center gap-2">
+          Import quality
+          <Badge variant={data.importQuality.tone === "green" ? "default" : "secondary"}>
             {data.importQuality.metric}
-          </StatusPill>
-        }
+          </Badge>
+        </AlertTitle>
+        <AlertDescription>{data.importQuality.detail}</AlertDescription>
+      </Alert>
+      <ConnectedMetricBar
+        label="Import quality metrics"
+        metrics={data.importQuality.checks.slice(0, 4).map((item) => ({
+          label: item.title,
+          value: item.metric ?? "Review",
+          detail: item.detail,
+        }))}
       />
-      <MobileFeatureInsightPreview
-        items={data.importQuality.checks}
-        moreTitle="More import checks"
-        moreDescription="Mapping, duplicate and eligibility details."
-      />
-      <div className="hidden gap-3 p-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">
-        {data.importQuality.checks.map((item) => (
-          <InsightCard key={item.title} item={item} compact />
-        ))}
-      </div>
-    </DataPanel>
+      <Collapsible>
+        <CollapsibleTrigger
+          type="button"
+          className={buttonVariants({ variant: "outline", className: "w-full justify-between" })}
+        >
+          Review all quality evidence
+          <Badge variant="secondary">{data.importQuality.checks.length} checks</Badge>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="grid gap-2 pt-2" data-import-quality-evidence>
+          {data.importQuality.checks.map((item) => (
+            <Item key={item.title} variant="outline" size="sm">
+              <ItemContent>
+                <ItemTitle>{item.title}</ItemTitle>
+                <ItemDescription>{item.detail}</ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                {item.metric ? <Badge variant="secondary">{item.metric}</Badge> : null}
+                {item.href ? (
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={item.href} prefetch={false}>
+                      Open
+                    </Link>
+                  </Button>
+                ) : null}
+              </ItemActions>
+            </Item>
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 }
 
@@ -241,9 +271,9 @@ export function BagFeaturePanel({
             <InsightCard key={featureInsightKey(item, index)} item={item} compact />
           ))}
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+        <div className="rounded-lg border border-border bg-muted/35 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <Target className="size-4 text-emerald-700" />
+            <Target className="size-4 text-primary" />
             Target distance links
           </p>
           <div className="mt-3 grid gap-2">
@@ -252,17 +282,17 @@ export function BagFeaturePanel({
                 key={option.target}
                 href={option.href}
                 prefetch={false}
-                className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-200"
+                className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border"
               >
                 <span className="font-semibold tabular-nums">{option.target} yd</span>
                 <span className="truncate text-muted-foreground">{option.clubName}</span>
                 <span
                   className={
                     option.gap === null
-                      ? "text-slate-500"
+                      ? "text-muted-foreground"
                       : Math.abs(option.gap) <= 5
-                        ? "text-emerald-700"
-                        : "text-amber-700"
+                        ? "text-[var(--status-success-foreground)]"
+                        : "text-[var(--status-warning-foreground)]"
                   }
                 >
                   {option.playNumber === null ? "--" : `${option.playNumber} yd`}
@@ -277,7 +307,7 @@ export function BagFeaturePanel({
               key={club.clubId}
               href={club.href}
               prefetch={false}
-              className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+              className="rounded-lg border border-border bg-card p-3 text-sm"
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold">{club.name}</p>
@@ -315,9 +345,9 @@ export function BagFeaturePanel({
             {data.bagAlerts.slice(2, 4).map((item, index) => (
               <InsightCard key={featureInsightKey(item, index + 2)} item={item} compact />
             ))}
-            <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+            <div className="rounded-lg border border-border bg-muted/35 p-3">
               <p className="flex items-center gap-2 text-sm font-semibold">
-                <Target className="size-4 text-emerald-700" />
+                <Target className="size-4 text-primary" />
                 Target distance links
               </p>
               <div className="mt-3 grid gap-2">
@@ -326,17 +356,17 @@ export function BagFeaturePanel({
                     key={option.target}
                     href={option.href}
                     prefetch={false}
-                    className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-200"
+                    className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border"
                   >
                     <span className="font-semibold tabular-nums">{option.target} yd</span>
                     <span className="truncate text-muted-foreground">{option.clubName}</span>
                     <span
                       className={
                         option.gap === null
-                          ? "text-slate-500"
+                          ? "text-muted-foreground"
                           : Math.abs(option.gap) <= 5
-                            ? "text-emerald-700"
-                            : "text-amber-700"
+                            ? "text-[var(--status-success-foreground)]"
+                            : "text-[var(--status-warning-foreground)]"
                       }
                     >
                       {option.playNumber === null ? "--" : `${option.playNumber} yd`}
@@ -351,7 +381,7 @@ export function BagFeaturePanel({
                   key={club.clubId}
                   href={club.href}
                   prefetch={false}
-                  className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+                  className="rounded-lg border border-border bg-card p-3 text-sm"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-semibold">{club.name}</p>
@@ -370,9 +400,9 @@ export function BagFeaturePanel({
             <InsightCard key={featureInsightKey(item, index)} item={item} compact />
           ))}
         </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+        <div className="rounded-lg border border-border bg-muted/35 p-3">
           <p className="flex items-center gap-2 text-sm font-semibold">
-            <Target className="size-4 text-emerald-700" />
+            <Target className="size-4 text-primary" />
             Target distance selector
           </p>
           <div className="mt-3 grid gap-2">
@@ -381,17 +411,17 @@ export function BagFeaturePanel({
                 key={option.target}
                 href={option.href}
                 prefetch={false}
-                className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-slate-200"
+                className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-card px-3 py-2 text-sm ring-1 ring-border"
               >
                 <span className="font-semibold tabular-nums">{option.target} yd</span>
                 <span className="truncate text-muted-foreground">{option.clubName}</span>
                 <span
                   className={
                     option.gap === null
-                      ? "text-slate-500"
+                      ? "text-muted-foreground"
                       : Math.abs(option.gap) <= 5
-                        ? "text-emerald-700"
-                        : "text-amber-700"
+                        ? "text-[var(--status-success-foreground)]"
+                        : "text-[var(--status-warning-foreground)]"
                   }
                 >
                   {option.playNumber === null ? "--" : `${option.playNumber} yd`}
@@ -401,13 +431,13 @@ export function BagFeaturePanel({
           </div>
         </div>
       </div>
-      <div className="hidden gap-3 border-t border-slate-200 p-4 sm:grid md:grid-cols-2 xl:grid-cols-3">
+      <div className="hidden gap-3 border-t border-border p-4 sm:grid md:grid-cols-2 xl:grid-cols-3">
         {data.clubIdentities.slice(0, 6).map((club) => (
           <Link
             key={club.clubId}
             href={club.href}
             prefetch={false}
-            className="rounded-lg border border-slate-200 bg-white p-3 text-sm"
+            className="rounded-lg border border-border bg-card p-3 text-sm"
           >
             <div className="flex items-start justify-between gap-3">
               <p className="font-semibold">{club.name}</p>
@@ -420,89 +450,6 @@ export function BagFeaturePanel({
             </div>
           </Link>
         ))}
-      </div>
-    </DataPanel>
-  );
-}
-
-export function SavedShotViewsPanel({ data }: { data: FeatureIdeasData }) {
-  return (
-    <DataPanel>
-      <SectionHeader
-        title="Saved shot views"
-        description="Fast filters for driver misses, wedge windows, recent form and user-defined shot groups."
-        action={<StatusPill tone="sky">{data.savedViews.length} views</StatusPill>}
-      />
-      <div className="grid gap-3 p-4">
-        <div className="grid auto-rows-fr items-stretch gap-2 md:grid-cols-3">
-          {data.savedViews.map((view) => (
-            <Link
-              key={view.id}
-              href={view.href}
-              prefetch={false}
-              className="h-full rounded-lg border border-slate-200 bg-white p-3"
-            >
-              <p className="font-semibold">{view.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{view.description}</p>
-            </Link>
-          ))}
-        </div>
-        <Collapsible className="apple-panel-strong group overflow-hidden">
-          <CollapsibleTrigger className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-sm font-semibold">
-            <span>Save the current filters as a view</span>
-            <span className="text-xs font-medium text-muted-foreground group-data-[state=open]:hidden">
-              Open
-            </span>
-            <span className="hidden text-xs font-medium text-muted-foreground group-data-[state=open]:inline">
-              Close
-            </span>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <form action={saveShotViewAction} className="border-t border-border/70 p-3">
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                <Input name="name" placeholder="My tournament attempts" required />
-                <Input name="description" placeholder="What this view is for" />
-                <Select name="club" defaultValue="__all__">
-                  <SelectTrigger aria-label="Saved view club filter" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All clubs</SelectItem>
-                    {data.savedViewOptions.clubs.map((club) => (
-                      <SelectItem key={club.value} value={club.value}>
-                        {club.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select name="category" defaultValue="__all__">
-                  <SelectTrigger aria-label="Saved view category filter" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All categories</SelectItem>
-                    {data.savedViewOptions.categories.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input name="from" type="date" aria-label="Saved view start date" />
-                <Input name="to" type="date" aria-label="Saved view end date" />
-                <Input name="q" placeholder="Search term or note" />
-                <label className="flex min-h-9 items-center gap-2 rounded-md border bg-white px-3 text-sm text-muted-foreground">
-                  <Checkbox name="pinned" />
-                  Pin view
-                </label>
-              </div>
-              <Button type="submit" className="mt-3 bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                <ListFilter className="size-4" />
-                Save view
-              </Button>
-            </form>
-          </CollapsibleContent>
-        </Collapsible>
       </div>
     </DataPanel>
   );
@@ -524,7 +471,7 @@ export function CoachPracticeFeaturePanel({
     return (
       <div className="grid gap-3">
         {data.practicePlan.slice(0, 1).map((item) => (
-          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+          <div key={item.id} className="rounded-lg border border-border bg-card p-3">
             <p className="font-semibold">{item.title}</p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
             <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
@@ -533,7 +480,7 @@ export function CoachPracticeFeaturePanel({
         {top ? (
           <form
             action={completePracticeDrillAction}
-            className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3"
           >
             <input type="hidden" name="sourceId" value={top.id} />
             <input type="hidden" name="title" value={top.title} />
@@ -544,7 +491,7 @@ export function CoachPracticeFeaturePanel({
             <p className="text-sm font-semibold">Start 20-minute plan</p>
             <p className="mt-1 text-sm text-muted-foreground">{top.detail}</p>
             <Input
-              className="mt-3 bg-white"
+              className="mt-3 bg-card"
               type="number"
               min={0}
               max={200}
@@ -558,7 +505,7 @@ export function CoachPracticeFeaturePanel({
             </Button>
           </form>
         ) : null}
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <div className="rounded-lg border border-border bg-card p-3">
           <p className="text-sm font-semibold">Progress read</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <DataPair label="Coach confidence" value={data.coachConfidence.metric} />
@@ -572,7 +519,7 @@ export function CoachPracticeFeaturePanel({
         >
           <div className="grid gap-3">
             {extraPracticeItems.map((item) => (
-              <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+              <div key={item.id} className="rounded-lg border border-border bg-card p-3">
                 <p className="font-semibold">{item.title}</p>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
                 <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
@@ -599,7 +546,7 @@ export function CoachPracticeFeaturePanel({
       />
       <div className="grid gap-3 p-3 sm:hidden">
         {data.practicePlan.slice(0, 1).map((item) => (
-          <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+          <div key={item.id} className="rounded-lg border border-border bg-card p-3">
             <p className="font-semibold">{item.title}</p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
             <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
@@ -608,7 +555,7 @@ export function CoachPracticeFeaturePanel({
         {top ? (
           <form
             action={completePracticeDrillAction}
-            className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3"
           >
             <input type="hidden" name="sourceId" value={top.id} />
             <input type="hidden" name="title" value={top.title} />
@@ -619,7 +566,7 @@ export function CoachPracticeFeaturePanel({
             <p className="text-sm font-semibold">Start 20-minute plan</p>
             <p className="mt-1 text-sm text-muted-foreground">{top.detail}</p>
             <Input
-              className="mt-3 bg-white"
+              className="mt-3 bg-card"
               type="number"
               min={0}
               max={200}
@@ -640,7 +587,7 @@ export function CoachPracticeFeaturePanel({
         >
           <div className="grid gap-3">
             {data.practicePlan.slice(1).map((item) => (
-              <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+              <div key={item.id} className="rounded-lg border border-border bg-card p-3">
                 <p className="font-semibold">{item.title}</p>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
                 <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
@@ -653,7 +600,7 @@ export function CoachPracticeFeaturePanel({
       <div className="hidden gap-4 p-4 sm:grid lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-3 md:grid-cols-3">
           {data.practicePlan.map((item) => (
-            <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div key={item.id} className="rounded-lg border border-border bg-card p-3">
               <p className="font-semibold">{item.title}</p>
               <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
               <DataPair className="mt-3" label="Target" value={`${item.targetShots} shots`} />
@@ -663,7 +610,7 @@ export function CoachPracticeFeaturePanel({
         {top ? (
           <form
             action={completePracticeDrillAction}
-            className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-3"
+            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3"
           >
             <input type="hidden" name="sourceId" value={top.id} />
             <input type="hidden" name="title" value={top.title} />
@@ -674,7 +621,7 @@ export function CoachPracticeFeaturePanel({
             <p className="text-sm font-semibold">Start 20-minute plan</p>
             <p className="mt-1 text-sm text-muted-foreground">{top.detail}</p>
             <Input
-              className="mt-3 bg-white"
+              className="mt-3 bg-card"
               type="number"
               min={0}
               max={200}
@@ -689,7 +636,7 @@ export function CoachPracticeFeaturePanel({
           </form>
         ) : null}
       </div>
-      <div className="hidden border-t border-slate-200 p-4 sm:block">
+      <div className="hidden border-t border-border p-4 sm:block">
         <CoachChallengeForm data={data} />
       </div>
     </DataPanel>
@@ -714,7 +661,7 @@ export function RoundOpportunityFeaturePanel({ data }: { data: FeatureIdeasData 
           <InsightCard key={item.title} item={item} compact />
         ))}
       </div>
-      <form action={createLatestRoundRecapAction} className="border-t border-slate-200 p-4">
+      <form action={createLatestRoundRecapAction} className="border-t border-border p-4">
         <Button type="submit" variant="outline">
           <Share2 className="size-4" />
           Create latest round recap
@@ -830,7 +777,7 @@ export function CourseRecordFeaturePanel({ data }: { data: FeatureIdeasData }) {
         ))}
       </div>
       {recordId ? (
-        <div className="grid gap-2 border-t border-slate-200 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-2 border-t border-border p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
           <form
             action={upsertCourseRecordGoalAction}
             className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_10rem_auto]"
@@ -907,7 +854,7 @@ export function CourseFollowFeaturePanel({
       {courseId ? (
         <form
           action={followCourseAction}
-          className="grid gap-2 border-t border-slate-200 p-4 sm:grid-cols-[minmax(0,1fr)_8rem_8rem_auto]"
+          className="grid gap-2 border-t border-border p-4 sm:grid-cols-[minmax(0,1fr)_8rem_8rem_auto]"
         >
           <input type="hidden" name="courseId" value={courseId} />
           <Input name="alias" placeholder="Provider course alias" />
@@ -1129,12 +1076,12 @@ function HandicapCheckRow({
   check: FeatureIdeasData["handicapConfidence"]["checks"][number];
 }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+    <div className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
       <span>{check.label}</span>
       {check.done ? (
-        <CheckCircle2 className="size-4 text-emerald-700" />
+        <CheckCircle2 className="size-4 text-[var(--status-success-foreground)]" />
       ) : (
-        <span className="font-medium text-amber-700">Needed</span>
+        <span className="font-medium text-[var(--status-warning-foreground)]">Needed</span>
       )}
     </div>
   );
@@ -1142,7 +1089,7 @@ function HandicapCheckRow({
 
 function WeeklyRecapCard({ data }: { data: FeatureIdeasData }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+    <div className="rounded-lg border border-border bg-muted/35 p-3">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold">AI weekly recap</p>
         <StatusPill tone={data.weeklyRecap.generatedFrom.startsWith("openai") ? "green" : "slate"}>
@@ -1154,7 +1101,7 @@ function WeeklyRecapCard({ data }: { data: FeatureIdeasData }) {
         {data.weeklyRecap.practicePlan.slice(0, 3).map((step) => (
           <div
             key={step}
-            className="rounded-md bg-white px-2 py-1 text-muted-foreground ring-1 ring-slate-200"
+            className="rounded-md bg-card px-2 py-1 text-muted-foreground ring-1 ring-border"
           >
             {step}
           </div>
@@ -1224,7 +1171,7 @@ function SocialPreferencesForm({ data }: { data: FeatureIdeasData }) {
   return (
     <form
       action={updateFeaturePreferencesAction}
-      className="rounded-lg border border-slate-200 bg-slate-50/70 p-3"
+      className="rounded-lg border border-border bg-muted/35 p-3"
     >
       <p className="text-sm font-semibold">Auto-share toggles</p>
       <div className="mt-3 grid gap-2 text-sm">
@@ -1266,7 +1213,7 @@ function CoachChallengeForm({ data }: { data: FeatureIdeasData }) {
   return (
     <form
       action={createCoachSignalChallengeAction}
-      className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+      className="grid gap-2 rounded-lg border border-border bg-card p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
     >
       <div>
         <p className="font-semibold">Challenge template from coach signal</p>
@@ -1293,7 +1240,7 @@ function CoachChallengeForm({ data }: { data: FeatureIdeasData }) {
 
 function FeatureColumn({ title, items }: { title: string; items: FeatureInsight[] }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+    <div className="rounded-lg border border-border bg-muted/35 p-3">
       <p className="text-sm font-semibold">{title}</p>
       <div className="mt-3 grid gap-2">
         {items.map((item) => (
@@ -1306,7 +1253,7 @@ function FeatureColumn({ title, items }: { title: string; items: FeatureInsight[
 
 function InsightCard({ item, compact = false }: { item: FeatureInsight; compact?: boolean }) {
   const content = (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
+    <div className="rounded-lg border border-border bg-card p-3 text-sm">
       <div className="flex items-start justify-between gap-3">
         <p className="font-semibold">{item.title}</p>
         {item.metric ? <StatusPill tone={item.tone as Tone}>{item.metric}</StatusPill> : null}

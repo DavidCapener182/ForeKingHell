@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { CloudUpload, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
 
-import { IOSInlineStatus } from "@/components/app/ios-mobile";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { countOfflineActions, listOfflineActions } from "@/lib/offline-queue";
 
 export function CompanionSyncStatus({ accountId }: { accountId: string }) {
@@ -73,24 +76,42 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
           };
   const Icon = presentation.icon;
 
+  function retrySync() {
+    window.dispatchEvent(new Event("fkh-offline-retry-requested"));
+    window.setTimeout(refresh, 500);
+  }
+
   return (
-    <section
-      className="ios-grouped-list flex items-start gap-3 p-4"
-      role="status"
-      aria-live="polite"
-      data-companion-sync-status
-    >
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
-        <Icon className="size-5" aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <p className="text-sm font-semibold">{presentation.title}</p>
-          <IOSInlineStatus label={presentation.status} tone={presentation.tone} />
-        </div>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{presentation.detail}</p>
-      </div>
-    </section>
+    <Alert role="status" aria-live="polite" data-companion-sync-status>
+      <Icon className="size-4" aria-hidden />
+      <AlertTitle className="flex flex-wrap items-start justify-between gap-2">
+        {presentation.title}
+        <Badge variant={state.needsAttention ? "destructive" : "secondary"}>
+          {presentation.status}
+        </Badge>
+      </AlertTitle>
+      <AlertDescription className="grid gap-2">
+        <span>{presentation.detail}</span>
+        <Progress
+          value={state.needsAttention ? 100 : isOnline ? 65 : 15}
+          aria-label={`${presentation.status} upload progress`}
+          className="h-1.5"
+        />
+        {state.count > 0 ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="w-fit"
+            disabled={!isOnline}
+            onClick={retrySync}
+          >
+            <RefreshCw className="size-3.5" aria-hidden />
+            {isOnline ? "Retry sync" : "Retry when online"}
+          </Button>
+        ) : null}
+      </AlertDescription>
+    </Alert>
   );
 }
 

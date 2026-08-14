@@ -53,7 +53,7 @@ export function AdminBulkActionSubmit({
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <p
-        className="text-xs font-semibold text-amber-950"
+        className="text-xs font-semibold text-[var(--status-warning-foreground)]"
         aria-live="polite"
         data-admin-bulk-selected-count="true"
       >

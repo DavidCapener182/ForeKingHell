@@ -10,12 +10,46 @@ const courseAliasSource = readFileSync(
 );
 
 describe("tournaments desktop event board", () => {
+  it("selects one request surface before loading the desktop workbench", () => {
+    const staticWorkbenchImport =
+      source.match(
+        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
+      )?.[0] ?? "";
+
+    expect(source).toContain("getRequestAppSurface()");
+    expect(source).toContain(
+      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+    );
+    expect(source).toContain('surface === "companion" ? (');
+    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
+    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
+    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
+    expect(source).not.toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('<DesktopWorkbenchLayout scope="tournaments" className="hidden');
+  });
+
+  it("uses semantic theme and status tokens around the preserved event artwork", () => {
+    expect(source).toContain("bg-muted");
+    expect(source).toContain("bg-card");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).toContain("var(--status-information-surface)");
+    expect(source).toContain("var(--status-success-surface)");
+    expect(source).toContain('variant="tourCover"');
+    expect(source).not.toMatch(
+      /bg-white|bg-\[#|text-\[#|border-\[#|(?:bg|text|border)-(?:slate|green|emerald|amber|rose|sky)-\d+/,
+    );
+  });
+
   it("keeps the tournament hub table-first with saved views, filters and export", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');
     expect(source).toContain("TournamentHubEventTable");
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("TournamentHubFilterTabs");
+    expect(source).toContain('aria-label="Tournament board views"');
+    expect(source).toContain("<ButtonGroup");
+    expect(source).toContain('aria-current={active ? "page" : undefined}');
+    expect(source).not.toContain("<TabsTrigger");
     expect(source).toContain("filterTournamentHubEvents");
     expect(source).toContain('data-workbench-scope="tournament-events"');
     expect(source).toContain('exportTableId="tournament-events"');
@@ -52,7 +86,7 @@ describe("tournaments mobile event state", () => {
   });
 
   it("keeps desktop composition behind lg and exposes real submission evidence", () => {
-    expect(source).toContain('className="hidden lg:contents"');
+    expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden sm:contents"');
     expect(source).toContain("viewerSubmissionCount");
     expect(source).toContain("viewerVerifiedSubmissionCount");

@@ -5,23 +5,32 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/course-records/page.tsx"), "utf8");
 
 describe("course records desktop board", () => {
-  it("puts the native honours list before one-level proof and planning disclosures", () => {
-    const boards = source.indexOf('label="Course record boards"');
-    const disclosures = source.indexOf('label="Course record supporting detail"');
-    const mobileHeader = source.match(/<MobileTopBar[^>]*\/>/)?.[0] ?? "";
+  it("keeps the desktop-only hub free of the obsolete companion record board", () => {
+    for (const obsoleteSymbol of [
+      "MobileAppShell",
+      "MobileRouteTabs",
+      "MobileStatusAction",
+      "MobileTabBar",
+      "MobileTopBar",
+      "NativeListSection",
+      "IOSDisclosureGroup",
+      "IOSGroupedList",
+      "IOSInlineStatus",
+      "IOSListRow",
+    ]) {
+      expect(source).not.toContain(obsoleteSymbol);
+    }
 
-    expect(source).toContain("<IOSGroupedList");
-    expect(source).toContain("<IOSListRow");
-    expect(source).toContain('title: "Proof requirements"');
-    expect(source).toContain('title: "Plan a record attempt"');
-    expect(source).toContain('title: "Record alerts"');
-    expect(source).not.toContain("<EventHeroCard");
-    expect(source).not.toContain("<CourseRecordCard");
-    expect(source).toContain('className="hidden lg:contents"');
-    expect(mobileHeader).toBe('<MobileTopBar title="Course Records" />');
-    expect(source).not.toContain('label="Search records"');
-    expect(boards).toBeGreaterThan(-1);
-    expect(disclosures).toBeGreaterThan(boards);
+    expect(source).not.toContain("@/components/mobile-sports");
+    expect(source).not.toContain("@/components/app/ios-mobile");
+    expect(source).not.toContain('className="hidden lg:contents"');
+    expect(source).toContain("<DesktopWorkbenchLayout");
+    expect(source).toContain('scope="course-records"');
+    expect(source).toContain("<ProofChecklistPanel");
+    expect(source).toContain("<DataFirstFlowPanel");
+    expect(source).toContain("<CourseRecordFeaturePanel");
+    expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
+    expect(source).not.toMatch(/#[0-9a-f]{6}/i);
   });
 
   it("keeps a table-first desktop board with saved views, columns and export", () => {

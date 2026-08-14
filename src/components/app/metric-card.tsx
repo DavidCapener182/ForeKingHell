@@ -15,11 +15,13 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 const toneClasses = {
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  sky: "bg-sky-50 text-sky-700 ring-sky-100",
-  pink: "bg-pink-50 text-pink-700 ring-pink-100",
-  amber: "bg-amber-50 text-amber-800 ring-amber-100",
-  slate: "bg-slate-100 text-slate-700 ring-slate-200",
+  green:
+    "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-[var(--status-success-border)]",
+  sky: "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] ring-[var(--status-information-border)]",
+  pink: "bg-destructive/10 text-destructive ring-destructive/25",
+  amber:
+    "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] ring-[var(--status-warning-border)]",
+  slate: "bg-muted text-muted-foreground ring-border",
 };
 
 type AppMetricCardProps = {

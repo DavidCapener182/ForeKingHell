@@ -4,6 +4,7 @@ import { ArrowLeft, BellRing, CheckCircle2, ShieldCheck } from "lucide-react";
 import { saveNotificationPreferencesAction } from "@/app/settings/notifications/actions";
 import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -115,13 +116,10 @@ export default async function NotificationSettingsPage({
         }
       />
       {params?.saved === "1" ? (
-        <div
-          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/55 dark:text-emerald-100"
-          role="status"
-        >
+        <Alert role="status">
           <CheckCircle2 className="size-5" aria-hidden />
-          Notification preferences saved.
-        </div>
+          <AlertDescription>Notification preferences saved.</AlertDescription>
+        </Alert>
       ) : null}
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card className="border-0 bg-transparent shadow-none lg:rounded-3xl lg:border lg:border-border lg:bg-card lg:shadow-sm">

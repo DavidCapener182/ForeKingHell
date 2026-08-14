@@ -3,6 +3,14 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/progress/page.tsx"), "utf8");
+const diagnosisSource = readFileSync(
+  join(process.cwd(), "src/components/progress/distance-loss-diagnosis-panel.tsx"),
+  "utf8",
+);
+const lazyTrendSource = readFileSync(
+  join(process.cwd(), "src/components/progress/lazy-metric-trend-card.tsx"),
+  "utf8",
+);
 
 describe("progress desktop workbench source", () => {
   it("owns the multifactor distance-loss diagnosis rather than treating it as speed training", () => {
@@ -19,9 +27,6 @@ describe("progress desktop workbench source", () => {
   it("uses the optional desktop AI rail without crowding laptop workbenches", () => {
     const layoutBlock =
       source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
-    const practicePanelBlock =
-      source.match(/function PracticePlanPanel[\s\S]*?function PracticePriorityFeatureCard/)?.[0] ??
-      "";
 
     expect(layoutBlock).toContain('scope="progress"');
     expect(layoutBlock).toContain("DesktopInsightRail");
@@ -34,41 +39,53 @@ describe("progress desktop workbench source", () => {
     expect(source).toContain('label: "Explain progress trend"');
     expect(source).toContain('label: "Compare with last month"');
     expect(source).toContain('label: "Save this insight"');
-
-    expect(practicePanelBlock).toContain(
-      "min-[2400px]:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]",
-    );
-    expect(practicePanelBlock).not.toContain(
-      "xl:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]",
+    expect(source).toContain('if (surface === "companion")');
+    expect(source).toContain('await import("@/components/app/desktop-workbench")');
+    expect(source).not.toMatch(
+      /import\s*\{[^}]*DesktopWorkbenchLayout[^}]*\}\s*from\s*["']@\/components\/app\/desktop-workbench["']/,
     );
   });
 
-  it("adds saved views, column control and export to the progress bag movement table", () => {
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain("progressBagMovementSavedViews");
-    expect(source).toContain('viewKey="progress-bag-movement"');
-    expect(source).toContain('scope="progress-bag-movement"');
-    expect(source).toContain('data-workbench-scope="progress-bag-movement"');
-    expect(source).toContain('exportTableId="progress-bag-movement"');
-    expect(source).toContain('data-workbench-export-table="progress-bag-movement"');
-    expect(source).toContain('mainTableLabel="Progress bag movement table"');
-    expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-
-    for (const column of ["club", "trust", "clean-shots", "stock-carry", "movement"]) {
-      expect(source).toContain(`data-column="${column}"`);
+  it("deletes the retired desktop panel wall instead of retaining hidden implementations", () => {
+    for (const retired of [
+      "function PracticePlanPanel",
+      "function PracticePriorityFeatureCard",
+      "function CoachReadoutPanel",
+      "function TrustLadderPanel",
+    ]) {
+      expect(source).not.toContain(retired);
     }
+  });
+
+  it("preserves one flat desktop bag-movement evidence table and CSV export", () => {
+    const bagMovementBlock =
+      source.match(/async function BagMovementPanel[\s\S]*?function MovementPills/)?.[0] ?? "";
+
+    expect(source.match(/<BagMovementPanel\b/g)).toHaveLength(1);
+    expect(source.match(/data-workbench-export-table="progress-bag-movement"/g)).toHaveLength(1);
+    expect(bagMovementBlock).toContain("DesktopTableWorkbenchControls");
+    expect(bagMovementBlock).toContain("DataTableFrame");
+    expect(bagMovementBlock).toContain('exportFileName="forekinghell-progress-bag-movement.csv"');
+    expect(bagMovementBlock).toContain('data-column="trust"');
+    expect(bagMovementBlock).toContain('data-column="clean-shots"');
+    expect(bagMovementBlock).toContain('data-column="stock-carry"');
+    expect(bagMovementBlock).toContain('data-column="movement"');
+    expect(bagMovementBlock).toContain("row.trustIndex");
+    expect(bagMovementBlock).toContain("row.sampleSize");
+    expect(bagMovementBlock).toContain("row.stockCarryYd");
+    expect(bagMovementBlock).toContain("<MovementPills");
+    expect(bagMovementBlock).not.toContain("IOSGroupedList");
   });
 
   it("keeps the progress trend chart explainable with a text summary and data-table fallback", () => {
     const trendsBlock =
-      source.match(/function ProgressTrendsPanel[\s\S]*?function TrendCard/)?.[0] ?? "";
+      source.match(/function ProgressTrendsPanel[\s\S]*?function Sparkline/)?.[0] ?? "";
 
     expect(trendsBlock).toContain("ChartAccessibleFallback");
     expect(trendsBlock).toContain('title="Progress trends"');
     expect(trendsBlock).toContain("summary={progressTrendChartSummary(summary.trends)}");
     expect(trendsBlock).toContain("rows={trendRows}");
+    expect(trendsBlock).toContain("<LazyMetricTrendCard");
     expect(trendsBlock).toContain('{ key: "trend", label: "Trend" }');
     expect(trendsBlock).toContain('{ key: "readout", label: "Readout" }');
   });
@@ -79,21 +96,42 @@ describe("progress desktop workbench source", () => {
     for (const tab of ["performance", "goals", "load", "timeline"]) {
       expect(source).toContain(`value="${tab}"`);
     }
-    expect(source).toContain("<PracticePlanPanel priorities={summary.practicePlan} />");
-    expect(source).toContain("<CoachReadoutPanel");
-    expect(source).toContain("<PracticeCalendarPanel calendar={featureData.practiceCalendar} />");
-    expect(source).toContain("<TrustLadderPanel items={summary.trustLadder} />");
-    expect(source).toContain(
-      "<BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />",
-    );
+    const desktopComposition =
+      source.match(
+        /<div className="contents" data-progress-workbench>[\s\S]*?<\/DesktopWorkbenchLayout>/,
+      )?.[0] ?? "";
+    expect(desktopComposition).not.toContain("<PracticePlanPanel");
+    expect(desktopComposition).not.toContain("<CoachReadoutPanel");
+    expect(source).not.toContain("<PracticeCalendarPanel");
+    expect(desktopComposition).not.toContain("<TrustLadderPanel");
+    expect(desktopComposition.match(/<BagMovementPanel\b/g)).toHaveLength(1);
     expect(source).toContain('<div id="journey" className="scroll-mt-28">');
     expect(source).not.toContain("data-progress-bento-item");
+    expect(source).toContain("<LazyMetricTrendCard");
+    expect(source).toContain("<ConnectedMetricBar");
+    expect(desktopComposition).not.toContain("<ProgressScorePanel");
+    expect(desktopComposition).not.toContain("<ComparisonBar");
+    expect(source).toContain("data-progress-roadmap");
+    expect(source).toContain("data-coach-timeline");
+    expect(source).toContain("<StatusTimeline");
+  });
+
+  it("keeps Recharts out of the progress route's initial client graph", () => {
+    expect(source).toContain(
+      'import { LazyMetricTrendCard } from "@/components/progress/lazy-metric-trend-card"',
+    );
+    expect(source).not.toContain('from "@/components/app/metric-trend-card"');
+    expect(lazyTrendSource).toContain('"use client"');
+    expect(lazyTrendSource).toContain("dynamic<LazyMetricTrendCardProps>");
+    expect(lazyTrendSource).toContain('import("@/components/app/metric-trend-card")');
+    expect(lazyTrendSource).toContain("<MetricTrendCardSkeleton");
+    expect(lazyTrendSource).not.toContain('from "recharts"');
   });
 
   it("gives mobile one answer-first progress readout before any supporting disclosure", () => {
     const mobileComposition =
       source.match(
-        /<div className="grid min-w-0 gap-4 lg:hidden">[\s\S]*?<div className="hidden lg:contents">/,
+        /if \(surface === "companion"\)[\s\S]*?data-progress-companion[\s\S]*?await import\("@\/components\/app\/desktop-workbench"\)/,
       )?.[0] ?? "";
 
     expect(mobileComposition).toContain("<MobileProgressAnswer");
@@ -106,8 +144,12 @@ describe("progress desktop workbench source", () => {
     expect(source).toContain('label="Weakest area"');
     expect(source).toContain("review.nextAction.value");
     expect(source).toContain("dataGap.detail");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).not.toContain("bg-amber-500/10");
     expect(source).toContain('aria-label="Overall progress score"');
     expect(source).not.toContain("<MobileTabBar");
+    expect(source).toContain("data-progress-workbench");
+    expect(source).not.toMatch(/(?:^|\s)(?:lg:hidden|hidden lg:)/);
   });
 
   it("uses one single-open iOS disclosure group for the six secondary progress areas", () => {
@@ -132,19 +174,31 @@ describe("progress desktop workbench source", () => {
     expect(disclosureBlock).not.toContain("<details");
   });
 
-  it("keeps the analytical desktop workbench while replacing its wide bag table on mobile", () => {
+  it("keeps companion bag movement native and separate from the desktop export table", () => {
     const mobileBagBlock =
       source.match(/function MobileBagMovement[\s\S]*?function MobileProgressJourney/)?.[0] ?? "";
 
-    expect(source).toContain('className="hidden lg:contents"');
-    expect(source).toContain('data-workbench-export-table="progress-bag-movement"');
-    expect(source).toContain('className="min-w-[1120px]"');
+    expect(source).toContain("data-progress-companion");
+    expect(source).not.toContain('className="min-w-[1120px]"');
     expect(mobileBagBlock).toContain("<IOSGroupedList");
     expect(mobileBagBlock).toContain("<IOSListRow");
     expect(mobileBagBlock).toContain("mobileBagMovementFilterHref");
     expect(mobileBagBlock).toContain('aria-current={isActive ? "page" : undefined}');
     expect(mobileBagBlock).not.toContain("<Table");
     expect(mobileBagBlock).not.toContain("min-w-[1120px]");
+  });
+
+  it("keeps connected goal and trend content free of nested Card shells", () => {
+    const goal =
+      source.match(/function GoalProgressPanel[\s\S]*?function WeeklyRecapPanel/)?.[0] ?? "";
+    const trends =
+      source.match(/function ProgressTrendsPanel[\s\S]*?function Sparkline/)?.[0] ?? "";
+
+    expect(goal).toContain("<Item");
+    expect((goal.match(/<Card(?:\s|>)/g) ?? []).length).toBe(1);
+    expect(trends).toContain("<LazyMetricTrendCard");
+    expect(trends).toContain("<section");
+    expect(trends).not.toContain("<Card");
   });
 
   it("keeps technical readiness separate from real-round scoring confidence", () => {
@@ -163,5 +217,17 @@ describe("progress desktop workbench source", () => {
     expect(source).toContain('<TabsTrigger value="timeline">Timeline</TabsTrigger>');
     expect(source).toContain("summary.rankings.mostImproved");
     expect(source).toContain("summary.rankings.mostTrusted");
+  });
+
+  it("keeps the distance-loss diagnosis theme-safe outside its chart palette", () => {
+    expect(diagnosisSource).toContain("var(--status-success-surface)");
+    expect(diagnosisSource).toContain("var(--status-warning-surface)");
+    expect(diagnosisSource).toContain("var(--status-information-surface)");
+    expect(diagnosisSource).not.toMatch(
+      /(?:bg|text|border)-(?:white|slate|emerald|green|amber|orange|red|rose|indigo|violet|purple)(?:-\d+|\/)/,
+    );
+    expect(diagnosisSource).toContain("className={buttonVariants");
+    expect(diagnosisSource).not.toContain("<CollapsibleTrigger asChild>");
+    expect(diagnosisSource).not.toContain("<CollapsibleContent asChild>");
   });
 });

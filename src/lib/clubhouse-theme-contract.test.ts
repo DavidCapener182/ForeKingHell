@@ -28,6 +28,10 @@ const desktopWorkbenchControls = readFileSync(
   "utf8",
 );
 const importForm = readFileSync(join(root, "src/app/import/import-form.tsx"), "utf8");
+const importSaveChecklist = readFileSync(
+  join(root, "src/app/import/save-checklist-card.tsx"),
+  "utf8",
+);
 const offlineStorage = readFileSync(
   join(root, "src/app/settings/offline-storage-panel.tsx"),
   "utf8",
@@ -150,6 +154,7 @@ describe("Clubhouse Manager theme contract", () => {
   it("keeps dark hero copy colours out of nested paper metric tiles", () => {
     expect(premium).toContain("data-page-header-copy");
     expect(globals).toMatch(/\.desktop-page-header\s+\[data-page-header-copy\]/);
+    expect(globals).toContain(':where(p, .text-muted-foreground):not([data-tone-role="surface"])');
     expect(globals).not.toContain(".desktop-page-header :where(p, .text-muted-foreground)");
     expect(globals).not.toContain(".desktop-page-header :where(h1, .text-foreground)");
   });
@@ -175,7 +180,8 @@ describe("Clubhouse Manager theme contract", () => {
     expect(metricCard).toContain("data-tone={tone}");
     expect(desktopWorkbench).toContain("<OperationStepper");
     expect(operationStepper).toContain("data-workflow-status={step.status}");
-    expect(importForm).toContain('data-clubhouse-state={canSave ? "live" : "current"}');
+    expect(importForm).toContain("<SaveChecklistCard");
+    expect(importSaveChecklist).toContain('data-clubhouse-state={canSave ? "live" : "current"}');
     expect(globals).toContain('[data-tone="sky"]');
     expect(globals).toContain('[data-workflow-status="current"]');
     expect(globals).toContain('[data-clubhouse-state="live"]');

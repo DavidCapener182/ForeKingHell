@@ -180,7 +180,7 @@ export function FacePathDeliveryChart({
 
       {targetWindow ? (
         <div className="grid gap-1.5 rounded-xl bg-muted/40 px-2.5 py-2 text-[11px] leading-4">
-          <p className="font-bold uppercase tracking-normal text-[#667085]">Target window</p>
+          <p className="font-bold uppercase tracking-normal text-foreground">Target window</p>
           <TargetWindowRow
             label={targetWindow.path.label}
             windowLabel={formatAngleWindow(targetWindow.path)}
@@ -246,18 +246,18 @@ function TargetWindowRow({
 }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg bg-card/74 px-2 py-1.5">
-      <span className="min-w-0 text-[#667085]">
-        {label}: <span className="font-semibold text-[#111827]">{windowLabel}</span>
+      <span className="min-w-0 text-foreground">
+        {label}: <span className="font-semibold text-foreground">{windowLabel}</span>
       </span>
       <span
         data-target-tone={state.tone}
         className={cn(
           "shrink-0 font-bold",
           state.tone === "green"
-            ? "text-[#087A3D]"
+            ? "text-[var(--status-success-foreground)]"
             : state.tone === "amber"
-              ? "text-[#B45309]"
-              : "text-[#667085]",
+              ? "text-[var(--status-warning-foreground)]"
+              : "text-foreground",
         )}
       >
         Current {current} · {state.label}

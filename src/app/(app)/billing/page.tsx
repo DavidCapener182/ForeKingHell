@@ -2,20 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Check, CreditCard, Sparkles, Trophy, Zap } from "lucide-react";
 
-import { createCheckoutAction, openCustomerPortalAction } from "@/app/billing/actions";
+import { createCheckoutAction } from "@/app/billing/actions";
 import { BillingManageDialog } from "@/app/billing/billing-manage-dialog";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
-  DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,13 +72,6 @@ const billingLimitSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
-const mobilePlanLimitPriority = [
-  "max_monthly_imports",
-  "can_use_ai_coach",
-  "max_private_challenges",
-  "ai_daily_chat_messages",
-] as const;
-
 export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = await searchParams;
   const data = await getBillingPageData();
@@ -93,180 +80,11 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   );
   const visiblePlanKeys = new Set<string>(visiblePlans.map((plan) => plan.key));
   const visiblePlanLimits = data.planLimits.filter((limit) => visiblePlanKeys.has(limit.planKey));
-  const activePlan = visiblePlans.find((plan) => plan.key === data.activePlanKey);
-  const activePlanLimits = visiblePlanLimits.filter(
-    (limit) => limit.planKey === data.activePlanKey,
-  );
-  const orderedActivePlanLimits = [...activePlanLimits].sort((left, right) => {
-    const leftIndex = mobilePlanLimitPriority.indexOf(
-      left.limitKey as (typeof mobilePlanLimitPriority)[number],
-    );
-    const rightIndex = mobilePlanLimitPriority.indexOf(
-      right.limitKey as (typeof mobilePlanLimitPriority)[number],
-    );
-    return (leftIndex < 0 ? 99 : leftIndex) - (rightIndex < 0 ? 99 : rightIndex);
-  });
-  const primaryActivePlanLimits = orderedActivePlanLimits.slice(0, 4);
-  const secondaryActivePlanLimits = orderedActivePlanLimits.slice(4);
-  const comparisonPlans = visiblePlans.filter((plan) => plan.key !== data.activePlanKey);
 
   return (
     <PageShell size="full">
       <DesktopWorkbenchLayout scope="billing">
-        <div className="grid gap-5 lg:hidden">
-          <header className="px-1 pt-1">
-            <p className="text-sm font-medium text-primary">Account</p>
-            <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-[-0.025em]">
-              Membership
-            </h1>
-            <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
-              Your plan, included access and upgrade options.
-            </p>
-          </header>
-
-          {params?.checkout || params?.portal ? (
-            <Alert>
-              <CreditCard className="size-4" />
-              <AlertTitle>Billing update</AlertTitle>
-              <AlertDescription>
-                {billingStatusMessage(params.checkout, params.portal, params.plan)}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          <section className="grid gap-3" aria-label="Current membership">
-            <div className="rounded-2xl bg-card p-5 ring-1 ring-border/70">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
-                    Current plan
-                  </p>
-                  <h2 className="mt-1 text-3xl font-bold tracking-[-0.025em]">
-                    {planLabel(data.plans, data.activePlanKey)}
-                  </h2>
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                    {data.activePlanKey === "full"
-                      ? "Lifetime full access."
-                      : data.latestSubscription
-                        ? `${data.latestSubscription.status} subscription`
-                        : "No paid subscription yet."}
-                  </p>
-                </div>
-                <CreditCard className="size-6 shrink-0 text-primary" aria-hidden />
-              </div>
-              <form action={openCustomerPortalAction} className="mt-4">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  className="min-h-11 w-full rounded-xl"
-                  disabled={!data.stripeConfigured || !data.billingCustomer?.stripeCustomerId}
-                >
-                  <CreditCard className="size-4" />
-                  Manage subscription
-                </Button>
-              </form>
-            </div>
-          </section>
-
-          <section className="grid gap-2" aria-label="Current plan access">
-            <IOSSectionHeader
-              title="Included access"
-              description={
-                activePlanLimits.length > 0
-                  ? `${activePlanLimits.length} source-backed entitlements and limits`
-                  : "No plan limits are configured"
-              }
-            />
-            <IOSGroupedList label="Current plan access">
-              {primaryActivePlanLimits.length > 0 ? (
-                primaryActivePlanLimits.map((limit) => (
-                  <IOSListRow
-                    key={limit.id}
-                    label={label(limit.limitKey)}
-                    value={limitValue(limit.limitValueJson)}
-                    detail={activePlan?.name ?? planLabel(data.plans, data.activePlanKey)}
-                  />
-                ))
-              ) : (
-                <IOSListRow
-                  label="No configured limits"
-                  detail="Your active plan remains available; no usage ledger has been added."
-                />
-              )}
-            </IOSGroupedList>
-            {secondaryActivePlanLimits.length > 0 ? (
-              <IOSDisclosureGroup
-                label="Additional plan entitlements"
-                items={[
-                  {
-                    value: "all-entitlements",
-                    title: "All plan entitlements",
-                    summary: `${activePlanLimits.length}`,
-                    description: `${secondaryActivePlanLimits.length} additional limits and permissions`,
-                    content: (
-                      <IOSGroupedList label="Additional plan access">
-                        {secondaryActivePlanLimits.map((limit) => (
-                          <IOSListRow
-                            key={limit.id}
-                            label={label(limit.limitKey)}
-                            value={limitValue(limit.limitValueJson)}
-                          />
-                        ))}
-                      </IOSGroupedList>
-                    ),
-                  },
-                ]}
-              />
-            ) : null}
-          </section>
-
-          {comparisonPlans.length > 0 ? (
-            <section className="grid gap-2" aria-label="Compare memberships">
-              <IOSSectionHeader
-                title="Compare plans"
-                description="Open a plan to see its price, features, limits and checkout action."
-              />
-              <IOSDisclosureGroup
-                label="Membership options"
-                items={comparisonPlans.map((plan) => ({
-                  value: plan.key,
-                  title: plan.name,
-                  summary: plan.monthlyPrice,
-                  description: plan.description,
-                  content: (
-                    <PlanCard
-                      plan={plan}
-                      active={false}
-                      stripeConfigured={data.stripeConfigured}
-                      limits={planLimitsForDisplay(
-                        data.planLimits.filter((limit) => limit.planKey === plan.key),
-                      )}
-                      embedded
-                    />
-                  ),
-                }))}
-              />
-            </section>
-          ) : null}
-
-          <section className="grid gap-2" aria-label="Membership links">
-            <IOSSectionHeader title="Account access" />
-            <IOSGroupedList label="Account access">
-              <IOSListRow
-                label="Profile privacy"
-                detail="Control social and public visibility separately from your plan"
-                href="/profile"
-              />
-              <IOSListRow
-                label="Provider adapters"
-                detail="Review connected data sources and available adapters"
-                href="/providers"
-              />
-            </IOSGroupedList>
-          </section>
-        </div>
-
-        <div className="hidden lg:contents">
+        <div className="contents">
           <header className="premium-hero p-3 sm:p-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -303,7 +121,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                     asChild
                     size="sm"
                     variant="outline"
-                    className="w-full rounded-lg bg-white"
+                    className="w-full rounded-lg bg-background"
                   >
                     <a href="#plans">
                       <Sparkles className="size-4" />
@@ -365,25 +183,25 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                 </CardFooter>
               </Card>
 
-              <section className="premium-card p-4">
+              <Card className="p-4 py-4">
                 <p className="text-sm font-semibold">Upgrade prompts</p>
                 <div className="mt-3 grid gap-2">
                   <Prompt
-                    icon={<Trophy className="size-4 text-amber-600" />}
+                    icon={<Trophy className="size-4 text-primary" />}
                     text="Plus unlocks private course records and friend tournaments."
                   />
                   <Prompt
-                    icon={<Sparkles className="size-4 text-emerald-600" />}
+                    icon={<Sparkles className="size-4 text-primary" />}
                     text="Pro adds AI coaching, Data Chat, course strategy and deeper analytics."
                   />
                   <Prompt
-                    icon={<CreditCard className="size-4 text-sky-600" />}
+                    icon={<CreditCard className="size-4 text-primary" />}
                     text="Coach / Club adds 25 player seats, hosted events and evidence review."
                   />
                 </div>
-              </section>
+              </Card>
 
-              <section className="premium-card p-4">
+              <Card className="p-4 py-4">
                 <p className="text-sm font-semibold">Manage access</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Plan changes update access automatically. Social privacy stays controlled from
@@ -401,7 +219,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                     </Link>
                   </Button>
                 </div>
-              </section>
+              </Card>
             </section>
           </section>
 
@@ -417,7 +235,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   );
 }
 
-function BillingLimitsTable({
+async function BillingLimitsTable({
   limits,
   plans,
   activePlanKey,
@@ -426,11 +244,13 @@ function BillingLimitsTable({
   plans: BillingPlan[];
   activePlanKey: string;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
+
   return (
-    <section
+    <Card
       id="billing-limits"
       data-workbench-scope="billing-limits"
-      className="premium-card scroll-mt-28 p-4"
+      className="scroll-mt-28 p-4 py-4"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -464,11 +284,11 @@ function BillingLimitsTable({
             Billing plan limits table showing plan, entitlement or limit, source-backed value and
             whether the row belongs to the current plan.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
             <TableRow>
               <TableHead
                 data-column="plan"
-                className="sticky left-0 z-20 min-w-48 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-48 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
               >
                 Plan
               </TableHead>
@@ -491,7 +311,7 @@ function BillingLimitsTable({
                   >
                     <TableCell
                       data-column="plan"
-                      className="sticky left-0 z-10 min-w-48 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 min-w-48 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                     >
                       {planLabel(plans, limit.planKey)}
                     </TableCell>
@@ -507,15 +327,26 @@ function BillingLimitsTable({
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                  No billing limits are configured yet.
+                <TableCell colSpan={4} className="p-4">
+                  <AppEmptyState
+                    icon={<Sparkles className="size-5" />}
+                    title="No plan limits configured"
+                    description="Plan entitlements will appear here when the billing catalogue publishes them."
+                    primaryAction={
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/billing#plans" prefetch={false}>
+                          Review plans
+                        </Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </DataTableFrame>
-    </section>
+    </Card>
   );
 }
 
@@ -576,8 +407,19 @@ function BillingHistoryTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
-                  No paid subscription history is recorded for this account.
+                <TableCell colSpan={4} className="p-4">
+                  <AppEmptyState
+                    icon={<CreditCard className="size-5" />}
+                    title="No paid subscription history"
+                    description="A completed paid subscription will add its period and renewal state here."
+                    primaryAction={
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/billing#plans" prefetch={false}>
+                          Compare plans
+                        </Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -612,9 +454,9 @@ function PlanCard({
           <p className="mt-1 text-sm leading-6 text-muted-foreground">{plan.description}</p>
         </div>
         {plan.key === "pro" ? (
-          <Sparkles className="size-5 text-emerald-600" />
+          <Sparkles className="size-5 text-primary" />
         ) : (
-          <Zap className="size-5 text-slate-500" />
+          <Zap className="size-5 text-muted-foreground" />
         )}
       </div>
       <div className={embedded ? "grid grid-cols-2 gap-2" : "mt-4 grid grid-cols-2 gap-2"}>
@@ -624,7 +466,7 @@ function PlanCard({
       <ul className={embedded ? "grid gap-2 text-sm" : "mt-4 grid gap-2 text-sm"}>
         {plan.features.map((feature) => (
           <li key={feature} className="flex items-start gap-2">
-            <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            <Check className="mt-0.5 size-4 shrink-0 text-primary" />
             <span>{feature}</span>
           </li>
         ))}

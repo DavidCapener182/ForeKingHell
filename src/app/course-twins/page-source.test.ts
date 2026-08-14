@@ -36,6 +36,12 @@ describe("Course Twin catalogue page", () => {
     expect(mobileSource).toContain('title: "Terrain and accuracy"');
     expect(mobileSource).toContain("{twin.warning}");
     expect(mobileSource.match(/href=\{`\/play\/\$\{twin\.courseId\}`\}/g)).toHaveLength(1);
-    expect(source).toContain('className="hidden lg:contents" data-course-twin-desktop-catalogue');
+    expect(source).toContain("getRequestAppSurface");
+    expect(source).toContain('surface === "companion"');
+    expect(source).toContain('surface === "workbench" ? await import');
+    expect(source).not.toContain(
+      'import { CourseTwinCatalogue } from "@/app/course-twins/course-twin-catalogue"',
+    );
+    expect(source).not.toContain('className="hidden lg:contents"');
   });
 });

@@ -33,6 +33,7 @@ export function ResponsiveDetailPanel({
   children,
   footer,
   inlineAtUltrawide = false,
+  inlineAtDesktop = false,
   className,
   contentClassName,
 }: {
@@ -44,17 +45,18 @@ export function ResponsiveDetailPanel({
   children: React.ReactNode;
   footer?: React.ReactNode;
   inlineAtUltrawide?: boolean;
+  inlineAtDesktop?: boolean;
   className?: string;
   contentClassName?: string;
 }) {
-  const mode = useResponsivePanelMode(inlineAtUltrawide);
+  const mode = useResponsivePanelMode(inlineAtUltrawide, inlineAtDesktop);
 
   if (mode === "inline") {
     return (
       <aside
         className={cn("min-w-0 rounded-xl border bg-card", className)}
         data-responsive-detail-panel="inline"
-        hidden={!open}
+        hidden={!open && !inlineAtDesktop}
       >
         <div className="border-b p-4">
           <h2 className="font-semibold">{title}</h2>
@@ -118,18 +120,23 @@ export function ResponsiveDetailPanel({
   );
 }
 
-function useResponsivePanelMode(inlineAtUltrawide: boolean): ResponsivePanelMode {
+function useResponsivePanelMode(
+  inlineAtUltrawide: boolean,
+  inlineAtDesktop: boolean,
+): ResponsivePanelMode {
   const [mode, setMode] = useState<ResponsivePanelMode>("sheet");
 
   useEffect(() => {
-    const drawerQuery = window.matchMedia("(max-width: 767px)");
+    // The companion shell remains active below the desktop `lg` workbench breakpoint.
+    // Keep its detail interactions as Drawers across phones and companion tablets.
+    const drawerQuery = window.matchMedia("(max-width: 1023px)");
     const inlineQuery = window.matchMedia("(min-width: 1600px)");
 
     const update = () => {
       setMode(
         drawerQuery.matches
           ? "drawer"
-          : inlineAtUltrawide && inlineQuery.matches
+          : inlineAtDesktop || (inlineAtUltrawide && inlineQuery.matches)
             ? "inline"
             : "sheet",
       );
@@ -141,7 +148,7 @@ function useResponsivePanelMode(inlineAtUltrawide: boolean): ResponsivePanelMode
       drawerQuery.removeEventListener("change", update);
       inlineQuery.removeEventListener("change", update);
     };
-  }, [inlineAtUltrawide]);
+  }, [inlineAtDesktop, inlineAtUltrawide]);
 
   return mode;
 }

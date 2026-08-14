@@ -5,9 +5,25 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -49,6 +65,7 @@ export function MobileShotPatternCharts({
   const [flightMode, setFlightMode] = useState<FlightMode>("shots");
   const [club, setClub] = useState(() => defaultShotPatternClub(clubs, preferredClub));
   const [trustedOnly, setTrustedOnly] = useState(true);
+  const [selectedShot, setSelectedShot] = useState<ShotPatternPoint | null>(null);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
@@ -78,7 +95,7 @@ export function MobileShotPatternCharts({
 
   return (
     <section
-      className="ios-grouped-list grid gap-3 overflow-hidden p-3"
+      className="grid min-w-0 gap-3 overflow-hidden"
       data-mobile-shot-pattern
       data-mobile-shot-pattern-hydrated={hydrated ? "true" : "false"}
     >
@@ -167,11 +184,11 @@ export function MobileShotPatternCharts({
       ) : null}
 
       {mode === "dispersion" || compact ? (
-        <div className={cn("overflow-hidden rounded-xl bg-white", compact && "max-h-52")}>
+        <div className={cn("overflow-hidden rounded-xl bg-background", compact && "max-h-52")}>
           <SharedShotPatternVisual shots={selected} mode="dispersion" />
         </div>
       ) : hasFlight ? (
-        <div className="overflow-hidden rounded-xl bg-white">
+        <div className="overflow-hidden rounded-xl bg-background">
           <SharedShotPatternVisual
             shots={selected}
             mode="trajectory"
@@ -188,12 +205,23 @@ export function MobileShotPatternCharts({
         {patternReadout(summary)}
       </p>
 
-      {!compact ? <AccessibleShotTable points={selected} /> : null}
+      {!compact ? <AccessibleShotTable points={selected} onSelect={setSelectedShot} /> : null}
+
+      <ShotDetailDrawer
+        shot={selectedShot}
+        onOpenChange={(open) => !open && setSelectedShot(null)}
+      />
     </section>
   );
 }
 
-function AccessibleShotTable({ points }: { points: ShotPatternPoint[] }) {
+function AccessibleShotTable({
+  points,
+  onSelect,
+}: {
+  points: ShotPatternPoint[];
+  onSelect: (point: ShotPatternPoint) => void;
+}) {
   return (
     <Collapsible className="rounded-xl border bg-card px-3 py-2">
       <CollapsibleTrigger className="focus-aaa min-h-11 w-full cursor-pointer py-3 text-left text-sm font-semibold outline-none">
@@ -201,34 +229,92 @@ function AccessibleShotTable({ points }: { points: ShotPatternPoint[] }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="max-h-72 overflow-auto pb-2">
-          <table className="w-full min-w-[30rem] text-left text-xs">
+          <Table className="min-w-[34rem] text-xs">
             <caption className="sr-only">Measured shot data used by this chart</caption>
-            <thead>
-              <tr className="border-b">
-                <th className="p-2">Shot</th>
-                <th className="p-2">Club</th>
-                <th className="p-2">Carry</th>
-                <th className="p-2">Lateral</th>
-                <th className="p-2">Apex</th>
-                <th className="p-2">Trust</th>
-              </tr>
-            </thead>
-            <tbody>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Shot</TableHead>
+                <TableHead>Club</TableHead>
+                <TableHead>Carry</TableHead>
+                <TableHead>Lateral</TableHead>
+                <TableHead>Apex</TableHead>
+                <TableHead>Trust</TableHead>
+                <TableHead className="text-right">Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {points.map((point, index) => (
-                <tr key={point.id} className="border-b last:border-0">
-                  <td className="p-2">{point.shotNumber ?? index + 1}</td>
-                  <td className="p-2">{point.clubLabel}</td>
-                  <td className="p-2">{formatMeasure(point.carryYd, "yd")}</td>
-                  <td className="p-2">{formatSigned(point.sideCarryYd)}</td>
-                  <td className="p-2">{formatMeasure(point.apexFt, "ft")}</td>
-                  <td className="p-2">{point.trusted ? "Trusted" : "Unusual"}</td>
-                </tr>
+                <TableRow key={point.id}>
+                  <TableCell>{point.shotNumber ?? index + 1}</TableCell>
+                  <TableCell>{point.clubLabel}</TableCell>
+                  <TableCell>{formatMeasure(point.carryYd, "yd")}</TableCell>
+                  <TableCell>{formatSigned(point.sideCarryYd)}</TableCell>
+                  <TableCell>{formatMeasure(point.apexFt, "ft")}</TableCell>
+                  <TableCell>{point.trusted ? "Trusted" : "Unusual"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onSelect(point)}>
+                      Inspect
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+function ShotDetailDrawer({
+  shot,
+  onOpenChange,
+}: {
+  shot: ShotPatternPoint | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Drawer open={Boolean(shot)} onOpenChange={onOpenChange} repositionInputs={false}>
+      <DrawerContent className="pb-[env(safe-area-inset-bottom)]" data-shot-detail-drawer>
+        <DrawerHeader className="text-left">
+          <div className="flex items-start justify-between gap-3">
+            <span>
+              <DrawerTitle>
+                {shot ? `${shot.clubLabel} · shot ${shot.shotNumber ?? "detail"}` : "Shot detail"}
+              </DrawerTitle>
+              <DrawerDescription>Measured values used by this session chart.</DrawerDescription>
+            </span>
+            {shot ? (
+              <Badge variant={shot.trusted ? "secondary" : "outline"}>
+                {shot.trusted ? "Trusted" : "Unusual"}
+              </Badge>
+            ) : null}
+          </div>
+        </DrawerHeader>
+        {shot ? (
+          <div className="grid grid-cols-2 gap-2 px-4 pb-4">
+            <ShotMetric label="Carry" value={formatMeasure(shot.carryYd, "yd")} />
+            <ShotMetric label="Total" value={formatMeasure(shot.totalYd ?? null, "yd")} />
+            <ShotMetric label="Lateral" value={formatSigned(shot.sideCarryYd)} />
+            <ShotMetric label="Apex" value={formatMeasure(shot.apexFt, "ft")} />
+            <ShotMetric label="Launch" value={formatMeasure(shot.launchAngleDeg, "°")} />
+            <ShotMetric
+              label="Ball speed"
+              value={formatMeasure(shot.ballSpeedMph ?? null, "mph")}
+            />
+          </div>
+        ) : null}
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function ShotMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-card p-3">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 break-words font-semibold text-foreground">{value}</p>
+    </div>
   );
 }
 

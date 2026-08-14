@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-type ProfileSection = "overview" | "achievements" | "records" | "sharing";
+type ProfileSection = "overview" | "workspaces" | "records" | "sharing";
 
 const sections: Array<{ value: ProfileSection; label: string }> = [
   { value: "overview", label: "Overview" },
-  { value: "achievements", label: "Achievements" },
+  { value: "workspaces", label: "Workspaces" },
   { value: "records", label: "Records" },
   { value: "sharing", label: "Sharing" },
 ];
@@ -20,7 +20,7 @@ export function ProfileSectionTabs() {
     const sync = () => {
       const hash = window.location.hash.slice(1);
       if (
-        hash === "achievements" ||
+        hash === "workspaces" ||
         hash === "records" ||
         hash === "sharing" ||
         hash === "overview"

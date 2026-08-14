@@ -17,31 +17,34 @@ describe("Phase 5 product-page contract", () => {
     expect(companion).toContain("Plan range session");
     expect(companion).toContain("Why this recommendation?");
     expect(companion).not.toContain("TodayMobileEvidence");
-    expect(today).toContain("TodayReviewControls");
+    expect(today).toContain("TodayDesktopFilterBar");
+    expect(today).toContain("<ToggleGroup");
     expect(today).toContain("Trusted shots");
     expect(today).toContain("All imported");
     expect(today).toContain("Simulate outlier exclusions");
     expect(today).toContain("Data cleaning impact");
   });
 
-  it("keeps Shots compact, URL-filtered and progressively disclosed on mobile", () => {
+  it("keeps the desktop-only Shot Explorer compact, URL-filtered and progressively disclosed", () => {
     const shots = source("src/app/(app)/shots/page.tsx");
+    const filters = source("src/app/shots/shot-filter-toolbar.tsx");
 
-    expect(shots).toContain("MobileFilterSheet");
-    expect(shots).toContain("buildActiveFilterChips");
+    expect(shots).toContain("ShotFilterToolbar");
+    expect(filters).toContain("DataToolbar");
+    expect(filters).toContain("ResponsiveFilterPanel");
     expect(shots).toContain("SavedShotViewsPanel");
-    expect(shots).toContain('label="Offline"');
-    expect(shots).toContain('label="Ball speed"');
-    expect(shots).toContain('label="Outcome"');
-    expect(shots).toContain("Advanced");
-    expect(shots).toContain('params.set("club"');
+    expect(shots).toContain("ShotsMasterDetailTable");
+    expect(filters).toContain("Group by club");
+    expect(filters).toContain("Group by session");
+    expect(filters).toContain("params.set(key, value)");
+    expect(shots).not.toContain("MobileFilterSheet");
   });
 
   it("keeps Bag centred on stock, dependable ranges, gapping and sample trust", () => {
     const bag = source("src/app/(app)/bag/page.tsx");
 
     expect(bag).toContain("Bag confidence ladder");
-    expect(bag).toContain("Full gapping ladder");
+    expect(bag).toContain("Full bag gapping");
     expect(bag).toContain("stock carry");
     expect(bag).toContain("latestReliableCarryP25Yd");
     expect(bag).toContain("latestReliableCarryP75Yd");
@@ -93,15 +96,17 @@ describe("Phase 5 product-page contract", () => {
 
   it("keeps social secondary, proof-labelled and privacy-aware", () => {
     const feed = source("src/app/(app)/feed/page.tsx");
+    const feedCards = source("src/components/social/feed-card-list.tsx");
     const today = source("src/app/(app)/today/today-workbench-page.tsx");
     const companion = source("src/app/(app)/today/today-companion-page.tsx");
 
-    expect(feed).toContain('{ id: "proof", label: "Proof" }');
-    expect(feed).toContain('{ id: "privacy", label: "Privacy" }');
     expect(feed).toContain("StatusUpdateComposerSheet");
     expect(feed).toContain("Privacy state");
     expect(feed).toContain("data.profile.feedVisibilityDefault");
-    expect(feed).toContain("item.verificationLabel");
+    expect(feed).toContain("<FeedCardList items={filteredItems} />");
+    expect(feed).not.toContain("FeedActivityLedger");
+    expect(feedCards).toContain("item.verificationLabel");
+    expect(feedCards).toContain("item.visibility");
     expect(today).toContain("Social comparison is on demand");
     expect(companion).not.toContain("getChallengesPageData");
   });

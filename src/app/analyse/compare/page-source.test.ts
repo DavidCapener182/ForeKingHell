@@ -25,4 +25,24 @@ describe("session comparison page", () => {
     expect(provenanceSource).toContain("metric.method");
     expect(source).toContain('href="/shots"');
   });
+
+  it("keeps one visible desktop evidence tree and preserves save/delete workflows", () => {
+    expect(source).toContain("<SessionComparisonToolbar");
+    expect(source).toContain("<Table>");
+    expect(source).toContain("<SaveComparisonDialog");
+    expect(source).toContain("<DeleteComparisonButton");
+    expect(source).toContain("<StatusTimeline");
+    for (const obsoleteMobileSource of [
+      "MobileSessionCompare",
+      "MobileAppShell",
+      "MobileTopBar",
+      "MobileFilterSheet",
+      "BottomSheet",
+      "@/components/app/ios-mobile",
+      "lg:hidden",
+      "hidden lg:",
+    ]) {
+      expect(source).not.toContain(obsoleteMobileSource);
+    }
+  });
 });

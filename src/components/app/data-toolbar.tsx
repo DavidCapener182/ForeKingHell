@@ -18,8 +18,8 @@ export function DataToolbar({
   actions,
   className,
 }: {
-  query: string;
-  onQueryChange: (value: string) => void;
+  query?: string;
+  onQueryChange?: (value: string) => void;
   searchLabel?: string;
   resultLabel?: React.ReactNode;
   filters?: React.ReactNode;
@@ -34,30 +34,32 @@ export function DataToolbar({
       data-data-toolbar
     >
       <div className="flex flex-wrap items-center gap-2">
-        <InputGroup className="h-10 min-w-52 flex-1 sm:max-w-md">
-          <InputGroupAddon>
-            <Search className="size-4" aria-hidden />
-          </InputGroupAddon>
-          <InputGroupInput
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={searchLabel}
-            aria-label={searchLabel}
-          />
-          {query ? (
-            <InputGroupAddon align="inline-end">
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => onQueryChange("")}
-              >
-                <X className="size-4" aria-hidden />
-                <span className="sr-only">Clear search</span>
-              </Button>
+        {typeof query === "string" && onQueryChange ? (
+          <InputGroup className="h-10 min-w-52 flex-1 sm:max-w-md">
+            <InputGroupAddon>
+              <Search className="size-4" aria-hidden />
             </InputGroupAddon>
-          ) : null}
-        </InputGroup>
+            <InputGroupInput
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder={searchLabel}
+              aria-label={searchLabel}
+            />
+            {query ? (
+              <InputGroupAddon align="inline-end">
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={() => onQueryChange("")}
+                >
+                  <X className="size-4" aria-hidden />
+                  <span className="sr-only">Clear search</span>
+                </Button>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+        ) : null}
         {filters}
         {resultLabel ? <p className="text-xs text-muted-foreground">{resultLabel}</p> : null}
         {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}

@@ -9,9 +9,12 @@ import {
   saveAnalysisSnapshotAction,
 } from "@/app/analyse/workspace/actions";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,14 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { BottomSheet, MobileTopBar } from "@/components/mobile-sports";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { ConfidenceIndicator, DataHealthStatus } from "@/components/app/evidence-status";
 import {
@@ -68,51 +64,44 @@ export default async function AnalysisWorkspacePage() {
 
   return (
     <PageShell>
-      <MobileTopBar title="Analysis workspace" className="lg:hidden" />
-      <Button asChild variant="ghost" className="hidden min-h-11 w-fit px-0 lg:inline-flex">
+      <Button asChild variant="ghost" className="min-h-11 w-fit px-0">
         <Link href="/analyse">
           <ArrowLeft className="size-4" aria-hidden />
           Analyse
         </Link>
       </Button>
-      <div className="hidden lg:block">
-        <PageHeader
-          eyebrow={<StatusPill tone="sky">Evidence operations</StatusPill>}
-          title="Analysis workspace"
-          description="Fix weak data, annotate what changed, compare equipment periods and preserve point-in-time evidence."
-          metrics={[
-            {
-              label: "Open data issues",
-              value: data.issues.length,
-              detail: `${data.highPriorityIssues} high priority`,
-            },
-          ]}
-          actions={
-            <Button asChild variant="outline" className="min-h-11 rounded-xl">
-              <Link href="/analyse/session-impact">Open session impact</Link>
-            </Button>
-          }
-        />
-      </div>
+      <PageHeader
+        eyebrow={<StatusPill tone="sky">Evidence operations</StatusPill>}
+        title="Analysis workspace"
+        description="Fix weak data, annotate what changed, compare equipment periods and preserve point-in-time evidence."
+        metrics={[
+          {
+            label: "Open data issues",
+            value: data.issues.length,
+            detail: `${data.highPriorityIssues} high priority`,
+          },
+        ]}
+        actions={
+          <Button asChild variant="outline" className="min-h-11 rounded-xl">
+            <Link href="/analyse/session-impact">Open session impact</Link>
+          </Button>
+        }
+      />
 
       {!data.storageAvailable ? (
-        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden />
-            <div>
-              <h2 className="font-semibold">Analysis storage migration pending</h2>
-              <p className="mt-1 text-sm leading-6">
-                Data-quality and equipment analysis are available. Apply migration 0041 before
-                saving annotations or snapshots.
-              </p>
-            </div>
-          </div>
-        </section>
+        <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-warning-foreground)]">
+          <AlertTriangle className="size-4" aria-hidden />
+          <AlertTitle>Analysis storage migration pending</AlertTitle>
+          <AlertDescription>
+            Data-quality and equipment analysis are available. Apply migration 0041 before saving
+            annotations or snapshots.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       <nav
         aria-label="Analysis workspace sections"
-        className="ios-route-tabs hidden overflow-x-auto lg:flex"
+        className="flex overflow-x-auto rounded-lg border border-border bg-card p-1"
       >
         {[
           ["Quality", "#data-quality"],
@@ -124,492 +113,24 @@ export default async function AnalysisWorkspacePage() {
             key={href}
             href={href}
             aria-current={index === 0 ? "page" : undefined}
-            className="ios-route-tab focus-aaa inline-flex min-w-fit flex-1 items-center justify-center outline-none"
+            className="focus-aaa inline-flex min-h-10 min-w-fit flex-1 items-center justify-center rounded-md px-3 text-sm font-medium outline-none aria-[current=page]:bg-secondary"
           >
             {label}
           </a>
         ))}
       </nav>
 
-      <MobileAnalysisWorkspace data={data} />
-
-      <div className="hidden lg:contents">
-        <DataQualityInbox issues={data.issues} />
-        <AnnotationWorkspace
-          storageAvailable={data.storageAvailable}
-          sessions={data.sessionOptions}
-          annotations={data.annotations}
-        />
-        <EquipmentImpactWorkspace impacts={data.equipmentImpacts} />
-        <SnapshotWorkspace storageAvailable={data.storageAvailable} snapshots={data.snapshots} />
-      </div>
+      <DataQualityInbox issues={data.issues} />
+      <AnnotationWorkspace
+        storageAvailable={data.storageAvailable}
+        sessions={data.sessionOptions}
+        annotations={data.annotations}
+      />
+      <EquipmentImpactWorkspace impacts={data.equipmentImpacts} />
+      <SnapshotWorkspace storageAvailable={data.storageAvailable} snapshots={data.snapshots} />
     </PageShell>
   );
 }
-
-type AnalysisWorkspaceData = Awaited<ReturnType<typeof getAnalysisWorkspaceData>>;
-
-function MobileAnalysisWorkspace({ data }: { data: AnalysisWorkspaceData }) {
-  const firstIssue = data.issues[0];
-
-  return (
-    <div className="grid min-w-0 gap-4 lg:hidden">
-      <section className="ios-grouped-list min-w-0 overflow-hidden px-4 py-4">
-        <IOSInlineStatus
-          label={
-            data.highPriorityIssues > 0
-              ? `${data.highPriorityIssues} high priority`
-              : data.issues.length > 0
-                ? `${data.issues.length} items to review`
-                : "Evidence ready"
-          }
-          tone={
-            data.highPriorityIssues > 0
-              ? "critical"
-              : data.issues.length > 0
-                ? "attention"
-                : "positive"
-          }
-        />
-        <h2 className="mt-2 text-balance text-xl font-semibold tracking-tight">
-          {firstIssue ? firstIssue.title : "No current data-quality issue is blocking the analysis"}
-        </h2>
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">
-          {firstIssue
-            ? firstIssue.detail
-            : "Add context when something changes, then preserve a snapshot only when it will support a future decision."}
-        </p>
-        <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
-          <Link href={firstIssue?.href ?? "/analyse/session-impact"}>
-            {firstIssue?.action ?? "Test session impact"}
-          </Link>
-        </Button>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-quality-inbox">
-        <IOSSectionHeader
-          title={<span id="mobile-quality-inbox">Data-quality inbox</span>}
-          description="Each item opens a direct repair path; source data is never changed silently."
-        />
-        <IOSGroupedList>
-          {data.issues.length ? (
-            data.issues.map((issue) => (
-              <IOSListRow
-                key={issue.key}
-                leading={<span className={issueSeverityClass(issue.severity)} aria-hidden />}
-                label={issue.title}
-                value={issue.count}
-                detail={issue.detail}
-                status={
-                  <IOSInlineStatus
-                    label={issue.action}
-                    tone={
-                      issue.severity === "high"
-                        ? "critical"
-                        : issue.severity === "medium"
-                          ? "attention"
-                          : "info"
-                    }
-                  />
-                }
-                href={issue.href}
-              />
-            ))
-          ) : (
-            <IOSListRow
-              label="No open evidence issues"
-              detail="Imported sessions and club coverage passed the current checks"
-              status={<IOSInlineStatus label="Checked" tone="positive" />}
-            />
-          )}
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2" aria-labelledby="mobile-workspace-tools">
-        <IOSSectionHeader
-          title={<span id="mobile-workspace-tools">Evidence operations</span>}
-          description="Open only the operation you need."
-        />
-        <IOSDisclosureGroup
-          label="Analysis workspace operations"
-          items={[
-            {
-              value: "notes",
-              title: "Analysis notes",
-              summary: data.annotations.length,
-              description: "Lessons, fatigue, conditions and technique context",
-              content: <MobileAnnotationWorkspace data={data} />,
-            },
-            {
-              value: "equipment",
-              title: "Equipment change evidence",
-              summary: data.equipmentImpacts.length,
-              description: "Matched before-and-after periods by club slot",
-              content: <MobileEquipmentImpactWorkspace impacts={data.equipmentImpacts} />,
-            },
-            {
-              value: "snapshots",
-              title: "Analysis snapshots",
-              summary: data.snapshots.length,
-              description: "Preserved filters, metrics and calculated summaries",
-              content: <MobileSnapshotWorkspace data={data} />,
-            },
-          ]}
-        />
-      </section>
-    </div>
-  );
-}
-
-function MobileAnnotationWorkspace({ data }: { data: AnalysisWorkspaceData }) {
-  return (
-    <div className="grid gap-3">
-      <BottomSheet
-        label={
-          <>
-            <BookOpen className="size-4" aria-hidden />
-            Add context
-          </>
-        }
-        title="Add analysis context"
-        triggerClassName="w-full"
-      >
-        <form action={saveAnalysisAnnotationAction} className="grid gap-4 pb-2">
-          <FormLabel label="Type">
-            <AnalysisSelect
-              name="annotationType"
-              disabled={!data.storageAvailable}
-              options={analysisAnnotationTypes.map((type) => ({
-                value: type,
-                label: formatLabel(type),
-              }))}
-            />
-          </FormLabel>
-          <FormLabel label="Session (optional)">
-            <AnalysisSelect
-              name="sessionId"
-              disabled={!data.storageAvailable}
-              placeholder="Date range only"
-              options={data.sessionOptions.map((session) => ({
-                value: session.id,
-                label: `${dateFormatter.format(session.date)} · ${session.label}`,
-              }))}
-            />
-          </FormLabel>
-          <FormLabel label="Title">
-            <input
-              name="title"
-              required
-              maxLength={180}
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-              autoComplete="off"
-            />
-          </FormLabel>
-          <FormLabel label="From">
-            <input
-              type="date"
-              name="rangeFrom"
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-            />
-          </FormLabel>
-          <FormLabel label="To">
-            <input
-              type="date"
-              name="rangeTo"
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-            />
-          </FormLabel>
-          <FormLabel label="Environment">
-            <AnalysisSelect
-              name="environment"
-              disabled={!data.storageAvailable}
-              placeholder="Not specified"
-              options={["range", "simulator", "course", "mat", "grass"].map((value) => ({
-                value,
-                label: formatLabel(value),
-              }))}
-            />
-          </FormLabel>
-          <FormLabel label="Note">
-            <textarea
-              name="body"
-              required
-              maxLength={4_000}
-              rows={5}
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-            />
-          </FormLabel>
-          <Button type="submit" disabled={!data.storageAvailable} className="min-h-11 rounded-xl">
-            Save annotation
-          </Button>
-        </form>
-      </BottomSheet>
-
-      <IOSGroupedList>
-        {data.annotations.length ? (
-          data.annotations.map((annotation) => (
-            <article key={annotation.id} className="ios-grouped-row px-4 py-3">
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.035em] text-primary">
-                    {formatLabel(annotation.annotationType)}
-                  </p>
-                  <h3 className="mt-1 font-medium">{annotation.title}</h3>
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{annotation.body}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {formatAnnotationRange(annotation)} · saved{" "}
-                    {dateFormatter.format(annotation.createdAt)}
-                  </p>
-                </div>
-                <form action={deleteAnalysisAnnotationAction}>
-                  <input type="hidden" name="annotationId" value={annotation.id} />
-                  <ConfirmSubmitButton
-                    variant="ghost"
-                    size="icon"
-                    className="size-11 shrink-0"
-                    aria-label={`Delete ${annotation.title}`}
-                    confirmTitle="Delete this annotation?"
-                    confirmMessage="This saved evidence note will be permanently removed."
-                    confirmActionLabel="Delete annotation"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </ConfirmSubmitButton>
-                </form>
-              </div>
-            </article>
-          ))
-        ) : (
-          <IOSListRow
-            label="No analysis notes yet"
-            detail="Add context only when it changes how the evidence should be read"
-          />
-        )}
-      </IOSGroupedList>
-    </div>
-  );
-}
-
-function MobileEquipmentImpactWorkspace({ impacts }: { impacts: EquipmentImpactView[] }) {
-  if (!impacts.length) {
-    return (
-      <IOSGroupedList>
-        <IOSListRow
-          icon={Wrench}
-          label="No comparable equipment period"
-          detail="Add dated equipment history and matched shots to begin a before-and-after view"
-        />
-      </IOSGroupedList>
-    );
-  }
-
-  return (
-    <IOSGroupedList>
-      {impacts.map((impact) => (
-        <article key={impact.id} className="ios-grouped-row px-4 py-3">
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[13px] text-primary">{impact.clubLabel}</p>
-              <h3 className="mt-0.5 font-medium">{impact.changeLabel}</h3>
-            </div>
-            <IOSInlineStatus
-              label={confidenceDisplayLabel(impact.confidence)}
-              tone={impact.comparable ? "positive" : "attention"}
-              className="shrink-0"
-            />
-          </div>
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 border-t border-border/70 pt-2">
-            <MobileEvidenceMetric label="Before" value={`${impact.beforeSample} shots`} />
-            <MobileEvidenceMetric label="After" value={`${impact.afterSample} shots`} />
-            <MobileEvidenceMetric label="Carry" value={formatDelta(impact.carryDeltaYd, "yd")} />
-            <MobileEvidenceMetric
-              label="Ball speed"
-              value={formatDelta(impact.ballSpeedDeltaMph, "mph")}
-            />
-            <MobileEvidenceMetric
-              label="Launch"
-              value={formatDelta(impact.launchDeltaDeg, "deg")}
-            />
-            <MobileEvidenceMetric label="Spin" value={formatDelta(impact.spinDeltaRpm, "rpm")} />
-            <MobileEvidenceMetric
-              label="Offline"
-              value={formatDelta(impact.offlineDeltaYd, "yd")}
-            />
-            <MobileEvidenceMetric
-              label="Repeatability"
-              value={formatDelta(impact.repeatabilityDelta, "pts")}
-            />
-            <MobileEvidenceMetric label="Strike" value={formatDelta(impact.strikeDelta, "smash")} />
-          </dl>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">{impact.caveat}</p>
-        </article>
-      ))}
-    </IOSGroupedList>
-  );
-}
-
-function MobileSnapshotWorkspace({ data }: { data: AnalysisWorkspaceData }) {
-  return (
-    <div className="grid gap-3">
-      <BottomSheet
-        label={
-          <>
-            <Camera className="size-4" aria-hidden />
-            Capture evidence
-          </>
-        }
-        title="Capture current evidence"
-        triggerClassName="w-full"
-      >
-        <form action={saveAnalysisSnapshotAction} className="grid gap-4 pb-2">
-          <FormLabel label="Snapshot name">
-            <input
-              name="name"
-              required
-              maxLength={180}
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-              autoComplete="off"
-            />
-          </FormLabel>
-          <FormLabel label="Club">
-            <input
-              name="club"
-              maxLength={40}
-              placeholder="All"
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-            />
-          </FormLabel>
-          <FormLabel label="From">
-            <input
-              type="date"
-              name="from"
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-            />
-          </FormLabel>
-          <FormLabel label="To">
-            <input type="date" name="to" disabled={!data.storageAvailable} className={fieldClass} />
-          </FormLabel>
-          <FormLabel label="Chart view">
-            <AnalysisSelect
-              name="chartView"
-              disabled={!data.storageAvailable}
-              options={["dispersion", "flight", "trend", "table"].map((value) => ({
-                value,
-                label: formatLabel(value),
-              }))}
-            />
-          </FormLabel>
-          <fieldset className="grid gap-2">
-            <legend className="text-sm font-medium">Metrics</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {["carry", "total", "offline", "ball speed", "launch", "repeatability"].map(
-                (metric) => (
-                  <label
-                    key={metric}
-                    className="flex min-h-11 items-center gap-2 rounded-xl bg-secondary px-3 text-sm"
-                  >
-                    <Checkbox name="metrics" value={metric} disabled={!data.storageAvailable} />
-                    {formatLabel(metric)}
-                  </label>
-                ),
-              )}
-            </div>
-          </fieldset>
-          <FormLabel label="Notes">
-            <textarea
-              name="notes"
-              maxLength={4_000}
-              rows={4}
-              disabled={!data.storageAvailable}
-              className={fieldClass}
-            />
-          </FormLabel>
-          <Button type="submit" disabled={!data.storageAvailable} className="min-h-11 rounded-xl">
-            <Save className="size-4" aria-hidden />
-            Save snapshot
-          </Button>
-        </form>
-      </BottomSheet>
-
-      <IOSGroupedList>
-        {data.snapshots.length ? (
-          data.snapshots.map((snapshot) => (
-            <article key={snapshot.id} className="ios-grouped-row px-4 py-3">
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-medium">{snapshot.name}</h3>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Captured {dateFormatter.format(snapshot.capturedAt)} · data through{" "}
-                    {snapshot.sourceDataThrough
-                      ? dateFormatter.format(snapshot.sourceDataThrough)
-                      : "no shots"}
-                  </p>
-                </div>
-                <form action={deleteAnalysisSnapshotAction}>
-                  <input type="hidden" name="snapshotId" value={snapshot.id} />
-                  <ConfirmSubmitButton
-                    variant="ghost"
-                    size="icon"
-                    className="size-11 shrink-0"
-                    aria-label={`Delete ${snapshot.name}`}
-                    confirmTitle="Delete this snapshot?"
-                    confirmMessage="This frozen analysis snapshot will be permanently removed."
-                    confirmActionLabel="Delete snapshot"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </ConfirmSubmitButton>
-                </form>
-              </div>
-              <dl className="mt-3 grid grid-cols-2 gap-x-4 border-t border-border/70 pt-2">
-                <MobileEvidenceMetric
-                  label="Shots"
-                  value={summaryValue(snapshot.summaryJson, "shotCount")}
-                />
-                <MobileEvidenceMetric
-                  label="Sessions"
-                  value={summaryValue(snapshot.summaryJson, "sessionCount")}
-                />
-                <MobileEvidenceMetric
-                  label="Carry median"
-                  value={summaryMetric(snapshot.summaryJson, "carryMedianYd", "yd")}
-                />
-                <MobileEvidenceMetric
-                  label="Offline median"
-                  value={summaryMetric(snapshot.summaryJson, "offlineMedianYd", "yd")}
-                />
-              </dl>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Metrics: {snapshot.selectedMetricsJson.join(", ") || "none selected"}
-              </p>
-              {snapshot.notes ? <p className="mt-2 text-sm leading-5">{snapshot.notes}</p> : null}
-            </article>
-          ))
-        ) : (
-          <IOSListRow
-            label="No analysis snapshots yet"
-            detail="Capture a point-in-time result when it supports a future comparison"
-          />
-        )}
-      </IOSGroupedList>
-    </div>
-  );
-}
-
-function MobileEvidenceMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 border-b border-border/60 py-2 last:border-b-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 break-words text-sm font-semibold tabular-nums">{value}</dd>
-    </div>
-  );
-}
-
 function DataQualityInbox({ issues }: { issues: DataQualityIssue[] }) {
   return (
     <section
@@ -630,12 +151,12 @@ function DataQualityInbox({ issues }: { issues: DataQualityIssue[] }) {
         highPriorityCount={issues.filter((issue) => issue.severity === "high").length}
       />
       {issues.length > 0 ? (
-        <div className="ios-grouped-list overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
           {issues.map((issue) => (
             <Link
               key={issue.key}
               href={issue.href}
-              className="ios-grouped-row focus-aaa grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 outline-none"
+              className="focus-aaa grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 outline-none"
             >
               <span className={issueSeverityClass(issue.severity)} aria-hidden />
               <span className="min-w-0">
@@ -718,29 +239,29 @@ function AnnotationWorkspace({
                 />
               </FormLabel>
               <FormLabel label="Title">
-                <input
+                <Input
                   name="title"
                   required
                   maxLength={180}
                   disabled={!storageAvailable}
-                  className={fieldClass}
+                  className="min-h-11"
                 />
               </FormLabel>
               <div className="grid grid-cols-2 gap-2">
                 <FormLabel label="From">
-                  <input
+                  <Input
                     type="date"
                     name="rangeFrom"
                     disabled={!storageAvailable}
-                    className={fieldClass}
+                    className="min-h-11"
                   />
                 </FormLabel>
                 <FormLabel label="To">
-                  <input
+                  <Input
                     type="date"
                     name="rangeTo"
                     disabled={!storageAvailable}
-                    className={fieldClass}
+                    className="min-h-11"
                   />
                 </FormLabel>
               </div>
@@ -756,13 +277,13 @@ function AnnotationWorkspace({
                 />
               </FormLabel>
               <FormLabel label="Note">
-                <textarea
+                <Textarea
                   name="body"
                   required
                   maxLength={4_000}
                   rows={4}
                   disabled={!storageAvailable}
-                  className={fieldClass}
+                  className="min-h-11"
                 />
               </FormLabel>
               <Button type="submit" disabled={!storageAvailable} className="min-h-11 rounded-xl">
@@ -771,10 +292,10 @@ function AnnotationWorkspace({
             </form>
           </CardContent>
         </Card>
-        <div className="ios-grouped-list self-start overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="self-start divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
           {annotations.length > 0 ? (
             annotations.map((annotation) => (
-              <article key={annotation.id} className="ios-grouped-row px-4 py-3">
+              <article key={annotation.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.1em] text-primary">
@@ -917,39 +438,34 @@ function SnapshotWorkspace({
           <CardContent>
             <form action={saveAnalysisSnapshotAction} className="grid gap-3">
               <FormLabel label="Snapshot name">
-                <input
+                <Input
                   name="name"
                   required
                   maxLength={180}
                   disabled={!storageAvailable}
-                  className={fieldClass}
+                  className="min-h-11"
                 />
               </FormLabel>
               <div className="grid grid-cols-3 gap-2">
                 <FormLabel label="Club">
-                  <input
+                  <Input
                     name="club"
                     maxLength={40}
                     placeholder="All"
                     disabled={!storageAvailable}
-                    className={fieldClass}
+                    className="min-h-11"
                   />
                 </FormLabel>
                 <FormLabel label="From">
-                  <input
+                  <Input
                     type="date"
                     name="from"
                     disabled={!storageAvailable}
-                    className={fieldClass}
+                    className="min-h-11"
                   />
                 </FormLabel>
                 <FormLabel label="To">
-                  <input
-                    type="date"
-                    name="to"
-                    disabled={!storageAvailable}
-                    className={fieldClass}
-                  />
+                  <Input type="date" name="to" disabled={!storageAvailable} className="min-h-11" />
                 </FormLabel>
               </div>
               <FormLabel label="Chart view">
@@ -979,12 +495,12 @@ function SnapshotWorkspace({
                 </div>
               </fieldset>
               <FormLabel label="Notes">
-                <textarea
+                <Textarea
                   name="notes"
                   maxLength={4_000}
                   rows={3}
                   disabled={!storageAvailable}
-                  className={fieldClass}
+                  className="min-h-11"
                 />
               </FormLabel>
               <Button type="submit" disabled={!storageAvailable} className="min-h-11 rounded-xl">
@@ -994,10 +510,10 @@ function SnapshotWorkspace({
             </form>
           </CardContent>
         </Card>
-        <div className="ios-grouped-list self-start overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="self-start divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
           {snapshots.length > 0 ? (
             snapshots.map((snapshot) => (
-              <article key={snapshot.id} className="ios-grouped-row px-4 py-3">
+              <article key={snapshot.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">{snapshot.name}</h3>
@@ -1270,10 +786,12 @@ function isUndefinedTableError(error: unknown) {
 
 function FormLabel({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="grid gap-1.5 text-sm font-medium">
-      {label}
-      {children}
-    </label>
+    <Field>
+      <FieldLabel className="grid w-full gap-1.5 text-sm font-medium">
+        {label}
+        {children}
+      </FieldLabel>
+    </Field>
   );
 }
 
@@ -1309,9 +827,6 @@ function AnalysisSelect({
   );
 }
 
-const fieldClass =
-  "focus-aaa min-h-11 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-55";
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-secondary px-3 py-2">
@@ -1322,7 +837,13 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function issueSeverityClass(severity: DataQualityIssue["severity"]) {
-  return `size-2.5 rounded-full ${severity === "high" ? "bg-red-500" : severity === "medium" ? "bg-amber-500" : "bg-sky-500"}`;
+  return `size-2.5 rounded-full ${
+    severity === "high"
+      ? "bg-destructive"
+      : severity === "medium"
+        ? "bg-[var(--status-warning-foreground)]"
+        : "bg-[var(--status-information-foreground)]"
+  }`;
 }
 
 function formatDelta(value: number | null, unit: string) {

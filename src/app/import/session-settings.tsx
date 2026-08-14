@@ -39,7 +39,7 @@ export function SessionSettings({
   onDistanceUnitChange: (value: DistanceUnit) => void;
 }) {
   return (
-    <Card className="premium-card">
+    <Card className="shadow-sm" data-import-session-settings>
       <CardHeader>
         <CardTitle>Step 2: Confirm session</CardTitle>
         <CardDescription>Type, date, unit fallback, and course details if needed.</CardDescription>

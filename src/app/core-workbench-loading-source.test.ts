@@ -13,9 +13,13 @@ describe("core desktop workbench loading states", () => {
   it("keeps Phase 3 desktop routes on route-level loading skeletons", () => {
     for (const route of ["dashboard", "shots", "bag", "rounds", "coach", "data-chat"]) {
       const loadingPath = loadingPathFor(route);
+      const source = existsSync(loadingPath) ? readFileSync(loadingPath, "utf8") : "";
 
       expect(existsSync(loadingPath), `/${route} loading.tsx`).toBe(true);
-      expect(readFileSync(loadingPath, "utf8")).toContain("GolfRouteLoading");
+      expect(source).toMatch(/GolfRouteLoading|AppLoadingSkeleton|<Skeleton/);
+      if (source.includes("AppLoadingSkeleton") || source.includes("<Skeleton")) {
+        expect(source).toContain('aria-busy="true"');
+      }
     }
   });
 
@@ -42,6 +46,8 @@ describe("core desktop workbench loading states", () => {
       if (route === "feed") {
         expect(source).toContain("AppLoadingSkeleton");
         expect(source).toContain("data-feed-timeline-skeleton");
+      } else if (source.includes("AppLoadingSkeleton") || source.includes("<Skeleton")) {
+        expect(source).toContain('aria-busy="true"');
       } else {
         expect(source).toContain("GolfRouteLoading");
         expect(source).toContain(`variant="${variant}"`);
@@ -82,6 +88,8 @@ describe("core desktop workbench loading states", () => {
       if (route === "feed") {
         expect(source).toContain("AppLoadingSkeleton");
         expect(source).toContain("data-feed-timeline-skeleton");
+      } else if (source.includes("AppLoadingSkeleton") || source.includes("<Skeleton")) {
+        expect(source).toContain('aria-busy="true"');
       } else {
         expect(source).toContain("GolfRouteLoading");
         expect(source).toContain(`variant="${variant}"`);

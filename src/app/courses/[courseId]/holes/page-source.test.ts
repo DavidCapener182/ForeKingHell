@@ -10,6 +10,10 @@ const mapEditorSource = readFileSync(
   join(process.cwd(), "src/app/courses/[courseId]/holes/course-hole-map-editor.tsx"),
   "utf8",
 );
+const googleContextSource = readFileSync(
+  join(process.cwd(), "src/app/courses/[courseId]/holes/google-course-context-panel.tsx"),
+  "utf8",
+);
 
 describe("course holes desktop workspace", () => {
   it("keeps the hole geometry table exportable, captioned and configurable", () => {
@@ -63,28 +67,56 @@ describe("course holes desktop workspace", () => {
     expect(source).toContain("<Alert");
     expect(source).toContain("ConnectedMetricBar");
     expect(source).toContain("CourseTeeEditorSheet");
+    expect(source).toContain("defaultValue={activeTab}");
+    expect(source).toContain('href: "?tab=holes#hole-geometry-table"');
+    expect(source).toContain('href: "?tab=tees#tee-set"');
+    expect(source).toContain('href: "?tab=tees#geometry-preview"');
+    expect(source).toContain('id="tee-set"');
   });
-});
 
-describe("course holes mobile editor", () => {
-  it("uses one selected-hole editor and keeps the batch workspace desktop-only", () => {
-    expect(source.match(/<CourseHoleMapEditor/g)).toHaveLength(1);
-    expect(source).not.toContain("MobileCurrentItemCard");
-    expect(source).not.toContain("MobileAccordionSection");
-    expect(source).not.toContain("MobileMetricStrip");
-    expect(source).not.toContain("mobile-current-hole-form");
-    expect(source).not.toContain("mobile-hole-form");
-    expect(source).toContain('<DataPanel className="hidden lg:block">');
-    expect(source).toContain('className="hidden lg:block" data-workbench-scope="courses"');
-    expect(source).toContain('aria-labelledby="mobile-course-title"');
-    expect(source).toContain('className="hidden items-center justify-between gap-4 lg:flex"');
-    expect(source.indexOf("<CourseHoleMapEditor")).toBeLessThan(
-      source.indexOf('title="Course options"'),
+  it("keeps converted table and form surfaces theme-safe", () => {
+    expect(source).not.toMatch(
+      /bg-white|bg-slate-50|border-slate-200|text-sky-600|border-amber-500|bg-amber-500/,
     );
-    expect(source).toContain('label="Course details and tools"');
+    expect(source).not.toContain("rgba(15,23,42,0.08)");
+    expect(source).toContain("[&_th]:bg-card");
+    expect(source).toContain("bg-background");
+    expect(source).toContain("bg-muted/35");
+
+    const ordinaryMapChrome = mapEditorSource.slice(
+      mapEditorSource.indexOf('<div className="grid gap-4" data-selected-hole='),
+      mapEditorSource.indexOf("function setDraftValue"),
+    );
+    expect(ordinaryMapChrome).not.toMatch(
+      /bg-(?:white|emerald|sky)|text-(?:white|emerald|sky)|border-(?:emerald|sky)|#[0-9A-Fa-f]{3,8}/,
+    );
+    expect(ordinaryMapChrome).toContain('variant="secondary"');
+    expect(ordinaryMapChrome).toContain("text-primary");
+    expect(ordinaryMapChrome).not.toContain("<button");
+
+    expect(googleContextSource).not.toMatch(/bg-white|text-(?:emerald|sky)|#[0-9A-Fa-f]{3,8}/);
+    expect(googleContextSource).toContain("border-border bg-card");
+    expect(googleContextSource).toContain("border-border bg-muted/35");
+  });
+  it("excludes the obsolete companion graph from the desktop-only course editor", () => {
+    expect(source.match(/<CourseHoleMapEditor/g)).toHaveLength(1);
+    for (const obsolete of [
+      "IOSDisclosureGroup",
+      "IOSInlineStatus",
+      "IOSSectionHeader",
+      "MobileDetailRow",
+      "mobile-course-title",
+      "lg:hidden",
+      'className="hidden lg:block"',
+      'className="hidden items-center justify-between gap-4 lg:flex"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
+    expect(source).toContain('title="Hole geometry"');
+    expect(source).toContain('className="grid" data-workbench-scope="courses"');
   });
 
-  it("keeps the specialist map first and progressively discloses one real save form", () => {
+  it("keeps the specialist map controls and one real save form", () => {
     expect(mapEditorSource).toContain('aria-label="Choose a hole to edit"');
     expect(mapEditorSource).toContain("aria-pressed={selectedHoleNumber === holeNumber}");
     expect(mapEditorSource).toContain("aria-label={`Edit hole ${holeNumber}`}");

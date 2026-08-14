@@ -27,7 +27,7 @@ import {
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { Badge } from "@/components/ui/badge";
 import { ButtonGroup } from "@/components/ui/button-group";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -38,6 +38,7 @@ import {
   InputGroupInput,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { Item } from "@/components/ui/item";
 import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
 import { ReelExportButton } from "@/components/social/reel-export-button";
 import { SocialAvatar } from "@/components/social/social-avatar";
@@ -177,18 +178,18 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
 
         <div className={hasXp ? "grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)]" : "grid gap-3"}>
           {hasXp ? (
-            <div className="grid gap-2 rounded-xl border border-emerald-100 bg-emerald-50/80 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-emerald-800">
+            <Item variant="muted" className="block border-primary/20 bg-primary/5 p-3">
+              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-primary">
                 <Zap className="size-3.5" />
                 XP gained
               </p>
-              <p className="text-3xl font-semibold tracking-normal text-[#111827]">
+              <p className="text-3xl font-semibold tracking-normal text-foreground">
                 +{numberFormatter.format(group.xpGained)} XP
               </p>
-              <p className="text-xs text-emerald-900">
+              <p className="text-xs text-muted-foreground">
                 {group.reactionCount} kudos · {group.commentCount} comments
               </p>
-            </div>
+            </Item>
           ) : null}
 
           <div className="grid gap-3">
@@ -218,61 +219,61 @@ function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
 
         {achievements.length > 0 ? (
           <Collapsible className="rounded-lg border bg-muted/45">
-            <CollapsibleTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="group w-full min-h-12 justify-between rounded-lg px-3"
-              >
-                <span className="flex items-center gap-2 text-sm font-semibold">
-                  <Award className="size-4 text-emerald-600" />
-                  Achievements unlocked
-                </span>
-                <span className="flex items-center gap-2">
-                  <Badge variant="secondary">{achievements.length} total</Badge>
-                  <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                </span>
-              </Button>
+            <CollapsibleTrigger
+              type="button"
+              className={buttonVariants({
+                variant: "ghost",
+                className: "group w-full min-h-12 justify-between rounded-lg px-3",
+              })}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <Award className="size-4 text-primary" />
+                Achievements unlocked
+              </span>
+              <span className="flex items-center gap-2">
+                <Badge variant="secondary">{achievements.length} total</Badge>
+                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </span>
             </CollapsibleTrigger>
             <CollapsibleContent className="grid gap-2 border-t p-3 sm:grid-cols-2">
               {achievements.map((item) => (
-                <div key={item.id} className="rounded-lg bg-white px-3 py-2 text-sm">
+                <Item key={item.id} className="block px-3 py-2 text-sm">
                   <p className="line-clamp-1 font-medium">{achievementTitle(item)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {item.metricValue ?? "Achievement"} · {item.context ?? "Verified activity"}
                   </p>
                   <ActivityActions item={item} showCommentThread={false} />
-                </div>
+                </Item>
               ))}
             </CollapsibleContent>
           </Collapsible>
         ) : null}
 
         <Collapsible className="rounded-lg border bg-muted/45">
-          <CollapsibleTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              className="group w-full min-h-12 justify-between rounded-lg px-3"
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <MoreHorizontal className="size-4 text-slate-600" />
-                Individual cards
-              </span>
-              <span className="flex items-center gap-2">
-                <Badge variant="outline">{group.items.length} posts</Badge>
-                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </span>
-            </Button>
+          <CollapsibleTrigger
+            type="button"
+            className={buttonVariants({
+              variant: "ghost",
+              className: "group w-full min-h-12 justify-between rounded-lg px-3",
+            })}
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <MoreHorizontal className="size-4 text-muted-foreground" />
+              Individual cards
+            </span>
+            <span className="flex items-center gap-2">
+              <Badge variant="outline">{group.items.length} posts</Badge>
+              <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </span>
           </CollapsibleTrigger>
           <CollapsibleContent className="grid gap-3 border-t p-3">
             {group.items.map((item) => (
-              <FeedItemCard key={item.id} item={item} />
+              <FeedDigestItemRow key={item.id} item={item} />
             ))}
           </CollapsibleContent>
         </Collapsible>
 
-        <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <div className="flex flex-wrap gap-2 border-t border-border pt-3">
           <Button asChild variant="ghost" size="sm">
             <Link href={`/api/share-cards/feed/${firstItem.id}`} target="_blank" prefetch={false}>
               <Share2 className="size-4" />
@@ -294,146 +295,170 @@ function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?:
       data-feed-item-id={item.id}
     >
       <CardContent className={compact ? "grid gap-3" : "grid gap-4"}>
-        <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
-          <SocialAvatar
-            displayName={item.profile.displayName}
-            username={item.profile.username}
-            avatarUrl={item.profile.avatarUrl}
-            href={`/profile/${item.profile.username}`}
-            size={compact ? "sm" : "md"}
-          />
-          <div className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <Link
-                href={`/profile/${item.profile.username}`}
-                prefetch={false}
-                className="truncate text-sm font-semibold hover:underline"
-              >
-                {item.profile.displayName}
-              </Link>
-              <span className="text-xs text-muted-foreground">@{item.profile.username}</span>
-              <span className="text-xs text-muted-foreground">
-                {dateFormatter.format(item.createdAt)}
-              </span>
-            </div>
-            <h2
-              className={
-                compact
-                  ? "mt-1 text-sm font-medium leading-5"
-                  : "mt-1 text-lg font-semibold leading-6"
-              }
-            >
-              {item.headline}
-            </h2>
-          </div>
-          <Badge variant="outline" className="h-fit gap-1">
-            <VisibilityIcon visibility={item.visibility} />
-            {titleCase(item.visibility)}
-          </Badge>
-        </header>
-
-        <div className="grid gap-3">
-          {item.metricValue ? (
-            <div className="grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                <BarChart3 className="size-3.5" />
-                {item.metricLabel ?? "Metric"}
-              </p>
-              <p className="text-3xl font-semibold tracking-normal text-[#050505]">
-                {item.metricValue}
-              </p>
-            </div>
-          ) : null}
-          {!compact && isPbFeedType(item.itemType) ? (
-            <PageArtwork
-              variant="feedPb"
-              alt=""
-              className="block h-24 min-h-0 md:h-28"
-              sizes="(min-width: 768px) 680px, 100vw"
-            />
-          ) : null}
-          {item.context ? (
-            <p className="text-sm leading-6 text-muted-foreground">{item.context}</p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary" className="gap-1">
-              <ShieldCheck className="size-3" />
-              {item.verificationLabel}
-            </Badge>
-            <Badge variant="outline">{feedTypeLabel(item.itemType)}</Badge>
-          </div>
-        </div>
-
-        <div className="grid gap-3 border-t border-slate-100 pt-3">
-          <ButtonGroup className="flex-wrap">
-            <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
-              <input type="hidden" name="feedItemId" value={item.id} />
-              <Button type="submit" variant={item.viewerReacted ? "default" : "ghost"} size="sm">
-                <ThumbsUp className="size-4" />
-                Kudos {item.reactionCount > 0 ? item.reactionCount : ""}
-              </Button>
-            </form>
-            {!compact ? (
-              <Button variant="ghost" size="sm" type="button">
-                <MessageCircle className="size-4" />
-                Comments {item.commentCount > 0 ? item.commentCount : ""}
-              </Button>
-            ) : null}
-            <Button asChild variant="ghost" size="sm">
-              <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
-                <Share2 className="size-4" />
-                Share card
-              </Link>
-            </Button>
-            <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
-            {item.viewerCanManage ? <ReelExportButton feedItemId={item.id} /> : null}
-            {item.proofUrl ? (
-              <Button asChild variant="ghost" size="sm">
-                <Link href={item.proofUrl} prefetch={false}>
-                  Open related
-                </Link>
-              </Button>
-            ) : null}
-          </ButtonGroup>
-
-          {!compact ? (
-            <>
-              {item.comments.length > 0 ? (
-                <div className="grid gap-2">
-                  {item.comments.map((comment) => (
-                    <CommentCard key={comment.id} comment={comment} />
-                  ))}
-                </div>
-              ) : null}
-              <form action={addFeedCommentAction}>
-                <input type="hidden" name="feedItemId" value={item.id} />
-                <InputGroup className="h-auto min-h-10 bg-card">
-                  <InputGroupTextarea name="body" placeholder="Write a comment" rows={2} />
-                  <InputGroupAddon align="block-end" className="justify-end border-t">
-                    <InputGroupButton type="submit" variant="outline" size="sm">
-                      <MessageCircle className="size-4" />
-                      Post
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                </InputGroup>
-              </form>
-            </>
-          ) : null}
-          <FeedItemControls
-            feedItemId={item.id}
-            visibility={item.visibility}
-            isOwnItem={item.profile.relationship === "self"}
-            compact={compact}
-          />
-        </div>
+        <FeedItemContent item={item} compact={compact} />
       </CardContent>
     </Card>
   );
 }
 
+function FeedDigestItemRow({ item }: { item: FeedItemView }) {
+  return (
+    <Item
+      role="article"
+      variant="outline"
+      className="block p-3"
+      data-feed-item-id={item.id}
+      data-feed-digest-item-row
+    >
+      <div className="grid gap-4">
+        <FeedItemContent item={item} />
+      </div>
+    </Item>
+  );
+}
+
+function FeedItemContent({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
+  return (
+    <>
+      <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
+        <SocialAvatar
+          displayName={item.profile.displayName}
+          username={item.profile.username}
+          avatarUrl={item.profile.avatarUrl}
+          href={`/profile/${item.profile.username}`}
+          size={compact ? "sm" : "md"}
+        />
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <Link
+              href={`/profile/${item.profile.username}`}
+              prefetch={false}
+              className="truncate text-sm font-semibold hover:underline"
+            >
+              {item.profile.displayName}
+            </Link>
+            <span className="text-xs text-muted-foreground">@{item.profile.username}</span>
+            <span className="text-xs text-muted-foreground">
+              {dateFormatter.format(item.createdAt)}
+            </span>
+          </div>
+          <h2
+            className={
+              compact
+                ? "mt-1 text-sm font-medium leading-5"
+                : "mt-1 text-lg font-semibold leading-6"
+            }
+          >
+            {item.headline}
+          </h2>
+        </div>
+        <Badge variant="outline" className="h-fit gap-1">
+          <VisibilityIcon visibility={item.visibility} />
+          {titleCase(item.visibility)}
+        </Badge>
+      </header>
+
+      <div className="grid gap-3">
+        {item.metricValue ? (
+          <Item variant="muted" className="block p-3">
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+              <BarChart3 className="size-3.5" />
+              {item.metricLabel ?? "Metric"}
+            </p>
+            <p className="text-3xl font-semibold tracking-normal text-foreground">
+              {item.metricValue}
+            </p>
+          </Item>
+        ) : null}
+        {!compact && isPbFeedType(item.itemType) ? (
+          <PageArtwork
+            variant="feedPb"
+            alt=""
+            className="block h-24 min-h-0 md:h-28"
+            sizes="(min-width: 768px) 680px, 100vw"
+          />
+        ) : null}
+        {item.context ? (
+          <p className="text-sm leading-6 text-muted-foreground">{item.context}</p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="secondary" className="gap-1">
+            <ShieldCheck className="size-3" />
+            {item.verificationLabel}
+          </Badge>
+          <Badge variant="outline">{feedTypeLabel(item.itemType)}</Badge>
+        </div>
+      </div>
+
+      <div className="grid gap-3 border-t border-border pt-3">
+        <ButtonGroup className="flex-wrap">
+          <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
+            <input type="hidden" name="feedItemId" value={item.id} />
+            <Button type="submit" variant={item.viewerReacted ? "default" : "ghost"} size="sm">
+              <ThumbsUp className="size-4" />
+              Kudos {item.reactionCount > 0 ? item.reactionCount : ""}
+            </Button>
+          </form>
+          {!compact ? (
+            <Button variant="ghost" size="sm" type="button">
+              <MessageCircle className="size-4" />
+              Comments {item.commentCount > 0 ? item.commentCount : ""}
+            </Button>
+          ) : null}
+          <Button asChild variant="ghost" size="sm">
+            <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
+              <Share2 className="size-4" />
+              Share card
+            </Link>
+          </Button>
+          <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
+          {item.viewerCanManage ? <ReelExportButton feedItemId={item.id} /> : null}
+          {item.proofUrl ? (
+            <Button asChild variant="ghost" size="sm">
+              <Link href={item.proofUrl} prefetch={false}>
+                Open related
+              </Link>
+            </Button>
+          ) : null}
+        </ButtonGroup>
+
+        {!compact ? (
+          <>
+            {item.comments.length > 0 ? (
+              <div className="grid gap-2">
+                {item.comments.map((comment) => (
+                  <CommentCard key={comment.id} comment={comment} />
+                ))}
+              </div>
+            ) : null}
+            <form action={addFeedCommentAction}>
+              <input type="hidden" name="feedItemId" value={item.id} />
+              <InputGroup className="h-auto min-h-10 bg-card">
+                <InputGroupTextarea name="body" placeholder="Write a comment" rows={2} />
+                <InputGroupAddon align="block-end" className="justify-end border-t">
+                  <InputGroupButton type="submit" variant="outline" size="sm">
+                    <MessageCircle className="size-4" />
+                    Post
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </form>
+          </>
+        ) : null}
+        <FeedItemControls
+          feedItemId={item.id}
+          visibility={item.visibility}
+          isOwnItem={item.profile.relationship === "self"}
+          compact={compact}
+        />
+      </div>
+    </>
+  );
+}
+
 function HighlightRow({ item, showProfile }: { item: FeedItemView; showProfile: boolean }) {
   return (
-    <div className="rounded-xl border bg-white px-3 py-2 text-sm">
+    <Item className="block px-3 py-2 text-sm">
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0">
           <p className="line-clamp-2 font-medium">
@@ -449,7 +474,7 @@ function HighlightRow({ item, showProfile }: { item: FeedItemView; showProfile: 
         </div>
       </div>
       <ActivityActions item={item} showCommentThread={false} />
-    </div>
+    </Item>
   );
 }
 
@@ -462,17 +487,17 @@ function DigestComments({ items }: { items: FeedItemView[] }) {
   }
 
   return (
-    <section className="rounded-xl border bg-white p-3">
+    <Item variant="muted" className="block p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-sm font-semibold">
-          <MessageCircle className="size-4 text-sky-600" />
+          <MessageCircle className="size-4 text-primary" />
           Comments
         </p>
         <Badge variant="secondary">{commentCount} total</Badge>
       </div>
       <div className="mt-3 grid gap-3">
         {commentedItems.map((item) => (
-          <article key={item.id} className="rounded-lg bg-[#F5F6F4] p-3">
+          <Item key={item.id} variant="outline" className="block p-3">
             <p className="line-clamp-2 text-sm font-medium">{item.headline}</p>
             <div className="mt-2 grid gap-2">
               {item.comments.map((comment) => (
@@ -491,10 +516,10 @@ function DigestComments({ items }: { items: FeedItemView[] }) {
                 </InputGroupAddon>
               </InputGroup>
             </form>
-          </article>
+          </Item>
         ))}
       </div>
-    </section>
+    </Item>
   );
 }
 
@@ -506,8 +531,9 @@ function CommentCard({
   compact?: boolean;
 }) {
   return (
-    <div
-      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-white ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}`}
+    <Item
+      variant="outline"
+      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-card ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}`}
     >
       <SocialAvatar
         displayName={comment.profile.displayName}
@@ -545,7 +571,7 @@ function CommentCard({
         </div>
         <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
       </div>
-    </div>
+    </Item>
   );
 }
 
@@ -557,7 +583,7 @@ function ActivityActions({
   showCommentThread?: boolean;
 }) {
   return (
-    <div className="mt-2 grid gap-2 border-t border-slate-100 pt-2">
+    <div className="mt-2 grid gap-2 border-t border-border pt-2">
       <ButtonGroup className="flex-wrap">
         <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
           <input type="hidden" name="feedItemId" value={item.id} />
@@ -568,11 +594,12 @@ function ActivityActions({
         </form>
         {showCommentThread ? (
           <Collapsible defaultOpen={item.commentCount > 0} className="w-full sm:w-auto">
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="ghost" size="sm">
-                <MessageCircle className="size-4" />
-                Comments {item.commentCount > 0 ? item.commentCount : ""}
-              </Button>
+            <CollapsibleTrigger
+              type="button"
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+            >
+              <MessageCircle className="size-4" />
+              Comments {item.commentCount > 0 ? item.commentCount : ""}
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-2 grid min-w-72 gap-2 rounded-lg border bg-muted/45 p-2">
               {item.comments.length > 0 ? (

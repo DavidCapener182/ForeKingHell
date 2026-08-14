@@ -30,8 +30,8 @@ describe("admin system checks desktop console source", () => {
     expect(source).toContain("stickyFirstColumn");
     expect(source).toContain('id="admin-system-checks-summary"');
     expect(source).toContain("tabIndex={0}");
-    expect(source).toContain('href="/providers#provider-health"');
-    expect(source).toContain('href="/providers#provider-jobs"');
+    expect(source).toContain('href="/providers?tab=diagnostics#provider-health"');
+    expect(source).toContain('href="/providers?tab=diagnostics#provider-jobs"');
     expect(source).toContain('href: "/admin/billing"');
     expect(source).toContain('href: "/admin/moderation"');
 
@@ -47,11 +47,18 @@ describe("admin system checks desktop console source", () => {
     expect(source).not.toContain("DesktopInsightRail");
   });
 
-  it("uses an urgent-first native mobile register and honest absent-state copy", () => {
-    expect(source).toContain("AdminMobileShell");
-    expect(source).toContain("AdminMobileSystemChecks");
-    expect(source).toContain("MobileSystemCheckRows");
-    expect(source).toContain('className="hidden lg:grid"');
+  it("keeps honest absent-state copy without bundling a second companion register", () => {
+    for (const obsolete of [
+      "AdminMobileShell",
+      "AdminMobileSystemChecks",
+      "MobileSystemCheckRows",
+      "MobileStatusAction",
+      "IOSDisclosureGroup",
+      "getRequestAppSurface",
+      'surface === "companion"',
+    ]) {
+      expect(source).not.toContain(obsolete);
+    }
     expect(source).toContain("No live verification result");
     expect(source).not.toContain('"Healthy"');
     expect(source).not.toContain("Runbook ready");

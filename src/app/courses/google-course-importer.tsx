@@ -1,15 +1,16 @@
 "use client";
 
-import { Loader2, MapPin, Search, Star } from "lucide-react";
+import { AlertCircle, Info, Loader2, MapPin, Search, Star } from "lucide-react";
 import { useState } from "react";
 
 import { createGoogleCourseAction } from "@/app/courses/actions";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 
-type GoogleCourseSearchResult = {
+export type GoogleCourseSearchResult = {
   placeId: string;
   name: string;
   address: string | null;
@@ -86,7 +87,7 @@ export function GoogleCourseImporter() {
             }
           }}
           placeholder="Quail Hollow Club"
-          className="h-11 rounded-xl bg-white"
+          className="h-11 bg-background"
         />
         <Button
           type="button"
@@ -104,67 +105,84 @@ export function GoogleCourseImporter() {
         </Button>
       </div>
 
-      <p
-        className={cn(
-          "text-sm",
-          searchState.status === "error" ? "text-destructive" : "text-muted-foreground",
-        )}
+      <Alert
+        variant={searchState.status === "error" ? "destructive" : "default"}
+        data-google-course-search-feedback
       >
-        {searchState.message}
-      </p>
+        {searchState.status === "error" ? (
+          <AlertCircle className="size-4" />
+        ) : (
+          <Info className="size-4" />
+        )}
+        <AlertTitle>
+          {searchState.status === "loading"
+            ? "Searching Google Places"
+            : searchState.status === "error"
+              ? "Google Places search failed"
+              : "Google Places search"}
+        </AlertTitle>
+        <AlertDescription>{searchState.message}</AlertDescription>
+      </Alert>
 
       {searchState.results.length > 0 ? (
         <div className="grid gap-2">
           {searchState.results.map((course) => (
-            <button
+            <Item
               key={course.placeId}
-              type="button"
-              onClick={() => setSelected(course)}
-              className={cn(
-                "grid min-h-11 gap-2 rounded-xl border bg-white p-3 text-left transition hover:border-emerald-400 motion-reduce:transition-none",
-                selected?.placeId === course.placeId && "border-emerald-500 bg-emerald-50/60",
-              )}
+              variant={selected?.placeId === course.placeId ? "muted" : "outline"}
+              className="items-start"
+              data-google-course-result
             >
-              <span className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold">{course.name}</span>
+              <ItemContent>
+                <ItemTitle>{course.name}</ItemTitle>
+                <ItemDescription className="flex whitespace-normal [overflow-wrap:anywhere]">
+                  <MapPin className="mt-0.5 mr-2 size-4 shrink-0" />
+                  {course.address ?? course.country ?? "Google Places course"}
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions className="flex-col items-end sm:flex-row sm:items-center">
                 {course.rating ? (
                   <Badge variant="secondary" className="gap-1">
                     <Star className="size-3" />
                     {course.rating.toFixed(1)}
                   </Badge>
                 ) : null}
-              </span>
-              <span className="flex items-start gap-2 text-sm leading-5 text-muted-foreground">
-                <MapPin className="mt-0.5 size-4 shrink-0" />
-                {course.address ?? course.country ?? "Google Places course"}
-              </span>
-            </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={selected?.placeId === course.placeId ? "secondary" : "outline"}
+                  onClick={() => setSelected(course)}
+                >
+                  {selected?.placeId === course.placeId ? "Selected" : "Select"}
+                </Button>
+              </ItemActions>
+            </Item>
           ))}
         </div>
       ) : null}
 
-      {selected ? (
-        <form
-          action={createGoogleCourseAction}
-          className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3"
-        >
-          <input type="hidden" name="placeId" value={selected.placeId} />
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-semibold">{selected.name}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {selected.address ?? "Google Places match selected"}
-              </p>
-            </div>
-            <Button
-              type="submit"
-              className="min-h-11 rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-            >
-              Import Google course
-            </Button>
-          </div>
-        </form>
-      ) : null}
+      {selected ? <GoogleCourseSelection course={selected} /> : null}
     </div>
+  );
+}
+
+export function GoogleCourseSelection({ course }: { course: GoogleCourseSearchResult }) {
+  return (
+    <form action={createGoogleCourseAction} data-google-course-selection>
+      <input type="hidden" name="placeId" value={course.placeId} />
+      <Item variant="muted" className="items-start">
+        <ItemContent>
+          <ItemTitle>{course.name}</ItemTitle>
+          <ItemDescription className="whitespace-normal">
+            {course.address ?? "Google Places match selected"}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          <Button type="submit" className="min-h-11">
+            Import Google course
+          </Button>
+        </ItemActions>
+      </Item>
+    </form>
   );
 }

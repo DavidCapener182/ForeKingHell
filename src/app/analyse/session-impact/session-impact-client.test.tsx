@@ -39,15 +39,17 @@ const shots = [
   },
 ];
 
-describe("Session impact mobile composition", () => {
+describe("Session impact desktop composition", () => {
   it("renders the recommendation before controls and retains the specialist path visualisation", () => {
     const markup = renderToStaticMarkup(<SessionImpactClient shots={shots} />);
 
-    expect(markup.indexOf("What changes next")).toBeLessThan(markup.indexOf("Test the evidence"));
-    expect(markup).toContain("Change evidence filter");
-    expect(markup).toContain('aria-label="Before and after metrics"');
+    expect(markup.indexOf("What changes next")).toBeLessThan(markup.indexOf("Reversible filter"));
+    expect(markup).toContain("Reversible filter");
+    expect(markup).toContain("Before and after");
     expect(markup).toContain('aria-label="Top-down summary of 3 shot paths"');
     expect(markup).toContain("Paths are estimated from landing endpoints");
+    expect(markup).not.toContain("Change evidence filter");
+    expect(markup).not.toContain('aria-label="Before and after metrics"');
   });
 
   it("keeps the empty state concise and actionable", () => {

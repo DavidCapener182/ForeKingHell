@@ -460,10 +460,10 @@ export function InsightBadge({
 }) {
   const className =
     tone === "green"
-      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+      ? "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] hover:bg-[var(--status-success-surface)]"
       : tone === "amber"
-        ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
-        : "bg-slate-100 text-slate-800 hover:bg-slate-100";
+        ? "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] hover:bg-[var(--status-warning-surface)]"
+        : "bg-muted text-muted-foreground hover:bg-muted";
 
   return <Badge className={className}>{children}</Badge>;
 }

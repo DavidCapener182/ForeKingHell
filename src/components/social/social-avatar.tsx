@@ -18,7 +18,7 @@ export function SocialAvatar({
   href?: string;
 }) {
   const className = cn(
-    "shadow-sm ring-1 ring-slate-950/10",
+    "shadow-sm ring-1 ring-border",
     size === "sm" && "size-8 text-xs",
     size === "md" && "size-11 text-sm",
     size === "lg" && "size-16 text-lg",
@@ -37,7 +37,7 @@ export function SocialAvatar({
           <AvatarImage src={avatarUrl} alt="" />
         )
       ) : (
-        <AvatarFallback className="bg-[#111827] font-semibold tracking-normal text-white">
+        <AvatarFallback className="bg-primary font-semibold tracking-normal text-primary-foreground">
           {initials(displayName, username)}
         </AvatarFallback>
       )}

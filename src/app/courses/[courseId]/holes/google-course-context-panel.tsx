@@ -44,7 +44,7 @@ export function GoogleCourseContextPanel({
       />
       <CardContent className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         {!mapFailed ? (
-          <div className="overflow-hidden rounded-2xl border bg-white">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
             <Image
               src={mapSrc}
               alt={`${name} map`}
@@ -58,7 +58,7 @@ export function GoogleCourseContextPanel({
         ) : null}
         <div className="grid gap-3">
           {!streetViewFailed ? (
-            <div className="overflow-hidden rounded-2xl border bg-white">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <Image
                 src={streetViewSrc}
                 alt={`${name} street view`}
@@ -84,7 +84,7 @@ export function GoogleCourseContextPanel({
 
 function ReadonlyValue({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-white px-3 py-2">
+    <div className="rounded-xl border border-border bg-muted/35 px-3 py-2">
       <dt className="text-xs uppercase tracking-normal text-muted-foreground">{label}</dt>
       <dd className="mt-1 font-medium">{value}</dd>
     </div>

@@ -33,7 +33,7 @@ export function DateFilterPopover({ name, label, defaultValue = "" }: DateFilter
           <Button
             type="button"
             variant="outline"
-            className="h-10 justify-start bg-white/90 font-normal"
+            className="h-10 justify-start bg-card font-normal"
           >
             <CalendarDays className="size-4" />
             {selectedDate ? dateFormatter.format(selectedDate) : "Any date"}

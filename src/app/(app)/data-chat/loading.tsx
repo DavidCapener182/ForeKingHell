@@ -1,11 +1,13 @@
-import { GolfRouteLoading } from "@/components/golf-loading";
+import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
+import { PageShell } from "@/components/premium";
 
 export default function DataChatLoading() {
   return (
-    <GolfRouteLoading
-      title="Opening data chat"
-      subtitle="Loading saved answers, cited metrics, and the context needed for grounded replies."
-      variant="dataChat"
-    />
+    <PageShell>
+      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
+        <AppLoadingSkeleton variant="answer" />
+        <AppLoadingSkeleton variant="list" rows={4} />
+      </div>
+    </PageShell>
   );
 }

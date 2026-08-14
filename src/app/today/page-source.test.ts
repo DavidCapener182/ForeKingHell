@@ -15,6 +15,7 @@ const primaryAnswerSource = readFileSync(
   join(process.cwd(), "src/components/app/today-primary-answer.tsx"),
   "utf8",
 );
+const loadingSource = readFileSync(join(process.cwd(), "src/app/(app)/today/loading.tsx"), "utf8");
 const chartsSource = readFileSync(
   join(process.cwd(), "src/app/today/today-shot-charts.tsx"),
   "utf8",
@@ -30,6 +31,13 @@ describe("latest practice desktop dashboard", () => {
     expect(primaryAnswerSource).toContain("data-primary-recommendation");
     expect(primaryAnswerSource).toContain("data-today-sync-state");
     expect(primaryAnswerSource).toContain("<Progress");
+    expect(primaryAnswerSource).toContain('new Event("fkh-offline-retry-requested")');
+    expect(loadingSource).toContain("Loading Today answer");
+    expect(loadingSource).toContain("Loading latest shot pattern");
+    expect(loadingSource.match(/role="status"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(loadingSource.match(/aria-busy="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(loadingSource).toContain("aspect-[82/43]");
+    expect(primaryAnswerSource).toContain("Retry sync");
     expect(primaryAnswerSource).toContain("<ButtonGroup");
     expect(primaryAnswerSource).toContain("<DropdownMenu");
     expect(companionSource).toContain("Plan range session");
@@ -38,6 +46,37 @@ describe("latest practice desktop dashboard", () => {
     expect(companionSource).not.toContain("TodayShotCharts");
     expect(companionSource).not.toContain("TodayMobileEvidence");
     expect(companionSource).not.toContain("getChallengesPageData");
+  });
+
+  it("keeps companion and iOS rendering out of the workbench bundle", () => {
+    for (const legacyMobileSymbol of [
+      "MobileAppShell",
+      "MobileTopBar",
+      "MobileFilterSheet",
+      "MobileHorizontalRail",
+      "MobileDataCard",
+      "IOSDisclosureGroup",
+      "IOSGroupedList",
+      "IOSInlineStatus",
+      "IOSListRow",
+      "IOSMetricRow",
+      "IOSSectionHeader",
+      "TodayMobile",
+    ]) {
+      expect(source).not.toContain(legacyMobileSymbol);
+    }
+
+    expect(source).not.toContain("@/components/app/ios-mobile");
+    expect(source).not.toContain("@/components/mobile-sports");
+    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).toContain("data-desktop-today-workspace");
+  });
+
+  it("renders server-authored collapsible triggers directly across the RSC boundary", () => {
+    expect(source).toContain('import { Button, buttonVariants } from "@/components/ui/button"');
+    expect(source.match(/<CollapsibleTrigger\s+type="button"/g)).toHaveLength(2);
+    expect(source.match(/className=\{buttonVariants\(\{/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(source).not.toMatch(/<CollapsibleTrigger\s+asChild>[\s\S]*?<Button/);
   });
 
   it("uses the optional desktop AI rail for latest practice evidence", () => {
@@ -81,20 +120,26 @@ describe("latest practice desktop dashboard", () => {
   });
 
   it("keeps the focused paired regions aligned within their tabs", () => {
-    for (const row of [
-      "today-signal",
-      "today-practice",
-      "today-highlights",
-      "today-highlight-cards",
-    ]) {
+    for (const row of ["today-signal", "today-practice"]) {
       expect(source).toContain(`data-equal-height-row="${row}"`);
     }
 
     expect(source).toContain("today-signal-grid grid items-stretch");
     expect(source).toContain("today-practice-grid grid items-stretch");
-    expect(source).toContain("today-highlights-grid grid items-stretch");
-    expect(source).toContain("auto-rows-fr items-stretch");
     expect(source).toContain("grid items-start gap-5 xl:grid-cols-2");
+  });
+
+  it("keeps Shot of the day in the verdict hero without a duplicate evidence panel", () => {
+    expect(source).toContain("<HeroShotSpotlight");
+    expect(source).toContain("Shot of the day");
+    expect(source).not.toContain("<TodayHighlightsPanel");
+    expect(source).not.toContain("function TodayHighlightsPanel");
+    expect(source).not.toContain("function StraightShotCard");
+    expect(source).not.toContain("function StraightShotMetric");
+    expect(source).not.toContain("Latest practice highlights");
+    expect(source).not.toContain("today-highlights-rail");
+    expect(source).not.toContain("border-sky-200 bg-sky-50/70");
+    expect(source).not.toContain("border-slate-200/80 bg-white");
   });
 
   it("keeps embedded latest-practice tables captioned and keyboardable", () => {
@@ -183,16 +228,65 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("Clean scoring used");
   });
 
-  it("keeps session filtering reversible and honest about unavailable target offsets", () => {
+  it("keeps desktop evidence filtering reversible", () => {
     expect(source).toContain("parsePracticeReviewMode(first(params.evidence))");
-    expect(source).toContain("TodayReviewControls");
+    expect(source).toContain("TodayDesktopFilterBar");
+    expect(source).toContain("<DataToolbar");
+    expect(source).toContain("<ToggleGroup");
     expect(source).toContain("Trusted shots");
     expect(source).toContain("All imported");
     expect(source).toContain("Simulate outlier exclusions");
-    expect(source).toContain("no separate target offset was imported");
-    expect(source).toContain("Provider rows normalised to the stored yard and mph schema");
+    expect(source).toContain("todayReviewModeHref(data, clubSort");
     expect(source).toContain("reviewShots(data, reviewMode)");
     expect(source).toContain("reviewComparisons(data, reviewMode)");
+    expect(source).not.toContain("TodayReviewControls");
+  });
+
+  it("uses theme tokens across ordinary workbench surfaces while preserving golf visuals", () => {
+    const ordinaryThemeBlocks = [
+      source.slice(
+        source.indexOf("function TodayDesktopFilterBar"),
+        source.indexOf("function TodayHoverStyles"),
+      ),
+      source.slice(
+        source.indexOf("function TodayHoverStyles"),
+        source.indexOf("function TodayVerdictHero"),
+      ),
+      source.slice(
+        source.indexOf("function TodayVerdictHero"),
+        source.indexOf("function HeroShotSpotlight"),
+      ),
+      source.slice(
+        source.indexOf("function TodayPracticePrescription"),
+        source.indexOf("function TodaySocialLine"),
+      ),
+      source.slice(
+        source.indexOf("function reviewIconClass"),
+        source.indexOf("function deltaText"),
+      ),
+    ];
+    const fixedPaletteClass =
+      /(?:bg|text|border)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border)-\[#|bg-\[linear-gradient|rgba\(/;
+
+    for (const block of ordinaryThemeBlocks) {
+      expect(block).not.toMatch(fixedPaletteClass);
+    }
+
+    expect(source).toContain("var(--status-success-surface)");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).toContain("var(--status-information-surface)");
+    expect(source).toContain("var(--status-error-surface)");
+    expect(source).toContain("bg-card");
+    expect(source).toContain("bg-muted");
+    expect(source).not.toMatch(/<button\b/);
+
+    const shotOfDayVisual = source.slice(
+      source.indexOf("function HeroShotSpotlight"),
+      source.indexOf("function TodayPracticePrescription"),
+    );
+    expect(shotOfDayVisual).toContain("bg-[#083524]");
+    expect(shotOfDayVisual).toContain("bg-emerald-950");
+    expect(chartsSource).toContain('driver: "#2563eb"');
   });
 
   it("uses scoring-trust language instead of generic confidence copy", () => {
@@ -222,5 +316,59 @@ describe("latest practice desktop dashboard", () => {
     expect(chartsSource).not.toContain('aria-label="Approximate 80 percent dispersion ellipse"');
     expect(chartsSource).not.toContain('aria-label="Approximate 50 percent dispersion ellipse"');
     expect(chartsSource.match(/<ellipse[\s\S]*?aria-hidden="true"/g)).toHaveLength(2);
+  });
+
+  it("uses semantic shadcn filters and summary chrome around the preserved chart palette", () => {
+    const controls = chartsSource.slice(
+      chartsSource.indexOf("export function TodayShotCharts"),
+      chartsSource.indexOf("function ChartPanel"),
+    );
+    const summaries = chartsSource.slice(
+      chartsSource.indexOf("function DispersionCorridorStats"),
+      chartsSource.indexOf("function DispersionChart"),
+    );
+
+    expect(controls).toContain("<Alert");
+    expect(controls).toContain("<ToggleGroup");
+    expect(controls).toContain("<ToggleGroupItem");
+    expect(controls).toContain("<Button");
+    expect(controls).not.toMatch(/<button\b/);
+    expect(controls).toContain("var(--status-success-surface)");
+    expect(summaries).toContain("border-border bg-card");
+    expect(summaries).toContain("text-foreground");
+    expect(summaries).not.toMatch(/border-slate|bg-white|text-slate|bg-emerald|text-emerald/);
+    expect(chartsSource).toContain("var(--status-error-surface)");
+    expect(chartsSource).toContain("var(--status-information-surface)");
+    expect(chartsSource).toContain("var(--status-warning-surface)");
+    expect(chartsSource).not.toMatch(/<button\b/);
+
+    expect(chartsSource).toContain('driver: "#2563eb"');
+    expect(chartsSource).toContain('fill="white"');
+    expect(chartsSource).toContain('stroke="#e5e7eb"');
+  });
+
+  it("keeps status-surface labels fully opaque with explicit semantic foregrounds", () => {
+    expect(source).not.toContain("opacity-75");
+    expect(source).toContain("function reviewLabelClass(tone: ReviewTone)");
+    expect(source).toContain('if (tone === "pink") return "text-destructive"');
+    expect(source).toContain(
+      'if (tone === "amber") return "text-[var(--status-warning-foreground)]"',
+    );
+    expect(source).toContain(
+      'if (tone === "sky") return "text-[var(--status-information-foreground)]"',
+    );
+  });
+
+  it("keeps compact corridor ranges fully opaque on every semantic status surface", () => {
+    const corridorStats = chartsSource.slice(
+      chartsSource.indexOf("function DispersionCorridorStats"),
+      chartsSource.indexOf("function DispersionMarkerLegend"),
+    );
+
+    expect(corridorStats).toContain("corridorRangeClass(bucket.tone)");
+    expect(corridorStats).not.toContain("opacity-70");
+    expect(chartsSource).toContain("function corridorRangeClass(tone: DispersionCorridorTone)");
+    expect(chartsSource).toContain('if (tone === "left") return "text-destructive"');
+    expect(chartsSource).toContain('return "text-[var(--status-information-foreground)]"');
   });
 });

@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   getClubBenchmarkMetricLevels,
   getClubSpeedBenchmarkTarget,
@@ -74,10 +76,10 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-lg border border-border/70 bg-white/65 p-4">
+      <div className="rounded-lg border border-border/70 bg-card/65 p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-950">
+            <p className="text-sm font-semibold text-foreground">
               {isOverview || !selectedRow
                 ? "Future Bag"
                 : `Target ${shortClubLabel(selectedRow)} speed`}
@@ -90,19 +92,20 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
           </div>
           {selectedClubSpeed !== null ? (
             <div className="text-right">
-              <p className="text-3xl font-semibold tabular-nums tracking-normal text-slate-950">
+              <p className="text-3xl font-semibold tabular-nums tracking-normal text-foreground">
                 {selectedClubSpeed} mph
               </p>
               {selectedSpeedBenchmark ? (
                 <div className="mt-1 flex flex-wrap justify-end gap-1.5">
-                  <span
+                  <Badge
+                    variant="outline"
                     className={cn(
                       "rounded-full border px-2 py-0.5 text-xs font-semibold",
                       speedBenchmarkBadgeClass(selectedSpeedBenchmark.currentLevelKey),
                     )}
                   >
                     {speedLevelLabel(selectedSpeedBenchmark)}
-                  </span>
+                  </Badge>
                   <span className="text-xs font-medium text-muted-foreground">
                     {speedLevelDetail(selectedSpeedBenchmark)}
                   </span>
@@ -115,22 +118,21 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
         </div>
         {selectedRow && selectedSpeedModel && selectedClubSpeed !== null ? (
           <>
-            <input
+            <Slider
               aria-label={`Target ${shortClubLabel(selectedRow)} speed`}
-              type="range"
               min={selectedSpeedModel.minSpeed}
               max={selectedSpeedModel.maxSpeed}
-              step="0.1"
-              value={selectedClubSpeed}
-              onChange={(event) => {
-                const nextSpeed = Number(event.currentTarget.value);
+              step={0.1}
+              value={[selectedClubSpeed]}
+              onValueChange={([value]) => {
+                const nextSpeed = value ?? selectedClubSpeed;
 
                 setSelectedSpeedsByClub((current) => ({
                   ...current,
                   [selectedRow.clubId]: nextSpeed,
                 }));
               }}
-              className="mt-4 h-2 w-full accent-emerald-700"
+              className="mt-4"
             />
             <div className="mt-2 flex justify-between text-xs font-medium text-muted-foreground">
               <span>{formatSliderSpeed(selectedSpeedModel.minSpeed)} mph current avg</span>
@@ -138,49 +140,36 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
             </div>
           </>
         ) : (
-          <div className="mt-4 rounded-lg border border-border/70 bg-white/70 px-3 py-2 text-sm text-muted-foreground">
+          <div className="mt-4 rounded-lg border border-border/70 bg-card/70 px-3 py-2 text-sm text-muted-foreground">
             Select a club with shot-speed data to model a realistic carry change.
           </div>
         )}
       </div>
 
-      <div
-        className="flex gap-2 overflow-x-auto pb-1"
-        role="tablist"
-        aria-label="Future bag club filter"
-      >
-        <Button
-          type="button"
-          size="sm"
-          variant={activeClubId === "all" ? "secondary" : "outline"}
-          aria-pressed={activeClubId === "all"}
-          onClick={() => setActiveClubId("all")}
-          className={cn(
-            activeClubId === "all"
-              ? "border-emerald-600 bg-emerald-700 text-white shadow-sm shadow-emerald-900/15 hover:bg-emerald-700"
-              : "",
-          )}
+      <div className="overflow-x-auto pb-1">
+        <ToggleGroup
+          type="single"
+          value={activeClubId}
+          onValueChange={(value) => value && setActiveClubId(value)}
+          variant="outline"
+          spacing={2}
+          aria-label="Future bag club filter"
+          className="min-w-max"
         >
-          All clubs
-        </Button>
-        {rows.map((row) => (
-          <Button
-            key={row.clubId}
-            type="button"
-            size="sm"
-            variant={activeClubId === row.clubId ? "secondary" : "outline"}
-            aria-pressed={activeClubId === row.clubId}
-            onClick={() => setActiveClubId(row.clubId)}
-            className={cn(
-              "max-w-[180px] justify-start overflow-hidden",
-              activeClubId === row.clubId
-                ? "border-emerald-600 bg-emerald-700 text-white shadow-sm shadow-emerald-900/15 hover:bg-emerald-700"
-                : "",
-            )}
-          >
-            <span className="truncate">{shortClubLabel(row)}</span>
-          </Button>
-        ))}
+          <ToggleGroupItem value="all" className="h-8 px-2.5 text-xs">
+            All clubs
+          </ToggleGroupItem>
+          {rows.map((row) => (
+            <ToggleGroupItem
+              key={row.clubId}
+              value={row.clubId}
+              aria-label={`Show ${shortClubLabel(row)} future bag projection`}
+              className="h-8 max-w-[180px] justify-start overflow-hidden px-2.5 text-xs"
+            >
+              <span className="truncate">{shortClubLabel(row)}</span>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
       </div>
 
       <div className="grid gap-2">
@@ -209,11 +198,11 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
           return (
             <div
               key={row.clubId}
-              className="rounded-lg border border-border/70 bg-white/65 px-3 py-2"
+              className="rounded-lg border border-border/70 bg-card/65 px-3 py-2"
             >
               <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">{row.clubLabel}</p>
+                  <p className="truncate text-sm font-semibold text-foreground">{row.clubLabel}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {row.currentCarryYd} yd now ·{" "}
                     {row.currentClubSpeedMph === null
@@ -229,7 +218,7 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold tabular-nums text-slate-950">
+                  <p className="text-sm font-semibold tabular-nums text-foreground">
                     {projected} yd
                   </p>
                   {projectedSpeedBenchmark ? (
@@ -238,20 +227,22 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
                     </p>
                   ) : null}
                 </div>
-                <p className="w-14 text-right text-xs font-medium tabular-nums text-emerald-800">
+                <p className="w-14 text-right text-xs font-medium tabular-nums text-[var(--status-success-foreground)]">
                   {carryGain === 0 ? "Current" : `${carryGain >= 0 ? "+" : ""}${carryGain} yd`}
                 </p>
               </div>
-              <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
-                  className="absolute inset-y-0 left-0 rounded-full bg-emerald-700"
+                  className="absolute inset-y-0 left-0 rounded-full bg-primary"
                   style={{ width: `${currentCarryPercent}%` }}
                 />
                 {carryDeltaWidth > 0 ? (
                   <div
                     className={cn(
                       "absolute inset-y-0",
-                      carryGain >= 0 ? "bg-emerald-300" : "bg-amber-300",
+                      carryGain >= 0
+                        ? "bg-[var(--status-success-foreground)]"
+                        : "bg-[var(--status-warning-foreground)]",
                     )}
                     style={{
                       left: `${carryDeltaLeft}%`,
@@ -260,7 +251,7 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
                   />
                 ) : null}
                 <div
-                  className="absolute inset-y-[-2px] w-0.5 rounded-full bg-slate-950 shadow-sm shadow-white/80"
+                  className="absolute inset-y-[-2px] w-0.5 rounded-full bg-foreground shadow-sm shadow-background/80"
                   style={{ left: `calc(${projectedCarryPercent}% - 1px)` }}
                 />
               </div>
@@ -335,17 +326,17 @@ function speedBenchmarkBadgeClass(levelKey: ClubSpeedBenchmarkTarget["currentLev
   switch (levelKey) {
     case "tour":
     case "tour-plus":
-      return "border-violet-200 bg-violet-50 text-violet-700";
+      return "border-primary/30 bg-primary/10 text-primary";
     case "advanced":
     case "good":
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+      return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
     case "average":
-      return "border-sky-200 bg-sky-50 text-sky-700";
+      return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
     case "beginner":
     case "building":
-      return "border-amber-200 bg-amber-50 text-amber-700";
+      return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
     default:
-      return "border-slate-200 bg-slate-50 text-slate-600";
+      return "border-border bg-muted text-muted-foreground";
   }
 }
 

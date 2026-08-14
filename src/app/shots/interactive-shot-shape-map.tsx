@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { CompactReadoutGrid, DataTableFrame } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ShotMapDistanceGuides } from "@/components/visuals/shot-map-distance-guides";
 import {
   Table,
@@ -68,33 +69,29 @@ export function InteractiveDesktopShotMapContent({
 
   return (
     <div className="grid gap-4">
-      <nav
-        aria-label="Filter top-down map by club"
-        className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-950/10 bg-emerald-50/50 p-2"
-      >
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/35 p-2">
         <span className="px-1 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           Club
         </span>
-        <ShotMapClubFilterButton
-          label="All"
-          selected={!selectedClub}
-          onClick={() => {
-            setSelectedClub("");
+        <ToggleGroup
+          type="single"
+          value={selectedClub || "all"}
+          onValueChange={(value) => {
+            if (!value) return;
+            setSelectedClub(value === "all" ? "" : value);
             setSelectedId("");
           }}
-        />
-        {clubTypes.map((clubType) => (
-          <ShotMapClubFilterButton
-            key={clubType}
-            label={clubType === "driver" ? "D" : formatClubType(clubType)}
-            selected={selectedClub === clubType}
-            onClick={() => {
-              setSelectedClub(clubType);
-              setSelectedId("");
-            }}
-          />
-        ))}
-      </nav>
+          aria-label="Filter top-down map by club"
+          className="h-auto flex-wrap justify-start bg-transparent p-0"
+        >
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+          {clubTypes.map((clubType) => (
+            <ToggleGroupItem key={clubType} value={clubType}>
+              {clubType === "driver" ? "D" : formatClubType(clubType)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <div className="overflow-hidden rounded-lg border border-emerald-950/10 bg-[#eef6ef]">
@@ -181,7 +178,7 @@ export function InteractiveDesktopShotMapContent({
                 );
               })
             ) : (
-              <div className="absolute inset-x-5 top-1/2 -translate-y-1/2 rounded-lg bg-white/90 p-4 text-center text-sm font-medium text-muted-foreground shadow-sm">
+              <div className="absolute inset-x-5 top-1/2 -translate-y-1/2 rounded-lg bg-card/90 p-4 text-center text-sm font-medium text-muted-foreground shadow-sm">
                 No carry and side data match this filter yet.
               </div>
             )}
@@ -235,31 +232,6 @@ export function InteractiveDesktopShotMapContent({
         </div>
       </div>
     </div>
-  );
-}
-
-function ShotMapClubFilterButton({
-  label,
-  selected,
-  onClick,
-}: {
-  label: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      className={`focus-aaa inline-flex min-h-9 items-center rounded-md border px-3 py-1 text-sm font-semibold outline-none transition-colors ${
-        selected
-          ? "border-emerald-950 bg-emerald-950 text-white"
-          : "border-border bg-white text-foreground hover:bg-emerald-100"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 

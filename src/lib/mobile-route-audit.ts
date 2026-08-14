@@ -21,6 +21,13 @@ export type MobileRouteAuditEntry = {
  */
 export const mobileRouteAudit = [
   {
+    file: "src/app/(app)/companion-runtime/import/csv/page.tsx",
+    route: "/companion-runtime/import/csv",
+    classification: 1,
+    resolution: "preserve",
+    note: "Internal authenticated rewrite isolates the full CSV companion workflow from the default import source bundle.",
+  },
+  {
     file: "src/app/(app)/companion-runtime/import/page.tsx",
     route: "/companion-runtime/import",
     classification: 1,
@@ -128,9 +135,9 @@ export const mobileRouteAudit = [
   {
     file: "src/app/(app)/analyse/compare/page.tsx",
     route: "/analyse/compare",
-    classification: 3,
-    resolution: "redesign",
-    note: "Conclusion and deltas lead; selection, method and saving move into focused controls.",
+    classification: 4,
+    resolution: "redirect",
+    note: "Session comparison is desktop-only; companion requests hand off to the dedicated Sessions route.",
   },
   {
     file: "src/app/(app)/analyse/conditions/page.tsx",
@@ -142,9 +149,9 @@ export const mobileRouteAudit = [
   {
     file: "src/app/(app)/analyse/page.tsx",
     route: "/analyse",
-    classification: 2,
-    resolution: "redesign",
-    note: "Keep the primary insight and action; analysis destinations become one grouped list.",
+    classification: 4,
+    resolution: "redirect",
+    note: "Deep analysis is desktop-only; companion requests hand off to the dedicated Sessions route.",
   },
   {
     file: "src/app/(app)/analyse/session-impact/page.tsx",
@@ -226,23 +233,23 @@ export const mobileRouteAudit = [
   {
     file: "src/app/(app)/coach/reports/page.tsx",
     route: "/coach/reports",
-    classification: 3,
-    resolution: "redesign",
-    note: "Turn report creation into a focused template, sections, privacy and review task flow.",
+    classification: 4,
+    resolution: "redirect",
+    note: "Selective report creation is desktop-only; companion requests hand off to Coach.",
   },
   {
     file: "src/app/(app)/coach/workspace/page.tsx",
     route: "/coach/workspace",
-    classification: 3,
-    resolution: "redesign",
-    note: "Player picker, priority and next action lead; interactions and history open separately.",
+    classification: 4,
+    resolution: "redirect",
+    note: "The assigned-player workspace is desktop-only; companion requests hand off to Coach.",
   },
   {
     file: "src/app/(app)/compare/page.tsx",
     route: "/compare",
-    classification: 3,
-    resolution: "redesign",
-    note: "Only one Progress, Clubs or Players workspace renders at a time on mobile.",
+    classification: 4,
+    resolution: "redirect",
+    note: "Multi-session comparison is desktop-only; companion requests hand off to Sessions.",
   },
   {
     file: "src/app/(app)/course-records/[recordId]/page.tsx",
@@ -324,16 +331,16 @@ export const mobileRouteAudit = [
   {
     file: "src/app/(app)/dashboard/page.tsx",
     route: "/dashboard",
-    classification: 1,
-    resolution: "preserve",
-    note: "Existing Today-summary composition is strong; keep headline and next action visible.",
+    classification: 4,
+    resolution: "redirect",
+    note: "The analytical dashboard is desktop-only; companion requests hand off to the dedicated Today route.",
   },
   {
     file: "src/app/(app)/data-chat/page.tsx",
     route: "/data-chat",
-    classification: 3,
-    resolution: "redesign",
-    note: "Use a bounded transcript, sticky safe-area composer and disclosed evidence per answer.",
+    classification: 4,
+    resolution: "redirect",
+    note: "Long-form Data Chat is desktop-only; companion requests hand off to the dedicated Practice route.",
   },
   {
     file: "src/app/(app)/equipment/experiments/page.tsx",

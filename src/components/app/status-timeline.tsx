@@ -3,6 +3,8 @@ import { createElement, type ComponentType } from "react";
 import { AlertTriangle, Check, Flag, Target, Upload } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 export type StatusTimelineItem = {
@@ -33,21 +35,31 @@ export function StatusTimeline({
   if (!items.length) return <>{empty ?? null}</>;
 
   return (
-    <section aria-label={label} className={cn("grid gap-0", className)} data-status-timeline>
-      {items.map((item, index) => {
-        const showGroup = item.dateGroup && item.dateGroup !== items[index - 1]?.dateGroup;
-        return (
-          <div key={item.id}>
-            {showGroup ? (
-              <h2 className="pb-2 pt-4 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground first:pt-0">
-                {item.dateGroup}
-              </h2>
-            ) : null}
-            <TimelineItem item={item} last={index === items.length - 1} />
-          </div>
-        );
-      })}
-    </section>
+    <ScrollArea
+      role="region"
+      aria-label={label}
+      className={cn("max-h-[36rem] min-w-0", className)}
+      data-status-timeline
+    >
+      <div className="grid min-w-0 gap-0 pr-3">
+        {items.map((item, index) => {
+          const showGroup = item.dateGroup && item.dateGroup !== items[index - 1]?.dateGroup;
+          return (
+            <div key={item.id}>
+              {showGroup ? (
+                <>
+                  {index > 0 ? <Separator className="my-3" /> : null}
+                  <h2 className="pb-2 pt-1 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    {item.dateGroup}
+                  </h2>
+                </>
+              ) : null}
+              <TimelineItem item={item} last={index === items.length - 1} />
+            </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
   );
 }
 
@@ -78,11 +90,18 @@ function TimelineItem({ item, last }: { item: StatusTimelineItem; last: boolean 
   return (
     <article className="relative flex min-w-0 gap-3" data-timeline-kind={item.kind ?? "custom"}>
       <div className="relative flex w-7 shrink-0 justify-center">
-        {!last ? <span className="absolute bottom-0 top-7 w-px bg-border" aria-hidden /> : null}
+        {!last ? (
+          <Separator
+            orientation="vertical"
+            className="absolute bottom-0 top-7 h-auto"
+            aria-hidden
+          />
+        ) : null}
         <span
           className={cn(
             "relative z-10 grid size-7 place-items-center rounded-full border bg-card text-muted-foreground",
-            item.kind === "warning" && "border-amber-500/50 text-amber-700 dark:text-amber-300",
+            item.kind === "warning" &&
+              "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
             item.kind === "reviewed" && "border-primary/40 text-primary",
           )}
         >

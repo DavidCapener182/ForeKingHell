@@ -3,17 +3,26 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight, Flag, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Flag, MoreHorizontal, Search } from "lucide-react";
 
 import {
   DesktopWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench-controls";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { CourseScorecardSvg, type CourseScorecardSvgHole } from "@/components/course-scorecard-svg";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -29,17 +38,8 @@ import {
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
-  MobileFilterSheet,
   StatusPill,
 } from "@/components/premium";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { SegmentedControl } from "@/components/app/segmented-control";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 
 export type RoundsWorkspaceRound = {
@@ -129,157 +129,6 @@ const roundSortDefaultDirections: Record<RoundSortMetric, RoundSortDirection> = 
   data: "desc",
 };
 
-export function RoundsMobileList({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
-  const [activeFilter, setActiveFilter] = useState<RoundFilter>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const filteredRounds = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-
-    return rounds.filter((round) => {
-      const searchableText = [round.courseName, round.fileName, round.typeLabel, round.dateLabel]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return filterRound(round, activeFilter) && (!query || searchableText.includes(query));
-    });
-  }, [activeFilter, rounds, searchTerm]);
-  const recentRounds = filteredRounds.slice(0, 10);
-  const olderRounds = filteredRounds.slice(10);
-  const activeLabel =
-    filters.find((filter) => filter.value === activeFilter)?.label ?? "All rounds";
-
-  function roundRows(items: RoundsWorkspaceRound[]) {
-    return items.map((round) => (
-      <IOSListRow
-        key={round.id}
-        label={roundTitle(round)}
-        value={round.scoreSummary}
-        detail={`${round.dateLabel} · ${round.typeLabel} · ${round.rowDataLabel}`}
-        href={`/rounds/${round.id}`}
-        icon={Flag}
-        status={
-          <IOSInlineStatus
-            label={round.roundStatus === "in_progress" ? "Resume round" : round.statusLabel}
-            tone={
-              round.roundStatus === "in_progress"
-                ? "attention"
-                : round.shotCount > 0
-                  ? "positive"
-                  : "neutral"
-            }
-          />
-        }
-      />
-    ));
-  }
-
-  return (
-    <section className="grid gap-3 lg:hidden" aria-labelledby="mobile-round-history">
-      <SegmentedControl
-        label="Round type"
-        value={activeFilter === "real" || activeFilter === "simulator" ? activeFilter : "all"}
-        options={[
-          { label: "All", value: "all" },
-          { label: "Real", value: "real" },
-          { label: "Simulator", value: "simulator" },
-        ]}
-        onChange={(value) => setActiveFilter(value as RoundFilter)}
-      />
-
-      <MobileFilterSheet
-        label="Search and data filters"
-        activeCount={(searchTerm.trim() ? 1 : 0) + (activeFilter.includes("-") ? 1 : 0)}
-      >
-        <div className="grid gap-4 pb-3">
-          <label className="grid gap-1.5 text-sm font-medium">
-            Search course or date
-            <span className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder="Search rounds"
-                className="min-h-11 pl-9"
-                enterKeyHint="search"
-              />
-            </span>
-          </label>
-          <div className="grid gap-2" role="group" aria-label="Round data filter">
-            {filters
-              .filter(
-                (filter) => filter.value === "scorecard-only" || filter.value === "shot-linked",
-              )
-              .map((filter) => (
-                <Button
-                  key={filter.value}
-                  type="button"
-                  variant={activeFilter === filter.value ? "default" : "outline"}
-                  className="min-h-11 justify-start rounded-xl"
-                  aria-pressed={activeFilter === filter.value}
-                  onClick={() =>
-                    setActiveFilter((current) => (current === filter.value ? "all" : filter.value))
-                  }
-                >
-                  {filter.label}
-                </Button>
-              ))}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            className="min-h-11 rounded-xl"
-            onClick={() => {
-              setActiveFilter("all");
-              setSearchTerm("");
-            }}
-          >
-            Clear filters
-          </Button>
-        </div>
-      </MobileFilterSheet>
-
-      <IOSSectionHeader
-        title={<span id="mobile-round-history">Recent rounds</span>}
-        description={`${filteredRounds.length} ${activeLabel.toLowerCase()}${searchTerm.trim() ? ` matching “${searchTerm.trim()}”` : ""}`}
-      />
-      <IOSGroupedList label="Recent round history">
-        {recentRounds.length > 0 ? (
-          roundRows(recentRounds)
-        ) : (
-          <IOSListRow
-            label="No rounds match this view"
-            detail="Clear the filter, import a round, or add a scorecard."
-            href="/rounds/new"
-            icon={Flag}
-          />
-        )}
-      </IOSGroupedList>
-
-      {olderRounds.length > 0 ? (
-        <IOSDisclosureGroup
-          label="Older round history"
-          items={[
-            {
-              value: "older-rounds",
-              title: "Older rounds",
-              summary: `${olderRounds.length}`,
-              description: "Continue through the archive",
-              contentClassName: "px-0 pb-0 pt-0",
-              content: (
-                <IOSGroupedList label="Older round rows" className="border-0">
-                  {roundRows(olderRounds)}
-                </IOSGroupedList>
-              ),
-            },
-          ]}
-        />
-      ) : null}
-    </section>
-  );
-}
-
 export function RoundsWorkspace({
   children,
   rounds,
@@ -355,7 +204,7 @@ export function RoundsWorkspace({
   return (
     <section className="grid min-w-0 items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="grid min-w-0 gap-4">
-        <Card id="history" className="premium-card min-w-0 scroll-mt-28">
+        <Card id="history" className="min-w-0 scroll-mt-28 shadow-sm" data-round-history-card>
           <CardHeader className="gap-2">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
               <div>
@@ -431,9 +280,23 @@ export function RoundsWorkspace({
                         />
                       ))
                     ) : (
-                      <div className="apple-panel p-6 text-center text-sm text-muted-foreground">
-                        No rounds match this filter.
-                      </div>
+                      <AppEmptyState
+                        icon={<Search className="size-5" />}
+                        title="No matching rounds"
+                        description="Clear the search or switch the active round filter."
+                        primaryAction={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setActiveFilter("all");
+                            }}
+                          >
+                            Clear filters
+                          </Button>
+                        }
+                      />
                     )}
                   </MobileDataList>
                 }
@@ -447,11 +310,11 @@ export function RoundsWorkspace({
                     Round history table showing course, date, type, score, differential, putts, data
                     status and actions for the current filter.
                   </TableCaption>
-                  <TableHeader className="sticky top-0 z-10 bg-white">
+                  <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
                       <TableHead
                         data-column="round"
-                        className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                       >
                         Round
                       </TableHead>
@@ -501,7 +364,7 @@ export function RoundsWorkspace({
                         key={round.id}
                         className={
                           round.id === selectedRound?.id
-                            ? "focus-aaa cursor-pointer bg-emerald-50/45 outline-none"
+                            ? "focus-aaa cursor-pointer bg-primary/5 outline-none"
                             : "focus-aaa cursor-pointer outline-none"
                         }
                         data-state={round.id === selectedRound?.id ? "selected" : undefined}
@@ -509,6 +372,10 @@ export function RoundsWorkspace({
                         aria-label={`Select ${roundTitle(round)} from ${round.dateLabel}`}
                         onClick={() => setSelectedRoundId(round.id)}
                         onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) {
+                            return;
+                          }
+
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
                             setSelectedRoundId(round.id);
@@ -517,8 +384,8 @@ export function RoundsWorkspace({
                       >
                         <TableCell
                           data-column="round"
-                          className={`sticky left-0 z-10 max-w-[18rem] font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)] ${
-                            round.id === selectedRound?.id ? "bg-emerald-50" : "bg-white"
+                          className={`sticky left-0 z-10 max-w-[18rem] font-medium shadow-[1px_0_0_hsl(var(--border))] ${
+                            round.id === selectedRound?.id ? "bg-primary/5" : "bg-card"
                           }`}
                         >
                           <span className="block truncate">{roundTitle(round)}</span>
@@ -552,35 +419,64 @@ export function RoundsWorkspace({
                           </div>
                         </TableCell>
                         <TableCell data-column="actions" className="text-right">
-                          <div className="flex justify-end gap-1.5">
-                            <Button
-                              type="button"
-                              variant={round.id === selectedRound?.id ? "secondary" : "ghost"}
-                              size="sm"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setSelectedRoundId(round.id);
-                              }}
-                            >
-                              {round.id === selectedRound?.id ? "Selected" : "Select"}
-                            </Button>
-                            <Button asChild variant="ghost" size="sm">
-                              <Link
-                                href={`/rounds/${round.id}`}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Actions for ${roundTitle(round)}`}
                                 onClick={(event) => event.stopPropagation()}
                               >
-                                {round.shotCount > 0 ? "Review" : "Add data"}
-                                <ChevronRight className="size-4" />
-                              </Link>
-                            </Button>
-                          </div>
+                                <MoreHorizontal className="size-4" aria-hidden />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <DropdownMenuLabel>Round actions</DropdownMenuLabel>
+                              <DropdownMenuItem onSelect={() => setSelectedRoundId(round.id)}>
+                                {round.id === selectedRound?.id ? (
+                                  <Check className="size-4" aria-hidden />
+                                ) : null}
+                                {round.id === selectedRound?.id ? "Selected" : "Select round"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/rounds/${round.id}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  {round.shotCount > 0 ? "Review round" : "Add data"}
+                                </Link>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
                     {sortedRounds.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                          No rounds match this filter.
+                        <TableCell colSpan={8} className="p-4">
+                          <AppEmptyState
+                            icon={<Search className="size-5" />}
+                            title="No matching rounds"
+                            description="Clear the search or switch the active round filter."
+                            primaryAction={
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setSearchTerm("");
+                                  setActiveFilter("all");
+                                }}
+                              >
+                                Clear filters
+                              </Button>
+                            }
+                            className="border-0 bg-transparent"
+                          />
                         </TableCell>
                       </TableRow>
                     ) : null}
@@ -697,7 +593,10 @@ function sortDirectionCopy(dir: RoundSortDirection) {
 
 function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
   return (
-    <Card className="premium-card min-w-0 scroll-mt-28 2xl:sticky 2xl:top-5 2xl:self-start">
+    <Card
+      className="min-w-0 scroll-mt-28 shadow-sm 2xl:sticky 2xl:top-5 2xl:self-start"
+      data-selected-round-card
+    >
       <CardHeader>
         <CardTitle>Selected round</CardTitle>
         <CardDescription>
@@ -717,7 +616,7 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
               priority
             />
 
-            <div className="apple-panel-strong p-4">
+            <div className="rounded-xl border bg-muted/30 p-4">
               <p className="text-sm leading-5 text-muted-foreground">
                 {round.dateLabel} · {round.typeLabel}
               </p>
@@ -747,7 +646,7 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
               <RoundMetric label="Data" value={round.dataLabel} />
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <div className="rounded-lg border bg-muted/30 p-3">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Round status
               </p>
@@ -772,12 +671,13 @@ function SelectedRoundCard({ round }: { round: RoundsWorkspaceRound | null }) {
                   aria-label="Selected round hole results"
                 >
                   {round.holeResults.map((result, index) => (
-                    <span
+                    <Badge
                       key={`${round.id}-${index}-${result}`}
-                      className="shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700"
+                      variant="outline"
+                      className="shrink-0"
                     >
                       {result}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -862,8 +762,8 @@ function RoundMobileCard({
 
 function RoundMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between rounded-lg bg-[#F5F6F4] px-3 py-2">
-      <span className="text-sm text-slate-700">{label}</span>
+    <div className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2">
+      <span className="text-sm text-muted-foreground">{label}</span>
       <span className="font-semibold">{value}</span>
     </div>
   );

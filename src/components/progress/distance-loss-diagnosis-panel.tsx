@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Activity, BarChart3 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DataPanel, SectionHeader, StatusPill } from "@/components/premium";
@@ -28,11 +28,11 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
       />
       <div className="grid gap-4 p-4">
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <Alert className="bg-white/70 p-4">
+          <Alert className="bg-card/70 p-4">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">
               Current read
             </p>
-            <AlertTitle className="mt-2 text-xl font-bold leading-7 tracking-normal text-slate-950">
+            <AlertTitle className="mt-2 text-xl font-bold leading-7 tracking-normal text-foreground">
               {diagnosis.headline}
             </AlertTitle>
             <AlertDescription className="mt-2 text-sm leading-6">
@@ -65,10 +65,10 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
 
         {diagnosis.status === "ready" ? (
           <div className="grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-            <div className="rounded-xl border border-border/70 bg-white/70 p-4">
+            <div className="rounded-xl border border-border/70 bg-card/70 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">Driver median carry</p>
+                  <p className="text-sm font-semibold text-foreground">Driver median carry</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Saved Rapsodo full shots · monthly medians
                   </p>
@@ -82,7 +82,7 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
               >
                 {diagnosis.monthly.map((month) => (
                   <div key={month.key} className="grid h-full content-end gap-2 text-center">
-                    <span className="text-xs font-semibold tabular-nums text-slate-950">
+                    <span className="text-xs font-semibold tabular-nums text-foreground">
                       {month.carryYd === null ? "--" : numberFormatter.format(month.carryYd)}
                     </span>
                     <div className="flex h-28 items-end justify-center">
@@ -114,8 +114,8 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
         ) : null}
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="rounded-xl border border-border/70 bg-white/70 p-4">
-            <p className="text-sm font-semibold text-slate-950">Recommended next test</p>
+          <div className="rounded-xl border border-border/70 bg-card/70 p-4">
+            <p className="text-sm font-semibold text-foreground">Recommended next test</p>
             <ol className="mt-2 grid gap-2 text-sm leading-6 text-muted-foreground">
               {diagnosis.nextSteps.map((step, index) => (
                 <li key={step} className="grid grid-cols-[22px_1fr] gap-2">
@@ -132,17 +132,18 @@ export function DistanceLossDiagnosisPanel({ diagnosis }: { diagnosis: DistanceL
                 View training load
               </Link>
             </Button>
-            <Collapsible className="rounded-xl border border-border/70 bg-white/70 p-3">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start px-0 text-slate-950"
-                >
-                  Evidence limits
-                </Button>
+            <Collapsible className="rounded-xl border border-border/70 bg-card/70 p-3">
+              <CollapsibleTrigger
+                type="button"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "w-full justify-start px-0 text-foreground",
+                })}
+              >
+                Evidence limits
               </CollapsibleTrigger>
-              <CollapsibleContent asChild>
+              <CollapsibleContent>
                 <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-muted-foreground">
                   {diagnosis.caveats.map((caveat) => (
                     <li key={caveat}>• {caveat}</li>
@@ -167,11 +168,11 @@ function DiagnosisMetric({
   detail: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/70 bg-white/70 p-3">
+    <div className="rounded-xl border border-border/70 bg-card/70 p-3">
       <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 text-xl font-bold tabular-nums text-slate-950">{value}</p>
+      <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{value}</p>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
     </div>
   );
@@ -181,7 +182,7 @@ function DiagnosisFactorCard({ factor }: { factor: DistanceLossFactor }) {
   return (
     <div className={cn("rounded-xl border p-3", diagnosisFactorTone(factor.tone))}>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-950">{factor.label}</p>
+        <p className="text-sm font-semibold text-foreground">{factor.label}</p>
         <span className="shrink-0 text-xs font-semibold">{factor.status}</span>
       </div>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{factor.detail}</p>
@@ -192,13 +193,13 @@ function DiagnosisFactorCard({ factor }: { factor: DistanceLossFactor }) {
 function diagnosisFactorTone(tone: DistanceLossFactor["tone"]) {
   switch (tone) {
     case "green":
-      return "border-emerald-200 bg-emerald-50/70 text-emerald-800";
+      return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
     case "amber":
-      return "border-amber-200 bg-amber-50/70 text-amber-800";
+      return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
     case "sky":
-      return "border-sky-200 bg-sky-50/70 text-sky-800";
+      return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
     case "slate":
-      return "border-slate-200 bg-slate-50/80 text-slate-700";
+      return "border-border bg-muted/50 text-muted-foreground";
   }
 }
 

@@ -7,8 +7,9 @@ const detail = readFileSync(join(root, "src/components/app/responsive-detail-pan
 const filters = readFileSync(join(root, "src/components/app/responsive-filter-panel.tsx"), "utf8");
 
 describe("responsive application panels", () => {
-  it("uses a Drawer on phone, a Sheet on workbench and an optional ultrawide inline panel", () => {
-    expect(detail).toContain('window.matchMedia("(max-width: 767px)")');
+  it("uses a Drawer throughout companion widths, a Sheet on workbench and optional ultrawide inline", () => {
+    expect(detail).toContain('window.matchMedia("(max-width: 1023px)")');
+    expect(detail).not.toContain('window.matchMedia("(max-width: 767px)")');
     expect(detail).toContain('window.matchMedia("(min-width: 1600px)")');
     expect(detail).toContain('data-responsive-detail-panel="drawer"');
     expect(detail).toContain('data-responsive-detail-panel="sheet"');
@@ -16,6 +17,8 @@ describe("responsive application panels", () => {
     expect(detail).toContain("pb-[env(safe-area-inset-bottom)]");
     expect(detail).toContain("open={open}");
     expect(detail).toContain("onOpenChange={onOpenChange}");
+    expect(detail).toContain("inlineAtDesktop");
+    expect(detail).toContain("hidden={!open && !inlineAtDesktop}");
   });
 
   it("keeps active-filter count, clear-all and explicit apply semantics in one shared panel", () => {

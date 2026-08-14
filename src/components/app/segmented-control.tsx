@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export type SegmentedControlOption = {
   label: string;
@@ -26,32 +27,32 @@ export function SegmentedControl({
       <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </span>
-      <div
-        className="grid rounded-xl bg-secondary p-1"
+      <ToggleGroup
+        type="single"
+        value={value}
+        onValueChange={(nextValue) => {
+          if (nextValue) onChange(nextValue);
+        }}
+        variant="outline"
+        spacing={0}
+        className="grid w-full rounded-xl bg-secondary p-1"
         style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
-        role="group"
         aria-label={label}
       >
         {options.map((option) => (
-          <button
+          <ToggleGroupItem
             key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
+            value={option.value}
             disabled={option.disabled}
-            aria-pressed={value === option.value}
             className={cn(
-              "focus-aaa min-h-11 rounded-lg px-3 text-sm font-semibold transition-[background-color,color,box-shadow] motion-reduce:transition-none",
-              option.disabled
-                ? "cursor-not-allowed text-muted-foreground/50"
-                : value === option.value
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+              "focus-aaa min-h-11 min-w-0 justify-center rounded-lg border-0 px-3 text-sm font-semibold text-muted-foreground transition-[background-color,color,box-shadow] motion-reduce:transition-none data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm",
+              option.disabled && "cursor-not-allowed text-muted-foreground/50",
             )}
           >
             {option.label}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }

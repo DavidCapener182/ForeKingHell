@@ -1,23 +1,14 @@
-import { Upload } from "lucide-react";
-import { and, desc, eq } from "drizzle-orm";
-
 import { PracticePlannerClient } from "@/app/practice/practice-planner-client";
-import { MobileRouteHeader } from "@/components/mobile-sports";
-import { sessions, shots } from "@/db/schema";
-import { getDb } from "@/db/client";
-import { PageShell, StatusPill } from "@/components/premium";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSMetricRow,
-} from "@/components/app/ios-mobile";
+import { PageShell } from "@/components/premium";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import {
   DesktopWorkflowLayout,
   type DesktopWorkflowHelpItem,
   type DesktopWorkflowStep,
 } from "@/components/app/desktop-workbench";
 import { PageArtwork } from "@/components/visuals/page-artwork";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { reportServerFailure } from "@/lib/server-observability";
 import {
@@ -79,7 +70,6 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
       ? await getLatestPracticeSessionReviewSafely(userId, initialSavedPracticePlan)
       : null;
   const initialOptions = practicePlanOptionsFromPlan(initialPlan, requestedOptions);
-  const cockpit = await getPracticeCockpitMetrics(userId, latestSessionReview);
   const planVolume =
     initialPlan.totalBalls === null
       ? `Timed | ${initialPlan.estimatedTimeMinutes} min`
@@ -98,7 +88,6 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
 
   return (
     <PageShell size="full">
-      <MobileRouteHeader title="Practice Planner" group="improve" activeKey="practice" />
       <DesktopWorkflowLayout
         steps={workflowSteps}
         helpTitle="Practice workflow help"
@@ -106,40 +95,61 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
         helpItems={practiceWorkflowHelpItems}
         workflowRailBreakpoint="2xl"
       >
-        <header className="hidden rounded-xl border border-border bg-card p-3 shadow-sm ring-1 ring-primary/10 lg:block">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
-                Practice Planner
-              </h1>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                Create today&apos;s session from latest practice, progress roadmap, bag trust, and
-                training load.
-              </p>
+        <Card className="hidden shadow-sm lg:block" data-practice-workbench-header>
+          <CardContent className="grid gap-4 p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold tracking-normal md:text-3xl">
+                    Practice Planner
+                  </h1>
+                  <Badge
+                    variant={data.context.trainingLoad.highRecentLoad ? "destructive" : "secondary"}
+                  >
+                    {data.context.trainingLoad.statusLabel}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                  Create today&apos;s session from latest practice, progress roadmap, bag trust, and
+                  training load.
+                </p>
+              </div>
+              <div className="hidden h-24 w-40 shrink-0 min-[1800px]:block">
+                <PageArtwork
+                  variant="practice"
+                  alt=""
+                  className="h-full w-full"
+                  sizes="160px"
+                  priority
+                />
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <StatusPill tone={data.context.trainingLoad.highRecentLoad ? "amber" : "green"}>
-                {data.context.trainingLoad.statusLabel}
-              </StatusPill>
-              <StatusPill tone="amber">Latest opportunity: {latestOpportunity}</StatusPill>
-              <StatusPill tone="sky">Roadmap: {roadmapPriority}</StatusPill>
-              <StatusPill tone="green">{planVolume}</StatusPill>
-              <StatusPill tone="green">Confidence {initialPlan.confidenceLabel}</StatusPill>
-            </div>
-            <div className="hidden h-24 w-40 shrink-0 min-[1800px]:block">
-              <PageArtwork
-                variant="practice"
-                alt=""
-                className="h-full w-full"
-                sizes="160px"
-                priority
-              />
-            </div>
-          </div>
-        </header>
+            <ConnectedMetricBar
+              embedded
+              label="Practice plan context"
+              metrics={[
+                {
+                  label: "Latest opportunity",
+                  value: latestOpportunity,
+                  detail: "First measurable practice job",
+                },
+                {
+                  label: "Roadmap priority",
+                  value: roadmapPriority,
+                  detail: "Progress-led club focus",
+                },
+                { label: "Session volume", value: planVolume },
+                {
+                  label: "Plan confidence",
+                  value: initialPlan.confidenceLabel,
+                  detail: "Based on available measured evidence",
+                },
+              ]}
+            />
+          </CardContent>
+        </Card>
 
         <PracticePlannerClient
-          accountId={userId}
           context={data.context}
           initialPlan={initialPlan}
           savedPlans={data.savedPlans}
@@ -149,16 +159,6 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
           initialOptions={initialOptions}
         />
       </DesktopWorkflowLayout>
-      <PracticeSessionCockpit
-        metrics={cockpit}
-        plan={initialPlan}
-        latestSessionReview={latestSessionReview}
-        trainingLoad={{
-          statusLabel: data.context.trainingLoad.statusLabel,
-          highRecentLoad: data.context.trainingLoad.highRecentLoad,
-          recommendation: data.context.trainingLoad.recommendation,
-        }}
-      />
     </PageShell>
   );
 }
@@ -311,183 +311,4 @@ async function getLatestPracticeSessionReviewSafely(
     });
     return null;
   }
-}
-
-type PracticeCockpitMetrics = {
-  sourceLabel: string;
-  sessionId: string | null;
-  shotCount: number;
-  carryAverageYd: number | null;
-  spinAverageRpm: number | null;
-  smashAverage: number | null;
-  playableRate: number | null;
-};
-
-async function getPracticeCockpitMetrics(
-  userId: string,
-  latestSessionReview: PracticeLatestSessionReview | null,
-): Promise<PracticeCockpitMetrics> {
-  const db = getDb();
-  const reviewedSessionId = latestSessionReview?.sourceSessionId ?? null;
-  const latestSession =
-    reviewedSessionId === null
-      ? (
-          await db
-            .select({ id: sessions.id, date: sessions.date })
-            .from(sessions)
-            .where(eq(sessions.userId, userId))
-            .orderBy(desc(sessions.date))
-            .limit(1)
-        )[0]
-      : null;
-  const sessionId = reviewedSessionId ?? latestSession?.id ?? null;
-
-  if (!sessionId) {
-    return {
-      sourceLabel: "Waiting for import",
-      sessionId: null,
-      shotCount: 0,
-      carryAverageYd: null,
-      spinAverageRpm: null,
-      smashAverage: null,
-      playableRate: null,
-    };
-  }
-
-  const rows = await db
-    .select({
-      carryYd: shots.carryYd,
-      spinRate: shots.spinRate,
-      smashFactor: shots.smashFactor,
-      sideCarryYd: shots.sideCarryYd,
-    })
-    .from(shots)
-    .where(and(eq(shots.userId, userId), eq(shots.sessionId, sessionId)))
-    .limit(220);
-  const sideRows = rows.filter((row) => isPracticeMetric(row.sideCarryYd));
-  const playableRows = sideRows.filter((row) => Math.abs(Number(row.sideCarryYd)) <= 20);
-
-  return {
-    sourceLabel: latestSessionReview
-      ? `${latestSessionReview.importedSession.shotCount}-shot reviewed session`
-      : latestSession?.date
-        ? `Latest import ${latestSession.date.toISOString().slice(0, 10)}`
-        : "Latest import",
-    sessionId,
-    shotCount: rows.length,
-    carryAverageYd: averagePracticeMetric(rows.map((row) => row.carryYd)),
-    spinAverageRpm: averagePracticeMetric(rows.map((row) => row.spinRate)),
-    smashAverage: averagePracticeMetric(rows.map((row) => row.smashFactor)),
-    playableRate:
-      sideRows.length > 0 ? Math.round((playableRows.length / sideRows.length) * 100) : null,
-  };
-}
-
-function PracticeSessionCockpit({
-  metrics,
-  plan,
-  latestSessionReview,
-  trainingLoad,
-}: {
-  metrics: PracticeCockpitMetrics;
-  plan: PracticePlan;
-  latestSessionReview: PracticeLatestSessionReview | null;
-  trainingLoad: {
-    statusLabel: string;
-    highRecentLoad: boolean;
-    recommendation: string;
-  };
-}) {
-  const readiness = latestSessionReview
-    ? `${latestSessionReview.score.score}/100`
-    : trainingLoad.highRecentLoad
-      ? "Ease off"
-      : "Ready";
-  const readinessDetail = latestSessionReview
-    ? latestSessionReview.score.verdict
-    : trainingLoad.recommendation;
-
-  return (
-    <div className="lg:hidden">
-      <IOSDisclosureGroup
-        label="Latest practice evidence"
-        items={[
-          {
-            value: "active-session-evidence",
-            title: "Active session mode",
-            summary: readiness,
-            description: `${metrics.sourceLabel}. Practice scoring is driven by imported launch-monitor shots.`,
-            content: (
-              <IOSGroupedList label="Latest measured practice metrics" className="bg-card">
-                <IOSMetricRow
-                  label="Carry"
-                  value={formatPracticeYards(metrics.carryAverageYd)}
-                  detail={`${metrics.shotCount} shots`}
-                />
-                <IOSMetricRow
-                  label="Spin"
-                  value={formatPracticeSpin(metrics.spinAverageRpm)}
-                  detail="Session average"
-                />
-                <IOSMetricRow
-                  label="Smash"
-                  value={formatPracticeDecimal(metrics.smashAverage)}
-                  detail="Efficiency"
-                />
-                <IOSMetricRow label="Readiness" value={readiness} detail={readinessDetail} />
-                <IOSMetricRow
-                  label="Playable rate"
-                  value={metrics.playableRate === null ? "--" : `${metrics.playableRate}%`}
-                />
-                <IOSListRow
-                  label="Next drill"
-                  detail={
-                    plan.blocks[0]?.title ??
-                    latestSessionReview?.score.nextAction ??
-                    "Import session"
-                  }
-                />
-                <IOSListRow
-                  label={metrics.sessionId ? "Review session shots" : "Import session"}
-                  detail={trainingLoad.recommendation}
-                  href={
-                    metrics.sessionId
-                      ? `/shots?sessionId=${encodeURIComponent(metrics.sessionId)}`
-                      : "/import"
-                  }
-                  icon={Upload}
-                />
-              </IOSGroupedList>
-            ),
-          },
-        ]}
-      />
-    </div>
-  );
-}
-
-function isPracticeMetric(value: number | null): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function averagePracticeMetric(values: Array<number | null>) {
-  const finite = values.filter(isPracticeMetric);
-
-  if (finite.length === 0) {
-    return null;
-  }
-
-  return finite.reduce((total, value) => total + value, 0) / finite.length;
-}
-
-function formatPracticeYards(value: number | null) {
-  return value === null ? "--" : Math.round(value).toString();
-}
-
-function formatPracticeSpin(value: number | null) {
-  return value === null ? "--" : Math.round(value).toLocaleString("en-GB");
-}
-
-function formatPracticeDecimal(value: number | null) {
-  return value === null ? "--" : value.toFixed(2);
 }

@@ -8,6 +8,7 @@ import {
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { GappingMatrixRow, SimulatorLabTone } from "@/lib/simulator-lab";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +36,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
           summary="No simulator gapping rows are available yet; import launch-monitor stock shots to build the WITB carry matrix."
           columns={gappingMatrixColumns}
           rows={[]}
-          className="bg-white/70"
+          className="bg-card/70"
         />
       </div>
     );
@@ -54,11 +55,11 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
               <p className="mt-1 text-sm text-muted-foreground">{selected.brandModel}</p>
             </div>
             {selected.gapStatus === "danger" || selected.gapStatus === "overlap" ? (
-              <AlertTriangle className="size-5 text-amber-600" />
+              <AlertTriangle className="size-5 text-[var(--status-warning-foreground)]" />
             ) : selected.gapStatus === "ok" || selected.gapStatus === "top-ok" ? (
-              <CheckCircle2 className="size-5 text-emerald-600" />
+              <CheckCircle2 className="size-5 text-[var(--status-success-foreground)]" />
             ) : (
-              <CircleDot className="size-5 text-slate-500" />
+              <CircleDot className="size-5 text-muted-foreground" />
             )}
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -67,7 +68,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
             <Metric label="Latest reliable" value={formatYards(selected.latestReliableCarryYd)} />
             <Metric label="Confidence" value={`${selected.confidenceScore}%`} />
           </div>
-          <div className="rounded-lg border border-emerald-950/10 bg-white/70 p-3 text-sm">
+          <div className="rounded-lg border border-border bg-card/70 p-3 text-sm">
             <p className="font-medium">{selected.gapLabel}</p>
             <p className="mt-1 leading-5 text-muted-foreground">{selected.gapDetail}</p>
             {selected.latestReliableCarryP25Yd !== null &&
@@ -88,13 +89,14 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
           const isSelected = row.clubId === selected?.clubId;
 
           return (
-            <button
+            <Button
               key={row.clubId}
               type="button"
               onClick={() => setSelectedClubId(row.clubId)}
+              variant="outline"
               className={cn(
-                "grid w-full grid-cols-[4.5rem_minmax(0,1fr)_5.5rem] items-center gap-3 rounded-lg border bg-white/80 p-2 text-left transition hover:border-emerald-300 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600",
-                isSelected ? "border-emerald-500 shadow-sm" : "border-emerald-950/10",
+                "grid h-auto w-full grid-cols-[4.5rem_minmax(0,1fr)_5.5rem] items-center justify-normal gap-3 rounded-lg border bg-card/80 p-2 text-left transition-colors hover:border-primary/50 hover:bg-muted/40",
+                isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border",
               )}
             >
               <div className="min-w-0">
@@ -102,7 +104,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
                 <p className="truncate text-[11px] text-muted-foreground">{row.confidenceLabel}</p>
               </div>
               <div className="min-w-0">
-                <div className="h-7 rounded-full bg-[#E9EEE8] p-1">
+                <div className="h-7 rounded-full bg-muted p-1">
                   <div
                     className={cn("h-full rounded-full", toneBarClass(row.tone))}
                     style={{ width: `${width}%` }}
@@ -117,7 +119,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
                 <p className="font-mono text-sm font-semibold">{formatYards(carry)}</p>
                 <Badge className={cn("mt-1", toneBadgeClass(row.tone))}>{row.gapLabel}</Badge>
               </div>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -128,7 +130,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
           summary={gappingMatrixSummary(rows)}
           columns={gappingMatrixColumns}
           rows={gappingMatrixRows(rows)}
-          className="bg-white/70"
+          className="bg-card/70"
         />
       </div>
     </div>
@@ -167,7 +169,7 @@ function gappingMatrixRows(rows: GappingMatrixRow[]): ChartFallbackRow[] {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-emerald-950/10 bg-white/75 p-2.5">
+    <div className="rounded-lg border border-border bg-card/75 p-2.5">
       <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
@@ -189,17 +191,20 @@ function gapCopy(row: GappingMatrixRow) {
 }
 
 function toneBarClass(tone: SimulatorLabTone) {
-  if (tone === "green") return "bg-[#0B7A3B]";
-  if (tone === "sky") return "bg-sky-500";
-  if (tone === "amber") return "bg-amber-500";
-  if (tone === "pink") return "bg-rose-500";
-  return "bg-slate-400";
+  if (tone === "green") return "bg-[var(--status-success-foreground)]";
+  if (tone === "sky") return "bg-[var(--status-information-foreground)]";
+  if (tone === "amber") return "bg-[var(--status-warning-foreground)]";
+  if (tone === "pink") return "bg-destructive";
+  return "bg-muted-foreground";
 }
 
 function toneBadgeClass(tone: SimulatorLabTone) {
-  if (tone === "green") return "bg-emerald-50 text-emerald-700 hover:bg-emerald-50";
-  if (tone === "sky") return "bg-sky-50 text-sky-700 hover:bg-sky-50";
-  if (tone === "amber") return "bg-amber-50 text-amber-700 hover:bg-amber-50";
-  if (tone === "pink") return "bg-rose-50 text-rose-700 hover:bg-rose-50";
-  return "bg-slate-100 text-slate-700 hover:bg-slate-100";
+  if (tone === "green")
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] hover:bg-[var(--status-success-surface)]";
+  if (tone === "sky")
+    return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] hover:bg-[var(--status-information-surface)]";
+  if (tone === "amber")
+    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] hover:bg-[var(--status-warning-surface)]";
+  if (tone === "pink") return "bg-destructive/10 text-destructive hover:bg-destructive/10";
+  return "bg-muted text-muted-foreground hover:bg-muted";
 }

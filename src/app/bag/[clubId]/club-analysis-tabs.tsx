@@ -12,14 +12,15 @@ import {
 } from "lucide-react";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
-import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { DataTableFrame } from "@/components/premium";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Table,
@@ -30,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { clubAccent } from "@/lib/club-format";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
@@ -106,14 +108,12 @@ export function ClubAnalysisTabs({
   clubTypeLabel,
   shots,
   afterDispersion,
-  mobileSupport,
 }: {
   clubType: string;
   clubModelName: string;
   clubTypeLabel: string;
   shots: AnalysisShot[];
   afterDispersion?: ReactNode;
-  mobileSupport?: ReactNode;
 }) {
   const accent = clubAccent(clubType);
   const [distanceView, setDistanceView] = useState<DistanceView>("carry");
@@ -175,7 +175,7 @@ export function ClubAnalysisTabs({
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <div
-              className="grid size-11 shrink-0 place-items-center rounded-full text-white"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-primary-foreground"
               style={{ background: accent }}
             >
               <Target className="size-5" />
@@ -187,26 +187,22 @@ export function ClubAnalysisTabs({
               </p>
             </div>
           </div>
-          <div className="apple-panel flex w-fit p-1">
-            <Button
-              type="button"
-              size="sm"
-              variant={distanceView === "carry" ? "default" : "ghost"}
-              onClick={() => setDistanceView("carry")}
-              className={cn("min-h-11", distanceView === "carry" ? "bg-[#0B7A3B] text-white" : "")}
-            >
+          <ToggleGroup
+            type="single"
+            value={distanceView}
+            onValueChange={(value) => value && setDistanceView(value as DistanceView)}
+            variant="outline"
+            spacing={0}
+            aria-label="Distance view"
+            className="bg-card"
+          >
+            <ToggleGroupItem value="carry" className="min-h-11 px-4">
               Carry
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={distanceView === "total" ? "default" : "ghost"}
-              onClick={() => setDistanceView("total")}
-              className={cn("min-h-11", distanceView === "total" ? "bg-[#0B7A3B] text-white" : "")}
-            >
+            </ToggleGroupItem>
+            <ToggleGroupItem value="total" className="min-h-11 px-4">
               Total
-            </Button>
-          </div>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
         <DispersionPanel
           clubType={clubType}
@@ -218,61 +214,7 @@ export function ClubAnalysisTabs({
         />
       </section>
 
-      <div className="lg:hidden">
-        <IOSDisclosureGroup
-          label="Club analysis detail"
-          items={[
-            ...(mobileSupport
-              ? [
-                  {
-                    value: "club-intelligence",
-                    title: "Club intelligence",
-                    summary: `${shots.length} shots`,
-                    description: "Health, gapping, development and supporting context",
-                    content: mobileSupport,
-                  },
-                ]
-              : []),
-            {
-              value: "trajectory",
-              title: "Trajectory",
-              summary: selectedShot ? `Shot #${selectedShot.shotNumber ?? "-"}` : "No shot",
-              description: "Flight window and apex pattern",
-              content: (
-                <TrajectoryPanel
-                  shots={sortedShots}
-                  selectedShotId={selectedShot?.id ?? ""}
-                  accent={accent}
-                />
-              ),
-              contentClassName: "px-2",
-            },
-            {
-              value: "selected-shot",
-              title: "Selected shot metrics",
-              summary: formatMetric(selectedShot?.carryYd ?? null, " yd"),
-              description: "Delivery, strike, launch and spin",
-              content: <MobileSelectedShotMetrics shot={selectedShot} />,
-            },
-            {
-              value: "shot-evidence",
-              title: "Measured shot evidence",
-              summary: `${sortedShots.length} rows`,
-              description: "A mobile list of every shot in this evidence window",
-              content: (
-                <MobileShotEvidenceRows
-                  shots={sortedShots}
-                  selectedShotId={selectedShot?.id ?? ""}
-                  onSelect={selectShot}
-                />
-              ),
-              contentClassName: "px-0",
-            },
-          ]}
-        />
-      </div>
-
-      <div className="hidden space-y-5 lg:block">
+      <div className="space-y-5" data-desktop-club-analysis>
         {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
 
         <ShotEvidenceWorkbench
@@ -283,30 +225,34 @@ export function ClubAnalysisTabs({
           onSelect={selectShot}
         />
 
-        <section className="premium-card p-4">
-          <SectionTitle
-            icon={Activity}
-            title="Trajectory"
-            detail="Flight window and apex pattern for the selected club."
-            accent={accent}
-          />
-          <TrajectoryPanel
-            shots={sortedShots}
-            selectedShotId={selectedShot?.id ?? ""}
-            accent={accent}
-          />
-        </section>
+        <Card className="gap-0 py-0">
+          <CardContent className="p-4">
+            <SectionTitle
+              icon={Activity}
+              title="Trajectory"
+              detail="Flight window and apex pattern for the selected club."
+              accent={accent}
+            />
+            <TrajectoryPanel
+              shots={sortedShots}
+              selectedShotId={selectedShot?.id ?? ""}
+              accent={accent}
+            />
+          </CardContent>
+        </Card>
 
-        <section className="premium-card p-4">
-          <SectionTitle
-            icon={Gauge}
-            title="Club Metrics"
-            detail={`Selected shot #${selectedShot?.shotNumber ?? "-"} delivery and impact numbers.`}
-            accent={accent}
-          />
-          <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
-          <ShotMetricStrip shot={selectedShot} accent={accent} />
-        </section>
+        <Card className="gap-0 py-0">
+          <CardContent className="p-4">
+            <SectionTitle
+              icon={Gauge}
+              title="Club Metrics"
+              detail={`Selected shot #${selectedShot?.shotNumber ?? "-"} delivery and impact numbers.`}
+              accent={accent}
+            />
+            <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
+            <ShotMetricStrip shot={selectedShot} accent={accent} />
+          </CardContent>
+        </Card>
 
         <ShotHistory
           groups={shotDateGroups}
@@ -319,93 +265,6 @@ export function ClubAnalysisTabs({
           onSelect={selectShot}
         />
       </div>
-    </div>
-  );
-}
-
-function MobileSelectedShotMetrics({ shot }: { shot: AnalysisShot | null }) {
-  if (!shot) {
-    return <p className="text-sm text-muted-foreground">No measured shot is selected.</p>;
-  }
-
-  const metrics = [
-    ["Carry", formatMetric(shot.carryYd, " yd")],
-    ["Total", formatMetric(shot.totalYd, " yd")],
-    ["Offline", formatSide(shot.sideCarryYd)],
-    ["Ball speed", formatMetric(shot.ballSpeedMph, " mph")],
-    ["Club speed", formatMetric(shot.clubSpeedMph, " mph")],
-    ["Launch", formatMetric(shot.launchAngleDeg, " deg")],
-    ["Apex", formatMetric(shot.apexFt, " ft")],
-    ["Path", formatMetric(shot.clubPathDeg, " deg")],
-    ["Face", formatMetric(resolveClubFaceAngleDeg(shot), " deg")],
-    ["Smash", formatMetric(shot.smashFactor)],
-    ["Spin", formatMetric(shot.spinRate, " rpm")],
-    ["Spin axis", formatMetric(shot.spinAxis, " deg")],
-  ];
-
-  return (
-    <dl className="grid divide-y divide-border/70">
-      {metrics.map(([label, value]) => (
-        <div key={label} className="flex min-h-11 items-center justify-between gap-3 py-2">
-          <dt className="text-sm text-muted-foreground">{label}</dt>
-          <dd className="text-right text-sm font-semibold text-foreground tabular-nums">{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-function MobileShotEvidenceRows({
-  shots,
-  selectedShotId,
-  onSelect,
-}: {
-  shots: AnalysisShot[];
-  selectedShotId: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div
-      className="ios-grouped-list overflow-hidden"
-      aria-label="Measured shot evidence rows"
-      data-mobile-shot-evidence
-    >
-      {shots.map((shot) => {
-        const selected = shot.id === selectedShotId;
-        return (
-          <button
-            key={shot.id}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => onSelect(shot.id)}
-            className={cn(
-              "ios-grouped-row focus-aaa flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left outline-none",
-              selected && "bg-primary/8",
-            )}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
-              {shot.shotNumber ?? "-"}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-medium text-foreground">
-                {formatDate(shot.shotAt)}
-              </span>
-              <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
-                {shot.qualityTag ?? shot.shotCategory ?? "Measured shot"} ·{" "}
-                {formatSide(shot.sideCarryYd)}
-              </span>
-            </span>
-            <span className="shrink-0 text-right">
-              <span className="block text-[15px] font-semibold text-foreground tabular-nums">
-                {formatMetric(shot.carryYd, " yd")}
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                {selected ? "Selected" : "Select"}
-              </span>
-            </span>
-          </button>
-        );
-      })}
     </div>
   );
 }
@@ -426,7 +285,7 @@ function ShotEvidenceWorkbench({
   return (
     <section
       id="club-shot-evidence-table"
-      className="hidden scroll-mt-28 gap-3 lg:grid"
+      className="grid scroll-mt-28 gap-3"
       data-workbench-scope="club-shot-evidence"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -437,9 +296,12 @@ function ShotEvidenceWorkbench({
             range.
           </p>
         </div>
-        <span className="w-fit rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
+        <Badge
+          variant="outline"
+          className="h-auto w-fit border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-3 py-1.5 text-sm font-semibold text-[var(--status-success-foreground)]"
+        >
           {shots.length} shot{shots.length === 1 ? "" : "s"} in view
-        </span>
+        </Badge>
       </div>
 
       <DesktopTableWorkbenchControls
@@ -464,11 +326,11 @@ function ShotEvidenceWorkbench({
             Club shot evidence table showing shot number, date, carry, total, offline distance, ball
             speed, club speed, launch, path, face, quality and selected-shot action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="shot"
-                className="sticky left-0 z-20 min-w-28 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-28 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Shot
               </TableHead>
@@ -511,17 +373,20 @@ function ShotEvidenceWorkbench({
                 <TableRow
                   key={shot.id}
                   tabIndex={0}
-                  className={cn("focus-aaa outline-none", selected && "bg-emerald-50/80")}
+                  className={cn("focus-aaa outline-none", selected && "bg-primary/8")}
                 >
                   <TableCell
                     data-column="shot"
-                    className="sticky left-0 z-10 min-w-28 bg-white font-semibold shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-28 bg-card font-semibold shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     #{shot.shotNumber ?? "-"}
                     {selected ? (
-                      <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">
+                      <Badge
+                        variant="secondary"
+                        className="ml-2 h-auto px-2 py-0.5 text-xs text-primary"
+                      >
                         selected
-                      </span>
+                      </Badge>
                     ) : null}
                   </TableCell>
                   <TableCell data-column="date">{formatDate(shot.shotAt)}</TableCell>
@@ -558,7 +423,6 @@ function ShotEvidenceWorkbench({
                       variant={selected ? "default" : "outline"}
                       size="sm"
                       onClick={() => onSelect(shot.id)}
-                      className={selected ? "bg-[#0B7A3B] text-white hover:bg-[#064E3B]" : ""}
                     >
                       {selected ? "Selected" : "Select"}
                     </Button>
@@ -586,7 +450,7 @@ function SectionTitle({
 }) {
   return (
     <div className="mb-4 flex items-center gap-3">
-      <span className="grid size-10 place-items-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+      <span className="grid size-10 place-items-center rounded-full bg-card shadow-sm ring-1 ring-border">
         <Icon className="size-5" style={{ color: accent }} />
       </span>
       <span>
@@ -623,88 +487,91 @@ function ShotHistory({
   const worstCarryYd = minMetric(carryValues);
 
   return (
-    <Collapsible id="club-shot-history" className="group premium-card scroll-mt-28 overflow-hidden">
-      <CollapsibleTrigger className="grid w-full cursor-pointer gap-3 px-4 py-4 text-left transition-colors hover:bg-emerald-50/35 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <span className="min-w-0">
-          <span className="block text-xl font-semibold tracking-normal">
-            Recent shots ({allShots.length})
+    <Card id="club-shot-history" className="scroll-mt-28 gap-0 py-0">
+      <Collapsible className="group">
+        <CollapsibleTrigger className="grid w-full cursor-pointer gap-3 px-4 py-4 text-left transition-colors hover:bg-accent/45 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <span className="min-w-0">
+            <span className="block text-xl font-semibold tracking-normal">
+              Recent shots ({allShots.length})
+            </span>
+            <span className="mt-1 block text-sm text-muted-foreground">
+              Best {formatMetric(bestCarryYd)} yd · Median {formatMetric(medianCarryYd)} yd · Worst{" "}
+              {formatMetric(worstCarryYd)} yd
+            </span>
           </span>
-          <span className="mt-1 block text-sm text-muted-foreground">
-            Best {formatMetric(bestCarryYd)} yd · Median {formatMetric(medianCarryYd)} yd · Worst{" "}
-            {formatMetric(worstCarryYd)} yd
-          </span>
-        </span>
-        <span className="inline-flex w-fit items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-700">
-          Expand
-          <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
-        </span>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-3 border-t border-slate-200 bg-slate-50/45 p-3">
-        {groups.map((group) => {
-          const isOpen = activeOpenDateKeys.includes(group.dateKey);
-          const selectedInGroup = group.shots.some((shot) => shot.id === selectedShotId);
+          <Badge variant="outline" className="h-auto w-fit gap-2 bg-card px-3 py-2 text-sm">
+            Expand
+            <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
+          </Badge>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 border-t border-border bg-muted/35 p-3">
+          {groups.map((group) => {
+            const isOpen = activeOpenDateKeys.includes(group.dateKey);
+            const selectedInGroup = group.shots.some((shot) => shot.id === selectedShotId);
 
-          return (
-            <Collapsible
-              key={group.dateKey}
-              open={isOpen}
-              onOpenChange={(open) => onToggleGroup(group.dateKey, open)}
-              className={cn(
-                "group/date overflow-hidden rounded-lg border bg-white/88 shadow-sm ring-1 ring-slate-200/80",
-                selectedInGroup && "border-emerald-300 ring-emerald-200",
-              )}
-            >
-              <CollapsibleTrigger className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50">
-                <span className="grid size-9 place-items-center rounded-full border bg-white text-muted-foreground">
-                  <CalendarDays className="size-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold text-foreground">
-                    {group.label}
+            return (
+              <Collapsible
+                key={group.dateKey}
+                open={isOpen}
+                onOpenChange={(open) => onToggleGroup(group.dateKey, open)}
+                className={cn(
+                  "group/date overflow-hidden rounded-lg border bg-card/90 shadow-sm ring-1 ring-border",
+                  selectedInGroup && "border-primary/40 ring-primary/20",
+                )}
+              >
+                <CollapsibleTrigger className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/55">
+                  <span className="grid size-9 place-items-center rounded-full border bg-card text-muted-foreground">
+                    <CalendarDays className="size-4" />
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} · best carry{" "}
-                    {formatMetric(group.bestCarryYd)} yd
-                  </span>
-                </span>
-                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]/date:rotate-180" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-2 border-t bg-slate-50/70 p-2 sm:p-3">
-                {group.shots.map((shot) => (
-                  <button
-                    key={shot.id}
-                    type="button"
-                    onClick={() => onSelect(shot.id)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-lg bg-white/90 px-4 py-3 text-left text-sm ring-1 ring-slate-200/80 transition-colors hover:bg-white",
-                      selectedShotId === shot.id && "ring-2",
-                    )}
-                    style={selectedShotId === shot.id ? { color: accent } : undefined}
-                  >
-                    <span className="grid size-8 place-items-center rounded-full border font-semibold">
-                      {shot.shotNumber ?? "-"}
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-foreground">
+                      {group.label}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-foreground">
-                        {clubModelName}
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {group.shots.length} shot{group.shots.length === 1 ? "" : "s"} · best carry{" "}
+                      {formatMetric(group.bestCarryYd)} yd
+                    </span>
+                  </span>
+                  <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]/date:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 border-t bg-muted/45 p-2 sm:p-3">
+                  {group.shots.map((shot) => (
+                    <Button
+                      key={shot.id}
+                      type="button"
+                      variant="ghost"
+                      onClick={() => onSelect(shot.id)}
+                      className={cn(
+                        "flex h-auto w-full justify-start gap-3 rounded-lg bg-card/90 px-4 py-3 text-left text-sm ring-1 ring-border transition-colors hover:bg-accent/55",
+                        selectedShotId === shot.id && "ring-2",
+                      )}
+                      style={selectedShotId === shot.id ? { color: accent } : undefined}
+                    >
+                      <span className="grid size-8 place-items-center rounded-full border font-semibold">
+                        {shot.shotNumber ?? "-"}
                       </span>
-                      {clubModelName !== clubTypeLabel ? (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {clubTypeLabel}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-foreground">
+                          {clubModelName}
                         </span>
-                      ) : null}
-                    </span>
-                    <span className="min-w-20 text-right font-medium text-foreground">
-                      {formatMetric(shot.carryYd)} yd
-                    </span>
-                  </button>
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
-          );
-        })}
-      </CollapsibleContent>
-    </Collapsible>
+                        {clubModelName !== clubTypeLabel ? (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {clubTypeLabel}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="min-w-20 text-right font-medium text-foreground">
+                        {formatMetric(shot.carryYd)} yd
+                      </span>
+                    </Button>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
 
@@ -938,7 +805,7 @@ function DispersionPanel({
           { key: "status", label: "Status" },
         ]}
         rows={dispersionFallbackRows(plottedShots, selectedShotId, distanceView)}
-        className="mx-3 mb-3 bg-white/95"
+        className="mx-3 mb-3 bg-card/95"
       />
     </div>
   );
@@ -1032,7 +899,7 @@ function TrajectoryPanel({
           { key: "status", label: "Status" },
         ]}
         rows={trajectoryFallbackRows(trajectoryShots, selectedShotId)}
-        className="bg-white/80"
+        className="bg-card/80"
       />
     </div>
   );
@@ -1880,22 +1747,22 @@ type MetricTone = "green" | "amber" | "red" | "sky" | "neutral";
 
 function metricToneClass(tone: MetricTone) {
   if (tone === "green") {
-    return "bg-emerald-50 text-emerald-800 ring-emerald-200";
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-[var(--status-success-border)]";
   }
 
   if (tone === "amber") {
-    return "bg-amber-50 text-amber-800 ring-amber-200";
+    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] ring-[var(--status-warning-border)]";
   }
 
   if (tone === "red") {
-    return "bg-red-50 text-red-800 ring-red-200";
+    return "bg-[var(--status-error-surface)] text-destructive ring-[var(--status-error-border)]";
   }
 
   if (tone === "sky") {
-    return "bg-sky-50 text-sky-800 ring-sky-200";
+    return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] ring-[var(--status-information-border)]";
   }
 
-  return "bg-white/90 text-slate-800 ring-slate-200";
+  return "bg-muted/55 text-foreground ring-border";
 }
 
 function angleTone(value: number | null, greenLimit: number, amberLimit: number): MetricTone {

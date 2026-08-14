@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import { ArrowRight, ChevronRight, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  SlidersHorizontal,
+  type LucideIcon,
+} from "lucide-react";
 
 import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
@@ -15,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Drawer,
   DrawerContent,
@@ -190,7 +197,7 @@ export function PageHeader({
           {visual ? (
             <div
               className={cn(
-                "hidden overflow-hidden rounded-lg ring-1 ring-emerald-950/10 lg:block",
+                "hidden overflow-hidden rounded-lg ring-1 ring-border/80 lg:block",
                 hasWideVisual ? "h-44" : "h-28",
               )}
               data-compact-media
@@ -272,7 +279,7 @@ export function MobileCompactPageHeader({
         </div>
         {visual ? (
           <div
-            className="h-14 w-16 shrink-0 overflow-hidden rounded-lg ring-1 ring-emerald-950/10"
+            className="h-14 w-16 shrink-0 overflow-hidden rounded-lg ring-1 ring-border/80"
             data-compact-media
           >
             {visual}
@@ -861,14 +868,18 @@ export function TopThreeDisclosure({
     <>
       <div className={cn("lg:hidden", className)}>
         {visibleItems.map(render)}
-        <details className="contents">
-          <summary className="mt-2 flex min-h-11 cursor-pointer list-none items-center justify-center rounded-lg border border-border bg-card/80 px-3 text-sm font-semibold text-foreground [&::-webkit-details-marker]:hidden">
+        <Collapsible className="group/top-three contents">
+          <CollapsibleTrigger className="focus-aaa mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-card/80 px-3 text-sm font-semibold text-foreground outline-none hover:bg-accent/60">
             {moreLabel}
-          </summary>
-          <div className="contents">
+            <ChevronDown
+              className="size-4 transition-transform duration-150 group-data-[state=open]/top-three:rotate-180 motion-reduce:transition-none"
+              aria-hidden
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="contents">
             {hiddenItems.map((item, index) => render(item, index + initialCount))}
-          </div>
-        </details>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
       <div className={cn("hidden lg:grid", className)}>{items.map(render)}</div>
     </>
@@ -887,21 +898,23 @@ type MetricCardProps = {
 };
 
 const toneClasses = {
-  green: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  sky: "bg-sky-50 text-sky-700 ring-sky-100",
-  pink: "bg-pink-50 text-pink-700 ring-pink-100",
-  amber: "bg-amber-50 text-amber-800 ring-amber-100",
-  slate: "bg-slate-100 text-slate-700 ring-slate-200",
+  green:
+    "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-[var(--status-success-border)]",
+  sky: "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] ring-[var(--status-information-border)]",
+  pink: "bg-destructive/10 text-destructive ring-destructive/25",
+  amber:
+    "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] ring-[var(--status-warning-border)]",
+  slate: "bg-muted text-muted-foreground ring-border",
 };
 
 export type Tone = keyof typeof toneClasses;
 
 const compactToneClasses: Record<Tone, string> = {
-  green: "bg-emerald-500 ring-emerald-100",
-  sky: "bg-sky-500 ring-sky-100",
-  pink: "bg-pink-500 ring-pink-100",
-  amber: "bg-amber-500 ring-amber-100",
-  slate: "bg-slate-400 ring-slate-200",
+  green: "bg-primary ring-primary/20",
+  sky: "bg-chart-2 ring-chart-2/20",
+  pink: "bg-destructive ring-destructive/20",
+  amber: "bg-accent ring-accent/25",
+  slate: "bg-muted-foreground ring-border",
 };
 
 export type CompactReadoutItem = {
@@ -1153,7 +1166,7 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
             .filter(Boolean)
             .join(". ")
         }
-        className={cn(baseClassName, "group transition-colors hover:bg-emerald-50/70")}
+        className={cn(baseClassName, "group transition-colors hover:bg-accent/60")}
       >
         {content}
       </Link>

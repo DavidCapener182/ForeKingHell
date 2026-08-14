@@ -6,6 +6,7 @@ import type * as Leaflet from "leaflet";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { formatClubType } from "@/lib/rapsodo/parser";
 import {
@@ -331,7 +332,13 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
     <div className="grid gap-4 xl:grid-cols-[0.78fr_1.22fr]">
       <div className="apple-panel space-y-4 p-4">
         <div className="space-y-1">
-          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+          <Badge
+            className={cn(
+              isEstimated
+                ? "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] hover:bg-[var(--status-warning-surface)]"
+                : "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] hover:bg-[var(--status-information-surface)]",
+            )}
+          >
             {isEstimated ? "Estimated shot overlay" : "Actual hole overlay"}
           </Badge>
           <h2 className="text-2xl font-semibold tracking-normal">{courseName}</h2>
@@ -405,10 +412,7 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
               type="button"
               variant={hole.holeNumber === selectedHoleNumber ? "default" : "outline"}
               size="sm"
-              className={cn(
-                "h-11 rounded-lg text-sm font-semibold",
-                hole.holeNumber === selectedHoleNumber && "bg-[#0B7A3B] text-white",
-              )}
+              className="h-11 rounded-lg text-sm font-semibold"
               onClick={() => setSelectedHoleNumber(hole.holeNumber)}
             >
               <span>{hole.holeNumber}</span>
@@ -417,34 +421,30 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
         </div>
         <div className="space-y-2">
           {selectedShots.map((shot) => (
-            <div
+            <Button
               key={shot.id}
-              className={cn(
-                "apple-panel-strong p-3",
-                shot.id === selectedShot?.id && "border-[#111827] shadow-sm",
-              )}
+              type="button"
+              variant={shot.id === selectedShot?.id ? "secondary" : "outline"}
+              aria-pressed={shot.id === selectedShot?.id}
+              className="h-auto min-h-16 w-full justify-between whitespace-normal rounded-xl px-3 py-3 text-left"
+              onClick={() => setSelectedShotId(shot.id)}
+              data-round-shot-selection
             >
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 text-left"
-                onClick={() => setSelectedShotId(shot.id)}
-              >
-                <div>
-                  <p className="text-sm font-medium">
-                    {shot.holeShotNumber ? `#${shot.holeShotNumber}` : "Shot"}{" "}
-                    {formatClubType(shot.clubType)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {isEstimated ? "Estimated" : "Carry"} {formatMetric(shot.carryYd)} yd - Total{" "}
-                    {formatMetric(shot.totalYd)} yd
-                  </p>
-                </div>
-                <span className="text-sm font-semibold">{formatSide(shot.sideCarryYd)}</span>
-              </button>
-            </div>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">
+                  {shot.holeShotNumber ? `#${shot.holeShotNumber}` : "Shot"}{" "}
+                  {formatClubType(shot.clubType)}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {isEstimated ? "Estimated" : "Carry"} {formatMetric(shot.carryYd)} yd - Total{" "}
+                  {formatMetric(shot.totalYd)} yd
+                </span>
+              </span>
+              <span className="shrink-0 text-sm font-semibold">{formatSide(shot.sideCarryYd)}</span>
+            </Button>
           ))}
           {selectedShots.length === 0 ? (
-            <div className="rounded-lg border border-dashed bg-white/80 px-3 py-6 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed bg-card/80 px-3 py-6 text-center text-sm text-muted-foreground">
               {isEstimated
                 ? "No scorecard strokes are available to estimate for this hole yet."
                 : "No launch monitor shots are assigned to this hole yet."}
@@ -480,46 +480,35 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
             )}
           />
           <div className="absolute left-3 right-3 top-3 z-20 flex flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
-            <div className="w-fit rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#111827] shadow-sm">
+            <div className="w-fit rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-card-foreground shadow-sm">
               {selectedHole
                 ? `Hole ${selectedHole.holeNumber} - ${selectedHole.yards} yd`
                 : "Hole map"}
             </div>
             <div className="flex flex-wrap gap-2">
-              <div className="flex w-fit rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={distanceMode === "total" ? "default" : "ghost"}
-                  className={cn(
-                    "h-8 rounded-[6px]",
-                    distanceMode === "total" && "bg-[#0B7A3B] text-white",
-                  )}
-                  onClick={() => setDistanceMode("total")}
-                >
+              <ToggleGroup
+                type="single"
+                value={distanceMode}
+                onValueChange={(value) => value && setDistanceMode(value as DistanceMode)}
+                spacing={0}
+                size="sm"
+                className="rounded-lg border border-border bg-card p-1 shadow-sm"
+                aria-label="Shot distance mode"
+                data-round-distance-toggle
+              >
+                <ToggleGroupItem value="total" aria-label="Show total distance">
                   Total
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={distanceMode === "carry" ? "default" : "ghost"}
-                  className={cn(
-                    "h-8 rounded-[6px]",
-                    distanceMode === "carry" && "bg-[#0B7A3B] text-white",
-                  )}
-                  onClick={() => setDistanceMode("carry")}
-                >
+                </ToggleGroupItem>
+                <ToggleGroupItem value="carry" aria-label="Show carry distance">
                   Carry
-                </Button>
-              </div>
+                </ToggleGroupItem>
+              </ToggleGroup>
               <Button
                 type="button"
                 size="sm"
-                variant={showAllHoleShots ? "default" : "secondary"}
-                className={cn(
-                  "h-10 rounded-lg border border-slate-200 bg-white shadow-sm",
-                  showAllHoleShots && "bg-[#0B7A3B] text-white",
-                )}
+                variant={showAllHoleShots ? "default" : "outline"}
+                className="h-10 rounded-lg shadow-sm"
+                aria-pressed={showAllHoleShots}
                 onClick={() => setShowAllHoleShots((current) => !current)}
               >
                 All holes
@@ -527,41 +516,30 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
               <Button
                 type="button"
                 size="sm"
-                variant={showShotNumbers ? "default" : "secondary"}
-                className={cn(
-                  "h-10 rounded-lg border border-slate-200 bg-white shadow-sm",
-                  showShotNumbers && "bg-[#0B7A3B] text-white",
-                )}
+                variant={showShotNumbers ? "default" : "outline"}
+                className="h-10 rounded-lg shadow-sm"
+                aria-pressed={showShotNumbers}
                 onClick={() => setShowShotNumbers((current) => !current)}
               >
                 Numbers
               </Button>
-              <div className="flex w-fit rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={mapMode === "course" ? "default" : "ghost"}
-                  className={cn(
-                    "h-8 rounded-[6px]",
-                    mapMode === "course" && "bg-[#0B7A3B] text-white",
-                  )}
-                  onClick={() => setMapMode("course")}
-                >
+              <ToggleGroup
+                type="single"
+                value={mapMode}
+                onValueChange={(value) => value && setMapMode(value as "course" | "satellite")}
+                spacing={0}
+                size="sm"
+                className="rounded-lg border border-border bg-card p-1 shadow-sm"
+                aria-label="Map view"
+                data-round-map-toggle
+              >
+                <ToggleGroupItem value="course" aria-label="Show course view">
                   Course
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={mapMode === "satellite" ? "default" : "ghost"}
-                  className={cn(
-                    "h-8 rounded-[6px]",
-                    mapMode === "satellite" && "bg-[#0B7A3B] text-white",
-                  )}
-                  onClick={() => setMapMode("satellite")}
-                >
+                </ToggleGroupItem>
+                <ToggleGroupItem value="satellite" aria-label="Show satellite view">
                   Satellite
-                </Button>
-              </div>
+                </ToggleGroupItem>
+              </ToggleGroup>
             </div>
           </div>
         </div>
@@ -585,11 +563,11 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
               { key: "remaining", label: "Remaining" },
             ]}
             rows={roundShotMapRows(visibleProjectedShots, selectedShot?.id ?? null, distanceMode)}
-            className="bg-white/82"
+            className="bg-card/80"
           />
         ) : null}
         {selectedShot ? (
-          <div className="apple-panel-strong p-3 text-[#111827]">
+          <div className="apple-panel-strong p-3 text-foreground" data-round-selected-shot>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -887,7 +865,7 @@ function formatShotLabel(shot: RoundMapShot) {
 
 function MapMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/88 p-3 ring-1 ring-slate-200/80">
+    <div className="rounded-lg bg-card/88 p-3 ring-1 ring-border/80">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-semibold tracking-normal">{value}</p>
     </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Copy, QrCode } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Item } from "@/components/ui/item";
 import {
   Dialog,
   DialogContent,
@@ -36,14 +37,14 @@ export function FriendInviteDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <div className="rounded-xl border bg-background p-3">
+          <Item variant="outline" className="block p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={`/friends/qr/${username}`}
               alt={`QR invite for @${username}`}
               className="mx-auto aspect-square w-full max-w-48"
             />
-          </div>
+          </Item>
           <code className="break-all rounded-lg bg-muted px-3 py-2 text-xs">{profileUrl}</code>
         </div>
         <DialogFooter showCloseButton>

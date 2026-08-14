@@ -8,18 +8,24 @@ const source = readFileSync(
 );
 
 describe("course-specific records desktop board", () => {
-  it("keeps the native course board through tablet widths and uses 44px actions", () => {
-    const mobileSource = source.slice(
-      source.indexOf("<MobileAppShell>"),
-      source.indexOf("</MobileAppShell>"),
-    );
+  it("keeps the desktop-only course board free of its obsolete mobile route", () => {
+    for (const obsoleteSymbol of [
+      "BottomSheet",
+      "CourseRecordCard",
+      "MobileAppShell",
+      "MobileStatusAction",
+      "MobileTabBar",
+      "MobileTopBar",
+      "NativeListSection",
+    ]) {
+      expect(source).not.toContain(obsoleteSymbol);
+    }
 
-    expect(source.match(/className="size-11 rounded-full"/g)).toHaveLength(1);
-    expect(mobileSource).not.toContain("<ArrowLeft");
-    expect(mobileSource).not.toContain("leading=");
-    expect(source).toContain('className="min-h-11 justify-between rounded-full"');
-    expect(source).toContain('className="hidden lg:grid"');
-    expect(source).not.toContain('scope="course-records-course" className="hidden sm:grid"');
+    expect(source).not.toContain("@/components/mobile-sports");
+    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="course-records-course">');
+    expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
+    expect(source).not.toMatch(/#[0-9a-f]{6}/i);
   });
 
   it("keeps course boards table-first with saved views, column control and export", () => {

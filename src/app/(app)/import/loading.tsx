@@ -1,11 +1,13 @@
-import { GolfRouteLoading } from "@/components/golf-loading";
+import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
+import { PageShell } from "@/components/premium";
 
 export default function ImportLoading() {
   return (
-    <GolfRouteLoading
-      title="Opening import centre"
-      subtitle="Preparing upload flow, provider options, import history, and quality checks."
-      variant="import"
-    />
+    <PageShell>
+      <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
+        <AppLoadingSkeleton variant="answer" />
+        <AppLoadingSkeleton variant="table" rows={5} />
+      </div>
+    </PageShell>
   );
 }

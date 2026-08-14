@@ -3,7 +3,6 @@ import { ArrowLeft, MapPinned } from "lucide-react";
 import { asc, eq, inArray, or } from "drizzle-orm";
 
 import { createManualRoundAction } from "@/app/rounds/actions";
-import { DesktopWorkflowLayout } from "@/components/app/desktop-workbench";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { courses, holes, teeSets } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { NewRoundForm, type RoundCourseOption } from "@/app/rounds/new/new-round-form";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 
 export const dynamic = "force-dynamic";
 
@@ -54,90 +54,104 @@ const roundWorkflowHelpItems = [
 ];
 
 export default async function NewRoundPage() {
-  const courseOptions = await getRoundCourseOptions();
+  const [courseOptions, surface] = await Promise.all([
+    getRoundCourseOptions(),
+    getRequestAppSurface(),
+  ]);
+  const workbench =
+    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopWorkflowLayout = workbench?.DesktopWorkflowLayout;
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-3">
-        <MobileTopBar title="Add Round" />
-        <p className="px-1 text-sm leading-5 text-muted-foreground">
-          Pick a course, enter the scorecard, then review it before saving.
-        </p>
-        <NewRoundForm
-          instanceId="mobile-round"
-          courses={courseOptions}
-          createRoundAction={createManualRoundAction}
-        />
-      </MobileAppShell>
+      {surface === "companion" ? (
+        <MobileAppShell className="gap-3">
+          <MobileTopBar title="Add Round" />
+          <p className="px-1 text-sm leading-5 text-muted-foreground">
+            Pick a course, enter the scorecard, then review it before saving.
+          </p>
+          <NewRoundForm
+            instanceId="mobile-round"
+            courses={courseOptions}
+            createRoundAction={createManualRoundAction}
+          />
+        </MobileAppShell>
+      ) : DesktopWorkflowLayout ? (
+        <div className="grid gap-4" data-new-round-desktop-workflow>
+          <div className="flex items-center justify-between gap-4">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/rounds" prefetch={false}>
+                <ArrowLeft className="size-4" />
+                Rounds
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/courses" prefetch={false}>
+                <MapPinned className="size-4" />
+                Courses
+              </Link>
+            </Button>
+          </div>
 
-      <div className="hidden gap-4 lg:grid" data-new-round-desktop-workflow>
-        <div className="flex items-center justify-between gap-4">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/rounds" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Rounds
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/courses" prefetch={false}>
-              <MapPinned className="size-4" />
-              Courses
-            </Link>
-          </Button>
-        </div>
-
-        <PageHeader
-          eyebrow={<StatusPill tone="green">Real round</StatusPill>}
-          title="Add Round"
-          description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
-          visual={
-            <PageArtwork variant="fairway" alt="" crop="tee" className="h-full min-h-44" priority />
-          }
-          metrics={[
-            {
-              label: "Course source",
-              value: "LMWT courses",
-              detail: "Pick from saved course and tee-set records.",
-            },
-            {
-              label: "Round type",
-              value: "Real",
-              detail: "No launch-monitor shots are created.",
-            },
-            {
-              label: "Map",
-              value: "Estimated",
-              detail: "Non-putt strokes are shown only as estimated markers.",
-            },
-            {
-              label: "Handicap",
-              value: "WHS-style",
-              detail: "Uses tee rating and slope when available.",
-            },
-          ]}
-        />
-
-        <DesktopWorkflowLayout
-          steps={roundWorkflowSteps}
-          helpTitle="Round entry help"
-          helpDescription="Keep the scorecard reliable"
-          helpItems={roundWorkflowHelpItems}
-        >
-          <DataPanel>
-            <SectionHeader
-              title="Scorecard"
-              description="Enter the score and putting data you have now. You can edit every hole after saving."
-            />
-            <CardContent>
-              <NewRoundForm
-                instanceId="desktop-round"
-                courses={courseOptions}
-                createRoundAction={createManualRoundAction}
+          <PageHeader
+            eyebrow={<StatusPill tone="green">Real round</StatusPill>}
+            title="Add Round"
+            description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
+            visual={
+              <PageArtwork
+                variant="fairway"
+                alt=""
+                crop="tee"
+                className="h-full min-h-44"
+                priority
               />
-            </CardContent>
-          </DataPanel>
-        </DesktopWorkflowLayout>
-      </div>
+            }
+            metrics={[
+              {
+                label: "Course source",
+                value: "LMWT courses",
+                detail: "Pick from saved course and tee-set records.",
+              },
+              {
+                label: "Round type",
+                value: "Real",
+                detail: "No launch-monitor shots are created.",
+              },
+              {
+                label: "Map",
+                value: "Estimated",
+                detail: "Non-putt strokes are shown only as estimated markers.",
+              },
+              {
+                label: "Handicap",
+                value: "WHS-style",
+                detail: "Uses tee rating and slope when available.",
+              },
+            ]}
+          />
+
+          <DesktopWorkflowLayout
+            steps={roundWorkflowSteps}
+            helpTitle="Round entry help"
+            helpDescription="Keep the scorecard reliable"
+            helpItems={roundWorkflowHelpItems}
+          >
+            <DataPanel>
+              <SectionHeader
+                title="Scorecard"
+                description="Enter the score and putting data you have now. You can edit every hole after saving."
+              />
+              <CardContent>
+                <NewRoundForm
+                  instanceId="desktop-round"
+                  courses={courseOptions}
+                  createRoundAction={createManualRoundAction}
+                />
+              </CardContent>
+            </DataPanel>
+          </DesktopWorkflowLayout>
+        </div>
+      ) : null}
     </PageShell>
   );
 }

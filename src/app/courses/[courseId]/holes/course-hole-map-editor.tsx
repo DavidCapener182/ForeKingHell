@@ -262,9 +262,7 @@ export function CourseHoleMapEditor({
     <div className="grid gap-4" data-selected-hole={selectedHoleNumber}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-950/60">
-            {teeSetName}
-          </Badge>
+          <Badge variant="secondary">{teeSetName}</Badge>
           <h3 className="mt-2 text-xl font-semibold tracking-normal text-foreground">
             Select a hole, then place its points
           </h3>
@@ -272,7 +270,7 @@ export function CourseHoleMapEditor({
             The map stays primary. Detailed values and save controls open underneath on mobile.
           </p>
         </div>
-        <MapPinned className="mt-1 size-5 shrink-0 text-sky-600" aria-hidden />
+        <MapPinned className="mt-1 size-5 shrink-0 text-primary" aria-hidden />
       </div>
 
       <div className="-mx-1 overflow-x-auto px-1 pb-1" aria-label="Choose a hole to edit">
@@ -284,10 +282,7 @@ export function CourseHoleMapEditor({
               variant={selectedHoleNumber === holeNumber ? "default" : "outline"}
               aria-pressed={selectedHoleNumber === holeNumber}
               aria-label={`Edit hole ${holeNumber}`}
-              className={cn(
-                "size-11 shrink-0 rounded-lg p-0",
-                selectedHoleNumber === holeNumber ? "bg-[#0B7A3B] text-white" : "bg-background",
-              )}
+              className="size-11 shrink-0 rounded-lg p-0"
               onClick={() => selectHole(holeNumber)}
             >
               {holeNumber}
@@ -308,12 +303,13 @@ export function CourseHoleMapEditor({
         </div>
 
         <div className="order-2 lg:order-1">
-          <button
+          <Button
             type="button"
+            variant="outline"
             aria-expanded={controlsOpen}
             aria-controls={controlsId}
             onClick={() => setControlsOpen((open) => !open)}
-            className="ios-grouped-list focus-aaa flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2.5 text-left lg:hidden"
+            className="focus-aaa flex h-auto min-h-14 w-full items-center justify-between gap-3 px-4 py-2.5 text-left lg:hidden"
           >
             <span className="min-w-0">
               <span className="block text-[15px] font-medium text-foreground">
@@ -330,7 +326,7 @@ export function CourseHoleMapEditor({
               )}
               aria-hidden
             />
-          </button>
+          </Button>
 
           <div
             id={controlsId}
@@ -343,7 +339,7 @@ export function CourseHoleMapEditor({
                   Choose tee or green, click the satellite map, then save both points.
                 </p>
               </div>
-              <MapPinned className="size-5 text-sky-600" aria-hidden />
+              <MapPinned className="size-5 text-primary" aria-hidden />
             </div>
 
             <div className="grid grid-cols-2 gap-2 lg:mt-4">
@@ -351,10 +347,7 @@ export function CourseHoleMapEditor({
                 type="button"
                 variant={placementTarget === "tee" ? "default" : "outline"}
                 aria-pressed={placementTarget === "tee"}
-                className={cn(
-                  "min-h-11",
-                  placementTarget === "tee" ? "bg-[#0B7A3B] text-white" : "bg-background",
-                )}
+                className="min-h-11"
                 onClick={() => setPlacementTarget("tee")}
               >
                 Tee point
@@ -363,10 +356,7 @@ export function CourseHoleMapEditor({
                 type="button"
                 variant={placementTarget === "green" ? "default" : "outline"}
                 aria-pressed={placementTarget === "green"}
-                className={cn(
-                  "min-h-11",
-                  placementTarget === "green" ? "bg-[#0B7A3B] text-white" : "bg-background",
-                )}
+                className="min-h-11"
                 onClick={() => setPlacementTarget("green")}
               >
                 Green point
@@ -457,10 +447,7 @@ export function CourseHoleMapEditor({
                   <Crosshair className="size-4" aria-hidden />
                   Focus hole
                 </Button>
-                <Button
-                  type="submit"
-                  className="min-h-11 flex-1 bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-                >
+                <Button type="submit" className="min-h-11 flex-1">
                   <Save className="size-4" aria-hidden />
                   Save geometry
                 </Button>

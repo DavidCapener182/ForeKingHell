@@ -8,12 +8,6 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-} from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,7 +70,7 @@ const longestShotSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
   {
     title: "Full bag gapping",
-    href: "/bag#bag-gapping-table",
+    href: "/bag?tab=distances#bag-gapping-table",
     detail: "Compare PBs with playable stock numbers and confidence.",
   },
   {
@@ -107,7 +101,7 @@ export default async function LongestShotsPage() {
     <PageShell contentClassName="gap-6">
       <DesktopWorkbenchLayout scope="longest-shots-route">
         <div className="flex w-full max-w-none flex-col gap-6">
-          <div className="hidden items-center justify-between gap-4 lg:flex">
+          <div className="flex items-center justify-between gap-4">
             <Button asChild variant="ghost" className="px-0">
               <Link href="/bag">
                 <ArrowLeft className="size-4" />
@@ -122,9 +116,9 @@ export default async function LongestShotsPage() {
             </Button>
           </div>
 
-          <header className="hidden premium-hero p-7 lg:block">
+          <header className="premium-hero p-7">
             <div className="max-w-3xl space-y-2">
-              <Badge className="w-fit bg-amber-100 text-amber-700 hover:bg-amber-100">
+              <Badge variant="secondary" className="w-fit">
                 Shot simulator
               </Badge>
               <h1 className="text-2xl font-semibold tracking-normal text-balance sm:text-5xl">
@@ -137,26 +131,9 @@ export default async function LongestShotsPage() {
             </div>
           </header>
 
-          <header className="grid gap-2 px-1 lg:hidden">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="w-fit bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-950/60">
-                Shot replay
-              </Badge>
-              <IOSInlineStatus
-                label={`${longestShots.length} club${longestShots.length === 1 ? "" : "s"}`}
-                tone={longestShots.length > 0 ? "positive" : "attention"}
-              />
-            </div>
-            <h1 className="text-[2rem] font-semibold leading-9 tracking-tight">Longest shots</h1>
-            <p className="text-[15px] leading-5 text-muted-foreground">
-              Replay each trusted club record. Suspect raw maxima stay clearly labelled.
-            </p>
-          </header>
-
           {longestShots.length > 0 ? (
             <>
               <LongestShotsSection shots={longestShots} preferredUnits={preferredUnits} />
-              <MobileLongestShotEvidence shots={longestShots} preferredUnits={preferredUnits} />
               <LongestShotEvidenceTable shots={longestShots} preferredUnits={preferredUnits} />
             </>
           ) : (
@@ -175,50 +152,6 @@ export default async function LongestShotsPage() {
   );
 }
 
-function MobileLongestShotEvidence({
-  shots,
-  preferredUnits,
-}: {
-  shots: LongestShot[];
-  preferredUnits: DistanceUnitPreference;
-}) {
-  return (
-    <div className="lg:hidden" data-mobile-longest-evidence>
-      <IOSDisclosureGroup
-        label="Longest shot evidence"
-        items={[
-          {
-            value: "evidence",
-            title: "PB evidence",
-            summary: `${shots.length} rows`,
-            description: "Proof, source and key launch-monitor numbers",
-            content: (
-              <IOSGroupedList label="Longest shot evidence rows">
-                {shots.map((shot) => (
-                  <IOSListRow
-                    key={shot.id}
-                    label={formatClubType(shot.clubType)}
-                    value={formatStoredYards(shotDistance(shot), preferredUnits)}
-                    detail={`${shot.brandModel} · ${formatDate(shot.shotAt)} · carry ${formatStoredYards(shot.carryYd, preferredUnits)} · ${formatStoredLateralYards(shot.sideCarryYd, preferredUnits)}`}
-                    href={`/bag/${shot.clubId}/analytics`}
-                    status={
-                      <IOSInlineStatus
-                        label={proofTierForShot(shot)}
-                        tone={shot.recordTrust === "trusted" ? "positive" : "attention"}
-                      />
-                    }
-                  />
-                ))}
-              </IOSGroupedList>
-            ),
-            contentClassName: "px-0",
-          },
-        ]}
-      />
-    </div>
-  );
-}
-
 function LongestShotEvidenceTable({
   shots,
   preferredUnits,
@@ -231,11 +164,7 @@ function LongestShotEvidenceTable({
   );
 
   return (
-    <section
-      id="longest-shot-pb-table"
-      className="hidden gap-3 lg:grid"
-      data-workbench-scope="longest-shots"
-    >
+    <section id="longest-shot-pb-table" className="grid gap-3" data-workbench-scope="longest-shots">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold tracking-normal">PB evidence board</h2>
@@ -244,7 +173,7 @@ function LongestShotEvidenceTable({
             recorded shot.
           </p>
         </div>
-        <Badge className="w-fit bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+        <Badge variant="secondary" className="w-fit">
           Best visible PB: {formatClubType(bestShot.clubType)} ·{" "}
           {formatStoredYards(shotDistance(bestShot), preferredUnits)}
         </Badge>
@@ -272,11 +201,11 @@ function LongestShotEvidenceTable({
             Longest shot PB evidence table showing club, model, shot number, date, total distance,
             carry, offline distance, ball speed, apex, proof tier and club action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
             <TableRow>
               <TableHead
                 data-column="club"
-                className="sticky left-0 z-20 min-w-36 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-36 bg-card shadow-[1px_0_0_hsl(var(--border))]"
               >
                 Club
               </TableHead>
@@ -310,7 +239,7 @@ function LongestShotEvidenceTable({
               <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
                 <TableCell
                   data-column="club"
-                  className="sticky left-0 z-10 min-w-36 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-10 min-w-36 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                 >
                   <Link
                     href={`/bag/${shot.clubId}`}

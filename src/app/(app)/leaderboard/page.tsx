@@ -42,7 +42,7 @@ import {
 } from "@/components/mobile-sports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -50,11 +50,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   Table,
@@ -83,6 +81,7 @@ import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import {
   LeaderboardPlayerControls,
   LeaderboardTypeTabs,
@@ -274,10 +273,14 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   const filters = parseLeaderboardFilters(params);
   const playerSort = parsePlayerLeaderboardSort(params?.sort, params?.dir);
   const challengeSort = parseChallengeLeaderboardSort(params?.sort, params?.dir);
-  const [data, featureData] = await Promise.all([
+  const [data, featureData, surface] = await Promise.all([
     getLeaderboardData(activeTab, filters),
     getFeatureIdeasData(),
+    getRequestAppSurface(),
   ]);
+  const workbench =
+    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
   const showMobilePlayerFilters = isPlayerLeaderboardTab(activeTab);
   const mobileStatus = mobileLeaderboardStatus(data, activeTab, filters);
   const leaderboardOrderSteps = [
@@ -312,304 +315,309 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobileTopBar title="Leaderboards" />
-        <MobileRouteTabs group="social" activeKey="leaderboard" />
-        <MobileTabBar
-          activeKey={activeTab}
-          className="-mt-4"
-          tabs={[
-            { key: "friends", label: "Friends", href: "/leaderboard?tab=friends" },
-            { key: "monthly", label: "Monthly", href: "/leaderboard?tab=monthly" },
-            { key: "courses", label: "Courses", href: "/leaderboard?tab=courses" },
-            { key: "challenges", label: "Challenges", href: "/leaderboard?tab=challenges" },
-            { key: "tournaments", label: "Tournaments", href: "/leaderboard?tab=tournaments" },
-            { key: "public", label: "Public", href: "/leaderboard?tab=public" },
-          ]}
-        />
-        <MobileStatusAction
-          label={mobileStatus.label}
-          value={mobileStatus.value}
-          detail={mobileStatus.detail}
-          action={
-            showMobilePlayerFilters ? (
-              <BottomSheet
-                label={
-                  <>
-                    <Target className="size-4" /> Filters
-                  </>
+      {surface === "companion" ? (
+        <MobileAppShell>
+          <MobileTopBar title="Leaderboards" />
+          <MobileRouteTabs group="social" activeKey="leaderboard" />
+          <MobileTabBar
+            activeKey={activeTab}
+            className="-mt-4"
+            tabs={[
+              { key: "friends", label: "Friends", href: "/leaderboard?tab=friends" },
+              { key: "monthly", label: "Monthly", href: "/leaderboard?tab=monthly" },
+              { key: "courses", label: "Courses", href: "/leaderboard?tab=courses" },
+              { key: "challenges", label: "Challenges", href: "/leaderboard?tab=challenges" },
+              { key: "tournaments", label: "Tournaments", href: "/leaderboard?tab=tournaments" },
+              { key: "public", label: "Public", href: "/leaderboard?tab=public" },
+            ]}
+          />
+          <MobileStatusAction
+            label={mobileStatus.label}
+            value={mobileStatus.value}
+            detail={mobileStatus.detail}
+            action={
+              showMobilePlayerFilters ? (
+                <BottomSheet
+                  label={
+                    <>
+                      <Target className="size-4" /> Filters
+                    </>
+                  }
+                  title="Leaderboard filters"
+                  triggerClassName="ios-secondary-action bg-card text-foreground ring-1 ring-border"
+                >
+                  <form className="grid gap-3" action="/leaderboard">
+                    <input type="hidden" name="tab" value={activeTab} />
+                    <input type="hidden" name="sort" value={playerSort.metric} />
+                    <input type="hidden" name="dir" value={playerSort.dir} />
+                    <label className="grid gap-1 text-sm font-medium">
+                      Shot source
+                      <Select name="provider" defaultValue={filters.provider}>
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All sources</SelectItem>
+                          <SelectItem value="espn">ESPN</SelectItem>
+                          <SelectItem value="rapsodo">Rapsodo file</SelectItem>
+                          <SelectItem value="rapsodo_cloud">Rapsodo Cloud</SelectItem>
+                          <SelectItem value="manual">Manual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="grid gap-1 text-sm font-medium">
+                      Shot verification
+                      <Select name="verification" defaultValue={filters.verification}>
+                        <SelectTrigger className="h-11 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All proof states</SelectItem>
+                          <SelectItem value="verified">Verified only</SelectItem>
+                          <SelectItem value="manual">Manual only</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <Button type="submit" className="rounded-full">
+                      Apply filters
+                    </Button>
+                  </form>
+                </BottomSheet>
+              ) : undefined
+            }
+          />
+          {activeTab === "courses" ? (
+            <NativeListSection title="Course champions">
+              <CompactLeaderboard
+                current={
+                  data.courseChampionBoards[0]
+                    ? `${data.courseChampionBoards[0].courseName} · ${data.courseChampionBoards[0].scoreLabel}`
+                    : "No course champions yet"
                 }
-                title="Leaderboard filters"
-                triggerClassName="ios-secondary-action bg-white text-[#050505] ring-1 ring-[#E5E7EB]"
-              >
-                <form className="grid gap-3" action="/leaderboard">
-                  <input type="hidden" name="tab" value={activeTab} />
-                  <input type="hidden" name="sort" value={playerSort.metric} />
-                  <input type="hidden" name="dir" value={playerSort.dir} />
-                  <label className="grid gap-1 text-sm font-medium">
-                    Shot source
-                    <Select name="provider" defaultValue={filters.provider}>
-                      <SelectTrigger className="h-11 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All sources</SelectItem>
-                        <SelectItem value="espn">ESPN</SelectItem>
-                        <SelectItem value="rapsodo">Rapsodo file</SelectItem>
-                        <SelectItem value="rapsodo_cloud">Rapsodo Cloud</SelectItem>
-                        <SelectItem value="manual">Manual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <label className="grid gap-1 text-sm font-medium">
-                    Shot verification
-                    <Select name="verification" defaultValue={filters.verification}>
-                      <SelectTrigger className="h-11 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All proof states</SelectItem>
-                        <SelectItem value="verified">Verified only</SelectItem>
-                        <SelectItem value="manual">Manual only</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <Button type="submit" className="rounded-full bg-[#0B7A3B] text-white">
-                    Apply filters
-                  </Button>
-                </form>
-              </BottomSheet>
-            ) : undefined
-          }
-        />
-        {activeTab === "courses" ? (
-          <NativeListSection title="Course champions">
-            <CompactLeaderboard
-              current={
-                data.courseChampionBoards[0]
-                  ? `${data.courseChampionBoards[0].courseName} · ${data.courseChampionBoards[0].scoreLabel}`
-                  : "No course champions yet"
-              }
-              items={data.courseChampionBoards.slice(0, 5).map((board, index) => ({
-                rank: index + 1,
-                name: board.champion.displayName,
-                href: `/profile/${board.champion.username}`,
-                value: board.scoreLabel,
-                detail: board.courseName,
-              }))}
-              viewAllHref="/course-records"
-            />
-          </NativeListSection>
-        ) : activeTab === "challenges" ? (
-          <NativeListSection title="Challenge boards">
-            <CompactLeaderboard
-              current={data.challengeBoards[0]?.title ?? "No challenge results yet"}
-              items={data.challengeBoards.slice(0, 5).map((board, index) => ({
-                rank: index + 1,
-                name: board.leader?.displayName ?? "Open",
-                href: board.leader ? `/profile/${board.leader.username}` : undefined,
-                value: board.leader?.scoreLabel ?? "--",
-                detail: board.title,
-              }))}
-              viewAllHref="/challenges"
-            />
-          </NativeListSection>
-        ) : activeTab === "tournaments" ? (
-          <NativeListSection title="Tournament boards">
-            <CompactLeaderboard
-              current={data.tournamentBoards[0]?.title ?? "No tournament standings yet"}
-              items={data.tournamentBoards.slice(0, 5).map((board, index) => ({
-                rank: index + 1,
-                name: board.champion.displayName,
-                href: `/profile/${board.champion.username}`,
-                value: board.grossTotal,
-                detail: `${board.title} · ${board.roundsCompleted} rounds`,
-              }))}
-              viewAllHref="/tournaments"
-            />
-          </NativeListSection>
-        ) : (
-          <NativeListSection title="Podium">
-            <CompactLeaderboard
-              current={mobileCurrentUserSummary(data.players, activeTab)}
-              items={data.players.slice(0, 5).map((player, index) => ({
-                rank: index + 1,
-                name: player.displayName,
-                href: `/profile/${player.username}`,
-                value: integerFormatter.format(scoreForTab(player, activeTab)),
-                detail: activeTab === "monthly" ? "monthly XP" : player.relationship,
-              }))}
-            />
-            <MobilePlayerLeaderboardDisclosure players={data.players} activeTab={activeTab} />
-          </NativeListSection>
-        )}
-        <LeaderboardClimbPanel data={featureData} />
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="leaderboard">
-        <div className="hidden items-center justify-between gap-4 lg:flex">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/profile" prefetch={false}>
-              <ShieldCheck className="size-4" />
-              Leaderboard privacy
-            </Link>
-          </Button>
-        </div>
-
-        <div className="hidden lg:contents">
-          <PageHeader
-            eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
-            title="Leaderboards"
-            description="Friends, monthly, challenge and public opt-in rankings. Coach/viewer/editor account sharing is not used for normal friend rankings."
-            metrics={[
-              {
-                label: "Visible players",
-                value: integerFormatter.format(data.players.length),
-                detail: `${titleCase(activeTab)} scope`,
-              },
-              {
-                label: "Friends",
-                value: integerFormatter.format(data.friendCount),
-                detail: "Accepted friendships only",
-              },
-              {
-                label: "Monthly shots",
-                value: integerFormatter.format(data.monthlyShotTotal),
-                detail: formatMonth(data.monthStart),
-              },
-              {
-                label: "Course champions",
-                value: integerFormatter.format(data.courseChampionBoards.length),
-                detail: "Verified record holders",
-              },
-            ]}
-          />
-
-          <MobileBentoSummary
-            items={[
-              {
-                label: "Leader",
-                value:
-                  activeTab === "courses"
-                    ? (data.courseChampionBoards[0]?.champion.displayName ?? "--")
-                    : activeTab === "tournaments"
-                      ? (data.tournamentBoards[0]?.champion.displayName ?? "--")
-                      : (data.players[0]?.displayName ?? "--"),
-                detail:
-                  activeTab === "courses"
-                    ? (data.courseChampionBoards[0]?.courseName ?? "No course champions yet.")
-                    : activeTab === "tournaments"
-                      ? (data.tournamentBoards[0]?.title ?? "No tournament leaders yet.")
-                      : data.players[0]
-                        ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
-                        : "No visible players.",
-                tone: "amber",
-              },
-              {
-                label: "You",
-                value: data.players.find((player) => player.isCurrentUser)?.displayName ?? "Hidden",
-                detail: "Profile-controlled visibility",
-                tone: "green",
-              },
-              {
-                label: "Monthly shots",
-                value: integerFormatter.format(data.monthlyShotTotal),
-                detail: formatMonth(data.monthStart),
-                tone: "sky",
-              },
-              {
-                label: "Boards",
-                value: integerFormatter.format(
-                  data.courseChampionBoards.length +
-                    data.challengeBoards.length +
-                    data.tournamentBoards.length,
-                ),
-                detail: "Records, challenges, events",
-                tone: "slate",
-              },
-            ]}
-          />
-
-          <DataFirstFlowPanel
-            title="Leaderboard order"
-            description="Keep the first screen summary-led before filters and full tables."
-            steps={leaderboardOrderSteps}
-            actionHref="/challenges"
-            actionLabel="Ways to climb"
-          />
-
-          <LeaderboardClimbPanel data={featureData} />
-
-          <section className="hidden gap-4 sm:grid md:grid-cols-3">
-            <MetricCard
-              label="Monthly XP"
-              value={data.monthlyLeader?.displayName ?? "--"}
-              detail={
-                data.monthlyLeader
-                  ? `${integerFormatter.format(data.monthlyLeader.monthlyXp)} XP this month.`
-                  : "No monthly XP yet."
-              }
-              icon={CalendarDays}
-              tone="green"
-            />
-            <MetricCard
-              label="Longest verified drive"
-              value={data.longDriveLeader?.displayName ?? "--"}
-              detail={
-                data.longDriveLeader?.longestDriveYd
-                  ? `${numberFormatter.format(data.longDriveLeader.longestDriveYd)} yd · ${data.longDriveLeader.verificationLabel}`
-                  : "No driver shots yet."
-              }
-              icon={Medal}
-              tone="amber"
-            />
-            <MetricCard
-              label="Challenge leader"
-              value={data.challengeBoards[0]?.leader?.displayName ?? "--"}
-              detail={
-                data.challengeBoards[0]?.leader
-                  ? data.challengeBoards[0].title
-                  : "No challenge results yet."
-              }
-              icon={Trophy}
-              tone="sky"
-            />
-          </section>
-
-          <LeaderboardTypeTabs activeTab={activeTab} />
-
-          {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
-            <LeaderboardPlayerControls
-              activeTab={activeTab}
-              monthLabel={formatMonth(data.monthStart)}
-              provider={filters.provider}
-              verification={filters.verification}
-            />
-          ) : null}
-
-          {activeTab === "challenges" ? (
-            <ChallengeBoards boards={data.challengeBoards} sortState={challengeSort} />
-          ) : activeTab === "courses" ? (
-            <CourseChampionBoards boards={data.courseChampionBoards} />
+                items={data.courseChampionBoards.slice(0, 5).map((board, index) => ({
+                  rank: index + 1,
+                  name: board.champion.displayName,
+                  href: `/profile/${board.champion.username}`,
+                  value: board.scoreLabel,
+                  detail: board.courseName,
+                }))}
+                viewAllHref="/course-records"
+              />
+            </NativeListSection>
+          ) : activeTab === "challenges" ? (
+            <NativeListSection title="Challenge boards">
+              <CompactLeaderboard
+                current={data.challengeBoards[0]?.title ?? "No challenge results yet"}
+                items={data.challengeBoards.slice(0, 5).map((board, index) => ({
+                  rank: index + 1,
+                  name: board.leader?.displayName ?? "Open",
+                  href: board.leader ? `/profile/${board.leader.username}` : undefined,
+                  value: board.leader?.scoreLabel ?? "--",
+                  detail: board.title,
+                }))}
+                viewAllHref="/challenges"
+              />
+            </NativeListSection>
           ) : activeTab === "tournaments" ? (
-            <TournamentBoards boards={data.tournamentBoards} />
+            <NativeListSection title="Tournament boards">
+              <CompactLeaderboard
+                current={data.tournamentBoards[0]?.title ?? "No tournament standings yet"}
+                items={data.tournamentBoards.slice(0, 5).map((board, index) => ({
+                  rank: index + 1,
+                  name: board.champion.displayName,
+                  href: `/profile/${board.champion.username}`,
+                  value: board.grossTotal,
+                  detail: `${board.title} · ${board.roundsCompleted} rounds`,
+                }))}
+                viewAllHref="/tournaments"
+              />
+            </NativeListSection>
           ) : (
-            <PlayerLeaderboard
-              players={data.players}
-              activeTab={activeTab}
-              monthStart={data.monthStart}
-              filters={filters}
-              sortState={playerSort}
-            />
+            <NativeListSection title="Podium">
+              <CompactLeaderboard
+                current={mobileCurrentUserSummary(data.players, activeTab)}
+                items={data.players.slice(0, 5).map((player, index) => ({
+                  rank: index + 1,
+                  name: player.displayName,
+                  href: `/profile/${player.username}`,
+                  value: integerFormatter.format(scoreForTab(player, activeTab)),
+                  detail: activeTab === "monthly" ? "monthly XP" : player.relationship,
+                }))}
+              />
+              <MobilePlayerLeaderboardDisclosure players={data.players} activeTab={activeTab} />
+            </NativeListSection>
           )}
-        </div>
-      </DesktopWorkbenchLayout>
+          <LeaderboardClimbPanel data={featureData} />
+        </MobileAppShell>
+      ) : null}
+
+      {surface === "workbench" && DesktopWorkbenchLayout ? (
+        <DesktopWorkbenchLayout scope="leaderboard">
+          <div className="flex items-center justify-between gap-4">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/dashboard" prefetch={false}>
+                <ArrowLeft className="size-4" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/profile" prefetch={false}>
+                <ShieldCheck className="size-4" />
+                Leaderboard privacy
+              </Link>
+            </Button>
+          </div>
+
+          <>
+            <PageHeader
+              eyebrow={<StatusPill tone="green">Leaderboard v2</StatusPill>}
+              title="Leaderboards"
+              description="Friends, monthly, challenge and public opt-in rankings. Coach/viewer/editor account sharing is not used for normal friend rankings."
+              metrics={[
+                {
+                  label: "Visible players",
+                  value: integerFormatter.format(data.players.length),
+                  detail: `${titleCase(activeTab)} scope`,
+                },
+                {
+                  label: "Friends",
+                  value: integerFormatter.format(data.friendCount),
+                  detail: "Accepted friendships only",
+                },
+                {
+                  label: "Monthly shots",
+                  value: integerFormatter.format(data.monthlyShotTotal),
+                  detail: formatMonth(data.monthStart),
+                },
+                {
+                  label: "Course champions",
+                  value: integerFormatter.format(data.courseChampionBoards.length),
+                  detail: "Verified record holders",
+                },
+              ]}
+            />
+
+            <MobileBentoSummary
+              items={[
+                {
+                  label: "Leader",
+                  value:
+                    activeTab === "courses"
+                      ? (data.courseChampionBoards[0]?.champion.displayName ?? "--")
+                      : activeTab === "tournaments"
+                        ? (data.tournamentBoards[0]?.champion.displayName ?? "--")
+                        : (data.players[0]?.displayName ?? "--"),
+                  detail:
+                    activeTab === "courses"
+                      ? (data.courseChampionBoards[0]?.courseName ?? "No course champions yet.")
+                      : activeTab === "tournaments"
+                        ? (data.tournamentBoards[0]?.title ?? "No tournament leaders yet.")
+                        : data.players[0]
+                          ? `${integerFormatter.format(scoreForTab(data.players[0], activeTab))} ${activeTab === "monthly" ? "monthly XP" : "XP"}`
+                          : "No visible players.",
+                  tone: "amber",
+                },
+                {
+                  label: "You",
+                  value:
+                    data.players.find((player) => player.isCurrentUser)?.displayName ?? "Hidden",
+                  detail: "Profile-controlled visibility",
+                  tone: "green",
+                },
+                {
+                  label: "Monthly shots",
+                  value: integerFormatter.format(data.monthlyShotTotal),
+                  detail: formatMonth(data.monthStart),
+                  tone: "sky",
+                },
+                {
+                  label: "Boards",
+                  value: integerFormatter.format(
+                    data.courseChampionBoards.length +
+                      data.challengeBoards.length +
+                      data.tournamentBoards.length,
+                  ),
+                  detail: "Records, challenges, events",
+                  tone: "slate",
+                },
+              ]}
+            />
+
+            <DataFirstFlowPanel
+              title="Leaderboard order"
+              description="Keep the first screen summary-led before filters and full tables."
+              steps={leaderboardOrderSteps}
+              actionHref="/challenges"
+              actionLabel="Ways to climb"
+            />
+
+            <LeaderboardClimbPanel data={featureData} />
+
+            <section className="hidden gap-4 sm:grid md:grid-cols-3">
+              <MetricCard
+                label="Monthly XP"
+                value={data.monthlyLeader?.displayName ?? "--"}
+                detail={
+                  data.monthlyLeader
+                    ? `${integerFormatter.format(data.monthlyLeader.monthlyXp)} XP this month.`
+                    : "No monthly XP yet."
+                }
+                icon={CalendarDays}
+                tone="green"
+              />
+              <MetricCard
+                label="Longest verified drive"
+                value={data.longDriveLeader?.displayName ?? "--"}
+                detail={
+                  data.longDriveLeader?.longestDriveYd
+                    ? `${numberFormatter.format(data.longDriveLeader.longestDriveYd)} yd · ${data.longDriveLeader.verificationLabel}`
+                    : "No driver shots yet."
+                }
+                icon={Medal}
+                tone="amber"
+              />
+              <MetricCard
+                label="Challenge leader"
+                value={data.challengeBoards[0]?.leader?.displayName ?? "--"}
+                detail={
+                  data.challengeBoards[0]?.leader
+                    ? data.challengeBoards[0].title
+                    : "No challenge results yet."
+                }
+                icon={Trophy}
+                tone="sky"
+              />
+            </section>
+
+            <LeaderboardTypeTabs activeTab={activeTab} />
+
+            {activeTab === "friends" || activeTab === "monthly" || activeTab === "public" ? (
+              <LeaderboardPlayerControls
+                activeTab={activeTab}
+                monthLabel={formatMonth(data.monthStart)}
+                provider={filters.provider}
+                verification={filters.verification}
+              />
+            ) : null}
+
+            {activeTab === "challenges" ? (
+              <ChallengeBoards boards={data.challengeBoards} sortState={challengeSort} />
+            ) : activeTab === "courses" ? (
+              <CourseChampionBoards boards={data.courseChampionBoards} />
+            ) : activeTab === "tournaments" ? (
+              <TournamentBoards boards={data.tournamentBoards} />
+            ) : (
+              <PlayerLeaderboard
+                players={data.players}
+                activeTab={activeTab}
+                monthStart={data.monthStart}
+                filters={filters}
+                sortState={playerSort}
+              />
+            )}
+          </>
+        </DesktopWorkbenchLayout>
+      ) : null}
     </PageShell>
   );
 }
@@ -898,7 +906,7 @@ async function getTournamentBoards(
     }));
 }
 
-function PlayerLeaderboard({
+async function PlayerLeaderboard({
   players,
   activeTab,
   monthStart,
@@ -911,6 +919,7 @@ function PlayerLeaderboard({
   filters: LeaderboardFilters;
   sortState: PlayerLeaderboardSortState;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
   const currentUserIndex = players.findIndex((player) => player.isCurrentUser);
   const currentUser = currentUserIndex >= 0 ? players[currentUserIndex] : null;
   const podium = players.slice(0, 3);
@@ -920,55 +929,59 @@ function PlayerLeaderboard({
   return (
     <section className="grid gap-4">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <article className="premium-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold">Podium</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Top three in the active leaderboard scope.
-              </p>
-            </div>
-            <Badge variant="outline">{formatMonth(monthStart)}</Badge>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {podium.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-3">
-                No opted-in players yet.
-              </p>
-            ) : (
-              podium.map((player, index) => (
-                <LeaderboardPodiumCard
-                  key={player.userId}
-                  player={player}
-                  rank={index + 1}
-                  activeTab={activeTab}
-                />
-              ))
-            )}
-          </div>
-        </article>
-
-        <article className="premium-card p-4">
-          <p className="text-sm font-semibold">Your rank</p>
-          {currentUser ? (
-            <div className="mt-3 rounded-lg bg-[#F5F6F4] p-4">
-              <Badge variant="secondary">#{currentUserIndex + 1}</Badge>
-              <p className="mt-3 text-2xl font-semibold tracking-normal">
-                {integerFormatter.format(scoreForTab(currentUser, activeTab))} XP
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{movementLabel(currentUser)}</p>
-              {currentUserIndex === 3 ? (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Best route to climb: enter a challenge board with verified attempts.
+        <Card className="gap-0 py-0">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Podium</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Top three in the active leaderboard scope.
                 </p>
-              ) : null}
+              </div>
+              <Badge variant="outline">{formatMonth(monthStart)}</Badge>
             </div>
-          ) : (
-            <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-              Enable leaderboard visibility in your profile.
-            </p>
-          )}
-        </article>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {podium.length === 0 ? (
+                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground md:col-span-3">
+                  No opted-in players yet.
+                </p>
+              ) : (
+                podium.map((player, index) => (
+                  <LeaderboardPodiumCard
+                    key={player.userId}
+                    player={player}
+                    rank={index + 1}
+                    activeTab={activeTab}
+                  />
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="gap-0 py-0">
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold">Your rank</p>
+            {currentUser ? (
+              <div className="mt-3 rounded-lg bg-muted/55 p-4">
+                <Badge variant="secondary">#{currentUserIndex + 1}</Badge>
+                <p className="mt-3 text-2xl font-semibold tracking-normal">
+                  {integerFormatter.format(scoreForTab(currentUser, activeTab))} XP
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{movementLabel(currentUser)}</p>
+                {currentUserIndex === 3 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Best route to climb: enter a challenge board with verified attempts.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                Enable leaderboard visibility in your profile.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <DataPanel id="full-leaderboard">
@@ -1011,7 +1024,7 @@ function PlayerLeaderboard({
                 Leaderboard rows with rank, player, total XP, monthly XP, monthly shots, best round,
                 longest drive and source verification.
               </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
                 <TableRow>
                   <SortablePlayerHead
                     activeTab={activeTab}
@@ -1019,7 +1032,7 @@ function PlayerLeaderboard({
                     filters={filters}
                     metric="rank"
                     sortState={sortState}
-                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   />
                   <SortablePlayerHead
                     activeTab={activeTab}
@@ -1086,7 +1099,7 @@ function PlayerLeaderboard({
                     <TableRow key={player.userId} tabIndex={0} className="focus-aaa outline-none">
                       <TableCell
                         data-column="rank"
-                        className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-10 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       >
                         <Badge variant={rank === 1 ? "default" : "outline"}>
                           {rank > 0 ? rank : "--"}
@@ -1241,7 +1254,7 @@ function SortablePlayerHeadLink({
       aria-label={`Sort leaderboard players by ${label}, ${playerSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </Link>
   );
 }
@@ -1304,7 +1317,7 @@ function SortableChallengeHeadLink({
       aria-label={`Sort challenge leaderboards by ${label}, ${challengeSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </Link>
   );
 }
@@ -1686,8 +1699,8 @@ function LeaderboardPodiumCard({
     <article
       className={
         rank === 1
-          ? "rounded-lg border border-amber-200 bg-amber-50 p-4"
-          : "rounded-lg border bg-[#F5F6F4] p-4"
+          ? "rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4"
+          : "rounded-lg border bg-muted/55 p-4"
       }
     >
       <Badge variant={rank === 1 ? "default" : "outline"}>#{rank}</Badge>
@@ -1708,13 +1721,14 @@ function LeaderboardPodiumCard({
   );
 }
 
-function ChallengeBoards({
+async function ChallengeBoards({
   boards,
   sortState,
 }: {
   boards: Awaited<ReturnType<typeof getLeaderboardData>>["challengeBoards"];
   sortState: ChallengeLeaderboardSortState;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
   const sortedBoards = sortChallengeLeaderboardBoards(boards, sortState);
 
   return (
@@ -1722,7 +1736,7 @@ function ChallengeBoards({
       <SectionHeader
         title="Challenge leaderboards"
         description="Visible challenge boards with current leaders and verification labels."
-        action={<Target className="size-5 text-emerald-600" />}
+        action={<Target className="size-5 text-primary" />}
       />
       <CardContent>
         <DesktopTableWorkbenchControls
@@ -1752,13 +1766,13 @@ function ChallengeBoards({
               Challenge leaderboard boards with template, participant count, leader, score and
               verification source.
             </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
               <TableRow>
                 <SortableChallengeHead
                   columnId="challenge"
                   metric="challenge"
                   sortState={sortState}
-                  className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                  className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                 />
                 <SortableChallengeHead
                   columnId="template"
@@ -1796,7 +1810,7 @@ function ChallengeBoards({
                 <TableRow key={board.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="challenge"
-                    className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     <Link
                       href={`/challenges/${board.id}`}
@@ -1851,65 +1865,64 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
 
   return (
     <section className="grid gap-4">
-      <article className="premium-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">Course Champions</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Verified and manual boards stay labelled by scope and proof tier.
-            </p>
+      <Card className="gap-0 py-0">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Course Champions</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Verified and manual boards stay labelled by scope and proof tier.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/course-records" prefetch={false}>
+                Open records
+              </Link>
+            </Button>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/course-records" prefetch={false}>
-              Open records
-            </Link>
-          </Button>
-        </div>
-        {champion ? (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <Badge>Current champion</Badge>
-            <Link
-              href={`/profile/${champion.champion.username}`}
-              prefetch={false}
-              className="mt-3 block text-2xl font-semibold tracking-normal hover:underline"
-            >
-              {champion.champion.displayName}
-            </Link>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {champion.courseName} · {champion.categoryName} · {champion.scoreLabel}
+          {champion ? (
+            <div className="mt-4 rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4">
+              <Badge>Current champion</Badge>
+              <Link
+                href={`/profile/${champion.champion.username}`}
+                prefetch={false}
+                className="mt-3 block text-2xl font-semibold tracking-normal hover:underline"
+              >
+                {champion.champion.displayName}
+              </Link>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {champion.courseName} · {champion.categoryName} · {champion.scoreLabel}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              No course champions yet.
             </p>
-          </div>
-        ) : (
-          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-            No course champions yet.
-          </p>
-        )}
-      </article>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-3 md:grid-cols-2">
         {boards.map((board) => (
-          <Link
-            key={board.id}
-            href={`/course-records/${board.id}`}
-            prefetch={false}
-            className="premium-card p-4 transition hover:border-emerald-300"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{board.courseName}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{board.categoryName}</p>
+          <Card key={board.id} className="gap-0 py-0 transition hover:ring-primary/50">
+            <Link href={`/course-records/${board.id}`} prefetch={false} className="block p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{board.courseName}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{board.categoryName}</p>
+                </div>
+                <Badge variant={board.verificationTier === "gold" ? "secondary" : "outline"}>
+                  {label(board.verificationTier)}
+                </Badge>
               </div>
-              <Badge variant={board.verificationTier === "gold" ? "secondary" : "outline"}>
-                {label(board.verificationTier)}
-              </Badge>
-            </div>
-            <p className="mt-4 text-xl font-semibold tracking-normal">
-              {board.champion.displayName}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {board.scoreLabel} · {label(board.scope)} · {label(board.period)}
-            </p>
-          </Link>
+              <p className="mt-4 text-xl font-semibold tracking-normal">
+                {board.champion.displayName}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {board.scoreLabel} · {label(board.scope)} · {label(board.period)}
+              </p>
+            </Link>
+          </Card>
         ))}
       </div>
     </section>
@@ -1921,63 +1934,62 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
 
   return (
     <section className="grid gap-4">
-      <article className="premium-card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">Tournament Leaders</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Major-style events rank gross first, with net totals as tiebreak context.
-            </p>
+      <Card className="gap-0 py-0">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">Tournament Leaders</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Major-style events rank gross first, with net totals as tiebreak context.
+              </p>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/tournaments" prefetch={false}>
+                Open events
+              </Link>
+            </Button>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/tournaments" prefetch={false}>
-              Open events
-            </Link>
-          </Button>
-        </div>
-        {leader ? (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <Badge>Event leader</Badge>
-            <Link
-              href={`/profile/${leader.champion.username}`}
-              prefetch={false}
-              className="mt-3 block text-2xl font-semibold tracking-normal hover:underline"
-            >
-              {leader.champion.displayName}
-            </Link>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {leader.title} · {leader.grossTotal} through {leader.roundsCompleted}
+          {leader ? (
+            <div className="mt-4 rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4">
+              <Badge>Event leader</Badge>
+              <Link
+                href={`/profile/${leader.champion.username}`}
+                prefetch={false}
+                className="mt-3 block text-2xl font-semibold tracking-normal hover:underline"
+              >
+                {leader.champion.displayName}
+              </Link>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {leader.title} · {leader.grossTotal} through {leader.roundsCompleted}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+              No tournament standings yet.
             </p>
-          </div>
-        ) : (
-          <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-            No tournament standings yet.
-          </p>
-        )}
-      </article>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-3 md:grid-cols-2">
         {boards.map((board) => (
-          <Link
-            key={board.id}
-            href={`/tournaments/${board.id}`}
-            prefetch={false}
-            className="premium-card p-4 transition hover:border-emerald-300"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{board.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {formatTournamentLabel(board.format)}
-                </p>
+          <Card key={board.id} className="gap-0 py-0 transition hover:ring-primary/50">
+            <Link href={`/tournaments/${board.id}`} prefetch={false} className="block p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{board.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {formatTournamentLabel(board.format)}
+                  </p>
+                </div>
+                <Badge variant="outline">{board.roundsCompleted} rounds</Badge>
               </div>
-              <Badge variant="outline">{board.roundsCompleted} rounds</Badge>
-            </div>
-            <p className="mt-4 text-xl font-semibold tracking-normal">
-              {board.champion.displayName}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">{board.grossTotal} gross total</p>
-          </Link>
+              <p className="mt-4 text-xl font-semibold tracking-normal">
+                {board.champion.displayName}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{board.grossTotal} gross total</p>
+            </Link>
+          </Card>
         ))}
       </div>
     </section>

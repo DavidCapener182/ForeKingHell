@@ -72,7 +72,7 @@ export function ConfirmSubmitButton({
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogMedia className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            <AlertDialogMedia className="bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]">
               <AlertTriangle className="size-5" aria-hidden />
             </AlertDialogMedia>
             <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>

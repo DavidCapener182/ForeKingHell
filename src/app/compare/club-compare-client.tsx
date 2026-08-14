@@ -1,82 +1,40 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Crosshair, GitCompareArrows, Radar, Target, Trophy } from "lucide-react";
+import { GitCompareArrows, Radar } from "lucide-react";
 
 import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
 import {
-  DesktopTableWorkbenchControls,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
-} from "@/components/app/desktop-workbench";
-import {
-  ChartFrame,
-  DataPanel,
-  DataTableFrame,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+  ComparisonWorkspace,
+  type ComparisonTableRow,
+  type SavedWorkspaceComparison,
+} from "@/app/compare/comparison-workspace";
+import { ChartFrame, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { Item, ItemContent } from "@/components/ui/item";
 import type {
   ClubCompareData,
   ClubCompareSide,
   CompareDelta,
   DispersionPoint,
 } from "@/lib/compare-data";
-import { cn } from "@/lib/utils";
 
 const integerFormatter = new Intl.NumberFormat("en-GB");
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-const clubComparisonColumns: DesktopWorkbenchColumn[] = [
-  { id: "metric", label: "Metric", locked: true },
-  { id: "club-a", label: "Club A" },
-  { id: "club-b", label: "Club B" },
-  { id: "difference", label: "Difference" },
-  { id: "better", label: "Better" },
-];
-
-const clubComparisonSuggestedViews: DesktopSavedViewSuggestion[] = [
-  {
-    title: "Distance decision",
-    href: "/compare#club-comparison-metrics",
-    detail: "Keep carry, total, ball speed and difference columns visible.",
-  },
-  {
-    title: "Control decision",
-    href: "/compare#club-comparison-metrics",
-    detail: "Review offline average, shot cone, playable and big-miss signals.",
-  },
-  {
-    title: "Report export",
-    href: "/compare#club-comparison-metrics",
-    detail: "Use the complete side-by-side metric table for a comparison report.",
-  },
-];
-
-export function ClubCompareClient({ data }: { data: ClubCompareData }) {
+export function ClubCompareClient({
+  data,
+  savedComparisons = [],
+}: {
+  data: ClubCompareData;
+  savedComparisons?: SavedWorkspaceComparison[];
+}) {
   const [draftClubAId, setDraftClubAId] = useState(data.filters.clubAId);
   const [draftClubBId, setDraftClubBId] = useState(data.filters.clubBId);
   const [selectedClubAId, setSelectedClubAId] = useState(data.filters.clubAId);
@@ -91,6 +49,7 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
     data.clubSides.find((club) => club.clubId !== clubA?.clubId) ??
     null;
   const delta = clubA && clubB ? buildDelta(clubA, clubB) : emptyDelta();
+  const rows = clubA && clubB ? clubComparisonTableRows(clubA, clubB, delta) : [];
 
   function applySelection() {
     const nextClubAId = draftClubAId || data.clubs[0]?.id || "";
@@ -115,191 +74,94 @@ export function ClubCompareClient({ data }: { data: ClubCompareData }) {
   }
 
   return (
-    <>
-      <DataPanel>
-        <SectionHeader
-          title="Choose clubs"
-          description="Pick exactly what you want compared. No session or baseline setup required."
-          action={<GitCompareArrows className="size-5 text-muted-foreground" />}
+    <ComparisonWorkspace
+      view="clubs"
+      focusValue={draftClubAId}
+      baselineValue={draftClubBId}
+      appliedFocusValue={selectedClubAId}
+      appliedBaselineValue={selectedClubBId}
+      onFocusValueChange={setDraftClubAId}
+      onBaselineValueChange={setDraftClubBId}
+      onCompare={applySelection}
+      onReset={resetSelection}
+      focusLabel={clubA?.label ?? "Club focus"}
+      baselineLabel={clubB?.label ?? "Club baseline"}
+      focusOptions={data.clubs.map((club) => ({
+        value: club.id,
+        label: club.label,
+        description: `${integerFormatter.format(club.shotCount)} shots${club.active ? "" : " · retired"}`,
+      }))}
+      baselineOptions={data.clubs.map((club) => ({
+        value: club.id,
+        label: club.label,
+        description: `${integerFormatter.format(club.shotCount)} shots${club.active ? "" : " · retired"}`,
+        disabled: club.id === draftClubAId,
+      }))}
+      rows={rows}
+      sampleReady={Boolean(clubA && clubB && clubA.stockShots >= 10 && clubB.stockShots >= 10)}
+      sampleTitle={
+        clubA && clubB && clubA.stockShots >= 10 && clubB.stockShots >= 10
+          ? "Decision-ready club samples"
+          : "Early club comparison"
+      }
+      sampleDescription={
+        clubA && clubB
+          ? `${clubA.label} has ${integerFormatter.format(clubA.stockShots)} stock shots and ${clubB.label} has ${integerFormatter.format(clubB.stockShots)}. Use at least 10 comparable stock shots on both sides before changing the bag.`
+          : "Choose two clubs with tracked stock shots."
+      }
+      evidenceTitle="Club comparison evidence"
+      evidenceDescription="Side summaries, the performance radar and measured dispersion support the single metric table."
+      evidence={
+        clubA && clubB ? (
+          <>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <ClubSummaryCard side="Focus" club={clubA} tone="emerald" />
+              <ClubSummaryCard side="Baseline" club={clubB} tone="sky" />
+            </div>
+            <CompareRadarChart clubA={clubA} clubB={clubB} />
+            <ClubDispersionPlot clubA={clubA} clubB={clubB} />
+          </>
+        ) : null
+      }
+      savedComparisons={savedComparisons}
+      exportFileName="forekinghell-club-comparison-metrics.csv"
+      empty={
+        <AppEmptyState
+          icon={<GitCompareArrows className="size-5" />}
+          title="Choose two clubs"
+          description="Imported and retired clubs are available for one side-by-side comparison."
+          primaryAction={
+            <Button type="button" variant="outline" onClick={resetSelection}>
+              Use available clubs
+            </Button>
+          }
         />
-        <CardContent>
-          <form
-            className="apple-panel grid items-end gap-3 p-3 md:grid-cols-[1fr_auto_1fr_auto]"
-            onSubmit={(event) => {
-              event.preventDefault();
-              applySelection();
-            }}
-          >
-            <SelectField label="Club A" value={draftClubAId} onChange={setDraftClubAId}>
-              {data.clubs.map((club) => (
-                <SelectItem key={club.id} value={club.id}>
-                  {club.label} ({integerFormatter.format(club.shotCount)})
-                </SelectItem>
-              ))}
-            </SelectField>
-            <div className="hidden pb-2 text-center text-sm font-semibold text-muted-foreground md:block">
-              vs
-            </div>
-            <SelectField label="Club B" value={draftClubBId} onChange={setDraftClubBId}>
-              {data.clubs.map((club) => (
-                <SelectItem key={club.id} value={club.id}>
-                  {club.label} ({integerFormatter.format(club.shotCount)})
-                </SelectItem>
-              ))}
-            </SelectField>
-            <div className="flex gap-2">
-              <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
-                Compare
-              </Button>
-              <Button type="button" variant="outline" onClick={resetSelection}>
-                Reset
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </DataPanel>
-
-      {!clubA || !clubB ? (
-        <DataPanel>
-          <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
-            <GitCompareArrows className="size-9 text-muted-foreground" />
-            <div>
-              <p className="text-xl font-semibold">Choose two clubs</p>
-              <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                The comparison page only needs a Club A and Club B now. Imported and retired clubs
-                are both available.
-              </p>
-            </div>
-          </CardContent>
-        </DataPanel>
-      ) : (
-        <>
-          <WinnerCard clubA={clubA} clubB={clubB} delta={delta} />
-
-          <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <DataPanel>
-              <SectionHeader
-                title="Side by side"
-                description="Stock shots exclude chips, recovery shots, and obvious mishits."
-                action={<GitCompareArrows className="size-5 text-sky-500" />}
-              />
-              <CardContent className="grid gap-4 lg:grid-cols-2">
-                <ClubSummaryCard side="Club A" club={clubA} tone="emerald" />
-                <ClubSummaryCard side="Club B" club={clubB} tone="sky" />
-              </CardContent>
-            </DataPanel>
-
-            <DataPanel>
-              <SectionHeader
-                title="Differences"
-                description="Winner uses higher carry, total, ball speed, and playable rate; lower miss numbers are better."
-                action={<Target className="size-5 text-emerald-500" />}
-              />
-              <CardContent className="grid gap-4">
-                <CompareRadarChart clubA={clubA} clubB={clubB} />
-                <DeltaTable clubA={clubA} clubB={clubB} delta={delta} />
-              </CardContent>
-            </DataPanel>
-          </section>
-
-          <DataPanel>
-            <SectionHeader
-              title="Shot pattern"
-              description={`${clubA.label} in green, ${clubB.label} in blue.`}
-              action={<Crosshair className="size-5 text-pink-500" />}
-            />
-            <CardContent>
-              <ClubDispersionPlot clubA={clubA} clubB={clubB} />
-            </CardContent>
-          </DataPanel>
-        </>
-      )}
-    </>
+      }
+    />
   );
 }
 
-function WinnerCard({
-  clubA,
-  clubB,
-  delta,
-}: {
-  clubA: ClubCompareSide;
-  clubB: ClubCompareSide;
-  delta: CompareDelta;
-}) {
-  const rows = compareMetricRows(clubA, clubB, delta);
-  const aWins = rows.filter((row) => row.outcome.winner === "a").length;
-  const bWins = rows.filter((row) => row.outcome.winner === "b").length;
-  const winner = aWins === bWins ? "tie" : aWins > bWins ? "a" : "b";
-  const winnerClub = winner === "a" ? clubA : winner === "b" ? clubB : null;
-  const winnerTone = winner === "b" ? "sky" : winner === "tie" ? "slate" : "green";
-  const winnerRows = rows
-    .filter((row) => row.outcome.winner === winner)
-    .slice(0, 3)
-    .map((row) => `${row.outcome.detail} ${row.label.toLowerCase()}`);
-
-  return (
-    <DataPanel className="border-emerald-950/10 bg-[linear-gradient(135deg,rgba(240,250,243,0.96),rgba(255,255,255,0.94))]">
-      <CardContent className="grid gap-4 py-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone={winnerTone}>
-              <Trophy className="mr-1 size-3.5" />
-              Winner
-            </StatusPill>
-            <StatusPill tone="slate">
-              {aWins}-{bWins} metric split
-            </StatusPill>
-          </div>
-          <h2 className="mt-4 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
-            {winnerClub ? winnerClub.label : "Too close to call"}
-          </h2>
-          <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
-            {winnerClub
-              ? `${winnerClub.label} leads the selected comparison on the clearest performance signals.`
-              : "The selected clubs split the headline metrics, so use the detailed rows before changing the bag."}
-          </p>
-        </div>
-        <div className="grid gap-2 md:grid-cols-3">
-          {(winnerRows.length > 0
-            ? winnerRows
-            : ["Carry is close", "Playable is close", "Launch is fit dependent"]
-          ).map((signal) => (
-            <div key={signal} className="rounded-lg border border-slate-200/70 bg-white/85 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Signal
-              </p>
-              <p className="mt-2 text-lg font-semibold leading-6 text-slate-950">{signal}</p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </DataPanel>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  children,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="grid gap-1 text-sm font-medium">
-      {label}
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-10 w-full bg-white/90">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>{children}</SelectContent>
-      </Select>
-    </label>
-  );
+function clubComparisonTableRows(
+  clubA: ClubCompareSide,
+  clubB: ClubCompareSide,
+  delta: CompareDelta,
+): ComparisonTableRow[] {
+  const confidence = comparisonConfidence(clubA.stockShots, clubB.stockShots);
+  return compareMetricRows(clubA, clubB, delta).map((row) => {
+    const rowConfidence =
+      row.outcome.winner === "none" ? { label: "No data", tone: "slate" as const } : confidence;
+    return {
+      id: row.label,
+      metric: row.label,
+      focus: row.a,
+      baseline: row.b,
+      delta: row.diff,
+      direction: directionLabel(row.outcome.winner),
+      directionTone: row.outcome.tone,
+      confidence: rowConfidence.label,
+      confidenceTone: rowConfidence.tone,
+    };
+  });
 }
 
 function ClubSummaryCard({
@@ -311,148 +173,52 @@ function ClubSummaryCard({
   club: ClubCompareSide;
   tone: "emerald" | "sky";
 }) {
-  const dotClass = tone === "emerald" ? "bg-emerald-600" : "bg-sky-600";
+  const dotClass =
+    tone === "emerald"
+      ? "bg-[var(--status-success-foreground)]"
+      : "bg-[var(--status-information-foreground)]";
 
   return (
-    <div className="apple-panel-strong p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            <span className={`size-2 rounded-full ${dotClass}`} />
-            {side}
-          </p>
-          <p className="mt-2 truncate text-xl font-semibold tracking-normal">{club.label}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{club.dateRange}</p>
+    <Item variant="outline" className="items-start p-4">
+      <ItemContent className="space-y-0">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              <span className={`size-2 rounded-full ${dotClass}`} />
+              {side}
+            </p>
+            <p className="mt-2 truncate text-xl font-semibold tracking-normal">{club.label}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{club.dateRange}</p>
+          </div>
+          {!club.active ? <StatusPill tone="amber">Retired</StatusPill> : null}
         </div>
-        {!club.active ? <StatusPill tone="amber">Retired</StatusPill> : null}
-      </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <MiniStat
-          label="Usable shots"
-          value={`${integerFormatter.format(club.stockShots)} / ${integerFormatter.format(club.rawShots)}`}
-        />
-        <MiniStat label="Sessions" value={integerFormatter.format(club.sessions)} />
-        <MiniStat label="Carry" value={formatYards(club.carryMedianYd)} />
-        <MiniStat label="Total" value={formatYards(club.totalMedianYd)} />
-        <MiniStat label="Ball speed" value={formatMph(club.ballSpeedAverageMph)} />
-        <MiniStat label="Launch" value={formatDegrees(club.launchAverageDeg)} />
-        <MiniStat label="Offline avg" value={formatYards(club.absoluteOfflineAverageYd)} />
-        <MiniStat label="Shot cone" value={formatYards(club.shotConeWidthYd)} />
-        <MiniStat label="Playable" value={formatRate(club.playableRate)} />
-        <MiniStat label="Big misses" value={formatRate(club.bigMissRate)} />
-      </div>
-    </div>
+        <dl className="mt-4 grid gap-x-3 gap-y-4 sm:grid-cols-2">
+          <MiniStat
+            label="Usable shots"
+            value={`${integerFormatter.format(club.stockShots)} / ${integerFormatter.format(club.rawShots)}`}
+          />
+          <MiniStat label="Sessions" value={integerFormatter.format(club.sessions)} />
+          <MiniStat label="Carry" value={formatYards(club.carryMedianYd)} />
+          <MiniStat label="Total" value={formatYards(club.totalMedianYd)} />
+          <MiniStat label="Ball speed" value={formatMph(club.ballSpeedAverageMph)} />
+          <MiniStat label="Launch" value={formatDegrees(club.launchAverageDeg)} />
+          <MiniStat label="Offline avg" value={formatYards(club.absoluteOfflineAverageYd)} />
+          <MiniStat label="Shot cone" value={formatYards(club.shotConeWidthYd)} />
+          <MiniStat label="Playable" value={formatRate(club.playableRate)} />
+          <MiniStat label="Big misses" value={formatRate(club.bigMissRate)} />
+        </dl>
+      </ItemContent>
+    </Item>
   );
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
-      <p className="truncate text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate font-semibold">{value}</p>
+    <div className="border-l border-border pl-3">
+      <dt className="truncate text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1 truncate font-semibold">{value}</dd>
     </div>
-  );
-}
-
-function DeltaTable({
-  clubA,
-  clubB,
-  delta,
-}: {
-  clubA: ClubCompareSide;
-  clubB: ClubCompareSide;
-  delta: CompareDelta;
-}) {
-  const rows = compareMetricRows(clubA, clubB, delta);
-
-  return (
-    <section id="club-comparison-metrics" data-workbench-scope="club-comparison-metrics">
-      <DesktopTableWorkbenchControls
-        viewKey="club-comparison-metrics"
-        scope="club-comparison-metrics"
-        currentViewLabel="Club comparison metrics"
-        resultLabel={`${rows.length} metrics`}
-        columns={clubComparisonColumns}
-        suggestedViews={clubComparisonSuggestedViews}
-        exportTableId="club-comparison-metrics"
-        exportFileName="forekinghell-club-comparison-metrics.csv"
-        className="mb-3"
-      />
-      <DataTableFrame mainTable mainTableLabel="Club comparison metrics table" stickyFirstColumn>
-        <Table
-          className="min-w-[920px]"
-          data-workbench-export-table="club-comparison-metrics"
-          aria-describedby="club-comparison-metrics-summary"
-        >
-          <TableCaption id="club-comparison-metrics-summary" className="sr-only">
-            Club comparison metrics table showing metric, Club A, Club B, difference and better
-            side.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-            <TableRow>
-              <TableHead
-                data-column="metric"
-                className="sticky left-0 z-20 min-w-44 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-              >
-                Metric
-              </TableHead>
-              <TableHead data-column="club-a" className="text-right">
-                Club A
-              </TableHead>
-              <TableHead data-column="club-b" className="text-right">
-                Club B
-              </TableHead>
-              <TableHead data-column="difference" className="text-right">
-                Diff
-              </TableHead>
-              <TableHead data-column="better" className="text-right">
-                Better
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.label} tabIndex={0} className="focus-aaa outline-none">
-                <TableCell
-                  data-column="metric"
-                  className="sticky left-0 z-10 min-w-44 bg-white font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
-                >
-                  {row.label}
-                </TableCell>
-                <TableCell data-column="club-a" className="min-w-36">
-                  <MetricValueBar
-                    value={row.a}
-                    rawValue={row.aValue}
-                    maxValue={row.maxValue}
-                    tone="green"
-                  />
-                </TableCell>
-                <TableCell data-column="club-b" className="min-w-36">
-                  <MetricValueBar
-                    value={row.b}
-                    rawValue={row.bValue}
-                    maxValue={row.maxValue}
-                    tone="sky"
-                  />
-                </TableCell>
-                <TableCell data-column="difference" className={deltaClass(row.outcome.winner)}>
-                  {row.diff}
-                </TableCell>
-                <TableCell data-column="better" className="text-right">
-                  <div className="flex flex-col items-end gap-1">
-                    <StatusPill tone={row.outcome.tone} className="justify-center">
-                      {row.outcome.label}
-                    </StatusPill>
-                    <span className="text-xs text-muted-foreground">{row.outcome.detail}</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
-    </section>
   );
 }
 
@@ -543,35 +309,6 @@ function compareMetricRows(clubA: ClubCompareSide, clubB: ClubCompareSide, delta
   ];
 }
 
-function MetricValueBar({
-  value,
-  rawValue,
-  maxValue,
-  tone,
-}: {
-  value: string;
-  rawValue: number | null;
-  maxValue: number;
-  tone: "green" | "sky";
-}) {
-  const width = rawValue === null || maxValue <= 0 ? 0 : clamp((rawValue / maxValue) * 100, 3, 100);
-
-  return (
-    <span className="grid gap-1 text-right">
-      <span className="font-medium tabular-nums text-slate-950">{value}</span>
-      <span className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-        <span
-          className={cn(
-            "block h-full rounded-full",
-            tone === "green" ? "bg-emerald-600" : "bg-sky-500",
-          )}
-          style={{ width: `${width}%` }}
-        />
-      </span>
-    </span>
-  );
-}
-
 export function CompareRadarChart({
   clubA,
   clubB,
@@ -591,15 +328,15 @@ export function CompareRadarChart({
       .join(" ");
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/85 p-3">
+    <div className="rounded-lg border border-border bg-card/85 p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-slate-950">Performance radar</p>
+          <p className="text-sm font-semibold text-foreground">Performance radar</p>
           <p className="text-xs text-muted-foreground">
             Carry, speed, control, playable rate and launch context.
           </p>
         </div>
-        <Radar className="size-5 text-sky-600" />
+        <Radar className="size-5 text-[var(--status-information-foreground)]" />
       </div>
       <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
         <svg
@@ -673,11 +410,11 @@ export function CompareRadarChart({
           ))}
         </svg>
         <div className="grid gap-2 text-xs">
-          <span className="inline-flex items-center gap-2 font-semibold text-slate-950">
+          <span className="inline-flex items-center gap-2 font-semibold text-foreground">
             <span className="size-2.5 rounded-full bg-emerald-600" />
             Club A: {clubA.label}
           </span>
-          <span className="inline-flex items-center gap-2 font-semibold text-slate-950">
+          <span className="inline-flex items-center gap-2 font-semibold text-foreground">
             <span className="size-2.5 rounded-full bg-sky-600" />
             Club B: {clubB.label}
           </span>
@@ -695,7 +432,7 @@ export function CompareRadarChart({
           { key: "better", label: "Better" },
         ]}
         rows={radarChartRows(clubA, clubB)}
-        className="mt-3 bg-white/70"
+        className="mt-3 bg-card/70"
       />
     </div>
   );
@@ -727,7 +464,7 @@ export function ClubDispersionPlot({
             { key: "offline", label: "Offline avg" },
           ]}
           rows={dispersionChartRows(clubA, clubB)}
-          className="bg-white/70"
+          className="bg-card/70"
         />
       </div>
     );
@@ -812,7 +549,7 @@ export function ClubDispersionPlot({
           { key: "offline", label: "Offline avg" },
         ]}
         rows={dispersionChartRows(clubA, clubB)}
-        className="mt-3 bg-white/70"
+        className="mt-3 bg-card/70"
       />
     </ChartFrame>
   );
@@ -1044,10 +781,19 @@ function formatAbsoluteDelta(value: number, unit: "yd" | "mph" | "pts") {
   return `${numberFormatter.format(Math.abs(value))} ${unit}`;
 }
 
-function deltaClass(winner: MetricWinner) {
-  if (winner === "a") return "text-right font-semibold text-emerald-700";
-  if (winner === "b") return "text-right font-semibold text-sky-700";
-  return "text-right font-semibold text-muted-foreground";
+function directionLabel(winner: MetricWinner) {
+  if (winner === "a") return "Focus";
+  if (winner === "b") return "Baseline";
+  if (winner === "tie") return "Even";
+  if (winner === "context") return "Context";
+  return "No data";
+}
+
+function comparisonConfidence(focusShots: number, baselineShots: number) {
+  const smallestSample = Math.min(focusShots, baselineShots);
+  if (smallestSample >= 10) return { label: "Decision-ready", tone: "green" as const };
+  if (smallestSample >= 3) return { label: "Early", tone: "amber" as const };
+  return { label: "Low sample", tone: "slate" as const };
 }
 
 function diff(left: number | null, right: number | null) {

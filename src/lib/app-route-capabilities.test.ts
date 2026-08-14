@@ -27,6 +27,10 @@ describe("companion route capabilities", () => {
     expect(isDesktopOnlyCompanionPath("/practice")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/play/course-id")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/courses/strategy")).toBe(false);
+    expect(isDesktopOnlyCompanionPath("/courses")).toBe(false);
+    expect(isDesktopOnlyCompanionPath("/courses/course-id/holes")).toBe(true);
+    expect(mobileCapabilities.courses.mobileExperience).toBe("companion");
+    expect(mobileCapabilities.courses.mobileNav).toBe("more");
     expect(isDesktopOnlyCompanionPath("/quick-bag")).toBe(false);
   });
 

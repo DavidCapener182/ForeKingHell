@@ -138,20 +138,15 @@ describe("production readiness gate", () => {
     expect(coursesPageSource).toContain('heroArtworkVariant === "courseMap" ? undefined');
   });
 
-  it("keeps the documented shot trace asset wired into dashboard and shots motifs", () => {
+  it("keeps the documented shot trace asset available through the artwork catalogue", () => {
     const artworkSource = readFileSync(
       join(root, "src/components/visuals/page-artwork.tsx"),
       "utf8",
     );
-    const dashboardSource = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
-    const shotsSource = readFileSync(join(root, "src/app/(app)/shots/page.tsx"), "utf8");
-
     expect(existsSync(join(root, "public/assets/page-shots-shot-trace.svg"))).toBe(true);
     expect(artworkSource).toContain('src="/assets/page-shots-shot-trace.svg"');
     expect(artworkSource).toContain("export function ShotTraceMotif");
     expect(artworkSource).not.toContain("<svg viewBox");
-    expect(dashboardSource).toContain("ShotTraceMotif");
-    expect(shotsSource).toContain("ShotTraceMotif");
   });
 
   it("keeps provider tiles showing live status, last sync, and import failures", () => {
@@ -336,12 +331,12 @@ describe("production readiness gate", () => {
     }
   });
 
-  it("keeps the route-level AAA mobile launch monitor experiences wired", () => {
+  it("keeps the route-level companion and workbench launch-monitor experiences wired", () => {
     const bagSource = readFileSync(join(root, "src/app/(app)/bag/page.tsx"), "utf8");
     const shotsSource = readFileSync(join(root, "src/app/(app)/shots/page.tsx"), "utf8");
     const challengesSource = readFileSync(join(root, "src/app/(app)/challenges/page.tsx"), "utf8");
     const practiceSource = readFileSync(
-      join(root, "src/app/(app)/practice/practice-workbench-page.tsx"),
+      join(root, "src/app/practice/practice-companion-client.tsx"),
       "utf8",
     );
     const importSource = readFileSync(
@@ -356,28 +351,43 @@ describe("production readiness gate", () => {
       join(root, "src/app/rapsodo/rapsodo-sync-client.tsx"),
       "utf8",
     );
+    const rapsodoCompanionSource = readFileSync(
+      join(root, "src/app/rapsodo/rapsodo-companion-client.tsx"),
+      "utf8",
+    );
+    const rapsodoCompanionPreviewSource = readFileSync(
+      join(root, "src/app/rapsodo/rapsodo-companion-preview.tsx"),
+      "utf8",
+    );
 
-    expect(bagSource).toContain("Swipe your bag");
-    expect(bagSource).toContain('source="generated-v2"');
-    expect(bagSource).toContain("Latest Reliable");
-    expect(shotsSource).toContain("Dispersion map");
-    expect(shotsSource).toContain("/assets/fairway-dispersion-bg.svg");
-    expect(shotsSource).toContain("Club dispersion filters");
+    expect(bagSource).toContain("<TabsList");
+    expect(bagSource).toContain("<TargetDistanceSelector");
+    expect(bagSource).toContain("<ClubIntelligencePanel");
+    expect(bagSource).toContain("<Alert");
+    expect(bagSource).not.toMatch(/MobileAppShell|IOS[A-Z]/);
+    expect(shotsSource).toContain("<ShotsMasterDetailTable");
+    expect(shotsSource).toContain('group: "none" | "club" | "session"');
+    expect(shotsSource).toContain("buildShotPatternGroups");
+    expect(shotsSource).not.toMatch(/MobileAppShell|MobileFilterSheet|IOS[A-Z]/);
     expect(challengesSource).toContain("MobilePremiumChallengeCard");
     expect(challengesSource).toContain("/assets/challenge-longest-drive.webp");
     expect(challengesSource).toContain("Proof-led");
-    expect(practiceSource).toContain("Active session mode");
-    expect(practiceSource).toContain("Practice scoring is driven by imported launch-monitor shots");
-    expect(practiceSource).toContain("spinAverageRpm");
+    expect(practiceSource).toContain("<OperationStepper");
+    expect(practiceSource).toContain("<Carousel");
+    expect(practiceSource).toContain("<Textarea");
     expect(importSource).toContain("Choose CSV from Files");
     expect(importSource).toContain("Rapsodo R-Cloud");
     expect(importWorkbenchSource).toContain("Review and import");
     expect(rapsodoSource).toContain("Map clubs");
     expect(rapsodoSource).toContain("Review trust");
-    expect(rapsodoSource).toContain('setMobileStep("review")');
+    expect(rapsodoSource).not.toMatch(/MobileAppShell|IOS[A-Z]|setMobileStep/);
+    expect(rapsodoCompanionSource).toContain("RapsodoCompanionPreview");
+    expect(rapsodoCompanionPreviewSource).toContain("<OperationStepper");
+    expect(rapsodoCompanionPreviewSource).toContain('label: "Map clubs"');
+    expect(rapsodoCompanionPreviewSource).toContain("<Drawer");
   });
 
-  it("keeps the AI caddie brief wired as the mobile dashboard to practice loop", () => {
+  it("keeps the AI caddie model out of the desktop dashboard bundle while preserving practice intake", () => {
     const dashboardSource = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
     const caddieSource = readFileSync(join(root, "src/lib/ai-caddie-brief.ts"), "utf8");
     const practicePageSource = readFileSync(
@@ -389,12 +399,10 @@ describe("production readiness gate", () => {
       "utf8",
     );
 
-    expect(dashboardSource).toContain("buildAiCaddieBrief");
-    expect(dashboardSource).toContain("DashboardAiCaddieBriefCard");
-    expect(dashboardSource).toContain("brief.title");
-    expect(dashboardSource).toContain("Structured JSON");
-    expect(dashboardSource).toContain("data-primary-action");
-    expect(dashboardSource).not.toContain("StickyMobileAction");
+    expect(dashboardSource).not.toContain("buildAiCaddieBrief");
+    expect(dashboardSource).not.toContain("DashboardAiCaddieBriefCard");
+    expect(dashboardSource).not.toContain("DashboardMobileLayout");
+    expect(dashboardSource).not.toContain("var(--ios-");
     expect(caddieSource).toContain("Today's AI Caddie Brief");
     expect(caddieSource).toContain("schemaVersion: 1");
     expect(caddieSource).toContain("dataUsed");

@@ -34,7 +34,11 @@ export function SaveChecklistCard({
   const readyCount = checks.filter((check) => check.complete).length;
 
   return (
-    <Card className="premium-card">
+    <Card
+      className="shadow-sm"
+      data-import-save-checklist
+      data-clubhouse-state={canSave ? "live" : "current"}
+    >
       <CardHeader>
         <CardTitle>Step 4: Save import</CardTitle>
         <CardDescription>
@@ -64,13 +68,7 @@ export function SaveChecklistCard({
           <ChecklistItem complete={hasCompleteCourseMapping}>Round mapping complete</ChecklistItem>
           <ChecklistItem complete={hasNoWarnings}>Warnings reviewed</ChecklistItem>
         </div>
-        <Button
-          type="button"
-          size="lg"
-          disabled={!canSave}
-          onClick={onSave}
-          className="premium-action rounded-lg"
-        >
+        <Button type="button" size="lg" disabled={!canSave} onClick={onSave} className="rounded-lg">
           {!isOnline ? (
             <WifiOff className="size-4" />
           ) : canSave ? (

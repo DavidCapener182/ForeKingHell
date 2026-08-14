@@ -10,7 +10,10 @@ import {
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
 import { ChartSurface } from "@/components/app/chart-surface";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   buildDispersionCorridorBuckets,
   type DispersionCorridorBucket,
@@ -187,25 +190,24 @@ export function TodayShotCharts({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border border-emerald-100 bg-emerald-50/55 px-3 py-2 text-sm font-medium leading-5 text-emerald-950">
-          Pattern detected: {patternInsight}
-        </div>
+        <Alert className="border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]">
+          <Check className="size-4" aria-hidden />
+          <AlertDescription className="font-medium">
+            Pattern detected: {patternInsight}
+          </AlertDescription>
+        </Alert>
 
-        <div
+        <ToggleGroup
+          type="single"
+          value={selectedClub}
+          onValueChange={(value) => value && setSelectedClub(value)}
+          variant="outline"
           aria-label="Shot chart club filters"
-          tabIndex={0}
-          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          className="-mx-1 w-auto justify-start overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
         >
-          <button
-            type="button"
-            aria-pressed={selectedClub === "all"}
-            onClick={() => setSelectedClub("all")}
-            className={cn(
-              "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors",
-              selectedClub === "all"
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "bg-card text-muted-foreground hover:bg-muted/55",
-            )}
+          <ToggleGroupItem
+            value="all"
+            className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
           >
             {selectedClub === "all" ? <Check className="size-3.5" /> : null}
             All clubs
@@ -217,23 +219,16 @@ export function TodayShotCharts({
             >
               {shots.length}
             </span>
-          </button>
+          </ToggleGroupItem>
           {clubGroups.map((club) => {
             const selected = selectedClub === club.clubType;
             const status = statusByClub.get(club.clubType);
 
             return (
-              <button
+              <ToggleGroupItem
                 key={club.clubType}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setSelectedClub(club.clubType)}
-                className={cn(
-                  "inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors",
-                  selected
-                    ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "bg-card text-muted-foreground hover:bg-muted/55",
-                )}
+                value={club.clubType}
+                className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
               >
                 {selected ? <Check className="size-3.5" /> : null}
                 <span
@@ -262,57 +257,47 @@ export function TodayShotCharts({
                     {verdictLabel(status.verdict)}
                   </span>
                 ) : null}
-              </button>
+              </ToggleGroupItem>
             );
           })}
-        </div>
+        </ToggleGroup>
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium text-muted-foreground">Trajectory</span>
-          <button
-            type="button"
-            aria-pressed={trajectoryView === "averages"}
-            onClick={() => setTrajectoryView("averages")}
-            className={cn(
-              "inline-flex h-8 items-center rounded-lg border px-2.5 font-medium transition-colors",
-              trajectoryView === "averages"
-                ? "border-primary/35 bg-primary/10 text-primary"
-                : "bg-card text-muted-foreground hover:bg-muted/55",
-            )}
+          <ToggleGroup
+            type="single"
+            value={trajectoryView}
+            onValueChange={(value) => value && setTrajectoryView(value as TrajectoryView)}
+            variant="outline"
+            size="sm"
+            spacing={0}
+            aria-label="Trajectory detail"
           >
-            Club averages
-          </button>
-          <button
-            type="button"
-            aria-pressed={trajectoryView === "shots"}
-            onClick={() => setTrajectoryView("shots")}
-            className={cn(
-              "inline-flex h-8 items-center gap-2 rounded-lg border px-2.5 font-medium transition-colors",
-              trajectoryView === "shots"
-                ? "border-primary/35 bg-primary/10 text-primary"
-                : "bg-card text-muted-foreground hover:bg-muted/55",
-            )}
-          >
-            <Eye className="size-3.5" />
-            Individual shots
-          </button>
+            <ToggleGroupItem value="averages">Club averages</ToggleGroupItem>
+            <ToggleGroupItem value="shots">
+              <Eye className="size-3.5" />
+              Individual shots
+            </ToggleGroupItem>
+          </ToggleGroup>
           {selectedClub !== "all" ? (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setSelectedClub("all")}
-              className="inline-flex h-8 items-center gap-2 rounded-lg border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/55"
             >
               Show all clubs
-            </button>
+            </Button>
           ) : null}
-          <button
+          <Button
             type="button"
             aria-pressed={showOutliers}
+            variant={showOutliers ? "secondary" : "outline"}
+            size="sm"
             onClick={() => setShowOutliers((value) => !value)}
-            className="inline-flex h-8 items-center gap-2 rounded-lg border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/55"
           >
             {showOutliers ? "Hide outliers" : "Show outliers"}
-          </button>
+          </Button>
         </div>
 
         <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -568,9 +553,9 @@ function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucke
   const total = buckets[0]?.total ?? 0;
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-2">
+    <div className="rounded-lg border border-border bg-card p-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <p className="font-semibold text-slate-950">Corridor split</p>
+        <p className="font-semibold text-foreground">Corridor split</p>
         <p className="text-[11px] text-muted-foreground">{total} plotted shots</p>
       </div>
       <div
@@ -591,7 +576,14 @@ function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucke
                 {formatPercent(bucket.percent)}
               </span>
             </div>
-            <p className="mt-0.5 text-[10px] leading-3 opacity-70">{formatCorridorRange(bucket)}</p>
+            <p
+              className={cn(
+                "mt-0.5 text-[10px] font-medium leading-3",
+                corridorRangeClass(bucket.tone),
+              )}
+            >
+              {formatCorridorRange(bucket)}
+            </p>
           </div>
         ))}
       </div>
@@ -690,9 +682,9 @@ function TrajectoryInsightCards({ shots }: { shots: ChartPoint[] }) {
 
 function TrajectoryInsight({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+    <div className="rounded-lg border border-border bg-card px-2.5 py-2">
       <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-      <p className="mt-0.5 truncate text-sm font-semibold text-slate-950">{value}</p>
+      <p className="mt-0.5 truncate text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -703,7 +695,7 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
   }
 
   return (
-    <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-slate-100 pt-3 text-xs text-muted-foreground">
+    <div className="flex flex-wrap gap-x-3 gap-y-2 border-t border-border pt-3 text-xs text-muted-foreground">
       {clubs.map((club) => (
         <span key={club.clubType} className="inline-flex items-center gap-1.5">
           <span
@@ -1611,14 +1603,20 @@ function shortCorridorLabel(bucket: DispersionCorridorBucket) {
 
 function corridorBucketClass(tone: DispersionCorridorTone) {
   if (tone === "target") {
-    return "bg-emerald-50 text-emerald-950 ring-1 ring-emerald-100";
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] ring-1 ring-[var(--status-success-border)]";
   }
 
   if (tone === "left") {
-    return "bg-rose-50 text-rose-950";
+    return "bg-[var(--status-error-surface)] text-destructive";
   }
 
-  return "bg-sky-50 text-sky-950";
+  return "bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
+}
+
+function corridorRangeClass(tone: DispersionCorridorTone) {
+  if (tone === "target") return "text-[var(--status-success-foreground)]";
+  if (tone === "left") return "text-destructive";
+  return "text-[var(--status-information-foreground)]";
 }
 
 function hashText(value: string) {
@@ -1640,10 +1638,16 @@ function verdictLabel(verdict: TodayChartClubStatus["verdict"]) {
 }
 
 function statusPillClass(verdict: TodayChartClubStatus["verdict"]) {
-  if (verdict === "better") return "bg-emerald-50 text-emerald-700";
-  if (verdict === "worse") return "bg-pink-50 text-pink-700";
-  if (verdict === "mixed") return "bg-amber-50 text-amber-800";
-  return "bg-slate-100 text-slate-600";
+  if (verdict === "better") {
+    return "bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
+  }
+  if (verdict === "worse") {
+    return "bg-[var(--status-error-surface)] text-destructive";
+  }
+  if (verdict === "mixed") {
+    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
+  }
+  return "bg-muted text-muted-foreground";
 }
 
 function isNumber(value: number | null | undefined): value is number {

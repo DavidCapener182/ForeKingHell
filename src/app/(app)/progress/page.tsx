@@ -1,7 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
-  AlertTriangle,
   ArrowRight,
   BarChart3,
   Brain,
@@ -9,7 +7,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Gauge,
-  HelpCircle,
   LineChart,
   Bookmark,
   MessageSquare,
@@ -21,7 +18,6 @@ import {
   TrendingUp,
   Trophy,
   Upload,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,11 +30,12 @@ import {
   StatusPill,
 } from "@/components/premium";
 import { DistanceLossDiagnosisPanel } from "@/components/progress/distance-loss-diagnosis-panel";
-import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -49,14 +46,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DesktopInsightRail,
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  type DesktopAiPrompt,
-  type DesktopInsightMetric,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import type {
+  DesktopAiPrompt,
+  DesktopInsightMetric,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   IOSDisclosureGroup,
@@ -66,6 +60,11 @@ import {
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { LazyMetricTrendCard } from "@/components/progress/lazy-metric-trend-card";
+import { StatusTimeline } from "@/components/app/status-timeline";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getDistanceLossDiagnosisData } from "@/lib/distance-loss-diagnosis-data";
@@ -77,15 +76,11 @@ import {
 } from "@/lib/progress-data";
 import {
   buildProgressSummary,
-  type BestSignal,
-  type CoachSummaryGroup,
-  type DataGap,
   type JourneyEvent,
   type PracticePriority,
   type ProgressClubRow,
   type ProgressSummary,
   type ProgressTrend,
-  type TrustLadderItem,
 } from "@/lib/progress-summary";
 import { saveCurrentWeeklyRecapAction } from "@/app/feature-actions";
 import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
@@ -119,25 +114,23 @@ const progressBagMovementColumns: DesktopWorkbenchColumn[] = [
   { id: "stock-carry", label: "Stock carry" },
   { id: "movement", label: "Movement" },
 ];
-
 const progressBagMovementSavedViews: DesktopSavedViewSuggestion[] = [
   {
-    title: "Clubs needing work",
+    title: "Trust review",
     href: "/progress?bag=needs-work#bag-movement",
-    detail: "Trust, sample size and movement for clubs still below decision confidence.",
+    detail: "Review low-trust or under-sampled clubs before changing the bag.",
   },
   {
-    title: "Iron progress checks",
-    href: "/progress?bag=irons#bag-movement",
-    detail: "Keep iron carry, trust and movement visible for the current roadmap.",
+    title: "Bag evolution",
+    href: "/bag?tab=history#club-evolution",
+    detail: "Open the canonical monthly carry-evolution evidence in Bag.",
   },
   {
-    title: "Wedge scoring movement",
-    href: "/progress?bag=wedges#bag-movement",
-    detail: "Review wedge stock carry and movement before building the next scoring block.",
+    title: "Progress report",
+    href: "/progress#bag-movement",
+    detail: "Export the visible trust, clean-shot, carry and movement rows.",
   },
 ];
-
 const progressWorkbenchPrompts: DesktopAiPrompt[] = [
   {
     label: "Explain progress trend",
@@ -172,7 +165,7 @@ const progressWorkbenchPrompts: DesktopAiPrompt[] = [
 ];
 
 export default async function ProgressPage({ searchParams }: ProgressPageProps) {
-  const userId = await requireCurrentUserId();
+  const [userId, surface] = await Promise.all([requireCurrentUserId(), getRequestAppSurface()]);
   const [
     params,
     data,
@@ -204,6 +197,38 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
   const mostImproved = summary.rankings.mostImproved;
   const bagFilter = parseBagMovementFilter(params?.bag);
 
+  if (surface === "companion") {
+    return (
+      <PageShell>
+        <div className="grid min-w-0 gap-4" data-progress-companion>
+          {data.clubs.length === 0 ? (
+            <MobileProgressEmptyState />
+          ) : (
+            <>
+              <MobileProgressAnswer
+                summary={summary}
+                scoringEvidence={scoringEvidence}
+                review={weeklyChangeReview}
+              />
+              <MobileProgressDisclosures
+                summary={summary}
+                review={weeklyChangeReview}
+                diagnosis={distanceLossDiagnosis}
+                practicePlannerSummary={practicePlannerSummary}
+                practiceCalendar={featureData.practiceCalendar}
+                activeFilter={bagFilter}
+                openBagByDefault={params?.bag !== undefined}
+              />
+            </>
+          )}
+        </div>
+      </PageShell>
+    );
+  }
+
+  const { DesktopInsightRail, DesktopWorkbenchLayout } =
+    await import("@/components/app/desktop-workbench");
+
   return (
     <PageShell>
       <DesktopWorkbenchLayout
@@ -219,7 +244,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
             actions={[
               {
                 label: "Open bag movement",
-                href: "/progress#bag-movement",
+                href: "/bag?tab=history#club-evolution",
                 detail: "Review the club table behind the progress readout.",
                 icon: Table2,
               },
@@ -233,7 +258,7 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
           />
         }
       >
-        <div className="hidden items-center justify-between gap-4 lg:flex">
+        <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
             <Link href="/dashboard" prefetch={false}>
               <ArrowRight className="size-4 rotate-180" />
@@ -256,100 +281,23 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
           </div>
         </div>
 
-        <div className="grid min-w-0 gap-4 lg:hidden">
-          {data.clubs.length === 0 ? (
-            <MobileProgressEmptyState />
-          ) : (
-            <>
-              <MobileProgressAnswer
-                summary={summary}
-                scoringEvidence={scoringEvidence}
-                review={weeklyChangeReview}
-              />
-              <MobileProgressDisclosures
-                summary={summary}
-                review={weeklyChangeReview}
-                diagnosis={distanceLossDiagnosis}
-                practicePlannerSummary={practicePlannerSummary}
-                practiceCalendar={featureData.practiceCalendar}
-                activeFilter={bagFilter}
-                openBagByDefault={params?.bag !== undefined}
-              />
-            </>
-          )}
-        </div>
-
-        <div className="hidden lg:contents">
+        <div className="contents" data-progress-workbench>
           <ProgressHeroPanel summary={summary} mostImproved={mostImproved} />
 
           {data.clubs.length === 0 ? (
-            <>
-              <DataPanel>
-                <CardContent className="flex flex-col items-center gap-3 py-7 text-center sm:gap-4 sm:py-14">
-                  <Sparkles className="size-8 text-emerald-500 sm:size-9" />
-                  <div>
-                    <p className="text-lg font-semibold sm:text-xl">No progress baseline yet</p>
-                    <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground sm:leading-6">
-                      Import a Rapsodo CSV and LM World Tour will build first-vs-latest club
-                      comparisons automatically.
-                    </p>
-                  </div>
-                  <Button asChild>
-                    <Link href="/import" prefetch={false}>
-                      <Upload className="size-4" />
-                      Import CSV
-                    </Link>
-                  </Button>
-                </CardContent>
-              </DataPanel>
-              <section className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-3 sm:hidden">
-                <p className="text-sm font-semibold">Next useful data</p>
-                <div className="grid gap-2">
-                  <DataPair label="Best import" value="Rapsodo range CSV" />
-                  <DataPair label="Minimum sample" value="8+ clean shots per club" />
-                  <DataPair label="Then review" value="Trends, PBs and coach signal" />
-                </div>
-              </section>
-              <section className="grid gap-3 sm:grid-cols-3">
-                {[
-                  {
-                    title: "Import data",
-                    description: "Start with the next range or course CSV.",
-                    href: "/import",
-                    icon: Upload,
-                  },
-                  {
-                    title: "Map clubs",
-                    description: "Confirm the bag so stock numbers compare cleanly.",
-                    href: "/bag",
-                    icon: Target,
-                  },
-                  {
-                    title: "Open coach",
-                    description: "Turn the first baseline into a practice plan.",
-                    href: "/coach",
-                    icon: Brain,
-                  },
-                ].map((step) => {
-                  const Icon = step.icon;
-
-                  return (
-                    <Link
-                      key={step.href}
-                      href={step.href}
-                      prefetch={false}
-                      className="grid min-h-24 gap-2 rounded-lg border border-[#E5E7EB] bg-white p-3 shadow-sm transition-colors hover:border-emerald-300"
-                    >
-                      <Icon className="size-5 text-emerald-600" />
-                      <span className="text-sm font-semibold">{step.title}</span>
-                      <span className="text-sm leading-5 text-muted-foreground">
-                        {step.description}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </section>
-            </>
+            <AppEmptyState
+              icon={<Sparkles className="size-5" />}
+              title="No progress baseline yet"
+              description="Import a Rapsodo CSV and LM World Tour will build first-vs-latest club comparisons automatically."
+              primaryAction={
+                <Button asChild>
+                  <Link href="/import" prefetch={false}>
+                    <Upload className="size-4" />
+                    Import CSV
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
             <Tabs defaultValue="performance" className="min-w-0 gap-5" data-progress-workspace>
               <TabsList variant="line" aria-label="Progress workspace">
@@ -360,7 +308,6 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
               </TabsList>
 
               <TabsContent value="performance" className="grid min-w-0 gap-5">
-                <ProgressScorePanel summary={summary} />
                 <div className="grid min-w-0 gap-5 xl:grid-cols-2">
                   <WeeklyRecapPanel
                     data={featureData}
@@ -369,14 +316,13 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
                   />
                   <DistanceLossDiagnosisPanel diagnosis={distanceLossDiagnosis} />
                 </div>
-                <ComparisonBar summary={summary} />
                 <ProgressTrendsPanel summary={summary} />
+                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
               </TabsContent>
 
               <TabsContent value="goals" className="grid min-w-0 gap-5">
                 <GoalProgressPanel summary={summary} scoringEvidence={scoringEvidence} />
                 <ProgressRoadmapPanel summary={summary} />
-                <PracticePlanPanel priorities={summary.practicePlan} />
               </TabsContent>
 
               <TabsContent value="load" className="grid min-w-0 gap-5">
@@ -384,22 +330,12 @@ export default async function ProgressPage({ searchParams }: ProgressPageProps) 
                   summary={practicePlannerSummary}
                   priorities={summary.practicePlan}
                 />
-                <div className="grid min-w-0 gap-5 xl:grid-cols-2">
-                  <PracticeCalendarPanel calendar={featureData.practiceCalendar} />
-                  <TrustLadderPanel items={summary.trustLadder} />
-                </div>
               </TabsContent>
 
               <TabsContent value="timeline" className="grid min-w-0 gap-5">
                 <div id="journey" className="scroll-mt-28">
                   <CoachTimelinePanel summary={summary} />
                 </div>
-                <BagMovementPanel rows={summary.clubRows} activeFilter={bagFilter} />
-                <CoachReadoutPanel
-                  signal={summary.bestSignal}
-                  groups={summary.coachSummary}
-                  gaps={summary.dataGaps}
-                />
               </TabsContent>
             </Tabs>
           )}
@@ -535,7 +471,7 @@ function MobileProgressAnswer({
           {review.nextAction.detail}
         </p>
         {dataGap ? (
-          <div className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2.5">
+          <div className="mt-3 rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-3 py-2.5">
             <IOSInlineStatus
               label={`${formatClubType(dataGap.clubType)} data gap`}
               tone="attention"
@@ -1399,157 +1335,86 @@ function ProgressHeroPanel({
   summary: ProgressSummary;
   mostImproved: ProgressClubRow | null;
 }) {
-  const metrics = [
-    {
-      label: "Clean stock shots",
-      value: integerFormatter.format(summary.totals.trackedCleanShots),
-      detail: "Used for progress checks",
-      icon: Sparkles,
-    },
-    {
-      label: "Tracked clubs",
-      value: integerFormatter.format(summary.totals.clubs),
-      detail: `${integerFormatter.format(summary.totals.shots)} launch monitor rows`,
-      icon: Target,
-    },
-    {
-      label: "Average trust",
-      value: `${summary.totals.averageTrust}%`,
-      detail: "Distance, direction, strike and sample depth",
-      icon: ShieldCheck,
-    },
-    {
-      label: "Playable rate",
-      value: formatRate(summary.totals.averagePlayableRate),
-      detail: "Across clubs with enough direction data",
-      icon: BarChart3,
-    },
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-[22px] border border-[#DFE7DF] bg-white shadow-[0_12px_30px_rgba(15,23,42,0.055)]">
-      <div className="grid gap-3 px-4 py-4 sm:gap-5 sm:px-5 sm:py-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center lg:px-7">
-        <div className="min-w-0">
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-sm font-medium text-sky-700">
-              Personal baseline
-            </span>
-            <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-800">
-              <span className="sm:hidden">{progressVerdictLabel(summary)}</span>
-              <span className="hidden sm:inline">
-                Progress verdict: {progressVerdictChip(summary)}
-              </span>
-            </span>
-          </div>
-          <h1 className="mt-3 text-[26px] font-bold leading-8 tracking-normal text-[#111827] sm:mt-4 sm:text-3xl sm:leading-10">
-            Bag progress
-          </h1>
-          <p className="mt-2 hidden max-w-3xl text-sm font-medium leading-6 text-[#667085] sm:block">
-            {heroVerdict(summary)}
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_240px] lg:grid-cols-1">
-          <div className="flex items-center justify-start lg:justify-end">
-            <Button
-              asChild
-              variant="outline"
-              data-primary-action
-              className="h-11 rounded-lg border-[#087A3D] bg-white px-5 text-sm font-semibold text-[#087A3D] shadow-sm hover:bg-emerald-50 hover:text-[#065F32]"
-            >
-              <Link
-                href={mostImproved ? `/bag/${mostImproved.clubId}/analytics` : "/import"}
-                prefetch={false}
-              >
-                {mostImproved ? <Brain className="size-4" /> : <Upload className="size-4" />}
-                {mostImproved ? "View supporting shots" : "Import first CSV"}
-              </Link>
-            </Button>
-          </div>
-          <div className="hidden h-28 overflow-hidden rounded-lg sm:block">
-            <PageArtwork variant="progress" alt="" className="h-full min-h-28" priority />
-          </div>
-        </div>
-      </div>
-      <div className="grid border-t border-[#EDF1ED] px-5 py-4 sm:grid-cols-2 lg:grid-cols-4 lg:px-7">
-        {metrics.map((metric, index) => (
-          <ProgressHeroMetric
-            key={metric.label}
-            metric={metric}
-            className={index > 0 ? "border-t sm:border-l sm:border-t-0" : ""}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function ProgressScorePanel({ summary }: { summary: ProgressSummary }) {
   const score = progressScore(summary);
   const momentum = progressScoreMomentum(summary);
-  const signals = progressScoreClubSignals(summary);
-  const readout = progressScoreReadout(summary, momentum);
+  const leadTrend = summary.trends[0];
+  const trendPoints =
+    leadTrend?.points.map((value, index) => ({
+      label:
+        index === 0
+          ? "Baseline"
+          : index === leadTrend.points.length - 1
+            ? "Latest"
+            : `Check ${index + 1}`,
+      value,
+    })) ?? [];
 
   return (
-    <section className="grid gap-4 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.4fr)] lg:items-center lg:p-6">
-      <div className="min-w-0">
-        <div className="flex items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
-            <Gauge className="size-6" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#667085]">
-              Progress score
-            </p>
-            <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
-              Overall progress {score} / 100
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 overflow-hidden rounded-full bg-slate-100">
-          <div
-            className="h-2.5 rounded-full bg-[#087A3D]"
-            style={{ width: `${score}%` }}
-            aria-hidden="true"
-          />
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <StatusPill tone={momentum >= 0 ? "green" : "amber"}>
-            {momentum >= 0 ? (
-              <TrendingUp className="mr-1 size-3.5" />
-            ) : (
-              <TrendingDown className="mr-1 size-3.5" />
-            )}
-            Momentum {formatSigned(momentum)} vs baseline
-          </StatusPill>
-          <span className="text-sm leading-5 text-[#667085]">{readout}</span>
-        </div>
-      </div>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {signals.map((signal) => {
-          const Icon = signal.direction === "up" ? TrendingUp : TrendingDown;
-
-          return (
-            <Link
-              key={signal.clubId}
-              href={`/bag/${signal.clubId}/analytics`}
-              prefetch={false}
-              className={cn(
-                "grid min-h-24 gap-2 rounded-lg border p-3 transition-colors hover:border-emerald-300",
-                progressScoreClubClasses[signal.tone],
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-[#111827]">
-                  {formatClubType(signal.clubType)}
-                </span>
-                <Icon className="size-4" />
+    <section className="grid min-w-0 gap-4" data-progress-hero>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(22rem,1.1fr)]">
+        <LazyMetricTrendCard
+          label="Overall progress"
+          value={`${score} / 100`}
+          detail={progressScoreReadout(summary, momentum)}
+          delta={`${formatSigned(momentum)} vs baseline`}
+          direction={momentum > 0 ? "up" : momentum < 0 ? "down" : "neutral"}
+          points={trendPoints}
+          threshold={75}
+          className="border-primary/20"
+        />
+        <Card className="overflow-hidden border-primary/15 shadow-sm">
+          <CardContent className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_15rem] sm:items-center">
+            <div className="min-w-0">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">Personal baseline</Badge>
+                <Badge variant="outline">{progressVerdictLabel(summary)}</Badge>
               </div>
-              <p className="text-lg font-bold leading-6 tracking-normal">{signal.value}</p>
-              <p className="text-xs leading-4 text-[#667085]">{signal.detail}</p>
-            </Link>
-          );
-        })}
+              <h1 className="mt-3 text-3xl font-bold tracking-tight">Bag progress</h1>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{heroVerdict(summary)}</p>
+              <Button asChild variant="outline" className="mt-4" data-primary-action>
+                <Link
+                  href={mostImproved ? `/bag/${mostImproved.clubId}/analytics` : "/import"}
+                  prefetch={false}
+                >
+                  {mostImproved ? <Brain className="size-4" /> : <Upload className="size-4" />}
+                  {mostImproved ? "View supporting shots" : "Import first CSV"}
+                </Link>
+              </Button>
+            </div>
+            <PageArtwork
+              variant="progress"
+              alt=""
+              className="hidden h-32 rounded-lg sm:block"
+              priority
+            />
+          </CardContent>
+        </Card>
       </div>
+      <ConnectedMetricBar
+        label="Progress evidence metrics"
+        metrics={[
+          {
+            label: "Clean stock shots",
+            value: integerFormatter.format(summary.totals.trackedCleanShots),
+            detail: "Used for progress checks",
+          },
+          {
+            label: "Tracked clubs",
+            value: integerFormatter.format(summary.totals.clubs),
+            detail: `${integerFormatter.format(summary.totals.shots)} launch monitor rows`,
+          },
+          {
+            label: "Average trust",
+            value: `${summary.totals.averageTrust}%`,
+            detail: "Distance, direction, strike and sample depth",
+          },
+          {
+            label: "Playable rate",
+            value: formatRate(summary.totals.averagePlayableRate),
+            detail: "Across clubs with enough direction data",
+          },
+        ]}
+      />
     </section>
   );
 }
@@ -1568,112 +1433,67 @@ function GoalProgressPanel({
   const scoringConfidence = scoringConfidenceReadout(scoringEvidence);
 
   return (
-    <section className="grid gap-4 rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center lg:p-6">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill tone="green">
-            <Target className="mr-1 size-3.5" />
-            Technical profile
-          </StatusPill>
-          <StatusPill tone={trend >= 0 ? "green" : "amber"}>
-            {trend >= 0 ? (
-              <TrendingUp className="mr-1 size-3.5" />
-            ) : (
-              <TrendingDown className="mr-1 size-3.5" />
-            )}
-            Trend {formatSigned(trend)}%
-          </StatusPill>
-        </div>
-        <h2 className="mt-3 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
-          Technical readiness
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[#667085]">
-          How strong the current launch-monitor pattern is. This does not predict a score.
-        </p>
-      </div>
-      <div className="grid gap-4 md:grid-cols-[minmax(14rem,1fr)_minmax(11rem,18rem)] md:items-center">
+    <Card className="shadow-sm" data-progress-goal-card>
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center lg:p-6">
         <div className="min-w-0">
-          <div className="flex items-end justify-between gap-3">
-            <span className="text-4xl font-bold leading-none tracking-normal text-[#111827]">
-              {progress}%
-            </span>
-            <span className="text-sm font-semibold text-[#087A3D]">
-              {goalProgressLabel(progress)}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill tone="green">
+              <Target className="mr-1 size-3.5" />
+              Technical profile
+            </StatusPill>
+            <StatusPill tone={trend >= 0 ? "green" : "amber"}>
+              {trend >= 0 ? (
+                <TrendingUp className="mr-1 size-3.5" />
+              ) : (
+                <TrendingDown className="mr-1 size-3.5" />
+              )}
+              Trend {formatSigned(trend)}%
+            </StatusPill>
           </div>
-          <div className="mt-3 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-3 rounded-full bg-[#087A3D]"
-              style={{ width: `${progress}%` }}
-              aria-hidden="true"
-            />
-          </div>
-          <p className="mt-3 text-sm font-medium leading-6 text-[#475467]">
-            <span className="font-semibold text-[#111827]">Coach summary: </span>
-            {sentence}
+          <h2 className="mt-3 text-2xl font-bold leading-8 tracking-normal text-foreground">
+            Technical readiness
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            How strong the current launch-monitor pattern is. This does not predict a score.
           </p>
         </div>
-        <div className="grid min-w-[11rem] gap-3">
-          <div className="rounded-xl border border-[#DFE7DF] bg-[#F8FCF9] p-3">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">
-              Scoring confidence
-            </p>
-            <p className="mt-1 text-lg font-bold text-[#111827]">{scoringConfidence.label}</p>
-            <p className="mt-1 text-xs leading-5 text-[#667085]">{scoringConfidence.detail}</p>
-          </div>
-          <div className="grid gap-2 rounded-xl border border-[#DFE7DF] bg-[#F8FCF9] p-3">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#667085]">Need</p>
-            <div className="flex flex-wrap gap-2 md:grid">
-              {needs.map((club) => (
-                <span
-                  key={club}
-                  className="rounded-lg border border-[#CFE7D6] bg-white px-3 py-1.5 text-sm font-semibold text-[#087A3D]"
-                >
-                  {club}
-                </span>
-              ))}
+        <div className="grid gap-4 md:grid-cols-[minmax(14rem,1fr)_minmax(11rem,18rem)] md:items-center">
+          <div className="min-w-0">
+            <div className="flex items-end justify-between gap-3">
+              <span className="text-4xl font-bold leading-none tracking-normal text-foreground">
+                {progress}%
+              </span>
+              <span className="text-sm font-semibold text-primary">
+                {goalProgressLabel(progress)}
+              </span>
             </div>
+            <Progress value={progress} className="mt-3 h-3" />
+            <p className="mt-3 text-sm font-medium leading-6 text-muted-foreground">
+              <span className="font-semibold text-foreground">Coach summary: </span>
+              {sentence}
+            </p>
+          </div>
+          <div className="grid min-w-[11rem] gap-3">
+            <Item variant="muted" size="sm" className="items-start">
+              <ItemContent>
+                <ItemTitle>Scoring confidence · {scoringConfidence.label}</ItemTitle>
+                <ItemDescription className="overflow-visible whitespace-normal text-clip">
+                  {scoringConfidence.detail}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
+            <Item variant="muted" size="sm" className="items-start">
+              <ItemContent>
+                <ItemTitle>Still needed</ItemTitle>
+                <ItemDescription className="overflow-visible whitespace-normal text-clip">
+                  {needs.join(" · ")}
+                </ItemDescription>
+              </ItemContent>
+            </Item>
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function ProgressHeroMetric({
-  metric,
-  className,
-}: {
-  metric: {
-    label: string;
-    value: string;
-    detail: string;
-    icon: LucideIcon;
-  };
-  className?: string;
-}) {
-  const Icon = metric.icon;
-
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-[#DFE7DF] px-3 py-3",
-        className,
-      )}
-    >
-      <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
-        <Icon className="size-6" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#667085]">
-          {metric.label}
-        </p>
-        <p className="mt-1 text-2xl font-bold leading-8 tracking-normal text-[#111827]">
-          {metric.value}
-        </p>
-        <p className="mt-1 text-sm leading-5 text-[#667085]">{metric.detail}</p>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1688,246 +1508,68 @@ function WeeklyRecapPanel({
 }) {
   const sessionsLabel = weeklySessionsLabel(data.weeklyRecap);
   const weeklyRead = weeklyReadout(summary);
+  const items = [
+    ["Largest improvement", review.largestImprovement, TrendingUp],
+    ["Largest decline", review.largestDecline, TrendingDown],
+    ["Sessions and rounds", { ...review.completedVolume, href: "/sessions" }, ClipboardCheck],
+    [
+      "Data-quality issues",
+      { ...review.dataQuality, href: "/analyse/workspace#data-quality" },
+      ShieldCheck,
+    ],
+    ["New personal bests", { ...review.personalBests, href: "/achievements" }, Trophy],
+    ["Data freshness", review.dataFreshness, CalendarDays],
+    ["Practice completed", { ...review.practiceCompleted, href: "/practice" }, CheckCircle2],
+    [
+      "Bag-number change",
+      { ...review.bagNumberChange, href: "/bag?tab=history#club-evolution" },
+      BarChart3,
+    ],
+    ["One next action", review.nextAction, Target],
+  ] as const;
 
   return (
-    <section className="flex h-full flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
-            Weekly recap
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-[#667085]">
+    <Card className="h-full shadow-sm" data-weekly-recap-timeline>
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle>Weekly recap</CardTitle>
+          <CardDescription className="mt-1">
             {data.weeklyRecap.metric} · {sessionsLabel} · Personal baseline comparison
-          </p>
+          </CardDescription>
         </div>
-        <div className="flex flex-wrap gap-3 lg:justify-end">
-          <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#CFE7D6] bg-[#F8FCF9] px-4 text-sm font-semibold text-[#087A3D]">
-            <HelpCircle className="size-4" />
-            How recap works
-          </span>
-          <form action={saveCurrentWeeklyRecapAction}>
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-10 rounded-lg border-[#DFE7DF] bg-white px-4 text-sm font-semibold"
-            >
-              <Bookmark className="size-4" />
-              Save weekly recap
-            </Button>
-          </form>
-        </div>
-      </div>
-
-      <p className="mt-4 rounded-xl border border-[#CFE7D6] bg-[#F8FCF9] px-4 py-3 text-sm font-medium leading-6 text-[#475467]">
-        <span className="font-semibold text-[#111827]">This week&apos;s read: </span>
-        {weeklyRead}
-      </p>
-
-      <div className="mt-4 grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <WeeklyRecapCard
-          label="Largest improvement"
-          value={review.largestImprovement.value}
-          detail={review.largestImprovement.detail}
-          href={review.largestImprovement.href}
-          tone={review.largestImprovement.tone}
-          icon={TrendingUp}
+        <form action={saveCurrentWeeklyRecapAction}>
+          <Button type="submit" variant="outline" size="sm">
+            <Bookmark className="size-4" />
+            Save recap
+          </Button>
+        </form>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <p className="rounded-lg border bg-muted/30 p-3 text-sm leading-6">
+          <span className="font-semibold">This week&apos;s read: </span>
+          {weeklyRead}
+        </p>
+        <StatusTimeline
+          label="Weekly progress recap"
+          items={items.map(([label, item, icon], index) => ({
+            id: `${label}-${index}`,
+            title: label,
+            description: item.detail,
+            meta: item.value,
+            status: item.tone,
+            icon,
+            kind: item.tone === "amber" ? "warning" : "reviewed",
+            href: "href" in item ? item.href : undefined,
+          }))}
         />
-        <WeeklyRecapCard
-          label="Largest decline"
-          value={review.largestDecline.value}
-          detail={review.largestDecline.detail}
-          href={review.largestDecline.href}
-          tone={review.largestDecline.tone}
-          icon={TrendingDown}
-        />
-        <WeeklyRecapCard
-          label="Sessions and rounds"
-          value={review.completedVolume.value}
-          detail={review.completedVolume.detail}
-          href="/sessions"
-          tone={review.completedVolume.tone}
-          icon={ClipboardCheck}
-        />
-        <WeeklyRecapCard
-          label="Data-quality issues"
-          value={review.dataQuality.value}
-          detail={review.dataQuality.detail}
-          href="/analyse/workspace#data-quality"
-          tone={review.dataQuality.tone}
-          icon={ShieldCheck}
-        />
-        <WeeklyRecapCard
-          label="New personal bests"
-          value={review.personalBests.value}
-          detail={review.personalBests.detail}
-          href="/achievements"
-          tone={review.personalBests.tone}
-          icon={Trophy}
-        />
-        <WeeklyRecapCard
-          label="Data freshness"
-          value={review.dataFreshness.value}
-          detail={review.dataFreshness.detail}
-          tone={review.dataFreshness.tone}
-          icon={CalendarDays}
-        />
-        <WeeklyRecapCard
-          label="Practice completed"
-          value={review.practiceCompleted.value}
-          detail={review.practiceCompleted.detail}
-          href="/practice"
-          tone={review.practiceCompleted.tone}
-          icon={CheckCircle2}
-        />
-        <WeeklyRecapCard
-          label="Bag-number change"
-          value={review.bagNumberChange.value}
-          detail={review.bagNumberChange.detail}
-          href="/progress#bag-movement"
-          tone={review.bagNumberChange.tone}
-          icon={BarChart3}
-        />
-        <WeeklyRecapCard
-          label="One next action"
-          value={review.nextAction.value}
-          detail={review.nextAction.detail}
-          href={review.nextAction.href}
-          tone={review.nextAction.tone}
-          icon={Target}
-        />
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4">
-        <Button asChild className="min-h-11 rounded-xl">
+        <Button asChild className="w-fit">
           <Link href={review.nextAction.href} prefetch={false}>
             <Target className="size-4" />
             Take next action
           </Link>
         </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/practice" prefetch={false}>
-            Build next practice
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/coach/workspace" prefetch={false}>
-            Share with coach
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <Link href="/coach/reports?template=monthly" prefetch={false}>
-            Export weekly report
-          </Link>
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-function WeeklyRecapCard({
-  label,
-  value,
-  detail,
-  href,
-  tone,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  href?: string;
-  tone: Tone;
-  icon: LucideIcon;
-}) {
-  const content = (
-    <div
-      className={cn(
-        "grid h-full min-h-28 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border p-4 transition-colors hover:border-emerald-300",
-        weeklyRecapToneStyles[tone].card,
-      )}
-    >
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p
-            className={cn(
-              "text-xs font-bold uppercase tracking-[0.12em]",
-              weeklyRecapToneStyles[tone].label,
-            )}
-          >
-            {label}
-          </p>
-          <span className={cn("size-2 rounded-full", compactToneClasses[tone].split(" ")[0])} />
-        </div>
-        <p className="mt-2 text-lg font-bold leading-6 tracking-normal text-[#111827]">{value}</p>
-        <p className="mt-2 text-sm leading-5 text-[#475467]">{detail}</p>
-      </div>
-      <span
-        className={cn(
-          "grid size-12 shrink-0 place-items-center rounded-full",
-          weeklyRecapToneStyles[tone].icon,
-        )}
-      >
-        <Icon className="size-6" />
-      </span>
-    </div>
-  );
-
-  return href ? (
-    <Link href={href} prefetch={false} className="block h-full">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-}
-
-function PracticeCalendarPanel({ calendar }: { calendar: FeatureIdeasData["practiceCalendar"] }) {
-  return (
-    <section className="@container/progress-calendar rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
-            Practice calendar
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-[#667085]">
-            The planned work sits below the weekly read so the recap stays focused.
-          </p>
-        </div>
-        <StatusPill tone={calendar.length > 0 ? "sky" : "slate"}>
-          {calendar.length} planned
-        </StatusPill>
-      </div>
-      <div
-        aria-label="Practice plan calendar"
-        tabIndex={0}
-        className="mt-4 grid gap-3 outline-none focus-visible:ring-2 focus-visible:ring-ring @md/progress-calendar:grid-cols-2"
-      >
-        {calendar.length > 0 ? (
-          calendar.slice(0, 4).map((item) => (
-            <div
-              key={`${item.title}-${item.date.toISOString()}`}
-              className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F8FCF9] px-3 py-3"
-            >
-              <span className="grid size-10 place-items-center rounded-full bg-[#E8F7EE] text-[#087A3D]">
-                <CalendarDays className="size-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">
-                  {shortDateFormatter.format(item.date)}
-                </span>
-                <span className="mt-1 block truncate text-sm font-semibold text-[#111827]">
-                  {compactPracticeTitle(item.title)}
-                </span>
-              </span>
-            </div>
-          ))
-        ) : (
-          <p className="rounded-xl border border-dashed border-[#CFE1D2] bg-white px-4 py-4 text-sm leading-6 text-[#667085] @md/progress-calendar:col-span-2">
-            Save a weekly recap or practice plan to pin the next calendar block.
-          </p>
-        )}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1935,17 +1577,17 @@ function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
   const roadmapItems = buildRoadmapItems(summary);
 
   return (
-    <section className="premium-card overflow-hidden rounded-lg">
-      <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+    <Card className="overflow-hidden shadow-sm" data-progress-roadmap>
+      <CardContent className="grid gap-5 p-5 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#E8F7EE] px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-[#087A3D]">
+          <Badge variant="secondary" className="gap-2">
             <Sparkles className="size-4" />
             This week
-          </div>
-          <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-[#111827]">
+          </Badge>
+          <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-foreground">
             {roadmapGoalLabel()}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Three actions from shot pattern, trust, and movement data. Finish these before chasing
             more chart detail.
           </p>
@@ -1965,33 +1607,22 @@ function ProgressRoadmapPanel({ summary }: { summary: ProgressSummary }) {
             />
           </div>
         </div>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {roadmapItems.map((item, index) => (
-            <Link
-              key={`${item.title}-${index}`}
-              href={item.href}
-              prefetch={false}
-              className="group grid min-h-[13rem] grid-rows-[auto_1fr_auto] rounded-lg border border-[#DDE8DE] bg-white/80 p-4 transition-colors hover:border-[#CFE7D6] hover:bg-white"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#667085]">
-                    {roadmapStepLabel(index)}
-                  </p>
-                  <p className="mt-2 text-lg font-bold leading-6 text-[#111827]">{item.title}</p>
-                </div>
-                <StatusPill tone={item.tone}>{item.label}</StatusPill>
-              </div>
-              <p className="mt-4 text-sm leading-6 text-[#667085]">{item.detail}</p>
-              <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#087A3D]">
-                {item.action}
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
+        <StatusTimeline
+          label="Progress roadmap milestones"
+          className="max-h-none"
+          items={roadmapItems.map((item, index) => ({
+            id: `${item.title}-${index}`,
+            timestamp: roadmapStepLabel(index),
+            title: item.title,
+            description: item.detail,
+            meta: item.action,
+            status: item.label,
+            kind: item.tone === "amber" || item.tone === "pink" ? "warning" : "reviewed",
+            href: item.href,
+          }))}
+        />
+      </CardContent>
+    </Card>
   );
 }
 
@@ -2009,19 +1640,19 @@ function ProgressPracticePlannerPanel({
       : 0;
 
   return (
-    <section className="premium-card overflow-hidden rounded-lg">
-      <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
+    <Card className="overflow-hidden shadow-sm" data-practice-planner-summary>
+      <CardContent className="grid gap-4 p-5 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.12em] text-emerald-800">
+          <Badge variant="secondary" className="gap-2">
             <ClipboardCheck className="size-4" />
             Structured practice
-          </div>
-          <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-[#111827]">
+          </Badge>
+          <h2 className="mt-4 text-3xl font-bold leading-9 tracking-normal text-foreground">
             {summary.completedCount > 0
               ? `${summary.completedCount} planned sessions completed`
               : "Plan the next session"}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[#667085]">
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {priorityOne
               ? `Priority 1: ${priorityOne.title}. Completed structured sessions against this focus: ${priorityCompletion}.`
               : "Import more stock-shot data to connect planner work to roadmap priorities."}
@@ -2040,144 +1671,68 @@ function ProgressPracticePlannerPanel({
           />
         </div>
         <div className="lg:col-span-2">
-          <Button asChild className="premium-action rounded-lg">
+          <Button asChild className="rounded-lg">
             <Link href="/practice" prefetch={false}>
               Open Practice Planner
             </Link>
           </Button>
         </div>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }
-
-const weeklyRecapToneStyles: Record<Tone, { card: string; label: string; icon: string }> = {
-  green: {
-    card: "border-emerald-200 bg-[#F8FCF9]",
-    label: "text-emerald-800",
-    icon: "bg-emerald-50 text-emerald-700",
-  },
-  sky: {
-    card: "border-sky-200 bg-[#F8FBFF]",
-    label: "text-sky-800",
-    icon: "bg-sky-50 text-sky-700",
-  },
-  pink: {
-    card: "border-pink-200 bg-pink-50/35",
-    label: "text-pink-800",
-    icon: "bg-pink-50 text-pink-700",
-  },
-  amber: {
-    card: "border-amber-200 bg-[#FFFBF4]",
-    label: "text-amber-800",
-    icon: "bg-amber-50 text-amber-800",
-  },
-  slate: {
-    card: "border-slate-200 bg-slate-50/60",
-    label: "text-slate-700",
-    icon: "bg-slate-100 text-slate-600",
-  },
-};
 
 type Tone = "green" | "sky" | "pink" | "amber" | "slate";
 
-function ComparisonBar({ summary }: { summary: ProgressSummary }) {
-  return (
-    <section className="grid gap-3 rounded-lg border border-[#D9DED8] bg-white px-4 py-3 sm:grid-cols-3 sm:items-start">
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Comparison
-        </p>
-        <p className="mt-1 font-semibold">Progress controls</p>
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Baseline
-        </p>
-        <p className="mt-1 font-semibold">Personal baseline</p>
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Period
-        </p>
-        <p className="mt-1 font-semibold">All saved data</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Confidence: based on {integerFormatter.format(summary.totals.trackedCleanShots)} clean
-          stock shots
-        </p>
-      </div>
-      <div
-        aria-label="Progress period"
-        className="inline-flex w-fit max-w-full flex-wrap items-center justify-center rounded-lg bg-muted p-[3px] text-sm text-muted-foreground sm:col-span-3 sm:justify-self-start"
-      >
-        <span className="rounded-md bg-background px-2.5 py-1 font-medium text-foreground shadow-sm">
-          All data
-        </span>
-        <span className="px-2.5 py-1 font-medium">Last 30 days</span>
-        <span className="px-2.5 py-1 font-medium">Last 10 sessions</span>
-      </div>
-    </section>
-  );
-}
-
-function ProgressSectionHeader({
-  icon: Icon,
-  title,
-  description,
-  tone,
-}: {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  tone: Tone;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex min-w-0 items-start gap-4">
-        <span
-          className={cn(
-            "grid size-11 shrink-0 place-items-center rounded-xl border",
-            progressIconToneStyles[tone],
-          )}
-        >
-          <Icon className="size-6" />
-        </span>
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
-            {title}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-[#667085]">{description}</p>
-        </div>
-      </div>
-      <span
-        className={cn(
-          "hidden size-10 shrink-0 place-items-center rounded-xl border sm:grid",
-          progressIconToneStyles[tone],
-        )}
-      >
-        <Icon className="size-5" />
-      </span>
-    </div>
-  );
-}
+const movementPillToneClasses: Record<Tone, string> = {
+  green:
+    "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+  sky: "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]",
+  pink: "border-[var(--status-danger-border)] bg-[var(--status-danger-surface)] text-[var(--status-danger-foreground)]",
+  amber:
+    "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
+  slate: "border-border bg-muted/40 text-muted-foreground",
+};
 
 function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
   const trendRows = progressTrendChartRows(summary.trends);
 
   return (
-    <section
-      id="trends"
-      className="flex h-full scroll-mt-28 flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6"
-    >
-      <ProgressSectionHeader
-        icon={LineChart}
-        title="Progress trends"
-        description="Movement from the first clean baseline to the latest clean baseline."
-        tone="sky"
-      />
-      <div className="mt-5 grid flex-1 auto-rows-fr gap-3 md:grid-cols-2">
+    <section id="trends" className="grid h-full scroll-mt-28 gap-4" data-progress-trends>
+      <div>
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <LineChart className="size-5 text-primary" aria-hidden />
+          Progress trends
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Movement from the first clean baseline to the latest clean baseline.
+        </p>
+      </div>
+      <div className="grid flex-1 auto-rows-fr gap-3 md:grid-cols-2">
         {summary.trends.map((trend) => (
-          <TrendCard key={trend.label} trend={trend} summary={summary} />
+          <LazyMetricTrendCard
+            key={trend.label}
+            label={trend.label}
+            value={trend.value}
+            detail={trendVerdict(trend, summary)}
+            direction={
+              trend.goodDirection === "up"
+                ? "up"
+                : trend.goodDirection === "down"
+                  ? "down"
+                  : "neutral"
+            }
+            points={trend.points.map((value, index) => ({
+              label:
+                index === 0
+                  ? "Baseline"
+                  : index === trend.points.length - 1
+                    ? "Latest"
+                    : `Check ${index + 1}`,
+              value,
+            }))}
+            className="shadow-none"
+          />
         ))}
       </div>
       <ChartAccessibleFallback
@@ -2191,43 +1746,8 @@ function ProgressTrendsPanel({ summary }: { summary: ProgressSummary }) {
           { key: "readout", label: "Readout" },
         ]}
         rows={trendRows}
-        className="mt-4"
       />
     </section>
-  );
-}
-
-function TrendCard({ trend, summary }: { trend: ProgressTrend; summary: ProgressSummary }) {
-  return (
-    <div className="flex h-full min-h-44 flex-col rounded-xl border border-[#DFE7DF] bg-white p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-bold uppercase tracking-[0.16em] text-[#667085]">
-            {trend.label}
-          </p>
-          <p className="mt-1 text-xl font-bold leading-7 tracking-normal text-[#111827]">
-            {trend.value}
-          </p>
-        </div>
-        <div
-          className={cn(
-            "grid size-9 shrink-0 place-items-center rounded-lg border",
-            progressIconToneStyles[trend.tone],
-          )}
-        >
-          <BarChart3 className="size-4" />
-        </div>
-      </div>
-      <Sparkline
-        points={trend.points}
-        tone={trend.tone}
-        ariaLabel={`${trend.label} trend: ${trend.value}`}
-      />
-      <p className="mt-3 text-sm leading-5 text-[#475467]">{trendVerdict(trend, summary)}</p>
-      {trendFootnote(trend, summary) ? (
-        <p className="mt-1 text-xs leading-5 text-[#667085]">{trendFootnote(trend, summary)}</p>
-      ) : null}
-    </div>
   );
 }
 
@@ -2379,428 +1899,6 @@ function formatTrendDirection(direction: ProgressTrend["goodDirection"]) {
   return "Stable is useful";
 }
 
-function PracticePlanPanel({ priorities }: { priorities: PracticePriority[] }) {
-  const [topPriority] = priorities;
-  const visiblePriorityCount = Math.min(priorities.length, 5);
-
-  return (
-    <section className="flex flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
-      {topPriority ? (
-        <div className="grid min-h-0 items-start gap-4 min-[2400px]:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-          <PracticePriorityFeatureCard priority={topPriority} />
-          <div className="flex min-h-0 flex-col rounded-xl border border-[#DFE7DF] bg-slate-50/40 p-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#111827]">Ranked priorities</p>
-                <p className="text-xs leading-5 text-[#667085]">
-                  Priority 1 starts the queue. Scroll for the rest.
-                </p>
-              </div>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-[#475467]">
-                {visiblePriorityCount} visible / {priorities.length}
-              </span>
-            </div>
-            <div className="min-h-0 max-h-[31rem] overflow-y-auto pr-1 [scrollbar-gutter:stable]">
-              <div className="grid gap-2.5">
-                {priorities.map((priority, index) => (
-                  <PracticePriorityCompactCard
-                    key={priority.clubId}
-                    priority={priority}
-                    index={index + 1}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-muted-foreground">
-          Import clean stock shots to unlock a ranked practice plan.
-        </div>
-      )}
-    </section>
-  );
-}
-
-function PracticePriorityFeatureCard({ priority }: { priority: PracticePriority }) {
-  return (
-    <div className="rounded-xl border border-emerald-200 bg-[linear-gradient(135deg,#F7FCF9_0%,#FFFFFF_100%)] p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-800">
-            Priority 1 focus
-          </Badge>
-          <h2 className="mt-3 text-2xl font-bold leading-tight tracking-normal text-[#111827]">
-            {priority.title}
-          </h2>
-        </div>
-        <span
-          className={cn(
-            "rounded-full border px-3 py-1 text-sm font-semibold",
-            priorityLabelClass(priority.tone),
-          )}
-        >
-          {priority.priorityLabel}
-        </span>
-      </div>
-      <div className="mt-4 grid gap-3">
-        <PracticeHeroArtwork />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <PracticeInfoBlock icon={HelpCircle} label="Why" text={practiceReasonCopy(priority)} />
-          <PracticeInfoBlock icon={ClipboardCheck} label="Task" text={priority.drill} />
-        </div>
-      </div>
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-        <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-[#111827]">
-          <span className="flex items-center gap-2 font-medium">
-            Coach score
-            <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-semibold">
-              {priority.score}
-            </span>
-          </span>
-          <span className="mt-1 block text-xs leading-4 text-[#667085]">
-            Higher means practice this sooner.
-          </span>
-        </span>
-        <Button
-          asChild
-          className="h-10 rounded-lg bg-[#087A3D] px-5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(8,122,61,0.18)] hover:bg-[#065F32]"
-        >
-          <Link href={`/bag/${priority.clubId}/analytics`} prefetch={false}>
-            <Target className="size-4" />
-            {practiceCtaLabel(priority)}
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function PracticeHeroArtwork() {
-  return (
-    <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-emerald-100 bg-emerald-50">
-      <Image
-        src="/assets/generated/progress-practice-green.png"
-        alt=""
-        fill
-        sizes="(min-width: 1280px) 320px, 90vw"
-        className="scale-[1.03] object-cover"
-        priority={false}
-      />
-      <div className="absolute inset-0 bg-gradient-to-tr from-emerald-950/5 via-transparent to-white/5" />
-    </div>
-  );
-}
-
-function PracticeInfoBlock({
-  icon: Icon,
-  label,
-  text,
-}: {
-  icon: LucideIcon;
-  label: string;
-  text: string;
-}) {
-  return (
-    <div className="grid min-h-24 grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-lg border border-[#DFE7DF] bg-white p-3">
-      <span className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-        <Icon className="size-4" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-bold uppercase tracking-[0.12em] text-emerald-800">{label}</p>
-        <p className="mt-2 text-sm font-medium leading-6 text-[#111827]">{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function priorityLabelClass(tone: Tone) {
-  if (tone === "amber") {
-    return "border-amber-200 bg-amber-50 text-amber-800";
-  }
-
-  if (tone === "sky") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
-  }
-
-  return "border-emerald-200 bg-emerald-50 text-emerald-800";
-}
-
-function PracticePriorityThumb({ priority, index }: { priority: PracticePriority; index: number }) {
-  const variant = index === 2 ? "course" : index === 3 ? "target" : "club";
-  const isStrikeImage = priority.title.toLowerCase().includes("strike");
-
-  return (
-    <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-slate-50">
-      {variant === "course" ? (
-        <>
-          <Image
-            src="/assets/generated/progress-practice-green.png"
-            alt=""
-            fill
-            sizes="40px"
-            className="object-cover"
-          />
-          <span className="absolute inset-0 bg-emerald-950/5" />
-        </>
-      ) : null}
-      {variant === "target" ? <TargetGridArtwork /> : null}
-      {variant === "club" ? (
-        isStrikeImage ? (
-          <Image
-            src="/assets/generated/progress-9i-face-strike.png"
-            alt=""
-            fill
-            sizes="40px"
-            className="object-cover"
-          />
-        ) : (
-          <ClubArtwork
-            clubType={priority.clubType}
-            alt=""
-            className="size-full rounded-full border-0 bg-transparent"
-            imageClassName="px-2 py-2"
-            sizes="40px"
-            showGroundLine={false}
-          />
-        )
-      ) : null}
-    </span>
-  );
-}
-
-function TargetGridArtwork() {
-  return (
-    <svg viewBox="0 0 80 80" className="size-full" aria-hidden="true">
-      <rect width="80" height="80" fill="#F8F3E9" />
-      <path d="M40 0v80M0 40h80" stroke="#64748B" strokeDasharray="3 4" strokeWidth="1" />
-      <path d="M20 0v80M60 0v80M0 20h80M0 60h80" stroke="#D6D3CA" strokeWidth="1" />
-      <circle cx="40" cy="40" r="4" fill="#087A3D" />
-      <circle cx="26" cy="42" r="3" fill="#8ACB75" />
-      <circle cx="54" cy="28" r="3" fill="#8ACB75" />
-      <circle cx="57" cy="50" r="3" fill="#8ACB75" />
-      <circle cx="34" cy="26" r="3" fill="#8ACB75" />
-    </svg>
-  );
-}
-
-function PracticePriorityCompactCard({
-  priority,
-  index,
-}: {
-  priority: PracticePriority;
-  index: number;
-}) {
-  return (
-    <Link
-      href={`/bag/${priority.clubId}/analytics`}
-      prefetch={false}
-      className={cn(
-        "grid min-h-[5.25rem] grid-cols-[auto_minmax(0,1fr)] items-center gap-2.5 rounded-xl border p-2.5 transition-colors hover:border-emerald-300",
-        index === 1 ? "border-emerald-200 bg-emerald-50/60" : "border-[#DFE7DF] bg-white",
-      )}
-    >
-      <PracticePriorityThumb priority={priority} index={index} />
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Badge variant="outline" className="bg-white">
-            Priority {index}
-          </Badge>
-          <span
-            className={cn(
-              "rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-4",
-              priorityLabelClass(priority.tone),
-            )}
-          >
-            {priority.priorityLabel}
-          </span>
-        </div>
-        <h2 className="mt-1 line-clamp-1 text-sm font-bold leading-5 tracking-normal text-[#111827]">
-          {priority.title}
-        </h2>
-        <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-xs leading-5 text-[#667085]">
-            {practiceReasonCopy(priority)}
-          </p>
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700">
-            <Target className="size-4" />
-            {priority.score}
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function CoachReadoutPanel({
-  signal,
-  groups,
-  gaps,
-}: {
-  signal: BestSignal | null;
-  groups: CoachSummaryGroup[];
-  gaps: DataGap[];
-}) {
-  return (
-    <section className="@container/progress-coach flex flex-col rounded-[22px] border border-[#DFE7DF] bg-white p-5 shadow-[0_12px_30px_rgba(15,23,42,0.055)] lg:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-4">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
-            <MessageSquare className="size-6" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-xl font-semibold leading-7 tracking-normal text-[#111827]">
-              Coach readout
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-[#667085]">
-              A plain-English readout of what is improving, what needs attention and what to
-              practise next.
-            </p>
-          </div>
-        </div>
-        <CheckCircle2 className="mt-1 size-5 shrink-0 text-emerald-600" />
-      </div>
-      <div className="mt-5 grid gap-4">
-        {signal ? (
-          <BestSignalBanner signal={signal} />
-        ) : (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm leading-6 text-muted-foreground">
-            No best signal has separated yet. Keep importing comparable stock-shot sessions.
-          </div>
-        )}
-        <div className="grid gap-3 @lg/progress-coach:grid-cols-2">
-          {groups.map((group) => (
-            <div
-              key={group.title}
-              className={cn("min-w-0", group.title === "Data gaps" ? "md:col-span-2" : "")}
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <span
-                  className={cn("size-2.5 rounded-full ring-4", compactToneClasses[group.tone])}
-                />
-                <h2 className="font-semibold tracking-normal">{group.title}</h2>
-              </div>
-              <div className="space-y-3">
-                {group.title === "Data gaps" && gaps.length > 0
-                  ? gaps.slice(0, 2).map((gap) => <DataGapRichCard key={gap.clubId} gap={gap} />)
-                  : group.items.map((item, index) => {
-                      const content = (
-                        <div className="grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-                          <span className="min-w-0">
-                            <p className="text-sm font-medium leading-5">{item.label}</p>
-                            {item.detail ? (
-                              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                                {item.detail}
-                              </p>
-                            ) : null}
-                          </span>
-                          <CoachItemIcon tone={group.tone} />
-                        </div>
-                      );
-
-                      return item.clubId ? (
-                        <Link
-                          key={`${group.title}-${index}`}
-                          href={`/bag/${item.clubId}/analytics`}
-                          prefetch={false}
-                          className="block hover:text-emerald-700"
-                        >
-                          {content}
-                        </Link>
-                      ) : (
-                        <div key={`${group.title}-${index}`}>{content}</div>
-                      );
-                    })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function CoachItemIcon({ tone }: { tone: Tone }) {
-  if (tone === "green") {
-    return <CheckCircle2 className="size-5 text-emerald-600" />;
-  }
-
-  if (tone === "amber" || tone === "pink") {
-    return <AlertTriangle className="size-5 text-amber-600" />;
-  }
-
-  return <Gauge className="size-5 text-slate-500" />;
-}
-
-function DataGapRichCard({ gap }: { gap: DataGap }) {
-  return (
-    <Link
-      href={`/bag/${gap.clubId}/analytics`}
-      prefetch={false}
-      className="block rounded-lg border border-slate-200 bg-white p-3 hover:border-emerald-300"
-    >
-      <p className="text-sm font-medium leading-5">
-        {formatClubType(gap.clubType)} needs more clean stock shots
-      </p>
-      <div className="mt-3 overflow-hidden rounded-lg border border-slate-100 text-sm">
-        <CoachDataRow label="Baseline" value={`${gap.cleanShots} clean baseline shots`} />
-        <CoachDataRow label="Target" value="10 full stock shots" />
-        <CoachDataRow
-          label="Next action"
-          value={`Build ${formatClubType(gap.clubType)} baseline`}
-          highlight
-        />
-      </div>
-    </Link>
-  );
-}
-
-function CoachDataRow({
-  label,
-  value,
-  highlight = false,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-slate-100 px-3 py-2 last:border-b-0">
-      <span className="text-[#667085]">{label}</span>
-      <span className={cn("font-semibold text-[#111827]", highlight ? "text-emerald-700" : "")}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function BestSignalBanner({ signal }: { signal: BestSignal }) {
-  const content = (
-    <div className="grid min-h-36 grid-cols-[auto_minmax(0,1fr)] gap-4 rounded-lg border border-emerald-200 bg-[linear-gradient(135deg,#F7FCF9_0%,#FFFFFF_100%)] p-5 transition-colors hover:border-emerald-400">
-      <span className="grid size-12 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-        <Zap className="size-6" />
-      </span>
-      <div className="min-w-0">
-        <p className="text-base font-bold text-emerald-800">Best signal</p>
-        <p className="mt-2 text-xl font-bold leading-7 text-[#111827]">{signal.value}</p>
-        <p className="mt-2 text-sm leading-6 text-[#111827]">
-          <span className="font-semibold">Why it matters: </span>
-          {signal.why}
-        </p>
-        <p className="mt-1 text-sm leading-5 text-[#667085]">{signal.detail}</p>
-      </div>
-    </div>
-  );
-
-  return signal.clubId ? (
-    <Link href={`/bag/${signal.clubId}/analytics`} prefetch={false} className="block">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-}
-
 const bagMovementFilterOptions: Array<{ key: BagMovementFilter; label: string }> = [
   { key: "all", label: "All" },
   { key: "woods", label: "Woods" },
@@ -2820,10 +1918,6 @@ function buildBagMovementFilters(rows: ProgressClubRow[]) {
     ...option,
     count: rows.filter((row) => bagMovementFilterMatches(row, option.key)).length,
   }));
-}
-
-function bagMovementFilterHref(filter: BagMovementFilter) {
-  return filter === "all" ? "/progress#bag-movement" : `/progress?bag=${filter}#bag-movement`;
 }
 
 function bagMovementFilterMatches(row: ProgressClubRow, filter: BagMovementFilter) {
@@ -2857,13 +1951,14 @@ function progressClubFamily(clubType: string): "wood" | "iron" | "wedge" {
   return "iron";
 }
 
-function BagMovementPanel({
+async function BagMovementPanel({
   rows,
   activeFilter,
 }: {
   rows: ProgressClubRow[];
   activeFilter: BagMovementFilter;
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
   const filteredRows = rows.filter((row) => bagMovementFilterMatches(row, activeFilter));
   const filters = buildBagMovementFilters(rows);
 
@@ -2872,31 +1967,33 @@ function BagMovementPanel({
       <SectionHeader
         title="Bag movement"
         description={bagMovementSummary(filteredRows.length > 0 ? filteredRows : rows)}
-        action={<Table2 className="size-5 text-sky-600" />}
+        action={<Table2 className="size-5 text-primary" aria-hidden />}
       />
       <CardContent>
-        <div className="mb-4 flex flex-wrap gap-2">
+        <nav aria-label="Filter bag movement" className="mb-4 flex flex-wrap gap-2">
           {filters.map((filter) => {
             const isActive = filter.key === activeFilter;
 
             return (
-              <Link
+              <Button
                 key={filter.key}
-                href={bagMovementFilterHref(filter.key)}
-                prefetch={false}
-                className={cn(
-                  "inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold transition-colors",
-                  isActive
-                    ? "border-[#087A3D] bg-[#E8F7EE] text-[#087A3D]"
-                    : "border-[#DFE7DF] bg-white text-[#475467] hover:border-[#CFE7D6] hover:bg-[#F8FCF9]",
-                )}
+                asChild
+                variant={isActive ? "secondary" : "outline"}
+                size="sm"
               >
-                {filter.label}
-                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs">{filter.count}</span>
-              </Link>
+                <Link
+                  href={bagMovementFilterHref(filter.key)}
+                  prefetch={false}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  {filter.label}
+                  <Badge variant="outline">{filter.count}</Badge>
+                </Link>
+              </Button>
             );
           })}
-        </div>
+        </nav>
+
         <div data-workbench-scope="progress-bag-movement">
           <DesktopTableWorkbenchControls
             viewKey="progress-bag-movement"
@@ -2909,20 +2006,19 @@ function BagMovementPanel({
             exportFileName="forekinghell-progress-bag-movement.csv"
             className="mb-3"
           />
-
-          <DataTableFrame mainTable mainTableLabel="Progress bag movement table" stickyFirstColumn>
+          <DataTableFrame label="Progress bag movement table" stickyFirstColumn>
             <Table
+              className="min-w-[980px]"
               data-workbench-export-table="progress-bag-movement"
               aria-describedby="progress-bag-movement-summary"
-              className="min-w-[1120px]"
             >
               <TableCaption id="progress-bag-movement-summary" className="sr-only">
-                Club progress table showing club, trust, clean stock shots, stock carry and
-                movement.
+                Club progress evidence showing club, trust, clean stock shots, stock carry and
+                measured movement.
               </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                 <TableRow>
-                  <TableHead data-column="club" className="sticky left-0 z-20 min-w-56 bg-white">
+                  <TableHead data-column="club" className="sticky left-0 z-20 min-w-52 bg-card">
                     Club
                   </TableHead>
                   <TableHead data-column="trust">Trust</TableHead>
@@ -2935,31 +2031,17 @@ function BagMovementPanel({
                 {filteredRows.length > 0 ? (
                   filteredRows.map((row) => (
                     <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
-                      <TableCell
-                        data-column="club"
-                        className="sticky left-0 z-10 min-w-56 bg-white"
-                      >
-                        <div className="flex min-w-0 items-start gap-2">
-                          <span
-                            aria-hidden="true"
-                            className={cn(
-                              "mt-1.5 size-2 shrink-0 rounded-full",
-                              bagRowMarkerClass(row),
-                            )}
-                          />
-                          <div className="min-w-0">
-                            <Link
-                              href={`/bag/${row.clubId}/analytics`}
-                              prefetch={false}
-                              className="font-semibold hover:text-emerald-700"
-                            >
-                              {formatClubType(row.clubType)}
-                            </Link>
-                            <p className="mt-0.5 max-w-44 truncate text-xs text-muted-foreground">
-                              {row.brandModel}
-                            </p>
-                          </div>
-                        </div>
+                      <TableCell data-column="club" className="sticky left-0 z-10 min-w-52 bg-card">
+                        <Link
+                          href={`/bag/${row.clubId}/analytics`}
+                          prefetch={false}
+                          className="font-semibold hover:text-primary"
+                        >
+                          {formatClubType(row.clubType)}
+                        </Link>
+                        <p className="mt-0.5 max-w-48 truncate text-xs text-muted-foreground">
+                          {row.brandModel}
+                        </p>
                       </TableCell>
                       <TableCell data-column="trust">
                         <StatusPill
@@ -2970,7 +2052,9 @@ function BagMovementPanel({
                           {row.trustIndex}% trust
                         </StatusPill>
                       </TableCell>
-                      <TableCell data-column="clean-shots">{row.sampleSize}</TableCell>
+                      <TableCell data-column="clean-shots">
+                        {integerFormatter.format(row.sampleSize)}
+                      </TableCell>
                       <TableCell data-column="stock-carry">
                         {formatYards(row.stockCarryYd)}
                       </TableCell>
@@ -2983,7 +2067,7 @@ function BagMovementPanel({
                   <TableRow>
                     <TableCell
                       colSpan={progressBagMovementColumns.length}
-                      className="py-6 text-center text-sm text-muted-foreground"
+                      className="py-8 text-center text-sm text-muted-foreground"
                     >
                       No clubs match this filter yet.
                     </TableCell>
@@ -3002,101 +2086,92 @@ function MovementPills({ row }: { row: ProgressClubRow }) {
   const items = movementItems(row);
   const itemsByMetric = new Map(items.map((item) => [item.metric, item]));
   const status = movementStatus(row);
-  const StatusIcon = status.icon;
 
   return (
-    <div
-      className="grid min-w-[35rem] items-center gap-2"
-      style={{ gridTemplateColumns: "6.25rem 5.75rem 7.6rem 6.35rem 5.75rem" }}
-    >
-      <StatusPill tone={status.tone}>
-        <StatusIcon className="mr-1 size-3.5" />
-        {status.label}
-      </StatusPill>
-      {items.length === 0 ? (
-        <span className="col-span-4 text-sm text-muted-foreground">
-          No meaningful movement detected
-        </span>
-      ) : (
-        movementMetricOrder.map((metric) => {
-          const item = itemsByMetric.get(metric);
+    <div className="flex min-w-[32rem] flex-wrap items-center gap-2">
+      <StatusPill tone={status.tone}>{status.label}</StatusPill>
+      {movementMetricOrder.map((metric) => {
+        const item = itemsByMetric.get(metric);
 
-          return item ? (
-            <MovementMetricPill key={metric} item={item} />
-          ) : (
-            <span key={metric} aria-hidden="true" className="h-12" />
-          );
-        })
-      )}
+        return item ? (
+          <span
+            key={metric}
+            className={cn(
+              "inline-flex min-h-8 items-center gap-1 rounded-md border px-2 text-xs font-semibold",
+              movementPillToneClasses[item.tone],
+            )}
+          >
+            <span>{metric}</span>
+            <span className="tabular-nums">{item.value}</span>
+          </span>
+        ) : null;
+      })}
+      {items.length === 0 ? (
+        <span className="text-sm text-muted-foreground">No meaningful movement detected</span>
+      ) : null}
     </div>
   );
 }
 
 const movementMetricOrder = ["Carry", "Offline", "Ball speed", "Launch"] as const;
 
-function MovementMetricPill({ item }: { item: MovementItem }) {
-  return (
-    <span
-      className={cn(
-        "grid h-12 w-full content-center gap-0.5 rounded-lg border px-2.5 py-1.5",
-        movementPillToneClasses[item.tone],
-      )}
-    >
-      <span className="text-base font-bold leading-5">{item.value}</span>
-      <span className="text-[10px] font-bold uppercase tracking-[0.14em]">{item.metric}</span>
-    </span>
-  );
+function bagMovementFilterHref(filter: BagMovementFilter) {
+  return filter === "all" ? "/progress#bag-movement" : `/progress?bag=${filter}#bag-movement`;
 }
 
-function TrustLadderPanel({ items }: { items: TrustLadderItem[] }) {
-  return (
-    <DataPanel stretch className="h-full">
-      <SectionHeader
-        title="Trust ladder"
-        description="Trust considers distance, direction, strike quality, and clean-shot sample depth."
-        action={<Gauge className="size-5 text-emerald-600" />}
-      />
-      <CardContent className="grid flex-1 content-between gap-2">
-        {items.map((item) => (
-          <Link
-            key={item.clubId}
-            href={`/bag/${item.clubId}/analytics`}
-            prefetch={false}
-            className="grid grid-cols-[3.5rem_auto_minmax(0,1fr)] items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 hover:border-emerald-300"
-          >
-            <p className="font-semibold">{formatClubType(item.clubType)}</p>
-            <p className="font-semibold tabular-nums">
-              {item.trustIndex === null ? "--" : `${item.trustIndex}%`}
-            </p>
-            <div className="min-w-0 text-right">
-              <p className="truncate text-sm font-medium">{item.note}</p>
-              <p className="text-xs text-muted-foreground">{item.label}</p>
-            </div>
-          </Link>
-        ))}
-      </CardContent>
-    </DataPanel>
-  );
+function bagMovementSummary(rows: ProgressClubRow[]) {
+  const carryLeader = [...rows]
+    .filter((row) => row.carryDeltaYd !== null)
+    .sort((left, right) => (right.carryDeltaYd ?? 0) - (left.carryDeltaYd ?? 0))[0];
+  const tighterLeader = strongestDispersionImprovement(rows);
+  const needsWork = [...rows]
+    .filter((row) => row.sampleSize >= 3)
+    .sort((left, right) => left.trustIndex - right.trustIndex)[0];
+  const parts = [
+    carryLeader ? `${formatClubType(carryLeader.clubType)} gained the most carry` : null,
+    tighterLeader ? `${formatClubType(tighterLeader.clubType)} tightened dispersion` : null,
+    needsWork
+      ? `${formatClubType(needsWork.clubType)} remains the lowest-trust sampled club`
+      : null,
+  ].filter(Boolean);
+
+  return parts.length
+    ? `${parts.join(", ")}.`
+    : "Latest clean baseline versus first clean baseline. Offline going down is good.";
 }
 
 function CoachTimelinePanel({ summary }: { summary: ProgressSummary }) {
   const items = coachTimelineItems(summary);
 
   return (
-    <DataPanel>
-      <SectionHeader
-        title="AI Coach timeline"
-        description="A running coaching narrative from current progress, next focus and recent milestones."
-        action={<StatusPill tone="green">Live narrative</StatusPill>}
-      />
-      <CardContent className="pt-3">
-        <div className="grid auto-rows-fr gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {items.map((item, index) => (
-            <CoachTimelineCard key={`${item.title}-${index}`} item={item} />
-          ))}
+    <Card className="shadow-sm" data-coach-timeline>
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div>
+          <CardTitle>AI Coach timeline</CardTitle>
+          <CardDescription className="mt-1">
+            A running coaching narrative from current progress, next focus and recent milestones.
+          </CardDescription>
         </div>
+        <StatusPill tone="green">Live narrative</StatusPill>
+      </CardHeader>
+      <CardContent>
+        <StatusTimeline
+          label="AI Coach timeline"
+          className="max-h-none"
+          items={items.map((item, index) => ({
+            id: `${item.title}-${index}`,
+            timestamp: item.dateLabel,
+            title: item.title,
+            description: item.detail,
+            meta: item.action,
+            status: item.label,
+            icon: item.icon,
+            kind: item.tone === "amber" || item.tone === "pink" ? "warning" : "reviewed",
+            href: item.clubId ? `/bag/${item.clubId}/analytics` : undefined,
+          }))}
+        />
       </CardContent>
-    </DataPanel>
+    </Card>
   );
 }
 
@@ -3110,37 +2185,6 @@ type CoachTimelineItem = {
   tone: Tone;
   icon: LucideIcon;
 };
-
-function CoachTimelineCard({ item }: { item: CoachTimelineItem }) {
-  const Icon = item.icon;
-  const content = (
-    <div className="relative grid h-full min-h-44 grid-rows-[auto_1fr_auto] rounded-lg border border-slate-200 bg-white p-4 hover:border-emerald-300">
-      <div className="flex flex-wrap items-center gap-2">
-        <StatusPill tone={item.tone}>
-          <Icon className="mr-1 size-3" />
-          {item.label}
-        </StatusPill>
-        <StatusPill tone="slate">
-          <CalendarDays className="mr-1 size-3" />
-          {item.dateLabel}
-        </StatusPill>
-      </div>
-      <div className="mt-3 min-w-0">
-        <p className="text-base font-semibold leading-6 text-[#111827]">{item.title}</p>
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">{item.detail}</p>
-      </div>
-      <p className="mt-4 text-sm font-semibold text-[#087A3D]">{item.action}</p>
-    </div>
-  );
-
-  return item.clubId ? (
-    <Link href={`/bag/${item.clubId}/analytics`} prefetch={false} className="block h-full">
-      {content}
-    </Link>
-  ) : (
-    content
-  );
-}
 
 function coachTimelineItems(summary: ProgressSummary): CoachTimelineItem[] {
   const items: CoachTimelineItem[] = [];
@@ -3325,18 +2369,6 @@ function heroVerdict(summary: ProgressSummary) {
   return "Compared with your personal baseline, the bag is moving forward. Keep building clean stock-shot depth so the weak spots separate clearly.";
 }
 
-function progressVerdictChip(summary: ProgressSummary) {
-  if (summary.totals.trackedCleanShots === 0) {
-    return "Build a clean baseline.";
-  }
-
-  const standout = progressVerdictStandout(summary);
-  const opportunity = progressVerdictOpportunity(summary, standout?.clubId);
-  const parts = ["Improving", standout?.text, opportunity].filter(Boolean);
-
-  return `${parts.join(". ")}.`;
-}
-
 function progressVerdictLabel(summary: ProgressSummary) {
   if (summary.totals.trackedCleanShots === 0) {
     return "Baseline needed";
@@ -3344,55 +2376,6 @@ function progressVerdictLabel(summary: ProgressSummary) {
 
   const needsWork = summary.rankings.needsWork;
   return needsWork ? `Improving · ${formatClubType(needsWork.clubType)} next` : "Improving";
-}
-
-function progressVerdictStandout(summary: ProgressSummary) {
-  const bestSignal = summary.bestSignal;
-  if (bestSignal?.clubId) {
-    return {
-      clubId: bestSignal.clubId,
-      text: bestSignal.value.replace(/\.$/, ""),
-    };
-  }
-
-  const row = summary.rankings.mostImproved ?? summary.rankings.mostTrusted;
-  if (!row) {
-    return null;
-  }
-
-  const club = formatClubType(row.clubType);
-  if (isMeaningful(row.offlineDeltaYd, 1)) {
-    return {
-      clubId: row.clubId,
-      text: `${club} dispersion ${numberFormatter.format(Math.abs(row.offlineDeltaYd))} yd ${
-        row.offlineDeltaYd <= 0 ? "tighter" : "wider"
-      }`,
-    };
-  }
-
-  if (isMeaningful(row.carryDeltaYd, 1)) {
-    return {
-      clubId: row.clubId,
-      text: `${club} carry ${formatSigned(row.carryDeltaYd)} yd`,
-    };
-  }
-
-  return {
-    clubId: row.clubId,
-    text: `${club} trust now ${row.trustIndex}%`,
-  };
-}
-
-function progressVerdictOpportunity(summary: ProgressSummary, standoutClubId: string | undefined) {
-  const priority =
-    summary.practicePlan.find((item) => item.clubId !== standoutClubId) ??
-    summary.rankings.needsWork;
-
-  if (!priority) {
-    return null;
-  }
-
-  return `${formatClubType(priority.clubType)} remains the main opportunity`;
 }
 
 function progressScore(summary: ProgressSummary) {
@@ -3842,47 +2825,6 @@ function trendFootnote(trend: ProgressTrend, summary: ProgressSummary) {
   return `Final dip reflects ${formatClubType(summary.dataGaps[0].clubType)} data gap.`;
 }
 
-function bagMovementSummary(rows: ProgressClubRow[]) {
-  const carryLeader = [...rows]
-    .filter((row) => row.carryDeltaYd !== null)
-    .sort((left, right) => (right.carryDeltaYd ?? 0) - (left.carryDeltaYd ?? 0))[0];
-  const tighterLeader = strongestDispersionImprovement(rows);
-  const needsWork = [...rows]
-    .filter((row) => row.sampleSize >= 3)
-    .sort((left, right) => left.trustIndex - right.trustIndex)[0];
-  const parts = [
-    carryLeader ? `${formatClubType(carryLeader.clubType)} gained the most carry` : null,
-    tighterLeader ? `${formatClubType(tighterLeader.clubType)} tightened dispersion` : null,
-    needsWork
-      ? `${formatClubType(needsWork.clubType)} remains the lowest-trust club with enough clean shots`
-      : null,
-  ].filter(Boolean);
-
-  return parts.length
-    ? `${parts.join(", ")}.`
-    : "Latest clean baseline vs first clean baseline. Offline going down is good.";
-}
-
-function bagRowMarkerClass(row: ProgressClubRow) {
-  if (row.sampleSize < 10 || row.confidenceLabel === "Not enough data") {
-    return "bg-slate-300";
-  }
-
-  if (row.trustIndex <= 62) {
-    return "bg-amber-400";
-  }
-
-  if (row.offlineDeltaYd !== null && row.offlineDeltaYd <= -2) {
-    return "bg-sky-400";
-  }
-
-  if (row.carryDeltaYd !== null && row.carryDeltaYd >= 5) {
-    return "bg-emerald-500";
-  }
-
-  return "bg-transparent";
-}
-
 function uniqueClubLabels(values: Array<{ clubType: string } | null | undefined>) {
   const labels: string[] = [];
 
@@ -3927,38 +2869,6 @@ function averageNumber(values: number[]) {
 function roundForSvg(value: number) {
   return Math.round(value * 10) / 10;
 }
-
-const progressScoreClubClasses: Record<Tone, string> = {
-  green: "border-emerald-200 bg-emerald-50/55 text-emerald-800",
-  sky: "border-sky-200 bg-sky-50/55 text-sky-800",
-  pink: "border-rose-200 bg-rose-50/55 text-rose-800",
-  amber: "border-amber-200 bg-amber-50/55 text-amber-800",
-  slate: "border-slate-200 bg-slate-50/70 text-slate-700",
-};
-
-const movementPillToneClasses: Record<Tone, string> = {
-  green: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  sky: "border-sky-200 bg-sky-50 text-sky-800",
-  pink: "border-rose-200 bg-rose-50 text-rose-800",
-  amber: "border-amber-200 bg-amber-50 text-amber-800",
-  slate: "border-slate-200 bg-slate-50 text-slate-700",
-};
-
-const progressIconToneStyles: Record<Tone, string> = {
-  green: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  sky: "border-sky-200 bg-sky-50 text-sky-700",
-  pink: "border-rose-200 bg-rose-50 text-rose-700",
-  amber: "border-amber-200 bg-amber-50 text-amber-800",
-  slate: "border-slate-200 bg-slate-50 text-slate-700",
-};
-
-const compactToneClasses: Record<Tone, string> = {
-  green: "bg-emerald-500 ring-emerald-100",
-  sky: "bg-sky-500 ring-sky-100",
-  pink: "bg-pink-500 ring-pink-100",
-  amber: "bg-amber-500 ring-amber-100",
-  slate: "bg-slate-400 ring-slate-200",
-};
 
 function strokeForTone(tone: Tone) {
   const strokes: Record<Tone, string> = {

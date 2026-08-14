@@ -5,7 +5,6 @@ import {
   Database,
   FileText,
   Lightbulb,
-  MessageCircle,
   ShieldCheck,
   Sparkles,
   Target,
@@ -15,19 +14,11 @@ import { DataChatPanel } from "@/app/data-chat/data-chat-panel";
 import { AiDesktopWorkbench } from "@/components/app/ai-desktop-workbench";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import {
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import {
   DesktopInsightRail,
   DesktopWorkbenchLayout,
   commonAiPrompts,
 } from "@/components/app/desktop-workbench";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
-import { MobileAppShell, MobileRouteTabs, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PageArtwork } from "@/components/visuals/page-artwork";
@@ -74,54 +65,7 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-4">
-        <MobileTopBar title="Data Chat" />
-        <MobileRouteTabs group="improve" activeKey="data-chat" />
-        <section className="grid gap-3" aria-labelledby="data-chat-mobile-status">
-          <IOSSectionHeader
-            title={<span id="data-chat-mobile-status">Your golf assistant</span>}
-            description="Ask a question first; supporting tips, drills and citations stay available on demand."
-          />
-          <IOSGroupedList label="Data Chat access and scope">
-            <IOSListRow
-              label="Data Chat"
-              value={canUseDataChat ? "Available" : "Pro"}
-              detail="Rounds, shots, bag, speed and practice evidence"
-              icon={MessageCircle}
-              status={
-                <IOSInlineStatus
-                  label={canUseDataChat ? "Ready to answer" : "Upgrade required"}
-                  tone={canUseDataChat ? "positive" : "attention"}
-                />
-              }
-            />
-            <IOSMetricRow
-              label="Credits remaining"
-              value={entitlement.monthlyRemaining.toLocaleString("en-GB")}
-              detail={`${entitlement.monthlyLimit.toLocaleString("en-GB")} monthly · 1 per answer`}
-            />
-            <IOSListRow
-              label="Read-only scope"
-              value="Your data"
-              detail="Advice cannot change yardages, records, handicap or billing."
-              icon={ShieldCheck}
-            />
-          </IOSGroupedList>
-        </section>
-        {canUseDataChat ? (
-          <div data-data-chat-panel="mobile">
-            <DataChatPanel
-              monthlyRemaining={entitlement.monthlyRemaining}
-              questionId="mobile-data-chat-question"
-              initialQuestion={initialPrompt}
-            />
-          </div>
-        ) : (
-          <LockedDataChatPanel />
-        )}
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="data-chat" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="data-chat">
         <AiDesktopWorkbench
           defaultTab="ask"
           diagnosis={
@@ -207,7 +151,6 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
                   monthlyRemaining={entitlement.monthlyRemaining}
                   questionId="desktop-data-chat-question"
                   initialQuestion={initialPrompt}
-                  savedAnswerWorkbench
                 />
               ) : (
                 <LockedDataChatPanel />

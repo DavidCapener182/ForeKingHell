@@ -5,17 +5,22 @@ import { ArrowRight } from "lucide-react";
 import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { ResultHero } from "@/components/app/result-hero";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSMetricRow,
-} from "@/components/app/ios-mobile";
+import { IOSDisclosureGroup, IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ButtonGroup } from "@/components/ui/button-group";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
+import { Progress } from "@/components/ui/progress";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getPracticePlanForSourceSessions } from "@/lib/practice-planner";
 import { buildShotPatternPoints, shotPatternConfidence } from "@/lib/shot-pattern-chart-data";
@@ -146,15 +151,38 @@ export default async function PracticeSessionReviewPage({
                     summary: plan.score === null ? "Measured" : `${plan.score}/100`,
                     description: plan.verdict,
                     content: (
-                      <IOSGroupedList label="Plan result" className="bg-card">
-                        <IOSMetricRow label="Blocks" value={String(plan.totalBlocks)} />
-                        <IOSMetricRow label="Targets passed" value={String(plan.passedBlocks)} />
-                        <IOSMetricRow label="Mixed" value={String(plan.mixedBlocks)} />
-                        <IOSMetricRow
-                          label="Needs more evidence"
-                          value={String(plan.incompleteBlocks)}
-                        />
-                      </IOSGroupedList>
+                      <Card size="sm" data-plan-versus-actual>
+                        <CardHeader>
+                          <div>
+                            <CardTitle>Measured plan result</CardTitle>
+                            <CardDescription>{plan.verdict}</CardDescription>
+                          </div>
+                          <CardAction>
+                            <Badge variant="secondary">
+                              {plan.score === null ? "Measured" : `${plan.score}/100`}
+                            </Badge>
+                          </CardAction>
+                        </CardHeader>
+                        <CardContent className="grid gap-3">
+                          <Progress
+                            value={plan.score ?? 0}
+                            aria-label={
+                              plan.score === null
+                                ? "Practice plan was measured without a numeric score"
+                                : `Practice plan score: ${plan.score} out of 100`
+                            }
+                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <PlanResultMetric label="Blocks" value={plan.totalBlocks} />
+                            <PlanResultMetric label="Targets passed" value={plan.passedBlocks} />
+                            <PlanResultMetric label="Mixed" value={plan.mixedBlocks} />
+                            <PlanResultMetric
+                              label="Needs evidence"
+                              value={plan.incompleteBlocks}
+                            />
+                          </div>
+                        </CardContent>
+                      </Card>
                     ),
                   },
                 ]
@@ -162,14 +190,25 @@ export default async function PracticeSessionReviewPage({
           ]}
         />
 
-        <Button asChild className="min-h-12 rounded-xl text-base">
-          <Link href="/practice?intent=latest_weakness">
-            Build next plan
-            <ArrowRight className="ml-2 size-4" aria-hidden />
-          </Link>
-        </Button>
+        <ButtonGroup className="w-full">
+          <Button asChild className="min-h-12 flex-1 rounded-xl text-base">
+            <Link href="/practice?intent=latest_weakness">
+              Build next plan
+              <ArrowRight className="ml-2 size-4" aria-hidden />
+            </Link>
+          </Button>
+        </ButtonGroup>
       </MobileAppShell>
     </PageShell>
+  );
+}
+
+function PlanResultMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-muted/35 p-3">
+      <p className="break-words text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold">{value}</p>
+    </div>
   );
 }
 

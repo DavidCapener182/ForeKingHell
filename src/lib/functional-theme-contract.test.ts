@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const globals = readFileSync(join(root, "src/app/globals.css"), "utf8");
 const mobile = readFileSync(join(root, "src/app/mobile-apple.css"), "utf8");
+const premium = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
 
 describe("functional appearance modes", () => {
   it("keeps Outdoor, Range Night and Tour Broadcast as desktop-only product themes", () => {
@@ -35,5 +36,39 @@ describe("functional appearance modes", () => {
     expect(globals).toContain("min-height: 44px");
     expect(globals).toContain("stroke-dasharray: 9 5");
     expect(globals).toContain("opacity: 1");
+    const highContrastBody =
+      globals.match(/html\[data-theme="high-contrast"\] body \{[\s\S]*?\n  \}/)?.[0] ?? "";
+    expect(highContrastBody).toContain("background: var(--background)");
+    expect(highContrastBody).toContain("background-image: none");
+    expect(highContrastBody).not.toContain("gradient");
+  });
+
+  it("keeps shared shadcn tables readable through semantic theme tokens", () => {
+    const tableRulesStart = globals.lastIndexOf("  .data-table-scroll th {");
+    const tableRules = globals.slice(
+      tableRulesStart,
+      globals.indexOf("  .chart-frame {", tableRulesStart),
+    );
+
+    expect(tableRules).toContain("background: var(--muted)");
+    expect(tableRules).toContain("color: var(--muted-foreground)");
+    expect(tableRules).toContain("color: var(--foreground)");
+    expect(tableRules).toContain("color-mix(in srgb, var(--muted) 58%, var(--card))");
+    for (const literal of ["#f5f8ef", "#596a5f", "#111827", "#f6f8f2"]) {
+      expect(tableRules).not.toContain(literal);
+    }
+  });
+
+  it("keeps shared status badges and readout dots semantic across every theme", () => {
+    const tones = premium.slice(
+      premium.indexOf("const toneClasses"),
+      premium.indexOf("export type CompactReadoutItem"),
+    );
+
+    expect(tones).toContain("var(--status-success-surface)");
+    expect(tones).toContain("var(--status-information-surface)");
+    expect(tones).toContain("var(--status-warning-surface)");
+    expect(tones).toContain("bg-muted text-muted-foreground ring-border");
+    expect(tones).not.toMatch(/(?:bg|text|ring)-(?:emerald|sky|pink|amber|slate)-/);
   });
 });

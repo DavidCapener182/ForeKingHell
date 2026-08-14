@@ -8,16 +8,24 @@ const source = readFileSync(
 );
 
 describe("club profile desktop shot evidence table", () => {
-  it("uses one-level phone disclosures and flat shot evidence around the specialist canvases", () => {
-    expect(source).toContain("mobileSupport?: ReactNode");
-    expect(source).toContain("<IOSDisclosureGroup");
-    expect(source).toContain('title: "Club intelligence"');
-    expect(source).toContain('title: "Trajectory"');
-    expect(source).toContain('title: "Measured shot evidence"');
-    expect(source).toContain("MobileShotEvidenceRows");
-    expect(source).toContain("data-mobile-shot-evidence");
-    expect(source).toContain('className="hidden space-y-5 lg:block"');
-    expect(source).toContain('className="hidden scroll-mt-28 gap-3 lg:grid"');
+  it("ships only the open desktop analysis workbench", () => {
+    expect(source).toContain("data-desktop-club-analysis");
+    expect(source).toContain('className="grid scroll-mt-28 gap-3"');
+    expect(source).toContain("afterDispersion ?");
+
+    for (const unreachableMobileSymbol of [
+      "mobileSupport",
+      "IOSDisclosureGroup",
+      "@/components/app/ios-mobile",
+      "MobileSelectedShotMetrics",
+      "MobileShotEvidenceRows",
+      "data-mobile-shot-evidence",
+      "lg:hidden",
+      'className="hidden space-y-5 lg:block"',
+      'className="hidden scroll-mt-28 gap-3 lg:grid"',
+    ]) {
+      expect(source).not.toContain(unreachableMobileSymbol);
+    }
   });
 
   it("keeps club profile shots in a desktop workbench table", () => {
@@ -50,5 +58,26 @@ describe("club profile desktop shot evidence table", () => {
     expect(source).toContain('title="Club trajectory"');
     expect(source).toContain("summary={trajectoryFallbackSummary");
     expect(source).toContain("rows={trajectoryFallbackRows(trajectoryShots, selectedShotId)}");
+  });
+
+  it("keeps imported controls and ordinary surfaces semantic around the specialist golf palette", () => {
+    const fixedPalette =
+      /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#|rgba\(|#[0-9a-f]{3,8}/i;
+    const specialistCharts = source.slice(
+      source.indexOf("function DispersionPanel"),
+      source.indexOf("function ShotMetricStrip"),
+    );
+    const ordinaryUi = source.replace(specialistCharts, "");
+
+    expect(ordinaryUi).not.toMatch(fixedPalette);
+    expect(source).toContain("<ToggleGroup");
+    expect(source).toContain("<ToggleGroupItem");
+    expect(source).toContain("<Badge");
+    expect(source).toContain("<Button");
+    expect(source).not.toContain("<button");
+    expect(source).toContain("shadow-[1px_0_0_hsl(var(--border))]");
+    expect(source).toContain("var(--status-success-surface)");
+    expect(specialistCharts).toContain('fill="#f7f8fb"');
+    expect(specialistCharts).toContain('stroke="#2563eb"');
   });
 });

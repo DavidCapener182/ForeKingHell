@@ -16,67 +16,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatusPill, type Tone } from "@/components/premium";
-import { MobileAppShell, MobileTabBar, MobileTopBar } from "@/components/mobile-sports";
-import { IOSGroupedList, IOSInlineStatus, IOSListRow } from "@/components/app/ios-mobile";
-
 const adminLinks = [
-  { href: "/admin", label: "Overview", mobileLabel: "Overview", icon: Activity },
-  { href: "/admin/system-checks", label: "System checks", mobileLabel: "Checks", icon: Cable },
-  { href: "/admin/users", label: "Users", mobileLabel: "Users", icon: Users },
-  { href: "/admin/billing", label: "Billing", mobileLabel: "Billing", icon: CreditCard },
-  { href: "/admin/moderation", label: "Moderation", mobileLabel: "Safety", icon: ShieldCheck },
-  { href: "/admin/challenges", label: "Challenges", mobileLabel: "Challenges", icon: Flag },
+  { href: "/admin", label: "Overview", icon: Activity },
+  { href: "/admin/system-checks", label: "System checks", icon: Cable },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/billing", label: "Billing", icon: CreditCard },
+  { href: "/admin/moderation", label: "Moderation", icon: ShieldCheck },
+  { href: "/admin/challenges", label: "Challenges", icon: Flag },
 ];
-
-const adminMobileTabs = adminLinks.map((item) => ({
-  key: item.href,
-  label: item.mobileLabel,
-  href: item.href,
-}));
-
-export function AdminMobileShell({
-  title,
-  active,
-  status,
-  error,
-  children,
-}: {
-  title: string;
-  active: string;
-  status?: string;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <MobileAppShell>
-      <MobileTopBar title={title} />
-      <MobileTabBar tabs={adminMobileTabs} activeKey={active} ariaLabel="Admin sections" />
-      <AdminMobileNotice status={status} error={error} />
-      {children}
-    </MobileAppShell>
-  );
-}
-
-function AdminMobileNotice({ status, error }: { status?: string; error?: string }) {
-  if (!status && !error) {
-    return null;
-  }
-
-  return (
-    <IOSGroupedList label="Admin action status">
-      <IOSListRow
-        label={error ? "Action failed" : "Admin updated"}
-        detail={error ?? status}
-        status={
-          <IOSInlineStatus
-            label={error ? "Review required" : "Saved"}
-            tone={error ? "critical" : "positive"}
-          />
-        }
-      />
-    </IOSGroupedList>
-  );
-}
 
 export function AdminNav({ active }: { active: string }) {
   return (
@@ -165,7 +112,7 @@ export function AdminMetric({
     <Card className="premium-card">
       <CardHeader>
         <CardDescription className="flex items-center gap-2">
-          <Icon className="size-4 text-emerald-600" />
+          <Icon className="size-4 text-primary" />
           {label}
         </CardDescription>
         <CardTitle className="text-2xl font-semibold tracking-normal">{value}</CardTitle>

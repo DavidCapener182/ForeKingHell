@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { formatClubType } from "@/lib/club-format";
-import { cn } from "@/lib/utils";
 
 export type PersonalBestMetric = "carry" | "total";
 
@@ -95,7 +94,7 @@ function PersonalBestRows({
             key={club.id}
             href={`/bag/${club.id}`}
             prefetch={false}
-            className="grid gap-1 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-2 transition-colors hover:border-emerald-300"
+            className="grid gap-1 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-primary/40 hover:bg-accent/35"
           >
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold">{formatClubType(club.type)}</span>
@@ -104,9 +103,9 @@ function PersonalBestRows({
                 {valueYd === null ? "" : " yd"}
               </span>
             </div>
-            <div className="h-2 rounded-full bg-white">
+            <div className="h-2 rounded-full bg-muted">
               <span
-                className="block h-2 rounded-full bg-[#0B7A3B]"
+                className="block h-2 rounded-full bg-primary"
                 style={{ width: `${carryWidthPercent(valueYd, maxPersonalBest)}%` }}
               />
             </div>
@@ -129,28 +128,27 @@ function PersonalBestMetricToggle({
   onMetricChange: (metric: PersonalBestMetric) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-lg border border-slate-200 bg-white p-1">
+    <ToggleGroup
+      type="single"
+      value={metric}
+      onValueChange={(value) => value && onMetricChange(value as PersonalBestMetric)}
+      variant="outline"
+      spacing={0}
+      aria-label="Personal best metric"
+      className="grid grid-cols-2 bg-card"
+    >
       {PERSONAL_BEST_METRIC_OPTIONS.map((option) => {
-        const active = option.value === metric;
-
         return (
-          <Button
+          <ToggleGroupItem
             key={option.value}
-            type="button"
-            size="sm"
-            variant={active ? "default" : "ghost"}
-            aria-pressed={active}
-            onClick={() => onMetricChange(option.value)}
-            className={cn(
-              "h-8 rounded-md px-2 text-xs",
-              active && "bg-[#0B7A3B] text-white hover:bg-[#064E3B]",
-            )}
+            value={option.value}
+            className="h-8 rounded-md px-2 text-xs"
           >
             {option.label}
-          </Button>
+          </ToggleGroupItem>
         );
       })}
-    </div>
+    </ToggleGroup>
   );
 }
 

@@ -27,13 +27,8 @@ import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -42,33 +37,24 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
-import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { FacePathDeliveryChart } from "@/components/visuals/face-path-delivery-chart";
 import { PageArtwork } from "@/components/visuals/page-artwork";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   CompactReadoutGrid,
   DataPair,
   DataPanel,
   DataTableFrame,
-  MobileAccordionSection,
-  MobileBentoSummary,
-  MobileDataCard,
-  MobileDataList,
   PageShell,
   SectionHeader,
   StatusPill,
-  StickyMobileAction,
 } from "@/components/premium";
-import {
-  MobileAppShell,
-  MobileTabBar,
-  MobileTopBar,
-  NativeListSection,
-} from "@/components/mobile-sports";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -81,7 +67,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { clubs, sessions, shots, strokesGainedShotEvents, userProfiles } from "@/db/schema";
-import { BagSimulator } from "@/app/bag/bag-simulator";
+import { LazyBagSimulator } from "@/app/bag/lazy-bag-simulator";
 import { getDb } from "@/db/client";
 import { reportServerFailure } from "@/lib/server-observability";
 import {
@@ -95,7 +81,6 @@ import {
   buildWedgeMatrix,
   type AiCaddieCard,
   type ConfidenceHeatMap,
-  type CourseStrategyMode,
   type PathTrendTracking,
   type PersonalStrokesGainedModel,
   type ShotPatternOverlaySummary,
@@ -152,7 +137,6 @@ import {
   type StockShot,
 } from "@/lib/stock-yardage";
 import { DistanceBenchmarkPanel } from "@/app/bag/distance-benchmark-panel";
-import { PersonalBestCard, type PersonalBestMetric } from "@/app/bag/personal-best-card";
 import { TargetDistanceSelector, type TargetDistanceRow } from "@/app/bag/target-distance-selector";
 import {
   ClubIntelligencePanel,
@@ -191,12 +175,12 @@ const bagGappingColumns: DesktopWorkbenchColumn[] = [
 const bagGappingSuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Clubs below target",
-    href: "/bag#reference-data",
+    href: "/bag?tab=distances#bag-gapping-table",
     detail: "Review clubs where work-on and target fields show the next yardage job.",
   },
   {
     title: "Low confidence clubs",
-    href: "/bag#bag-trust",
+    href: "/bag?tab=distances#bag-confidence",
     detail: "Start with sample size and trust before changing the course number.",
   },
   {
@@ -225,7 +209,7 @@ const wedgeMatrixSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
   {
     title: "Full bag gapping",
-    href: "/bag#reference-data",
+    href: "/bag?tab=distances#bag-gapping-table",
     detail: "Compare partial wedge windows against the full bag carry ladder.",
   },
 ];
@@ -240,10 +224,20 @@ const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
 
 type PageProps = {
   searchParams?: Promise<{
-    pb?: string | string[];
     peers?: string | string[];
+    tab?: string | string[];
   }>;
 };
+
+const BAG_WORKSPACE_TABS = ["distances", "clubs", "scoring", "fitting", "history"] as const;
+type BagWorkspaceTab = (typeof BAG_WORKSPACE_TABS)[number];
+
+function parseBagWorkspaceTab(value: string | string[] | undefined): BagWorkspaceTab {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return BAG_WORKSPACE_TABS.includes(candidate as BagWorkspaceTab)
+    ? (candidate as BagWorkspaceTab)
+    : "distances";
+}
 
 const WEDGE_ROLE_ORDER: StockShotRole[] = ["full", "pitch", "chip-touch"];
 const STICKY_BAG_SUMMARY_TYPES = ["driver", "5w", "7i", "pw", "sw"] as const;
@@ -280,7 +274,7 @@ const bagShotSelect = {
 
 export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
-  const personalBestMetric = parsePersonalBestMetric(resolvedSearchParams.pb);
+  const activeTab = parseBagWorkspaceTab(resolvedSearchParams.tab);
   const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);
   const [bag, profile, challengeData, featureData, personalStrokesGainedEvents, speedSummary] =
     await Promise.all([
@@ -325,13 +319,6 @@ export default async function BagPage({ searchParams }: PageProps) {
     [...stockConfidenceClubs].sort(
       (left, right) => right.stock.confidenceScore - left.stock.confidenceScore,
     )[0] ?? null;
-  const weakestGap =
-    [...gappingRows]
-      .filter(
-        (row): row is GappingRow & { workOnYd: number } =>
-          row.workOnYd !== null && row.targetPriorityYd > 0,
-      )
-      .sort((left, right) => right.targetPriorityYd - left.targetPriorityYd)[0] ?? null;
   const averageConfidence =
     stockConfidenceClubs.length === 0
       ? 0
@@ -378,234 +365,8 @@ export default async function BagPage({ searchParams }: PageProps) {
   ];
 
   return (
-    <PageShell contentClassName="overflow-x-clip pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-5">
-      <MobileAppShell>
-        <MobileTopBar title="Bag" />
-        <MobileTabBar
-          activeKey="gapping"
-          className="-mt-4 text-sm"
-          tabs={[
-            { key: "gapping", label: "Health", href: "/bag" },
-            { key: "clubs", label: "Clubs", href: "#club-intelligence" },
-            { key: "decisions", label: "Reference", href: "#reference-data" },
-            { key: "longest", label: "Longest", href: "/bag/longest" },
-          ]}
-        />
-        <MobileBentoSummary
-          items={[
-            {
-              label: "Bag score",
-              value: `${smartBagBuilder.currentScore}%`,
-              detail: smartBagBuilder.scoreLabel,
-              tone: smartBagBuilder.currentScore >= 85 ? "green" : "amber",
-            },
-            {
-              label: "Confidence",
-              value: `${averageConfidence}%`,
-              detail: `${bag.length} clubs · ${totalShots} shots`,
-              tone: averageConfidence >= 75 ? "green" : "sky",
-            },
-            {
-              label: "Next move",
-              value: biggestOpportunity?.title ?? "Clean",
-              detail: biggestOpportunity?.detail ?? "No urgent move",
-              tone: biggestOpportunity ? "amber" : "green",
-            },
-            {
-              label: "Weakest gap",
-              value: currentGapRisk.value,
-              detail: currentGapRisk.detail,
-              tone: currentGapRisk.tone,
-            },
-          ]}
-        />
-        <section className="grid gap-2.5" aria-label="Clubs in your bag">
-          <IOSSectionHeader
-            title="Your clubs"
-            description={
-              bag.length > 0
-                ? `${bag.length} active ${bag.length === 1 ? "club" : "clubs"}. Open a club for its full analysis.`
-                : "Import launch-monitor shots to build your first bag."
-            }
-          />
-          <IOSGroupedList label="Active clubs">
-            {bag.length > 0 ? (
-              bag.map((club) => (
-                <IOSListRow
-                  key={club.id}
-                  label={formatClubType(club.type)}
-                  detail={club.brandModel}
-                  value={mobileClubSignal(club)}
-                  href={`/bag/${club.id}`}
-                  ariaLabel={`Open ${formatClubType(club.type)} analysis`}
-                />
-              ))
-            ) : (
-              <IOSListRow
-                icon={Upload}
-                label="No clubs imported"
-                detail="A Rapsodo or supported CSV will create the bag from your real shots."
-                status={<IOSInlineStatus label="First setup" tone="info" />}
-              />
-            )}
-          </IOSGroupedList>
-          {bag.length === 0 ? (
-            <Button asChild className="min-h-11 w-full rounded-lg">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" aria-hidden />
-                Import your first shots
-              </Link>
-            </Button>
-          ) : null}
-        </section>
-        <section className="grid gap-2.5" aria-label="Featured bag action">
-          <IOSSectionHeader title="Next bag action" description="The first issue worth checking." />
-          <IOSGroupedList label="Featured bag action">
-            <IOSListRow
-              icon={bagDoctorFindings[0]?.tone === "green" ? ShieldCheck : AlertTriangle}
-              label={bagDoctorFindings[0]?.title ?? "Build your bag evidence"}
-              detail={
-                bagDoctorFindings[0]?.detail ??
-                "Import clean stock shots to unlock a useful bag recommendation."
-              }
-              value={bagDoctorFindings[0]?.label ?? "Import"}
-              href={bagDoctorFindings[0]?.href ?? "/import"}
-              status={
-                bagDoctorFindings[0] ? (
-                  <IOSInlineStatus
-                    label={mobileBagStatusLabel(bagDoctorFindings[0].tone)}
-                    tone={mobileBagStatusTone(bagDoctorFindings[0].tone)}
-                  />
-                ) : undefined
-              }
-            />
-          </IOSGroupedList>
-        </section>
-        <IOSDisclosureGroup
-          label="Bag detail and evidence"
-          items={[
-            {
-              value: "personal-bests",
-              title: "Personal bests",
-              description: "Clean carry and total records by club.",
-              summary: bag.length > 0 ? `${bag.length} clubs` : "No records",
-              content:
-                bag.length > 0 ? (
-                  <PersonalBestCard
-                    clubs={bag}
-                    initialMetric={personalBestMetric}
-                    variant="inline"
-                  />
-                ) : (
-                  <p className="text-[13px] leading-5 text-muted-foreground">
-                    Import clean stock shots to create carry and total personal bests.
-                  </p>
-                ),
-            },
-            {
-              value: "gapping",
-              title: "Gapping evidence",
-              description: "Carry ladder, trust and supporting findings.",
-              summary: currentGapRisk.value,
-              content: (
-                <MobileBagGappingDetails
-                  rows={gappingRows}
-                  averageConfidence={averageConfidence}
-                  totalShots={totalShots}
-                  bestClub={bestClub}
-                  weakestGap={weakestGap}
-                  findings={bagDoctorFindings.slice(1)}
-                />
-              ),
-            },
-            {
-              value: "benchmarks",
-              title: "Distance benchmarks",
-              description: "Carry, speed, smash, height, land angle and peers.",
-              summary: benchmarkRows.length > 0 ? `${benchmarkRows.length} clubs` : "Building",
-              content:
-                benchmarkRows.length > 0 ? (
-                  <MobileBagBenchmarkDetails
-                    rows={benchmarkRows}
-                    peerSummary={peerBenchmarkSummary}
-                    peerBenchmarksLoaded={peerBenchmarksLoaded}
-                  />
-                ) : (
-                  <p className="text-[13px] leading-5 text-muted-foreground">
-                    Import more stock shots to unlock club speed, smash and peer benchmarks.
-                  </p>
-                ),
-            },
-            {
-              value: "lower-scores",
-              title: "Lower scores",
-              description: "Strategy, wedges, heat maps and caddie.",
-              summary: `${smartBagBuilder.currentScore}% bag`,
-              content: (
-                <LowerScoresFeatureStack
-                  smartBagBuilder={smartBagBuilder}
-                  wedgeMatrix={wedgeMatrix}
-                  pathTrend={pathTrend}
-                  shotPatternOverlays={shotPatternOverlays}
-                  courseStrategy={courseStrategy}
-                  confidenceHeatMaps={confidenceHeatMaps}
-                  aiCaddieCards={aiCaddieCards}
-                  personalStrokesGained={personalStrokesGained}
-                  compact
-                />
-              ),
-            },
-            {
-              value: "bag-setup",
-              title: "Bag setup",
-              description: "Target lookup, wedge roles and club identities.",
-              summary: `${bag.length} clubs`,
-              content: (
-                <div className="grid gap-4">
-                  <NativeListSection title="Target lookup">
-                    <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-                  </NativeListSection>
-                  {wedgeRoleClubs.length > 0 ? (
-                    <NativeListSection title="Wedge roles">
-                      <WedgeRoleCards clubs={wedgeRoleClubs} compact />
-                    </NativeListSection>
-                  ) : null}
-                  <MobileClubArtworkCarousel clubs={bag} />
-                </div>
-              ),
-            },
-            {
-              value: "fitting",
-              title: "Fitting and methodology",
-              description: "Setup checks and how the bag readout is built.",
-              summary: `${totalShots} shots`,
-              content: <MobileBagMethodology clubs={stockFilterClubs} featureData={featureData} />,
-            },
-          ]}
-        />
-        <StickyMobileAction>
-          <Button asChild className="premium-action min-h-11 w-full rounded-lg">
-            <Link
-              href={
-                bag.length === 0
-                  ? "/import"
-                  : (currentGapRisk.href ??
-                    "/practice?source=bag&intent=latest_weakness#practice-plan")
-              }
-              prefetch={false}
-            >
-              {bag.length === 0 ? (
-                <Upload className="size-4" aria-hidden />
-              ) : (
-                <Target className="size-4" aria-hidden />
-              )}
-              {bag.length === 0 ? "Import shot data" : "Review next bag move"}
-            </Link>
-          </Button>
-        </StickyMobileAction>
-      </MobileAppShell>
-
-      <div className="hidden items-center justify-between gap-4 lg:flex">
+    <PageShell contentClassName="overflow-x-clip pb-5">
+      <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href="/dashboard">
             <ArrowLeft className="size-4" />
@@ -622,7 +383,6 @@ export default async function BagPage({ searchParams }: PageProps) {
 
       <DesktopWorkbenchLayout
         scope="bag"
-        className="hidden lg:grid"
         railBreakpoint="wide"
         rail={
           <DesktopInsightRail
@@ -701,19 +461,18 @@ export default async function BagPage({ searchParams }: PageProps) {
         />
 
         {bag.length === 0 ? (
-          <Card className="premium-card">
-            <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-              <Target className="size-8 text-emerald-500" />
-              <div>
-                <p className="text-lg font-medium">No clubs imported yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Import Rapsodo CSVs to build the bag map.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <AppEmptyState
+            icon={<Target className="size-5" />}
+            title="No clubs imported yet"
+            description="Import Rapsodo CSVs to build the bag map. Trusted distances and gapping evidence will appear here."
+            primaryAction={
+              <Button asChild>
+                <Link href="/import">Import club data</Link>
+              </Button>
+            }
+          />
         ) : (
-          <Tabs defaultValue="distances" className="min-w-0 gap-5" data-bag-workspace>
+          <Tabs defaultValue={activeTab} className="min-w-0 gap-5" data-bag-workspace>
             <TabsList variant="line" aria-label="Bag workspace">
               <TabsTrigger value="distances">Distances</TabsTrigger>
               <TabsTrigger value="clubs">Clubs</TabsTrigger>
@@ -723,14 +482,19 @@ export default async function BagPage({ searchParams }: PageProps) {
             </TabsList>
 
             <TabsContent value="distances" className="grid min-w-0 gap-5">
-              {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
-              <BagStickySummary rows={gappingRows} />
               <BagConfidenceLadder
                 rows={gappingRows}
                 maxCarryYd={maxDisplayCarry}
                 findings={bagDoctorFindings}
               />
-              {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
+              <BagSupportingEvidence
+                title="Full gapping evidence"
+                description="Open the complete club table, target recommendations and speed context only when you need to audit the decision."
+              >
+                {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
+                {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
+                <BagStickySummary rows={gappingRows} />
+              </BagSupportingEvidence>
             </TabsContent>
 
             <TabsContent value="clubs" className="grid min-w-0 gap-5">
@@ -738,25 +502,33 @@ export default async function BagPage({ searchParams }: PageProps) {
                 clubs={clubIntelligenceItems}
                 initialClubId={bestClub?.id ?? bag[0]?.id}
               />
-              <PersonalBestSnapshotPanel clubs={bag} />
-              <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-              {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
+              <BagSupportingEvidence
+                title="Club supporting tools"
+                description="Personal bests, target-distance matching and stock-shot filters are grouped behind one review control."
+              >
+                <PersonalBestSnapshotPanel clubs={bag} />
+                <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
+                {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
+              </BagSupportingEvidence>
             </TabsContent>
 
             <TabsContent value="scoring" className="grid min-w-0 gap-5">
-              <div className="grid gap-5 xl:grid-cols-2">
-                <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
-                <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
-              </div>
-              <PathTrendPanel trend={pathTrend} />
-              <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
-              <WedgeMatrixPanel matrix={wedgeMatrix} />
+              <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
               <CourseDecisionPanel advice={courseAdvice} />
+              <BagSupportingEvidence
+                title="Scoring supporting evidence"
+                description="Shot-pattern, delivery, strokes-gained and wedge evidence is available as one secondary review."
+              >
+                <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
+                <PathTrendPanel trend={pathTrend} />
+                <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
+                <WedgeMatrixPanel matrix={wedgeMatrix} />
+              </BagSupportingEvidence>
             </TabsContent>
 
             <TabsContent value="fitting" className="grid min-w-0 gap-5">
               <SmartBagBuilderPanel model={smartBagBuilder} />
-              <BagSimulator
+              <LazyBagSimulator
                 clubs={bag.flatMap((club) => {
                   const carry = clubPrimaryCarryYd(club);
                   if (carry === null) return [];
@@ -774,27 +546,35 @@ export default async function BagPage({ searchParams }: PageProps) {
                   ];
                 })}
               />
-              <div className="grid gap-5 xl:grid-cols-2">
+              <BagSupportingEvidence
+                title="Fitting supporting evidence"
+                description="Caddie prompts, methodology and wedge-role detail are consolidated into one secondary review."
+              >
                 <AiCaddiePanel cards={aiCaddieCards} />
                 <BagFeaturePanel data={featureData} />
-              </div>
-              {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
+                {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
+              </BagSupportingEvidence>
             </TabsContent>
 
             <TabsContent value="history" className="grid min-w-0 gap-5">
               <ClubEvolutionPanel clubs={bag} />
-              {benchmarkRows.length > 0 ? (
-                <BenchmarkReferencePanel
-                  rows={benchmarkRows}
-                  peerSummary={peerBenchmarkSummary}
-                  peerBenchmarksLoaded={peerBenchmarksLoaded}
+              <BagSupportingEvidence
+                title="History supporting evidence"
+                description="Benchmarks and social comparison are grouped behind one review control."
+              >
+                {benchmarkRows.length > 0 ? (
+                  <BenchmarkReferencePanel
+                    rows={benchmarkRows}
+                    peerSummary={peerBenchmarkSummary}
+                    peerBenchmarksLoaded={peerBenchmarksLoaded}
+                  />
+                ) : null}
+                <BagSocialComparison
+                  bestClub={bestClub}
+                  leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+                  challenges={challengeData.active}
                 />
-              ) : null}
-              <BagSocialComparison
-                bestClub={bestClub}
-                leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
-                challenges={challengeData.active}
-              />
+              </BagSupportingEvidence>
             </TabsContent>
           </Tabs>
         )}
@@ -803,276 +583,45 @@ export default async function BagPage({ searchParams }: PageProps) {
   );
 }
 
-function MobileBagGappingDetails({
-  rows,
-  averageConfidence,
-  totalShots,
-  bestClub,
-  weakestGap,
-  findings,
+function BagSupportingEvidence({
+  title,
+  description,
+  children,
 }: {
-  rows: GappingRow[];
-  averageConfidence: number;
-  totalShots: number;
-  bestClub: BagClub | null;
-  weakestGap: GappingRow | null;
-  findings: BagDoctorFinding[];
+  title: string;
+  description: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-5">
-      <section className="grid gap-2.5" aria-label="Bag trust summary">
-        <IOSSectionHeader title="Trust summary" />
-        <IOSGroupedList label="Bag trust summary">
-          <IOSListRow
-            label="Bag trust"
-            value={`${averageConfidence}%`}
-            detail={`${rows.length} mapped clubs · ${totalShots.toLocaleString("en-GB")} tracked shots`}
-          />
-          <IOSListRow
-            label="Most trusted"
-            value={bestClub ? formatClubType(bestClub.type) : "--"}
-            detail={bestClub?.brandModel ?? "Import more clean stock shots"}
-            href={bestClub ? `/bag/${bestClub.id}` : undefined}
-          />
-          <IOSListRow
-            label="Weakest gap"
-            value={weakestGap ? formatClubType(weakestGap.clubType) : "--"}
-            detail={weakestGap ? workOnText(weakestGap) : "No decision-ready gap yet"}
-            href={weakestGap ? `/bag/${weakestGap.id}` : undefined}
-          />
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2.5" aria-label="Full gapping ladder">
-        <IOSSectionHeader title="Full gapping ladder" />
-        {rows.length > 0 ? (
-          <IOSGroupedList label="Full gapping ladder">
-            {rows.map((row) => (
-              <IOSListRow
-                key={row.id}
-                label={formatClubType(row.clubType)}
-                value={formatCarryYards(visualCarryYd(row))}
-                detail={`${row.brandModel} · ${row.confidenceScore}% trust`}
-                href={`/bag/${row.id}`}
-              />
-            ))}
-          </IOSGroupedList>
-        ) : (
-          <p className="text-[13px] leading-5 text-muted-foreground">
-            Import several clubs to create a reliable carry ladder.
-          </p>
-        )}
-      </section>
-
-      {findings.length > 0 ? (
-        <section className="grid gap-2.5" aria-label="Supporting bag findings">
-          <IOSSectionHeader title="Supporting findings" />
-          <IOSGroupedList label="Supporting bag findings">
-            {findings.map((finding) => (
-              <IOSListRow
-                key={`${finding.title}-${finding.detail}`}
-                label={finding.title}
-                detail={finding.detail}
-                value={finding.label}
-                href={finding.href ?? "/import"}
-                status={
-                  <IOSInlineStatus
-                    label={mobileBagStatusLabel(finding.tone)}
-                    tone={mobileBagStatusTone(finding.tone)}
-                  />
-                }
-              />
-            ))}
-          </IOSGroupedList>
-        </section>
-      ) : null}
-    </div>
-  );
-}
-
-function MobileBagBenchmarkDetails({
-  rows,
-  peerSummary,
-  peerBenchmarksLoaded,
-}: {
-  rows: ClubBenchmarkRow[];
-  peerSummary: ClubBenchmarkPeerSummary;
-  peerBenchmarksLoaded: boolean;
-}) {
-  return (
-    <div className="grid gap-5">
-      <section className="grid gap-2.5" aria-label="Club distance benchmarks">
-        <IOSSectionHeader
-          title="Club benchmarks"
-          description="Carry level first; launch metrics remain available for each club."
-        />
-        <IOSGroupedList label="Club distance benchmarks">
-          {rows.map((row) => (
-            <IOSListRow
-              key={row.clubId}
-              label={formatClubType(row.clubType)}
-              detail={`${row.brandModel} · ${mobileBenchmarkMetricSummary(row)}`}
-              value={row.comparison.levelLabel}
-              href={`/bag/${row.clubId}`}
-              status={
-                <IOSInlineStatus
-                  label={`${formatCarryYards(row.carryYd)} · ${row.sampleSize} stock shots`}
-                  tone={row.confidenceScore >= 75 ? "positive" : "attention"}
-                />
-              }
-            />
-          ))}
-        </IOSGroupedList>
-      </section>
-
-      <section className="grid gap-2.5" aria-label="Peer benchmark context">
-        <IOSSectionHeader title="Peer context" />
-        {peerBenchmarksLoaded ? (
-          <IOSGroupedList label="Peer benchmark context">
-            <IOSListRow
-              icon={Users}
-              label="Visible peer pool"
-              value={`${peerSummary.peerUserCount} ${peerSummary.peerUserCount === 1 ? "golfer" : "golfers"}`}
-              detail={`${peerSummary.cohortLabel} · ${peerSummary.peerShotCount.toLocaleString("en-GB")} shots`}
-            />
-            {peerSummary.comparisons.map((comparison) => {
-              const matchingClub = rows.find((row) => row.clubType === comparison.clubType);
-
-              return (
-                <IOSListRow
-                  key={`${comparison.clubType}-${comparison.metricKey}`}
-                  label={`${formatClubType(comparison.clubType)} · ${mobileBenchmarkMetricLabel(comparison.metricKey)}`}
-                  value={
-                    comparison.percentile === null ? "--" : mobilePercentile(comparison.percentile)
-                  }
-                  detail={`${comparison.sampleSize.toLocaleString("en-GB")} peer shots`}
-                  href={matchingClub ? `/bag/${matchingClub.clubId}` : undefined}
-                />
-              );
+    <section
+      data-bag-supporting-evidence
+      className="overflow-hidden rounded-xl border border-border bg-muted/20"
+    >
+      <Collapsible>
+        <div className="p-4">
+          <CollapsibleTrigger
+            type="button"
+            data-variant="ghost"
+            className={buttonVariants({
+              variant: "ghost",
+              className: "h-auto w-full justify-between p-0 text-left",
             })}
-          </IOSGroupedList>
-        ) : (
-          <Button asChild variant="outline" className="min-h-11 w-full rounded-lg">
-            <Link href="/bag?peers=1#distance-benchmarks" prefetch={false}>
-              <Users className="size-4" aria-hidden />
-              Load peer benchmarks
-            </Link>
-          </Button>
-        )}
-      </section>
-    </div>
+          >
+            <span className="min-w-0">
+              <span className="block text-base font-semibold text-foreground">{title}</span>
+              <span className="mt-1 block text-sm font-normal text-muted-foreground">
+                {description}
+              </span>
+            </span>
+            <ChevronDown className="size-4 shrink-0" aria-hidden />
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="grid gap-5 border-t border-border p-4">
+          {children}
+        </CollapsibleContent>
+      </Collapsible>
+    </section>
   );
-}
-
-function MobileBagMethodology({
-  clubs,
-  featureData,
-}: {
-  clubs: BagClub[];
-  featureData: Awaited<ReturnType<typeof getFeatureIdeasData>>;
-}) {
-  return (
-    <div className="grid gap-5">
-      <BagFeaturePanel data={featureData} compactMobile />
-      <section className="grid gap-2.5" aria-label="Bag calculation method">
-        <IOSSectionHeader title="How this readout works" />
-        <IOSGroupedList label="Bag calculation method">
-          <IOSListRow
-            label="Recommended carry"
-            detail="The course number comes from usable stock-shot evidence; Best Stock remains supporting potential."
-          />
-          <IOSListRow
-            label="Trust"
-            detail="Sample size and consistency determine whether a club is decision-ready. Low-shot clubs stay visibly provisional."
-          />
-          <IOSListRow
-            label="Gap flags"
-            detail="Recommended carries are checked for overlaps and missing scoring or long-game windows."
-          />
-        </IOSGroupedList>
-      </section>
-      {clubs.length > 0 ? (
-        <NativeListSection title="Best-stock filters">
-          <StockFilterCards clubs={clubs} compact />
-        </NativeListSection>
-      ) : null}
-    </div>
-  );
-}
-
-function mobileClubSignal(club: BagClub) {
-  const carryYd = clubPrimaryCarryYd(club);
-
-  return carryYd === null ? `${club.stock.confidenceScore}% trust` : formatCarryYards(carryYd);
-}
-
-function mobileBenchmarkMetricSummary(row: ClubBenchmarkRow) {
-  const metrics = [
-    mobileBenchmarkMetricValue("Club", row.metrics?.clubSpeedMph, " mph"),
-    mobileBenchmarkMetricValue("Ball", row.metrics?.ballSpeedMph, " mph"),
-    mobileBenchmarkMetricValue("Smash", row.metrics?.smashFactor),
-    mobileBenchmarkMetricValue("Height", row.metrics?.maxHeightYd, " yd"),
-    mobileBenchmarkMetricValue("Land", row.metrics?.landAngleDeg, "°"),
-  ].filter((value): value is string => value !== null);
-
-  return metrics.length > 0 ? metrics.join(" · ") : "Launch metrics building";
-}
-
-function mobileBenchmarkMetricValue(label: string, value: number | null | undefined, unit = "") {
-  return value === null || value === undefined
-    ? null
-    : `${label} ${numberFormatter.format(value)}${unit}`;
-}
-
-function mobileBenchmarkMetricLabel(metric: ClubBenchmarkMetricKey) {
-  const labels: Record<ClubBenchmarkMetricKey, string> = {
-    carryYd: "Carry",
-    clubSpeedMph: "Club speed",
-    attackAngleDeg: "Attack angle",
-    ballSpeedMph: "Ball speed",
-    smashFactor: "Smash",
-    launchAngleDeg: "Launch",
-    spinRate: "Spin",
-    maxHeightYd: "Height",
-    landAngleDeg: "Land angle",
-  };
-
-  return labels[metric];
-}
-
-function mobilePercentile(value: number) {
-  const rounded = Math.round(value);
-  const remainder100 = rounded % 100;
-  const suffix =
-    remainder100 >= 11 && remainder100 <= 13
-      ? "th"
-      : rounded % 10 === 1
-        ? "st"
-        : rounded % 10 === 2
-          ? "nd"
-          : rounded % 10 === 3
-            ? "rd"
-            : "th";
-
-  return `${integerFormatter.format(rounded)}${suffix}`;
-}
-
-function mobileBagStatusTone(
-  tone: BagDoctorFinding["tone"],
-): "positive" | "attention" | "critical" | "info" | "neutral" {
-  if (tone === "green") return "positive";
-  if (tone === "amber") return "attention";
-  if (tone === "pink") return "critical";
-  if (tone === "sky") return "info";
-  return "neutral";
-}
-
-function mobileBagStatusLabel(tone: BagDoctorFinding["tone"]) {
-  if (tone === "green") return "On track";
-  if (tone === "amber") return "Review";
-  if (tone === "pink") return "Action required";
-  if (tone === "sky") return "Monitor";
-  return "Building";
 }
 
 async function getBagChallengeData(): Promise<{ active: ChallengeListItem[] }> {
@@ -1497,15 +1046,19 @@ function BagHealthHero({
   trend: BagScoreTrendPoint[];
 }) {
   return (
-    <section id="bag-health" className="premium-hero grid scroll-mt-28 gap-4 p-4 lg:p-5">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.52fr)]">
+    <Card
+      id="bag-health"
+      className="scroll-mt-28 overflow-hidden border-primary/20 shadow-sm"
+      data-bag-health-card
+    >
+      <CardContent className="grid gap-4 p-4 lg:p-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.52fr)]">
         <div className="grid gap-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="max-w-3xl">
               <StatusPill tone={bagScore >= 85 ? "green" : bagScore >= 70 ? "sky" : "amber"}>
                 Bag health
               </StatusPill>
-              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-normal text-slate-950">
+              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-normal text-foreground">
                 Bag health
               </h1>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -1529,32 +1082,20 @@ function BagHealthHero({
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
-            <BagHealthMetric
-              label="Bag score"
-              value={`${bagScore}%`}
-              detail={scoreLabel}
-              tone={bagScore >= 85 ? "green" : bagScore >= 70 ? "sky" : "amber"}
-            />
-            <BagHealthMetric
-              label="Confidence"
-              value={`${confidence}%`}
-              detail={`${clubs} active clubs`}
-              tone={confidence >= 75 ? "green" : confidence >= 60 ? "sky" : "amber"}
-            />
-            <BagHealthMetric
-              label="Data trust"
-              value={dataTrust}
-              detail={dataTrustDetail}
-              tone="sky"
-            />
-            <BagHealthMetric
-              label="Shots"
-              value={shots.toString()}
-              detail="Saved rows"
-              tone="slate"
-            />
-          </div>
+          <ConnectedMetricBar
+            embedded
+            label="Bag health metrics"
+            metrics={[
+              { label: "Bag score", value: `${bagScore}%`, detail: scoreLabel },
+              {
+                label: "Confidence",
+                value: `${confidence}%`,
+                detail: `${clubs} active clubs`,
+              },
+              { label: "Data trust", value: dataTrust, detail: dataTrustDetail },
+              { label: "Shots", value: shots.toString(), detail: "Saved rows" },
+            ]}
+          />
 
           <BagScoreTrendPanel points={trend} currentScore={bagScore} />
         </div>
@@ -1601,30 +1142,8 @@ function BagHealthHero({
             />
           </div>
         </div>
-      </div>
-    </section>
-  );
-}
-
-function BagHealthMetric({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: BagDoctorFinding["tone"];
-}) {
-  return (
-    <div className={`rounded-lg border px-3 py-3 ${intelligenceToneClass(tone)}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">{label}</p>
-      <p className="mt-2 text-3xl font-semibold leading-none tracking-normal text-slate-950">
-        {value}
-      </p>
-      <p className="mt-2 text-sm leading-5 text-slate-600">{detail}</p>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1642,11 +1161,22 @@ function BagHealthSignal({
   href?: string;
 }) {
   const content = (
-    <div className={`h-full rounded-lg border px-3 py-3 ${bagSignalToneClass(tone)}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">{label}</p>
-      <p className="mt-2 text-xl font-semibold leading-6 tracking-normal text-slate-950">{value}</p>
-      <p className="mt-2 text-sm leading-5 text-slate-600">{detail}</p>
-    </div>
+    <Item variant="outline" className="h-full items-start" data-bag-health-signal>
+      <ItemContent className="space-y-2">
+        <ItemDescription className="overflow-visible text-clip whitespace-normal font-semibold uppercase tracking-[0.12em]">
+          {label}
+        </ItemDescription>
+        <ItemTitle className="overflow-visible text-clip whitespace-normal text-xl font-semibold leading-6 tracking-normal">
+          {value}
+        </ItemTitle>
+        <ItemDescription className="overflow-visible text-clip whitespace-normal text-sm leading-5">
+          {detail}
+        </ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        <StatusPill tone={tone === "violet" ? "pink" : tone}>Signal</StatusPill>
+      </ItemActions>
+    </Item>
   );
 
   if (!href) {
@@ -1654,7 +1184,11 @@ function BagHealthSignal({
   }
 
   return (
-    <Link href={href} prefetch={false} className="block h-full transition-opacity hover:opacity-90">
+    <Link
+      href={href}
+      prefetch={false}
+      className="focus-aaa block h-full rounded-xl outline-none transition-opacity hover:opacity-90"
+    >
       {content}
     </Link>
   );
@@ -1681,7 +1215,7 @@ function BagScoreTrendPanel({
         ];
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white/82 p-3">
+    <div className="rounded-lg border border-border bg-card/82 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">Bag score trend</p>
@@ -1695,14 +1229,14 @@ function BagScoreTrendPanel({
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {visiblePoints.map((point) => (
-          <div key={point.key} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+          <div key={point.key} className="rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                 {point.label}
               </span>
               <span className={`font-semibold ${toneTextClass(point.tone)}`}>{point.score}%</span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-white">
+            <div className="mt-2 h-2 rounded-full bg-card">
               <span
                 className={`block h-2 rounded-full ${confidenceBarClass(point.tone)}`}
                 style={{ width: `${Math.max(4, Math.min(100, point.score))}%` }}
@@ -1714,12 +1248,6 @@ function BagScoreTrendPanel({
       </div>
     </div>
   );
-}
-
-function parsePersonalBestMetric(value: string | string[] | undefined): PersonalBestMetric {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-
-  return rawValue === "total" ? "total" : "carry";
 }
 
 function shouldLoadPeerBenchmarks(value: string | string[] | undefined) {
@@ -1780,56 +1308,13 @@ function clubSecondaryCarryYd(club: BagClub) {
   return club.stock.bestStockCarryYd;
 }
 
-function LowerScoresFeatureStack({
-  smartBagBuilder,
-  wedgeMatrix,
-  pathTrend,
-  shotPatternOverlays,
-  courseStrategy,
-  confidenceHeatMaps,
-  aiCaddieCards,
-  personalStrokesGained,
-  compact = false,
-}: {
-  smartBagBuilder: SmartBagBuilder;
-  wedgeMatrix: WedgeMatrixClub[];
-  pathTrend: PathTrendTracking;
-  shotPatternOverlays: ShotPatternOverlaySummary[];
-  courseStrategy: CourseStrategyMode;
-  confidenceHeatMaps: ConfidenceHeatMap[];
-  aiCaddieCards: AiCaddieCard[];
-  personalStrokesGained: PersonalStrokesGainedModel;
-  compact?: boolean;
-}) {
-  return (
-    <div className={compact ? "grid gap-3" : "grid gap-4"}>
-      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[0.85fr_1.15fr]"}>
-        <SmartBagBuilderPanel model={smartBagBuilder} />
-        <WedgeMatrixPanel matrix={wedgeMatrix} />
-      </div>
-      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[0.9fr_1.1fr]"}>
-        <PathTrendPanel trend={pathTrend} />
-        <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
-      </div>
-      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[1fr_1fr]"}>
-        <CourseStrategyModePanel strategy={courseStrategy} />
-        <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
-      </div>
-      <div className={compact ? "grid gap-3" : "grid gap-4 xl:grid-cols-[1fr_1fr]"}>
-        <AiCaddiePanel cards={aiCaddieCards} />
-        <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
-      </div>
-    </div>
-  );
-}
-
 function SmartBagBuilderPanel({ model }: { model: SmartBagBuilder }) {
   return (
     <DataPanel>
       <SectionHeader
         title="Gap wedge integration"
         description="Smart bag builder scores the current setup and ranks the next bag move."
-        action={<ShoppingBag className="size-5 text-emerald-600" />}
+        action={<ShoppingBag className="size-5 text-primary" />}
       />
       <CardContent className="grid gap-3">
         <div className="apple-panel-strong grid gap-2 p-4">
@@ -1853,7 +1338,7 @@ function SmartBagBuilderPanel({ model }: { model: SmartBagBuilder }) {
             model.suggestions.map((suggestion) => (
               <div
                 key={suggestion.id}
-                className="grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3"
+                className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -1870,7 +1355,7 @@ function SmartBagBuilderPanel({ model }: { model: SmartBagBuilder }) {
               </div>
             ))
           ) : (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
+            <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3 text-sm font-medium text-[var(--status-success-foreground)]">
               No urgent fitting gap in the current numbers.
             </div>
           )}
@@ -1886,7 +1371,7 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
       <SectionHeader
         title="Wedge matrix"
         description="Full, 3/4, and half-shot carry windows in one compact scoring table."
-        action={<Grid3X3 className="size-5 text-amber-600" />}
+        action={<Grid3X3 className="size-5 text-[var(--status-warning-foreground)]" />}
       />
       <CardContent>
         {matrix.length > 0 ? (
@@ -1913,11 +1398,11 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
                   Wedge matrix carry table showing club, full-shot carry, three-quarter carry, half
                   carry and scoring-window status.
                 </TableCaption>
-                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                   <TableRow>
                     <TableHead
                       data-column="club"
-                      className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                     >
                       Club
                     </TableHead>
@@ -1945,7 +1430,7 @@ function WedgeMatrixPanel({ matrix }: { matrix: WedgeMatrixClub[] }) {
                       <TableRow key={club.id} tabIndex={0} className="focus-aaa outline-none">
                         <TableCell
                           data-column="club"
-                          className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                          className="sticky left-0 z-10 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                         >
                           <div className="grid gap-0.5">
                             <span className="font-semibold">{club.label}</span>
@@ -2011,21 +1496,21 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
       <SectionHeader
         title="Face-to-path trend"
         description="Delivery diagnostics for where the face points compared with the swing path."
-        action={<Radar className="size-5 text-sky-600" />}
+        action={<Radar className="size-5 text-primary" />}
       />
       <CardContent className="grid gap-3">
-        <div className="grid gap-3 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 xl:grid-cols-[minmax(0,1fr)_auto]">
           <div className="min-w-0">
             <p className="text-base font-semibold">{trend.label}</p>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">{trend.detail}</p>
             <div className="mt-3 grid gap-2 text-xs font-semibold sm:grid-cols-3">
-              <span className="rounded-lg bg-white px-3 py-2 text-slate-950">
+              <span className="rounded-lg bg-card px-3 py-2 text-foreground">
                 Black line: club face
               </span>
-              <span className="rounded-lg bg-rose-50 px-3 py-2 text-rose-700">
+              <span className="rounded-lg bg-[var(--status-error-surface)] px-3 py-2 text-destructive">
                 Red line: swing path
               </span>
-              <span className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
+              <span className="rounded-lg bg-[var(--status-success-surface)] px-3 py-2 text-[var(--status-success-foreground)]">
                 Face-to-path: face minus path
               </span>
             </div>
@@ -2035,7 +1520,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
           </StatusPill>
         </div>
         {trend.clubs.length > 1 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <div className="rounded-lg border border-border bg-card p-3">
             <p className="text-sm font-semibold">Club delivery reads</p>
             <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {trend.clubs.map((club) => (
@@ -2043,11 +1528,11 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                   key={club.clubId}
                   href={`/bag/${club.clubId}/analytics`}
                   prefetch={false}
-                  className="grid gap-2 rounded-lg bg-[#F5F6F4] px-3 py-2 text-xs transition-colors hover:bg-white hover:shadow-sm"
+                  className="grid gap-2 rounded-lg bg-muted/30 px-3 py-2 text-xs transition-colors hover:bg-card hover:shadow-sm"
                 >
                   <span className="flex items-start justify-between gap-2">
                     <span>
-                      <span className="block text-sm font-semibold text-slate-950">
+                      <span className="block text-sm font-semibold text-foreground">
                         {club.label}
                       </span>
                       <span className="text-muted-foreground">
@@ -2061,7 +1546,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                   <span className="grid grid-cols-3 gap-1.5 font-semibold">
                     <span>Path {formatSignedDegrees(club.pathDeg)}</span>
                     <span>Face {formatSignedDegrees(club.faceDeg)}</span>
-                    <span className="text-emerald-700">
+                    <span className="text-primary">
                       Face-path {formatSignedDegrees(club.faceToPathProxyDeg)}
                     </span>
                   </span>
@@ -2075,7 +1560,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
             {trend.points.map((point) => (
               <div
                 key={point.monthKey}
-                className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                className="rounded-lg border border-border bg-card p-3 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -2098,7 +1583,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                   }}
                   idPrefix={`bag-month-${point.monthKey}`}
                   className="mt-3"
-                  chartClassName="bg-white"
+                  chartClassName="bg-card"
                 />
                 <p className="mt-2 min-h-8 text-xs leading-4 text-muted-foreground">
                   {point.patternDetail}
@@ -2113,21 +1598,23 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
           />
         )}
         {trend.recentShots.length > 0 ? (
-          <Collapsible className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex h-auto w-full justify-between px-0 text-slate-950"
-              >
-                <span>Expand shot-by-shot diagrams</span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  {trend.recentShots.length} recent shots
-                </span>
-              </Button>
+          <Collapsible className="rounded-lg border border-border bg-muted/30 p-3">
+            <CollapsibleTrigger
+              type="button"
+              data-variant="ghost"
+              className={buttonVariants({
+                variant: "ghost",
+                className: "flex h-auto w-full justify-between px-0 text-foreground",
+              })}
+            >
+              <span>Expand shot-by-shot diagrams</span>
+              <span className="text-xs font-medium text-muted-foreground">
+                {trend.recentShots.length} recent shots
+              </span>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 grid gap-3 xl:grid-cols-2">
               {trend.recentShots.map((shot) => (
-                <div key={shot.key} className="rounded-lg border border-slate-200 bg-white p-3">
+                <div key={shot.key} className="rounded-lg border border-border bg-card p-3">
                   <div>
                     <p className="text-sm font-semibold">{shot.patternLabel}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -2145,7 +1632,7 @@ function PathTrendPanel({ trend }: { trend: PathTrendTracking }) {
                     }}
                     idPrefix={`bag-shot-${shot.key}`}
                     className="mt-3"
-                    chartClassName="bg-white"
+                    chartClassName="bg-card"
                     showMetricPills={false}
                   />
                 </div>
@@ -2164,16 +1651,13 @@ function ShotPatternOverlayPanel({ overlays }: { overlays: ShotPatternOverlaySum
       <SectionHeader
         title="Shot pattern overlays"
         description="Carry cone, offline window, and playable rate from actual shot patterns."
-        action={<Layers3 className="size-5 text-emerald-600" />}
+        action={<Layers3 className="size-5 text-primary" />}
       />
       <CardContent>
         {overlays.length > 0 ? (
           <div className="grid gap-3 md:grid-cols-2">
             {overlays.map((overlay) => (
-              <div
-                key={overlay.clubId}
-                className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3"
-              >
+              <div key={overlay.clubId} className="rounded-lg border border-border bg-muted/30 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{overlay.label}</p>
@@ -2193,7 +1677,7 @@ function ShotPatternOverlayPanel({ overlays }: { overlays: ShotPatternOverlaySum
                     { key: "context", label: "Context" },
                   ]}
                   rows={shotPatternOverlayRows(overlay)}
-                  className="mt-2 bg-white/70"
+                  className="mt-2 bg-card/70"
                 />
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                   <Metric label="P10" value={formatCarryYards(overlay.carryP10Yd)} />
@@ -2214,46 +1698,19 @@ function ShotPatternOverlayPanel({ overlays }: { overlays: ShotPatternOverlaySum
   );
 }
 
-function CourseStrategyModePanel({ strategy }: { strategy: CourseStrategyMode }) {
-  return (
-    <DataPanel>
-      <SectionHeader
-        title="Course strategy mode"
-        description="Target-yardage calls from recommended carries and miss windows."
-        action={<MapPinned className="size-5 text-sky-600" />}
-      />
-      <CardContent>
-        <CompactReadoutGrid
-          columnsClassName="md:grid-cols-2"
-          items={strategy.scenarios.map((scenario) => ({
-            label: scenario.label,
-            value: scenario.recommendation,
-            detail: scenario.detail,
-            tone: scenario.tone,
-            href: scenario.clubId ? `/bag/${scenario.clubId}` : undefined,
-          }))}
-        />
-      </CardContent>
-    </DataPanel>
-  );
-}
-
 function ConfidenceHeatMapPanel({ heatMaps }: { heatMaps: ConfidenceHeatMap[] }) {
   return (
     <DataPanel>
       <SectionHeader
         title="Confidence heat maps"
         description="Green, amber, and red carry windows by club."
-        action={<Sparkles className="size-5 text-emerald-600" />}
+        action={<Sparkles className="size-5 text-primary" />}
       />
       <CardContent>
         {heatMaps.length > 0 ? (
           <div className="grid gap-3">
             {heatMaps.slice(0, 4).map((heatMap) => (
-              <div
-                key={heatMap.clubId}
-                className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3"
-              >
+              <div key={heatMap.clubId} className="rounded-lg border border-border bg-muted/30 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold">{heatMap.label}</p>
@@ -2300,7 +1757,7 @@ function AiCaddiePanel({ cards }: { cards: AiCaddieCard[] }) {
       <SectionHeader
         title="Future recommendations"
         description="Number-led development calls from bag, wedge, strategy, and SG evidence."
-        action={<Bot className="size-5 text-emerald-600" />}
+        action={<Bot className="size-5 text-primary" />}
       />
       <CardContent>
         <CompactReadoutGrid
@@ -2323,7 +1780,7 @@ function PersonalStrokesGainedModelPanel({ model }: { model: PersonalStrokesGain
       <SectionHeader
         title="Personal strokes gained"
         description="Your own judged round events, grouped into the scoring model."
-        action={<Brain className="size-5 text-sky-600" />}
+        action={<Brain className="size-5 text-[var(--status-information-foreground)]" />}
       />
       <CardContent className="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -2336,7 +1793,7 @@ function PersonalStrokesGainedModelPanel({ model }: { model: PersonalStrokesGain
             {model.categories.map((category) => (
               <div
                 key={category.category}
-                className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 text-sm"
+                className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm"
               >
                 <span className="font-semibold">{category.label}</span>
                 <span className="text-muted-foreground">{category.sampleSize} shots</span>
@@ -2357,7 +1814,7 @@ function PersonalStrokesGainedModelPanel({ model }: { model: PersonalStrokesGain
 
 function EmptyPanelMessage({ title, detail }: { title: string; detail: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
       <p className="font-semibold">{title}</p>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
     </div>
@@ -2366,11 +1823,11 @@ function EmptyPanelMessage({ title, detail }: { title: string; detail: string })
 
 function WedgeRolePanel({ clubs }: { clubs: BagClub[] }) {
   return (
-    <DataPanel>
+    <DataPanel id="wedge-roles" className="scroll-mt-28">
       <SectionHeader
         title="Wedge roles"
         description="Full, pitch, and chip/touch windows are derived without changing the database schema."
-        action={<Target className="size-5 text-emerald-600" />}
+        action={<Target className="size-5 text-primary" />}
       />
       <CardContent>
         <WedgeRoleCards clubs={clubs} />
@@ -2387,7 +1844,7 @@ function WedgeRoleCards({ clubs, compact = false }: { clubs: BagClub[]; compact?
           key={club.id}
           href={`/bag/${club.id}`}
           prefetch={false}
-          className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-emerald-300"
+          className="rounded-lg border border-border bg-muted/30 p-3 transition-colors hover:border-primary/40"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -2421,7 +1878,7 @@ function WedgeRoleReadout({
   summary: StockShotRoleSummary | null;
 }) {
   return (
-    <div className="grid grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-white/80 px-2 py-1.5 text-xs">
+    <div className="grid grid-cols-[5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-card/80 px-2 py-1.5 text-xs">
       <span className="font-semibold">{wedgeRoleLabel(role)}</span>
       <span className="truncate text-muted-foreground">
         {summary ? `${summary.sampleSize} shots · ${formatRoleRange(summary)}` : "No shots"}
@@ -2460,10 +1917,10 @@ function BagStickySummary({ rows }: { rows: GappingRow[] }) {
               key={row.id}
               href={`/bag/${row.id}`}
               prefetch={false}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-200/70 bg-white/86 px-2.5 text-sm font-semibold shadow-sm transition-colors hover:border-emerald-300"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-border/70 bg-card/86 px-2.5 text-sm font-semibold shadow-sm transition-colors hover:border-primary/40"
             >
               <span className="text-muted-foreground">{compactClubLabel(row.clubType)}</span>
-              <span className="text-slate-950">{compactCarryYards(visualCarryYd(row))}</span>
+              <span className="text-foreground">{compactCarryYards(visualCarryYd(row))}</span>
             </Link>
           ))}
         </div>
@@ -2476,30 +1933,35 @@ function StockFilterPanel({ clubs }: { clubs: BagClub[] }) {
   return (
     <DataPanel id="best-stock-filters" className="scroll-mt-28">
       <Collapsible className="group">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="grid w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-transparent px-4 py-3 text-left transition-colors hover:bg-slate-50/70 group-data-[state=open]:border-border"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <Database className="size-5 text-sky-600" />
-                <h2 className="text-lg font-semibold tracking-normal text-[#111611] sm:text-xl">
-                  Best-stock filters
-                </h2>
-              </div>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Shows why rows did not feed the Best Stock median. Personal Best is tracked
-                separately so one long clean shot still appears.
-              </p>
+        <CollapsibleTrigger
+          type="button"
+          data-variant="ghost"
+          data-size="lg"
+          className={buttonVariants({
+            variant: "ghost",
+            size: "lg",
+            className:
+              "grid h-auto w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-4 whitespace-normal rounded-none border-b border-transparent px-4 py-3 text-left transition-colors hover:bg-muted/50 group-data-[state=open]:border-border",
+          })}
+        >
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Database className="size-5 text-[var(--status-information-foreground)]" />
+              <h2 className="text-lg font-semibold tracking-normal text-foreground sm:text-xl">
+                Best-stock filters
+              </h2>
             </div>
-            <div className="flex items-center gap-3">
-              <StatusPill tone="sky">Secondary</StatusPill>
-              <ChevronDown className="size-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-            </div>
-          </button>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              Shows why rows did not feed the Best Stock median. Personal Best is tracked separately
+              so one long clean shot still appears.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <StatusPill tone="sky">Secondary</StatusPill>
+            <ChevronDown className="size-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+          </div>
         </CollapsibleTrigger>
-        <CollapsibleContent asChild>
+        <CollapsibleContent>
           <CardContent>
             <StockFilterCards clubs={clubs} />
           </CardContent>
@@ -2521,7 +1983,7 @@ function StockFilterCards({ clubs, compact = false }: { clubs: BagClub[]; compac
           key={club.id}
           href={`/bag/${club.id}`}
           prefetch={false}
-          className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-sky-300"
+          className="rounded-lg border border-border bg-muted/30 p-3 transition-colors hover:border-[var(--status-information-border)]"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -2553,6 +2015,7 @@ function BagConfidenceLadder({
   if (rows.length === 0) {
     return null;
   }
+  const leadFinding = findings.find((finding) => finding.tone !== "green") ?? findings[0];
 
   return (
     <section
@@ -2563,7 +2026,7 @@ function BagConfidenceLadder({
         <SectionHeader
           title="Bag confidence ladder"
           description="Recommended is the primary course number. Best Stock stays visible as potential."
-          action={<Gauge className="size-5 text-emerald-600" />}
+          action={<Gauge className="size-5 text-primary" />}
         />
         <CardContent>
           <div className="max-w-full overflow-hidden">
@@ -2582,7 +2045,7 @@ function BagConfidenceLadder({
                     key={row.id}
                     href={`/bag/${row.id}`}
                     prefetch={false}
-                    className="premium-rail-card grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg p-3 transition-colors hover:border-emerald-300"
+                    className="premium-rail-card grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg p-3 transition-colors hover:border-primary/40"
                   >
                     <div className="min-w-0">
                       <div className="flex items-start justify-between gap-2">
@@ -2601,9 +2064,9 @@ function BagConfidenceLadder({
                       <p className="mt-1 text-3xl font-semibold tracking-normal">
                         {formatCarryYards(visualCarry)}
                       </p>
-                      <div className="mt-3 h-2 rounded-full bg-slate-100">
+                      <div className="mt-3 h-2 rounded-full bg-muted">
                         <span
-                          className="block h-2 rounded-full bg-[#0B7A3B]"
+                          className="block h-2 rounded-full bg-primary"
                           style={{
                             width: `${carryWidthPercent(visualCarry, maxCarryYd)}%`,
                           }}
@@ -2612,12 +2075,12 @@ function BagConfidenceLadder({
                     </div>
 
                     <div className="grid gap-2 text-xs">
-                      <div className="rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                      <div className="rounded-md bg-muted/30 px-2 py-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-muted-foreground">Trust</span>
                           <span className="font-semibold">{row.confidenceScore}%</span>
                         </div>
-                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white">
+                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-card">
                           <span
                             className={`block h-full rounded-full ${confidenceBarClass(
                               confidence.tone,
@@ -2626,7 +2089,7 @@ function BagConfidenceLadder({
                           />
                         </div>
                       </div>
-                      <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                         <span className="text-muted-foreground">
                           {row.playNumberYd === null ? "Recommended" : "Best stock"}
                         </span>
@@ -2634,7 +2097,7 @@ function BagConfidenceLadder({
                           {row.playNumberYd === null ? "--" : formatCarryYards(row.carryYd)}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between gap-2 rounded-md bg-[#F5F6F4] px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5">
                         <span className="text-muted-foreground">Course gap</span>
                         <span className="font-semibold">{gap.value}</span>
                       </div>
@@ -2650,37 +2113,53 @@ function BagConfidenceLadder({
         </CardContent>
       </DataPanel>
 
-      <DataPanel>
-        <SectionHeader
-          title="Gapping doctor"
-          description="Flags overlap, course-critical yardage windows, and numbers that need more clean shots."
-          action={
-            findings.every((finding) => finding.tone === "green") ? (
-              <ShieldCheck className="size-5 text-emerald-600" />
+      <div className="grid gap-3" data-bag-gapping-doctor>
+        {leadFinding ? (
+          <Alert variant={leadFinding.tone === "pink" ? "destructive" : "default"}>
+            {leadFinding.tone === "green" ? (
+              <ShieldCheck className="size-4" aria-hidden />
             ) : (
-              <AlertTriangle className="size-5 text-amber-600" />
-            )
-          }
-        />
-        <CardContent className="grid gap-3">
-          {findings.map((finding) => (
-            <Link
-              key={`${finding.title}-${finding.detail}`}
-              href={finding.href ?? "/import"}
-              prefetch={false}
-              className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3 transition-colors hover:border-emerald-300"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">{finding.title}</p>
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{finding.detail}</p>
-                </div>
-                <StatusPill tone={finding.tone}>{finding.label}</StatusPill>
-              </div>
-            </Link>
-          ))}
-        </CardContent>
-      </DataPanel>
+              <AlertTriangle className="size-4" aria-hidden />
+            )}
+            <AlertTitle className="flex flex-wrap items-center gap-2">
+              {leadFinding.title}
+              <Badge variant="secondary">{leadFinding.label}</Badge>
+            </AlertTitle>
+            <AlertDescription>{leadFinding.detail}</AlertDescription>
+          </Alert>
+        ) : null}
+        <Collapsible>
+          <CollapsibleTrigger
+            type="button"
+            className={buttonVariants({
+              variant: "outline",
+              className: "w-full justify-between",
+            })}
+          >
+            Review all gap findings
+            <Badge variant="secondary">{findings.length}</Badge>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="grid gap-2 pt-2">
+            {findings.map((finding) => (
+              <Link
+                key={`${finding.title}-${finding.detail}`}
+                href={finding.href ?? "/import"}
+                prefetch={false}
+              >
+                <Item variant="outline" size="sm">
+                  <ItemContent>
+                    <ItemTitle>{finding.title}</ItemTitle>
+                    <ItemDescription>{finding.detail}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    <Badge variant="secondary">{finding.label}</Badge>
+                  </ItemActions>
+                </Item>
+              </Link>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
     </section>
   );
 }
@@ -3621,136 +3100,13 @@ function buildClubIntelligenceItems(bag: BagClub[]): ClubIntelligenceItem[] {
   });
 }
 
-function MobileClubArtworkCarousel({ clubs }: { clubs: BagClub[] }) {
-  if (clubs.length === 0) {
-    return null;
-  }
-
-  return (
-    <NativeListSection
-      title="Swipe your bag"
-      description="Trust-first club cards. Recommended is the number to take to the course."
-    >
-      <div className="-mx-4 max-w-[100vw] overflow-hidden">
-        <div
-          aria-label="Swipe through clubs"
-          tabIndex={0}
-          className="focus-aaa flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 outline-none"
-        >
-          {clubs.map((club, index) => {
-            const health = clubHealthReadout(club);
-            const miss = clubCurrentMiss(club);
-            const primaryCarry = clubPrimaryCarryYd(club);
-            const secondaryCarry = clubSecondaryCarryYd(club);
-
-            return (
-              <Link
-                key={club.id}
-                href={`/bag/${club.id}`}
-                prefetch={false}
-                className="focus-aaa apple-panel-strong grid min-h-[25rem] w-[85vw] max-w-[22rem] shrink-0 snap-center content-between gap-3 rounded-lg p-3 outline-none transition-transform duration-150 ease-out active:scale-[0.985]"
-              >
-                <div className="grid gap-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        {health.label}
-                      </p>
-                      <h3 className="truncate text-3xl font-semibold leading-tight tracking-normal text-foreground">
-                        {formatClubType(club.type)}
-                      </h3>
-                      <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
-                        {club.brandModel}
-                      </p>
-                    </div>
-                    <StatusPill tone={health.tone}>{clubTrustScore(club)}%</StatusPill>
-                  </div>
-                  <ClubArtwork
-                    clubType={club.type}
-                    brand={club.brand}
-                    model={club.model}
-                    alt=""
-                    view={index % 2 === 0 ? "side" : "top"}
-                    source="generated-v2"
-                    className="h-32 rounded-lg border-emerald-950/10 bg-[linear-gradient(180deg,#ffffff,#eef6ef)]"
-                    imageClassName="px-4 py-3"
-                    sizes="85vw"
-                    priority={index === 0}
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <ClubCarouselMetric
-                      label={club.isShortGameTouch ? "Touch median" : "Recommended"}
-                      value={formatCarryYards(primaryCarry)}
-                      emphasis
-                    />
-                    <ClubCarouselMetric
-                      label={club.isShortGameTouch ? "Full stock" : "Best Stock"}
-                      value={formatCarryYards(secondaryCarry)}
-                    />
-                    <ClubCarouselMetric
-                      label="Latest Reliable"
-                      value={formatCarryYards(club.stock.latestReliableCarryYd)}
-                    />
-                    <ClubCarouselMetric
-                      label="Personal Best"
-                      value={formatCarryYards(club.stock.personalBestCarryYd)}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2 rounded-lg border border-emerald-950/10 bg-white/78 p-3 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-semibold text-foreground">{miss.label}</span>
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {club.rawShotCount} shots
-                    </span>
-                  </div>
-                  <p className="line-clamp-2 leading-5 text-muted-foreground">{health.detail}</p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-    </NativeListSection>
-  );
-}
-
-function ClubCarouselMetric({
-  label,
-  value,
-  emphasis = false,
-}: {
-  label: string;
-  value: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-lg border p-2.5 ${
-        emphasis
-          ? "border-emerald-800/25 bg-emerald-950 text-white"
-          : "border-emerald-950/10 bg-white/82 text-foreground"
-      }`}
-    >
-      <p
-        className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${
-          emphasis ? "text-emerald-50/80" : "text-muted-foreground"
-        }`}
-      >
-        {label}
-      </p>
-      <p className="mt-1 truncate text-xl font-semibold tracking-normal">{value}</p>
-    </div>
-  );
-}
-
 function CourseDecisionPanel({ advice }: { advice: CourseDecisionAdvice[] }) {
   return (
     <DataPanel>
       <SectionHeader
         title="On-course decisions"
         description="Recommended-number reminders from the current bag map."
-        action={<MapPinned className="size-5 text-sky-500" />}
+        action={<MapPinned className="size-5 text-[var(--status-information-foreground)]" />}
       />
       <CardContent>
         <CompactReadoutGrid
@@ -3778,7 +3134,7 @@ function PersonalBestSnapshotPanel({ clubs }: { clubs: BagClub[] }) {
       <SectionHeader
         title="Personal bests"
         description="Compact peak-distance reference without a full-screen bar chart."
-        action={<Trophy className="size-5 text-amber-600" />}
+        action={<Trophy className="size-5 text-[var(--status-warning-foreground)]" />}
       />
       <CardContent>
         {rows.length > 0 ? (
@@ -3793,10 +3149,10 @@ function PersonalBestSnapshotPanel({ clubs }: { clubs: BagClub[] }) {
                   key={club.id}
                   href={`/bag/${club.id}`}
                   prefetch={false}
-                  className="grid min-w-32 rounded-lg border border-slate-200 bg-[#F5F6F4] px-3 py-3 transition-colors hover:border-amber-300"
+                  className="grid min-w-32 rounded-lg border border-border bg-muted/30 px-3 py-3 transition-colors hover:border-[var(--status-warning-border)]"
                 >
                   <span className="text-sm font-semibold">{formatClubType(club.type)}</span>
-                  <span className="mt-1 text-2xl font-semibold tracking-normal text-slate-950">
+                  <span className="mt-1 text-2xl font-semibold tracking-normal text-foreground">
                     {formatMetric(club.personalBest.carryYd)}
                     {club.personalBest.carryYd === null ? "" : " yd"}
                   </span>
@@ -3855,7 +3211,7 @@ function BagSocialComparison({
       <SectionHeader
         title="Friend comparison"
         description="Only shown as an opt-in leaderboard prompt. Bag data stays private unless profile visibility allows it."
-        action={<Users className="size-5 text-emerald-600" />}
+        action={<Users className="size-5 text-primary" />}
       />
       <CardContent className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <div className="trust-indicator rounded-lg p-3 text-sm leading-6 text-muted-foreground">
@@ -3881,66 +3237,26 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
   const targetGapYd = rows.find((row) => row.targetGapYd !== null)?.targetGapYd ?? null;
 
   return (
-    <Card className="premium-card min-w-0 overflow-hidden">
-      <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-xl tracking-normal sm:text-2xl">
+    <section className="min-w-0 overflow-hidden" data-full-gapping-evidence>
+      <div className="pb-4">
+        <h3 className="text-xl font-semibold tracking-normal sm:text-2xl">
           Carry gapping reference
-        </CardTitle>
-        <CardDescription className="hidden sm:block">
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
           Target gap stays visible. The full club table is available when you need the detail.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4 p-4 pt-0 sm:space-y-5 sm:p-6 sm:pt-0">
+        </p>
+      </div>
+      <div className="space-y-4 sm:space-y-5">
         {targetGapYd !== null ? (
-          <>
-            <MobileAccordionSection
-              title="Gapping targets"
-              description="Target gap and priorities."
-              count={`${rows.length} clubs`}
-            >
-              <GappingRecommendations rows={rows} targetGapYd={targetGapYd} compact />
-            </MobileAccordionSection>
-            <div className="hidden sm:block">
-              <GappingRecommendations rows={rows} targetGapYd={targetGapYd} />
-            </div>
-          </>
+          <GappingRecommendations rows={rows} targetGapYd={targetGapYd} />
         ) : null}
         <CarryGappingBars rows={rows} />
-        <MobileAccordionSection title="Full gapping table" count={`${rows.length} clubs`}>
-          <MobileDataList>
-            {rows.map((row) => (
-              <MobileDataCard
-                key={row.id}
-                href={`/bag/${row.id}`}
-                title={formatClubType(row.clubType)}
-                subtitle={row.brandModel}
-                action={<GapBadge row={row} />}
-              >
-                <DataPair
-                  label="Best stock"
-                  value={`${formatMetric(row.carryYd)}${row.carryYd === null ? "" : " yd"}`}
-                />
-                <DataPair label="Latest reliable" value={formatLatestReliable(row)} />
-                <DataPair
-                  label="Recommended"
-                  value={`${formatMetric(row.playNumberYd)}${row.playNumberYd === null ? "" : " yd"}`}
-                />
-                <DataPair
-                  label="Personal best"
-                  value={`${formatMetric(row.personalBestCarryYd)}${row.personalBestCarryYd === null ? "" : " yd"}`}
-                />
-                <DataPair
-                  label="Target"
-                  value={`${formatMetric(row.targetCarryYd)}${row.targetCarryYd === null ? "" : " yd"}`}
-                />
-                <DataPair label="Work on" value={<WorkOnBadge row={row} />} />
-                <DataPair label="Decision" value={`${row.confidenceScore}% ${row.decisionLabel}`} />
-              </MobileDataCard>
-            ))}
-          </MobileDataList>
-        </MobileAccordionSection>
-        <div className="hidden min-w-0 overflow-hidden sm:block" data-bag-gapping-table>
-          <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
+        <div
+          id="bag-gapping-table"
+          className="min-w-0 scroll-mt-28 overflow-hidden"
+          data-bag-gapping-table
+        >
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold">
             <span>Full gapping table</span>
             <StatusPill tone="sky">{rows.length} clubs</StatusPill>
           </div>
@@ -3966,11 +3282,11 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                 Full bag gapping table with stock carry, latest reliable carry, recommended number,
                 personal best, target gap, sample size and decision confidence.
               </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
                 <TableRow>
                   <TableHead
                     data-column="club"
-                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     Club
                   </TableHead>
@@ -4009,7 +3325,7 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
                   <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
                     <TableCell
                       data-column="club"
-                      className="sticky left-0 z-10 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                      className="sticky left-0 z-10 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                     >
                       <Link
                         href={`/bag/${row.id}`}
@@ -4078,8 +3394,8 @@ function CarryGappingTable({ rows }: { rows: GappingRow[] }) {
             </Table>
           </DataTableFrame>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -4162,14 +3478,14 @@ function CarryGappingBars({ rows }: { rows: GappingRow[] }) {
           <Link
             key={row.id}
             href={`/bag/${row.id}`}
-            className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/80"
+            className="grid gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-card/80"
           >
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold">{formatClubType(row.clubType)}</span>
               {carryBarReadout(row)}
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-white">
-              <div className="h-full rounded-full bg-emerald-600" style={{ width: `${width}%` }} />
+            <div className="h-3 overflow-hidden rounded-full bg-card">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
             </div>
           </Link>
         );
@@ -4182,7 +3498,7 @@ function carryBarReadout(row: GappingRow) {
   if (row.playNumberYd !== null) {
     return (
       <span className="grid gap-0.5 text-right leading-tight">
-        <span className="font-semibold text-slate-900">
+        <span className="font-semibold text-foreground">
           {formatMetric(row.playNumberYd)} yd recommended
         </span>
         <span className="text-xs text-muted-foreground">
@@ -4195,13 +3511,13 @@ function carryBarReadout(row: GappingRow) {
   if (row.carryYd !== null) {
     return (
       <span className="grid gap-0.5 text-right leading-tight">
-        <span className="font-semibold text-slate-900">{formatMetric(row.carryYd)} yd stock</span>
+        <span className="font-semibold text-foreground">{formatMetric(row.carryYd)} yd stock</span>
         <span className="text-xs text-muted-foreground">recommended building</span>
       </span>
     );
   }
 
-  return <span className="text-slate-700">Needs calibration</span>;
+  return <span className="text-foreground">Needs calibration</span>;
 }
 
 function carryWidthPercent(carryYd: number | null, maxCarry: number) {
@@ -4222,18 +3538,18 @@ function GapBadge({ row }: { row: GappingRow }) {
   const input = gapWindowInput(row);
   const tone =
     gapYd < 8 && isSevereGapCompression(row)
-      ? "border-rose-200 bg-rose-50 text-rose-700"
+      ? "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive"
       : gapYd < 8
-        ? "border-amber-200 bg-amber-50 text-amber-700"
+        ? "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]"
         : gapYd > 18 && isScoringEndGap(input)
-          ? "border-amber-200 bg-amber-50 text-amber-700"
+          ? "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]"
           : gapYd > 18 && isMissingYardageWindowGap(input)
-            ? "border-sky-200 bg-sky-50 text-sky-700"
+            ? "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]"
             : gapYd > 18 && isManageableTopEndGap(input)
-              ? "border-sky-200 bg-sky-50 text-sky-700"
+              ? "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]"
               : gapYd > 18
-                ? "border-sky-200 bg-sky-50 text-sky-700"
-                : "border-emerald-200 bg-emerald-50 text-emerald-700";
+                ? "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]"
+                : "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
 
   return (
     <span
@@ -4269,90 +3585,82 @@ function WorkOnBadge({
 
 function targetToneClass(tone: GappingTargetTone) {
   if (tone === "green") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
   }
 
   if (tone === "sky") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
   }
 
   if (tone === "amber") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
 
   if (tone === "pink") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive";
   }
 
-  return "border-slate-200 bg-slate-50 text-slate-600";
+  return "border-border bg-muted/50 text-muted-foreground";
 }
 
 function confidenceBarClass(tone: BagDoctorFinding["tone"]) {
   if (tone === "green") {
-    return "bg-emerald-600";
+    return "bg-[var(--confidence-high)]";
   }
 
   if (tone === "sky") {
-    return "bg-sky-500";
+    return "bg-[var(--chart-2)]";
   }
 
   if (tone === "amber") {
-    return "bg-amber-500";
+    return "bg-[var(--confidence-medium)]";
   }
 
   if (tone === "pink") {
-    return "bg-pink-600";
+    return "bg-[var(--confidence-low)]";
   }
 
-  return "bg-slate-400";
+  return "bg-muted-foreground";
 }
 
 function intelligenceToneClass(tone: "green" | "sky" | "amber" | "pink" | "slate") {
   if (tone === "green") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]";
   }
 
   if (tone === "sky") {
-    return "border-sky-200 bg-sky-50 text-sky-700";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]";
   }
 
   if (tone === "amber") {
-    return "border-amber-200 bg-amber-50 text-amber-700";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
 
   if (tone === "pink") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive";
   }
 
-  return "border-slate-200 bg-slate-50 text-slate-600";
-}
-
-function bagSignalToneClass(tone: BagDoctorFinding["tone"] | "violet") {
-  if (tone === "violet") {
-    return "border-violet-200 bg-violet-50 text-violet-700";
-  }
-
-  return intelligenceToneClass(tone);
+  return "border-border bg-muted/50 text-muted-foreground";
 }
 
 function toneTextClass(tone: BagDoctorFinding["tone"]) {
   if (tone === "green") {
-    return "text-emerald-700";
+    return "text-[var(--status-success-foreground)]";
   }
 
   if (tone === "sky") {
-    return "text-sky-700";
+    return "text-[var(--status-information-foreground)]";
   }
 
   if (tone === "amber") {
-    return "text-amber-800";
+    return "text-[var(--status-warning-foreground)]";
   }
 
   if (tone === "pink") {
-    return "text-rose-700";
+    return "text-destructive";
   }
 
-  return "text-slate-600";
+  return "text-muted-foreground";
 }
 
 function pathTrendStatusTone(status: PathTrendTracking["status"]) {
@@ -4548,15 +3856,15 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
   const driverContext = buildDriverEvolutionContext(clubLines);
 
   return (
-    <DataPanel>
+    <DataPanel id="club-evolution" className="scroll-mt-28">
       <SectionHeader
         title="Club evolution"
         description="Monthly median carry from clean-stock shots, with sample size and retest confidence."
-        action={<TrendingUp className="size-5 text-emerald-600" />}
+        action={<TrendingUp className="size-5 text-primary" />}
       />
       <CardContent>
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-[#F5F6F4]">
-          <div className="grid grid-cols-[7rem_minmax(0,1fr)_8rem_10rem] gap-3 border-b border-slate-200 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="overflow-hidden rounded-lg border border-border bg-muted/30">
+          <div className="grid grid-cols-[7rem_minmax(0,1fr)_8rem_10rem] gap-3 border-b border-border bg-card px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             <span>Club</span>
             <span>Last three months</span>
             <span className="text-right">Change</span>
@@ -4570,7 +3878,7 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
                 key={club.id}
                 href={`/bag/${club.id}`}
                 prefetch={false}
-                className="grid grid-cols-[7rem_minmax(0,1fr)_8rem_10rem] items-center gap-3 border-b border-slate-200 px-3 py-2 text-sm transition-colors last:border-b-0 hover:bg-white"
+                className="grid grid-cols-[7rem_minmax(0,1fr)_8rem_10rem] items-center gap-3 border-b border-border px-3 py-2 text-sm transition-colors last:border-b-0 hover:bg-card"
               >
                 <span className="font-semibold">{formatClubType(club.type)}</span>
                 <span className="grid grid-cols-3 gap-2">
@@ -4578,7 +3886,7 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
                     <span
                       key={point.key}
                       className={`rounded-md px-2 py-1 ${
-                        point.carryYd === null ? "bg-white/45 text-muted-foreground" : "bg-white/80"
+                        point.carryYd === null ? "bg-card/45 text-muted-foreground" : "bg-card/80"
                       }`}
                     >
                       <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -4612,21 +3920,24 @@ function ClubEvolutionPanel({ clubs }: { clubs: BagClub[] }) {
         </div>
         {driverContext ? <DriverEvolutionContextCard context={driverContext} /> : null}
         <Collapsible className="group mt-3">
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold transition-colors hover:border-emerald-300"
-            >
-              <span>Expand evolution notes</span>
-              <ChevronDown className="size-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-            </button>
+          <CollapsibleTrigger
+            type="button"
+            data-variant="outline"
+            className={buttonVariants({
+              variant: "outline",
+              className:
+                "h-auto w-full cursor-pointer items-center justify-between gap-3 whitespace-normal px-3 py-2 text-sm font-semibold transition-colors hover:border-primary/40",
+            })}
+          >
+            <span>Expand evolution notes</span>
+            <ChevronDown className="size-5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {clubLines.map(({ club, measuredPoints }) => {
               const readout = clubEvolutionReadout(club, measuredPoints);
 
               return (
-                <div key={club.id} className="rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+                <div key={club.id} className="rounded-lg border border-border bg-muted/30 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-base font-semibold">{formatClubType(club.type)}</p>
                     <StatusPill tone={readout.tone}>{readout.label}</StatusPill>
@@ -4663,7 +3974,7 @@ function DriverEvolutionContextCard({ context }: { context: DriverEvolutionConte
   const baselineCarryLabel = formatCarryYards(context.baselineMonth.carryYd);
 
   return (
-    <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+    <div className="mt-3 rounded-lg border border-border bg-card p-3">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -5130,18 +4441,18 @@ function clubEvolutionTextClass(points: ClubEvolutionMeasuredPoint[]) {
   const tone = clubEvolutionTone(points);
 
   if (tone === "green") {
-    return "text-emerald-700";
+    return "text-[var(--status-success-foreground)]";
   }
 
   if (tone === "amber" || tone === "pink") {
-    return "text-amber-800";
+    return "text-[var(--status-warning-foreground)]";
   }
 
   if (tone === "sky") {
-    return "text-sky-700";
+    return "text-[var(--status-information-foreground)]";
   }
 
-  return "text-slate-600";
+  return "text-muted-foreground";
 }
 
 function averageNumber(values: number[]) {
@@ -5200,18 +4511,6 @@ function formatSignedStrokes(value: number | null) {
   }
 
   return `${value > 0 ? "+" : ""}${numberFormatter.format(value)}`;
-}
-
-function formatLatestReliable(row: GappingRow) {
-  if (row.latestReliableCarryYd === null) {
-    return "--";
-  }
-
-  const range = formatCarryRange(row.latestReliableCarryP25Yd, row.latestReliableCarryP75Yd);
-
-  return range === "--"
-    ? `${formatMetric(row.latestReliableCarryYd)} yd`
-    : `${formatMetric(row.latestReliableCarryYd)} yd · ${range}`;
 }
 
 function hasWedgeRoleReadout(club: BagClub) {

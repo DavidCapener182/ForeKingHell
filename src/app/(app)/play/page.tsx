@@ -2,16 +2,25 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { and, asc, countDistinct, desc, eq, inArray, or } from "drizzle-orm";
-import { Cuboid, Flag, MapPinned, ShieldCheck } from "lucide-react";
+import { Cuboid, Flag, MapPinned, MoreHorizontal, ShieldCheck } from "lucide-react";
 
-import { PlaySelectionControls } from "@/app/play/play-selection-controls";
-import { PlaySetupDrawer } from "@/app/play/play-setup-drawer";
+import { LazyPlaySetupDrawer } from "@/app/play/lazy-play-setup-drawer";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Item,
   ItemActions,
@@ -83,22 +92,20 @@ export default async function PlayCompanionPage({
     courseTwinAvailable: Boolean(twin),
   });
   const playReady = strategyReady && trustedBagCount > 0;
-  const selectionControls = (
-    <PlaySelectionControls
-      courses={availableCourses.map((course) => ({
-        id: course.id,
-        name: course.name,
-        detail: `${course.holeCount} mapped holes`,
-      }))}
-      tees={tees.map((tee) => ({
-        id: tee.id,
-        name: tee.name,
-        detail: tee.yards ? `${tee.yards.toLocaleString("en-GB")} yd` : undefined,
-      }))}
-      selectedCourseId={selected?.id ?? null}
-      selectedTeeId={selectedTee?.id ?? null}
-    />
-  );
+  const selectionProps = {
+    courses: availableCourses.map((course) => ({
+      id: course.id,
+      name: course.name,
+      detail: `${course.holeCount} mapped holes`,
+    })),
+    tees: tees.map((tee) => ({
+      id: tee.id,
+      name: tee.name,
+      detail: tee.yards ? `${tee.yards.toLocaleString("en-GB")} yd` : undefined,
+    })),
+    selectedCourseId: selected?.id ?? null,
+    selectedTeeId: selectedTee?.id ?? null,
+  };
 
   return (
     <PageShell>
@@ -171,36 +178,73 @@ export default async function PlayCompanionPage({
               <SetupItem label="Selected tee" value={selectedTee?.name ?? "Not selected"} />
             </CardContent>
             <CardFooter className="grid gap-2 bg-background/70 p-3">
-              <Button asChild className="min-h-12 rounded-xl text-base">
-                <Link
-                  href={`/courses/strategy?courseId=${selected!.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`}
-                >
-                  <MapPinned className="size-4" aria-hidden />
-                  Open course strategy
-                </Link>
-              </Button>
-              <div className="grid grid-cols-2 gap-2">
-                <Button asChild variant="outline" className="min-h-11 rounded-xl">
+              <ButtonGroup className="w-full">
+                <Button asChild className="min-h-12 flex-1 rounded-l-xl text-base">
                   <Link
-                    href={`/rounds/new?courseId=${selected!.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`}
+                    href={`/courses/strategy?courseId=${selected!.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`}
                   >
-                    <Flag className="size-4" aria-hidden />
-                    Start round
+                    <MapPinned className="size-4" aria-hidden />
+                    Open course strategy
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="min-h-11 rounded-xl">
-                  <Link href={twin ? `/play/${twin.courseId}?mode=strategy` : "/course-twins"}>
-                    <Cuboid className="size-4" aria-hidden />
-                    Course Twin
-                  </Link>
-                </Button>
-              </div>
-              <PlaySetupDrawer>{selectionControls}</PlaySetupDrawer>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    type="button"
+                    data-variant="outline"
+                    data-size="icon"
+                    className={buttonVariants({
+                      variant: "outline",
+                      size: "icon",
+                      className: "min-h-12 w-12 rounded-r-xl",
+                    })}
+                    aria-label="More play actions"
+                  >
+                    <MoreHorizontal aria-hidden />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-56">
+                    <DropdownMenuLabel>Play actions</DropdownMenuLabel>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/rounds/new?courseId=${selected!.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`}
+                      >
+                        <Flag aria-hidden />
+                        Start round
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={twin ? `/play/${twin.courseId}?mode=strategy` : "/course-twins"}>
+                        <Cuboid aria-hidden />
+                        {twin ? "Open Course Twin" : "Browse Course Twins"}
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </ButtonGroup>
+              <LazyPlaySetupDrawer {...selectionProps} />
             </CardFooter>
           </Card>
         ) : null}
 
-        {!activeRound && !playReady ? (
+        {!activeRound && !selected ? (
+          <AppEmptyState
+            icon={<MapPinned aria-hidden />}
+            title="Choose a course to prepare"
+            description="Add or select a mapped course before building the tee, strategy and trusted-bag setup."
+            primaryAction={
+              <Button asChild className="min-h-11 w-full sm:w-auto">
+                <Link href="/courses/new">Add a course</Link>
+              </Button>
+            }
+            secondaryAction={
+              <Button asChild variant="outline" className="min-h-11 w-full sm:w-auto">
+                <Link href="/courses">Browse courses</Link>
+              </Button>
+            }
+          />
+        ) : null}
+
+        {!activeRound && selected && !playReady ? (
           <Card data-play-setup-guide>
             <CardHeader>
               <div>
@@ -247,7 +291,7 @@ export default async function PlayCompanionPage({
               </div>
             </CardContent>
             <CardFooter className="bg-background/70 p-3">
-              <PlaySetupDrawer label="Complete course setup">{selectionControls}</PlaySetupDrawer>
+              <LazyPlaySetupDrawer label="Complete course setup" {...selectionProps} />
             </CardFooter>
           </Card>
         ) : null}

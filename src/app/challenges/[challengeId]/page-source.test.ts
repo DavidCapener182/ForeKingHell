@@ -8,6 +8,40 @@ const source = readFileSync(
 );
 
 describe("challenge detail desktop route", () => {
+  it("selects one request surface before loading the desktop workbench", () => {
+    const staticWorkbenchImport =
+      source.match(
+        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
+      )?.[0] ?? "";
+
+    expect(source).toContain("getRequestAppSurface()");
+    expect(source).toContain(
+      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+    );
+    expect(source).toContain('surface === "companion" ? (');
+    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
+    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
+    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
+    expect(source).not.toContain(
+      '<DesktopWorkbenchLayout scope="challenge-detail" className="hidden',
+    );
+  });
+
+  it("uses semantic theme tokens for detail cards, controls and sticky tables", () => {
+    expect(source).toContain("bg-muted");
+    expect(source).toContain("bg-card");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).not.toMatch(
+      /bg-white|bg-\[#|text-\[#|border-\[#|(?:bg|text|border)-(?:slate|green|emerald|amber|rose|sky)-\d+/,
+    );
+  });
+
+  it("renders the server-authored rules trigger directly across the RSC boundary", () => {
+    expect(source).toContain('import { Button, buttonVariants } from "@/components/ui/button"');
+    expect(source).toMatch(/<SheetTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
+    expect(source).not.toMatch(/<SheetTrigger\s+asChild>[\s\S]*?<Button/);
+  });
+
   it("keeps challenge detail pages as exportable command boards", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');
@@ -34,7 +68,9 @@ describe("challenge detail desktop route", () => {
     expect(source).toContain("data.results.map");
     expect(source).toContain("ChallengeInviteSheet");
     expect(source).toContain('title="Invite to this challenge"');
-    expect(source).toContain('className="hidden lg:grid"');
+    expect(source).not.toContain(
+      '<DesktopWorkbenchLayout scope="challenge-detail" className="hidden',
+    );
     expect(source).not.toContain('className="hidden sm:grid"');
     expect(source).not.toContain("viewAllHref={`/challenges/${data.challenge.id}#board`}");
   });

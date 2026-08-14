@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Ban, ExternalLink, ShieldCheck, Target, UserPlus, Users } from "lucide-react";
 
 import { blockUserAction, sendFriendRequestAction } from "@/app/friends/actions";
-import {
-  DesktopWorkbenchLayout,
-  DesktopTableWorkbenchControls,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+import { AppEmptyState } from "@/components/app/app-empty-state";
+import type {
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { MobileAppShell, MobileStatusAction } from "@/components/mobile-sports";
@@ -31,7 +31,7 @@ import {
 } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getProfilePageData } from "@/lib/social";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +81,7 @@ type PublicProfilePageProps = {
 
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
   const { username } = await params;
-  const data = await getProfilePageData(username);
+  const [data, surface] = await Promise.all([getProfilePageData(username), getRequestAppSurface()]);
 
   if (!data) {
     notFound();
@@ -90,142 +91,154 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
   const isSelf = profile.relationship === "self";
   const mobileProfileActivity = data.recentFeed.slice(0, mobileProfileActivityLimit);
   const mobileOlderActivity = data.recentFeed.slice(mobileProfileActivityLimit);
+  const workbenchModule =
+    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
+  const DesktopWorkbenchLayout = workbenchModule?.DesktopWorkbenchLayout;
 
   return (
     <PageShell>
-      <MobileAppShell>
-        <MobilePublicProfileSummary profile={profile} stats={data.stats} isSelf={isSelf} />
-        <MobileProfileActivity
-          profile={profile}
-          items={mobileProfileActivity}
-          olderItems={mobileOlderActivity}
-        />
-        <MobileProfileDetails profile={profile} stats={data.stats} isSelf={isSelf} />
-      </MobileAppShell>
-
-      <DesktopWorkbenchLayout scope="public-profile" className="hidden lg:grid">
-        <div className="flex items-center justify-between gap-3">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/friends" prefetch={false}>
-              <ArrowLeft className="size-4" />
-              Friends
-            </Link>
-          </Button>
-          <Badge variant="outline">@{profile.username}</Badge>
-        </div>
-
-        <PageHeader
-          eyebrow={
-            <StatusPill tone={profile.publicProfile ? "green" : "sky"}>
-              {profile.relationship === "friend" ? "Friend profile" : "Social profile"}
-            </StatusPill>
-          }
-          title={profile.displayName}
-          description={profile.bio ?? "LM World Tour golfer"}
-          actions={
-            isSelf ? (
-              <Button asChild variant="outline">
-                <Link href="/profile" prefetch={false}>
-                  <ShieldCheck className="size-4" />
-                  Edit profile
-                </Link>
-              </Button>
-            ) : (
-              <ProfileActions
-                userId={profile.userId}
-                relationship={profile.relationship}
-                next={`/profile/${profile.username}`}
-              />
-            )
-          }
-          metrics={[
-            {
-              label: "Home",
-              value: profile.homeCourse ?? "--",
-              detail: "Course or simulator venue",
-            },
-            {
-              label: "Launch monitor",
-              value: profile.primaryLaunchMonitor ?? "--",
-              detail: "Primary setup",
-            },
-            {
-              label: "Handicap band",
-              value: profile.handicapBand ?? "--",
-              detail: "Self-selected",
-            },
-            {
-              label: "Connection",
-              value: titleCase(profile.relationship),
-              detail: profile.publicProfile ? "Public opt-in" : "Friend scoped",
-            },
-          ]}
-        />
-
-        <article className="premium-card overflow-hidden" aria-label="Public profile summary">
-          <div
-            className="h-36 bg-cover bg-center"
-            style={{
-              backgroundImage: profileHeaderBackground(
-                profileHeaderImageUrl(profile.headerImageUrl, profile.username),
-              ),
-            }}
+      {surface === "companion" ? (
+        <MobileAppShell>
+          <MobilePublicProfileSummary profile={profile} stats={data.stats} isSelf={isSelf} />
+          <MobileProfileActivity
+            profile={profile}
+            items={mobileProfileActivity}
+            olderItems={mobileOlderActivity}
           />
-          <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-5 pt-4">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="-mt-12 rounded-full bg-white p-1 shadow-sm">
-                <SocialAvatar
-                  displayName={profile.displayName}
-                  username={profile.username}
-                  avatarUrl={profile.avatarUrl}
-                  size="lg"
-                />
-              </div>
-              <div className="min-w-0 pt-1">
-                <h2 className="truncate text-2xl font-semibold tracking-normal">
-                  {profile.displayName}
-                </h2>
-                <p className="text-sm text-muted-foreground">@{profile.username}</p>
-              </div>
-            </div>
-            <Badge variant="secondary">{titleCase(profile.relationship)}</Badge>
+          <MobileProfileDetails profile={profile} stats={data.stats} isSelf={isSelf} />
+        </MobileAppShell>
+      ) : null}
+
+      {DesktopWorkbenchLayout ? (
+        <DesktopWorkbenchLayout scope="public-profile">
+          <div className="flex items-center justify-between gap-3">
+            <Button asChild variant="ghost" className="px-0">
+              <Link href="/friends" prefetch={false}>
+                <ArrowLeft className="size-4" />
+                Friends
+              </Link>
+            </Button>
+            <Badge variant="outline">@{profile.username}</Badge>
           </div>
-        </article>
 
-        <section className="grid gap-4 lg:grid-cols-[0.35fr_0.65fr]">
-          <aside aria-label="Public profile stats rail" className="min-w-0">
-            <DataPanel>
-              <SectionHeader
-                title="Visible stats"
-                description="Only profile-approved summary data appears here."
-                action={<Users className="size-5 text-sky-600" />}
-              />
-              <CardContent className="grid gap-3">
-                <DataPair label="Rounds" value={formatNullable(data.stats.rounds)} />
-                <DataPair
-                  label="Mapped clubs"
-                  value={formatNullable(data.stats.gapLadder.length)}
+          <PageHeader
+            eyebrow={
+              <StatusPill tone={profile.publicProfile ? "green" : "sky"}>
+                {profile.relationship === "friend" ? "Friend profile" : "Social profile"}
+              </StatusPill>
+            }
+            title={profile.displayName}
+            description={profile.bio ?? "LM World Tour golfer"}
+            actions={
+              isSelf ? (
+                <Button asChild variant="outline">
+                  <Link href="/profile" prefetch={false}>
+                    <ShieldCheck className="size-4" />
+                    Edit profile
+                  </Link>
+                </Button>
+              ) : (
+                <ProfileActions
+                  userId={profile.userId}
+                  relationship={profile.relationship}
+                  next={`/profile/${profile.username}`}
                 />
-                <DataPair label="Handicap band" value={data.stats.handicapBand ?? "--"} />
+              )
+            }
+            metrics={[
+              {
+                label: "Home",
+                value: profile.homeCourse ?? "--",
+                detail: "Course or simulator venue",
+              },
+              {
+                label: "Launch monitor",
+                value: profile.primaryLaunchMonitor ?? "--",
+                detail: "Primary setup",
+              },
+              {
+                label: "Handicap band",
+                value: profile.handicapBand ?? "--",
+                detail: "Self-selected",
+              },
+              {
+                label: "Connection",
+                value: titleCase(profile.relationship),
+                detail: profile.publicProfile ? "Public opt-in" : "Friend scoped",
+              },
+            ]}
+          />
+
+          <article aria-label="Public profile summary">
+            <Card className="gap-0 py-0">
+              <div
+                className="h-36 bg-cover bg-center"
+                style={{
+                  backgroundImage: profileHeaderBackground(
+                    profileHeaderImageUrl(profile.headerImageUrl, profile.username),
+                  ),
+                }}
+              />
+              <CardContent className="flex flex-wrap items-start justify-between gap-3 px-5 pb-5 pt-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="-mt-12 rounded-full bg-card p-1 shadow-sm">
+                    <SocialAvatar
+                      displayName={profile.displayName}
+                      username={profile.username}
+                      avatarUrl={profile.avatarUrl}
+                      size="lg"
+                    />
+                  </div>
+                  <div className="min-w-0 pt-1">
+                    <h2 className="truncate text-2xl font-semibold tracking-normal">
+                      {profile.displayName}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">@{profile.username}</p>
+                  </div>
+                </div>
+                <Badge variant="secondary">{titleCase(profile.relationship)}</Badge>
               </CardContent>
-            </DataPanel>
-          </aside>
+            </Card>
+          </article>
 
-          <DataPanel>
-            <SectionHeader
-              title="Recent feed"
-              description="Generated PB, achievement, round, and challenge cards that this profile allows you to see."
-            />
-            <CardContent>
+          <section className="grid gap-4 lg:grid-cols-[0.35fr_0.65fr]">
+            <aside aria-label="Public profile stats rail" className="min-w-0">
+              <DataPanel>
+                <SectionHeader
+                  title="Visible stats"
+                  description="Only profile-approved summary data appears here."
+                  action={<Users className="size-5 text-primary" />}
+                />
+                <CardContent className="grid gap-3">
+                  <DataPair label="Rounds" value={formatNullable(data.stats.rounds)} />
+                  <DataPair
+                    label="Mapped clubs"
+                    value={formatNullable(data.stats.gapLadder.length)}
+                  />
+                  <DataPair label="Handicap band" value={data.stats.handicapBand ?? "--"} />
+                </CardContent>
+              </DataPanel>
+            </aside>
+
+            <section data-profile-recent-feed className="grid gap-3">
+              <div className="grid gap-1">
+                <h2 className="text-lg font-semibold tracking-normal text-foreground sm:text-xl">
+                  Recent feed
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Generated PB, achievement, round, and challenge cards that this profile allows you
+                  to see.
+                </p>
+              </div>
               <FeedCardList items={data.recentFeed} compact />
-            </CardContent>
-          </DataPanel>
-        </section>
+            </section>
+          </section>
 
-        <PublicProfileActivityLedger profile={profile} items={data.recentFeed} />
+          <PublicProfileActivityLedger profile={profile} items={data.recentFeed} />
 
-        <PublicProfileBagComparison profile={profile} rows={data.stats.gapLadder} />
-      </DesktopWorkbenchLayout>
+          <PublicProfileBagComparison profile={profile} rows={data.stats.gapLadder} />
+        </DesktopWorkbenchLayout>
+      ) : null}
     </PageShell>
   );
 }
@@ -437,9 +450,16 @@ function MobileProfileDetails({
               <form action={blockUserAction}>
                 <input type="hidden" name="blockedUserId" value={profile.userId} />
                 <input type="hidden" name="next" value="/friends?user=blocked" />
-                <Button type="submit" variant="destructive" className="min-h-11">
+                <ConfirmSubmitButton
+                  type="submit"
+                  variant="destructive"
+                  className="min-h-11"
+                  confirmTitle="Block this golfer?"
+                  confirmMessage="This removes friend visibility and hides their friend-scoped activity from your account."
+                  confirmActionLabel="Block golfer"
+                >
                   Block
-                </Button>
+                </ConfirmSubmitButton>
               </form>
             }
           />
@@ -465,10 +485,16 @@ function ProfileActions({
       <form action={blockUserAction}>
         <input type="hidden" name="blockedUserId" value={userId} />
         <input type="hidden" name="next" value="/friends?user=blocked" />
-        <Button type="submit" variant="outline">
+        <ConfirmSubmitButton
+          type="submit"
+          variant="outline"
+          confirmTitle="Block this golfer?"
+          confirmMessage="This removes friend visibility and hides their friend-scoped activity from your account."
+          confirmActionLabel="Block golfer"
+        >
           <Ban className="size-4" />
           Block
-        </Button>
+        </ConfirmSubmitButton>
       </form>
     );
   }
@@ -492,7 +518,7 @@ function ProfileActions({
       <form action={sendFriendRequestAction}>
         <input type="hidden" name="recipientUserId" value={userId} />
         <input type="hidden" name="next" value={next} />
-        <Button type="submit" className="bg-[#0B7A3B] text-white hover:bg-[#064E3B]">
+        <Button type="submit">
           <UserPlus className="size-4" />
           Add friend
         </Button>
@@ -500,22 +526,29 @@ function ProfileActions({
       <form action={blockUserAction}>
         <input type="hidden" name="blockedUserId" value={userId} />
         <input type="hidden" name="next" value="/friends?user=blocked" />
-        <Button type="submit" variant="outline">
+        <ConfirmSubmitButton
+          type="submit"
+          variant="outline"
+          confirmTitle="Block this golfer?"
+          confirmMessage="This removes friend visibility and hides their friend-scoped activity from your account."
+          confirmActionLabel="Block golfer"
+        >
           <Ban className="size-4" />
           Block
-        </Button>
+        </ConfirmSubmitButton>
       </form>
     </div>
   );
 }
 
-function PublicProfileActivityLedger({
+async function PublicProfileActivityLedger({
   profile,
   items,
 }: {
   profile: PublicProfileData["profile"];
   items: ProfileActivityRow[];
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
   const suggestedViews = profileActivitySuggestedViews(profile.username);
 
   return (
@@ -557,11 +590,11 @@ function PublicProfileActivityLedger({
             Profile activity ledger showing visible activity, type, metric, proof state, privacy,
             engagement, date and action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
             <TableRow>
               <TableHead
                 data-column="activity"
-                className="sticky left-0 z-20 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-72 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
               >
                 Activity
               </TableHead>
@@ -582,7 +615,7 @@ function PublicProfileActivityLedger({
                 <TableRow key={item.id} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="activity"
-                    className="sticky left-0 z-10 min-w-72 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-72 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     <p className="font-semibold">{item.headline}</p>
                     <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
@@ -613,8 +646,19 @@ function PublicProfileActivityLedger({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
-                  No public or friend-visible activity is available for this profile yet.
+                <TableCell colSpan={8} className="p-4">
+                  <AppEmptyState
+                    icon={<Users className="size-5" />}
+                    title="No shared activity yet"
+                    description="Public or friend-visible golf activity will appear here when this golfer chooses to share it."
+                    primaryAction={
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/friends" prefetch={false}>
+                          Open friends
+                        </Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -625,13 +669,14 @@ function PublicProfileActivityLedger({
   );
 }
 
-function PublicProfileBagComparison({
+async function PublicProfileBagComparison({
   profile,
   rows,
 }: {
   profile: PublicProfileData["profile"];
   rows: ProfileGapRow[];
 }) {
+  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
   const suggestedViews = profileBagSuggestedViews(profile.username);
 
   return (
@@ -671,11 +716,11 @@ function PublicProfileBagComparison({
             Profile visible bag comparison table showing club, stock carry, stock total, confidence,
             sample size and compare action.
           </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
+          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
             <TableRow>
               <TableHead
                 data-column="club"
-                className="sticky left-0 z-20 min-w-64 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                className="sticky left-0 z-20 min-w-64 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
               >
                 Club
               </TableHead>
@@ -694,7 +739,7 @@ function PublicProfileBagComparison({
                 <TableRow key={row.clubId} tabIndex={0} className="focus-aaa outline-none">
                   <TableCell
                     data-column="club"
-                    className="sticky left-0 z-10 min-w-64 bg-white font-semibold shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-10 min-w-64 bg-card font-semibold shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                   >
                     {row.label}
                   </TableCell>
@@ -718,8 +763,19 @@ function PublicProfileBagComparison({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                  Bag numbers are private or do not have enough trusted shots yet.
+                <TableCell colSpan={6} className="p-4">
+                  <AppEmptyState
+                    icon={<Target className="size-5" />}
+                    title="No shared bag evidence"
+                    description="Bag numbers are private or do not have enough trusted measured shots yet."
+                    primaryAction={
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/compare" prefetch={false}>
+                          Open compare
+                        </Link>
+                      </Button>
+                    }
+                  />
                 </TableCell>
               </TableRow>
             )}

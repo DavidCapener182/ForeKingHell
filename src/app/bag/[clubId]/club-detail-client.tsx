@@ -19,21 +19,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
-import { MobileCompactPageHeader } from "@/components/premium";
-import {
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import {
   clubAccent,
   formatClubModelName,
@@ -190,70 +177,19 @@ export function ClubDetailClient({
 
   return (
     <>
-      <MobileCompactPageHeader
-        eyebrow={
-          <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
-            Club analysis
-          </Badge>
-        }
-        title={clubModelName}
-        description={clubModelName === clubTypeLabel ? "Unspecified model" : clubTypeLabel}
-        metricLabel={isShortGameTouch ? "Touch median" : "Best stock"}
-        metricValue={formatMetric(
-          isShortGameTouch ? touch.carryMedianYd : stock.bestStockCarryYd,
-          " yd",
-        )}
-        metricDetail={`${selectedShots.length} in ${selectedRange.compactLabel}`}
-        visual={
-          <ClubArtwork
-            clubType={club.type}
-            brand={club.brand}
-            model={club.model}
-            alt=""
-            className="h-full w-full rounded-xl"
-            sizes="64px"
-          />
-        }
-        action={
-          <Button
-            asChild
-            size="sm"
-            className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
-          >
-            <Link href={`/bag/${club.id}/analytics`} prefetch={false}>
-              Coach
-            </Link>
-          </Button>
-        }
-      />
-
-      <div className="lg:hidden">
-        <MobileRangePicker value={shotRange} onChange={setShotRange} />
-      </div>
-
-      <MobileClubDecision
-        clubId={club.id}
-        clubRole={clubRole}
-        recommendedCarry={recommendedCarry}
-        typicalMiss={typicalMiss}
-        health={health}
-        stock={stock}
-        isShortGameTouch={isShortGameTouch}
-        selectedShotCount={selectedShots.length}
-        totalShotCount={orderedShots.length}
-        rangeLabel={selectedRange.compactLabel}
-      />
-
-      <header className="premium-hero hidden p-6 lg:block lg:p-8">
+      <header className="premium-hero p-6 lg:p-8" data-desktop-club-profile>
         <div className="space-y-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <Badge className="w-fit text-white hover:opacity-90" style={{ background: accent }}>
+            <Badge
+              className="w-fit text-primary-foreground hover:opacity-90"
+              style={{ background: accent }}
+            >
               Club analysis
             </Badge>
             <div className="w-full max-w-3xl lg:flex-1">
               <RangeToggle value={shotRange} onChange={setShotRange} />
             </div>
-            <Button asChild variant="outline" size="sm" className="w-fit rounded-xl bg-white/70">
+            <Button asChild variant="outline" size="sm" className="w-fit rounded-xl bg-card/70">
               <Link href={`/bag/${club.id}/analytics`} prefetch={false}>
                 <Brain className="size-4" />
                 Advanced analytics
@@ -277,7 +213,9 @@ export function ClubDetailClient({
                     {health.label}
                   </Badge>
                 </div>
-                <p className="max-w-2xl text-xl font-medium leading-8 text-[#254434]">{clubRole}</p>
+                <p className="max-w-2xl text-xl font-medium leading-8 text-foreground/80">
+                  {clubRole}
+                </p>
               </div>
 
               <div className="grid gap-3 md:grid-cols-3">
@@ -332,17 +270,13 @@ export function ClubDetailClient({
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Button
-                  asChild
-                  size="lg"
-                  className="rounded-lg bg-[#0B7A3B] px-5 text-white shadow-sm hover:bg-[#064E3B]"
-                >
+                <Button asChild size="lg" className="rounded-lg px-5 shadow-sm">
                   <a href="#club-shot-history">
                     Review {selectedShots.length} shot{selectedShots.length === 1 ? "" : "s"}
                     <ArrowRight className="size-4" />
                   </a>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="rounded-lg bg-white/70">
+                <Button asChild variant="outline" size="lg" className="rounded-lg bg-card/70">
                   <a href="#club-dispersion">Open dispersion</a>
                 </Button>
               </div>
@@ -368,22 +302,6 @@ export function ClubDetailClient({
           clubModelName={clubModelName}
           clubTypeLabel={clubTypeLabel}
           shots={selectedShots}
-          mobileSupport={
-            <MobileClubSupport
-              clubType={club.type}
-              selectedRange={selectedRange.description}
-              stock={stock}
-              touch={touch}
-              health={health}
-              evolution={evolution}
-              monthChange={monthChange}
-              hasWedgeRoles={hasWedgeRoles}
-              isShortGameTouch={isShortGameTouch}
-              isSandWedge={isSandWedge}
-            >
-              {children}
-            </MobileClubSupport>
-          }
           afterDispersion={
             <>
               {children}
@@ -423,206 +341,6 @@ export function ClubDetailClient({
   );
 }
 
-function MobileRangePicker({
-  value,
-  onChange,
-}: {
-  value: ShotRange;
-  onChange: (value: ShotRange) => void;
-}) {
-  return (
-    <label className="ios-grouped-list focus-within:ring-2 focus-within:ring-ring flex min-h-14 items-center gap-3 px-4 py-2.5">
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-medium text-foreground">Evidence window</span>
-        <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
-          Changes every number and visual below
-        </span>
-      </span>
-      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as ShotRange)}>
-        <SelectTrigger aria-label="Shot date range" className="min-h-11 max-w-[44%]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {RANGE_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </label>
-  );
-}
-
-function MobileClubDecision({
-  clubId,
-  clubRole,
-  recommendedCarry,
-  typicalMiss,
-  health,
-  stock,
-  isShortGameTouch,
-  selectedShotCount,
-  totalShotCount,
-  rangeLabel,
-}: {
-  clubId: string;
-  clubRole: string;
-  recommendedCarry: number | null;
-  typicalMiss: ReturnType<typeof typicalMissLabel>;
-  health: ClubHealth;
-  stock: StockYardage;
-  isShortGameTouch: boolean;
-  selectedShotCount: number;
-  totalShotCount: number;
-  rangeLabel: string;
-}) {
-  return (
-    <section
-      className="grid gap-2.5 lg:hidden"
-      aria-label="Club recommendation"
-      data-mobile-club-decision
-    >
-      <IOSSectionHeader
-        title="Play this club"
-        description="Course-useful recommendation before the deeper evidence"
-      />
-      <IOSGroupedList label="Club recommendation and status">
-        <IOSListRow
-          icon={Target}
-          label={clubRole}
-          value={formatMetric(recommendedCarry, " yd")}
-          detail={isShortGameTouch ? "Touch-control role" : "Recommended play number"}
-          status={
-            <IOSInlineStatus
-              label={health.label}
-              tone={health.label === "Healthy" ? "positive" : "attention"}
-            />
-          }
-        />
-        <IOSListRow
-          icon={ShieldCheck}
-          label="Typical miss"
-          value={typicalMiss.label}
-          detail={typicalMiss.detail}
-        />
-        <IOSListRow
-          icon={BarChart3}
-          label="Personal best"
-          value={formatMetric(stock.personalBestCarryYd, " yd")}
-          detail={`${selectedShotCount} of ${totalShotCount} shots in ${rangeLabel}`}
-        />
-        <IOSListRow
-          icon={Brain}
-          label="Advanced analytics"
-          value={`${stock.confidenceScore}% trust`}
-          detail="Open the diagnosis and practice recommendation"
-          href={`/bag/${clubId}/analytics`}
-        />
-      </IOSGroupedList>
-    </section>
-  );
-}
-
-function MobileClubSupport({
-  clubType,
-  selectedRange,
-  stock,
-  touch,
-  health,
-  evolution,
-  monthChange,
-  hasWedgeRoles,
-  isShortGameTouch,
-  isSandWedge,
-  children,
-}: {
-  clubType: string;
-  selectedRange: string;
-  stock: StockYardage;
-  touch: ShortGameTouchSummary;
-  health: ClubHealth;
-  evolution: ClubEvolutionPoint[];
-  monthChange: MonthChange;
-  hasWedgeRoles: boolean;
-  isShortGameTouch: boolean;
-  isSandWedge: boolean;
-  children?: ReactNode;
-}) {
-  const cleanShots = isShortGameTouch && !isSandWedge ? touch.sampleSize : stock.sampleSize;
-  const latestEvolution = evolution.at(-1);
-
-  return (
-    <div className="grid gap-4">
-      <IOSGroupedList label="Club intelligence details">
-        <IOSListRow
-          label="Evidence window"
-          value={selectedRange}
-          detail={`${cleanShots} clean shots shape this recommendation`}
-        />
-        <IOSListRow
-          label="Data quality"
-          value={health.dataQuality}
-          detail={health.confidenceDetail}
-          status={
-            <IOSInlineStatus
-              label={health.statusDetail}
-              tone={health.label === "Healthy" ? "positive" : "attention"}
-            />
-          }
-        />
-        <IOSListRow label="Gapping" value={health.gapping} detail="Position in the current bag" />
-        <IOSListRow
-          label="Dispersion"
-          value={health.dispersion}
-          detail="Current stock-shot pattern"
-        />
-        <IOSListRow
-          label="Latest monthly stock"
-          value={latestEvolution ? formatWholeYards(latestEvolution.value) : "--"}
-          detail={
-            monthChange.currentLabel && monthChange.previousLabel
-              ? `${monthChange.currentLabel} vs ${monthChange.previousLabel}: ${formatDelta(monthChange.carryDeltaYd, " yd")}`
-              : "Another month is needed for comparison"
-          }
-        />
-      </IOSGroupedList>
-
-      {hasWedgeRoles ? (
-        <div className="grid gap-2">
-          <p className="px-1 text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground">
-            Wedge roles
-          </p>
-          <IOSGroupedList label="Wedge role distances">
-            {WEDGE_ROLE_ORDER.map((role) => {
-              const summary = roleSummaryFor(stock.shotRoleSummaries, role);
-              return (
-                <IOSListRow
-                  key={role}
-                  label={wedgeRoleLabel(role)}
-                  value={
-                    summary?.carryMedianYd === null || summary === null
-                      ? "--"
-                      : formatMetric(summary.carryMedianYd, " yd")
-                  }
-                  detail={summary ? `${summary.sampleSize} shots` : "No evidence"}
-                />
-              );
-            })}
-          </IOSGroupedList>
-        </div>
-      ) : null}
-
-      {children ? <div>{children}</div> : null}
-      <p className="text-[13px] leading-5 text-muted-foreground">
-        {isShortGameTouch
-          ? shortGameStockNote(clubType)
-          : formatStockExclusionReasons(stock.stockExclusionReasons)}
-      </p>
-    </div>
-  );
-}
-
 function RangeToggle({
   value,
   onChange,
@@ -632,26 +350,26 @@ function RangeToggle({
 }) {
   return (
     <div aria-label="Shot date range" className="apple-panel w-full max-w-full p-1">
-      <div className="grid min-w-0 grid-cols-7 gap-1">
+      <ToggleGroup
+        type="single"
+        value={value}
+        onValueChange={(nextValue) => nextValue && onChange(nextValue as ShotRange)}
+        variant="outline"
+        spacing={1}
+        className="grid w-full min-w-0 grid-cols-7"
+      >
         {RANGE_OPTIONS.map((option) => (
-          <Button
+          <ToggleGroupItem
             key={option.value}
-            type="button"
-            size="sm"
-            variant={value === option.value ? "default" : "ghost"}
-            aria-pressed={value === option.value}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "h-8 min-w-0 rounded-lg px-1 text-xs sm:px-1.5 lg:px-2",
-              value === option.value && "bg-[#0B7A3B] text-white",
-            )}
+            value={option.value}
+            className="h-8 min-w-0 rounded-lg px-1 text-xs sm:px-1.5 lg:px-2"
             title={option.label}
           >
             <span className="truncate sm:hidden">{option.compactLabel}</span>
             <span className="hidden truncate sm:inline">{option.label}</span>
-          </Button>
+          </ToggleGroupItem>
         ))}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }
@@ -672,20 +390,25 @@ function HeroYardage({
       className={cn(
         "rounded-lg border p-4 shadow-sm",
         featured
-          ? "border-emerald-200 bg-[#0B7A3B] text-white shadow-emerald-950/10"
-          : "border-white/70 bg-white/72 text-[#111827]",
+          ? "border-primary/25 bg-primary text-primary-foreground shadow-primary/10"
+          : "border-border bg-card/75 text-card-foreground",
       )}
     >
       <p
         className={cn(
           "text-sm font-semibold",
-          featured ? "text-white/78" : "text-muted-foreground",
+          featured ? "text-primary-foreground/80" : "text-muted-foreground",
         )}
       >
         {label}
       </p>
       <p className="mt-2 text-4xl font-semibold tracking-normal">{value}</p>
-      <p className={cn("mt-2 text-sm", featured ? "text-white/76" : "text-muted-foreground")}>
+      <p
+        className={cn(
+          "mt-2 text-sm",
+          featured ? "text-primary-foreground/80" : "text-muted-foreground",
+        )}
+      >
         {detail}
       </p>
     </div>
@@ -897,7 +620,7 @@ function ClubIntelligence({
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-[#F8FAF6] p-4">
+        <div className="rounded-lg border border-border bg-muted/35 p-4">
           <p className="text-sm font-semibold">
             {isShortGameTouch ? "Role separation" : "Best-stock filter reasons"}
           </p>
@@ -939,7 +662,7 @@ function IntelligenceMetric({
 
 function DataChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-white/82 p-3 ring-1 ring-slate-200/80">
+    <div className="rounded-lg bg-card/80 p-3 ring-1 ring-border">
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>
     </div>
@@ -948,7 +671,7 @@ function DataChip({ label, value }: { label: string; value: string }) {
 
 function HealthRow({ label, value, tone }: { label: string; value: string; tone: MetricTone }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80">
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-card/80 px-3 py-2 ring-1 ring-border">
       <span className="text-sm text-muted-foreground">{label}</span>
       <span className={cn("text-sm font-semibold", toneTextClass(tone))}>{value}</span>
     </div>
@@ -977,19 +700,20 @@ function ClubDevelopmentPanel({
               <div key={point.key} className="apple-panel-strong p-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-sm font-semibold text-muted-foreground">{point.label}</p>
-                  <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
+                  <Badge
+                    variant="secondary"
+                    className="h-auto bg-[var(--status-success-surface)] px-2 py-1 text-xs text-[var(--status-success-foreground)]"
+                  >
                     {point.shotCount}
-                  </span>
+                  </Badge>
                 </div>
                 <p className="mt-3 text-3xl font-semibold tracking-normal">
                   {formatWholeYards(point.value)}
                 </p>
-                <div className="mt-4 h-2 rounded-full bg-slate-200">
-                  <div
-                    className="h-full rounded-full bg-[#0B7A3B]"
-                    style={{ width: `${Math.max(8, ((point.value ?? 0) / maxEvolution) * 100)}%` }}
-                  />
-                </div>
+                <Progress
+                  value={Math.max(8, ((point.value ?? 0) / maxEvolution) * 100)}
+                  className="mt-4 h-2"
+                />
               </div>
             ))
           ) : (
@@ -1049,7 +773,7 @@ function ChangeMetric({ label, value, tone }: { label: string; value: string; to
 
 function WedgeRoleSummaryGrid({ summaries }: { summaries: StockShotRoleSummary[] }) {
   return (
-    <div className="grid gap-2 rounded-lg border border-slate-200 bg-[#F5F6F4] p-3">
+    <div className="grid gap-2 rounded-lg border border-border bg-muted/35 p-3">
       <div>
         <p className="text-sm font-semibold">Wedge roles</p>
         <p className="text-xs text-muted-foreground">Full, pitch, and chip/touch are separated.</p>
@@ -1071,7 +795,7 @@ function WedgeRoleMini({
   summary: StockShotRoleSummary | null;
 }) {
   return (
-    <div className="rounded-md bg-white/80 p-2">
+    <div className="rounded-md bg-card/80 p-2">
       <p className="text-xs font-medium text-muted-foreground">{wedgeRoleLabel(role)}</p>
       <p className="mt-1 text-lg font-semibold tracking-normal">
         {summary === null || summary.carryMedianYd === null
@@ -1167,10 +891,10 @@ function clubHealth(
   const tone: MetricTone = label === "Healthy" ? "green" : label === "Developing" ? "amber" : "red";
   const badgeClassName =
     tone === "green"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      ? "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]"
       : tone === "amber"
-        ? "border-amber-200 bg-amber-50 text-amber-800"
-        : "border-red-200 bg-red-50 text-red-800";
+        ? "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]"
+        : "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive";
 
   return {
     label,
@@ -1330,42 +1054,42 @@ function shortGameStockNote(clubType: string) {
 
 function tonePanelClass(tone: MetricTone) {
   if (tone === "green") {
-    return "border-emerald-200 bg-emerald-50/72";
+    return "border-[var(--status-success-border)] bg-[var(--status-success-surface)]";
   }
 
   if (tone === "amber") {
-    return "border-amber-200 bg-amber-50/72";
+    return "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]";
   }
 
   if (tone === "red") {
-    return "border-red-200 bg-red-50/72";
+    return "border-[var(--status-error-border)] bg-[var(--status-error-surface)]";
   }
 
   if (tone === "sky") {
-    return "border-sky-200 bg-sky-50/72";
+    return "border-[var(--status-information-border)] bg-[var(--status-information-surface)]";
   }
 
-  return "border-slate-200 bg-white/78";
+  return "border-border bg-muted/45";
 }
 
 function toneTextClass(tone: MetricTone) {
   if (tone === "green") {
-    return "text-emerald-700";
+    return "text-[var(--status-success-foreground)]";
   }
 
   if (tone === "amber") {
-    return "text-amber-700";
+    return "text-[var(--status-warning-foreground)]";
   }
 
   if (tone === "red") {
-    return "text-red-700";
+    return "text-destructive";
   }
 
   if (tone === "sky") {
-    return "text-sky-700";
+    return "text-[var(--status-information-foreground)]";
   }
 
-  return "text-slate-700";
+  return "text-muted-foreground";
 }
 
 function deltaTone(value: number | null, goodDirection: "higher" | "lower"): MetricTone {

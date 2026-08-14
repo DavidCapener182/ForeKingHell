@@ -4,29 +4,17 @@ import { notFound } from "next/navigation";
 import { and, count, eq, sql } from "drizzle-orm";
 import { CheckCircle2, Crosshair, Database, ShieldCheck, Target, Upload } from "lucide-react";
 
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { MobileAppShell, MobileStatusAction, MobileTopBar } from "@/components/mobile-sports";
+import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { ResultHero } from "@/components/app/result-hero";
 import { Button } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import {
   DesktopWorkflowLayout,
   type DesktopWorkflowHelpItem,
   type DesktopWorkflowStep,
 } from "@/components/app/desktop-workbench";
-import {
-  DataPanel,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-  type Tone,
-} from "@/components/premium";
+import { PageShell, StatusPill, type Tone } from "@/components/premium";
 import { clubs, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -68,19 +56,30 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
 
   return (
     <PageShell>
-      <MobileImportResult result={result} featureData={featureData} />
       <DesktopWorkflowLayout
-        className="hidden lg:grid"
         steps={workflowSteps}
         helpTitle="Import audit"
         helpDescription="Receipt checks for the saved session"
         helpItems={helpItems}
       >
-        <PageHeader
-          eyebrow={<StatusPill tone="green">Import saved</StatusPill>}
+        <ResultHero
+          eyebrow="Import saved"
           title={`${integerFormatter.format(result.shotCount)} shots imported`}
-          description={`${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
-          actions={
+          summary={`${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
+          confidence={{
+            label: `${featureData.dataHealth.score}/100 trust`,
+            tone: result.questionableRowCount > 0 ? "outline" : "secondary",
+          }}
+          metrics={[
+            { label: "Accepted shots", value: integerFormatter.format(result.shotCount) },
+            { label: "Raw rows", value: integerFormatter.format(result.rawRowCount) },
+            { label: "Clubs updated", value: integerFormatter.format(result.clubCount) },
+            {
+              label: "Questionable rows",
+              value: integerFormatter.format(result.questionableRowCount),
+            },
+          ]}
+          action={
             <div className="flex flex-wrap gap-2">
               <Button asChild className="premium-action rounded-lg">
                 <Link href={companionReviewRoute(result)} prefetch={false}>
@@ -98,63 +97,60 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
           }
         />
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <ResultMetric
-            label="Shots imported"
-            value={result.shotCount}
-            detail="Accepted shot rows"
-          />
-          <ResultMetric
-            label="Raw rows preserved"
-            value={result.rawRowCount}
-            detail="Audit trail"
-          />
-          <ResultMetric label="Clubs updated" value={result.clubCount} detail="Bag map links" />
-          <ResultMetric
-            label="Questionable rows"
-            value={result.questionableRowCount}
-            detail="Stored as unknown rows"
-          />
-        </section>
-
         {result.practiceReview ? <PracticePlanReviewCard review={result.practiceReview} /> : null}
 
-        <DataPanel>
-          <SectionHeader
-            title="Data trust score"
-            description="Plain-English confidence after this import."
-            action={
+        <ConnectedMetricBar
+          label="Import data trust"
+          metrics={[
+            {
+              label: "Trust score",
+              value: `${featureData.dataHealth.score}/100`,
+              detail: featureData.dataHealth.status,
+            },
+            {
+              label: "Accepted",
+              value: integerFormatter.format(result.shotCount),
+              detail: "Normalised shot rows",
+            },
+            {
+              label: "Preserved",
+              value: integerFormatter.format(result.rawRowCount),
+              detail: "Original rows retained",
+            },
+            {
+              label: "Needs review",
+              value: integerFormatter.format(result.questionableRowCount),
+              detail: "Unknown rows",
+            },
+          ]}
+        />
+
+        <Card data-import-trust-checks>
+          <CardHeader>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle>Data trust checks</CardTitle>
+                <CardDescription>{featureData.dataHealth.detail}</CardDescription>
+              </div>
               <StatusPill tone={featureData.dataHealth.tone}>
                 {featureData.dataHealth.metric}
               </StatusPill>
-            }
-          />
-          <CardContent className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
-            <div className="premium-command-surface rounded-lg p-4">
-              <p className="text-4xl font-semibold tracking-normal">
-                {featureData.dataHealth.score}/100
-              </p>
-              <p className="mt-2 text-sm font-medium">{featureData.dataHealth.status}</p>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                {featureData.dataHealth.detail}
-              </p>
             </div>
-            <div className="grid gap-2 md:grid-cols-2">
-              {featureData.dataHealth.checks.slice(0, 4).map((check) => (
-                <Link
-                  key={check.title}
-                  href={check.href ?? "/settings"}
-                  prefetch={false}
-                  className="premium-rail-card rounded-lg px-3 py-2 transition-colors hover:border-[#0B7A3B]"
-                >
-                  <p className="text-xs text-muted-foreground">{check.title}</p>
-                  <p className="mt-1 text-sm font-semibold">{check.metric}</p>
-                  <p className="mt-2 text-sm leading-5 text-muted-foreground">{check.detail}</p>
-                </Link>
-              ))}
-            </div>
+          </CardHeader>
+          <CardContent className="grid gap-2 md:grid-cols-2">
+            {featureData.dataHealth.checks.slice(0, 4).map((check) => (
+              <Link key={check.title} href={check.href ?? "/settings"} prefetch={false}>
+                <Item variant="outline" className="h-full hover:bg-muted/55">
+                  <ItemContent>
+                    <ItemTitle>{check.title}</ItemTitle>
+                    <ItemDescription className="whitespace-normal">{check.detail}</ItemDescription>
+                  </ItemContent>
+                  <StatusPill tone="slate">{check.metric}</StatusPill>
+                </Item>
+              </Link>
+            ))}
           </CardContent>
-        </DataPanel>
+        </Card>
 
         {featureData.practicePlan[0] ? (
           <PracticePrescriptionCard plan={featureData.practicePlan[0]} />
@@ -174,7 +170,7 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
             detail="Inspect normalized shots and preserved raw import rows."
           />
           <ResultAction
-            href="/settings#offline-storage"
+            href="/settings?section=offline#offline-storage"
             icon={<ShieldCheck className="size-4" />}
             title="Offline storage controls"
             detail="Review queued imports and clear temporary device storage."
@@ -182,156 +178,6 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
         </section>
       </DesktopWorkflowLayout>
     </PageShell>
-  );
-}
-
-function MobileImportResult({
-  result,
-  featureData,
-}: {
-  result: ImportResultData;
-  featureData: FeatureIdeasData;
-}) {
-  const plan = featureData.practicePlan[0];
-
-  return (
-    <MobileAppShell>
-      <MobileTopBar title="Import complete" />
-      <MobileStatusAction
-        label="Import saved"
-        value={`${integerFormatter.format(result.shotCount)} shots`}
-        detail={`Saved ${dateFormatter.format(result.date)} · review the receipt below`}
-        action={
-          <Button asChild className="min-h-11">
-            <Link href={companionReviewRoute(result)} prefetch={false}>
-              Review
-            </Link>
-          </Button>
-        }
-      />
-
-      {result.practiceReview ? (
-        <section className="grid gap-2" aria-label="Practice decision from this import">
-          <IOSSectionHeader title="What to do next" description="Matched Practice Planner result" />
-          <IOSGroupedList label="Matched practice plan">
-            <IOSListRow
-              icon={Target}
-              label={result.practiceReview.nextAction}
-              value={`${result.practiceReview.score}/100`}
-              detail={`${result.practiceReview.title} · ${result.practiceReview.verdict}`}
-              href="/practice"
-              status={<IOSInlineStatus label="Shot-derived review" tone="positive" />}
-            />
-          </IOSGroupedList>
-        </section>
-      ) : plan ? (
-        <section className="grid gap-2" aria-label="Next practice from this import">
-          <IOSSectionHeader title="What to do next" description="One measurable practice job" />
-          <IOSGroupedList label="Next practice">
-            <IOSListRow
-              icon={Crosshair}
-              label={plan.title}
-              value={`${plan.targetShots} balls`}
-              detail={plan.detail}
-              href={plan.clubId ? `/bag/${plan.clubId}/analytics` : "/coach"}
-              status={<IOSInlineStatus label="Next action" tone="attention" />}
-            />
-          </IOSGroupedList>
-        </section>
-      ) : null}
-
-      <section className="grid gap-2" aria-label="Import audit summary">
-        <IOSSectionHeader title="Import audit" description="What was saved and what needs review" />
-        <IOSGroupedList label="Import audit rows">
-          <IOSListRow
-            label="Source file"
-            detail={result.fileName ?? "CSV import"}
-            status={<IOSInlineStatus label="Receipt source" tone="info" />}
-          />
-          <IOSListRow
-            label="Accepted shots"
-            value={integerFormatter.format(result.shotCount)}
-            detail="Normalized shot rows saved to this session."
-            status={<IOSInlineStatus label="Saved" tone="positive" />}
-          />
-          <IOSListRow
-            label="Raw rows preserved"
-            value={integerFormatter.format(result.rawRowCount)}
-            detail="Original rows retained for audit."
-          />
-          <IOSListRow
-            label="Clubs updated"
-            value={integerFormatter.format(result.clubCount)}
-            detail="Bag mappings linked by this import."
-          />
-          <IOSListRow
-            label="Questionable rows"
-            value={integerFormatter.format(result.questionableRowCount)}
-            detail={
-              result.questionableRowCount > 0
-                ? "Unknown rows remain stored but should be reviewed before every recommendation is trusted."
-                : "No unknown rows were flagged in this receipt."
-            }
-            status={
-              <IOSInlineStatus
-                label={result.questionableRowCount > 0 ? "Review required" : "None flagged"}
-                tone={result.questionableRowCount > 0 ? "attention" : "positive"}
-              />
-            }
-          />
-        </IOSGroupedList>
-      </section>
-
-      <IOSDisclosureGroup
-        label="Data trust detail"
-        items={[
-          {
-            value: "data-trust",
-            title: "Data trust",
-            summary: `${featureData.dataHealth.score}/100`,
-            description: featureData.dataHealth.status,
-            contentClassName: "px-0 pb-0 pt-0",
-            content: (
-              <IOSGroupedList label="Data trust checks" className="border-0">
-                {featureData.dataHealth.checks.slice(0, 4).map((check) => (
-                  <IOSListRow
-                    key={check.title}
-                    label={check.title}
-                    value={check.metric}
-                    detail={check.detail}
-                    href={check.href ?? "/settings"}
-                  />
-                ))}
-              </IOSGroupedList>
-            ),
-          },
-        ]}
-      />
-
-      <section className="grid gap-2" aria-label="Import result actions">
-        <IOSSectionHeader title="Review your data" />
-        <IOSGroupedList label="Import result destinations">
-          <IOSListRow
-            icon={Target}
-            label="Bag confidence"
-            detail="Review carry numbers, trust and gaps after this import."
-            href="/bag"
-          />
-          <IOSListRow
-            icon={Database}
-            label="Shot rows"
-            detail="Inspect normalized shots and preserved evidence."
-            href="/shots"
-          />
-          <IOSListRow
-            icon={Upload}
-            label="Import another"
-            detail="Return to the source chooser."
-            href="/import"
-          />
-        </IOSGroupedList>
-      </section>
-    </MobileAppShell>
   );
 }
 
@@ -394,20 +240,26 @@ function PracticePlanReviewCard({
   review: NonNullable<Awaited<ReturnType<typeof getImportResultData>>["practiceReview"]>;
 }) {
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Planned practice review"
-        description="This import matched a saved Practice Planner session and was judged from shot data."
-        action={<StatusPill tone={practiceScoreTone(review.score)}>{review.score}/100</StatusPill>}
-      />
+    <Card data-import-practice-review>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Planned practice review</CardTitle>
+            <CardDescription>
+              This import matched a saved Practice Planner session and was judged from shot data.
+            </CardDescription>
+          </div>
+          <StatusPill tone={practiceScoreTone(review.score)}>{review.score}/100</StatusPill>
+        </div>
+      </CardHeader>
       <CardContent className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="premium-hero rounded-lg p-4">
-          <p className="text-sm font-semibold text-emerald-900">Matched plan</p>
-          <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">
+        <div className="rounded-lg border bg-muted/45 p-4">
+          <p className="text-sm font-semibold text-primary">Matched plan</p>
+          <p className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
             {review.title}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{review.verdict}</p>
-          <p className="mt-3 text-sm font-medium text-[#111611]">{review.nextAction}</p>
+          <p className="mt-3 text-sm font-medium text-foreground">{review.nextAction}</p>
           <Button asChild className="mt-4 premium-action rounded-lg">
             <Link href="/practice" prefetch={false}>
               <Target className="size-4" />
@@ -432,7 +284,7 @@ function PracticePlanReviewCard({
           ))}
         </div>
       </CardContent>
-    </DataPanel>
+    </Card>
   );
 }
 
@@ -464,45 +316,54 @@ function practiceDecisionTone(
 
 function PracticePrescriptionCard({ plan }: { plan: FeatureIdeasData["practicePlan"][number] }) {
   return (
-    <DataPanel>
-      <SectionHeader
-        title="Next practice"
-        description="One measurable job to run after this import."
-        action={
+    <Card data-import-practice-prescription>
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>Next practice</CardTitle>
+            <CardDescription>One measurable job to run after this import.</CardDescription>
+          </div>
           <StatusPill tone={plan.status === "complete" ? "green" : "amber"}>
             {plan.targetShots} balls
           </StatusPill>
-        }
-      />
-      <CardContent className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div className="premium-hero rounded-lg p-4">
-          <p className="text-sm font-semibold text-emerald-900">Prescription</p>
-          <p className="mt-2 text-2xl font-semibold tracking-normal text-[#111611]">{plan.title}</p>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="rounded-lg border bg-muted/45 p-4">
+          <p className="text-sm font-semibold text-primary">Prescription</p>
+          <p className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
+            {plan.title}
+          </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{plan.detail}</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            <ResultMetric label="Target balls" value={plan.targetShots} detail="Count every shot" />
-            <div className="luxury-metric-card rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Goal</p>
-              <p className="mt-2 text-lg font-semibold tracking-normal">Stock window</p>
-              <p className="mt-1 text-sm text-muted-foreground">Retest next session</p>
-            </div>
-            <div className="luxury-metric-card rounded-lg border p-4">
-              <p className="text-sm text-muted-foreground">Focus</p>
-              <p className="mt-2 text-lg font-semibold tracking-normal">
-                {plan.focusArea.replace(/-/g, " ")}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">Keep it measurable</p>
-            </div>
+            <Item variant="outline">
+              <ItemContent>
+                <ItemTitle>{plan.targetShots} target balls</ItemTitle>
+                <ItemDescription>Count every shot</ItemDescription>
+              </ItemContent>
+            </Item>
+            <Item variant="outline">
+              <ItemContent>
+                <ItemTitle>Stock window</ItemTitle>
+                <ItemDescription>Retest next session</ItemDescription>
+              </ItemContent>
+            </Item>
+            <Item variant="outline">
+              <ItemContent>
+                <ItemTitle>{plan.focusArea.replace(/-/g, " ")}</ItemTitle>
+                <ItemDescription>Keep it measurable</ItemDescription>
+              </ItemContent>
+            </Item>
           </div>
         </div>
-        <Button asChild className="premium-action rounded-lg">
+        <Button asChild className="w-fit rounded-lg">
           <Link href={plan.clubId ? `/bag/${plan.clubId}/analytics` : "/coach"} prefetch={false}>
             <Crosshair className="size-4" />
             Open practice
           </Link>
         </Button>
       </CardContent>
-    </DataPanel>
+    </Card>
   );
 }
 
@@ -553,18 +414,6 @@ async function getImportResultData(sessionId: string) {
   };
 }
 
-function ResultMetric({ label, value, detail }: { label: string; value: number; detail: string }) {
-  return (
-    <div className="luxury-metric-card rounded-lg border p-4">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold tracking-normal">
-        {integerFormatter.format(value)}
-      </p>
-      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
-
 function ResultAction({
   href,
   icon,
@@ -577,16 +426,16 @@ function ResultAction({
   detail: string;
 }) {
   return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="premium-rail-card rounded-lg p-4 transition-colors hover:border-[#0B7A3B]"
-    >
-      <span className="grid size-9 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
-        {icon}
-      </span>
-      <p className="mt-3 font-semibold">{title}</p>
-      <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p>
+    <Link href={href} prefetch={false}>
+      <Item variant="outline" className="h-full hover:bg-muted/55">
+        <ItemMedia className="grid size-9 place-items-center rounded-lg bg-secondary text-secondary-foreground">
+          {icon}
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{title}</ItemTitle>
+          <ItemDescription className="whitespace-normal">{detail}</ItemDescription>
+        </ItemContent>
+      </Item>
     </Link>
   );
 }

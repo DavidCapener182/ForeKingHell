@@ -18,6 +18,13 @@ const CourseTwinShowcase = dynamic(
     ),
   { ssr: false, loading: MarketingSectionPlaceholder },
 );
+const ScrollProductStory = dynamic(
+  () =>
+    import("@/components/marketing/scroll-product-story").then(
+      (module) => module.ScrollProductStory,
+    ),
+  { loading: MarketingStoryPlaceholder },
+);
 
 export function LazySampleProductTour() {
   return <SampleProductTour />;
@@ -31,6 +38,14 @@ export function LazyMarketingFaq() {
   return <MarketingFaq />;
 }
 
+export function LazyScrollProductStory() {
+  return <ScrollProductStory />;
+}
+
 function MarketingSectionPlaceholder() {
   return <div className="min-h-[36rem]" aria-hidden />;
+}
+
+function MarketingStoryPlaceholder() {
+  return <div className="min-h-[44rem]" aria-hidden />;
 }

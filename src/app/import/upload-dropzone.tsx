@@ -4,7 +4,17 @@ import type { RefObject } from "react";
 import { FileText, Upload, UploadCloud, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { GolfLoader } from "@/components/visuals/golf-loader";
 import { PageArtwork } from "@/components/visuals/page-artwork";
 import { cn } from "@/lib/utils";
@@ -60,12 +70,10 @@ export function UploadDropzone({
         }}
       />
 
-      <div
+      <Card
         className={cn(
-          "premium-command-surface flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-dashed px-4 py-8 text-center transition-colors",
-          isDragging
-            ? "border-emerald-500 bg-emerald-50"
-            : "border-border hover:border-emerald-400",
+          "flex cursor-pointer flex-col items-center justify-center gap-3 border-dashed px-4 py-8 text-center shadow-sm transition-colors",
+          isDragging ? "border-primary bg-primary/5" : "hover:border-primary/60 hover:bg-muted/20",
         )}
         onClick={() => fileInputRef.current?.click()}
         onDragOver={(event) => {
@@ -95,21 +103,21 @@ export function UploadDropzone({
             sizes="(min-width: 768px) 520px, 0px"
           />
         ) : null}
-        <div className="grid size-12 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+        <div className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
           <UploadCloud className="size-6" />
         </div>
         <div className="space-y-1">
           <p className="font-medium">Choose CSV files</p>
           <p className="text-sm text-muted-foreground">Click here or drop multiple CSVs at once.</p>
         </div>
-        <span className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-secondary px-3 text-sm font-medium text-secondary-foreground shadow-xs">
+        <Badge variant="secondary" className="h-8 gap-1.5 px-3">
           <Upload className="size-4" />
           Browse files
-        </span>
-      </div>
+        </Badge>
+      </Card>
 
       {readProgress ? (
-        <div className="premium-command-surface rounded-lg p-3" aria-live="polite">
+        <Card className="p-3 shadow-sm" aria-live="polite">
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="font-medium">Reading {readProgress.fileName}</span>
             <span className="text-muted-foreground">
@@ -118,13 +126,13 @@ export function UploadDropzone({
           </div>
           <GolfLoader
             label="Reading launch data"
-            className="mt-3 max-w-none border-0 bg-emerald-50/55 p-3 shadow-none [&_[data-loader-art]]:h-20"
+            className="mt-3 max-w-none border-0 bg-primary/5 p-3 shadow-none [&_[data-loader-art]]:h-20"
           />
           <Progress
             value={progressValue(readProgress.loaded, readProgress.total)}
             className="mt-2 h-2"
           />
-        </div>
+        </Card>
       ) : null}
 
       {files.length > 0 ? (
@@ -135,37 +143,51 @@ export function UploadDropzone({
               Clear
             </Button>
           </div>
-          <div className="space-y-2">
-            {files.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between gap-3 rounded-lg bg-white/80 px-3 py-2 ring-1 ring-slate-200/80"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <FileText className="size-4 shrink-0 text-sky-500" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{file.fileName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {file.parsed.shotCount} shots
-                      {file.parsed.exportedAtIso
-                        ? `, ${formatDate(file.parsed.exportedAtIso)}`
-                        : ""}
-                      , {file.parsed.detectedDistanceUnit} detected
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onRemoveFile(file.id)}
-                  aria-label={`Remove ${file.fileName}`}
-                >
-                  <X className="size-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
+          <Card className="overflow-hidden py-0 shadow-none" data-import-upload-table>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>File</TableHead>
+                  <TableHead className="text-right">Shots</TableHead>
+                  <TableHead>Exported</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="w-12">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {files.map((file) => (
+                  <TableRow key={file.id}>
+                    <TableCell className="font-medium">
+                      <span className="flex items-center gap-2">
+                        <FileText className="size-4 shrink-0 text-primary" />
+                        <span className="max-w-64 truncate">{file.fileName}</span>
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {file.parsed.shotCount}
+                    </TableCell>
+                    <TableCell>
+                      {file.parsed.exportedAtIso ? formatDate(file.parsed.exportedAtIso) : "—"}
+                    </TableCell>
+                    <TableCell>{file.parsed.detectedDistanceUnit}</TableCell>
+                    <TableCell>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onRemoveFile(file.id)}
+                        aria-label={`Remove ${file.fileName}`}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
         </div>
       ) : null}
     </>

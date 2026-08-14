@@ -93,11 +93,11 @@ export function ColumnMappingPanel({
   }
 
   return (
-    <Card className="premium-card">
+    <Card className="shadow-sm" data-import-column-mapping>
       <CardHeader className="sm:grid-cols-[minmax(0,1fr)_auto]">
         <div>
           <div className="flex items-center gap-2">
-            <SlidersHorizontal className="size-4 text-emerald-700" />
+            <SlidersHorizontal className="size-4 text-primary" />
             <CardTitle>Manual column mapping</CardTitle>
             <Badge variant={needsMapping ? "default" : "outline"}>
               {needsMapping ? "Mapping needed" : "Auto detected"}

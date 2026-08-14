@@ -22,14 +22,6 @@ import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
-import { DataWarning } from "@/components/app/evidence-status";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
@@ -86,7 +78,6 @@ type PageProps = {
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
-const MOBILE_EVIDENCE_LIMIT = 12;
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
 const clubAnalyticsPrompts = [
@@ -151,7 +142,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
 
   return (
     <PageShell>
-      <div className="hidden items-center justify-between gap-4 lg:flex">
+      <div className="flex items-center justify-between gap-4">
         <Button asChild variant="ghost" className="px-0">
           <Link href={`/bag/${club.id}`} prefetch={false}>
             <ArrowLeft className="size-4" />
@@ -216,17 +207,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           />
         }
       >
-        <MobileClubAnalytics
-          club={club}
-          analytics={analytics}
-          shots={clubShots}
-          latestShots={latestShots}
-          accent={accent}
-          clubName={clubName}
-          brandModel={brandModel}
-        />
-
-        <div className="hidden gap-4 lg:grid" data-desktop-club-analytics>
+        <div className="grid gap-4" data-desktop-club-analytics>
           <PageHeader
             eyebrow={<StatusPill tone="sky">Advanced club analytics</StatusPill>}
             title={`${clubName} analytics`}
@@ -235,7 +216,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
               <Button
                 asChild
                 size="lg"
-                className="rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+                className="rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Link href={`/bag/${club.id}`} prefetch={false}>
                   <Target className="size-4" />
@@ -272,28 +253,26 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
               <SectionHeader
                 title="Coach readout"
                 description="What this club is doing, why it matters, and what to practise next."
-                action={<Brain className="size-5 text-emerald-500" />}
+                action={<Brain className="size-5 text-primary" />}
               />
               <CardContent className="space-y-4">
-                <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-950 shadow-none lg:border-transparent lg:bg-[#0B7A3B] lg:text-white lg:shadow-sm">
+                <div className="rounded-xl border border-primary/20 bg-primary p-5 text-primary-foreground shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm text-slate-500 lg:text-white/60">
-                        Recommended practice
-                      </p>
+                      <p className="text-sm text-primary-foreground/60">Recommended practice</p>
                       <h2 className="mt-1 text-2xl font-semibold tracking-normal">
                         {analytics.practice.title}
                       </h2>
                     </div>
-                    <Badge className="border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-100 lg:border-transparent lg:bg-white/12 lg:text-white lg:hover:bg-white/12">
+                    <Badge className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/10">
                       {clubName}
                     </Badge>
                   </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600 lg:text-white/78">
+                  <p className="mt-4 text-sm leading-6 text-primary-foreground/80">
                     {analytics.practice.drill}
                   </p>
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-[#F2F2F7] p-3 text-sm lg:border-white/12 lg:bg-white/8">
-                    <span className="text-slate-500 lg:text-white/56">Goal: </span>
+                  <div className="mt-4 rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 p-3 text-sm">
+                    <span className="text-primary-foreground/60">Goal: </span>
                     {analytics.practice.goal}
                   </div>
                 </div>
@@ -583,8 +562,8 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
           />
 
           {analytics.delivery.dataWarning ? (
-            <DataPanel className="border-amber-300 bg-amber-50">
-              <CardContent className="py-4 text-sm text-amber-950">
+            <DataPanel className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]">
+              <CardContent className="py-4 text-sm text-[var(--status-warning-foreground)]">
                 <strong>Data confidence:</strong> {analytics.delivery.dataWarning}
               </CardContent>
             </DataPanel>
@@ -593,426 +572,6 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
       </DesktopWorkbenchLayout>
     </PageShell>
   );
-}
-
-function MobileClubAnalytics({
-  club,
-  analytics,
-  shots,
-  latestShots,
-  accent,
-  clubName,
-  brandModel,
-}: {
-  club: { id: string; type: string; brand: string | null; model: string | null };
-  analytics: ClubAnalytics;
-  shots: ClubAnalyticsShot[];
-  latestShots: ClubAnalyticsShot[];
-  accent: string;
-  clubName: string;
-  brandModel: string;
-}) {
-  const diagnosisNeedsAttention = analytics.diagnosis.severity !== "low";
-
-  return (
-    <div className="grid gap-4 lg:hidden" data-mobile-club-analytics>
-      <header className="grid gap-2 px-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill tone="sky">Club analytics</StatusPill>
-          <IOSInlineStatus
-            label={analytics.decision.trustVerdict}
-            tone={
-              analytics.decision.trustVerdict === "Trusted" ||
-              analytics.decision.trustVerdict === "Playable"
-                ? "positive"
-                : "attention"
-            }
-          />
-        </div>
-        <h1 className="text-[2rem] font-semibold leading-9 tracking-tight">{clubName}</h1>
-        <p className="text-[15px] leading-5 text-muted-foreground">{brandModel}</p>
-      </header>
-
-      <section className="grid gap-2.5" aria-label="Club recommendation and key numbers">
-        <IOSSectionHeader
-          title="Recommendation"
-          description="The action and numbers to take onto the course"
-        />
-        <IOSGroupedList label="Club recommendation">
-          <IOSListRow
-            icon={Brain}
-            label={analytics.practice.title}
-            detail={analytics.practice.drill}
-            status={<IOSInlineStatus label={analytics.practice.goal} tone="info" />}
-          />
-          <IOSListRow
-            icon={Target}
-            label="Play number"
-            value={formatYards(analytics.decision.playNumberYd)}
-            detail={analytics.decision.role}
-          />
-          <IOSListRow
-            icon={ShieldCheck}
-            label="Trust index"
-            value={`${analytics.consistency.clubTrustIndex}%`}
-            detail={analytics.consistency.confidenceLabel}
-          />
-          <IOSListRow
-            icon={Compass}
-            label="Playable rate"
-            value={formatRate(analytics.accuracy.playableShotRate)}
-            detail={`${shapeLabel(analytics.accuracy.primaryShape)} · ${formatSide(analytics.accuracy.averageSideCarryYd)} average side`}
-          />
-          <IOSListRow
-            icon={Gauge}
-            label="Gapping"
-            value={analytics.gapping.status}
-            detail={analytics.gapping.note}
-            status={
-              <IOSInlineStatus
-                label={
-                  analytics.gapping.status === "Healthy" ? "Bag fit is healthy" : "Review bag fit"
-                }
-                tone={analytics.gapping.status === "Healthy" ? "positive" : "attention"}
-              />
-            }
-          />
-        </IOSGroupedList>
-      </section>
-
-      {diagnosisNeedsAttention ? (
-        <DataWarning
-          title={analytics.diagnosis.title}
-          detail={`${analytics.diagnosis.likelyCause} ${analytics.diagnosis.practiceFocus}`}
-          className="dark:border-amber-700/70 dark:bg-amber-950/45 dark:text-amber-100"
-        />
-      ) : null}
-
-      {analytics.delivery.dataWarning ? (
-        <DataWarning
-          title="Data confidence"
-          detail={analytics.delivery.dataWarning}
-          className="dark:border-amber-700/70 dark:bg-amber-950/45 dark:text-amber-100"
-        />
-      ) : null}
-
-      <Button asChild className="min-h-11 w-full rounded-xl">
-        <Link href="/coach" prefetch={false}>
-          <Brain className="size-4" aria-hidden />
-          Build this practice plan
-        </Link>
-      </Button>
-
-      <section className="grid gap-2.5" aria-label="Shot cloud">
-        <IOSSectionHeader
-          title="Shot cloud"
-          description="Distance and side pattern for the measured sample"
-          action={<IOSInlineStatus label={`${shots.length} shots`} tone="info" />}
-        />
-        <ShotCloud shots={shots} analytics={analytics} accent={accent} />
-      </section>
-
-      <IOSDisclosureGroup
-        label="Club analytics supporting detail"
-        items={[
-          {
-            value: "why",
-            title: "Why this recommendation",
-            summary: analytics.diagnosis.severity,
-            description: "Trust verdict, diagnosis and pressure rule",
-            content: (
-              <IOSGroupedList label="Recommendation evidence">
-                <IOSListRow
-                  label="Recommended use"
-                  value={analytics.decision.trustVerdict}
-                  detail={analytics.decision.recommendedUse}
-                />
-                <IOSListRow
-                  label="Likely cause"
-                  value={analytics.diagnosis.severity}
-                  detail={analytics.diagnosis.likelyCause}
-                />
-                <IOSListRow label="Evidence" detail={analytics.diagnosis.evidence} />
-                <IOSListRow
-                  label="Pressure rule"
-                  value={formatYards(analytics.decision.doNotForceOverYd)}
-                  detail={analytics.decision.pressureUse}
-                />
-              </IOSGroupedList>
-            ),
-            contentClassName: "px-0",
-          },
-          {
-            value: "distance-flight",
-            title: "Distance and launch",
-            summary: formatYards(analytics.distance.stockPlayNumberYd),
-            description: "Play-number profile and launch-window canvas",
-            content: (
-              <div className="grid gap-5">
-                <section className="grid gap-2">
-                  <IOSSectionHeader title="Distance profile" />
-                  <DistanceDistribution analytics={analytics} accent={accent} />
-                </section>
-                <section className="grid gap-2">
-                  <IOSSectionHeader title="Launch window" />
-                  <LaunchWindowChart analytics={analytics} accent={accent} />
-                </section>
-              </div>
-            ),
-            contentClassName: "px-2",
-          },
-          {
-            value: "all-metrics",
-            title: "All club metrics",
-            summary: "6 groups",
-            description: "Distance, accuracy, launch, strike, delivery and gapping",
-            content: <MobileAnalyticsMetricGroups analytics={analytics} />,
-          },
-          {
-            value: "progress-tags",
-            title: "Trend and recent examples",
-            summary: `${latestShots.length} recent`,
-            description: "Comparable changes and newest shot classification",
-            content: <MobileAnalyticsProgress analytics={analytics} latestShots={latestShots} />,
-          },
-          {
-            value: "evidence",
-            title: "Measured shot evidence",
-            summary: `${shots.length} measured`,
-            description: `Newest ${Math.min(shots.length, MOBILE_EVIDENCE_LIMIT)} rows; full set in Shot Explorer`,
-            content: (
-              <MobileAnalyticsEvidenceRows
-                clubType={club.type}
-                shots={shots}
-                stockCarryYd={analytics.distance.stockCarryYd}
-              />
-            ),
-            contentClassName: "px-0",
-          },
-        ]}
-      />
-
-      <IOSGroupedList label="Club analytics navigation">
-        <IOSListRow
-          icon={Target}
-          label="Standard club view"
-          detail="Return to dispersion and selected-shot replay"
-          href={`/bag/${club.id}`}
-        />
-        <IOSListRow
-          icon={Upload}
-          label="Import more evidence"
-          detail="Add launch-monitor shots for this club"
-          href="/import"
-        />
-      </IOSGroupedList>
-    </div>
-  );
-}
-
-function MobileAnalyticsMetricGroups({ analytics }: { analytics: ClubAnalytics }) {
-  return (
-    <div className="grid gap-5">
-      <MobileAnalyticsMetricGroup
-        title="Distance"
-        metrics={[
-          ["Stock", formatYards(analytics.distance.stockCarryYd)],
-          ["Recommended", formatYards(analytics.distance.stockPlayNumberYd)],
-          ["Safe carry", formatYards(analytics.distance.safeCarryYd)],
-          ["Personal best", formatYards(analytics.distance.personalBestCarryYd)],
-          ["Mishit floor", formatYards(analytics.distance.mishitFloorYd)],
-        ]}
-      />
-      <MobileAnalyticsMetricGroup
-        title="Accuracy"
-        metrics={[
-          ["Average side", formatSide(analytics.accuracy.averageSideCarryYd)],
-          ["Playable", formatRate(analytics.accuracy.playableShotRate)],
-          ["Big miss", formatRate(analytics.accuracy.bigMissRate)],
-          ["Cone width", formatYards(analytics.accuracy.shotConeWidthYd)],
-        ]}
-      />
-      <MobileAnalyticsMetricGroup
-        title="Launch"
-        metrics={[
-          ["Launch average", formatDegrees(analytics.launch.launchAverageDeg)],
-          ["Window score", formatRate(analytics.launch.launchWindowScore)],
-          ["Apex average", formatFeet(analytics.launch.apexAverageFt)],
-          ["Stopping", formatRate(analytics.launch.stoppingPowerScore)],
-        ]}
-      />
-      <MobileAnalyticsMetricGroup
-        title="Strike"
-        metrics={[
-          ["Ball speed", formatMph(analytics.strike.ballSpeedAverageMph)],
-          ["Club speed", formatMph(analytics.strike.clubSpeedAverageMph)],
-          ["Smash", formatOptional(analytics.strike.smashAverage)],
-          ["Speed leakage", formatRate(analytics.strike.speedLeakageRate)],
-        ]}
-      />
-      <MobileAnalyticsMetricGroup
-        title="Delivery"
-        metrics={[
-          ["Path", formatDegrees(analytics.delivery.clubPathAverageDeg)],
-          ["Attack", formatDegrees(analytics.delivery.attackAngleAverageDeg)],
-          ["Face", formatDegrees(analytics.delivery.faceAngleAverageDeg)],
-          ["Face to path", formatDegrees(analytics.delivery.facePathAverageDeg)],
-        ]}
-      />
-      <MobileAnalyticsMetricGroup
-        title="Gapping"
-        metrics={[
-          ["Status", analytics.gapping.status],
-          ["Previous gap", formatYards(analytics.gapping.previousGapYd)],
-          ["Next gap", formatYards(analytics.gapping.nextGapYd)],
-          ["Play number", formatYards(analytics.distance.stockPlayNumberYd)],
-        ]}
-      />
-    </div>
-  );
-}
-
-function MobileAnalyticsMetricGroup({
-  title,
-  metrics,
-}: {
-  title: string;
-  metrics: Array<[string, string]>;
-}) {
-  return (
-    <section className="grid gap-2" aria-label={`${title} metrics`}>
-      <p className="px-1 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-        {title}
-      </p>
-      <IOSGroupedList label={`${title} metrics`}>
-        {metrics.map(([label, value]) => (
-          <IOSListRow key={label} label={label} value={value} />
-        ))}
-      </IOSGroupedList>
-    </section>
-  );
-}
-
-function MobileAnalyticsProgress({
-  analytics,
-  latestShots,
-}: {
-  analytics: ClubAnalytics;
-  latestShots: ClubAnalyticsShot[];
-}) {
-  const comparisons = [
-    ["Latest 30 vs first 30", analytics.progress.baselineDelta],
-    ["Last session vs previous", analytics.progress.lastSessionDelta],
-    ["This month vs last month", analytics.progress.monthlyDelta],
-  ] as const;
-
-  return (
-    <div className="grid gap-5">
-      <IOSGroupedList label="Club progress comparisons">
-        {comparisons.map(([label, delta]) => (
-          <IOSListRow
-            key={label}
-            label={label}
-            value={mobileDeltaValue(delta?.carryDeltaYd ?? null, "yd")}
-            detail={
-              delta
-                ? `Ball speed ${mobileDeltaValue(delta.ballSpeedDeltaMph, "mph")} · offline ${mobileDeltaValue(delta.offlineDeltaYd, "yd")}`
-                : "Needs two comparable clean samples"
-            }
-          />
-        ))}
-      </IOSGroupedList>
-
-      <section className="grid gap-2">
-        <p className="px-1 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-          Recent examples
-        </p>
-        <IOSGroupedList label="Recent shot examples">
-          {latestShots.map((shot) => {
-            const tags = likelyMishitTags({
-              clubType: shot.clubType,
-              shot,
-              stockCarryYd: analytics.distance.stockCarryYd,
-            });
-            return (
-              <IOSListRow
-                key={shot.id}
-                label={`Shot #${shot.shotNumber ?? "--"}`}
-                value={formatYards(shot.carryYd)}
-                detail={`${formatDate(shot.shotAt)} · ${shapeLabel(classifyShotShape(shot))} · ${tags.join(", ") || "normal"}`}
-              />
-            );
-          })}
-        </IOSGroupedList>
-      </section>
-    </div>
-  );
-}
-
-function MobileAnalyticsEvidenceRows({
-  clubType,
-  shots,
-  stockCarryYd,
-}: {
-  clubType: string;
-  shots: ClubAnalyticsShot[];
-  stockCarryYd: number | null;
-}) {
-  const visibleShots = [...shots]
-    .sort((left, right) => new Date(right.shotAt).getTime() - new Date(left.shotAt).getTime())
-    .slice(0, MOBILE_EVIDENCE_LIMIT);
-
-  return (
-    <div
-      className="ios-grouped-list overflow-hidden"
-      aria-label="Club analytics measured evidence rows"
-      data-mobile-club-evidence-rows
-    >
-      {visibleShots.map((shot) => {
-        const tags = likelyMishitTags({ clubType, shot, stockCarryYd });
-        const quality = tags.join(", ") || shot.qualityTag || "Normal";
-        return (
-          <div
-            key={shot.id}
-            className="ios-grouped-row flex min-h-14 items-center gap-3 px-4 py-2.5"
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
-              {shot.shotNumber ?? "-"}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-medium text-foreground">
-                {formatDate(shot.shotAt)}
-              </span>
-              <span className="mt-0.5 block text-[13px] leading-5 text-muted-foreground">
-                {shapeLabel(classifyShotShape(shot))} · {quality} · {formatSide(shot.sideCarryYd)}
-              </span>
-            </span>
-            <span className="shrink-0 text-right">
-              <span className="block text-[15px] font-semibold text-foreground tabular-nums">
-                {formatYards(shot.carryYd)}
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                {formatMph(shot.ballSpeedMph)}
-              </span>
-            </span>
-          </div>
-        );
-      })}
-      {shots.length > visibleShots.length ? (
-        <IOSListRow
-          label="Open every measured shot"
-          value={`${shots.length} total`}
-          detail="Continue in Shot Explorer with this club already selected"
-          href={`/shots?club=${encodeURIComponent(clubType)}`}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function mobileDeltaValue(value: number | null, unit: string) {
-  if (value === null) return "--";
-  return `${value > 0 ? "+" : ""}${numberFormatter.format(value)} ${unit}`;
 }
 
 function ClubShotEvidenceLedger({
@@ -1061,11 +620,11 @@ function ClubShotEvidenceLedger({
                 Club analytics shot evidence table with shot date, shape, carry, total, side, speed,
                 launch, path, face, smash, quality and session source.
               </TableCaption>
-              <TableHeader className="sticky top-0 z-10 bg-white">
+              <TableHeader className="sticky top-0 z-10 bg-card">
                 <TableRow>
                   <TableHead
                     data-column="shot"
-                    className="sticky left-0 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                    className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                   >
                     Shot
                   </TableHead>
@@ -1112,7 +671,7 @@ function ClubShotEvidenceLedger({
                     <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
                       <TableCell
                         data-column="shot"
-                        className="sticky left-0 z-10 bg-white font-medium text-slate-950 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-10 bg-card font-medium text-foreground shadow-[1px_0_0_hsl(var(--border))]"
                       >
                         #{shot.shotNumber ?? "--"}
                       </TableCell>
@@ -1315,10 +874,10 @@ function toAnalyticsShot(shot: AnalyticsShotRow, clubType: string): ClubAnalytic
 function DecisionSupportPanel({ analytics, accent }: { analytics: ClubAnalytics; accent: string }) {
   return (
     <DataPanel className="overflow-hidden">
-      <div className="border-b border-slate-200 bg-white px-5 py-4 text-slate-950 lg:border-white/10 lg:bg-[linear-gradient(135deg,#111827_0%,#172033_52%,rgba(17,24,39,0.92)_100%)] lg:text-white">
+      <div className="border-b border-border bg-muted/45 px-5 py-4 text-foreground">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500 lg:tracking-[0.16em] lg:text-white/55">
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
               Trust this club?
             </p>
             <h2 className="mt-2 text-3xl font-semibold tracking-normal">
@@ -1326,13 +885,13 @@ function DecisionSupportPanel({ analytics, accent }: { analytics: ClubAnalytics;
             </h2>
           </div>
           <div
-            className="grid size-11 place-items-center rounded-full border border-slate-200 bg-[#F2F2F7] lg:border-white/10 lg:bg-white/10"
+            className="grid size-11 place-items-center rounded-full border border-border bg-card"
             style={{ color: accent }}
           >
             <ShieldCheck className="size-5" />
           </div>
         </div>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 lg:text-white/74">
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
           {analytics.decision.recommendedUse}
         </p>
       </div>
@@ -1354,7 +913,7 @@ function DecisionSupportPanel({ analytics, accent }: { analytics: ClubAnalytics;
         </div>
         <div className="apple-panel-strong p-4">
           <div className="flex items-center gap-2">
-            <ClipboardCheck className="size-4 text-emerald-600" />
+            <ClipboardCheck className="size-4 text-primary" />
             <p className="font-medium">Pressure rule</p>
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
@@ -1438,7 +997,7 @@ function ShapeMixPanel({ analytics, accent }: { analytics: ClubAnalytics; accent
 
 function SmallDecisionMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border bg-white px-3 py-3">
+    <div className="rounded-xl border bg-card px-3 py-3">
       <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
@@ -1463,7 +1022,7 @@ function ProfileCard({
         {metrics.map(([label, value]) => (
           <div
             key={label}
-            className="flex items-center justify-between rounded-xl bg-white/85 px-3 py-2 ring-1 ring-slate-200/80"
+            className="flex items-center justify-between rounded-xl bg-card px-3 py-2 ring-1 ring-border"
           >
             <span className="text-sm text-muted-foreground">{label}</span>
             <span className="text-right font-semibold">{value}</span>
@@ -1668,7 +1227,7 @@ function ShotCloud({
           { key: "context", label: "Context" },
         ]}
         rows={shotCloudChartRows(analytics, plotted.length)}
-        className="bg-white/70"
+        className="bg-card"
       />
     </div>
   );
@@ -1712,7 +1271,7 @@ function DistanceDistribution({ analytics, accent }: { analytics: ClubAnalytics;
           { key: "context", label: "Context" },
         ]}
         rows={distanceProfileChartRows(values)}
-        className="bg-white/70"
+        className="bg-card"
       />
     </div>
   );
@@ -1756,7 +1315,7 @@ function LaunchWindowChart({ analytics, accent }: { analytics: ClubAnalytics; ac
           { key: "context", label: "Context" },
         ]}
         rows={launchWindowChartRows(analytics)}
-        className="bg-white/70"
+        className="bg-card"
       />
     </div>
   );
@@ -1960,11 +1519,13 @@ function DeltaMetric({
         ? value <= 0
         : Math.abs(value) <= 2);
   return (
-    <div className="rounded-lg border bg-white p-3">
+    <div className="rounded-lg border bg-card p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={
-          isGood ? "mt-1 font-semibold text-emerald-700" : "mt-1 font-semibold text-amber-700"
+          isGood
+            ? "mt-1 font-semibold text-[var(--status-success-foreground)]"
+            : "mt-1 font-semibold text-[var(--status-warning-foreground)]"
         }
       >
         {value === null

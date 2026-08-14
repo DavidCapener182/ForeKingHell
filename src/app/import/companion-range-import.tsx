@@ -7,15 +7,14 @@ import { saveRapsodoImportAction } from "@/app/import/actions";
 import { useImportFiles } from "@/app/import/use-import-files";
 import { OperationStatus } from "@/components/app/operation-status";
 import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
-import {
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-} from "@/components/app/ios-mobile";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatClubType, formatCompanionClubType } from "@/lib/club-format";
 import { MAX_IMPORT_CSV_BYTES, formatMegabytes } from "@/lib/imports/import-limits";
 import type { RapsodoShotOverride } from "@/lib/imports/save-rapsodo-import";
@@ -208,53 +215,58 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
 
   if (!file) {
     return (
-      <section className="ios-grouped-list grid gap-4 p-5" data-companion-csv-import>
-        <input
-          ref={fileInputRef}
-          id="companion-csv-file"
-          type="file"
-          className="sr-only"
-          accept=".csv,text/csv,application/csv,application/vnd.ms-excel,text/plain"
-          onChange={(event) => {
-            void chooseFiles(event.currentTarget.files);
-            event.currentTarget.value = "";
-          }}
-        />
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Import a session
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">Choose a range CSV</h1>
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">
-            Pick one launch-monitor export. It is checked on this phone before anything is saved.
-          </p>
-        </div>
-        <Button
-          type="button"
-          className="min-h-12 rounded-xl text-base"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <FileUp className="size-5" aria-hidden />
-          Choose CSV from Files
-        </Button>
-        {readProgress ? (
-          <OperationStatus
-            status="working"
-            title={`Reading ${readProgress.fileName}`}
-            description="Checking the selected file on this phone."
-            progress={
-              readProgress.total > 0 ? (readProgress.loaded / readProgress.total) * 100 : undefined
-            }
+      <Card data-companion-csv-import>
+        <CardHeader>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Import a session
+            </p>
+            <CardTitle className="mt-1 text-2xl">Choose a range CSV</CardTitle>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">
+              Pick one launch-monitor export. It is checked on this phone before anything is saved.
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <Input
+            ref={fileInputRef}
+            id="companion-csv-file"
+            type="file"
+            className="sr-only"
+            accept=".csv,text/csv,application/csv,application/vnd.ms-excel,text/plain"
+            onChange={(event) => {
+              void chooseFiles(event.currentTarget.files);
+              event.currentTarget.value = "";
+            }}
           />
-        ) : null}
-        {message ? (
-          <OperationStatus
-            status="error"
-            title="This file cannot be imported"
-            description={message}
-          />
-        ) : null}
-      </section>
+          <Button
+            type="button"
+            className="min-h-12 rounded-xl text-base"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileUp className="size-5" aria-hidden />
+            Choose CSV from Files
+          </Button>
+          {readProgress ? (
+            <OperationStatus
+              status="working"
+              title={`Reading ${readProgress.fileName}`}
+              description="Checking the selected file on this phone."
+              progress={
+                readProgress.total > 0
+                  ? (readProgress.loaded / readProgress.total) * 100
+                  : undefined
+              }
+            />
+          ) : null}
+          {message ? (
+            <Alert variant="destructive">
+              <AlertTitle>This file cannot be imported</AlertTitle>
+              <AlertDescription>{message}</AlertDescription>
+            </Alert>
+          ) : null}
+        </CardContent>
+      </Card>
     );
   }
 
@@ -277,163 +289,196 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
   return (
     <div className="grid gap-4" data-companion-csv-confirmation>
       <OperationStepper steps={workflowSteps} label="CSV import progress" compact />
-      <section className="ios-grouped-list grid gap-4 p-4">
-        <div className="flex items-start justify-between gap-3">
+      <Card data-import-preview-card>
+        <CardHeader>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Ready to save
             </p>
-            <h1 className="mt-1 truncate text-xl font-bold">{file.fileName}</h1>
+            <CardTitle className="mt-1 truncate text-xl">{file.fileName}</CardTitle>
           </div>
-          <IOSInlineStatus
-            label={unknownGroups.length === 0 ? "Clubs matched" : "Check clubs"}
-            tone={unknownGroups.length === 0 ? "positive" : "attention"}
-          />
-        </div>
-        <IOSGroupedList label="Parsed session summary" className="bg-card">
-          <IOSMetricRow label="Provider" value={providerLabel(file.parsed.source)} />
-          <IOSMetricRow label="Session date" value={formatDate(file.parsed.exportedAtIso)} />
-          <IOSMetricRow label="Session type" value="Range practice" />
-          <IOSMetricRow label="Shots" value={String(file.parsed.shotCount)} />
-          <IOSMetricRow label="Clubs" value={clubs.join(", ") || "Needs mapping"} />
-          <IOSMetricRow
-            label="Distance unit"
-            value={
-              file.parsed.detectedDistanceUnit === "unknown"
-                ? distanceUnit
-                : file.parsed.detectedDistanceUnit
-            }
-          />
-          <IOSMetricRow label="Excluded rows" value={String(excludedRows)} />
-          <IOSListRow
-            label="Duplicate check"
-            value={
-              !duplicate.checked
+          <CardAction>
+            <Badge variant={unknownGroups.length === 0 ? "default" : "outline"}>
+              {unknownGroups.length === 0 ? "Clubs matched" : "Check clubs"}
+            </Badge>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <Table aria-label="Parsed session summary" className="text-sm">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Session field</TableHead>
+                <TableHead className="text-right">Imported value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[
+                ["Provider", providerLabel(file.parsed.source)],
+                ["Session date", formatDate(file.parsed.exportedAtIso)],
+                ["Session type", "Range practice"],
+                ["Shots", String(file.parsed.shotCount)],
+                ["Clubs", clubs.join(", ") || "Needs mapping"],
+                [
+                  "Distance unit",
+                  file.parsed.detectedDistanceUnit === "unknown"
+                    ? distanceUnit
+                    : file.parsed.detectedDistanceUnit,
+                ],
+                ["Excluded rows", String(excludedRows)],
+              ].map(([label, value]) => (
+                <TableRow key={label}>
+                  <TableCell className="font-medium">{label}</TableCell>
+                  <TableCell className="max-w-48 whitespace-normal text-right">{value}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/35 p-3">
+            <span className="text-sm font-medium">Duplicate check</span>
+            <Badge variant={duplicate.duplicate ? "destructive" : "secondary"}>
+              {!duplicate.checked
                 ? "Checking…"
                 : duplicate.duplicate
                   ? "Already imported"
-                  : "New session"
-            }
-            status={
-              duplicate.checked ? (
-                <IOSInlineStatus
-                  label={duplicate.duplicate ? "Duplicate" : "Checked"}
-                  tone={duplicate.duplicate ? "attention" : "positive"}
-                />
-              ) : undefined
-            }
-          />
-        </IOSGroupedList>
-        {file.parsed.detectedDistanceUnit === "unknown" ? (
-          <div className="grid gap-2 text-sm font-semibold">
-            <span>Distance unit</span>
-            <Select
-              value={distanceUnit}
-              onValueChange={(value) => setDistanceUnit(value as "yards" | "meters")}
-            >
-              <SelectTrigger className="h-11 w-full rounded-xl bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="yards">Yards</SelectItem>
-                <SelectItem value="meters">Metres</SelectItem>
-              </SelectContent>
-            </Select>
+                  : "New session"}
+            </Badge>
           </div>
-        ) : null}
-      </section>
-
-      {unknownGroups.length > 0 ? (
-        <section className="ios-grouped-list grid gap-3 p-4" data-uncertain-club-mappings>
-          <div>
-            <h2 className="font-semibold">Confirm uncertain clubs</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Correct matches were skipped. Only these rows need you.
-            </p>
-          </div>
-          {unknownGroups.map((group) => (
-            <div key={group.label} className="grid gap-1.5 text-sm font-semibold">
-              <span>
-                {group.label} · {group.rowNumbers.length} shots
-              </span>
+          {duplicate.duplicate ? (
+            <Alert>
+              <AlertTitle>This session is already in your history</AlertTitle>
+              <AlertDescription>
+                Saving will open the existing review instead of writing the same measured rows
+                twice.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {file.parsed.detectedDistanceUnit === "unknown" ? (
+            <Field>
+              <FieldLabel htmlFor="companion-distance-unit">Distance unit</FieldLabel>
               <Select
-                value={clubMappings[group.label] ?? ""}
-                onValueChange={(value) =>
-                  setClubMappings((current) => ({ ...current, [group.label]: value }))
-                }
+                value={distanceUnit}
+                onValueChange={(value) => setDistanceUnit(value as "yards" | "meters")}
               >
-                <SelectTrigger className="h-11 w-full rounded-xl bg-background">
-                  <SelectValue placeholder="Choose club" />
+                <SelectTrigger
+                  id="companion-distance-unit"
+                  className="h-11 w-full rounded-xl bg-background"
+                >
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {clubOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {formatClubType(option)}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="yards">Yards</SelectItem>
+                  <SelectItem value="meters">Metres</SelectItem>
                 </SelectContent>
               </Select>
+            </Field>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      {unknownGroups.length > 0 ? (
+        <Card data-uncertain-club-mappings>
+          <CardHeader>
+            <div>
+              <CardTitle>Confirm uncertain clubs</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Correct matches were skipped. Only these rows need you.
+              </p>
             </div>
-          ))}
-        </section>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {unknownGroups.map((group) => (
+              <Field key={group.label}>
+                <FieldLabel htmlFor={`club-mapping-${group.rowNumbers[0]}`}>
+                  {group.label} · {group.rowNumbers.length} shots
+                </FieldLabel>
+                <FieldDescription>
+                  Choose the club once for every listed source row.
+                </FieldDescription>
+                <Select
+                  value={clubMappings[group.label] ?? ""}
+                  onValueChange={(value) =>
+                    setClubMappings((current) => ({ ...current, [group.label]: value }))
+                  }
+                >
+                  <SelectTrigger
+                    id={`club-mapping-${group.rowNumbers[0]}`}
+                    className="h-11 w-full rounded-xl bg-background"
+                  >
+                    <SelectValue placeholder="Choose club" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clubOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {formatClubType(option)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
 
       {file.parsed.warnings.length > 0 ? (
-        <Collapsible className="ios-grouped-list px-4 py-2" data-validation-alert>
+        <Collapsible className="rounded-xl border bg-card px-4 py-2" data-validation-alert>
           <CollapsibleTrigger className="focus-aaa flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-sm font-semibold outline-none">
             Questionable rows ({file.parsed.warnings.length})
             <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <OperationStatus
-              status="warning"
-              title="Some rows need a cautious read"
-              description={
+            <Alert className="mb-2">
+              <AlertTitle>Some rows need a cautious read</AlertTitle>
+              <AlertDescription>
                 <ul className="list-disc space-y-1 pl-5 text-xs leading-5">
                   {file.parsed.warnings.map((warning) => (
                     <li key={warning}>{warning}</li>
                   ))}
                 </ul>
-              }
-              className="mb-2"
-            />
+              </AlertDescription>
+            </Alert>
           </CollapsibleContent>
         </Collapsible>
       ) : null}
 
-      <section
-        className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-20 grid gap-2 rounded-xl border bg-background/95 p-2 shadow-lg backdrop-blur"
+      <Card
+        size="sm"
+        className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-20 gap-2 bg-card/95 py-2 shadow-lg backdrop-blur"
         aria-live="polite"
         data-import-sticky-footer
       >
-        {progress !== "idle" ? (
-          <OperationStatus
-            status={progress === "error" ? "error" : progress === "queued" ? "success" : "working"}
-            title={progressLabel(progress)}
-            description={message ?? progressDescription(progress)}
-            progress={progressPercent(progress)}
-          />
-        ) : null}
-        <ButtonGroup className="w-full">
-          <Button
-            type="button"
-            className="min-h-12 flex-1 rounded-xl text-base"
-            onClick={save}
-            disabled={!mappingsComplete || pending || !duplicate.checked}
-          >
-            {duplicate.duplicate ? "Open saved review" : "Save and build review"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-12 shrink-0"
-            onClick={reset}
-            disabled={pending}
-          >
-            Change file
-          </Button>
-        </ButtonGroup>
-      </section>
+        <CardContent className="grid gap-2 px-2">
+          {progress !== "idle" ? (
+            <OperationStatus
+              status={
+                progress === "error" ? "error" : progress === "queued" ? "success" : "working"
+              }
+              title={progressLabel(progress)}
+              description={message ?? progressDescription(progress)}
+              progress={progressPercent(progress)}
+            />
+          ) : null}
+          <ButtonGroup className="w-full">
+            <Button
+              type="button"
+              className="min-h-12 flex-1 rounded-xl text-base"
+              onClick={save}
+              disabled={!mappingsComplete || pending || !duplicate.checked}
+            >
+              {duplicate.duplicate ? "Open saved review" : "Save and build review"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-12 shrink-0"
+              onClick={reset}
+              disabled={pending}
+            >
+              Change file
+            </Button>
+          </ButtonGroup>
+        </CardContent>
+      </Card>
     </div>
   );
 }

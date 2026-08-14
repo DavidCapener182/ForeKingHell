@@ -44,6 +44,50 @@ describe("new round scorecard entry grid", () => {
     expect(source).toContain('required={roundStatus === "complete"}');
     expect(source).toContain("change the round status to In progress");
     expect(source).toContain("h-11 rounded-xl");
-    expect(source).toContain("min-h-11 shrink-0");
+    expect(source).toContain("min-h-11 min-w-11");
+  });
+
+  it("uses shadcn toggle groups for mobile steps and hole selection", () => {
+    expect(source).toContain('from "@/components/ui/toggle-group"');
+    expect(source).toContain("data-round-stepper");
+    expect(source).toContain("data-round-hole-tabs");
+    expect(source).toContain("value={String(activeHoleIndex)}");
+    expect(source).toContain("setActiveHoleIndex(Number(value))");
+    expect(source).toContain('aria-current={item.id === step ? "step" : undefined}');
+    expect(source).toContain("aria-label={`Go to hole ${hole.holeNumber}`}");
+    expect(source).not.toContain("<button");
+  });
+
+  it("keeps completeness feedback and visible controls semantic across themes", () => {
+    expect(source).toContain('from "@/components/ui/alert"');
+    expect(source).toContain("data-round-completeness");
+    expect(source).toContain("<AlertTitle>");
+    expect(source).toContain("<AlertDescription>");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).toContain("var(--status-warning-border)");
+    expect(source).toContain("var(--status-warning-foreground)");
+    expect(source).toContain("var(--status-success-surface)");
+    expect(source).toContain("var(--status-success-border)");
+    expect(source).toContain("var(--status-success-foreground)");
+    expect(source).not.toMatch(
+      /(?:bg-white|bg-\[#|text-slate-|border-slate-|bg-slate-|text-emerald-|border-emerald-|bg-emerald-|text-amber-|border-amber-|bg-amber-)/,
+    );
+  });
+
+  it("preserves the server action payload and scorecard field names", () => {
+    expect(source).toContain("action={createRoundAction}");
+    expect(source).toContain('<input type="hidden" name="holeCount"');
+
+    for (const hiddenField of ["holeNumber", "par", "yards", "strokeIndex"]) {
+      expect(source).toContain(`<input type="hidden" name={\`${hiddenField}-\${index}\`}`);
+    }
+
+    expect(source).toContain("name={`score-${index}`}");
+    expect(source).toContain("name={`putts-${index}`}");
+    expect(source).toContain("name={`penalties-${index}`}");
+    expect(source).toContain("name={`chipShots-${index}`}");
+    expect(source).toContain("name={`greensideSandShots-${index}`}");
+    expect(source).toContain("name={`fairwayHit-${index}`}");
+    expect(source).toContain("name={`gir-${index}`}");
   });
 });

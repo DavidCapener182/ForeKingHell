@@ -212,7 +212,7 @@ export function DataWarning({
   return (
     <aside
       className={cn(
-        "flex gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950",
+        "flex gap-3 rounded-2xl border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-[var(--status-warning-foreground)]",
         className,
       )}
       role="status"
@@ -244,10 +244,10 @@ export function DataHealthStatus({
       className={cn(
         "flex min-h-11 items-center gap-3 rounded-2xl border px-4 py-3",
         healthy
-          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+          ? "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]"
           : highPriorityCount > 0
-            ? "border-amber-300 bg-amber-50 text-amber-950"
-            : "border-sky-200 bg-sky-50 text-sky-950",
+            ? "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]"
+            : "border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]",
         className,
       )}
       role="status"

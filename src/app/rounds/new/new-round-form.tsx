@@ -1,10 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Save } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Save,
+  TriangleAlert,
+} from "lucide-react";
 
 import { StickyMobileAction } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 
@@ -255,30 +265,36 @@ export function NewRoundForm({
                 : ""}
             </p>
           </div>
-          <CalendarDays className="size-5 text-emerald-600" />
+          <CalendarDays className="size-5 text-primary" />
         </div>
 
-        <div className="sticky top-[7.75rem] z-30 -mx-1 mt-4 flex gap-1 overflow-x-auto px-1 py-1 sm:hidden">
+        <ToggleGroup
+          type="single"
+          value={String(activeHoleIndex)}
+          onValueChange={(value) => {
+            if (value) {
+              setActiveHoleIndex(Number(value));
+            }
+          }}
+          variant="outline"
+          aria-label="Scorecard hole"
+          className="sticky top-[7.75rem] z-30 -mx-1 mt-4 w-full justify-start overflow-x-auto px-1 py-1 sm:hidden"
+          data-round-hole-tabs
+        >
           {holes.map((hole, index) => (
-            <button
+            <ToggleGroupItem
               key={hole.holeNumber}
-              type="button"
+              value={String(index)}
               aria-label={`Go to hole ${hole.holeNumber}`}
-              onClick={() => setActiveHoleIndex(index)}
-              className={cn(
-                "grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border text-sm font-semibold shadow-sm",
-                index === activeHoleIndex
-                  ? "border-slate-950 bg-slate-950 text-white"
-                  : "border-slate-200 bg-white text-slate-700",
-              )}
+              className="min-h-11 min-w-11 rounded-xl p-0 text-sm font-semibold shadow-sm data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
             >
               {hole.holeNumber}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
+        </ToggleGroup>
 
         <div
-          className="mt-4 hidden rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:grid sm:grid-cols-[minmax(9rem,1.4fr)_repeat(5,minmax(4.25rem,0.7fr))_repeat(2,minmax(5rem,0.75fr))] sm:items-center sm:gap-2"
+          className="mt-4 hidden rounded-lg border border-border bg-muted/55 px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:grid sm:grid-cols-[minmax(9rem,1.4fr)_repeat(5,minmax(4.25rem,0.7fr))_repeat(2,minmax(5rem,0.75fr))] sm:items-center sm:gap-2"
           aria-hidden
         >
           <span>Hole</span>
@@ -347,50 +363,57 @@ export function NewRoundForm({
         </div>
       </div>
 
-      <div
-        className={cn(
-          "premium-card gap-3 p-4 sm:hidden",
-          mobileStep === "review" ? "grid" : "hidden",
-        )}
-      >
-        <div>
-          <p className="text-lg font-semibold tracking-normal">
-            {completeRoundNeedsScores ? "Finish the scorecard" : "Ready to save"}
-          </p>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            {selectedTeeSet.courseName} / {selectedTeeSet.name} tees, {holes.length} holes.
-          </p>
-        </div>
-        <div
-          id={reviewCompletenessId}
-          role={completeRoundNeedsScores ? "alert" : "status"}
-          className={cn(
-            "rounded-xl border px-3 py-2 text-sm leading-5",
-            completeRoundNeedsScores
-              ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/45 dark:bg-amber-500/10 dark:text-amber-100"
-              : "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-500/45 dark:bg-emerald-500/10 dark:text-emerald-100",
-          )}
-        >
-          {completeRoundNeedsScores
-            ? `${missingScoreCount} hole${missingScoreCount === 1 ? " is" : "s are"} missing a score. Enter every score or change the round status to In progress.`
-            : roundStatus === "in_progress"
-              ? `${completedScoreCount} of ${holes.length} hole scores entered. The round will remain in progress.`
-              : `All ${holes.length} hole scores are entered.`}
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <ReviewMetric label="Par" value={selectedTeeSet.par.toString()} />
-          <ReviewMetric
-            label="Yards"
-            value={selectedTeeSet.yards ? selectedTeeSet.yards.toLocaleString("en-GB") : "--"}
-          />
-          <ReviewMetric label="Scores" value={`${completedScoreCount}/${holes.length}`} />
-        </div>
-      </div>
+      <Card className={cn("gap-0 py-0 sm:hidden", mobileStep === "review" ? "flex" : "hidden")}>
+        <CardContent className="grid gap-3 p-4">
+          <div>
+            <p className="text-lg font-semibold tracking-normal">
+              {completeRoundNeedsScores ? "Finish the scorecard" : "Ready to save"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">
+              {selectedTeeSet.courseName} / {selectedTeeSet.name} tees, {holes.length} holes.
+            </p>
+          </div>
+          <Alert
+            id={reviewCompletenessId}
+            role={completeRoundNeedsScores ? "alert" : "status"}
+            className={cn(
+              completeRoundNeedsScores
+                ? "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-warning-foreground)]"
+                : "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]",
+            )}
+            data-round-completeness
+          >
+            {completeRoundNeedsScores ? (
+              <TriangleAlert className="size-4" />
+            ) : (
+              <CheckCircle2 className="size-4" />
+            )}
+            <AlertTitle>
+              {completeRoundNeedsScores ? "Scores required" : "Scorecard status"}
+            </AlertTitle>
+            <AlertDescription>
+              {completeRoundNeedsScores
+                ? `${missingScoreCount} hole${missingScoreCount === 1 ? " is" : "s are"} missing a score. Enter every score or change the round status to In progress.`
+                : roundStatus === "in_progress"
+                  ? `${completedScoreCount} of ${holes.length} hole scores entered. The round will remain in progress.`
+                  : `All ${holes.length} hole scores are entered.`}
+            </AlertDescription>
+          </Alert>
+          <div className="grid grid-cols-3 gap-2">
+            <ReviewMetric label="Par" value={selectedTeeSet.par.toString()} />
+            <ReviewMetric
+              label="Yards"
+              value={selectedTeeSet.yards ? selectedTeeSet.yards.toLocaleString("en-GB") : "--"}
+            />
+            <ReviewMetric label="Scores" value={`${completedScoreCount}/${holes.length}`} />
+          </div>
+        </CardContent>
+      </Card>
 
       <Button
         type="submit"
         size="lg"
-        className="hidden w-full rounded-lg bg-[#0B7A3B] text-white hover:bg-[#064E3B] sm:flex sm:w-fit"
+        className="hidden w-full rounded-lg sm:flex sm:w-fit"
         disabled={completeRoundNeedsScores}
       >
         <Save className="size-4" />
@@ -412,7 +435,7 @@ export function NewRoundForm({
           {mobileStep === "review" ? (
             <Button
               type="submit"
-              className="min-h-11 rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="min-h-11 rounded-xl"
               disabled={completeRoundNeedsScores}
               aria-describedby={completeRoundNeedsScores ? reviewCompletenessId : undefined}
             >
@@ -422,7 +445,7 @@ export function NewRoundForm({
           ) : (
             <Button
               type="button"
-              className="min-h-11 rounded-xl bg-[#0B7A3B] text-white hover:bg-[#064E3B]"
+              className="min-h-11 rounded-xl"
               onClick={() =>
                 setMobileStep(
                   mobileRoundSteps[Math.min(mobileRoundSteps.length - 1, activeStepIndex + 1)].id,
@@ -448,25 +471,33 @@ function MobileRoundStepper({
 }) {
   return (
     <nav
-      className="sticky top-[4.75rem] z-30 -mx-1 flex gap-2 overflow-x-auto px-1 py-1 sm:hidden"
+      className="sticky top-[4.75rem] z-30 -mx-1 overflow-x-auto px-1 py-1 sm:hidden"
       aria-label="Round steps"
     >
-      {mobileRoundSteps.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          aria-current={item.id === step ? "step" : undefined}
-          onClick={() => onStepChange(item.id)}
-          className={cn(
-            "min-h-11 shrink-0 rounded-full border px-3 py-2 text-sm font-medium shadow-sm",
-            item.id === step
-              ? "border-slate-950 bg-slate-950 text-white"
-              : "border-slate-200 bg-white/90 text-slate-700",
-          )}
-        >
-          {item.label}
-        </button>
-      ))}
+      <ToggleGroup
+        type="single"
+        value={step}
+        onValueChange={(value) => {
+          if (value) {
+            onStepChange(value as MobileRoundStep);
+          }
+        }}
+        variant="outline"
+        aria-label="Round step"
+        className="w-max min-w-full justify-start bg-background/90 p-1 backdrop-blur"
+        data-round-stepper
+      >
+        {mobileRoundSteps.map((item) => (
+          <ToggleGroupItem
+            key={item.id}
+            value={item.id}
+            aria-current={item.id === step ? "step" : undefined}
+            className="min-h-11 rounded-full px-3 text-sm font-medium shadow-sm data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+          >
+            {item.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
     </nav>
   );
 }

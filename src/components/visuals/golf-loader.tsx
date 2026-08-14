@@ -30,7 +30,7 @@ export function GolfLoader({
         />
       </div>
       <div>
-        <p className="text-sm font-semibold text-slate-900">{label}</p>
+        <p className="text-sm font-semibold text-foreground">{label}</p>
         <p className="mt-1 text-xs text-muted-foreground">Preparing your golf data.</p>
       </div>
     </div>

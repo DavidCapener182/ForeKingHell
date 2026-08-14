@@ -7,21 +7,44 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("club profile mobile composition", () => {
-  it("puts the club decision ahead of the specialist analysis and uses a native range control", () => {
-    const range = source.indexOf("<MobileRangePicker");
-    const decision = source.indexOf("<MobileClubDecision");
-    const analysis = source.indexOf("<ClubAnalysisTabs");
-
+describe("club profile desktop helper bundle", () => {
+  it("ships only the desktop club decision and analysis path", () => {
+    expect(source).toContain("data-desktop-club-profile");
+    expect(source).toContain("<RangeToggle");
     expect(source).toContain('aria-label="Shot date range"');
-    expect(source).toContain("min-h-11");
-    expect(source).toContain("data-mobile-club-decision");
-    expect(source).toContain('label="Personal best"');
-    expect(source).not.toContain("MobileMetricStrip");
-    expect(source).toContain("mobileSupport={");
-    expect(source).toContain("<MobileClubSupport");
-    expect(range).toBeGreaterThan(-1);
-    expect(decision).toBeGreaterThan(range);
-    expect(analysis).toBeGreaterThan(decision);
+    expect(source).toContain("<ClubAnalysisTabs");
+    expect(source).toContain("afterDispersion={");
+
+    for (const unreachableMobileSymbol of [
+      "MobileCompactPageHeader",
+      "MobileRangePicker",
+      "MobileClubDecision",
+      "MobileClubSupport",
+      "mobileSupport",
+      "IOSGroupedList",
+      "IOSInlineStatus",
+      "IOSListRow",
+      "IOSSectionHeader",
+      "@/components/app/ios-mobile",
+      "lg:hidden",
+      "premium-hero hidden",
+    ]) {
+      expect(source).not.toContain(unreachableMobileSymbol);
+    }
+  });
+
+  it("uses theme-semantic shadcn controls and status surfaces for imported club helpers", () => {
+    const fixedPalette =
+      /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#|rgba\(|#[0-9a-f]{3,8}/i;
+
+    expect(source).not.toMatch(fixedPalette);
+    expect(source).toContain("<ToggleGroup");
+    expect(source).toContain("<ToggleGroupItem");
+    expect(source).toContain("<Badge");
+    expect(source).toContain("<Progress");
+    expect(source).toContain("var(--status-success-surface)");
+    expect(source).toContain("var(--status-warning-surface)");
+    expect(source).toContain("var(--status-error-surface)");
+    expect(source).toContain("var(--status-information-surface)");
   });
 });

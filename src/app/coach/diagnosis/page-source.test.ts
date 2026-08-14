@@ -41,4 +41,30 @@ describe("coach diagnosis desktop workbench", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
+
+  it("keeps the desktop-only route free of its obsolete mobile diagnosis tree", () => {
+    for (const obsoleteSymbol of [
+      "MobileCoachDiagnosis",
+      "MobileDiagnosisIssueRow",
+      "MobileAppShell",
+      "MobileTopBar",
+      "IOSDisclosureGroup",
+      "IOSGroupedList",
+      "IOSInlineStatus",
+      "IOSListRow",
+      "IOSMetricRow",
+      "IOSSectionHeader",
+    ]) {
+      expect(source).not.toContain(obsoleteSymbol);
+    }
+
+    expect(source).not.toContain("@/components/app/ios-mobile");
+    expect(source).not.toContain("@/components/mobile-sports");
+    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).toContain('<DesktopWorkbenchLayout scope="coach-diagnosis">');
+    expect(source).toContain("bg-card");
+    expect(source).toContain("var(--status-success-surface)");
+    expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
+    expect(source).not.toMatch(/#[0-9a-f]{6}/i);
+  });
 });

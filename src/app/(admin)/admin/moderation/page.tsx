@@ -10,21 +10,18 @@ import {
 import {
   bulkResolveModerationEventsAction,
   bulkResolveSocialReportsAction,
-  resolveModerationEventAction,
-  resolveSocialReportAction,
 } from "@/app/admin/actions";
 import { AdminBulkActionSubmit } from "@/app/admin/admin-bulk-action-submit";
-import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
 import { ModerationRowActions } from "@/app/admin/moderation-row-actions";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+  DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
   AdminMetric,
-  AdminMobileShell,
   AdminNav,
   AdminNotice,
   AdminPageHeader,
@@ -33,18 +30,20 @@ import {
   label,
   StatusBadge,
 } from "@/app/admin/admin-components";
-import { BottomSheet, MobileStatusAction, MobileTabBar } from "@/components/mobile-sports";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { DataTableFrame, PageShell } from "@/components/premium";
 import { StatusTimeline } from "@/components/app/status-timeline";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { getAdminModerationData } from "@/lib/admin";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -158,7 +157,6 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
   const sortedEvents = sortAdminEvents(data.events, eventSortState);
   const openReports = data.reports.filter((report) => report.status === "open");
   const openEvents = data.events.filter((event) => event.status === "open");
-  const mobileView = parseAdminModerationMobileView(params?.view);
   const moderationTimelineItems = [
     ...data.reports.map((report) => ({
       sortKey: (report.resolvedAt ?? report.createdAt).getTime(),
@@ -189,27 +187,12 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
 
   return (
     <PageShell>
-      <AdminMobileShell
-        title="Moderation"
-        active="/admin/moderation"
-        status={params?.adminStatus}
-        error={params?.adminError}
-      >
-        <AdminMobileModeration
-          reports={sortedReports}
-          events={sortedEvents}
-          openReportCount={openReports.length}
-          openEventCount={openEvents.length}
-          mobileView={mobileView}
-        />
-      </AdminMobileShell>
-
-      <div className="hidden gap-3 lg:grid">
+      <div className="grid gap-3">
         <AdminNav active="/admin/moderation" />
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
-      <DesktopWorkbenchLayout scope="admin-moderation" className="hidden lg:grid">
+      <DesktopWorkbenchLayout scope="admin-moderation">
         <AdminPageHeader
           eyebrow="Safety"
           title="Moderation queue"
@@ -260,11 +243,11 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
               <form
                 id="admin-report-bulk-form"
                 action={bulkResolveSocialReportsAction}
-                className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2"
+                className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/45 px-3 py-2"
               >
                 <div>
-                  <p className="text-sm font-semibold text-amber-950">Bulk actions</p>
-                  <p className="text-xs leading-5 text-amber-900/80">
+                  <p className="text-sm font-semibold text-foreground">Bulk actions</p>
+                  <p className="text-xs leading-5 text-muted-foreground">
                     Resolve checked open reports. Closed rows are ignored and every change is audit
                     logged.
                   </p>
@@ -284,23 +267,23 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                 stickyFirstColumn
                 className="overflow-x-auto"
               >
-                <table
+                <Table
                   className="w-full min-w-[820px] text-left text-sm"
                   data-workbench-export-table="admin-moderation-reports"
                   aria-describedby="admin-reports-table-summary"
                 >
-                  <caption id="admin-reports-table-summary" className="sr-only">
+                  <TableCaption id="admin-reports-table-summary" className="sr-only">
                     Admin user reports with selection, status, reason, target, details, creation
                     date and available action.
-                  </caption>
-                  <thead className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                    <tr>
-                      <th
+                  </TableCaption>
+                  <TableHeader className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                    <TableRow>
+                      <TableHead
                         data-column="select"
-                        className="sticky left-0 z-30 w-12 bg-white px-3 py-2 font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-30 w-12 bg-muted px-3 py-2 font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       >
                         <span className="sr-only">Select</span>
-                      </th>
+                      </TableHead>
                       <SortableAdminReportHead
                         columnId="status"
                         eventSortState={eventSortState}
@@ -312,7 +295,7 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                         eventSortState={eventSortState}
                         metric="reason"
                         sortState={reportSortState}
-                        className="sticky left-12 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-12 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       />
                       <SortableAdminReportHead
                         columnId="target"
@@ -332,28 +315,37 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                         metric="created"
                         sortState={reportSortState}
                       />
-                      <th data-column="action" className="px-3 py-2 font-medium">
+                      <TableHead data-column="action" className="px-3 py-2 font-medium">
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {data.reports.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-3 py-6 text-sm text-muted-foreground">
-                          No reports yet.
-                        </td>
-                      </tr>
+                      <TableRow>
+                        <TableCell colSpan={7} className="p-4">
+                          <AppEmptyState
+                            icon={<Flag className="size-5" />}
+                            title="No reports in the queue"
+                            description="User-submitted safety reports will appear here for review."
+                            primaryAction={
+                              <Button asChild variant="outline" size="sm">
+                                <a href="/admin/moderation">Refresh queue</a>
+                              </Button>
+                            }
+                          />
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       sortedReports.map((report) => (
-                        <tr
+                        <TableRow
                           key={report.id}
                           tabIndex={0}
                           className="focus-aaa border-b outline-none last:border-b-0"
                         >
-                          <td
+                          <TableCell
                             data-column="select"
-                            className="sticky left-0 z-20 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            className="sticky left-0 z-20 bg-card px-3 py-3 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                           >
                             <Checkbox
                               name="reportId"
@@ -363,34 +355,37 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                               aria-label={`Select report ${label(report.reason)}`}
                               className="size-4 disabled:opacity-40"
                             />
-                          </td>
-                          <td data-column="status" className="px-3 py-3">
+                          </TableCell>
+                          <TableCell data-column="status" className="px-3 py-3">
                             <StatusBadge status={report.status} />
-                          </td>
-                          <td
+                          </TableCell>
+                          <TableCell
                             data-column="reason"
-                            className="sticky left-12 z-10 bg-white px-3 py-3 font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            className="sticky left-12 z-10 bg-card px-3 py-3 font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                           >
                             {label(report.reason)}
-                          </td>
-                          <td data-column="target" className="px-3 py-3 text-muted-foreground">
+                          </TableCell>
+                          <TableCell
+                            data-column="target"
+                            className="px-3 py-3 text-muted-foreground"
+                          >
                             <p className="font-medium text-foreground">{report.targetType}</p>
                             <p className="mt-1 max-w-[14rem] truncate font-mono text-xs">
                               {report.targetId}
                             </p>
-                          </td>
-                          <td data-column="details" className="px-3 py-3">
+                          </TableCell>
+                          <TableCell data-column="details" className="px-3 py-3">
                             <p className="line-clamp-2 max-w-[18rem] text-muted-foreground">
                               {report.details ?? "No details supplied"}
                             </p>
-                          </td>
-                          <td
+                          </TableCell>
+                          <TableCell
                             data-column="created"
                             className="px-3 py-3 text-xs text-muted-foreground"
                           >
                             {formatDateTime(report.createdAt)}
-                          </td>
-                          <td data-column="action" className="px-3 py-3">
+                          </TableCell>
+                          <TableCell data-column="action" className="px-3 py-3">
                             <ModerationRowActions
                               record={{
                                 kind: "report",
@@ -403,12 +398,12 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                                 createdLabel: formatDateTime(report.createdAt),
                               }}
                             />
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </DataTableFrame>
             </div>
           </AdminSection>
@@ -432,11 +427,11 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
               <form
                 id="admin-event-bulk-form"
                 action={bulkResolveModerationEventsAction}
-                className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2"
+                className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/45 px-3 py-2"
               >
                 <div>
-                  <p className="text-sm font-semibold text-amber-950">Bulk actions</p>
-                  <p className="text-xs leading-5 text-amber-900/80">
+                  <p className="text-sm font-semibold text-foreground">Bulk actions</p>
+                  <p className="text-xs leading-5 text-muted-foreground">
                     Resolve checked open events. Closed rows are ignored and every change is audit
                     logged.
                   </p>
@@ -455,23 +450,23 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                 stickyFirstColumn
                 className="overflow-x-auto"
               >
-                <table
+                <Table
                   className="w-full min-w-[820px] text-left text-sm"
                   data-workbench-export-table="admin-moderation-events"
                   aria-describedby="admin-events-table-summary"
                 >
-                  <caption id="admin-events-table-summary" className="sr-only">
+                  <TableCaption id="admin-events-table-summary" className="sr-only">
                     Admin moderation events with selection, status, event type, target, reason,
                     creation date and available action.
-                  </caption>
-                  <thead className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-white">
-                    <tr>
-                      <th
+                  </TableCaption>
+                  <TableHeader className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                    <TableRow>
+                      <TableHead
                         data-column="select"
-                        className="sticky left-0 z-30 w-12 bg-white px-3 py-2 font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-0 z-30 w-12 bg-muted px-3 py-2 font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       >
                         <span className="sr-only">Select</span>
-                      </th>
+                      </TableHead>
                       <SortableAdminEventHead
                         columnId="status"
                         metric="status"
@@ -483,7 +478,7 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                         metric="event"
                         reportSortState={reportSortState}
                         sortState={eventSortState}
-                        className="sticky left-12 z-20 bg-white shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                        className="sticky left-12 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                       />
                       <SortableAdminEventHead
                         columnId="target"
@@ -503,28 +498,37 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                         reportSortState={reportSortState}
                         sortState={eventSortState}
                       />
-                      <th data-column="action" className="px-3 py-2 font-medium">
+                      <TableHead data-column="action" className="px-3 py-2 font-medium">
                         Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {data.events.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-3 py-6 text-sm text-muted-foreground">
-                          No moderation events yet.
-                        </td>
-                      </tr>
+                      <TableRow>
+                        <TableCell colSpan={7} className="p-4">
+                          <AppEmptyState
+                            icon={<ShieldCheck className="size-5" />}
+                            title="No moderation events"
+                            description="Automated and operator moderation records will appear here when created."
+                            primaryAction={
+                              <Button asChild variant="outline" size="sm">
+                                <a href="/admin/moderation">Refresh events</a>
+                              </Button>
+                            }
+                          />
+                        </TableCell>
+                      </TableRow>
                     ) : (
                       sortedEvents.map((event) => (
-                        <tr
+                        <TableRow
                           key={event.id}
                           tabIndex={0}
                           className="focus-aaa border-b outline-none last:border-b-0"
                         >
-                          <td
+                          <TableCell
                             data-column="select"
-                            className="sticky left-0 z-20 bg-white px-3 py-3 shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            className="sticky left-0 z-20 bg-card px-3 py-3 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                           >
                             <Checkbox
                               name="eventId"
@@ -534,37 +538,40 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                               aria-label={`Select event ${label(event.eventType)}`}
                               className="size-4 disabled:opacity-40"
                             />
-                          </td>
-                          <td data-column="status" className="px-3 py-3">
+                          </TableCell>
+                          <TableCell data-column="status" className="px-3 py-3">
                             <StatusBadge status={event.status} />
-                          </td>
-                          <td
+                          </TableCell>
+                          <TableCell
                             data-column="event"
-                            className="sticky left-12 z-10 bg-white px-3 py-3 font-medium shadow-[1px_0_0_rgba(15,23,42,0.08)]"
+                            className="sticky left-12 z-10 bg-card px-3 py-3 font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                           >
                             <p>{label(event.eventType)}</p>
                             <p className="mt-1 text-xs text-muted-foreground">
                               {label(event.severity)}
                             </p>
-                          </td>
-                          <td data-column="target" className="px-3 py-3 text-muted-foreground">
+                          </TableCell>
+                          <TableCell
+                            data-column="target"
+                            className="px-3 py-3 text-muted-foreground"
+                          >
                             <p className="font-medium text-foreground">{event.targetType}</p>
                             <p className="mt-1 max-w-[14rem] truncate font-mono text-xs">
                               {event.targetId}
                             </p>
-                          </td>
-                          <td data-column="reason" className="px-3 py-3">
+                          </TableCell>
+                          <TableCell data-column="reason" className="px-3 py-3">
                             <p className="line-clamp-2 max-w-[18rem] text-muted-foreground">
                               {event.reason ?? "No reason supplied"}
                             </p>
-                          </td>
-                          <td
+                          </TableCell>
+                          <TableCell
                             data-column="created"
                             className="px-3 py-3 text-xs text-muted-foreground"
                           >
                             {formatDateTime(event.createdAt)}
-                          </td>
-                          <td data-column="action" className="px-3 py-3">
+                          </TableCell>
+                          <TableCell data-column="action" className="px-3 py-3">
                             <ModerationRowActions
                               record={{
                                 kind: "event",
@@ -577,12 +584,12 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
                                 createdLabel: formatDateTime(event.createdAt),
                               }}
                             />
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </DataTableFrame>
             </div>
           </AdminSection>
@@ -603,188 +610,6 @@ export default async function AdminModerationPage({ searchParams }: AdminModerat
   );
 }
 
-type AdminModerationMobileView = "reports" | "events" | "resolved";
-type MobileModerationRecord =
-  | { kind: "report"; record: AdminModerationReport }
-  | { kind: "event"; record: AdminModerationEvent };
-
-function AdminMobileModeration({
-  reports,
-  events,
-  openReportCount,
-  openEventCount,
-  mobileView,
-}: {
-  reports: AdminModerationReport[];
-  events: AdminModerationEvent[];
-  openReportCount: number;
-  openEventCount: number;
-  mobileView: AdminModerationMobileView;
-}) {
-  const unresolvedCount = openReportCount + openEventCount;
-  const openReports: MobileModerationRecord[] = reports
-    .filter((report) => report.status === "open")
-    .map((record) => ({ kind: "report", record }));
-  const openEvents: MobileModerationRecord[] = events
-    .filter((event) => event.status === "open")
-    .map((record) => ({ kind: "event", record }));
-  const resolvedRecords: MobileModerationRecord[] = [
-    ...reports
-      .filter((report) => report.status !== "open")
-      .map((record) => ({ kind: "report" as const, record })),
-    ...events
-      .filter((event) => event.status !== "open")
-      .map((record) => ({ kind: "event" as const, record })),
-  ].sort((left, right) => right.record.createdAt.getTime() - left.record.createdAt.getTime());
-  const visibleRecords =
-    mobileView === "reports" ? openReports : mobileView === "events" ? openEvents : resolvedRecords;
-  const primaryRecords = visibleRecords.slice(0, 10);
-  const olderRecords = visibleRecords.slice(10);
-
-  return (
-    <>
-      <MobileStatusAction
-        label="Unresolved safety work"
-        value={unresolvedCount}
-        detail={`${openReportCount} open reports · ${openEventCount} open moderation events`}
-      />
-
-      <MobileTabBar
-        activeKey={mobileView}
-        ariaLabel="Filter moderation records"
-        tabs={[
-          {
-            key: "reports",
-            label: `Reports ${openReportCount}`,
-            href: "/admin/moderation?view=reports",
-          },
-          {
-            key: "events",
-            label: `Events ${openEventCount}`,
-            href: "/admin/moderation?view=events",
-          },
-          {
-            key: "resolved",
-            label: "Resolved",
-            href: "/admin/moderation?view=resolved",
-          },
-        ]}
-      />
-
-      <section className="grid gap-2" aria-label="Mobile moderation queue">
-        <IOSSectionHeader
-          title={mobileView === "resolved" ? "Resolved records" : "Priority queue"}
-          description={
-            mobileView === "resolved"
-              ? `${resolvedRecords.length} closed safety records`
-              : "Open records requiring an operator decision"
-          }
-        />
-        <MobileModerationRows records={primaryRecords} />
-        {olderRecords.length > 0 ? (
-          <IOSDisclosureGroup
-            label="More moderation records"
-            items={[
-              {
-                value: "more-moderation-records",
-                title: "More records",
-                summary: olderRecords.length,
-                description: "Earlier records in this filter",
-                contentClassName: "px-0 pb-0 pt-0",
-                content: <MobileModerationRows records={olderRecords} />,
-              },
-            ]}
-          />
-        ) : null}
-      </section>
-    </>
-  );
-}
-
-function MobileModerationRows({ records }: { records: MobileModerationRecord[] }) {
-  return (
-    <IOSGroupedList label="Moderation record rows">
-      {records.length > 0 ? (
-        records.map((item) => {
-          const isReport = item.kind === "report";
-          const title = isReport ? label(item.record.reason) : label(item.record.eventType);
-          const severity = isReport ? "User report" : label(item.record.severity);
-
-          return (
-            <IOSListRow
-              key={`${item.kind}-${item.record.id}`}
-              label={title}
-              detail={`${item.kind === "report" ? "Report" : "Event"} · ${formatDateTime(item.record.createdAt)} · ${label(item.record.targetType)}`}
-              status={
-                <IOSInlineStatus
-                  label={`${severity} · ${label(item.record.status)}`}
-                  tone={
-                    !isReport && item.record.severity === "high"
-                      ? "critical"
-                      : item.record.status === "open"
-                        ? "attention"
-                        : "neutral"
-                  }
-                />
-              }
-              trailing={<MobileModerationRecordSheet item={item} />}
-            />
-          );
-        })
-      ) : (
-        <IOSListRow
-          label="No records in this queue"
-          detail="Switch filters to inspect another moderation state."
-          status={<IOSInlineStatus label="No action required" tone="positive" />}
-        />
-      )}
-    </IOSGroupedList>
-  );
-}
-
-function MobileModerationRecordSheet({ item }: { item: MobileModerationRecord }) {
-  const isReport = item.kind === "report";
-  const title = isReport ? label(item.record.reason) : label(item.record.eventType);
-  const detail = isReport
-    ? (item.record.details ?? "No details supplied")
-    : (item.record.reason ?? "No reason supplied");
-
-  return (
-    <BottomSheet label="Review" title={isReport ? "Review report" : "Review event"}>
-      <div className="grid gap-4">
-        <IOSGroupedList label="Moderation record detail">
-          <IOSListRow label="Record" value={title} />
-          <IOSListRow label="Status" value={label(item.record.status)} />
-          <IOSListRow label="Created" value={formatDateTime(item.record.createdAt)} />
-          <IOSListRow label="Target type" value={label(item.record.targetType)} />
-          <IOSListRow
-            label="Target ID"
-            detail={<span className="[overflow-wrap:anywhere]">{item.record.targetId}</span>}
-          />
-          <IOSListRow label="Evidence" detail={detail} />
-        </IOSGroupedList>
-        {item.record.status === "open" ? (
-          <form action={isReport ? resolveSocialReportAction : resolveModerationEventAction}>
-            <input type="hidden" name={isReport ? "reportId" : "eventId"} value={item.record.id} />
-            <AdminConfirmSubmitButton
-              className="min-h-11 w-full"
-              confirmMessage={`Resolve ${isReport ? "report" : "moderation event"} ${title}? This closes the record and writes an admin audit entry.`}
-            >
-              Resolve record
-            </AdminConfirmSubmitButton>
-          </form>
-        ) : (
-          <IOSInlineStatus label="This record is already closed" tone="positive" />
-        )}
-      </div>
-    </BottomSheet>
-  );
-}
-
-function parseAdminModerationMobileView(value: string | undefined): AdminModerationMobileView {
-  return value === "events" || value === "resolved" ? value : "reports";
-}
-
 function SortableAdminReportHead({
   className,
   columnId,
@@ -801,7 +626,7 @@ function SortableAdminReportHead({
   const active = sortState.metric === metric;
 
   return (
-    <th
+    <TableHead
       data-column={columnId}
       className={["px-3 py-2 font-medium", className].filter(Boolean).join(" ")}
       aria-sort={active ? adminModerationSortAriaValue(sortState.dir) : "none"}
@@ -811,7 +636,7 @@ function SortableAdminReportHead({
         metric={metric}
         sortState={sortState}
       />
-    </th>
+    </TableHead>
   );
 }
 
@@ -843,7 +668,7 @@ function SortableAdminReportHeadLink({
       aria-label={`Sort admin reports by ${label}, ${adminModerationSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </a>
   );
 }
@@ -864,7 +689,7 @@ function SortableAdminEventHead({
   const active = sortState.metric === metric;
 
   return (
-    <th
+    <TableHead
       data-column={columnId}
       className={["px-3 py-2 font-medium", className].filter(Boolean).join(" ")}
       aria-sort={active ? adminModerationSortAriaValue(sortState.dir) : "none"}
@@ -874,7 +699,7 @@ function SortableAdminEventHead({
         reportSortState={reportSortState}
         sortState={sortState}
       />
-    </th>
+    </TableHead>
   );
 }
 
@@ -906,7 +731,7 @@ function SortableAdminEventHeadLink({
       aria-label={`Sort admin moderation events by ${label}, ${adminModerationSortDirectionCopy(metric, nextDir)}`}
     >
       {label}
-      <Icon className={`size-3.5 ${active ? "text-emerald-700" : "opacity-45"}`} aria-hidden />
+      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
     </a>
   );
 }

@@ -22,7 +22,7 @@ export function TournamentEntryTerms({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200 bg-white/80 p-3 text-xs leading-5",
+        "rounded-xl border border-border bg-card/80 p-3 text-xs leading-5 text-card-foreground",
         className,
       )}
     >
@@ -32,7 +32,7 @@ export function TournamentEntryTerms({
         value={TOURNAMENT_ENTRY_TERMS_VERSION}
       />
       <div>
-        <p className="font-semibold text-slate-900">
+        <p className="font-semibold text-foreground">
           {compact ? "Entry terms" : "Terms and conditions of entry"}
         </p>
         <ul className="mt-2 grid gap-1 text-muted-foreground">
@@ -43,7 +43,7 @@ export function TournamentEntryTerms({
       </div>
       {!compact ? (
         <div className="mt-4">
-          <p className="font-semibold text-slate-900">Tournament setup instructions</p>
+          <p className="font-semibold text-foreground">Tournament setup instructions</p>
           <ul className="mt-2 grid gap-1 text-muted-foreground">
             {TOURNAMENT_SETUP_TERMS.map((term) => (
               <li key={term}>{term}</li>
@@ -51,7 +51,7 @@ export function TournamentEntryTerms({
           </ul>
         </div>
       ) : null}
-      <label htmlFor={controlId} className="mt-2 flex items-start gap-2 text-slate-800">
+      <label htmlFor={controlId} className="mt-2 flex items-start gap-2 text-foreground">
         <Checkbox
           id={controlId}
           name={TOURNAMENT_ENTRY_TERMS_ACCEPT_FIELD}

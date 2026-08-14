@@ -3,6 +3,14 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/speed/page.tsx"), "utf8");
+const clubFocusSource = readFileSync(
+  join(process.cwd(), "src/app/speed/club-speed-focus.tsx"),
+  "utf8",
+);
+const futureBagSource = readFileSync(
+  join(process.cwd(), "src/app/speed/future-bag-slider.tsx"),
+  "utf8",
+);
 
 describe("speed centre desktop evidence ledger", () => {
   it("keeps the wider distance-loss diagnosis out of the speed workbench", () => {
@@ -29,7 +37,6 @@ describe("speed centre desktop evidence ledger", () => {
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain("focus-aaa outline-none");
-    expect(source).toContain("SpeedEvidenceCard");
 
     for (const column of [
       "session",
@@ -53,81 +60,80 @@ describe("speed centre desktop evidence ledger", () => {
   });
 });
 
-describe("speed centre mobile information architecture", () => {
-  it("puts the answer and next action before the deeper evidence", () => {
-    expect(source.indexOf("<MobileSpeedAnswer")).toBeGreaterThan(-1);
-    expect(source.indexOf("<MobileSpeedDisclosures")).toBeGreaterThan(
-      source.indexOf("<MobileSpeedAnswer"),
-    );
-    expect(source.indexOf('<DesktopWorkbenchLayout scope="speed">')).toBeGreaterThan(
-      source.indexOf("<MobileSpeedDisclosures"),
-    );
-    expect(source).toContain("data-mobile-speed-answer");
-    expect(source).toContain('aria-labelledby="mobile-speed-title"');
-    expect(source).toContain("data-primary-action");
-    expect(source).toContain("Log session");
+describe("speed centre desktop-only bundle", () => {
+  it("excludes the obsolete companion and iOS render graph", () => {
+    expect(source).toContain('<DesktopWorkbenchLayout scope="speed">');
 
-    const answer = source.slice(
-      source.indexOf("function MobileSpeedAnswer"),
-      source.indexOf("function MobileSpeedDisclosures"),
+    for (const obsoleteSurface of [
+      "MobileSpeedAnswer",
+      "MobileSpeedDisclosures",
+      "MobileSpeedTrendEvidence",
+      "MobileSpeedLog",
+      "SpeedEvidenceCard",
+      "@/components/app/ios-mobile",
+      "lg:hidden",
+      "hidden lg:contents",
+      "mobile={",
+    ]) {
+      expect(source).not.toContain(obsoleteSurface);
+    }
+  });
+
+  it("keeps ordinary workbench UI theme-aware while preserving the custom speed chart", () => {
+    const ordinaryUi = source.replace(
+      /function SpeedTrendChart[\s\S]*?function ClubSpeedRowCard/,
+      "",
     );
-    expect(answer.indexOf("Next action")).toBeLessThan(
-      answer.indexOf('label="Current speed summary"'),
+
+    expect(source).toContain("bg-[#111611]");
+    expect(ordinaryUi).toContain("bg-card");
+    expect(ordinaryUi).toContain("var(--status-success-surface)");
+    expect(ordinaryUi).toContain("var(--status-warning-surface)");
+    expect(ordinaryUi).not.toMatch(
+      /\b(?:bg-white|text-slate-|border-slate-|bg-red-|bg-emerald-|bg-amber-)/,
     );
   });
 
-  it("uses one-level disclosure for secondary speed work", () => {
-    const disclosures = source.slice(
-      source.indexOf("function MobileSpeedDisclosures"),
-      source.indexOf("function MobileSpeedTrendEvidence"),
+  it("uses semantic shadcn alerts for both speed error notices", () => {
+    expect(source).toContain(
+      'import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"',
     );
+    expect(source).toContain('<Alert variant="destructive">');
+    expect(source).toContain("<AlertTitle>Speed update not saved</AlertTitle>");
+    expect(source).toContain("<AlertDescription>{speedError}</AlertDescription>");
+    expect(source).toContain("<AlertTitle>R-Cloud data unavailable</AlertTitle>");
+    expect(source).toContain("<AlertDescription>{data.rapsodo.error}</AlertDescription>");
+    expect(source).not.toMatch(
+      /rounded-lg border border-\[var\(--status-(?:error|warning)-border\)\]/,
+    );
+  });
 
-    expect(disclosures).toContain("IOSDisclosureGroup");
-    expect(disclosures).toContain('key={openLogByDefault ? "log-open" : "collapsed"}');
-    expect(disclosures).toContain('defaultValue={openLogByDefault ? "log-session" : undefined}');
-
-    for (const section of [
-      "Trend & transfer",
-      "Club evidence",
-      "Recent sessions",
-      "Goals",
-      "Speed potential",
-      "Athletic development",
-      "Log speed",
-    ]) {
-      expect(disclosures).toContain(section);
+  it("keeps imported speed selectors and readouts on semantic shadcn controls", () => {
+    for (const selectorSource of [clubFocusSource, futureBagSource]) {
+      expect(selectorSource).toContain(
+        'import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"',
+      );
+      expect(selectorSource).toContain("<ToggleGroup");
+      expect(selectorSource).toContain("<ToggleGroupItem");
+      expect(selectorSource).toContain('type="single"');
+      expect(selectorSource).toContain("value={");
+      expect(selectorSource).toContain("onValueChange=");
+      expect(selectorSource).not.toContain('role="tablist"');
+      expect(selectorSource).not.toContain("aria-pressed=");
+      expect(selectorSource).not.toContain('import { Button } from "@/components/ui/button"');
     }
 
-    expect(disclosures).not.toContain("<details");
-  });
+    expect(clubFocusSource).toContain('aria-label="Speed club focus"');
+    expect(clubFocusSource).toContain("var(--status-success-surface)");
+    expect(clubFocusSource).not.toMatch(/bg-white|text-slate-|border-emerald|bg-emerald/);
 
-  it("replaces the wide all-club card grid with linked native rows on mobile", () => {
-    const clubEvidence = source.slice(
-      source.indexOf("function MobileClubSpeedEvidence"),
-      source.indexOf("function MobileRecentSpeedEvidence"),
+    expect(futureBagSource).toContain('import { Slider } from "@/components/ui/slider"');
+    expect(futureBagSource).toContain("<Slider");
+    expect(futureBagSource).toContain("<Badge");
+    expect(futureBagSource).toContain('aria-label="Future bag club filter"');
+    expect(futureBagSource).not.toContain('type="range"');
+    expect(futureBagSource).not.toMatch(
+      /bg-white|text-slate-|border-(?:emerald|amber|sky|violet)-|bg-(?:emerald|amber|sky|violet)-|text-white/,
     );
-
-    expect(clubEvidence).toContain("IOSGroupedList");
-    expect(clubEvidence).toContain("IOSListRow");
-    expect(clubEvidence).toContain("/speed?club=");
-    expect(clubEvidence).toContain("transferStatusLabel(row)");
-    expect(clubEvidence).not.toContain("ClubSpeedRowCard");
-    expect(clubEvidence).not.toContain("<Table");
-  });
-
-  it("uses native rows for the mobile trend baseline while retaining the real chart", () => {
-    expect(source).toContain("<MobileSpeedTrendStarter");
-    expect(source).toContain("function MobileSpeedTrendStarter");
-    expect(source).toContain('label="Speed trend baseline"');
-    expect(source).toContain("<SpeedTrendChart");
-  });
-
-  it("keeps real goal and session actions available in focused mobile forms", () => {
-    expect(source).toContain("<form action={updateSpeedGoalsAction}");
-    expect(source).toContain("<form action={createManualSpeedSessionAction}");
-    expect(source).toContain('name="speedReadings"');
-    expect(source).toContain('name="driverGlobalTarget"');
-    expect(source).toContain("name={`clubTarget:${club.id}`}");
-    expect(source).toContain('inputMode="decimal"');
   });
 });

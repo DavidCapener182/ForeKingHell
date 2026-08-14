@@ -3,13 +3,21 @@ import { Flag, MapPinned, ShieldCheck } from "lucide-react";
 
 import { MobileHoleStrategy } from "@/app/courses/strategy/mobile-hole-strategy";
 import { PlaySetupDrawer } from "@/app/play/play-setup-drawer";
-import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
+import { IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import {
   Select,
   SelectContent,
@@ -77,37 +85,35 @@ export default async function CourseStrategyCompanionPage({
               </Badge>
             </CardAction>
           </CardHeader>
-          <CardContent>
-            <IOSGroupedList label="Round strategy summary" className="bg-card">
-              <IOSListRow
-                icon={ShieldCheck}
-                label="Club to trust"
-                value={pressureClub?.label ?? "Building"}
-                detail={
-                  pressureClub
-                    ? `${Math.round(pressureClub.minCarryYd)}–${Math.round(pressureClub.maxCarryYd)} yd measured range`
-                    : "Build a measured bag baseline."
-                }
-              />
-              <IOSListRow
-                label="Low-confidence warning"
-                value={warningClub?.label ?? "No clear warning"}
-                detail={
-                  warningClub
-                    ? `${Math.round(warningClub.confidence * 100)}% confidence from ${warningClub.sampleSize} shots · choose a conservative alternative when this club is required`
-                    : "No low-confidence club is separated."
-                }
-              />
-              <IOSListRow
-                label="First-hole plan"
-                value={firstHole?.recommendedClub ?? "Not ready"}
-                detail={
-                  firstHole
-                    ? `${firstHole.safeTarget} · ${firstHole.expectedCarryRange}`
-                    : "Map a tee set and trusted bag values."
-                }
-              />
-            </IOSGroupedList>
+          <CardContent className="grid gap-2">
+            <StrategySummaryItem
+              icon={ShieldCheck}
+              title="Club to trust"
+              value={pressureClub?.label ?? "Building"}
+              description={
+                pressureClub
+                  ? `${Math.round(pressureClub.minCarryYd)}–${Math.round(pressureClub.maxCarryYd)} yd measured range`
+                  : "Build a measured bag baseline."
+              }
+            />
+            <StrategySummaryItem
+              title="Low-confidence warning"
+              value={warningClub?.label ?? "No clear warning"}
+              description={
+                warningClub
+                  ? `${Math.round(warningClub.confidence * 100)}% confidence from ${warningClub.sampleSize} shots · choose a conservative alternative when this club is required`
+                  : "No low-confidence club is separated."
+              }
+            />
+            <StrategySummaryItem
+              title="First-hole plan"
+              value={firstHole?.recommendedClub ?? "Not ready"}
+              description={
+                firstHole
+                  ? `${firstHole.safeTarget} · ${firstHole.expectedCarryRange}`
+                  : "Map a tee set and trusted bag values."
+              }
+            />
           </CardContent>
           <CardFooter className="bg-background/70 p-3">
             <Button asChild className="min-h-12 w-full rounded-xl">
@@ -179,5 +185,34 @@ export default async function CourseStrategyCompanionPage({
         </section>
       </MobileAppShell>
     </PageShell>
+  );
+}
+
+function StrategySummaryItem({
+  icon: Icon,
+  title,
+  value,
+  description,
+}: {
+  icon?: typeof ShieldCheck;
+  title: string;
+  value: string;
+  description: string;
+}) {
+  return (
+    <Item variant="muted" size="sm">
+      {Icon ? (
+        <ItemMedia>
+          <Icon className="size-4 text-primary" aria-hidden />
+        </ItemMedia>
+      ) : null}
+      <ItemContent>
+        <ItemTitle>{title}</ItemTitle>
+        <ItemDescription className="whitespace-normal">{description}</ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        <Badge variant="outline">{value}</Badge>
+      </ItemActions>
+    </Item>
   );
 }
