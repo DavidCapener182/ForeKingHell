@@ -190,16 +190,20 @@ test.describe("phone companion journeys", () => {
     }
 
     await page.goto("/quick-bag", { waitUntil: "commit" });
-    await expectPageReady(page, /Which number can you trust/i);
-    await expect(page.getByRole("searchbox", { name: "Search by club" })).toBeVisible();
+    await expectPageReady(page, /Quick Bag/i);
     await expect(page.getByRole("textbox", { name: "Target distance" })).toBeVisible();
     await expect(page.locator("[data-quick-bag-hydrated]")).toHaveAttribute(
       "data-quick-bag-hydrated",
       "true",
     );
+    await page.getByRole("button", { name: "Search club" }).click();
     await page.getByRole("searchbox", { name: "Search by club" }).fill("Driver");
+    const driverEvidence = page.getByRole("button", { name: /Open Driver evidence/i }).first();
+    await expect(driverEvidence).toBeVisible();
+    await driverEvidence.click();
     await expect(page.getByRole("heading", { name: /Driver/i }).first()).toBeVisible();
-    await page.getByRole("searchbox", { name: "Search by club" }).fill("");
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Target distance" }).click();
     await page.getByRole("textbox", { name: "Target distance" }).fill("165");
     await expect(page.locator("[data-quick-bag-best-match]")).toContainText(/Best match for 165/i);
   });

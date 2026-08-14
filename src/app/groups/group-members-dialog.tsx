@@ -54,7 +54,7 @@ export function GroupMembersDialog({ members }: { members: Member[] }) {
         <DialogHeader>
           <DialogTitle>Group members</DialogTitle>
           <DialogDescription>
-            The active roster and each member’s current group role.
+            Everyone currently in this golf crew and their group role.
           </DialogDescription>
         </DialogHeader>
         <div className="grid max-h-[60vh] gap-2 overflow-y-auto pr-1">

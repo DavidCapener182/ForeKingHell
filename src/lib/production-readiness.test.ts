@@ -91,10 +91,11 @@ describe("production readiness gate", () => {
   it("keeps tester-facing settings privacy controls visible", () => {
     const source = readFileSync(join(root, "src/app/(app)/settings/page.tsx"), "utf8");
 
-    expect(source).toContain("Visibility simulator");
-    expect(source).toContain("Data export/delete status");
-    expect(source).toContain("Private by default");
-    expect(source).toContain("Friends do not get account access");
+    expect(source).toContain("Visibility defaults");
+    expect(source).toContain("New sharing stays private unless you explicitly enable it.");
+    expect(source).toContain("Public visitors never receive account-level access.");
+    expect(source).toContain("Export account data");
+    expect(source).toContain("Delete account permanently");
   });
 
   it("keeps the dashboard first-run Rapsodo path gated to no-data users", () => {
@@ -118,9 +119,10 @@ describe("production readiness gate", () => {
 
     expect(existsSync(join(root, "public/assets/feed-pb-card-bg.webp"))).toBe(true);
     expect(artworkSource).toContain('feedPb: "/assets/feed-pb-card-bg.webp"');
-    expect(feedCardSource).toContain('variant="feedPb"');
-    expect(feedCardSource).toContain("isPbFeedType");
-    expect(feedCardSource).toContain("h-24 min-h-0 md:h-28");
+    expect(feedCardSource).toContain("data-activity-template={kind}");
+    expect(feedCardSource).toContain('kind === "pb"');
+    expect(feedCardSource).toContain("bg-primary/5");
+    expect(feedCardSource).toContain("VerificationLabel");
   });
 
   it("keeps course map placeholder artwork wired into unmapped course cards", () => {
@@ -128,14 +130,17 @@ describe("production readiness gate", () => {
       join(root, "src/components/visuals/page-artwork.tsx"),
       "utf8",
     );
-    const coursesPageSource = readFileSync(join(root, "src/app/(app)/courses/page.tsx"), "utf8");
+    const coursesPageSource = readFileSync(
+      join(root, "src/app/courses/course-library.tsx"),
+      "utf8",
+    );
 
     expect(existsSync(join(root, "public/assets/course-placeholder-map.webp"))).toBe(true);
     expect(artworkSource).toContain('courseMap: "/assets/course-placeholder-map.webp"');
-    expect(coursesPageSource).toContain("function courseArtworkVariant");
-    expect(coursesPageSource).toContain('("courseMap" as const)');
-    expect(coursesPageSource).toContain("function courseArtworkCrop");
-    expect(coursesPageSource).toContain('heroArtworkVariant === "courseMap" ? undefined');
+    expect(coursesPageSource).toContain("export function CoursePreview");
+    expect(coursesPageSource).toContain("const hasMap");
+    expect(coursesPageSource).toContain("<MapPinned");
+    expect(coursesPageSource).toContain("background-image:radial-gradient");
   });
 
   it("keeps the documented shot trace asset available through the artwork catalogue", () => {
@@ -334,6 +339,10 @@ describe("production readiness gate", () => {
   it("keeps the route-level companion and workbench launch-monitor experiences wired", () => {
     const bagSource = readFileSync(join(root, "src/app/(app)/bag/page.tsx"), "utf8");
     const shotsSource = readFileSync(join(root, "src/app/(app)/shots/page.tsx"), "utf8");
+    const shotsTableSource = readFileSync(
+      join(root, "src/app/shots/shots-master-detail-table.tsx"),
+      "utf8",
+    );
     const challengesSource = readFileSync(join(root, "src/app/(app)/challenges/page.tsx"), "utf8");
     const practiceSource = readFileSync(
       join(root, "src/app/practice/practice-companion-client.tsx"),
@@ -367,11 +376,14 @@ describe("production readiness gate", () => {
     expect(bagSource).not.toMatch(/MobileAppShell|IOS[A-Z]/);
     expect(shotsSource).toContain("<ShotsMasterDetailTable");
     expect(shotsSource).toContain('group: "none" | "club" | "session"');
-    expect(shotsSource).toContain("buildShotPatternGroups");
+    expect(shotsSource).toContain("groupBy={filters.group}");
+    expect(shotsTableSource).toContain("data-shot-group={groupBy}");
+    expect(shotsTableSource).toContain("shotGroupLabel");
     expect(shotsSource).not.toMatch(/MobileAppShell|MobileFilterSheet|IOS[A-Z]/);
-    expect(challengesSource).toContain("MobilePremiumChallengeCard");
+    expect(challengesSource).toContain("MobileActiveView");
+    expect(challengesSource).toContain("ActiveChallengeCard");
     expect(challengesSource).toContain("/assets/challenge-longest-drive.webp");
-    expect(challengesSource).toContain("Proof-led");
+    expect(challengesSource).toContain("challengeImageSrc");
     expect(practiceSource).toContain("<OperationStepper");
     expect(practiceSource).toContain("<Carousel");
     expect(practiceSource).toContain("<Textarea");

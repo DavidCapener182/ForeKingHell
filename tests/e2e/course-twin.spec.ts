@@ -171,9 +171,6 @@ test.describe("Course Twin", () => {
 
     await pilotLink.click();
     await expect(page).toHaveURL(new RegExp(`/play/${courseId}$`));
-    await expect(
-      page.getByText("LiDAR Course Twin · 2.4 m runtime mesh").filter({ visible: true }).first(),
-    ).toBeVisible();
     await expect(page.locator("canvas").filter({ visible: true }).first()).toBeVisible();
     await expect
       .poll(() => readTerrainStatus(page), { message: "Bootle terrain readiness" })
@@ -184,13 +181,18 @@ test.describe("Course Twin", () => {
     await expect(
       page.getByRole("button", { name: "Play", exact: true }).filter({ visible: true }).first(),
     ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Open Course Twin settings" })
+      .filter({ visible: true })
+      .last()
+      .click();
     await expect(
-      page.getByRole("button", { name: "Live" }).filter({ visible: true }).first(),
+      page.getByRole("button", { name: "Live" }).filter({ visible: true }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Explore" }).filter({ visible: true }).first().click();
     await expect.poll(() => readRuntimeMode(page)).toBe("explore");
     await page
-      .getByRole("button", { name: "Open course controls" })
+      .getByRole("button", { name: "Open Course Twin settings" })
       .filter({ visible: true })
       .last()
       .click();
@@ -378,8 +380,8 @@ test.describe("Course Twin", () => {
       const canvas = stage.locator("canvas");
       const exit = page.getByRole("link", { name: "Exit Course Twin" });
       const mobileChrome = page.locator("[data-course-twin-mobile-chrome]");
-      const course = mobileChrome.getByRole("button", { name: "Open course controls" });
-      const details = mobileChrome.getByRole("button", { name: "Open shot details" });
+      const course = mobileChrome.getByRole("button", { name: "Open Course Twin settings" });
+      const details = mobileChrome.getByRole("button", { name: "Open advanced controls" });
       const modeDock = page.locator("[data-course-twin-mode-dock]");
       const actionTray = page.locator("[data-course-twin-action-tray]");
 
@@ -452,8 +454,7 @@ test.describe("Course Twin", () => {
         await details.click();
         const shotControls = page.locator("[data-course-twin-shot-controls]");
         await expect(shotControls).toBeVisible();
-        await expect(shotControls).toHaveAttribute("role", "dialog");
-        await expect(shotControls).toHaveAttribute("aria-modal", "true");
+        await expect(page.getByRole("dialog")).toBeVisible();
         const closeDetails = page.getByRole("button", { name: "Close analysis controls" });
         await expect(closeDetails).toBeFocused();
         expectBoxInsideViewport(
@@ -525,7 +526,9 @@ test.describe("Course Twin", () => {
     const visibleModeDock = page.locator("[data-course-twin-runtime-mode-dock]:visible");
     await expect(visibleModeDock).toHaveCount(1);
 
-    const openAnalysis = page.locator('button[aria-label="Open analysis controls"]:visible');
+    const openAnalysis = page
+      .getByRole("button", { name: /Open (replay selection|advanced controls)/ })
+      .filter({ visible: true });
     await expect(openAnalysis).toHaveCount(1);
     await openAnalysis.click();
 
@@ -536,21 +539,25 @@ test.describe("Course Twin", () => {
       shotControls,
       holeHud: page.locator("[data-course-twin-hole-hud]"),
       modeDock: visibleModeDock,
-      cameraControls: page.locator("[data-course-twin-camera-controls]"),
+      currentPlan: page.locator("[data-course-twin-current-plan]"),
+      holeNav: page.locator("[data-course-twin-hole-nav]"),
     };
     const boxes = {
       shotControls: await readLocatorBox(controlSurfaces.shotControls),
       holeHud: await readLocatorBox(controlSurfaces.holeHud),
       modeDock: await readLocatorBox(controlSurfaces.modeDock),
-      cameraControls: await readLocatorBox(controlSurfaces.cameraControls),
+      currentPlan: await readLocatorBox(controlSurfaces.currentPlan),
+      holeNav: await readLocatorBox(controlSurfaces.holeNav),
     };
 
     expectBoxesNotToOverlap(boxes.shotControls, boxes.holeHud);
     expectBoxesNotToOverlap(boxes.shotControls, boxes.modeDock);
-    expectBoxesNotToOverlap(boxes.shotControls, boxes.cameraControls);
+    expectBoxesNotToOverlap(boxes.shotControls, boxes.currentPlan);
+    expectBoxesNotToOverlap(boxes.shotControls, boxes.holeNav);
     expectBoxesNotToOverlap(boxes.holeHud, boxes.modeDock);
-    expectBoxesNotToOverlap(boxes.holeHud, boxes.cameraControls);
-    expectBoxesNotToOverlap(boxes.modeDock, boxes.cameraControls);
+    expectBoxesNotToOverlap(boxes.holeHud, boxes.currentPlan);
+    expectBoxesNotToOverlap(boxes.modeDock, boxes.currentPlan);
+    expectBoxesNotToOverlap(boxes.currentPlan, boxes.holeNav);
   });
 
   test("starts, resumes and safely abandons a persisted My Bag round", async ({ page }) => {
@@ -769,7 +776,7 @@ test.describe("Course Twin", () => {
       timeout: 90_000,
     });
     await expectPageReady(page, /Bootle Golf Course/i);
-    await page.getByRole("button", { name: "Open analysis controls" }).last().click();
+    await page.getByRole("button", { name: "Open advanced controls" }).last().click();
     const puttStatus = page.getByText(/Approximate green · putt 1/i);
     await puttStatus.scrollIntoViewIfNeeded();
     await expect(puttStatus).toBeVisible({
@@ -905,11 +912,13 @@ async function readImmersiveCourseTwinLayout(page: import("@playwright/test").Pa
       exit: box(requiredElement("[data-course-twin-exit]")),
       course: box(
         requiredElement(
-          '[data-course-twin-mobile-chrome] button[aria-label="Open course controls"]',
+          '[data-course-twin-mobile-chrome] button[aria-label="Open Course Twin settings"]',
         ),
       ),
       details: box(
-        requiredElement('[data-course-twin-mobile-chrome] button[aria-label="Open shot details"]'),
+        requiredElement(
+          '[data-course-twin-mobile-chrome] button[aria-label="Open advanced controls"]',
+        ),
       ),
       modeDock: box(modeDock),
       modeDockClientWidth: modeDock.clientWidth,

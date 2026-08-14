@@ -100,6 +100,7 @@ export type TrainingSessionMarker = {
   sessionCount: number;
   totalLoad: number;
   title: string;
+  kind?: "round" | "practice" | "mixed";
 };
 
 export type TrainingEfficiencyCard = {
@@ -249,6 +250,7 @@ export async function getTrainingOverTimeData(
       .limit(8),
     db
       .select({
+        sourceType: golfTrainingSessions.sourceType,
         title: golfTrainingSessions.title,
         sessionDate: golfTrainingSessions.sessionDate,
         sessionLoad: golfTrainingSessions.sessionLoad,
@@ -624,6 +626,7 @@ function toTrainingSessionListItem(row: TrainingSessionDbRow): TrainingSessionLi
 
 function buildSessionMarkers(
   rows: Array<{
+    sourceType: string;
     title: string;
     sessionDate: string;
     sessionLoad: string | number;
@@ -639,6 +642,9 @@ function buildSessionMarkers(
       existing.sessionCount += 1;
       existing.totalLoad += Number(row.sessionLoad);
       existing.title = `${existing.sessionCount} sessions`;
+      if (existing.kind !== markerKind(row.sourceType)) {
+        existing.kind = "mixed";
+      }
       continue;
     }
 
@@ -647,10 +653,15 @@ function buildSessionMarkers(
       sessionCount: 1,
       totalLoad: Number(row.sessionLoad),
       title: row.title,
+      kind: markerKind(row.sourceType),
     });
   }
 
   return [...markersByDate.values()];
+}
+
+function markerKind(sourceType: string): "round" | "practice" {
+  return sourceType === "round" ? "round" : "practice";
 }
 
 function buildTrainingConfidence(

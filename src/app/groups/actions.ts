@@ -10,6 +10,7 @@ import {
   joinGroup,
   joinGroupByInviteCode,
   leaveGroup,
+  respondToGroupInvite,
 } from "@/lib/groups";
 import { parseVisibility } from "@/lib/social";
 
@@ -33,6 +34,16 @@ export async function joinGroupAction(formData: FormData) {
 export async function joinGroupByInviteCodeAction(formData: FormData) {
   const slug = await joinGroupByInviteCode(requiredString(formData, "inviteCode"));
   redirect(`/groups/${slug}?joined=1`);
+}
+
+export async function acceptGroupInviteAction(formData: FormData) {
+  const slug = await respondToGroupInvite(requiredString(formData, "inviteId"), "accepted");
+  redirect(`/groups/${slug}?joined=1`);
+}
+
+export async function declineGroupInviteAction(formData: FormData) {
+  await respondToGroupInvite(requiredString(formData, "inviteId"), "declined");
+  redirect("/groups?tab=invites&declined=1");
 }
 
 export async function createGroupPostAction(formData: FormData) {

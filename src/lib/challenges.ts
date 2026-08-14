@@ -57,6 +57,15 @@ export type ChallengeListItem = {
   participantCount: number;
   viewerJoined: boolean;
   viewerRank: number | null;
+  viewerScore: number | null;
+  viewerScoreLabel: string | null;
+  viewerVerificationLabel: string | null;
+  viewerEvidenceCount: number;
+  evidenceTargetCount: number;
+  evidenceRequirement: string;
+  difficulty: "Starter" | "Progressing" | "Stretch";
+  rulesSummary: string;
+  rulesBullets: string[];
   leader: {
     userId: string;
     username: string;
@@ -690,7 +699,11 @@ async function hydrateChallengeListItems(
         (challenge.templateId ? templateMap.get(challenge.templateId) : null) ??
         defaultTemplateForChallenge(challenge);
       const entries = entryRows.filter((entry) => entry.challengeId === challenge.id);
-      const attempts = await calculateImportedChallengeAttempts(challenge, template, entries);
+      const { attempts, evidenceCounts } = await calculateImportedChallengeAttemptState(
+        challenge,
+        template,
+        entries,
+      );
       const results = rankImportedChallengeAttempts(challenge, template, attempts);
       const leader =
         results.find((result) => result.rank === 1) ??
@@ -700,6 +713,10 @@ async function hydrateChallengeListItems(
         ? attempts.find((attempt) => attempt.userId === leader.userId)
         : null;
       const viewerResult = results.find((result) => result.userId === viewerUserId);
+      const viewerAttempt = attempts.find((attempt) => attempt.userId === viewerUserId);
+      const rules = normalizedRules(challenge, template);
+      const evidenceTargetCount = ruleNumber(rules, "minShots", 1);
+      const viewerEvidenceCount = evidenceCounts.get(viewerUserId) ?? 0;
 
       return {
         id: challenge.id,
@@ -715,6 +732,15 @@ async function hydrateChallengeListItems(
         participantCount: entries.length,
         viewerJoined: entries.some((entry) => entry.userId === viewerUserId),
         viewerRank: viewerResult?.rank ?? null,
+        viewerScore: viewerResult?.score ?? null,
+        viewerScoreLabel: viewerResult?.scoreLabel ?? null,
+        viewerVerificationLabel: viewerAttempt?.verificationLabel ?? null,
+        viewerEvidenceCount,
+        evidenceTargetCount,
+        evidenceRequirement: challengeEvidenceRequirement(challenge, template),
+        difficulty: challengeDifficulty(evidenceTargetCount),
+        rulesSummary: challengeRulesSummary(challenge, template),
+        rulesBullets: challengeRuleBullets(challenge, template),
         leader:
           leader && leaderProfile
             ? {
@@ -730,15 +756,39 @@ async function hydrateChallengeListItems(
   );
 }
 
+function challengeDifficulty(minimumEvidence: number): ChallengeListItem["difficulty"] {
+  if (minimumEvidence <= 5) return "Starter";
+  if (minimumEvidence <= 12) return "Progressing";
+  return "Stretch";
+}
+
+function challengeEvidenceRequirement(challenge: ChallengeRow, template: ChallengeTemplateRow) {
+  const rules = normalizedRules(challenge, template);
+  const minimumEvidence = ruleNumber(rules, "minShots", 1);
+  const clubs = clubRuleLabel(ruleStringArray(rules, "clubTypes"));
+  const shotLabel = minimumEvidence === 1 ? "shot" : "shots";
+
+  return `${minimumEvidence} qualifying imported ${clubs ? `${clubs.toLowerCase()} ` : ""}${shotLabel}`;
+}
+
 async function calculateImportedChallengeAttempts(
   challenge: ChallengeRow,
   template: ChallengeTemplateRow,
   entries: ChallengeEntryRow[],
 ): Promise<ChallengeAttemptRow[]> {
+  const { attempts } = await calculateImportedChallengeAttemptState(challenge, template, entries);
+  return attempts;
+}
+
+async function calculateImportedChallengeAttemptState(
+  challenge: ChallengeRow,
+  template: ChallengeTemplateRow,
+  entries: ChallengeEntryRow[],
+) {
   const userIds = [...new Set(entries.map((entry) => entry.userId))];
 
   if (userIds.length === 0) {
-    return [];
+    return { attempts: [] as ChallengeAttemptRow[], evidenceCounts: new Map<string, number>() };
   }
 
   const clauses: SQL[] = [
@@ -778,13 +828,23 @@ async function calculateImportedChallengeAttempts(
   }
 
   const attempts: ChallengeAttemptRow[] = [];
+  const evidenceCounts = new Map<string, number>();
+  const rules = normalizedRules(challenge, template);
+  const clubTypes = ruleStringArray(rules, "clubTypes");
+  const practiceStreak = challengeTemplateKind(template) === "practice_streak";
 
   for (const entry of entries) {
-    const scored = scoreImportedChallengeRows(
-      challenge,
-      template,
-      rowsByUserId.get(entry.userId) ?? [],
+    const userRows = rowsByUserId.get(entry.userId) ?? [];
+    const eligibleRows = userRows.filter(
+      (row) => clubTypes.length === 0 || clubMatches(row.clubType, clubTypes),
     );
+    evidenceCounts.set(
+      entry.userId,
+      practiceStreak
+        ? new Set(eligibleRows.map((row) => row.shotAt.toISOString().slice(0, 10))).size
+        : eligibleRows.length,
+    );
+    const scored = scoreImportedChallengeRows(challenge, template, userRows);
 
     if (!scored) {
       continue;
@@ -814,7 +874,7 @@ async function calculateImportedChallengeAttempts(
     });
   }
 
-  return attempts;
+  return { attempts, evidenceCounts };
 }
 
 function rankImportedChallengeAttempts(

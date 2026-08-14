@@ -34,7 +34,12 @@ describe("course strategy", () => {
     });
     expect(strategy.recommendedClub).toBe("3 Wood");
     expect(strategy.safeTarget).toBe("Left-centre");
+    expect(strategy.personalCarryYd).toBe(220);
+    expect(strategy.dispersionLeftYd).toBe(12);
+    expect(strategy.dispersionRightYd).toBe(15);
+    expect(strategy.hazards).toEqual(["Bunker"]);
     expect(strategy.hazardWarning).toContain("Bunker");
+    expect(strategy.strategyModes.map((mode) => mode.id)).toEqual(["normal", "aggressive"]);
     expect(strategy.caveat).toContain("can change it");
   });
 

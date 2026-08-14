@@ -30,13 +30,13 @@ The desktop workbench retains the full **investigate -> compare -> configure -> 
 
 ## Courses, records and equipment
 
-| Feature            | Routes                                                                                                                                                         | Where users find it                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Courses            | `/play`, `/courses`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Companion Play hub, Course Twin catalogue and pre-round preparation. |
-| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`                                       | Courses and records group.                                           |
-| Course competition | `/courses/[courseId]/tournaments`                                                                                                                              | Compete navigation.                                                  |
-| Equipment          | `/equipment`, `/equipment/experiments`                                                                                                                         | Bag and Manage navigation.                                           |
-| Achievements       | `/achievements`                                                                                                                                                | Profile and Compete navigation.                                      |
+| Feature            | Routes                                                                                                                                                                                | Where users find it                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Courses            | `/play`, `/courses`, `/courses/[courseId]`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Companion Play hub, course profiles, Course Twin catalogue and pre-round preparation. |
+| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`                                                              | Courses and records group.                                                            |
+| Course competition | `/courses/[courseId]/tournaments`                                                                                                                                                     | Compete navigation.                                                                   |
+| Equipment          | `/equipment`, `/equipment/experiments`                                                                                                                                                | Bag and Manage navigation.                                                            |
+| Achievements       | `/achievements`                                                                                                                                                                       | Profile and Compete navigation.                                                       |
 
 ## Social and competition
 

@@ -51,6 +51,11 @@ export type AdminUserListItem = {
   sessionCount: number;
   feedCount: number;
   createdAt: Date;
+  recentAuditEvents: Array<{
+    id: string;
+    action: string;
+    createdAt: Date;
+  }>;
 };
 
 const activeSubscriptionStatuses = ["active", "trialing"] as const;
@@ -67,6 +72,7 @@ type AdminOperationsSnapshot = {
   aiSummaries: number;
   billingFailures: number;
   providerImportFailures: number;
+  openModerationEvents: number;
 };
 
 export async function isCurrentUserAdmin() {
@@ -250,6 +256,19 @@ export async function getAdminUsers(
           ),
         )
     : [];
+  const auditRows = ids.length
+    ? await db
+        .select({
+          id: adminAuditLog.id,
+          targetUserId: adminAuditLog.targetUserId,
+          action: adminAuditLog.action,
+          createdAt: adminAuditLog.createdAt,
+        })
+        .from(adminAuditLog)
+        .where(inArray(adminAuditLog.targetUserId, ids))
+        .orderBy(desc(adminAuditLog.createdAt))
+        .limit(300)
+    : [];
 
   const sessionMap = new Map(sessionCounts.map((row) => [row.userId, row.count]));
   const feedMap = new Map(feedCounts.map((row) => [row.userId, row.count]));
@@ -262,6 +281,17 @@ export async function getAdminUsers(
   }
 
   const fullGrantIds = new Set(fullEntitlements.map((row) => row.userId));
+  const auditMap = new Map<string, typeof auditRows>();
+
+  for (const auditRow of auditRows) {
+    if (!auditRow.targetUserId) continue;
+
+    const userAuditRows = auditMap.get(auditRow.targetUserId) ?? [];
+    if (userAuditRows.length < 4) {
+      userAuditRows.push(auditRow);
+      auditMap.set(auditRow.targetUserId, userAuditRows);
+    }
+  }
 
   return rows.map((row) => ({
     id: row.id,
@@ -277,6 +307,11 @@ export async function getAdminUsers(
     sessionCount: sessionMap.get(row.id) ?? 0,
     feedCount: feedMap.get(row.id) ?? 0,
     createdAt: row.createdAt,
+    recentAuditEvents: (auditMap.get(row.id) ?? []).map((auditRow) => ({
+      id: auditRow.id,
+      action: auditRow.action,
+      createdAt: auditRow.createdAt,
+    })),
   }));
 }
 
@@ -821,6 +856,7 @@ async function getAdminOverviewMetrics() {
     aiSummaryCount: number;
     billingFailureCount: number;
     providerImportFailureCount: number;
+    openModerationEventCount: number;
   }>(sql`
     select
       (select count(*)::int from ${users}) as "userCount",
@@ -842,7 +878,8 @@ async function getAdminOverviewMetrics() {
       (select count(*)::int from ${partnerOffers}) as "partnerOfferCount",
       (select count(*)::int from ${aiSocialSummaries}) as "aiSummaryCount",
       (select count(*)::int from ${subscriptions} where ${subscriptions.status} in ('past_due', 'unpaid', 'incomplete_expired')) as "billingFailureCount",
-      (select count(*)::int from ${importJobs} where ${importJobs.status} = 'failed') as "providerImportFailureCount"
+      (select count(*)::int from ${importJobs} where ${importJobs.status} = 'failed') as "providerImportFailureCount",
+      (select count(*)::int from ${moderationEvents} where ${moderationEvents.status} = 'open') as "openModerationEventCount"
   `);
   const row = rows[0];
 
@@ -867,6 +904,7 @@ async function getAdminOverviewMetrics() {
     aiSummaryCount: Number(row?.aiSummaryCount ?? 0),
     billingFailureCount: Number(row?.billingFailureCount ?? 0),
     providerImportFailureCount: Number(row?.providerImportFailureCount ?? 0),
+    openModerationEventCount: Number(row?.openModerationEventCount ?? 0),
   };
 }
 
@@ -883,6 +921,7 @@ async function getAdminOperationsMetrics() {
     aiSummaryCount: number;
     billingFailureCount: number;
     providerImportFailureCount: number;
+    openModerationEventCount: number;
   }>(sql`
     select
       (select count(*)::int from ${groups}) as "groupCount",
@@ -895,7 +934,8 @@ async function getAdminOperationsMetrics() {
       (select count(*)::int from ${partnerOffers}) as "partnerOfferCount",
       (select count(*)::int from ${aiSocialSummaries}) as "aiSummaryCount",
       (select count(*)::int from ${subscriptions} where ${subscriptions.status} in ('past_due', 'unpaid', 'incomplete_expired')) as "billingFailureCount",
-      (select count(*)::int from ${importJobs} where ${importJobs.status} = 'failed') as "providerImportFailureCount"
+      (select count(*)::int from ${importJobs} where ${importJobs.status} = 'failed') as "providerImportFailureCount",
+      (select count(*)::int from ${moderationEvents} where ${moderationEvents.status} = 'open') as "openModerationEventCount"
   `);
   const row = rows[0];
 
@@ -911,6 +951,7 @@ async function getAdminOperationsMetrics() {
     aiSummaryCount: Number(row?.aiSummaryCount ?? 0),
     billingFailureCount: Number(row?.billingFailureCount ?? 0),
     providerImportFailureCount: Number(row?.providerImportFailureCount ?? 0),
+    openModerationEventCount: Number(row?.openModerationEventCount ?? 0),
   };
 }
 
@@ -991,6 +1032,7 @@ async function getRecentAdminOverviewUsers(limit: number): Promise<AdminUserList
     sessionCount: sessionMap.get(row.id) ?? 0,
     feedCount: feedMap.get(row.id) ?? 0,
     createdAt: row.createdAt,
+    recentAuditEvents: [],
   }));
 }
 
@@ -1022,6 +1064,7 @@ function adminOperationsFromMetrics(metrics: {
   aiSummaryCount: number;
   billingFailureCount: number;
   providerImportFailureCount: number;
+  openModerationEventCount: number;
 }): AdminOperationsSnapshot {
   return {
     groups: metrics.groupCount,
@@ -1035,6 +1078,7 @@ function adminOperationsFromMetrics(metrics: {
     aiSummaries: metrics.aiSummaryCount,
     billingFailures: metrics.billingFailureCount,
     providerImportFailures: metrics.providerImportFailureCount,
+    openModerationEvents: metrics.openModerationEventCount,
   };
 }
 

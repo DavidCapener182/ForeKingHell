@@ -1,0 +1,21 @@
+.mobileSurface {
+  display: block;
+}
+
+.mobileSurface > section {
+  display: grid;
+}
+
+.desktopSurface {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .mobileSurface {
+    display: none;
+  }
+
+  .desktopSurface {
+    display: block;
+  }
+}

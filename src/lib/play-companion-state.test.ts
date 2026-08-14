@@ -28,6 +28,15 @@ describe("Play companion state", () => {
     expect(selectCompanionTee({ tees })?.id).toBe("middle");
   });
 
+  it("preserves selected-tee metadata used by the pre-round briefing", () => {
+    const selected = selectCompanionTee({
+      tees: [{ id: "club", name: "Club", yards: 6_100, par: 72 }],
+      explicitTeeId: "club",
+    });
+
+    expect(selected?.par).toBe(72);
+  });
+
   it("keeps strategy readiness independent from Course Twin availability", () => {
     expect(
       companionCourseReadiness({ holeCount: 18, teeCount: 3, courseTwinAvailable: false }),

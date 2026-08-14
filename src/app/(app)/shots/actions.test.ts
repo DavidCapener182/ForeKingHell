@@ -17,4 +17,14 @@ describe("delete shot action", () => {
     expect(source).toContain('revalidatePath("/today")');
     expect(source).toContain('revalidatePath("/", "layout")');
   });
+
+  it("excludes only a valid shot owned by the current player and refreshes derived views", () => {
+    expect(source).toContain("export async function excludeShotAction");
+    expect(source).toContain('.set({ qualityTag: "excluded" })');
+    expect(source).toContain("eq(shots.id, shotId)");
+    expect(source).toContain("eq(shots.userId, userId)");
+    expect(source).toContain('revalidatePath("/shots")');
+    expect(source).toContain('revalidatePath("/bag")');
+    expect(source).toContain('revalidatePath("/progress")');
+  });
 });

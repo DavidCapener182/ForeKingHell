@@ -29,13 +29,15 @@ describe("training chart accessibility source", () => {
     expect(overTimeSource).toContain("trainingOverTimeSummary(chartData, sessionMarkers.length)");
     expect(overTimeSource).toContain("chartData.slice(-12).map");
     expect(overTimeSource).toContain("sessionQuality");
-    expect(overTimeSource).toContain('dataKey="sessionQuality"');
-    expect(overTimeSource).toContain("connectNulls");
+    expect(overTimeSource).not.toContain('dataKey="sessionQuality"');
+    expect(overTimeSource).toContain("<ReferenceDot");
+    expect(overTimeSource).toContain('label="Round"');
+    expect(overTimeSource).toContain('label="Practice"');
     expect(overTimeSource).toContain('{ key: "form", label: "Golf form" }');
     expect(overTimeSource).toContain('{ key: "sessionQuality", label: "Session quality" }');
     expect(overTimeSource).toContain('{ key: "fitness", label: "Fitness" }');
     expect(overTimeSource).toContain('{ key: "fatigue", label: "Recent load" }');
     expect(overTimeSource).toContain('clubhouse: "#1555D6"');
-    expect(overTimeSource).toContain('clubhouse: "#75342E"');
+    expect(overTimeSource).toContain("sm:h-[20rem] xl:h-[24rem]");
   });
 });

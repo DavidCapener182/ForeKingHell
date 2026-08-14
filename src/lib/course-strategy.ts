@@ -13,14 +13,28 @@ export type StrategyClub = {
 
 export type StrategyHole = { holeNumber: number; par: number; yards: number };
 
+export type HoleStrategyMode = {
+  id: "safe" | "normal" | "aggressive";
+  label: "Safe" | "Normal" | "Aggressive";
+  club: string;
+  carryRange: string;
+  target: string;
+  expectedLeave: string;
+  rationale: string;
+};
+
 export type HoleStrategy = {
   holeNumber: number;
   par: number;
   yards: number;
   recommendedClub: string;
   expectedCarryRange: string;
+  personalCarryYd: number | null;
+  dispersionLeftYd: number | null;
+  dispersionRightYd: number | null;
   commonMiss: string;
   safeTarget: string;
+  hazards: string[];
   hazardWarning: string;
   conservativeAlternative: string;
   expectedLeave: string;
@@ -33,6 +47,7 @@ export type HoleStrategy = {
   followUpTotalRange: string | null;
   confidence: "High" | "Moderate" | "Low";
   caveat: string;
+  strategyModes: HoleStrategyMode[];
 };
 
 export function buildHoleStrategies(input: {
@@ -49,6 +64,7 @@ export function buildHoleStrategies(input: {
       ? clubs.findIndex((club) => club.clubId === selected.clubId)
       : -1;
     const alternative = selectedIndex >= 0 ? clubs[selectedIndex + 1] : null;
+    const aggressive = selectedIndex > 0 ? clubs[selectedIndex - 1] : null;
     const hazards = input.hazardsByHole.get(hole.holeNumber) ?? [];
     const expectedLeaveYd = selected
       ? Math.max(0, Math.round(hole.yards - selected.carryYd))
@@ -65,6 +81,45 @@ export function buildHoleStrategies(input: {
           : "balanced"
       : "unknown";
     const confidence = selected ? confidenceLabel(selected) : "Low";
+    const normalMode = selected
+      ? strategyMode({
+          id: "normal",
+          club: selected,
+          hole,
+          target:
+            miss === "left"
+              ? "Right-centre"
+              : miss === "right"
+                ? "Left-centre"
+                : "Centre of the widest playable area",
+          rationale: "Best fit from the trusted measured bag range.",
+        })
+      : null;
+    const safeMode = alternative
+      ? strategyMode({
+          id: "safe",
+          club: alternative,
+          hole,
+          target: "Widest playable area",
+          rationale: "Shorter measured club to keep the next shot comfortable.",
+        })
+      : null;
+    const aggressiveMode =
+      aggressive &&
+      selected &&
+      hazards.length > 0 &&
+      confidenceLabel(aggressive) !== "Low" &&
+      confidenceLabel(selected) !== "Low"
+        ? strategyMode({
+            id: "aggressive",
+            club: aggressive,
+            hole,
+            target:
+              miss === "left" ? "Right-centre" : miss === "right" ? "Left-centre" : "Centre line",
+            rationale:
+              "Longer measured option. Confirm every mapped hazard distance in Course Twin before committing.",
+          })
+        : null;
     return {
       holeNumber: hole.holeNumber,
       par: hole.par,
@@ -73,6 +128,9 @@ export function buildHoleStrategies(input: {
       expectedCarryRange: selected
         ? `${Math.round(selected.minCarryYd)}–${Math.round(selected.maxCarryYd)} yd`
         : "Not available",
+      personalCarryYd: selected ? Math.round(selected.carryYd) : null,
+      dispersionLeftYd: selected ? Math.round(selected.leftYd) : null,
+      dispersionRightYd: selected ? Math.round(selected.rightYd) : null,
       commonMiss:
         miss === "unknown"
           ? "No measured pattern"
@@ -85,6 +143,7 @@ export function buildHoleStrategies(input: {
           : miss === "right"
             ? "Left-centre"
             : "Centre of the widest playable area",
+      hazards: unique(hazards).map(titleCase),
       hazardWarning: hazards.length
         ? `${unique(hazards).map(titleCase).join(" and ")} mapped on this hole; confirm the live line and distance.`
         : "No mapped hazard evidence; confirm the course view before committing.",
@@ -107,8 +166,35 @@ export function buildHoleStrategies(input: {
       followUpTotalRange: followUpPlan ? combinedCarryRange(followUpPlan.clubs) : null,
       confidence,
       caveat: `${confidence} confidence from ${selected?.sampleSize ?? 0} measured shots. Historical dispersion informs this recommendation; wind, lie, pin and current hazards can change it.`,
+      strategyModes: [safeMode, normalMode, aggressiveMode].filter(
+        (mode): mode is HoleStrategyMode => mode !== null,
+      ),
     };
   });
+}
+
+function strategyMode({
+  id,
+  club,
+  hole,
+  target,
+  rationale,
+}: {
+  id: HoleStrategyMode["id"];
+  club: StrategyClub;
+  hole: StrategyHole;
+  target: string;
+  rationale: string;
+}): HoleStrategyMode {
+  return {
+    id,
+    label: id === "safe" ? "Safe" : id === "normal" ? "Normal" : "Aggressive",
+    club: club.label,
+    carryRange: carryRange(club),
+    target,
+    expectedLeave: `${Math.max(0, Math.round(hole.yards - club.carryYd))} yd after the first shot`,
+    rationale,
+  };
 }
 
 function selectClub(hole: StrategyHole, clubs: StrategyClub[]) {

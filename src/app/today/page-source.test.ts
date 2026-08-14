@@ -20,6 +20,10 @@ const chartsSource = readFileSync(
   join(process.cwd(), "src/app/today/today-shot-charts.tsx"),
   "utf8",
 );
+const primaryStateSource = readFileSync(
+  join(process.cwd(), "src/lib/today-primary-state.ts"),
+  "utf8",
+);
 
 describe("latest practice desktop dashboard", () => {
   it("branches before importing the focused companion or full workbench", () => {
@@ -40,7 +44,8 @@ describe("latest practice desktop dashboard", () => {
     expect(primaryAnswerSource).toContain("Retry sync");
     expect(primaryAnswerSource).toContain("<ButtonGroup");
     expect(primaryAnswerSource).toContain("<DropdownMenu");
-    expect(companionSource).toContain("Plan range session");
+    expect(companionSource).toContain("resolveTodayPrimaryState");
+    expect(primaryStateSource).toContain("Plan range session");
     expect(companionSource).toContain("Why this recommendation?");
     expect(companionSource).toContain('href="/quick-bag"');
     expect(companionSource).not.toContain("TodayShotCharts");
@@ -74,17 +79,17 @@ describe("latest practice desktop dashboard", () => {
 
   it("renders server-authored collapsible triggers directly across the RSC boundary", () => {
     expect(source).toContain('import { Button, buttonVariants } from "@/components/ui/button"');
-    expect(source.match(/<CollapsibleTrigger\s+type="button"/g)).toHaveLength(2);
+    expect(
+      source.match(/<CollapsibleTrigger\s+type="button"/g)?.length ?? 0,
+    ).toBeGreaterThanOrEqual(3);
     expect(source.match(/className=\{buttonVariants\(\{/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
     expect(source).not.toMatch(/<CollapsibleTrigger\s+asChild>[\s\S]*?<Button/);
   });
 
   it("uses the optional desktop AI rail for latest practice evidence", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('scope="today"');
     expect(source).toContain("DesktopInsightRail");
     expect(source).toContain('title="AI latest-practice rail"');
-    expect(source).toContain('railBreakpoint="wide"');
+    expect(source).toContain("data-full-session-analysis");
     expect(source).toContain("todayInsightMetrics(data, linkedPracticePlan)");
     expect(source).toContain("todayInsightEvidence(data, linkedPracticePlan)");
     expect(source).toContain('commonAiPrompts("latest practice review")');
@@ -94,6 +99,7 @@ describe("latest practice desktop dashboard", () => {
 
   it("uses a shadcn tab workspace to separate the desktop review modes", () => {
     expect(source).toContain("data-desktop-today-tabs");
+    expect(source).toContain("data-today-decision-hero");
     expect(source).toContain("data-today-hero-score-stack");
     expect(source).toContain("<Tabs");
     expect(source).toContain("<TabsList");
@@ -102,8 +108,27 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain('<TabsTrigger value="evidence">Evidence</TabsTrigger>');
     expect(source).toContain('<TabsTrigger value="data-quality">Data quality</TabsTrigger>');
     expect(source).toContain("<ConnectedMetricBar");
-    expect(source).toContain("todayConnectedMetrics(data, linkedPracticePlan)");
+    expect(source).toContain(
+      "todayHomeContextMetrics(plannerContext, recommendation, handicapValue)",
+    );
     expect(source).not.toContain("TodayBentoItem");
+  });
+
+  it("orders the desktop home as answer, performance, context, next up, then activity", () => {
+    const answer = source.indexOf("<TodayDecisionHero");
+    const performance = source.indexOf('eyebrow="Latest performance"');
+    const context = source.indexOf('eyebrow="Today’s context"');
+    const nextUp = source.indexOf("<TodayNextUp");
+    const activity = source.indexOf("<TodayActivityTimeline");
+
+    expect(answer).toBeGreaterThan(0);
+    expect(performance).toBeGreaterThan(answer);
+    expect(context).toBeGreaterThan(performance);
+    expect(nextUp).toBeGreaterThan(context);
+    expect(activity).toBeGreaterThan(nextUp);
+    expect(source).toContain('variant="editorial"');
+    expect(source).toContain("<ButtonGroup");
+    expect(source).toContain("<Progress");
   });
 
   it("keeps the focused practice workflow available inside its desktop tab", () => {

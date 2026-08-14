@@ -25,12 +25,26 @@ export function RoundReviewTabs({
       }}
       data-round-review-tabs
     >
-      <TabsList variant="line" aria-label="Round review sections">
-        <TabsTrigger value="summary">Summary</TabsTrigger>
-        <TabsTrigger value="scorecard">Scorecard</TabsTrigger>
-        <TabsTrigger value="map">Map</TabsTrigger>
-        <TabsTrigger value="evidence">Evidence</TabsTrigger>
-        <TabsTrigger value="corrections">Corrections</TabsTrigger>
+      <TabsList
+        variant="line"
+        className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Round review sections"
+      >
+        <TabsTrigger value="summary" className="shrink-0">
+          Summary
+        </TabsTrigger>
+        <TabsTrigger value="scorecard" className="shrink-0">
+          Scorecard
+        </TabsTrigger>
+        <TabsTrigger value="map" className="shrink-0">
+          Map
+        </TabsTrigger>
+        <TabsTrigger value="evidence" className="shrink-0">
+          Evidence
+        </TabsTrigger>
+        <TabsTrigger value="corrections" className="shrink-0">
+          Corrections
+        </TabsTrigger>
       </TabsList>
     </Tabs>
   );

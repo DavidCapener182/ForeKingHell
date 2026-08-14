@@ -53,7 +53,7 @@ test.describe("group invite flow", () => {
     await page.goto(`/groups?invite=${data.inviteCode}`);
     await expectPageReady(page, /Groups/i);
     await expect(page.locator("body")).toContainText(data.name);
-    await page.getByRole("button", { name: /Join from invite/i }).click();
+    await page.getByRole("button", { name: /Accept invite/i }).click();
 
     await expect
       .poll(async () => {
@@ -70,8 +70,12 @@ test.describe("group invite flow", () => {
 
     await page.goto(`/groups/${data.slug}`);
     await expectPageReady(page, new RegExp(data.name));
-    await expect(page.locator("body")).toContainText("Invite");
-    await expect(page.locator(`img[src="/groups/qr/${data.inviteCode}"]`)).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Activity" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Members" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "About this group" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Current challenge" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Next event" })).toBeVisible();
   });
 });
 

@@ -143,10 +143,12 @@ export function TodayShotCharts({
   shots,
   clubStatuses = [],
   patternInsight = "Dispersion is the main diagnostic; trajectory adds ball-flight context.",
+  variant = "default",
 }: {
   shots: TodayChartShot[];
   clubStatuses?: TodayChartClubStatus[];
   patternInsight?: string;
+  variant?: "default" | "editorial";
 }) {
   const clubGroups = useMemo(() => buildClubGroups(shots), [shots]);
   const statusByClub = useMemo(
@@ -176,7 +178,13 @@ export function TodayShotCharts({
   const trajectoryRows = buildTrajectoryChartRows(visibleShots);
 
   return (
-    <Card size="sm" className="premium-card today-shot-pattern-card">
+    <Card
+      size="sm"
+      className={cn(
+        "premium-card today-shot-pattern-card",
+        variant === "editorial" && "gap-4 rounded-[1.25rem] py-5 shadow-none ring-foreground/8",
+      )}
+    >
       <CardHeader className="pb-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -300,7 +308,14 @@ export function TodayShotCharts({
           </Button>
         </div>
 
-        <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div
+          className={cn(
+            "grid items-start gap-4",
+            variant === "editorial"
+              ? "xl:grid-cols-[minmax(0,1.65fr)_minmax(21rem,0.65fr)]"
+              : "lg:grid-cols-2",
+          )}
+        >
           <ChartPanel
             title="Dispersion"
             detail="Carry landing by left-right miss, with launch-direction traces when available."
@@ -605,7 +620,7 @@ function DispersionMarkerLegend({ bestMarkerLabel }: { bestMarkerLabel: string }
         />
         80% ellipse
       </span>
-      <MarkerLegendItem marker="1" label="Average landing" tone="slate" />
+      <MarkerLegendItem marker="M" label="Median landing" tone="slate" />
       <MarkerLegendItem marker="2" label="Worst miss" tone="pink" />
       <MarkerLegendItem marker="3" label={bestMarkerLabel} tone="green" />
     </div>
@@ -719,8 +734,8 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
   const xTicks = [-maxSide, -maxSide / 2, 0, maxSide / 2, maxSide];
   const xScale = (value: number) => padding.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
   const yScale = (value: number) => padding.top + plotHeight - (value / maxCarry) * plotHeight;
-  const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd ?? null));
-  const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
+  const medianSide = medianNumber(points.map((shot) => shot.sideCarryYd ?? null));
+  const medianCarry = medianNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
   const clubAverages = averageDispersionPoints(points);
   const shapeModel = buildTopDownShapeModel(points);
   const bestMarker = bestTargetCorridorShot(points, centerZone);
@@ -928,49 +943,49 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
           tone="pink"
         />
       ) : null}
-      {isNumber(averageSide) && isNumber(averageCarry) ? (
+      {isNumber(medianSide) && isNumber(medianCarry) ? (
         <g>
           <circle
-            cx={xScale(averageSide)}
-            cy={yScale(averageCarry)}
+            cx={xScale(medianSide)}
+            cy={yScale(medianCarry)}
             r={9}
             fill="none"
             stroke="#0f172a"
             strokeWidth={2}
           />
           <line
-            x1={xScale(averageSide) - 13}
-            x2={xScale(averageSide) + 13}
-            y1={yScale(averageCarry)}
-            y2={yScale(averageCarry)}
+            x1={xScale(medianSide) - 13}
+            x2={xScale(medianSide) + 13}
+            y1={yScale(medianCarry)}
+            y2={yScale(medianCarry)}
             stroke="#0f172a"
             strokeWidth={2}
           />
           <line
-            x1={xScale(averageSide)}
-            x2={xScale(averageSide)}
-            y1={yScale(averageCarry) - 13}
-            y2={yScale(averageCarry) + 13}
+            x1={xScale(medianSide)}
+            x2={xScale(medianSide)}
+            y1={yScale(medianCarry) - 13}
+            y2={yScale(medianCarry) + 13}
             stroke="#0f172a"
             strokeWidth={2}
           />
           <circle
-            cx={xScale(averageSide) + 15}
-            cy={yScale(averageCarry) - 15}
+            cx={xScale(medianSide) + 15}
+            cy={yScale(medianCarry) - 15}
             r={9}
             fill="#0f172a"
             stroke="white"
             strokeWidth={1.5}
           />
           <text
-            x={xScale(averageSide) + 15}
-            y={yScale(averageCarry) - 11}
+            x={xScale(medianSide) + 15}
+            y={yScale(medianCarry) - 11}
             textAnchor="middle"
             className="fill-white text-[10px] font-bold"
           >
-            1
+            M
           </text>
-          <title>{`Average miss: ${formatNullable(averageCarry)} carry, ${formatSigned(averageSide)} side`}</title>
+          <title>{`Median landing: ${formatNullable(medianCarry)} carry, ${formatSigned(medianSide)} side`}</title>
         </g>
       ) : null}
     </svg>
@@ -1490,6 +1505,15 @@ function max(values: number[]) {
 function meanNumber(values: Array<number | null | undefined>) {
   const numbers = values.filter(isNumber);
   return numbers.length > 0 ? meanArray(numbers) : null;
+}
+
+function medianNumber(values: Array<number | null | undefined>) {
+  const numbers = values.filter(isNumber).sort((left, right) => left - right);
+  if (numbers.length === 0) return null;
+  const middle = Math.floor(numbers.length / 2);
+  return numbers.length % 2 === 0
+    ? ((numbers[middle - 1] ?? 0) + (numbers[middle] ?? 0)) / 2
+    : (numbers[middle] ?? null);
 }
 
 function meanArray(values: number[]) {

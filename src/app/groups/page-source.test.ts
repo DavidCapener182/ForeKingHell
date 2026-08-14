@@ -3,71 +3,53 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/groups/page.tsx"), "utf8");
+const tabsSource = readFileSync(
+  join(process.cwd(), "src/app/groups/group-directory-tabs.tsx"),
+  "utf8",
+);
+const createSheetSource = readFileSync(
+  join(process.cwd(), "src/app/groups/group-create-sheet.tsx"),
+  "utf8",
+);
 
-describe("groups desktop board", () => {
-  it("uses the groups artwork variant in the desktop group header", () => {
+describe("groups membership directory", () => {
+  it("uses one membership-led directory with the required tabs", () => {
+    expect(tabsSource).toContain('label: "My Groups"');
+    expect(tabsSource).toContain('label: "Discover"');
+    expect(tabsSource).toContain('label: "Invites"');
+    expect(source).toContain("<GroupClubList");
+    expect(source).toContain("<GroupClubRow");
+    expect(source).not.toContain("GroupBoardTable");
+    expect(source).not.toContain("DataTableFrame");
+    expect(source).not.toContain("DesktopWorkbenchLayout");
+    expect(source).not.toContain("DesktopTableWorkbenchControls");
+    expect(source).not.toContain("<Table");
+  });
+
+  it("shows membership, activity, challenge and privacy on each group", () => {
+    expect(source).toContain('label="Members"');
+    expect(source).toContain('label="Latest activity"');
+    expect(source).toContain('label="Current challenge"');
+    expect(source).toContain('label="Privacy"');
+    expect(source).toContain("group.avatarUrl");
+    expect(source).toContain("group.memberCount");
+    expect(source).toContain("group.latestActivity");
+    expect(source).toContain("group.currentChallenge");
+    expect(source).toContain("Open");
+  });
+
+  it("keeps creation in a sheet and invitations actionable", () => {
+    expect(source).toContain("<GroupCreateSheet");
+    expect(createSheetSource).toContain("<Sheet>");
+    expect(createSheetSource).toContain("<SheetContent");
+    expect(source).toContain("acceptGroupInviteAction");
+    expect(source).toContain("declineGroupInviteAction");
+    expect(source).toContain("joinGroupByInviteCodeAction");
+  });
+
+  it("keeps the clubhouse artwork without capping the app layout", () => {
     expect(source).toContain('variant="groups"');
-    expect(source).toContain('sizes="192px"');
-    expect(source).toContain("priority");
-  });
-
-  it("keeps groups manageable through an exportable, filtered desktop table", () => {
-    expect(source).toContain("GroupBoardTable");
     expect(source).toContain("<PageShell>");
-    expect(source).toContain(
-      '<GroupSectionTabs activeSection={activeSection} baseHref="/groups" />',
-    );
-    expect(source).toContain("parseGroupSection");
-    expect(source).not.toContain("filterGroupBoardRows");
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="groups">');
-    expect(source).not.toContain("getRequestAppSurface");
-    expect(source).not.toContain('surface === "companion"');
-    expect(source).toContain('await import("@/components/app/desktop-workbench")');
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain('data-workbench-scope="group-board"');
-    expect(source).toContain('exportTableId="group-board"');
-    expect(source).toContain('data-workbench-export-table="group-board"');
-    expect(source).toContain('mainTableLabel="Group board table"');
-    expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source).toContain('aria-label="Group operations rail"');
-    expect(source).toContain('aria-label="Group activity digest"');
-    expect(source).toContain('aria-labelledby="groups-heading"');
-    expect(source).not.toContain("function GroupGrid");
-    expect(source).not.toContain("GroupBoardFilterTabs");
-    expect(source).not.toContain("Discoverable leagues");
-    expect(source).not.toContain('title="My groups"');
-    expect(source).not.toContain('<PageShell size="7xl">');
-    expect(source).not.toContain("DesktopInsightRail");
-
-    for (const column of [
-      "group",
-      "status",
-      "visibility",
-      "type",
-      "members",
-      "posts",
-      "challenges",
-      "action",
-    ]) {
-      expect(source).toContain(`data-column="${column}"`);
-    }
-  });
-
-  it("renders one active group board, activity digest or membership surface", () => {
-    expect(source).toContain('activeSection === "overview"');
-    expect(source).toContain('activeSection === "members"');
-    expect(source).toContain('heading="Group overview"');
-    expect(source).toContain('heading="My memberships"');
-    expect(source).toContain("<GroupDigestFeaturePanel data={featureData} />");
-    expect(source).toContain("groups={data.groups}");
-    expect(source).toContain("groups={data.mine}");
-    expect(source).not.toContain("getChallengesPageData");
-    expect(source).not.toContain('description="Live group challenge"');
-    expect(source).not.toMatch(
-      /MobileAppShell|MobileLinkedGroupChallenges|mobileGroups|MobileTabBar|IOSGroupedList/,
-    );
+    expect(source).not.toMatch(/max-w-6xl|max-w-7xl|max-w-\[1500px\]/);
   });
 });

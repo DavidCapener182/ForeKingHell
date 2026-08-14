@@ -64,6 +64,7 @@ export function TodayPrimaryAnswer({
   const displayedFacts = syncState
     ? syncFacts(actions, isOnline, syncState.status === "Needs attention")
     : facts;
+  const glanceFacts = displayedFacts.slice(0, 2);
 
   function retrySync() {
     window.dispatchEvent(new Event("fkh-offline-retry-requested"));
@@ -73,48 +74,48 @@ export function TodayPrimaryAnswer({
   return (
     <Card
       size="sm"
-      className="relative isolate gap-2 overflow-hidden py-3"
+      className="relative isolate gap-2 overflow-hidden border-0 bg-[#052f22] py-3 text-white shadow-lg ring-0"
       data-primary-recommendation
     >
       <div
-        className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/generated/lmwt-range-hero.png')] bg-cover bg-[72%_center] opacity-30"
+        className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/generated/lmwt-range-hero.png')] bg-cover bg-[72%_center] opacity-55"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-card via-card/90 to-card/60"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,35,25,0.98)_0%,rgba(3,35,25,0.88)_62%,rgba(3,35,25,0.42)_100%)]"
         aria-hidden
       />
       <CardHeader className="gap-1 pr-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a6f04a]">
             {state.eyebrow}
           </p>
-          <CardTitle className="mt-1 text-xl font-bold leading-6 tracking-tight">
+          <CardTitle className="mt-1 text-2xl font-semibold leading-7 tracking-[-0.025em] text-white">
             {state.title}
           </CardTitle>
         </div>
         <CardAction>
-          <Badge variant={state.tone === "attention" ? "outline" : "secondary"}>
+          <Badge className="border-[#a6f04a] bg-[#a6f04a] !text-[#052f22] hover:bg-[#a6f04a]">
             {state.status}
           </Badge>
         </CardAction>
       </CardHeader>
 
       <CardContent className="grid gap-2">
-        <p className="max-w-[92%] text-sm leading-5 text-muted-foreground">{state.reason}</p>
+        <p className="max-w-[94%] text-sm leading-5 text-white/74">{state.reason}</p>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-y border-border/70 py-2">
-          {displayedFacts.map((fact) => (
+        <div className="grid grid-cols-2 gap-4 border-y border-white/14 py-2">
+          {glanceFacts.map((fact) => (
             <div key={fact.label}>
-              <p className="text-xs text-muted-foreground">{fact.label}</p>
-              <p className="mt-0.5 text-sm font-semibold">{fact.value}</p>
+              <p className="text-[11px] text-white/55">{fact.label}</p>
+              <p className="mt-0.5 truncate text-sm font-semibold text-white">{fact.value}</p>
             </div>
           ))}
         </div>
 
         {syncState ? (
           <Alert
-            className="gap-y-1 border-primary/20 bg-background/75 py-2.5"
+            className="gap-y-1 border-white/18 bg-black/20 py-2.5 text-white [&_[data-slot=alert-description]]:text-white/75"
             data-today-sync-state
           >
             <AlertTitle className="text-sm">{syncState.status}</AlertTitle>
@@ -141,15 +142,23 @@ export function TodayPrimaryAnswer({
         ) : null}
       </CardContent>
 
-      <CardFooter className="bg-background/70 px-3 py-3">
+      <CardFooter className="border-white/14 bg-black/15 px-3 py-3">
         <ButtonGroup className="w-full" aria-label="Today actions">
-          <Button asChild className="min-h-12 flex-1 rounded-l-xl text-base">
+          <Button
+            asChild
+            className="min-h-12 flex-1 rounded-l-xl bg-white text-base text-[#073527] hover:bg-white/90"
+          >
             <Link href={state.href}>
               {state.action}
               <ArrowRight className="ml-2 size-4" aria-hidden />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="icon" className="min-h-12 min-w-12">
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="min-h-12 min-w-12 border-white bg-white !text-[#073527] hover:bg-white/90 hover:!text-[#073527]"
+          >
             <Link href="/sessions" aria-label="Open session history">
               <FolderClock className="size-4" aria-hidden />
             </Link>
@@ -160,7 +169,7 @@ export function TodayPrimaryAnswer({
                 type="button"
                 variant="outline"
                 size="icon"
-                className="min-h-12 min-w-12 rounded-r-xl"
+                className="min-h-12 min-w-12 rounded-r-xl border-white bg-white !text-[#073527] hover:bg-white/90 hover:!text-[#073527]"
                 aria-label="More Today actions"
               >
                 <MoreHorizontal className="size-4" aria-hidden />

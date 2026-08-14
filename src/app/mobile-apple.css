@@ -659,6 +659,12 @@
     color: #ffffff !important;
   }
 
+  [data-mobile-platform="apple"] main#main-content [data-slot="card"][data-quick-bag-answer] {
+    background: #052f22 !important;
+    color: #ffffff !important;
+    box-shadow: 0 18px 40px rgba(5, 47, 34, 0.2) !important;
+  }
+
   .ios-mobile-screen
     :where(
       .premium-command-surface,

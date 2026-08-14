@@ -139,7 +139,7 @@ describe("Clubhouse Manager theme contract", () => {
       expect(offlineStorage).not.toContain(legacyLiteral);
     }
 
-    expect(settings).toContain("bg-muted/40");
+    expect(settings).toContain("bg-muted/45");
     expect(settings).toContain("bg-card");
     expect(offlineStorage).toContain("bg-muted/40");
   });
@@ -176,6 +176,11 @@ describe("Clubhouse Manager theme contract", () => {
   });
 
   it("exposes semantic tones, current workflow state and live import readiness", () => {
+    const currentWorkflowRule =
+      globals.match(
+        /html\[data-theme="clubhouse"\] \[data-workflow-status="current"\] \{[^}]+\}/,
+      )?.[0] ?? "";
+
     expect(premium).toContain("data-tone={tone}");
     expect(metricCard).toContain("data-tone={tone}");
     expect(desktopWorkbench).toContain("<OperationStepper");
@@ -184,6 +189,7 @@ describe("Clubhouse Manager theme contract", () => {
     expect(importSaveChecklist).toContain('data-clubhouse-state={canSave ? "live" : "current"}');
     expect(globals).toContain('[data-tone="sky"]');
     expect(globals).toContain('[data-workflow-status="current"]');
+    expect(currentWorkflowRule).not.toContain("box-shadow");
     expect(globals).toContain('[data-clubhouse-state="live"]');
   });
 

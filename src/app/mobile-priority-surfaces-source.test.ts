@@ -33,11 +33,13 @@ describe("priority authenticated responsive surfaces", () => {
   });
 
   it("keeps the desktop practice workflow single-column and separated from companion UI", () => {
+    expect(practiceWorkbenchSource).toContain("data-practice-training-workspace");
     expect(practiceWorkbenchSource).toContain(
-      'className="grid gap-3 lg:grid-cols-12 lg:items-start"',
+      "xl:grid-cols-[minmax(15rem,0.72fr)_minmax(34rem,1.8fr)_minmax(17rem,0.78fr)]",
     );
+    expect(practiceWorkbenchSource).toContain('className="min-w-0 xl:sticky xl:top-4"');
     expect(practiceWorkbenchSource).toContain(
-      'className="min-w-0 lg:sticky lg:top-4 lg:self-start"',
+      'className="min-w-0 xl:sticky xl:top-4 xl:self-start"',
     );
     expect(practiceWorkbenchSource).not.toMatch(/MobileAppShell|MobileFilterSheet|IOS[A-Z]/);
     expect(practiceWorkbenchSource).not.toContain("PracticeMobile");

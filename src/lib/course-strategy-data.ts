@@ -91,7 +91,7 @@ export async function getCourseStrategyData(
   const hazardsByHole = new Map<number, string[]>();
 
   for (const feature of featureRows) {
-    if (feature.holeNumber === null) continue;
+    if (feature.holeNumber === null || !isStrategyHazard(feature.featureType)) continue;
     hazardsByHole.set(feature.holeNumber, [
       ...(hazardsByHole.get(feature.holeNumber) ?? []),
       feature.featureType,
@@ -134,4 +134,22 @@ export async function getCourseStrategyData(
 
 function normalizedConfidence(value: number | null) {
   return (value ?? 0) > 1 ? (value ?? 0) / 100 : (value ?? 0);
+}
+
+function isStrategyHazard(featureType: string) {
+  const value = featureType
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  return [
+    "bunker",
+    "sand",
+    "water",
+    "water_hazard",
+    "ditch",
+    "out_of_bounds",
+    "oob",
+    "trees",
+    "woodland",
+  ].some((hazard) => value === hazard || value.includes(hazard));
 }

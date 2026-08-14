@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   ArrowRight,
-  AlertTriangle,
   CheckCircle2,
   CloudSun,
   Flag,
@@ -28,10 +27,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { savePostRoundReviewAction } from "@/app/courses/strategy/actions";
+import { DigitalCaddieBook } from "@/app/courses/strategy/digital-caddie-book";
 import { getDashboardData } from "@/app/dashboard/dashboard-data";
 import { getDb } from "@/db/client";
 import { sessions, shots } from "@/db/schema";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
+import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildPostRoundReview, readStoredPostRoundReview } from "@/lib/post-round-review";
 
@@ -49,11 +50,16 @@ export default async function CourseStrategyPage({
 }) {
   const params = await searchParams;
   const mode = params?.mode === "post" ? "post" : "pre";
-  const [data, strategyData, postRoundData] = await Promise.all([
+  const userId = await requireCurrentUserId();
+  const [data, strategyData, postRoundData, availableTwins] = await Promise.all([
     getDashboardData(),
     getCourseStrategyData(params?.courseId),
     getPostRoundReviewData(params?.roundId),
+    listAvailableCourseTwins(userId),
   ]);
+  const courseTwinAvailable = availableTwins.some(
+    (twin) => twin.courseId === strategyData.selectedCourse?.id,
+  );
 
   return (
     <PageShell>
@@ -82,175 +88,46 @@ export default async function CourseStrategyPage({
       />
 
       {mode === "pre" ? (
-        <Card aria-labelledby="hole-strategy-title" data-course-strategy-plan>
-          <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-primary">Hole-by-hole plan</p>
-              <h2 id="hole-strategy-title" className="mt-1 font-display text-2xl font-semibold">
-                {strategyData.selectedCourse?.name ?? "Choose a mapped course"}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Bag ranges, measured miss direction and mapped course hazards. Recommendations are
-                historical guidance, not certainty.
-              </p>
-            </div>
-            <form action="/courses/strategy" className="flex flex-wrap gap-2">
-              <input type="hidden" name="mode" value={mode} />
-              <label className="grid gap-1 text-sm font-semibold">
-                Course
-                <Select name="courseId" defaultValue={strategyData.selectedCourse?.id}>
-                  <SelectTrigger className="min-h-11 min-w-64">
-                    <SelectValue placeholder="Choose a course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {strategyData.courseOptions.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
-              <Button type="submit" variant="outline" className="min-h-11 self-end">
-                Load strategy
-              </Button>
-            </form>
-          </CardHeader>
-          <CardContent>
-            {strategyData.strategies.length ? (
-              <div className="grid gap-3 xl:grid-cols-2">
-                {strategyData.strategies.map((strategy) => (
-                  <Item key={strategy.holeNumber} variant="outline" className="items-start p-4">
-                    <ItemContent className="space-y-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                            Hole {strategy.holeNumber} · Par {strategy.par} · {strategy.yards} yd
-                          </p>
-                          <h3 className="mt-2 text-xl font-semibold">{strategy.recommendedClub}</h3>
-                        </div>
-                        <StatusPill
-                          tone={
-                            strategy.confidence === "High"
-                              ? "green"
-                              : strategy.confidence === "Moderate"
-                                ? "sky"
-                                : "amber"
-                          }
-                        >
-                          {strategy.confidence} confidence
-                        </StatusPill>
-                      </div>
-                      <dl className="mt-4 grid gap-2 sm:grid-cols-2">
-                        <StrategyDetail
-                          label="Expected carry"
-                          value={strategy.expectedCarryRange}
-                        />
-                        <StrategyDetail label="Expected leave" value={strategy.expectedLeave} />
-                        <StrategyDetail label="Common miss" value={strategy.commonMiss} />
-                        <StrategyDetail label="Safe target" value={strategy.safeTarget} />
-                      </dl>
-                      <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
-                          Planned clubs
-                        </p>
-                        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground">First shot</p>
-                            <p className="font-semibold">
-                              {strategy.recommendedClub}
-                              <span className="font-normal text-muted-foreground">
-                                {" "}
-                                · {strategy.expectedCarryRange}
-                              </span>
-                            </p>
-                          </div>
-                          {strategy.followUpClubs.length ? (
-                            <>
-                              <ArrowRight
-                                className="hidden size-4 shrink-0 text-primary sm:block"
-                                aria-hidden
-                              />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs text-muted-foreground">
-                                  {strategy.followUpClubs.length > 1
-                                    ? "Follow-up shots"
-                                    : "Club for the leave"}
-                                </p>
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
-                                  {strategy.followUpClubs.map((club, index) => (
-                                    <span
-                                      key={`${strategy.holeNumber}-${club.label}-${index}`}
-                                      className="inline-flex items-center gap-2"
-                                    >
-                                      {index > 0 ? (
-                                        <ArrowRight className="size-3.5 text-primary" aria-hidden />
-                                      ) : null}
-                                      <span>
-                                        {club.label}
-                                        <span className="font-normal text-muted-foreground">
-                                          {" "}
-                                          · {club.expectedCarryRange}
-                                        </span>
-                                      </span>
-                                    </span>
-                                  ))}
-                                </div>
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {strategy.followUpClubs.length > 1
-                                    ? `Combined ${strategy.followUpTotalRange} · `
-                                    : ""}
-                                  {strategy.followUpFit}
-                                </p>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-semibold text-primary">
-                                {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0
-                                  ? "Short-game finish"
-                                  : "No next club needed"}
-                              </p>
-                              {strategy.expectedLeaveYd && strategy.expectedLeaveYd > 0 ? (
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {strategy.expectedLeaveYd} yd remains — choose the club from the
-                                  live lie.
-                                </p>
-                              ) : null}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-3 grid gap-2 text-sm">
-                        <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]">
-                          <AlertTriangle aria-hidden="true" />
-                          <AlertTitle>Hazard check</AlertTitle>
-                          <AlertDescription className="text-[var(--status-warning-foreground)]">
-                            {strategy.hazardWarning}
-                          </AlertDescription>
-                        </Alert>
-                        <p className="rounded-xl bg-secondary/55 p-3">
-                          <span className="font-semibold">Conservative alternative: </span>
-                          {strategy.conservativeAlternative}
-                        </p>
-                        <p className="text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
-                      </div>
-                    </ItemContent>
-                  </Item>
-                ))}
-              </div>
-            ) : (
-              <Alert>
-                <MapPinned aria-hidden="true" />
-                <AlertTitle>Course strategy needs more evidence</AlertTitle>
-                <AlertDescription>
-                  This course needs a tee set with mapped holes and trusted bag numbers before a
-                  hole plan can be produced.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+        <div className="grid gap-3" data-course-strategy-plan>
+          <form action="/courses/strategy" className="flex flex-wrap items-end justify-end gap-2">
+            <input type="hidden" name="mode" value={mode} />
+            <label className="grid gap-1 text-sm font-semibold">
+              Course
+              <Select name="courseId" defaultValue={strategyData.selectedCourse?.id}>
+                <SelectTrigger className="min-h-11 min-w-64">
+                  <SelectValue placeholder="Choose a course" />
+                </SelectTrigger>
+                <SelectContent>
+                  {strategyData.courseOptions.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <Button type="submit" variant="outline" className="min-h-11">
+              Load caddie book
+            </Button>
+          </form>
+          {strategyData.selectedCourse && strategyData.strategies.length ? (
+            <DigitalCaddieBook
+              strategies={strategyData.strategies}
+              course={strategyData.selectedCourse}
+              teeName={strategyData.selectedTee?.name}
+              courseTwinAvailable={courseTwinAvailable}
+            />
+          ) : (
+            <Alert>
+              <MapPinned aria-hidden="true" />
+              <AlertTitle>Course strategy needs more evidence</AlertTitle>
+              <AlertDescription>
+                This course needs a tee set with mapped holes and trusted bag numbers before a hole
+                plan can be produced.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
       ) : null}
 
       {mode === "pre" ? (
@@ -535,15 +412,6 @@ export default async function CourseStrategyPage({
         </div>
       )}
     </PageShell>
-  );
-}
-
-function StrategyDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border-l border-border pl-3">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-semibold">{value}</dd>
-    </div>
   );
 }
 

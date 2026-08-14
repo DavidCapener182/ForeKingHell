@@ -20,20 +20,20 @@ export function BillingManageDialog({ disabled = false }: { disabled?: boolean }
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="outline" disabled={disabled}>
-          <CreditCard className="size-4" /> Change or cancel plan
+        <Button disabled={disabled}>
+          <CreditCard className="size-4" /> Manage plan
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Open secure plan management?</AlertDialogTitle>
+          <AlertDialogTitle>Manage your plan?</AlertDialogTitle>
           <AlertDialogDescription>
-            Stripe’s customer portal is where you can downgrade, cancel at period end, or update
-            payment details. No plan changes happen until you confirm them there.
+            Stripe’s secure portal lets you update payment details, downgrade, or cancel at the end
+            of your billing period. No plan changes happen until you confirm them there.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep current plan</AlertDialogCancel>
+          <AlertDialogCancel>Stay here</AlertDialogCancel>
           <form action={openCustomerPortalAction}>
             <AlertDialogAction type="submit">Open customer portal</AlertDialogAction>
           </form>

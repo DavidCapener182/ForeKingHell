@@ -7,6 +7,7 @@ export type ConnectedMetric = {
   value: React.ReactNode;
   detail?: React.ReactNode;
   trend?: React.ReactNode;
+  className?: string;
 };
 
 export function ConnectedMetricBar({
@@ -23,7 +24,10 @@ export function ConnectedMetricBar({
   const visibleMetrics = metrics.slice(0, 4);
 
   const metricCells = visibleMetrics.map((metric, index) => (
-    <div key={metric.label} className="relative grid min-w-0 content-start gap-1 px-4 py-4">
+    <div
+      key={metric.label}
+      className={cn("relative grid min-w-0 content-start gap-1 px-4 py-4", metric.className)}
+    >
       {index > 0 ? <Separator className="absolute inset-x-4 top-0 w-auto sm:hidden" /> : null}
       {index > 0 ? (
         <Separator

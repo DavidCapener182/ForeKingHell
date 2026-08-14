@@ -9,16 +9,29 @@ const controls = readFileSync(
 );
 
 describe("leaderboard desktop workspace source", () => {
-  it("uses real link buttons rather than orphaned URL-navigation tabs", () => {
-    expect(controls).toContain("<ButtonGroup");
+  it("uses linked Tabs for the five competition scopes", () => {
+    expect(controls).toContain("<Tabs");
+    expect(controls).toContain("<TabsList");
+    expect(controls).toContain("<TabsTrigger");
     expect(controls).toContain('aria-label="Leaderboard views"');
-    expect(controls).toContain("<Button");
-    expect(controls).toContain('variant={active ? "secondary" : "outline"}');
-    expect(controls).toContain("href={`/leaderboard?tab=${tab.value}`}");
+    expect(controls).toContain('{ value: "friends", label: "Friends"');
+    expect(controls).toContain('{ value: "public", label: "Global"');
+    expect(controls).toContain('{ value: "courses", label: "Course"');
+    expect(controls).toContain('{ value: "challenges", label: "Challenge"');
+    expect(controls).toContain('{ value: "tournaments", label: "Tournament"');
+    expect(controls).toContain("const href = `/leaderboard?tab=${tab.value}");
     expect(controls).toContain('aria-current={active ? "page" : undefined}');
-    expect(controls).not.toContain("TabsTrigger");
-    expect(controls).not.toContain('from "@/components/ui/tabs"');
-    expect(source).toContain("<LeaderboardTypeTabs activeTab={activeTab} />");
+    expect(controls).toContain('from "@/components/ui/tabs"');
+    expect(source).toContain("<LeaderboardTypeTabs activeTab={activeTab} period={period} />");
+  });
+
+  it("keeps period and friends/global scope as independent toggle groups", () => {
+    expect(controls).toContain('aria-label="Leaderboard period"');
+    expect(controls).toContain('aria-label="Leaderboard scope"');
+    expect(controls).toContain('<ToggleGroupItem value="monthly">This month</ToggleGroupItem>');
+    expect(controls).toContain('<ToggleGroupItem value="friends">Friends</ToggleGroupItem>');
+    expect(controls).toContain('<ToggleGroupItem value="global">Global</ToggleGroupItem>');
+    expect(source).toContain("parseLeaderboardPeriod(params?.period, requestedTab)");
   });
 
   it("selects one request surface before loading the desktop workbench", () => {
@@ -51,8 +64,7 @@ describe("leaderboard desktop workspace source", () => {
   it("keeps leaderboards in the desktop workbench without a persistent AI rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('scope="leaderboard"');
-    expect(source).toContain("DataFirstFlowPanel");
-    expect(source).toContain("LeaderboardClimbPanel");
+    expect(source).toContain("LeaderboardCompetitionHeader");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
@@ -82,18 +94,15 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).toContain("<TableCaption");
     expect(source).toContain("tabIndex={0}");
 
-    for (const column of [
-      "rank",
-      "player",
-      "total-xp",
-      "monthly-xp",
-      "monthly-shots",
-      "best-round",
-      "longest-drive",
-      "source",
-    ]) {
+    for (const column of ["rank", "player", "result", "movement", "rounds-sessions", "proof"]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+
+    expect(source).toContain("leaderboardRowClassName(rank, player.isCurrentUser)");
+    expect(source).toContain("rankMovementForPlayer(player)");
+    expect(source).toContain('title="No prior rank snapshot"');
+    expect(source).not.toContain("LeaderboardPodiumCard");
+    expect(source).not.toContain("monthlyMovementShortLabel");
   });
 
   it("keeps challenge leaderboards exportable for desktop users", () => {
@@ -121,16 +130,21 @@ describe("leaderboard desktop workspace source", () => {
 });
 
 describe("leaderboard mobile state", () => {
-  it("exposes the monthly board and scopes shot filters to player boards", () => {
-    expect(source).toContain('{ key: "monthly", label: "Monthly"');
+  it("exposes the period control and scopes proof filters to player boards", () => {
+    expect(controls).toContain('<ToggleGroupItem value="monthly">This month</ToggleGroupItem>');
     expect(source).toContain("const showMobilePlayerFilters = isPlayerLeaderboardTab(activeTab);");
     expect(source).toContain("showMobilePlayerFilters ? (");
     expect(source).not.toContain('<option value="mixed">Mixed</option>');
   });
 
-  it("uses an in-page mobile full leaderboard instead of a desktop-only anchor", () => {
-    expect(source).toContain("MobilePlayerLeaderboardDisclosure");
+  it("uses one compact mobile row list instead of golfer cards", () => {
+    expect(source).toContain("MobileCompetitionLeaderboard");
+    expect(source).toContain("Rank");
+    expect(source).toContain("Golfer");
+    expect(source).toContain("Score");
+    expect(source).toContain("Move");
     expect(source).not.toContain('viewAllHref="#full-leaderboard"');
+    expect(source).not.toContain("LeaderboardPodiumCard");
     expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden sm:contents"');
   });

@@ -12,7 +12,7 @@ const capabilitySource = readFileSync(
   "utf8",
 );
 
-describe("Data Chat workbench bundle boundary", () => {
+describe("Data Chat responsive boundary", () => {
   it("keeps the route desktop-only with a companion handoff fallback", () => {
     expect(capabilitySource).toContain(
       '"data-chat": desktopOnly(\n    "Build recommended practice"',
@@ -28,30 +28,29 @@ describe("Data Chat workbench bundle boundary", () => {
     expect(source).not.toContain("lg:hidden");
   });
 
-  it("keeps one desktop conversation and composer architecture", () => {
+  it("keeps one desktop conversation and a sticky workbench composer", () => {
     expect(panelSource).toContain("data-data-chat-composer");
-    expect(panelSource).toContain('className="h-[32rem] min-h-[22rem] rounded-lg border bg-card"');
+    expect(panelSource).toContain('<ResizablePanelGroup orientation="horizontal"');
+    expect(panelSource).toContain("<ResizableHandle withHandle");
+    expect(panelSource).toContain('<ResizablePanel defaultSize="67" minSize="65" maxSize="70">');
+    expect(panelSource).toContain('<ResizablePanel defaultSize="33" minSize="30" maxSize="35">');
+    expect(panelSource).toContain("<EvidenceContextPanel");
+    expect(panelSource).toContain("h-full min-h-0 min-w-0 overflow-y-auto");
     expect(panelSource).toContain('aria-label="Suggested Data Chat questions"');
     expect(panelSource).toContain("<Command");
     expect(panelSource).toContain("<ScrollArea");
     expect(panelSource).toContain("<InputGroup");
-    expect(panelSource).not.toContain("bottom-[calc(");
+    expect(panelSource).toContain("border-t bg-card/95");
     expect(panelSource).not.toContain("max-h-[46dvh]");
-    expect(panelSource).not.toContain("savedAnswerWorkbench");
   });
 
-  it("uses shadcn disclosures and semantic citation items without iOS bundle imports", () => {
-    expect(panelSource).toContain("<Collapsible");
-    expect(panelSource).toContain("<CollapsibleTrigger");
-    expect(panelSource).toContain("<CollapsibleContent");
-    expect(panelSource).toContain("<ResponsiveDetailPanel");
-    expect(panelSource).toContain("<CitationItem");
-    expect(panelSource).toContain('<Item variant="muted"');
-    expect(panelSource).not.toContain("IOSDisclosureGroup");
-    expect(panelSource).not.toContain("IOSGroupedList");
-    expect(panelSource).not.toContain("@/components/app/ios-mobile");
-    expect(panelSource).not.toContain("lg:hidden");
-    expect(panelSource).not.toContain("hidden lg:");
+  it("keeps saved answers in a history sheet rather than below the conversation", () => {
+    expect(panelSource).toContain("function SavedAnswersHistory");
+    expect(panelSource).toContain("<Sheet>");
+    expect(panelSource).toContain("<SheetTrigger asChild>");
+    expect(panelSource).toContain("<SheetContent");
+    expect(panelSource).not.toContain("SavedAnswersWorkbench");
+    expect(panelSource).not.toContain("data-workbench-export-table");
   });
 
   it("keeps ordinary workbench surfaces on theme-aware semantic tokens", () => {

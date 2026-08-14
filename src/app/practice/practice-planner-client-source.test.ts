@@ -123,9 +123,10 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("setPracticeScore(null)");
     expect(source).toContain("Practice drill swapped. Save the edited plan before upload.");
     expect(source).toContain("<ResponsiveDetailPanel");
-    expect(source).toContain("Open selected block controls");
+    expect(source).toContain("blockSheetOpen");
+    expect(source).toContain("Edit block");
     expect(source).toContain("<Drawer");
-    expect(source).toContain("Templates and saved practice plans");
+    expect(source).toContain("Templates &amp; saved plans");
     const selectedBlockPanel =
       source.match(
         /<ResponsiveDetailPanel[\s\S]*?data-selected-block-sheet-content[\s\S]*?<\/ResponsiveDetailPanel>/,
@@ -133,13 +134,12 @@ describe("practice planner desktop ledger", () => {
     expect(selectedBlockPanel).toContain("data-selected-block-sheet-content");
     expect(selectedBlockPanel).not.toContain("<Card");
     const planVsActual =
-      source.match(/function PlanVsActual[\s\S]*?function PracticeResultItem/)?.[0] ?? "";
+      source.match(/function PlanVsActual[\s\S]*?function PracticeLibrary/)?.[0] ?? "";
     expect(planVsActual).toContain("<Card");
-    expect(planVsActual).toContain("<Table");
-    expect(planVsActual).toContain("<TableHeader");
-    expect(planVsActual).toContain("<TableBody");
-    expect(planVsActual).not.toContain("<MiniMetric");
-    expect(planVsActual).not.toContain("xl:grid-cols-3");
+    expect(planVsActual).toContain("Planned target");
+    expect(planVsActual).toContain("Measured actual");
+    expect(planVsActual).toContain("Block that mattered most");
+    expect(planVsActual).toContain("Next Practice");
   });
 
   it("uses shadcn Buttons for template and saved-plan choices", () => {
@@ -173,26 +173,25 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain('context.fillStyle = "#f6f4e7"');
   });
 
-  it("keeps the measured practice result as one card with divided metrics and callouts", () => {
-    const resultOverview =
-      source.match(
-        /function PracticeResultsOverview[\s\S]*?function formatSessionOptionType/,
-      )?.[0] ?? "";
-    const metric = source.match(/function MiniMetric[\s\S]*?function shortTarget/)?.[0] ?? "";
+  it("transforms the centre programme into measured plan versus actual", () => {
+    const agenda = source.match(/function PracticeAgenda[\s\S]*?function ProgrammeFact/)?.[0] ?? "";
+    const result = source.match(/function PlanVsActual[\s\S]*?function PracticeLibrary/)?.[0] ?? "";
 
-    expect(resultOverview).toContain("data-practice-result-card");
-    expect((resultOverview.match(/<Card(?:\s|>)/g) ?? []).length).toBe(1);
-    expect(resultOverview).toContain("lg:divide-x");
-    expect(resultOverview).not.toContain("<CardContent");
-    expect(metric).not.toContain("<Card");
-    expect(metric).not.toContain("rounded-lg border bg-card");
+    expect(agenda).toContain("hasEvidence");
+    expect(agenda).toContain("<PlanVsActual comparison={comparison} blocks={blocks} />");
+    expect(result).toContain("data-plan-vs-actual");
+    expect(result).toContain("decision.target");
+    expect(result).toContain("decision.actual");
+    expect(source).toContain('return "Pass"');
+    expect(source).toContain('return "Partial"');
+    expect(source).toContain('return "Fail"');
   });
 
   it("keeps validation failures and successful outcomes distinct inside the Today card", () => {
     const linkSession =
       source.match(/function linkSelectedSession[\s\S]*?function startPractice/)?.[0] ?? "";
     const todayCard =
-      source.match(/function PracticeTodayCard[\s\S]*?function PracticeResultsOverview/)?.[0] ?? "";
+      source.match(/function PracticeTodayCard[\s\S]*?function formatSessionOptionType/)?.[0] ?? "";
 
     expect(source).toContain('status: "error" | "success"');
     expect(source).toContain("setOutcome(successOutcome(messageText))");
@@ -218,12 +217,29 @@ describe("practice planner desktop ledger", () => {
     expect(source).not.toContain("const [message, setMessage]");
   });
 
-  it("keeps selected agenda rows readable across semantic themes", () => {
+  it("keeps the connected programme readable across semantic themes", () => {
     const agenda =
       source.match(/function PracticeAgenda[\s\S]*?function SelectedBlockDetail/)?.[0] ?? "";
 
-    expect(agenda).toContain('variant={selected ? "secondary" : "outline"}');
-    expect(agenda).toContain('selected ? "border-primary/30 shadow-sm"');
-    expect(agenda).not.toContain('variant={selected ? "default" : "outline"}');
+    expect(agenda).toContain("before:bg-gradient-to-b");
+    expect(agenda).toContain('selected && "border-primary bg-primary text-primary-foreground"');
+    expect(agenda).toContain("data-practice-programme-block");
+    expect(agenda).not.toMatch(
+      /(?:bg|text|border)-(?:white|black|slate|emerald|green|amber|red)(?:-|\b)/,
+    );
+  });
+
+  it("uses the premium three-zone workspace and the requested drawers and sticky action", () => {
+    expect(source).toContain("data-practice-training-workspace");
+    expect(source).toContain("data-practice-session-brief");
+    expect(source).toContain("data-practice-agenda");
+    expect(source).toContain("data-practice-context");
+    expect(source).toContain(
+      "xl:grid-cols-[minmax(15rem,0.72fr)_minmax(34rem,1.8fr)_minmax(17rem,0.78fr)]",
+    );
+    expect(source).toContain("Save &amp; Start Practice");
+    expect(source).toContain("PracticeEvidenceLedgerDrawer");
+    expect(source).toContain("PracticeLibrary");
+    expect(source).toContain("<ToggleGroup");
   });
 });

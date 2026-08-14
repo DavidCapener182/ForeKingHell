@@ -19,13 +19,6 @@ export default async function QuickBagPage() {
     <PageShell>
       <MobileAppShell className="gap-5" data-quick-bag>
         <MobileTopBar title="Quick Bag" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Which number can you trust?</h1>
-          <p className="mt-1 text-[15px] leading-6 text-muted-foreground">
-            Search a club or target distance. Numbers come from your latest measured stock-yardage
-            evidence.
-          </p>
-        </div>
         <QuickBagClient clubs={clubs} accountId={userId} />
       </MobileAppShell>
     </PageShell>
@@ -94,6 +87,8 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
     const recentShots = shotRows.filter((shot) => shot.clubId === row.id).slice(0, 60);
     const trustedPattern = buildShotPatternPoints(recentShots).filter((shot) => shot.trusted);
     const summary = summarizeShotPattern(trustedPattern);
+    const latestEvidenceDate =
+      trustedPattern.find((shot) => shot.shotAt)?.shotAt ?? row.calculatedAt?.toISOString() ?? null;
 
     return [
       {
@@ -112,6 +107,7 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
         patternSampleSize: summary.sampleSize,
         confidence: Math.round(row.confidenceScore ?? 0),
         sampleSize: row.sampleSize ?? 0,
+        latestEvidenceDate,
       },
     ];
   });

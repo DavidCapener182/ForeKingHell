@@ -12,8 +12,10 @@ describe("training load page source", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('scope="training-load"');
     expect(source).toContain("TrainingLoadRangeView");
-    expect(source).toContain("TrainingPracticePlannerPanel");
+    expect(source).toContain("A golf-specific view of fitness, freshness");
     expect(source).not.toContain("DesktopInsightRail");
+    expect(source).not.toContain("max-w-6xl");
+    expect(source).not.toContain("max-w-7xl");
   });
 
   it("keeps the desktop-only route free of an obsolete companion render tree", () => {
@@ -24,18 +26,13 @@ describe("training load page source", () => {
     expect(source).toContain('<DesktopWorkbenchLayout scope="training-load">');
   });
 
-  it("keeps Practice Planner load fit visible without adding a dense rail", () => {
-    expect(source).toContain("Practice Planner load fit");
-    expect(source).toContain("practiceSummary.latestCompleted");
-    expect(source).toContain("Completed plans");
-    expect(source).toContain("Average score");
-    expect(source).toContain("Recent Load");
-    expect(source).toContain("<ConnectedMetricBar");
-    expect(source).toContain("data-training-load-warning");
-    expect(source).toContain("data-training-practice-recommendation");
+  it("does not place secondary planner or duplicate warning cards ahead of readiness", () => {
+    expect(source).not.toContain("TrainingPracticePlannerPanel");
+    expect(source).not.toContain("getPracticePlannerProgressSummary");
+    expect(source).not.toContain("data-training-load-warning");
   });
 
-  it("keeps the primary chart concise without deleting the desktop evidence workbench", () => {
+  it("puts one chart and recommendation ahead of desktop-only supporting evidence", () => {
     const rangeSource = readFileSync(
       join(process.cwd(), "src/components/training/TrainingLoadRangeView.tsx"),
       "utf8",
@@ -46,17 +43,17 @@ describe("training load page source", () => {
 
     expect(desktopRange).toContain("<TrainingSummaryCards");
     expect(desktopRange).toContain("<TrainingOverTimeChart");
-    expect(desktopRange).toContain("<RecoveryWorkbench");
+    expect(desktopRange).toContain("<ReadinessRecommendation");
     expect(desktopRange).toContain("<TrainingRhythmWorkbench");
     expect(desktopRange).toContain("<TrainingLoadBars");
     expect(desktopRange).toContain("<TrainingSessionLedger");
     expect(desktopRange).toContain("DesktopTableWorkbenchControls");
     expect(desktopRange).toContain("<TrainingStatusCard");
     expect(desktopRange).toContain("<EfficiencyCards");
-    expect(desktopRange).toContain("<TrainingSourceSuggestions");
     expect(desktopRange).toContain("<ResponsiveDetailPanel");
     expect(desktopRange).toContain("<RecentTrainingSessions");
     expect(desktopRange).toContain("data-training-load-actions");
+    expect(desktopRange).toContain("data-training-desktop-history");
     expect(desktopRange).not.toContain("<MobileSectionChips");
     expect(desktopRange).not.toContain("MobileTrainingLoadRangeView");
     expect(desktopRange.match(/<TrainingOverTimeChart/g)).toHaveLength(1);

@@ -1,3 +1,5 @@
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import type { TrainingOverTimeData } from "@/lib/training/trainingData";
 import type { TrainingStatus } from "@/lib/training/trainingStatus";
@@ -26,38 +28,48 @@ export function TrainingSummaryCards({
         {
           label: "Golf Form",
           value: numberFormatter.format(Math.round(summary.form.value)),
-          detail: "How well comparable golf evidence is trending.",
-          trend: `${status.label} · ${sessionFormSignal.summaryLabel}`,
+          detail: `${status.label}. ${plainFormMeaning(summary.form.value)} ${sessionFormSignal.summaryLabel}.`,
+          trend: <MetricDirection change={summary.form.change} />,
         },
         {
           label: "Training Fitness",
           value: numberFormatter.format(Math.round(summary.fitness.value)),
-          detail: "Long-term golf workload capacity.",
-          trend: formatConditioningChange(summary.fitness.change),
+          detail: "Your longer-term capacity from rounds, practice and speed work.",
+          trend: <MetricDirection change={summary.fitness.change} />,
+          className: "hidden sm:grid",
         },
         {
           label: "Recent Load",
           value: numberFormatter.format(Math.round(summary.fatigue.value)),
-          detail: "Recent seven-day golf workload.",
-          trend: formatAcuteLoadChange(summary.fatigue.value, summary.fatigue.change),
+          detail: plainLoadMeaning(summary.fatigue.value),
+          trend: <MetricDirection change={summary.fatigue.change} />,
         },
       ]}
     />
   );
 }
 
-function formatConditioningChange(change: number) {
+function MetricDirection({ change }: { change: number }) {
   const rounded = Math.round(change);
-  if (rounded <= -5) return "Volume easing";
-  if (rounded >= 5) return "Fitness building";
-  return "Fitness holding";
+  const Icon = rounded > 0 ? ArrowUpRight : rounded < 0 ? ArrowDownRight : Minus;
+
+  return (
+    <span className="inline-flex items-center gap-1 tabular-nums text-foreground">
+      <Icon className="size-3.5" aria-hidden="true" />
+      {rounded === 0 ? "Holding" : `${rounded > 0 ? "+" : ""}${rounded} this week`}
+    </span>
+  );
 }
 
-function formatAcuteLoadChange(value: number, change: number) {
-  const roundedValue = Math.round(value);
-  const roundedChange = Math.round(change);
-  if (roundedValue >= 120 || roundedChange >= 80) return "Heavy week";
-  if (roundedValue >= 70 || roundedChange >= 25) return "Above normal";
-  if (roundedChange <= -25) return "Load easing";
-  return "Normal recent load";
+function plainFormMeaning(value: number) {
+  if (value >= 110) return "Comparable golf is clearly above your baseline.";
+  if (value >= 100) return "Comparable golf is holding at or above baseline.";
+  if (value >= 90) return "Comparable golf has dipped below your baseline.";
+  return "Comparable golf is well below baseline, so avoid chasing volume.";
+}
+
+function plainLoadMeaning(value: number) {
+  if (value >= 120) return "Your short-term workload is high; a lighter next session may help.";
+  if (value >= 70) return "Your short-term workload is elevated but still manageable.";
+  return "Your short-term workload is controlled and leaves room to train.";
 }

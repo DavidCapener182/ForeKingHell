@@ -18,9 +18,20 @@ describe("mobile shot-pattern chart surface", () => {
     expect(source).toContain("Club average");
   });
 
-  it("uses the desktop chart engine while keeping summary and accessible rows explicit", () => {
+  it("keeps the desktop engine and gives mobile purpose-built chart geometry", () => {
     expect(source).toContain('import("@/app/today/today-shot-charts")');
     expect(source).toContain("module.SharedShotPatternVisual");
+    expect(source).toContain('layout?: "mobile" | "desktop"');
+    expect(source).toContain("data-mobile-dispersion-layout");
+    expect(source).toContain("data-mobile-flight-layout");
+    expect(source).toContain('mode="dispersion"');
+    expect(source).toContain('mode="flight"');
+    expect(source).toContain("target line");
+    expect(source).toContain("Trusted zone");
+    expect(source).toContain("M median");
+  });
+
+  it("keeps summary, accessible desktop rows and tappable mobile shot detail explicit", () => {
     expect(source).toContain('mode="dispersion"');
     expect(source).toContain('mode="trajectory"');
     expect(source).toContain("-side miss reaches");
@@ -28,7 +39,7 @@ describe("mobile shot-pattern chart surface", () => {
     expect(source).toContain("<Table");
     expect(source).toContain("data-shot-detail-drawer");
     expect(source).toContain("<Drawer");
-    expect(source).not.toContain("bg-white");
+    expect(source).toContain('role="button"');
     expect(source).not.toContain("ios-grouped-list");
     expect(source).not.toContain("function DispersionChart");
     expect(source).not.toContain("function FlightChart");

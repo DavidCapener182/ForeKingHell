@@ -24,9 +24,9 @@ describe("cross-tab navigation targets", () => {
     expect(bag).toContain('id="club-evolution"');
     expect(providers).toContain("defaultValue={activeTab}");
     expect(providers).toContain('href: "/providers?tab=diagnostics#provider-jobs"');
-    expect(settings.match(/href: "\/settings\?section=sharing#sharing-settings"/g)).toHaveLength(3);
-    expect(coach).toContain("defaultTab={activeWorkbenchTab}");
-    expect(coach).toContain('href: "/coach?tab=evidence#coach-evidence-ledger"');
+    expect(settings).toContain('href="/settings?section=sharing"');
+    expect(coach).toContain("defaultTab={activeTab}");
+    expect(coach).toContain('href="/coach?tab=evidence"');
     expect(courseHoles).toContain("defaultValue={activeTab}");
     expect(courseHoles).toContain('href: "?tab=tees#tee-set"');
     expect(courseHoles).toContain("activeHoleGeometrySuggestedViews");
@@ -42,11 +42,12 @@ describe("cross-tab navigation targets", () => {
       'redirect("/settings?section=danger&resetError=confirmation#danger-zone")',
     );
     expect(settingsActions).toContain('redirect("/settings?section=danger&reset=1#danger-zone")');
-    expect(profileTabs).toContain('{ value: "workspaces", label: "Workspaces" }');
-    expect(profile).toContain('id="workspaces"');
-    expect(profile).toContain("Your golf workspaces");
-    expect(progress).toContain('href: "/progress#bag-movement"');
-    expect(progress).toContain('id="bag-movement"');
+    expect(profileTabs).toContain('{ value: "achievements", label: "Achievements" }');
+    expect(profileTabs).toContain('<TabsContent value="records" id="records"');
+    expect(profileTabs).toContain('<TabsContent value="sharing" id="sharing"');
+    expect(profile).toContain("<ProfileSectionTabs");
+    expect(progress).toContain("<PerformanceTrend");
+    expect(progress).toContain("<TimelineStory items={timeline} />");
   });
 
   it("rejects the retired dead fragment destinations", () => {

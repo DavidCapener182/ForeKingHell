@@ -16,26 +16,18 @@ describe("shots master-detail desktop table", () => {
     expect(source).toContain("SelectedShotDetail");
     expect(source).toContain('aria-label="Selected shot detail"');
     expect(source).toContain("ShotDeleteButton");
-    expect(source).toContain("<ShotDeleteButton shotId={shot.id} />");
-    expect(source).toContain("Filter this club");
-    expect(source).toContain("encodeURIComponent(shot.clubType)");
+    expect(source).toContain("<ShotDeleteButton");
+    expect(source).toContain("View source");
+    expect(source).toContain("Correction history");
     expect(source).toContain("data-selected-shot");
     expect(source).toContain("tabIndex={0}");
 
-    for (const column of [
-      "date",
-      "file",
-      "shot",
-      "hole",
-      "club",
-      "carry",
-      "total",
-      "side",
-      "launch",
-      "ballSpeed",
-      "advanced",
-    ]) {
+    for (const column of ["club", "trust", "type", "shot", "file", "date", "advanced"]) {
       expect(source).toContain(`data-column="${column}"`);
+    }
+
+    for (const column of ["carry", "total", "side", "launch", "ballSpeed"]) {
+      expect(source).toContain(`column="${column}"`);
     }
   });
 

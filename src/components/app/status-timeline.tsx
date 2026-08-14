@@ -19,6 +19,7 @@ export type StatusTimelineItem = {
   icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   href?: string;
   action?: React.ReactNode;
+  featured?: boolean;
 };
 
 export function StatusTimeline({
@@ -88,7 +89,15 @@ function TimelineItem({ item, last }: { item: StatusTimelineItem; last: boolean 
   );
 
   return (
-    <article className="relative flex min-w-0 gap-3" data-timeline-kind={item.kind ?? "custom"}>
+    <article
+      className={cn(
+        "relative flex min-w-0 gap-3",
+        item.featured &&
+          "-mx-1 mb-2 rounded-xl border border-primary/20 bg-primary/[0.045] px-2 pt-2",
+      )}
+      data-timeline-kind={item.kind ?? "custom"}
+      data-timeline-featured={item.featured ? "true" : undefined}
+    >
       <div className="relative flex w-7 shrink-0 justify-center">
         {!last ? (
           <Separator

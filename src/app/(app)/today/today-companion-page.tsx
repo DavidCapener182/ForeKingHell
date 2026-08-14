@@ -18,7 +18,7 @@ import {
   type PracticePlannerContext,
 } from "@/lib/practice-planner";
 import { buildShotPatternPoints } from "@/lib/shot-pattern-chart-data";
-import { classifyTodayRecommendationIssue } from "@/lib/today-recommendation-issue";
+import { buildTodayRecommendation, resolveTodayPrimaryState } from "@/lib/today-primary-state";
 import { getTodayPracticeData } from "@/lib/today-session-data";
 
 export default async function TodayCompanionPage() {
@@ -44,7 +44,7 @@ export default async function TodayCompanionPage() {
     getCurrentPracticePlanSummary(userId),
     getInProgressRound(userId),
   ]);
-  const recommendation = companionRecommendation(context);
+  const recommendation = buildTodayRecommendation(context);
   const latestData = context.latestPractice.sessionId
     ? await getTodayPracticeData({ sessionId: context.latestPractice.sessionId }).catch(() => null)
     : null;
@@ -52,7 +52,12 @@ export default async function TodayCompanionPage() {
     latestData?.rawShots.filter((shot) => shot.sessionId === context.latestPractice.sessionId) ??
     [];
   const patternPoints = buildShotPatternPoints(latestShots);
-  const mainState = todayMainState({ currentPlan, activeRound, recommendation, latestData });
+  const mainState = resolveTodayPrimaryState({
+    currentPlan,
+    activeRound,
+    recommendation,
+    latestData,
+  });
 
   return (
     <PageShell>
@@ -133,138 +138,6 @@ export default async function TodayCompanionPage() {
   );
 }
 
-function companionRecommendation(context: PracticePlannerContext) {
-  const opportunity = context.latestPractice.biggestOpportunity;
-  const club =
-    context.latestPractice.clubs.find((item) => item.clubType === opportunity) ??
-    context.latestPractice.clubs.sort((left, right) => left.score - right.score)[0] ??
-    null;
-  const bagClub = context.bag.clubs.find((item) => item.clubType === club?.clubType) ?? null;
-  const confidence =
-    (club?.shotCount ?? 0) >= 12 ? "High" : (club?.shotCount ?? 0) >= 6 ? "Moderate" : "Low";
-  const minutes = context.trainingLoad.highRecentLoad ? 20 : 45;
-  const clubLabel = club?.label ?? "Baseline";
-  const issue = classifyTodayRecommendationIssue({
-    club,
-    bagClub,
-    priority:
-      context.progress.priorities.find((priority) => priority.clubType === club?.clubType) ?? null,
-    bagIssues: context.bag.issues,
-    scoring: context.scoring,
-    speed: context.speed,
-  });
-  const title = club
-    ? `Practise ${clubLabel} ${issue.label.toLowerCase()}`
-    : "Build a measured baseline";
-  const reason = club
-    ? `${clubLabel} is the clearest current opportunity. ${club.shotCount} measured shots show ${formatDirectionEvidence(club)}. Begin with a short calibration block before adding pressure.`
-    : "There is not enough measured evidence to isolate a weakness yet. Start with a short baseline session so the next recommendation is evidence-led.";
-
-  return {
-    title,
-    reason,
-    clubLabel,
-    clubType: club?.clubType ?? null,
-    issue: issue.label,
-    confidence,
-    minutes,
-    evidenceLabel: club ? `${club.shotCount} measured shots` : "Baseline needed",
-    bagConfidence: bagClub?.confidenceLabel ?? "Not established",
-    explanation: club
-      ? `The latest measured weakness, ${bagClub?.confidenceLabel?.toLowerCase() ?? "unsettled"} bag confidence and ${context.trainingLoad.statusLabel.toLowerCase()} training load point to a ${minutes}-minute ${clubLabel} session.`
-      : "The app needs a fresh measured sample before it can make a club-specific claim.",
-  };
-}
-
-function todayMainState({
-  currentPlan,
-  activeRound,
-  recommendation,
-  latestData,
-}: {
-  currentPlan: Awaited<ReturnType<typeof getCurrentPracticePlanSummary>>;
-  activeRound: Awaited<ReturnType<typeof getInProgressRound>>;
-  recommendation: ReturnType<typeof companionRecommendation>;
-  latestData: Awaited<ReturnType<typeof getTodayPracticeData>> | null;
-}) {
-  if (currentPlan?.status === "active") {
-    return {
-      eyebrow: "Active Range Mode",
-      title: currentPlan.title,
-      reason: "Your practice is still active on this phone. Continue at the current block.",
-      status: "In progress",
-      tone: "positive" as const,
-      href: "/practice",
-      action: "Continue practice",
-    };
-  }
-  if (currentPlan?.status === "awaiting_import") {
-    return {
-      eyebrow: "Practice finished",
-      title: "Add the measured session",
-      reason: "Choose R-Cloud or a CSV to replace activity tracking with measured evidence.",
-      status: "Evidence needed",
-      tone: "attention" as const,
-      href: `/import?practicePlanId=${encodeURIComponent(currentPlan.id)}`,
-      action: "Import session",
-    };
-  }
-  if (
-    latestData?.sessions[0]?.id &&
-    latestData.shots.length > 0 &&
-    isReviewReadyDate(currentPlan?.sourceSessionId ? null : latestData.dateLabel)
-  ) {
-    return {
-      eyebrow: "New session ready",
-      title: latestData.overall.title,
-      reason: latestData.overall.summary,
-      status: "Review ready",
-      tone: "positive" as const,
-      href: `/sessions/${latestData.sessions[0].id}`,
-      action: "Review session",
-    };
-  }
-  if (activeRound) {
-    return {
-      eyebrow: "Round in progress",
-      title: activeRound.courseName ?? "Continue your round",
-      reason: "Your scorecard is still open and ready at the current hole.",
-      status: "In progress",
-      tone: "positive" as const,
-      href: `/rounds/${activeRound.id}`,
-      action: "Continue round",
-    };
-  }
-  if (currentPlan?.status === "planned") {
-    return {
-      eyebrow: "Saved practice plan",
-      title: currentPlan.title,
-      reason: `${currentPlan.timeMinutes} minutes planned and ready to start.`,
-      status: "Ready",
-      tone: "info" as const,
-      href: "/practice",
-      action: "Start plan",
-    };
-  }
-  return {
-    eyebrow: "Today’s recommendation",
-    title: recommendation.title,
-    reason: recommendation.reason,
-    status: recommendation.confidence,
-    tone: recommendation.confidence === "Low" ? ("attention" as const) : ("positive" as const),
-    href: `/practice?intent=latest_weakness&club=${encodeURIComponent(recommendation.clubType ?? "")}&time=${recommendation.minutes}&source=today`,
-    action: "Plan range session",
-  };
-}
-
-function isReviewReadyDate(dateLabel: string | null) {
-  if (dateLabel === null) return true;
-  const date = new Date(dateLabel);
-  if (Number.isNaN(date.getTime())) return false;
-  const age = Date.now() - date.getTime();
-  return age >= 0 && age <= 36 * 60 * 60 * 1_000;
-}
-
 async function getInProgressRound(userId: string) {
   return (
     (
@@ -282,18 +155,6 @@ async function getInProgressRound(userId: string) {
         .limit(1)
     )[0] ?? null
   );
-}
-
-function formatDirectionEvidence(club: PracticePlannerContext["latestPractice"]["clubs"][number]) {
-  if (club.straightRate !== null) {
-    return `${Math.round(club.straightRate)}% finished in the straight window`;
-  }
-
-  if (club.offlineAverageYd !== null) {
-    return `${Math.round(club.offlineAverageYd)} yd average offline dispersion`;
-  }
-
-  return "an incomplete control sample";
 }
 
 function latestSessionDetail(context: PracticePlannerContext) {

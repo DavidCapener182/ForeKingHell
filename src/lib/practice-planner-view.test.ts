@@ -126,32 +126,29 @@ describe("practice planner view helpers", () => {
     expect(scoredFromLabel(eightyBallBlocks[2])).toBe("5W imported shots after upload.");
   });
 
-  it("keeps the page as one selected detail cockpit, not a manual scorecard", () => {
+  it("keeps the page as a three-zone programme with measured scoring", () => {
     const source = readFileSync(
       join(process.cwd(), "src/app/practice/practice-planner-client.tsx"),
       "utf8",
     );
 
     expect(source).toContain("SelectedBlockDetail");
-    expect(source).toContain("PracticeResultsOverview");
-    expect(source).toContain("Analysed from upload");
-    expect(source).toContain("lg:grid-cols-12");
-    expect(source).toContain("lg:col-span-5 xl:col-span-4");
-    expect(source).toContain("lg:col-span-2 xl:col-span-3");
-    expect(source).not.toContain("sm:grid-cols-12");
-    expect(source.indexOf("<PracticeAgenda")).toBeLessThan(source.indexOf("<SelectedBlockDetail"));
-    expect(source.indexOf("<SelectedBlockDetail")).toBeLessThan(
-      source.indexOf("<SessionControlPanel"),
+    expect(source).toContain("data-practice-session-brief");
+    expect(source).toContain("data-practice-agenda");
+    expect(source).toContain("data-practice-context");
+    expect(source).toContain(
+      "xl:grid-cols-[minmax(15rem,0.72fr)_minmax(34rem,1.8fr)_minmax(17rem,0.78fr)]",
     );
+    expect(source.indexOf("<PracticeAgenda")).toBeLessThan(source.indexOf("<SelectedBlockDetail"));
     expect(source).not.toContain("Accordion");
-    expect(source).not.toContain('type="multiple"');
+    expect(source).toContain('type="multiple"');
     expect(source).not.toContain("Adapt next");
     expect(source).not.toMatch(/<Input[\\s\\S]{0,240}(score|Score)/);
-    expect(source).toContain("Planned drill score appears after upload.");
     expect(source).toContain("PracticeSessionImportBar");
-    expect(source).toContain("Score the planned drill");
-    expect(source).toContain("This does not grade the whole session.");
-    expect(source).toContain("it does not grade the whole");
+    expect(source).toContain("Every result is calculated from its launch-monitor rows.");
+    expect(source).toContain("Only imported launch-monitor rows can pass");
+    expect(source).toContain("PlanVsActual");
+    expect(source).toContain("Next Practice");
     expect(source).toContain("linkPracticePlanSessionAction");
   });
 

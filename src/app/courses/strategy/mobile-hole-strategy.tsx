@@ -2,23 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Cuboid, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Cuboid, Save, Trash2 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Carousel,
-  type CarouselApi,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
-import { Progress } from "@/components/ui/progress";
-import type { HoleStrategy } from "@/lib/course-strategy";
+import type { HoleStrategy, HoleStrategyMode } from "@/lib/course-strategy";
+
+import styles from "./course-strategy-book.module.css";
+import { HoleStrategyVisual } from "./hole-strategy-visual";
 
 export function MobileHoleStrategy({
   strategies,
@@ -45,29 +36,17 @@ export function MobileHoleStrategy({
   courseTwinAvailable?: boolean;
 }) {
   const [index, setIndex] = useState(0);
+  const [modeId, setModeId] = useState<HoleStrategyMode["id"]>("normal");
   const [downloaded, setDownloaded] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [savedCopyIsStale, setSavedCopyIsStale] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
   const strategy = strategies[index];
 
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (!carouselApi) return;
-    const syncIndex = () => setIndex(carouselApi.selectedScrollSnap());
-    syncIndex();
-    carouselApi.on("select", syncIndex);
-    carouselApi.on("reInit", syncIndex);
-    return () => {
-      carouselApi.off("select", syncIndex);
-      carouselApi.off("reInit", syncIndex);
-    };
-  }, [carouselApi]);
 
   useEffect(() => {
     try {
@@ -100,99 +79,95 @@ export function MobileHoleStrategy({
 
   if (!strategy) return null;
 
+  const normalMode =
+    strategy.strategyModes.find((mode) => mode.id === "normal") ?? fallbackMode(strategy);
+  const mode = strategy.strategyModes.find((item) => item.id === modeId) ?? normalMode;
+
+  const selectHole = (nextIndex: number) => {
+    setIndex(nextIndex);
+    setModeId("normal");
+    document
+      .querySelector("[data-mobile-one-hole-strategy]")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
-    <Carousel
-      opts={{ align: "start", containScroll: "trimSnaps" }}
-      setApi={setCarouselApi}
-      className="grid min-w-0 gap-3"
+    <section
+      className={styles.mobileBook}
       data-mobile-one-hole-strategy
-      data-hydrated={hydrated ? "true" : "false"}
-      aria-label="Hole-by-hole course strategy"
+      aria-label="One-hole digital caddie book"
     >
-      <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
-        <CarouselPrevious
-          className="static size-11 translate-y-0 rounded-xl"
-          disabled={!hydrated || index === 0}
-          aria-label="Previous hole"
-        />
-        <div className="text-center">
-          <p className="text-lg font-bold">
-            Hole {strategy.holeNumber} of {strategies.length}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Par {strategy.par} · {strategy.yards} yd
-          </p>
+      <header className={styles.mobileHoleHeader} aria-live="polite">
+        <div>
+          <span>Hole</span>
+          <h2>{strategy.holeNumber}</h2>
         </div>
-        <CarouselNext
-          className="static size-11 translate-y-0 rounded-xl"
-          disabled={!hydrated || index === strategies.length - 1}
-          aria-label="Next hole"
-        />
+        <dl>
+          <div>
+            <dt>Par</dt>
+            <dd>{strategy.par}</dd>
+          </div>
+          <div>
+            <dt>Length</dt>
+            <dd>{strategy.yards} yd</dd>
+          </div>
+        </dl>
+      </header>
+
+      <HoleStrategyVisual strategy={strategy} mode={mode} compact />
+
+      <section className={styles.mobileRecommended}>
+        <span>Recommended play · {mode.label}</span>
+        <h3>
+          {mode.club} to {mode.target.toLowerCase()}
+        </h3>
+        <p>{mode.rationale}</p>
+      </section>
+
+      <div className={styles.mobileModeSwitcher} aria-label="Strategy mode">
+        {(["safe", "normal", "aggressive"] as const).map((id) => {
+          const supported = strategy.strategyModes.some((item) => item.id === id);
+          return (
+            <button
+              key={id}
+              type="button"
+              disabled={!supported}
+              data-active={mode.id === id ? "true" : "false"}
+              onClick={() => setModeId(id)}
+              title={supported ? `${id} strategy` : `${id} strategy needs more evidence`}
+            >
+              {id[0]!.toUpperCase() + id.slice(1)}
+            </button>
+          );
+        })}
       </div>
 
-      <Progress
-        value={((index + 1) / strategies.length) * 100}
-        aria-label={`Hole ${strategy.holeNumber} of ${strategies.length}`}
-        className="h-1.5"
-      />
+      <dl className={styles.mobileStrategyList}>
+        <MobileRow label="Club" value={mode.club} />
+        <MobileRow label="Target" value={mode.target} />
+        <MobileRow label="Carry" value={mode.carryRange} />
+        <MobileRow label="Miss" value={strategy.commonMiss} />
+        <MobileRow label="Hazard" value={hazardLabel(strategy)} />
+        <MobileRow label="Alternative" value={strategy.conservativeAlternative} />
+      </dl>
 
-      <CarouselContent className="-ml-0">
-        {strategies.map((holeStrategy) => (
-          <CarouselItem key={holeStrategy.holeNumber} className="pl-0">
-            <Card aria-label={`Hole ${holeStrategy.holeNumber} strategy`}>
-              <CardHeader>
-                <CardTitle>Hole {holeStrategy.holeNumber} strategy</CardTitle>
-                <CardAction>
-                  <Badge variant={holeStrategy.confidence === "Low" ? "outline" : "secondary"}>
-                    {holeStrategy.confidence} confidence
-                  </Badge>
-                </CardAction>
-              </CardHeader>
-              <CardContent className="grid gap-2">
-                <StrategyItem
-                  title="Recommended club"
-                  value={holeStrategy.recommendedClub}
-                  description={holeStrategy.expectedCarryRange}
-                  valueAsBadge
-                />
-                <StrategyItem
-                  title="Safe target"
-                  value={holeStrategy.safeTarget}
-                  description={`Common miss: ${holeStrategy.commonMiss}`}
-                />
-                <StrategyItem title="Main hazard" description={holeStrategy.hazardWarning} />
-                <StrategyItem
-                  title="Conservative alternative"
-                  description={holeStrategy.conservativeAlternative}
-                />
-                <StrategyItem
-                  title="Expected leave"
-                  value={holeStrategy.expectedLeave}
-                  description={plannedSequence(holeStrategy)}
-                />
-                {courseTwinAvailable ? (
-                  <Button asChild variant="outline" className="mt-1 min-h-11">
-                    <Link href={`/play/${course.id}?mode=strategy&hole=${holeStrategy.holeNumber}`}>
-                      <Cuboid className="size-4" aria-hidden />
-                      View this hole in Course Twin
-                    </Link>
-                  </Button>
-                ) : (
-                  <Alert>
-                    <Cuboid aria-hidden />
-                    <AlertTitle>Course Twin unavailable</AlertTitle>
-                    <AlertDescription>
-                      This course has strategy data but no published 3D twin.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
+      {courseTwinAvailable ? (
+        <Button asChild className={styles.mobileCourseTwin}>
+          <Link href={`/play/${course.id}?mode=strategy&hole=${strategy.holeNumber}`}>
+            <Cuboid aria-hidden /> Open hole {strategy.holeNumber} in Course Twin
+          </Link>
+        </Button>
+      ) : (
+        <Alert>
+          <Cuboid aria-hidden />
+          <AlertTitle>Course Twin unavailable</AlertTitle>
+          <AlertDescription>
+            This course has strategy data but no published 3D twin.
+          </AlertDescription>
+        </Alert>
+      )}
 
-      <p className="px-1 text-xs leading-5 text-muted-foreground">{strategy.caveat}</p>
+      <p className={styles.mobileCaveat}>{strategy.caveat}</p>
 
       {savedAt ? (
         <Alert>
@@ -207,10 +182,7 @@ export function MobileHoleStrategy({
               hour: "2-digit",
               minute: "2-digit",
             })}
-            {" · "}
-            {savedCopyIsStale
-              ? "Refresh it before the round. Course Twin still needs a connection."
-              : "Hole strategy can be read here from this device. Course Twin still needs a connection."}
+            {savedCopyIsStale ? " · Refresh before the round." : " · Available without a signal."}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -248,8 +220,8 @@ export function MobileHoleStrategy({
           }
         }}
       >
-        <Save className="size-4" aria-hidden />
-        {downloaded ? "Refresh Saved Strategy" : "Save Strategy on This Device"}
+        <Save aria-hidden />
+        {downloaded ? "Refresh saved caddie book" : "Save caddie book on this device"}
       </Button>
       {downloaded ? (
         <Button
@@ -263,45 +235,57 @@ export function MobileHoleStrategy({
             setSavedCopyIsStale(false);
           }}
         >
-          <Trash2 className="size-4" aria-hidden />
-          Clear saved strategy
+          <Trash2 aria-hidden /> Clear saved caddie book
         </Button>
       ) : null}
-    </Carousel>
+
+      <nav className={styles.mobileFixedControls} aria-label="Hole navigation">
+        <button
+          type="button"
+          disabled={!hydrated || index === 0}
+          onClick={() => selectHole(index - 1)}
+          aria-label="Previous hole"
+        >
+          <ChevronLeft aria-hidden /> Previous
+        </button>
+        <span>
+          {index + 1} / {strategies.length}
+        </span>
+        <button
+          type="button"
+          disabled={!hydrated || index === strategies.length - 1}
+          onClick={() => selectHole(index + 1)}
+          aria-label="Next hole"
+        >
+          <ChevronRight aria-hidden /> Next
+        </button>
+      </nav>
+    </section>
   );
 }
 
-function StrategyItem({
-  title,
-  value,
-  description,
-  valueAsBadge = false,
-}: {
-  title: string;
-  value?: string;
-  description: string;
-  valueAsBadge?: boolean;
-}) {
+function MobileRow({ label, value }: { label: string; value: string }) {
   return (
-    <Item variant="muted" size="sm">
-      <ItemContent>
-        <ItemTitle>{title}</ItemTitle>
-        <ItemDescription className="whitespace-normal">{description}</ItemDescription>
-      </ItemContent>
-      {value ? (
-        <ItemActions>
-          {valueAsBadge ? (
-            <Badge variant="secondary">{value}</Badge>
-          ) : (
-            <span className="max-w-32 text-right text-sm font-semibold">{value}</span>
-          )}
-        </ItemActions>
-      ) : null}
-    </Item>
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }
 
-function plannedSequence(strategy: HoleStrategy) {
-  const followUp = strategy.followUpClubs.map((club) => club.label).join(" → ");
-  return followUp ? `${strategy.recommendedClub} → ${followUp}` : strategy.recommendedClub;
+function hazardLabel(strategy: HoleStrategy) {
+  if (!strategy.hazards.length) return "No mapped evidence · confirm live";
+  return `${strategy.hazards.join(" · ")} · distance not mapped`;
+}
+
+function fallbackMode(strategy: HoleStrategy): HoleStrategyMode {
+  return {
+    id: "normal",
+    label: "Normal",
+    club: strategy.recommendedClub,
+    carryRange: strategy.expectedCarryRange,
+    target: strategy.safeTarget,
+    expectedLeave: strategy.expectedLeave,
+    rationale: "Add trusted measured club ranges before relying on this hole plan.",
+  };
 }

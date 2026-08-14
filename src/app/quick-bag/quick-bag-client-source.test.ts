@@ -9,24 +9,30 @@ const drawer = readFileSync(
 );
 
 describe("Quick Bag companion composition", () => {
-  it("keeps one genuine command-style picker for clubs and target distances", () => {
-    expect(source).toContain("const EntityCombobox = dynamic(");
-    expect(source).toContain('import("@/components/app/entity-combobox")');
-    expect(source).toContain("module.EntityCombobox");
-    expect(source).toContain("ssr: false");
-    expect(source).toContain('aria-label="Loading club or target"');
-    expect(source).not.toContain('from "@/components/app/entity-combobox"');
-    expect(source).toContain('label="Club or target"');
-    expect(source).toContain("customValueLabel");
-    expect(source).toContain("Use ${value} yards");
+  it("puts a large target input and one-tap distances first", () => {
+    expect(source).toContain('aria-label="Target distance"');
+    expect(source).toContain('inputMode="numeric"');
+    expect(source).toContain("const quickTargets = [100, 125, 150, 175, 200]");
+    expect(source).toContain("<BestMatchCard");
+    expect(source).not.toContain("EntityCombobox");
   });
 
-  it("keeps one dominant result and a Carry or Play number toggle", () => {
+  it("keeps one dominant answer with compact alternatives", () => {
     expect(source).toContain("data-quick-bag-best-match");
-    expect(source).toContain("<ToggleGroup");
-    expect(source).toContain('value="carry"');
-    expect(source).toContain('value="finish"');
+    expect(source).toContain("Best match for");
+    expect(source).toContain("Play number");
+    expect(source).toContain("Trusted carry");
+    expect(source).toContain("Measured range");
+    expect(source).toContain("Typical miss");
     expect(source).toContain("Alternatives");
+    expect(source).toContain("rankedClubs.slice(1, 4)");
+  });
+
+  it("uses a separate club-search mode", () => {
+    expect(source).toContain('value="club"');
+    expect(source).toContain("Search club");
+    expect(source).toContain('aria-label="Search by club"');
+    expect(source).toContain("<SearchClubRow");
   });
 
   it("defers the club-detail Drawer until the golfer asks for detail", () => {
@@ -35,7 +41,8 @@ describe("Quick Bag companion composition", () => {
     expect(source).toContain("{detailOpen ? (");
     expect(source).not.toContain('from "@/components/ui/drawer"');
     expect(drawer).toContain("<Drawer open={open}");
-    expect(drawer).toContain("<LateralRange club={club} />");
+    expect(drawer).toContain("<LateralDispersionGraphic club={club} />");
+    expect(drawer).toContain("Latest evidence");
     expect(drawer).toContain("env(safe-area-inset-bottom)");
   });
 });

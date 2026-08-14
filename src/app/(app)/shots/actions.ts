@@ -31,3 +31,28 @@ export async function deleteShotAction(shotId: string) {
 
   return { deletedShotId: deletedShot.id };
 }
+
+export async function excludeShotAction(shotId: string) {
+  const userId = await requireCurrentUserId();
+
+  if (!uuidPattern.test(shotId)) {
+    throw new Error("Invalid shot.");
+  }
+
+  const [excludedShot] = await getDb()
+    .update(shots)
+    .set({ qualityTag: "excluded" })
+    .where(and(eq(shots.id, shotId), eq(shots.userId, userId)))
+    .returning({ id: shots.id });
+
+  if (!excludedShot) {
+    throw new Error("That shot was not found. Refresh and try again.");
+  }
+
+  revalidatePath("/shots");
+  revalidatePath("/today");
+  revalidatePath("/bag");
+  revalidatePath("/progress");
+
+  return { excludedShotId: excludedShot.id };
+}

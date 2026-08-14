@@ -18,8 +18,8 @@ export default async function SessionsPage() {
     <PageShell>
       <PageHeader
         eyebrow={<StatusPill tone="green">Review history</StatusPill>}
-        title="Sessions"
-        description="Open practice and round evidence in one chronological history, then continue into the relevant review."
+        title="Your golf history"
+        description="Move through practice, simulator sessions and rounds chronologically. Select any entry for its evidence-led preview."
         actions={
           <Button asChild className="premium-action min-h-11 rounded-xl">
             <Link href="/import">

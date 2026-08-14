@@ -11,10 +11,12 @@ describe("Phase 5 product-page contract", () => {
     const today = source("src/app/(app)/today/today-workbench-page.tsx");
     const companion = source("src/app/(app)/today/today-companion-page.tsx");
     const primaryAnswer = source("src/components/app/today-primary-answer.tsx");
+    const primaryState = source("src/lib/today-primary-state.ts");
 
     expect(companion).toContain("TodayPrimaryAnswer");
     expect(primaryAnswer).toContain("data-primary-recommendation");
-    expect(companion).toContain("Plan range session");
+    expect(companion).toContain("resolveTodayPrimaryState");
+    expect(primaryState).toContain("Plan range session");
     expect(companion).toContain("Why this recommendation?");
     expect(companion).not.toContain("TodayMobileEvidence");
     expect(today).toContain("TodayDesktopFilterBar");
@@ -30,20 +32,21 @@ describe("Phase 5 product-page contract", () => {
     const filters = source("src/app/shots/shot-filter-toolbar.tsx");
 
     expect(shots).toContain("ShotFilterToolbar");
-    expect(filters).toContain("DataToolbar");
-    expect(filters).toContain("ResponsiveFilterPanel");
-    expect(shots).toContain("SavedShotViewsPanel");
+    expect(filters).toContain("ClubCombobox");
+    expect(filters).toContain("<Sheet");
+    expect(shots).toContain("DesktopTableWorkbenchControls");
     expect(shots).toContain("ShotsMasterDetailTable");
-    expect(filters).toContain("Group by club");
-    expect(filters).toContain("Group by session");
-    expect(filters).toContain("params.set(key, value)");
+    expect(filters).toContain('<SelectItem value="club">Club</SelectItem>');
+    expect(filters).toContain('<SelectItem value="session">Session</SelectItem>');
+    expect(filters).toContain('params.set("trust", filters.trust)');
     expect(shots).not.toContain("MobileFilterSheet");
   });
 
   it("keeps Bag centred on stock, dependable ranges, gapping and sample trust", () => {
     const bag = source("src/app/(app)/bag/page.tsx");
 
-    expect(bag).toContain("Bag confidence ladder");
+    expect(bag).toContain("function BagConfidenceLadder");
+    expect(bag).toContain("data-bag-distance-ladder");
     expect(bag).toContain("Full bag gapping");
     expect(bag).toContain("stock carry");
     expect(bag).toContain("latestReliableCarryP25Yd");
@@ -55,17 +58,13 @@ describe("Phase 5 product-page contract", () => {
   it("requires Coach recommendations to expose evidence and success criteria", () => {
     const coach = source("src/app/(app)/coach/page.tsx");
 
-    for (const label of [
-      "Observation",
-      "Evidence",
-      "Confidence",
-      "Why it matters",
-      "Suggested drill",
-      "Success measure",
-      "Reassess when",
-    ]) {
-      expect(coach).toContain(`label: "${label}"`);
+    expect(coach).toContain("data-primary-diagnosis");
+    for (const label of ["What I see", "Why it matters", "Confidence", "Next action"]) {
+      expect(coach).toContain(`label="${label}"`);
     }
+    expect(coach).toContain("Supporting evidence");
+    expect(coach).toContain('practiceHref("latest_weakness")');
+    expect(coach).toContain("topClub.drill");
     expect(coach).not.toContain('label="Expected gain"');
   });
 
@@ -75,10 +74,13 @@ describe("Phase 5 product-page contract", () => {
     for (const [value, label] of [
       ["performance", "Performance"],
       ["goals", "Goals"],
-      ["load", "Training load"],
+      ["load", "Load"],
       ["timeline", "Timeline"],
     ]) {
-      expect(progress).toContain(`<TabsTrigger value="${value}">${label}</TabsTrigger>`);
+      expect(progress).toContain(`<TabsTrigger value="${value}"`);
+      expect(progress).toMatch(
+        new RegExp(`<TabsTrigger value="${value}"[\\s\\S]*?>\\s*${label}\\s*</TabsTrigger>`),
+      );
     }
     expect(progress).not.toContain('label: "Training volume"');
   });
@@ -101,12 +103,12 @@ describe("Phase 5 product-page contract", () => {
     const companion = source("src/app/(app)/today/today-companion-page.tsx");
 
     expect(feed).toContain("StatusUpdateComposerSheet");
-    expect(feed).toContain("Privacy state");
     expect(feed).toContain("data.profile.feedVisibilityDefault");
     expect(feed).toContain("<FeedCardList items={filteredItems} />");
     expect(feed).not.toContain("FeedActivityLedger");
     expect(feedCards).toContain("item.verificationLabel");
     expect(feedCards).toContain("item.visibility");
+    expect(feedCards).toContain("VisibilityIcon");
     expect(today).toContain("Social comparison is on demand");
     expect(companion).not.toContain("getChallengesPageData");
   });

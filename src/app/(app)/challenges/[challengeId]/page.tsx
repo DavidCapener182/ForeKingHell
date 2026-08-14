@@ -89,7 +89,6 @@ type ChallengePageProps = {
 
 type ChallengeDetail = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>;
 type ChallengeResultRow = ChallengeDetail["results"][number];
-type ChallengeAttemptEntry = ChallengeDetail["attempts"][number];
 
 const challengeLeaderboardColumns: DesktopWorkbenchColumn[] = [
   { id: "rank", label: "Rank", locked: true },
@@ -97,16 +96,6 @@ const challengeLeaderboardColumns: DesktopWorkbenchColumn[] = [
   { id: "score", label: "Score" },
   { id: "verification", label: "Verification" },
   { id: "calculated", label: "Calculated" },
-  { id: "action", label: "Action", locked: true },
-];
-
-const challengeAttemptColumns: DesktopWorkbenchColumn[] = [
-  { id: "player", label: "Player", locked: true },
-  { id: "metric", label: "Metric" },
-  { id: "source", label: "Source" },
-  { id: "verification", label: "Verification" },
-  { id: "evidence", label: "Evidence" },
-  { id: "attempted", label: "Attempted" },
   { id: "action", label: "Action", locked: true },
 ];
 
@@ -176,7 +165,11 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             tabs={[
               { key: "board", label: "Board", href: `/challenges/${data.challenge.id}` },
               { key: "rules", label: "Rules", href: `/challenges/${data.challenge.id}?tab=rules` },
-              { key: "shots", label: "Shots", href: `/challenges/${data.challenge.id}?tab=shots` },
+              {
+                key: "shots",
+                label: "Attempts",
+                href: `/challenges/${data.challenge.id}?tab=shots`,
+              },
               { key: "chat", label: "Chat", href: `/challenges/${data.challenge.id}?tab=chat` },
             ]}
           />
@@ -197,54 +190,19 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
             </NativeListSection>
           ) : activeTab === "shots" ? (
             <NativeListSection
-              title="Imported shots"
-              description="This board is calculated from qualifying imported shots. New imports update it automatically."
+              title="Attempt timeline"
+              description="Every qualifying imported attempt, in the order it reached the challenge."
             >
-              <IOSGroupedList label="Recent qualifying challenge shots">
-                {data.attempts.length > 0 ? (
-                  data.attempts
-                    .slice(0, 8)
-                    .map(({ attempt, profile }) => (
-                      <IOSListRow
-                        key={attempt.id}
-                        label={profile.displayName}
-                        value={attemptScoreLabel(attempt)}
-                        detail={`${attempt.verificationLabel} · ${attemptMetadataLabel(attempt.metadataJson)}`}
-                        href={`/profile/${profile.username}`}
-                      />
-                    ))
-                ) : (
-                  <IOSListRow
-                    label="No qualifying imported shots yet"
-                    detail="Import shots during the challenge window and they will appear automatically."
-                  />
-                )}
-              </IOSGroupedList>
-              {data.attempts.length > 8 ? (
-                <IOSDisclosureGroup
-                  label="Older challenge attempts"
-                  items={[
-                    {
-                      value: "older-attempts",
-                      title: "Older qualifying shots",
-                      summary: `${data.attempts.length - 8}`,
-                      content: (
-                        <IOSGroupedList label="Older qualifying challenge shots">
-                          {data.attempts.slice(8).map(({ attempt, profile }) => (
-                            <IOSListRow
-                              key={attempt.id}
-                              label={profile.displayName}
-                              value={attemptScoreLabel(attempt)}
-                              detail={`${attempt.verificationLabel} · ${attemptMetadataLabel(attempt.metadataJson)}`}
-                              href={`/profile/${profile.username}`}
-                            />
-                          ))}
-                        </IOSGroupedList>
-                      ),
-                    },
-                  ]}
-                />
-              ) : null}
+              <StatusTimeline
+                label="Challenge attempt timeline"
+                items={data.attempts.map((row) => challengeAttemptTimelineItem(row))}
+                empty={
+                  <p className="text-sm text-muted-foreground">
+                    No qualifying attempts yet. Import shots during the active window to start the
+                    timeline.
+                  </p>
+                }
+              />
             </NativeListSection>
           ) : activeTab === "chat" ? (
             <NativeListSection title="Chat">
@@ -420,7 +378,7 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
                 </div>
               </SheetContent>
             </Sheet>
-            <Anchor href="#imported-shots" label="Imported shots" />
+            <Anchor href="#challenge-attempts" label="Attempts" />
             <Anchor href="#chat" label="Chat" />
             {data.challenge.creatorUserId === data.viewerUserId ? (
               <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0 rounded-xl">
@@ -701,8 +659,8 @@ function ChallengeCommandTables({
         <div>
           <h2 className="text-xl font-semibold tracking-normal">Challenge command board</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Exportable leaderboard and imported-shot evidence from the same qualifying imports that
-            decide the podium.
+            The leaderboard and chronological attempt trail come from the same qualifying imports
+            that decide the podium.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -716,7 +674,11 @@ function ChallengeCommandTables({
       </div>
 
       <ChallengeLeaderboardTable data={data} verificationMode={verificationMode} />
-      <section className="rounded-xl border bg-card p-4" data-challenge-attempt-timeline>
+      <section
+        id="challenge-attempts"
+        className="scroll-mt-28 rounded-xl border bg-card p-4"
+        data-challenge-attempt-timeline
+      >
         <div className="mb-4">
           <p className="font-semibold">Attempt history</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -725,15 +687,7 @@ function ChallengeCommandTables({
         </div>
         <StatusTimeline
           label="Challenge attempt history"
-          items={data.attempts.slice(0, 8).map((row) => ({
-            id: row.attempt.id,
-            timestamp: challengeDateTimeFormatter.format(row.attempt.attemptedAt),
-            title: `${row.profile.displayName} · ${attemptScoreLabel(row.attempt)}`,
-            description: `${titleCase(row.attempt.sourceType)} · ${attemptMetadataLabel(row.attempt.metadataJson)}`,
-            status: row.attempt.verificationLabel,
-            kind: "import" as const,
-            href: `/profile/${row.profile.username}`,
-          }))}
+          items={data.attempts.map((row) => challengeAttemptTimelineItem(row))}
           empty={
             <p className="text-sm text-muted-foreground">
               No qualifying attempts have arrived yet.
@@ -741,7 +695,6 @@ function ChallengeCommandTables({
           }
         />
       </section>
-      <ChallengeAttemptEvidenceTable data={data} />
     </section>
   );
 }
@@ -865,118 +818,6 @@ function ChallengeLeaderboardRow({ row }: { row: ChallengeResultRow }) {
   );
 }
 
-async function ChallengeAttemptEvidenceTable({ data }: { data: ChallengeDetail }) {
-  const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
-  const suggestedViews = challengeAttemptSuggestedViews(data.challenge.id);
-
-  return (
-    <section className="grid gap-3" data-workbench-scope="challenge-attempts">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold">Imported shot evidence</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Qualifying attempts that feed the leaderboard, including source and sample evidence.
-          </p>
-        </div>
-        <StatusPill tone={data.attempts.length > 0 ? "amber" : "slate"}>
-          {data.attempts.length} attempts
-        </StatusPill>
-      </div>
-
-      <DesktopTableWorkbenchControls
-        viewKey={`challenge-attempts-${data.challenge.id}`}
-        scope="challenge-attempts"
-        currentViewLabel={`${data.challenge.title} attempts`}
-        resultLabel={`${data.attempts.length} imported attempts`}
-        columns={challengeAttemptColumns}
-        suggestedViews={suggestedViews}
-        exportTableId="challenge-attempts"
-        exportFileName={`forekinghell-challenge-${data.challenge.id}-attempts.csv`}
-      />
-
-      <DataTableFrame label="Challenge imported shot evidence table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="challenge-attempts"
-          aria-describedby="challenge-attempts-summary"
-        >
-          <TableCaption id="challenge-attempts-summary" className="sr-only">
-            Challenge imported shot evidence table showing player, metric, source, verification,
-            evidence, attempted time and action.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-            <TableRow>
-              <TableHead
-                data-column="player"
-                className="sticky left-0 z-20 min-w-64 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-              >
-                Player
-              </TableHead>
-              <TableHead data-column="metric">Metric</TableHead>
-              <TableHead data-column="source">Source</TableHead>
-              <TableHead data-column="verification">Verification</TableHead>
-              <TableHead data-column="evidence">Evidence</TableHead>
-              <TableHead data-column="attempted">Attempted</TableHead>
-              <TableHead data-column="action" className="text-right">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.attempts.length > 0 ? (
-              data.attempts.map((row) => (
-                <ChallengeAttemptTableRow key={row.attempt.id} row={row} />
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                  No qualifying imported attempts yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
-    </section>
-  );
-}
-
-function ChallengeAttemptTableRow({ row }: { row: ChallengeAttemptEntry }) {
-  return (
-    <TableRow tabIndex={0} className="focus-aaa outline-none">
-      <TableCell
-        data-column="player"
-        className="sticky left-0 z-10 min-w-64 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-      >
-        <Link
-          href={`/profile/${row.profile.username}`}
-          prefetch={false}
-          className="font-semibold text-primary hover:underline"
-        >
-          {row.profile.displayName}
-        </Link>
-        <p className="mt-1 text-xs text-muted-foreground">@{row.profile.username}</p>
-      </TableCell>
-      <TableCell data-column="metric">
-        <span className="font-medium">{attemptScoreLabel(row.attempt)}</span>
-        <p className="mt-1 text-xs text-muted-foreground">{row.attempt.metricLabel}</p>
-      </TableCell>
-      <TableCell data-column="source">{titleCase(row.attempt.sourceType)}</TableCell>
-      <TableCell data-column="verification">{row.attempt.verificationLabel}</TableCell>
-      <TableCell data-column="evidence">{attemptMetadataLabel(row.attempt.metadataJson)}</TableCell>
-      <TableCell data-column="attempted">
-        {challengeDateTimeFormatter.format(row.attempt.attemptedAt)}
-      </TableCell>
-      <TableCell data-column="action" className="text-right">
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/profile/${row.profile.username}`} prefetch={false}>
-            Open profile
-          </Link>
-        </Button>
-      </TableCell>
-    </TableRow>
-  );
-}
-
 function PodiumCard({ row }: { row: PodiumRow }) {
   const rank = row.result.rank ?? 0;
 
@@ -1037,34 +878,14 @@ function challengeLeaderboardSuggestedViews(challengeId: string): DesktopSavedVi
       detail: "Full ranking, score and verification evidence.",
     },
     {
-      title: "Imported shots",
-      href: `/challenges/${challengeId}#imported-shots`,
-      detail: "Challenge rules and import status.",
+      title: "Attempt timeline",
+      href: `/challenges/${challengeId}#challenge-attempts`,
+      detail: "Qualifying evidence in chronological order.",
     },
     {
       title: "Challenge centre",
       href: "/challenges",
       detail: "Active, invited and recommended challenge boards.",
-    },
-  ];
-}
-
-function challengeAttemptSuggestedViews(challengeId: string): DesktopSavedViewSuggestion[] {
-  return [
-    {
-      title: "Imported attempts",
-      href: `/challenges/${challengeId}#challenge-command`,
-      detail: "Every qualifying attempt that feeds this leaderboard.",
-    },
-    {
-      title: "Import data",
-      href: "/import",
-      detail: "Upload or connect new challenge evidence.",
-    },
-    {
-      title: "Compare",
-      href: "/compare",
-      detail: "Compare sessions, clubs and before-after periods.",
     },
   ];
 }
@@ -1104,6 +925,18 @@ function attemptMetadataLabel(metadata: Record<string, unknown>) {
   }
 
   return "Imported shots";
+}
+
+function challengeAttemptTimelineItem(row: ChallengeDetail["attempts"][number]) {
+  return {
+    id: row.attempt.id,
+    timestamp: challengeDateTimeFormatter.format(row.attempt.attemptedAt),
+    title: `${row.profile.displayName} · ${attemptScoreLabel(row.attempt)}`,
+    description: `${titleCase(row.attempt.sourceType)} · ${attemptMetadataLabel(row.attempt.metadataJson)}`,
+    status: row.attempt.verificationLabel,
+    kind: "import" as const,
+    href: `/profile/${row.profile.username}`,
+  };
 }
 
 function Anchor({ href, label }: { href: string; label: string }) {

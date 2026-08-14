@@ -46,6 +46,7 @@ export type RoundsWorkspaceRound = {
   id: string;
   courseName: string | null;
   fileName: string | null;
+  teeName: string | null;
   dateLabel: string;
   dateIso: string;
   type: string;
@@ -54,8 +55,13 @@ export type RoundsWorkspaceRound = {
   totalScore: number | null;
   totalPar: number | null;
   totalPutts: number | null;
+  toPar: number | null;
+  toParLabel: string;
   handicapDifferential: number | null;
   handicapDifferentialLabel: string;
+  handicapImpactLabel: string;
+  handicapImpactTone: "positive" | "attention" | "neutral";
+  mainVerdict: string;
   scoreSummary: string;
   shotCount: number;
   dataLabel: string;

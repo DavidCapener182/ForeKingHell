@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/page.tsx"), "utf8");
+const responsiveStyles = readFileSync(
+  join(process.cwd(), "src/app/(app)/bag/bag-page.module.css"),
+  "utf8",
+);
 const targetDistanceSource = readFileSync(
   join(process.cwd(), "src/app/bag/target-distance-selector.tsx"),
   "utf8",
@@ -42,15 +46,16 @@ describe("bag desktop workbench source", () => {
     expect(clubPanel).not.toContain('fill="#');
   });
 
-  it("keeps Bag health metrics and signals flat inside the outer hero Card", () => {
+  it("keeps Bag health metrics and signals flat inside the premium hero surface", () => {
     const healthHero =
       source.match(/function BagHealthHero[\s\S]*?function BagScoreTrendPanel/)?.[0] ?? "";
     const healthSignal =
       source.match(/function BagHealthSignal[\s\S]*?function BagScoreTrendPanel/)?.[0] ?? "";
 
     expect(healthHero).toMatch(/<ConnectedMetricBar\s+embedded/);
-    expect(healthHero.match(/<Card(?:\s|>)/g)).toHaveLength(1);
-    expect(healthSignal).toContain("<Item");
+    expect(healthHero).toContain("<section");
+    expect(healthHero).not.toContain("<Card");
+    expect(healthSignal).toContain("<div");
     expect(healthSignal).toContain("data-bag-health-signal");
     expect(healthSignal).not.toContain("<Card");
     expect(healthSignal).not.toContain("<ConnectedMetricBar");
@@ -66,7 +71,7 @@ describe("bag desktop workbench source", () => {
     expect(workspace).toContain('title="Full gapping evidence"');
     expect(workspace).toContain('title="Club supporting tools"');
     expect(workspace).toContain('title="Scoring supporting evidence"');
-    expect(workspace).toContain('title="Fitting supporting evidence"');
+    expect(workspace).toContain('title="Fitting experiment tools"');
     expect(workspace).toContain('title="History supporting evidence"');
     expect(source).toContain("data-bag-supporting-evidence");
     expect(source).toContain("<Collapsible>");
@@ -76,9 +81,7 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain('id="club-evolution"');
 
     const supportingEvidence =
-      source.match(
-        /function BagSupportingEvidence[\s\S]*?async function getBagChallengeData/,
-      )?.[0] ?? "";
+      source.match(/function BagSupportingEvidence[\s\S]*?function FittingStudio/)?.[0] ?? "";
     expect(supportingEvidence).toContain("<section");
     expect(supportingEvidence).not.toContain("<Card");
     expect(supportingEvidence).not.toContain("<CardHeader");
@@ -138,9 +141,12 @@ describe("bag desktop workbench source", () => {
     expect(stockFilters).not.toContain("<CollapsibleContent asChild>");
   });
 
-  it("labels stock-confidence leadership as historical trust", () => {
-    expect(source).toContain('label="Most trusted historically"');
-    expect(source).not.toContain('label="Strongest club"');
+  it("leads with the trusted-number answer and four explicit bag checks", () => {
+    expect(source).toContain("clubs have trusted numbers");
+    expect(source).toContain('label="Largest gap"');
+    expect(source).toContain('label="Weakest confidence"');
+    expect(source).toContain('label="Current scoring concern"');
+    expect(source).toContain('label="Next bag action"');
   });
 
   it("keeps the AI bag rail as a large-monitor enhancement", () => {
@@ -261,11 +267,9 @@ describe("bag desktop workbench source", () => {
   });
 });
 
-describe("bag desktop-only bundle boundary", () => {
-  it("keeps the obsolete bag companion stack out of the desktop route", () => {
+describe("bag desktop and Quick Bag boundary", () => {
+  it("keeps the full workbench desktop-only and makes Quick Bag the mobile surface", () => {
     for (const obsoleteSymbol of [
-      "MobileAppShell",
-      "MobileTopBar",
       "MobileTabBar",
       "MobileBentoSummary",
       "MobileAccordionSection",
@@ -290,9 +294,21 @@ describe("bag desktop-only bundle boundary", () => {
     }
 
     expect(source).not.toContain("@/components/app/ios-mobile");
-    expect(source).not.toContain("@/components/mobile-sports");
-    expect(source).toContain('<DesktopWorkbenchLayout\n        scope="bag"');
-    expect(source).not.toContain('className="hidden lg:grid"');
+    expect(source).toContain("@/components/mobile-sports");
+    expect(source).toContain("<MobileTopBar");
+    expect(source).toContain('<section className="grid gap-5" data-bag-mobile-quick-only>');
+    expect(source).toContain("<QuickBagClient");
+    expect(source).toContain("data-bag-mobile-quick-only");
+    expect(source).toContain("data-bag-mobile-surface");
+    expect(source).toContain("data-bag-desktop-surface");
+    expect(source).toContain("<DesktopWorkbenchLayout");
+    expect(source).toContain('scope="bag"');
+    expect(source).toContain("styles.mobileSurface");
+    expect(source).toContain("styles.desktopSurface");
+    expect(responsiveStyles).toContain("@media (min-width: 64rem)");
+    expect(responsiveStyles).toContain(".mobileSurface");
+    expect(responsiveStyles).toContain(".mobileSurface > section");
+    expect(responsiveStyles).toContain(".desktopSurface");
     expect(source).toContain('className="flex items-center justify-between gap-4"');
     expect(source).toContain("data-bag-workspace");
   });

@@ -1,16 +1,16 @@
 export type CompanionTee = { id: string; name: string; yards: number | null };
 
-export function selectCompanionTee({
+export function selectCompanionTee<T extends CompanionTee>({
   tees,
   activeRoundTeeId,
   explicitTeeId,
   recentRoundTeeId,
 }: {
-  tees: CompanionTee[];
+  tees: T[];
   activeRoundTeeId?: string | null;
   explicitTeeId?: string | null;
   recentRoundTeeId?: string | null;
-}) {
+}): T | null {
   return (
     tees.find((tee) => tee.id === activeRoundTeeId) ??
     tees.find((tee) => tee.id === explicitTeeId) ??

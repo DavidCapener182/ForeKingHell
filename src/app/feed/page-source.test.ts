@@ -16,36 +16,33 @@ const filterSource = readFileSync(
   "utf8",
 );
 const exportSource = readFileSync(join(process.cwd(), "src/app/feed/feed-csv-export.ts"), "utf8");
+const socialSource = readFileSync(join(process.cwd(), "src/lib/social.ts"), "utf8");
 
-describe("feed timeline-first composition", () => {
-  it("renders exactly one real filtered feed stream without a duplicate ledger", () => {
+describe("clubhouse chronological activity feed", () => {
+  it("renders one chronological feed without digest or recommendation surfaces", () => {
     expect(source).toContain('<PageShell className="bg-muted/20">');
     expect(source).toContain('<DesktopWorkbenchLayout scope="feed">');
     expect(source).toContain("data-feed-timeline-first");
-    expect(source).toContain("const filteredItems = filterFeedItems(");
-    expect(source).toContain("buildFeedActivityCsvHref(filteredItems)");
+    expect(source).toContain("Newest first · no suggested posts");
     expect(source.match(/<FeedCardList\b/g)).toHaveLength(1);
-    expect(source).toContain("<FeedCardList items={filteredItems} />");
+    expect(cardSource).toContain("groupItemsByDay(items)");
+    expect(cardSource).toContain("data-feed-activity-timeline");
 
-    for (const duplicateSurface of [
-      "FeedActivityLedger",
-      "DesktopTableWorkbenchControls",
-      "DataTableFrame",
-      "DataFirstFlowPanel",
-      "SocialFeaturePanel",
-      "Social pulse",
+    for (const retiredSurface of [
+      "FeedDayDigestCard",
+      "Daily activity digest",
+      "Individual cards",
       "Activity highlights",
       "Network pulse",
-      "feedActivityColumns",
-      "feedActivitySuggestedViews",
-      "getFeatureIdeasData",
+      "FeedActivityLedger",
       "<Table",
     ]) {
-      expect(source).not.toContain(duplicateSurface);
+      expect(source).not.toContain(retiredSurface);
+      expect(cardSource).not.toContain(retiredSurface);
     }
   });
 
-  it("keeps the composer and filters ahead of the chronological stream", () => {
+  it("keeps the compact composer in front of the feed and opens the full form in a Sheet", () => {
     const composer = source.indexOf('<Card id="create-feed-post"');
     const filters = source.indexOf("<FeedFilterControls");
     const stream = source.indexOf("<FeedCardList items={filteredItems}");
@@ -54,114 +51,92 @@ describe("feed timeline-first composition", () => {
     expect(filters).toBeGreaterThan(composer);
     expect(stream).toBeGreaterThan(filters);
     expect(source).toContain("<StatusUpdateComposerSheet");
+    expect(composerSource).toContain("<Sheet>");
+    expect(composerSource).toContain("<SheetTrigger asChild>");
     expect(composerSource).toContain("createStatusUpdateAction");
     expect(composerSource).toContain('name="visibility"');
     expect(composerSource).toContain('name="body"');
+  });
+
+  it("exposes only the four requested network filters in the visible control", () => {
+    for (const filter of ["Following", "Friends", "Groups", "Achievements"]) {
+      expect(source).toContain(`label: "${filter}"`);
+    }
+
+    expect(filterSource).toContain("filters.map");
     expect(filterSource).toContain("<ButtonGroup");
     expect(filterSource).toContain('aria-current={active ? "page" : undefined}');
-    expect(filterSource).not.toContain("<Tabs");
     expect(filterSource).toContain("<DropdownMenu");
+    expect(filterSource).not.toContain("<Tabs");
   });
 
-  it("exports the currently filtered timeline without restoring a second feed surface", () => {
-    expect(source).toContain("exportHref={exportHref}");
-    expect(source).toContain("exportItemCount={filteredItems.length}");
-    expect(source).toContain("feedActivityExportFileName(activeFilter)");
-    expect(filterSource).toContain("data-feed-export-current-view");
-    expect(filterSource).toContain("download={exportFileName}");
-    expect(filterSource).toContain("Export CSV");
-    expect(filterSource).toContain("aria-label={`Export ${exportItemCount}");
-    expect(exportSource).toContain('from "@/lib/csv"');
-    expect(exportSource).toContain('"Activity"');
-    expect(exportSource).toContain('"Privacy"');
-    expect(exportSource).toContain('"Engagement"');
-    expect(exportSource).toContain('"Action"');
+  it("backs Following and Friends with the real network id sets", () => {
+    expect(socialSource).toContain("getFollowingIds(viewerUserId)");
+    expect(socialSource).toContain("followingIds,");
+    expect(socialSource).toContain("friendIds,");
+    expect(source).toContain("followingIds.has(item.userId)");
+    expect(source).toContain("friendIds.has(item.userId)");
+    expect(source).toContain('item.itemType.startsWith("group_")');
+    expect(source).toContain('item.itemType === "achievement_unlock"');
+  });
 
-    for (const duplicateSurface of [
-      "FeedActivityLedger",
-      "feed-activity-ledger",
-      "data-workbench-export-table",
-      "<Table",
+  it("uses a restrained template for every requested activity family", () => {
+    for (const label of [
+      "Round",
+      "Practice",
+      "PB",
+      "Achievement",
+      "Challenge",
+      "Course record",
+      "Goal",
+      "Status update",
     ]) {
-      expect(source).not.toContain(duplicateSurface);
-      expect(exportSource).not.toContain(duplicateSurface);
-      expect(filterSource).not.toContain(duplicateSurface);
+      expect(cardSource).toContain(`label: "${label}"`);
     }
+
+    expect(cardSource).toContain("data-activity-template={kind}");
+    expect(cardSource).toContain('<ActivityFact label="Score"');
+    expect(cardSource).toContain('<ActivityFact label="Course"');
+    expect(cardSource).toContain('label="Highlight"');
+    expect(cardSource).toContain('<ActivityFact label="Focus"');
+    expect(cardSource).toContain('label="Result"');
+    expect(cardSource).toContain("<DispersionThumbnail");
+    expect(cardSource).toContain("pbClub(item)");
+    expect(cardSource).toContain("<VerificationLabel");
   });
 
-  it("uses one compact Item-based utility rail instead of left and right metric-card walls", () => {
-    expect(source).toContain('aria-label="Feed shortcuts and privacy"');
+  it("uses avatars, dropdown controls, reactions and collapsed comments consistently", () => {
+    expect(cardSource).toContain("<SocialAvatar");
+    expect(cardSource).toContain("<FeedItemControls");
+    expect(cardSource).toContain("addFeedReactionAction");
+    expect(cardSource).toContain("removeFeedReactionAction");
+    expect(cardSource).toContain("<Collapsible");
+    expect(cardSource).toContain("addFeedCommentAction");
+    expect(cardSource).toContain('placeholder="Write a comment"');
+  });
+
+  it("retains a single compact utility rail and theme-aware surfaces", () => {
+    expect(source).toContain('aria-label="Clubhouse network shortcuts"');
     expect(source).toContain("data-feed-utility-rail");
     expect(source.match(/<aside\b/g)).toHaveLength(1);
-    expect(source.match(/<Card\b/g)).toHaveLength(2);
     expect(source).toContain('<Item variant="muted" size="sm">');
     expect(source).toContain("data.profile.feedVisibilityDefault");
-    expect(source).toContain("data.publicProfileCount");
+    expect(source).toContain("bg-muted/20");
+    expect(cardSource).toContain("bg-primary/5");
 
-    for (const retiredMetric of [
-      "MiniStat",
-      "PulseRow",
-      "BadgeLike",
-      "Feed profile shortcuts",
-      "Feed social insight rail",
-      "Feed XP",
-      "Kudos",
-    ]) {
-      expect(source).not.toContain(retiredMetric);
+    for (const literal of ["bg-white", "text-emerald-", "bg-emerald-", "rgba(", "bg-[#"]) {
+      expect(source).not.toContain(literal);
+      expect(cardSource).not.toContain(literal);
     }
   });
 
-  it("preserves filter, network onboarding and privacy business rules", () => {
-    expect(source).toContain("data.friendCount === 0");
-    expect(source).toContain("<AppEmptyState");
-    expect(source).toContain('href="/friends"');
-    expect(source).toContain('href="/groups"');
-    expect(source).toContain('href="/challenges"');
-    expect(source).toContain('href="/course-records"');
-    expect(source).toContain('href="/tournaments"');
-    expect(source).toContain('href="/leaderboard"');
-    expect(source).toContain('case "friends"');
-    expect(source).toContain('case "me"');
-    expect(source).toContain("item.userId === viewerUserId");
-  });
-
-  it("keeps page chrome theme-aware", () => {
-    expect(source).toContain("bg-muted/20");
-    expect(source).toContain('from "@/components/ui/card"');
-    expect(source).toContain("text-foreground");
-    expect(source).toContain("color-mix(in srgb, var(--foreground) 8%, transparent)");
-    expect(source).not.toMatch(
-      /\b(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-(?:\d{2,3})(?:\/\d+)?\b/,
-    );
-    expect(source).not.toMatch(/rgba?\(|(?:bg|border|text|shadow)-\[#/i);
-  });
-
-  it("keeps compact feed engagement metadata above the contrast threshold", () => {
-    expect(cardSource).toContain('className="text-xs text-muted-foreground"');
-    expect(cardSource).toContain("border-primary/20 bg-primary/5");
-    expect(cardSource).not.toContain("text-emerald-");
-    expect(cardSource).not.toContain("bg-white");
-  });
-
-  it("keeps daily digest posts flat inside the digest card", () => {
-    const digest =
-      cardSource.match(/function FeedDayDigestCard[\s\S]*?function FeedItemCard/)?.[0] ?? "";
-    const digestRow =
-      cardSource.match(/function FeedDigestItemRow[\s\S]*?function FeedItemContent/)?.[0] ?? "";
-    const sharedContent =
-      cardSource.match(/function FeedItemContent[\s\S]*?function HighlightRow/)?.[0] ?? "";
-
-    expect(digest).toContain("<FeedDigestItemRow");
-    expect(digest).not.toContain("<FeedItemCard");
-    expect(digestRow).toContain("<Item");
-    expect(digestRow).toContain("data-feed-digest-item-row");
-    expect(digestRow).not.toContain("<Card");
-    expect(sharedContent).not.toContain("<Card");
-    expect(sharedContent).toContain("<CopyShareImageButton");
-    expect(sharedContent).toContain("<ReelExportButton");
-    expect(sharedContent).toContain("<FeedItemControls");
-    expect(sharedContent).toContain("<CommentCard");
-    expect(cardSource).toContain("className={buttonVariants");
-    expect(cardSource).not.toContain("<CollapsibleTrigger asChild>");
+  it("exports the selected chronological view without adding another feed surface", () => {
+    expect(source).toContain("exportHref={exportHref}");
+    expect(source).toContain("exportItemCount={filteredItems.length}");
+    expect(filterSource).toContain("data-feed-export-current-view");
+    expect(filterSource).toContain("download={exportFileName}");
+    expect(exportSource).toContain('from "@/lib/csv"');
+    expect(exportSource).toContain('"Activity"');
+    expect(exportSource).not.toContain("<Table");
   });
 });

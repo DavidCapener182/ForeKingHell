@@ -120,7 +120,7 @@ export async function createInvitationAction(formData: FormData) {
   const role = parseCollaborationRole(formData.get("role"));
 
   if (currentUser.email?.toLowerCase() === invitedEmail) {
-    redirect("/settings?inviteError=self");
+    redirect("/settings?section=sharing&inviteError=self");
   }
 
   const db = getDb();
@@ -139,7 +139,7 @@ export async function createInvitationAction(formData: FormData) {
   });
 
   revalidatePath("/settings");
-  redirect(`/settings?invite=${encodeURIComponent(token)}`);
+  redirect(`/settings?section=sharing&invite=${encodeURIComponent(token)}`);
 }
 
 export async function acceptInvitationAction(formData: FormData) {
@@ -147,7 +147,7 @@ export async function acceptInvitationAction(formData: FormData) {
   const token = nullableString(formData, "token");
 
   if (!token) {
-    redirect("/settings?inviteError=invalid");
+    redirect("/settings?section=sharing&inviteError=invalid");
   }
 
   if (!currentUser) {
@@ -170,11 +170,11 @@ export async function acceptInvitationAction(formData: FormData) {
     .limit(1);
 
   if (!invitation) {
-    redirect("/settings?inviteError=invalid");
+    redirect("/settings?section=sharing&inviteError=invalid");
   }
 
   if (currentUser.email?.toLowerCase() !== invitation.invitedEmail.toLowerCase()) {
-    redirect("/settings?inviteError=email");
+    redirect("/settings?section=sharing&inviteError=email");
   }
 
   const invitationAccepted = await db.transaction(async (tx) => {
@@ -221,11 +221,11 @@ export async function acceptInvitationAction(formData: FormData) {
   });
 
   if (!invitationAccepted) {
-    redirect("/settings?inviteError=invalid");
+    redirect("/settings?section=sharing&inviteError=invalid");
   }
 
   revalidatePath("/settings");
-  redirect("/settings?inviteAccepted=1");
+  redirect("/settings?section=sharing&inviteAccepted=1");
 }
 
 export async function cancelInvitationAction(formData: FormData) {
@@ -233,7 +233,7 @@ export async function cancelInvitationAction(formData: FormData) {
   const invitationId = nullableString(formData, "invitationId");
 
   if (!invitationId) {
-    redirect("/settings");
+    redirect("/settings?section=sharing");
   }
 
   await getDb()
@@ -244,7 +244,7 @@ export async function cancelInvitationAction(formData: FormData) {
     );
 
   revalidatePath("/settings");
-  redirect("/settings?inviteCancelled=1");
+  redirect("/settings?section=sharing&inviteCancelled=1");
 }
 
 export async function removeMembershipAction(formData: FormData) {
@@ -252,7 +252,7 @@ export async function removeMembershipAction(formData: FormData) {
   const membershipId = nullableString(formData, "membershipId");
 
   if (!membershipId) {
-    redirect("/settings");
+    redirect("/settings?section=sharing");
   }
 
   await getDb()
@@ -262,29 +262,37 @@ export async function removeMembershipAction(formData: FormData) {
     );
 
   revalidatePath("/settings");
-  redirect("/settings?memberRemoved=1");
+  redirect("/settings?section=sharing&memberRemoved=1");
 }
 
 export async function updateUserSettingsAction(formData: FormData) {
   const userId = await requireCurrentUserId();
   const db = getDb();
+  const section = settingsFormSection(formData.get("settingsSection"));
+  const patch =
+    section === "appearance"
+      ? {
+          theme: parseTheme(formData.get("theme")),
+          tableDensity: parseTableDensity(formData.get("tableDensity")),
+          updatedAt: new Date(),
+        }
+      : section === "privacy"
+        ? {
+            privacySettingsJson: parsePrivacySettings(formData),
+            updatedAt: new Date(),
+          }
+        : {
+            name: nullableString(formData, "name"),
+            preferredUnits: parsePreferredUnits(formData.get("preferredUnits")),
+            dashboardPins: parseDashboardPins(formData.getAll("dashboardPins")),
+            updatedAt: new Date(),
+          };
 
-  await db
-    .update(users)
-    .set({
-      name: nullableString(formData, "name"),
-      preferredUnits: parsePreferredUnits(formData.get("preferredUnits")),
-      theme: parseTheme(formData.get("theme")),
-      tableDensity: parseTableDensity(formData.get("tableDensity")),
-      dashboardPins: parseDashboardPins(formData.getAll("dashboardPins")),
-      privacySettingsJson: parsePrivacySettings(formData),
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, userId));
+  await db.update(users).set(patch).where(eq(users.id, userId));
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
-  redirect("/settings?saved=1");
+  redirect(`/settings?section=${section}&saved=1`);
 }
 
 export async function deleteAccountDataAction(formData: FormData) {
@@ -477,4 +485,8 @@ export async function resetGolfDataAction(formData: FormData) {
 function nullableString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function settingsFormSection(value: FormDataEntryValue | null) {
+  return value === "appearance" || value === "privacy" ? value : "general";
 }

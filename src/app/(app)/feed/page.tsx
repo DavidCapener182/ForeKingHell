@@ -1,25 +1,23 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Award, BarChart3, Trophy, Users } from "lucide-react";
+import { Award, Flag, Target, Trophy, UserPlus, Users } from "lucide-react";
 
-import { FeedCardList } from "@/components/social/feed-card-list";
-import { StatusUpdateComposerSheet } from "@/app/feed/status-update-composer";
 import { FeedFilterControls } from "@/app/feed/feed-filter-controls";
 import { buildFeedActivityCsvHref, feedActivityExportFileName } from "@/app/feed/feed-csv-export";
+import { StatusUpdateComposerSheet } from "@/app/feed/status-update-composer";
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
+import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialAvatar } from "@/components/social/social-avatar";
-import { PageHeader, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader, PageShell } from "@/components/premium";
 import { getFeedPageData } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
-
-const TOUR_COVER_COUNT = 10;
 
 type FeedPageProps = {
   searchParams?: Promise<{
@@ -27,47 +25,43 @@ type FeedPageProps = {
   }>;
 };
 
-type FeedFilter =
-  | "all"
-  | "friends"
-  | "pbs"
-  | "achievements"
-  | "challenges"
-  | "records"
-  | "tournaments"
-  | "rounds"
-  | "me";
+type FeedFilter = "following" | "friends" | "groups" | "achievements" | "me" | "all";
 
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
   const activeFilter = parseFeedFilter(params?.filter);
   const data = await getFeedPageData();
-  const filteredItems = filterFeedItems(data.items, activeFilter, data.viewerUserId);
+  const filteredItems = filterFeedItems(data.items, activeFilter, {
+    viewerUserId: data.viewerUserId,
+    friendIds: data.friendIds,
+    followingIds: data.followingIds,
+  });
   const exportHref = buildFeedActivityCsvHref(filteredItems);
 
   return (
     <PageShell className="bg-muted/20">
       <DesktopWorkbenchLayout scope="feed">
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-          <main className="grid min-w-0 gap-4" data-feed-timeline-first>
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_264px] lg:items-start">
+          <main className="grid min-w-0 gap-3" data-feed-timeline-first>
             <PageHeader
-              eyebrow={<Badge variant="secondary">Social feed</Badge>}
-              title="Feed"
-              description="PBs, achievements, imports, rounds, course records and tournament moments from your golf network."
+              eyebrow={<Badge variant="secondary">Golf activity network</Badge>}
+              title="Clubhouse"
+              description="Rounds, practice, personal bests and milestones from your golf circle — strictly in time order."
             />
 
-            <Card id="create-feed-post" className="scroll-mt-28">
-              <CardContent className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 p-4">
+            <Card id="create-feed-post" className="scroll-mt-28 py-0 shadow-sm">
+              <CardContent className="flex flex-wrap items-center gap-3 p-3 sm:flex-nowrap sm:p-4">
                 <SocialAvatar
                   displayName={data.profile.displayName}
                   username={data.profile.username}
                   avatarUrl={data.profile.avatarUrl}
                   href="/profile"
+                  size="sm"
                 />
-                <div>
-                  <p className="font-semibold">Share a golf update</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Post a range note, round recap, swing feel or golf photo.
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">Add to the clubhouse</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Share a result, golf thought or quick update.
                   </p>
                 </div>
                 <StatusUpdateComposerSheet
@@ -82,8 +76,8 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             {data.friendCount === 0 ? (
               <AppEmptyState
                 icon={<Users />}
-                title="Build your golf network"
-                description="Add a friend or join a group to unlock friend-only PBs, challenge entries and comments in this feed."
+                title="Build your golf circle"
+                description="Add a friend or join a group to bring more real golf activity into this chronological feed."
                 primaryAction={
                   <Button asChild size="sm">
                     <Link href="/friends" prefetch={false}>
@@ -101,23 +95,23 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               />
             ) : null}
 
-            <section className="grid min-w-0 gap-3" aria-labelledby="feed-stream-title">
-              <div className="flex flex-wrap items-end justify-between gap-3">
+            <section className="grid min-w-0 gap-3" aria-labelledby="clubhouse-stream-title">
+              <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <h2 id="feed-stream-title" className="text-xl font-semibold tracking-normal">
+                  <h2 id="clubhouse-stream-title" className="text-lg font-semibold">
                     Latest activity
                   </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    One chronological stream from the current visibility and feed filter.
-                  </p>
+                  <p className="text-xs text-muted-foreground">Newest first · no suggested posts</p>
                 </div>
                 <Badge variant="outline">
-                  {filteredItems.length} {filteredItems.length === 1 ? "update" : "updates"}
+                  {filteredItems.length} {filteredItems.length === 1 ? "activity" : "activities"}
                 </Badge>
               </div>
 
               <FeedFilterControls
-                activeFilter={activeFilter}
+                activeFilter={
+                  activeFilter === "all" || activeFilter === "me" ? "following" : activeFilter
+                }
                 filters={feedFilters}
                 exportHref={exportHref}
                 exportFileName={feedActivityExportFileName(activeFilter)}
@@ -127,45 +121,45 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </section>
           </main>
 
-          <aside aria-label="Feed shortcuts and privacy" className="lg:sticky lg:top-28">
+          <aside aria-label="Clubhouse network shortcuts" className="lg:sticky lg:top-28">
             <Card className="gap-0 py-0 shadow-sm" data-feed-utility-rail>
-              <div
-                className="h-20 bg-cover bg-center"
-                style={{
-                  backgroundImage: profileHeaderBackground(
-                    profileHeaderImageUrl(data.profile.headerImageUrl, data.profile.username),
-                  ),
-                }}
-              />
-              <CardContent className="grid gap-4 p-4 pt-0">
-                <div className="-mt-8">
+              <CardContent className="grid gap-4 p-4">
+                <div className="flex items-center gap-3">
                   <SocialAvatar
                     displayName={data.profile.displayName}
                     username={data.profile.username}
                     avatarUrl={data.profile.avatarUrl}
                     href="/profile"
-                    size="lg"
+                    size="md"
                   />
+                  <div className="min-w-0">
+                    <Link
+                      href="/profile"
+                      prefetch={false}
+                      className="truncate text-sm font-semibold hover:underline"
+                    >
+                      {data.profile.displayName}
+                    </Link>
+                    <p className="truncate text-xs text-muted-foreground">
+                      @{data.profile.username}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <Link href="/profile" prefetch={false} className="font-semibold hover:underline">
-                    {data.profile.displayName}
-                  </Link>
-                  <p className="text-sm text-muted-foreground">@{data.profile.username}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {data.friendCount} friends · {numberFormatter.format(data.totalXp)} XP
-                  </p>
+
+                <div className="grid grid-cols-3 divide-x rounded-lg border bg-muted/25 py-2 text-center">
+                  <NetworkStat value={data.followingIds.length} label="Following" />
+                  <NetworkStat value={data.friendCount} label="Friends" />
+                  <NetworkStat value={data.totalXp} label="XP" />
                 </div>
-                <Button asChild variant="outline" size="sm" className="w-full">
-                  <Link href="/profile" prefetch={false}>
-                    Edit profile
-                  </Link>
-                </Button>
 
                 <Separator />
 
-                <nav className="grid gap-1" aria-label="Social shortcuts">
-                  <SideLink href="/friends" icon={<Users className="size-4" />} label="Friends" />
+                <nav className="grid gap-1" aria-label="Clubhouse shortcuts">
+                  <SideLink
+                    href="/friends"
+                    icon={<UserPlus className="size-4" />}
+                    label="Find golfers"
+                  />
                   <SideLink href="/groups" icon={<Users className="size-4" />} label="Groups" />
                   <SideLink
                     href="/challenges"
@@ -173,43 +167,34 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                     label="Challenges"
                   />
                   <SideLink
-                    href="/course-records"
+                    href="/achievements"
                     icon={<Award className="size-4" />}
+                    label="Achievements"
+                  />
+                  <SideLink
+                    href="/course-records"
+                    icon={<Flag className="size-4" />}
                     label="Course records"
                   />
                   <SideLink
-                    href="/tournaments"
-                    icon={<Trophy className="size-4" />}
-                    label="Tournaments"
-                  />
-                  <SideLink
-                    href="/leaderboard"
-                    icon={<BarChart3 className="size-4" />}
-                    label="Leaderboards"
+                    href="/practice"
+                    icon={<Target className="size-4" />}
+                    label="Start practice"
                   />
                 </nav>
 
                 <Separator />
 
-                <section aria-labelledby="feed-privacy-title" className="grid gap-3">
-                  <div>
-                    <h2 id="feed-privacy-title" className="text-sm font-semibold">
-                      Privacy state
-                    </h2>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Default visibility is{" "}
-                      <span className="font-medium text-foreground">
-                        {data.profile.feedVisibilityDefault}
-                      </span>
-                      . {data.publicProfileCount} golfers are discoverable through public search.
-                    </p>
-                  </div>
-                  <Button asChild variant="outline" size="sm" className="w-full">
-                    <Link href="/profile" prefetch={false}>
-                      Change social defaults
-                    </Link>
-                  </Button>
-                </section>
+                <div>
+                  <p className="text-xs font-semibold">Posting default</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    New updates are shared with{" "}
+                    <span className="font-medium text-foreground">
+                      {data.profile.feedVisibilityDefault}
+                    </span>{" "}
+                    unless you change it in the composer.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </aside>
@@ -219,19 +204,21 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   );
 }
 
-const numberFormatter = new Intl.NumberFormat("en-GB");
-
-const feedFilters: Array<{ key: FeedFilter; label: string }> = [
-  { key: "all", label: "All" },
+const feedFilters: Array<{ key: Exclude<FeedFilter, "me" | "all">; label: string }> = [
+  { key: "following", label: "Following" },
   { key: "friends", label: "Friends" },
-  { key: "pbs", label: "PBs" },
+  { key: "groups", label: "Groups" },
   { key: "achievements", label: "Achievements" },
-  { key: "challenges", label: "Challenges" },
-  { key: "records", label: "Records" },
-  { key: "tournaments", label: "Tournaments" },
-  { key: "rounds", label: "Rounds" },
-  { key: "me", label: "Me" },
 ];
+
+function NetworkStat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="min-w-0 px-1">
+      <p className="truncate text-sm font-semibold tabular-nums">{numberFormatter.format(value)}</p>
+      <p className="truncate text-[0.65rem] text-muted-foreground">{label}</p>
+    </div>
+  );
+}
 
 function SideLink({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
@@ -247,58 +234,36 @@ function SideLink({ href, icon, label }: { href: string; icon: ReactNode; label:
 }
 
 function parseFeedFilter(value: string | undefined): FeedFilter {
-  return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "all";
-}
-
-function profileHeaderBackground(imageUrl: string) {
-  return `linear-gradient(90deg, color-mix(in srgb, var(--foreground) 8%, transparent), transparent), url("${imageUrl.replace(/"/g, "%22")}")`;
-}
-
-function profileHeaderImageUrl(headerImageUrl: string | null | undefined, username: string) {
-  return headerImageUrl ?? tourCoverForKey(username);
-}
-
-function tourCoverForKey(key: string) {
-  let hash = 0;
-
-  for (let index = 0; index < key.length; index += 1) {
-    hash = (hash * 31 + key.charCodeAt(index)) % TOUR_COVER_COUNT;
-  }
-
-  return `/assets/tour-covers/tour-cover-${String(hash + 1).padStart(2, "0")}.webp`;
+  if (value === "me" || value === "all") return value;
+  return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "following";
 }
 
 function filterFeedItems(
   items: Awaited<ReturnType<typeof getFeedPageData>>["items"],
   filter: FeedFilter,
-  viewerUserId: string,
+  network: { viewerUserId: string; friendIds: string[]; followingIds: string[] },
 ) {
+  const friendIds = new Set(network.friendIds);
+  const followingIds = new Set(network.followingIds);
+
   switch (filter) {
+    case "following":
+      return items.filter(
+        (item) => item.userId === network.viewerUserId || followingIds.has(item.userId),
+      );
     case "friends":
-      return items.filter((item) => item.userId !== viewerUserId);
-    case "pbs":
-      return items.filter((item) => isPbFeedType(item.itemType));
+      return items.filter((item) => friendIds.has(item.userId));
+    case "groups":
+      return items.filter((item) => item.itemType.startsWith("group_"));
     case "achievements":
       return items.filter(
         (item) => item.itemType === "achievement_unlock" || item.itemType === "level_up",
       );
-    case "challenges":
-      return items.filter(
-        (item) => item.itemType.startsWith("challenge_") || item.itemType === "rivalry_win",
-      );
-    case "records":
-      return items.filter((item) => item.itemType.startsWith("course_record"));
-    case "tournaments":
-      return items.filter((item) => item.itemType.startsWith("tournament"));
-    case "rounds":
-      return items.filter((item) => item.itemType.includes("round"));
     case "me":
-      return items.filter((item) => item.userId === viewerUserId);
+      return items.filter((item) => item.userId === network.viewerUserId);
     default:
       return items;
   }
 }
 
-function isPbFeedType(type: string) {
-  return type === "new_pb" || type === "longest_drive" || type === "weekly_pb";
-}
+const numberFormatter = new Intl.NumberFormat("en-GB");

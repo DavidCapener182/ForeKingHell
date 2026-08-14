@@ -1,10 +1,17 @@
 "use client";
 
-import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceDot,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import {
   ChartContainer,
-  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -50,21 +57,10 @@ const chartConfig = {
       clubhouse: "#AD8A48",
     },
   },
-  sessionQuality: {
-    label: "Session Quality",
-    theme: {
-      light: "#BE123C",
-      dark: "#BE123C",
-      clubhouse: "#75342E",
-    },
-  },
 } satisfies ChartConfig;
 
 export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTimeChartProps) {
   const chartData = withSmoothedDisplayForm(data);
-  const sessionQualityValues = chartData
-    .map((point) => point.sessionQuality)
-    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   const workloadDomain = chartDomain(
     data.flatMap((point) => [point.fitness, point.fatigue]),
     100,
@@ -88,8 +84,8 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
     <div className="grid min-w-0 gap-3">
       <ChartContainer
         config={chartConfig}
-        className="h-[17rem] w-full min-w-0 aspect-auto"
-        initialDimension={{ width: 720, height: 272 }}
+        className="h-[13rem] w-full min-w-0 aspect-auto sm:h-[20rem] xl:h-[24rem]"
+        initialDimension={{ width: 720, height: 320 }}
       >
         <LineChart
           data={chartData}
@@ -102,10 +98,22 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
               key={`${marker.date}-${marker.sessionCount}`}
               x={marker.date}
               yAxisId="workload"
-              stroke="var(--chart-marker, #475569)"
+              stroke={markerColour(marker)}
               strokeDasharray="2 4"
-              strokeOpacity={marker.sessionCount > 1 ? 0.36 : 0.22}
+              strokeOpacity={marker.sessionCount > 1 ? 0.3 : 0.16}
               strokeWidth={marker.sessionCount > 1 ? 1.5 : 1}
+            />
+          ))}
+          {sessionMarkers.map((marker) => (
+            <ReferenceDot
+              key={`${marker.date}-${marker.sessionCount}-dot`}
+              x={marker.date}
+              y={workloadDomain[0] + 3}
+              yAxisId="workload"
+              r={marker.sessionCount > 1 ? 5 : 4}
+              fill={markerColour(marker)}
+              stroke="var(--background)"
+              strokeWidth={2}
             />
           ))}
           <XAxis
@@ -132,7 +140,6 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
             domain={formDomain}
             tickFormatter={formatAxisNumber}
           />
-          <YAxis yAxisId="quality" hide domain={[0, 100]} />
           <ChartTooltip
             cursor={false}
             content={
@@ -151,7 +158,6 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
               />
             }
           />
-          <Legend content={<ChartLegendContent />} />
           <ReferenceLine
             y={100}
             yAxisId="form"
@@ -191,20 +197,18 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
             strokeWidth={2.5}
             dot={false}
           />
-          {sessionQualityValues.length > 0 ? (
-            <Line
-              type="monotone"
-              yAxisId="quality"
-              dataKey="sessionQuality"
-              stroke="var(--color-sessionQuality)"
-              strokeWidth={2.25}
-              connectNulls
-              dot={{ r: 3, strokeWidth: 1.5, fill: "#fffdf7" }}
-              activeDot={{ r: 5 }}
-            />
-          ) : null}
         </LineChart>
       </ChartContainer>
+      <div
+        className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 text-xs font-medium text-muted-foreground"
+        aria-label="Training chart legend"
+      >
+        <ChartLegendLine colour="var(--color-fitness, #087A3D)" label="Fitness" />
+        <ChartLegendLine colour="var(--color-fatigue, #D97706)" label="Recent Load" />
+        <ChartLegendLine colour="var(--color-displayForm, #2563EB)" label="Golf Form" />
+        <ChartLegendDot colour="var(--status-success-foreground)" label="Round" />
+        <ChartLegendDot colour="var(--status-information-foreground)" label="Practice" />
+      </div>
       <ChartAccessibleFallback
         title="Training over time"
         summary={summary}
@@ -220,6 +224,30 @@ export function TrainingOverTimeChart({ data, sessionMarkers }: TrainingOverTime
       />
     </div>
   );
+}
+
+function ChartLegendLine({ colour, label }: { colour: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-0.5 w-5 rounded-full" style={{ backgroundColor: colour }} />
+      {label}
+    </span>
+  );
+}
+
+function ChartLegendDot({ colour, label }: { colour: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="size-2 rounded-full" style={{ backgroundColor: colour }} />
+      {label}
+    </span>
+  );
+}
+
+function markerColour(marker: TrainingSessionMarker) {
+  if (marker.kind === "round") return "var(--status-success-foreground)";
+  if (marker.kind === "practice") return "var(--status-information-foreground)";
+  return "var(--primary)";
 }
 
 function trainingOverTimeSummary(data: TrainingChartPoint[], markerCount: number) {

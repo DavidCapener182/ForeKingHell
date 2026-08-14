@@ -8,14 +8,26 @@ const source = readFileSync(
 );
 
 describe("admin system checks desktop console source", () => {
-  it("adds a protected provider health and system checks console", () => {
+  it("adds a protected evidence-led system health console", () => {
     expect(source).toContain("getAdminOperationsSnapshot");
     expect(source).toContain('<AdminNav active="/admin/system-checks" />');
     expect(source).toContain('scope="admin-system-checks"');
-    expect(source).toContain("Provider status and platform checks");
-    expect(source).toContain("Provider failures");
-    expect(source).toContain("Billing failures");
-    expect(source).toContain("Verification evidence");
+    expect(source).toContain("System health console");
+    expect(source).toContain("Overall state");
+    expect(source).toContain("Needs attention");
+    expect(source).toContain("No failures flagged");
+    expect(source).toContain("Unchecked does not mean working");
+    expect(source).toContain("Live verification coverage");
+    expect(source).toContain("Main incident timeline");
+    expect(source).toContain("Full system check table");
+    expect(source).toContain("HealthStatusBadge");
+    expect(source).toContain("<Card");
+    expect(source).toContain("<Progress");
+    expect(source).toContain("<Item");
+    expect(source).toContain("<Badge");
+    expect(source).toContain("<Alert");
+    expect(source).toContain("<StatusTimeline");
+    expect(source).toContain("<Table");
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain("adminSystemCheckColumns");
     expect(source).toContain("adminSystemCheckViews");
@@ -31,19 +43,31 @@ describe("admin system checks desktop console source", () => {
     expect(source).toContain('id="admin-system-checks-summary"');
     expect(source).toContain("tabIndex={0}");
     expect(source).toContain('href="/providers?tab=diagnostics#provider-health"');
-    expect(source).toContain('href="/providers?tab=diagnostics#provider-jobs"');
+    expect(source).toContain('href: "/providers?tab=diagnostics#provider-jobs"');
     expect(source).toContain('href: "/admin/billing"');
-    expect(source).toContain('href: "/admin/moderation"');
 
-    for (const column of ["check", "area", "status", "count", "impact", "action"]) {
+    for (const column of ["check", "area", "status", "lastCheck", "evidence", "impact", "action"]) {
       expect(source).toContain(`data-column="${column}"`);
+    }
+
+    for (const area of [
+      "Provider",
+      "Imports",
+      "Billing",
+      "Auth",
+      "RLS",
+      "AI",
+      "Storage",
+      "External connections",
+    ]) {
+      expect(source).toContain(`label: "${area}"`);
     }
   });
 
   it("keeps admin recommendations tied to visible evidence", () => {
-    expect(source).toContain("Admin recommendations should cite visible provider counts");
-    expect(source).toContain("Do not infer a provider outage from missing data alone");
-    expect(source).toContain("only active owner or operator");
+    expect(source).toContain("what the platform actually checked");
+    expect(source).toContain("It does not run live service, CI");
+    expect(source).toContain("no inferred service state");
     expect(source).not.toContain("DesktopInsightRail");
   });
 

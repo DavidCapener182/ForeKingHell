@@ -747,18 +747,15 @@ function ActiveRangeMode({
           hasEvidence: false,
         })}
       />
-      <Card>
-        <CardHeader>
+      <Card className="gap-3 py-3" data-current-range-block>
+        <CardHeader className="px-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Range Mode · Block {blockIndex + 1} of {plan.blocks.length}
             </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight">
+            <h1 className="mt-1 font-heading text-4xl font-bold tracking-tight">
               {block ? clubLabel(block) : "Practice"}
             </h1>
-            <p className="mt-1 text-base text-muted-foreground">
-              {block ? blockVolume(block) : "Timed block"}
-            </p>
           </div>
           <CardAction>
             <Badge variant={allComplete ? "default" : "secondary"}>
@@ -766,68 +763,77 @@ function ActiveRangeMode({
             </Badge>
           </CardAction>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent className="grid gap-3 px-3">
           <Progress
             value={plan.blocks.length ? (completedBlockIds.length / plan.blocks.length) * 100 : 0}
             aria-label={`${completedBlockIds.length} of ${plan.blocks.length} practice blocks complete`}
             className="h-2"
           />
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 rounded-2xl bg-primary p-4 text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">
+                {manualRemaining !== null ? "Balls remaining" : "Time remaining"}
+              </p>
+              <p className="mt-1 font-heading text-5xl font-bold tabular-nums">
+                {manualRemaining ?? block?.timeMinutes ?? 0}
+              </p>
+            </div>
+            <p className="pb-1 text-sm font-semibold opacity-80">
+              {manualRemaining !== null ? "balls" : "minutes"}
+            </p>
+          </div>
           <div className="rounded-xl bg-secondary/60 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Target
+              Task
+            </p>
+            <p className="mt-1 text-[15px] font-medium leading-6">{block?.drill ?? plan.summary}</p>
+            <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Success target
             </p>
             <p className="mt-1 text-lg font-semibold leading-6">
               {block?.successTarget ?? "Choose a block"}
             </p>
             <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Do this now
+              Next action
             </p>
-            <p className="mt-1 text-[15px] leading-6">{block?.drill ?? plan.summary}</p>
+            <p className="mt-1 text-[15px] leading-6">
+              {block?.recordPrompt ?? "Complete the block, then move to the next task."}
+            </p>
           </div>
-          <ButtonGroup className="w-full">
+          <ButtonGroup className="grid w-full grid-cols-[1fr_1.25fr_1fr]">
             <Button
               type="button"
               variant="outline"
-              size="icon"
-              className="size-11 shrink-0"
+              className="min-h-12 px-2"
               disabled={blockIndex <= 0}
               onClick={onPrevious}
-              aria-label="Previous block"
             >
-              <ChevronLeft className="size-5" />
+              <ChevronLeft className="size-4" />
+              Previous
             </Button>
-            <Button
-              type="button"
-              className="min-h-11 flex-1"
-              disabled={!block}
-              onClick={onComplete}
-            >
+            <Button type="button" className="min-h-12 px-2" disabled={!block} onClick={onComplete}>
               <CheckCircle2 className="size-4" />
-              Complete block
+              Complete
             </Button>
             <Button
               type="button"
               variant="outline"
-              size="icon"
-              className="size-11 shrink-0"
+              className="min-h-12 px-2"
               disabled={blockIndex >= plan.blocks.length - 1}
               onClick={onNext}
-              aria-label="Next block"
             >
-              <ChevronRight className="size-5" />
+              Next
+              <ChevronRight className="size-4" />
             </Button>
           </ButtonGroup>
           <p className="text-xs leading-5 text-muted-foreground">
-            Manual completion records activity only. A target remains unmeasured until matching
-            launch-monitor evidence arrives.
+            Complete records activity only. Imported launch-monitor rows decide measured success.
           </p>
           {manualRemaining !== null ? (
-            <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3">
+            <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
               <div>
-                <p className="text-sm font-semibold">Manual balls remaining</p>
-                <p className="text-xs text-muted-foreground">
-                  Activity tracking only · not evidence
-                </p>
+                <p className="text-sm font-semibold">Adjust remaining</p>
+                <p className="text-xs text-muted-foreground">Range counter only · not evidence</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -954,11 +960,12 @@ function practiceWorkflowSteps({
   hasEvidence: boolean;
 }): OperationStep[] {
   return [
+    { id: "brief", label: "Brief", status: "complete" },
     { id: "plan", label: "Plan", status: "complete" },
     {
-      id: "range",
-      label: "Range",
-      status: rangeMode ? "current" : saved || finished || hasEvidence ? "complete" : "upcoming",
+      id: "start",
+      label: "Start",
+      status: rangeMode ? "current" : saved || finished || hasEvidence ? "complete" : "current",
     },
     {
       id: "evidence",

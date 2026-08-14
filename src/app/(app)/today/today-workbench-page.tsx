@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import {
   ArrowRight,
   Award,
   ChevronDown,
+  ChevronRight,
+  CircleDot,
   Crosshair,
   Database,
   Dumbbell,
@@ -11,9 +15,9 @@ import {
   Gauge,
   Route,
   ShieldCheck,
+  Sparkles,
   Target,
   Trophy,
-  Upload,
 } from "lucide-react";
 
 import {
@@ -27,9 +31,12 @@ import {
 } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
+import { ButtonGroup } from "@/components/ui/button-group";
+import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -42,7 +49,6 @@ import { DataToolbar } from "@/components/app/data-toolbar";
 import {
   DesktopInsightRail,
   DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
   commonAiPrompts,
   type DesktopInsightMetric,
   type DesktopSavedViewSuggestion,
@@ -70,7 +76,17 @@ import { calculateClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getPracticePlanForSourceSessions } from "@/lib/practice-planner";
+import { getDb } from "@/db/client";
+import { courses, feedItems, sessions } from "@/db/schema";
+import { getUserHandicapProfile } from "@/lib/handicap-data";
+import {
+  getCurrentPracticePlanSummary,
+  getPracticePlanForSourceSessions,
+  getPracticePlannerContext,
+  type PracticePlannerContext,
+} from "@/lib/practice-planner";
+import { getProductPreferences, goalProgress, type SeasonGoal } from "@/lib/product-preferences";
+import { SELECTED_COURSE_COOKIE } from "@/lib/selected-course";
 import {
   clubTypeCurrentPerformanceScore,
   clubTypeEstimatedStrokeEffect,
@@ -83,6 +99,12 @@ import {
   clubSessionBadgeReadout,
   latestPracticeHeadline,
 } from "@/lib/today-practice-scoring";
+import {
+  buildTodayRecommendation,
+  resolveTodayPrimaryState,
+  todayConfidencePercent,
+  type TodayRecommendation,
+} from "@/lib/today-primary-state";
 import {
   type ClubDayComparison,
   type ClubMainStatMetric,
@@ -99,6 +121,17 @@ type TodaySocialContext = {
   loaded: boolean;
   challenges: ChallengeListItem[];
 };
+type TodayHomeActivity = {
+  id: string;
+  kind: "Practice" | "Round" | "PB" | "Import" | "Goal movement";
+  title: string;
+  detail: string;
+  href: string;
+  occurredAt: Date;
+  courseId: string | null;
+  courseName: string | null;
+};
+type TodaySelectedCourse = { id: string; name: string } | null;
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
@@ -233,18 +266,42 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const userId = await requireCurrentUserId();
   const socialLoaded = shouldLoadTodaySocial(first(params.social));
-  const [data, challengeData] = await Promise.all([
+  const [
+    data,
+    challengeData,
+    plannerContext,
+    currentPlan,
+    activeRound,
+    preferences,
+    handicapProfile,
+    cookieStore,
+    recentActivity,
+  ] = await Promise.all([
     getTodayPracticeData({
       date: first(params.date),
       sessionId: normaliseAllValue(first(params.session)),
       club: normaliseAllValue(first(params.club)),
     }),
     socialLoaded ? getChallengesPageData() : Promise.resolve(null),
+    getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
+    getCurrentPracticePlanSummary(userId),
+    getTodayInProgressRound(userId),
+    getProductPreferences(userId),
+    getUserHandicapProfile(userId).catch(() => null),
+    cookies(),
+    getTodayHomeActivity(userId),
   ]);
-  const linkedPracticePlan = await getPracticePlanForSourceSessions(
-    userId,
-    data.sessions.map((session) => session.id),
-  );
+  const [linkedPracticePlan, selectedCourse] = await Promise.all([
+    getPracticePlanForSourceSessions(
+      userId,
+      data.sessions.map((session) => session.id),
+    ),
+    getTodaySelectedCourse(
+      userId,
+      cookieStore.get(SELECTED_COURSE_COOKIE)?.value ?? null,
+      recentActivity,
+    ),
+  ]);
   const socialContext: TodaySocialContext = {
     loaded: socialLoaded,
     challenges: challengeData?.active ?? [],
@@ -258,6 +315,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const clubSort = parseClubSort(first(params.clubSort));
   const sortedClubComparisons = sortClubComparisons(selectedReviewComparisons, clubSort);
   const activeFilterChips = buildTodayFilterChips(data);
+  const recommendation = buildTodayRecommendation(plannerContext);
+  const primaryState = resolveTodayPrimaryState({
+    currentPlan,
+    activeRound,
+    recommendation,
+    latestData: data,
+  });
 
   return (
     <PageShell size="full" className="today-review-page" contentClassName="pb-4 sm:pb-5">
@@ -274,6 +338,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         reviewMode={reviewMode}
         activeFilterChips={activeFilterChips}
         linkedPracticePlan={linkedPracticePlan}
+        plannerContext={plannerContext}
+        currentPlan={currentPlan}
+        primaryState={primaryState}
+        recommendation={recommendation}
+        selectedCourse={selectedCourse}
+        goal={preferences.goals[0] ?? null}
+        seasonOutcome={preferences.seasonPlan.outcome}
+        handicapValue={handicapProfile?.displayValue ?? null}
+        recentActivity={recentActivity}
       />
     </PageShell>
   );
@@ -291,6 +364,15 @@ function TodayDesktopDashboard({
   reviewMode,
   activeFilterChips,
   linkedPracticePlan,
+  plannerContext,
+  currentPlan,
+  primaryState,
+  recommendation,
+  selectedCourse,
+  goal,
+  seasonOutcome,
+  handicapValue,
+  recentActivity,
 }: {
   data: TodayPracticeData;
   socialContext: TodaySocialContext;
@@ -303,173 +385,742 @@ function TodayDesktopDashboard({
   reviewMode: PracticeReviewMode;
   activeFilterChips: { label: string; href: string }[];
   linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>;
+  plannerContext: PracticePlannerContext;
+  currentPlan: Awaited<ReturnType<typeof getCurrentPracticePlanSummary>>;
+  primaryState: ReturnType<typeof resolveTodayPrimaryState>;
+  recommendation: TodayRecommendation;
+  selectedCourse: TodaySelectedCourse;
+  goal: SeasonGoal | null;
+  seasonOutcome: string;
+  handicapValue: number | null;
+  recentActivity: TodayHomeActivity[];
 }) {
   const hasShots = data.shots.length > 0;
 
   return (
-    <DesktopWorkbenchLayout
-      scope="today"
-      railBreakpoint="wide"
-      rail={
-        <DesktopInsightRail
-          title="AI latest-practice rail"
-          description="Explain the latest practice, compare it with baseline and turn visible evidence into the next drill."
-          metrics={todayInsightMetrics(data, linkedPracticePlan)}
-          evidence={todayInsightEvidence(data, linkedPracticePlan)}
-          prompts={commonAiPrompts("latest practice review")}
-          actions={[
-            {
-              label: "Open shot rows",
-              href: shotDatabaseHref,
-              detail: "Filter, compare and export the underlying launch-monitor rows.",
-              icon: Database,
-            },
-            {
-              label: "Open planner",
-              href: "/practice",
-              detail: "Turn the latest practice readout into the next range block.",
-              icon: Dumbbell,
-            },
-          ]}
+    <div className="grid min-w-0 gap-10 pb-4" data-desktop-today-workspace>
+      <TodayHomeUtilityBar shotDatabaseHref={shotDatabaseHref} />
+      <TodayDecisionHero state={primaryState} recommendation={recommendation} data={data} />
+
+      <section className="grid gap-4" aria-labelledby="latest-performance-heading">
+        <EditorialSectionHeading
+          eyebrow="Latest performance"
+          title={hasShots ? chartPatternInsight : "Your next measured pattern starts here"}
+          description={
+            hasShots
+              ? `${data.dateLabel} · ${integerFormatter.format(data.shots.length)} trusted shots · ${selectedClubLabel(data)}`
+              : "Import a launch-monitor session to reveal dispersion, carry consistency and the next club pattern."
+          }
+          action={
+            data.sessions[0]?.id ? (
+              <Button asChild variant="ghost" className="px-0 text-primary">
+                <Link href={`/sessions/${data.sessions[0].id}`} prefetch={false}>
+                  Open session <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : null
+          }
         />
-      }
+        {hasShots ? (
+          <TodayShotCharts
+            shots={chartShots}
+            clubStatuses={chartClubStatuses}
+            patternInsight={chartPatternInsight}
+            variant="editorial"
+          />
+        ) : (
+          <Card className="border-dashed py-10 text-center">
+            <CardContent>
+              <p className="text-base font-semibold">No measured landing pattern yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Today will keep the recommendation honest until a trusted session is available.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      <section className="grid gap-4" aria-labelledby="today-context-heading">
+        <EditorialSectionHeading
+          eyebrow="Today’s context"
+          title="The four signals behind the decision"
+          description="Current load, the clearest club opportunity, bag trust and playing form in one connected read."
+        />
+        <ConnectedMetricBar
+          label="Today’s connected golf context"
+          className="ring-0 shadow-none"
+          metrics={todayHomeContextMetrics(plannerContext, recommendation, handicapValue)}
+        />
+      </section>
+
+      <div className="grid min-w-0 items-start gap-10 xl:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
+        <TodayNextUp
+          currentPlan={currentPlan}
+          selectedCourse={selectedCourse}
+          goal={goal}
+          seasonOutcome={seasonOutcome}
+        />
+        <TodayActivityTimeline items={recentActivity} />
+      </div>
+
+      <Collapsible className="group border-t border-border/70 pt-2" data-full-session-analysis>
+        <CollapsibleTrigger
+          type="button"
+          data-variant="ghost"
+          className={buttonVariants({
+            variant: "ghost",
+            className:
+              "h-auto w-full cursor-pointer justify-between gap-4 rounded-xl px-0 py-5 text-left hover:bg-transparent",
+          })}
+        >
+          <span>
+            <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Session workbench
+            </span>
+            <span className="mt-1 block text-2xl font-semibold tracking-tight text-foreground">
+              Open the full practice analysis
+            </span>
+            <span className="mt-1 block text-sm font-normal text-muted-foreground">
+              Filters, club comparisons, plan-vs-actual, raw rows and data-quality controls.
+            </span>
+          </span>
+          <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">
+          <Tabs defaultValue="overview" className="min-w-0 gap-5" data-desktop-today-tabs>
+            <TabsList variant="line" aria-label="Latest practice workspace" className="flex-wrap">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="practice">Practice</TabsTrigger>
+              <TabsTrigger value="evidence">Evidence</TabsTrigger>
+              <TabsTrigger value="data-quality">Data quality</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="grid min-w-0 gap-5">
+              <TodayVerdictHero data={data} linkedPracticePlan={linkedPracticePlan} />
+              <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
+                <WhatChangedCard items={whatChangedItems(data)} />
+                <DriverHealthCard summary={driverHealthSummary(data)} />
+              </div>
+              <DesktopInsightRail
+                title="AI latest-practice rail"
+                description="Explain the latest practice, compare it with baseline and turn visible evidence into the next drill."
+                metrics={todayInsightMetrics(data, linkedPracticePlan)}
+                evidence={todayInsightEvidence(data, linkedPracticePlan)}
+                prompts={commonAiPrompts("latest practice review")}
+                actions={[
+                  {
+                    label: "Open shot rows",
+                    href: shotDatabaseHref,
+                    detail: "Filter, compare and export the underlying launch-monitor rows.",
+                    icon: Database,
+                  },
+                  {
+                    label: "Open planner",
+                    href: "/practice",
+                    detail: "Turn the latest practice readout into the next range block.",
+                    icon: Dumbbell,
+                  },
+                ]}
+              />
+            </TabsContent>
+
+            <TabsContent value="practice" className="grid min-w-0 gap-5">
+              <div className="@container/today-practice">
+                <div
+                  data-equal-height-row="today-practice"
+                  className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
+                    hasShots
+                      ? "today-practice-grid-has-prescription"
+                      : "today-practice-grid-no-prescription"
+                  }`}
+                >
+                  {hasShots ? (
+                    <div className="today-practice-prescription min-w-0">
+                      <TodayPracticePrescription data={data} />
+                    </div>
+                  ) : null}
+                  <div className="today-practice-mode min-w-0">
+                    <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+                  </div>
+                  <div className="today-practice-plan min-w-0">
+                    <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="evidence" className="grid min-w-0 gap-5">
+              <TodayDesktopFilterBar
+                data={data}
+                activeFilterChips={activeFilterChips}
+                reviewMode={reviewMode}
+                clubSort={clubSort}
+              />
+              {hasShots ? (
+                <>
+                  <SessionSignalStrip data={data} />
+                  <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
+                  <div className="grid items-start gap-5 xl:grid-cols-2">
+                    <TodaySocialLine
+                      data={data}
+                      socialContext={socialContext}
+                      loadHref={todaySocialHref(data, clubSort)}
+                    />
+                    <TodayRawShotListPanel data={data} shotDatabaseHref={shotDatabaseHref} />
+                  </div>
+                </>
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="data-quality" className="grid min-w-0 gap-5">
+              {data.dataCleaning.excludedShotCount > 0 ? (
+                <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
+              ) : (
+                <section className="rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-5">
+                  <div className="flex items-center gap-2 text-[var(--status-success-foreground)]">
+                    <ShieldCheck className="size-5" />
+                    <h2 className="font-semibold">All imported rows are in the trusted sample</h2>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--status-success-foreground)]">
+                    No shot rows were held out of today&apos;s scoring, comparisons or highlights.
+                  </p>
+                </section>
+              )}
+              <TodayDesktopFilterBar
+                data={data}
+                activeFilterChips={activeFilterChips}
+                reviewMode={reviewMode}
+                clubSort={clubSort}
+              />
+            </TabsContent>
+          </Tabs>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+function TodayHomeUtilityBar({ shotDatabaseHref }: { shotDatabaseHref: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          ForeKingHell / Today
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Your live golf decision surface, updated from measured evidence.
+        </p>
+      </div>
+      <ButtonGroup aria-label="Today utility links">
+        <Button asChild variant="outline" size="sm">
+          <Link href={shotDatabaseHref} prefetch={false}>
+            Shot rows
+          </Link>
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/practice" prefetch={false}>
+            Planner
+          </Link>
+        </Button>
+      </ButtonGroup>
+    </div>
+  );
+}
+
+function TodayDecisionHero({
+  state,
+  recommendation,
+  data,
+}: {
+  state: ReturnType<typeof resolveTodayPrimaryState>;
+  recommendation: TodayRecommendation;
+  data: TodayPracticeData;
+}) {
+  const confidence = todayConfidencePercent(
+    state.status === "Review ready" ? recommendation.confidence : state.status,
+  );
+
+  return (
+    <Card
+      className="relative isolate min-h-[29rem] justify-end overflow-hidden border-0 bg-[#052f22] py-0 text-white shadow-[0_28px_80px_-36px_rgba(3,32,23,0.75)] ring-0"
+      data-today-decision-hero
     >
-      <div className="grid min-w-0 gap-5" data-desktop-today-workspace>
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href="/dashboard" prefetch={false}>
-              <ArrowRight className="size-4 rotate-180" />
-              Dashboard
-            </Link>
-          </Button>
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href={shotDatabaseHref} prefetch={false}>
-                <Database className="size-4" />
-                View shot rows
+      <div
+        className="pointer-events-none absolute inset-0 -z-30 bg-[url('/assets/generated/lmwt-range-hero.png')] bg-cover bg-[70%_center] opacity-70"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(3,35,25,0.98)_0%,rgba(3,35,25,0.92)_47%,rgba(3,35,25,0.28)_100%)]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(0deg,rgba(3,35,25,0.95),transparent)]"
+        aria-hidden
+      />
+
+      <CardContent className="grid min-w-0 gap-8 px-7 py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:px-10 lg:py-10">
+        <div className="flex min-w-0 flex-col justify-end">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge className="border-white/20 bg-white/12 text-white hover:bg-white/12">
+              {state.status}
+            </Badge>
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+              {state.eyebrow}
+            </span>
+          </div>
+          <h1 className="mt-5 max-w-5xl text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] text-white xl:text-7xl">
+            {state.title}
+          </h1>
+          <p className="mt-5 max-w-3xl text-pretty text-base font-medium leading-7 text-white/78 lg:text-lg">
+            {state.reason}
+          </p>
+          <ButtonGroup className="mt-7 w-fit" aria-label="Primary Today actions">
+            <Button
+              asChild
+              size="lg"
+              className="min-h-12 bg-white px-6 !text-[#073527] hover:bg-white/90 hover:!text-[#073527]"
+            >
+              <Link href={state.href} prefetch={false}>
+                {state.action} <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button
               asChild
-              className="bg-[var(--status-success-surface)] text-primary-foreground hover:bg-[var(--status-success-surface)]"
+              size="lg"
+              variant="outline"
+              className="min-h-12 border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
             >
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" />
-                Import CSV
+              <Link href="/sessions" prefetch={false}>
+                Sessions
               </Link>
             </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="min-h-12 border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
+            >
+              <Link href="/import" prefetch={false}>
+                Import
+              </Link>
+            </Button>
+          </ButtonGroup>
+        </div>
+
+        <div className="self-end rounded-xl border border-white/16 bg-black/20 p-5 backdrop-blur-md">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
+                Decision confidence
+              </p>
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                {recommendation.confidence}
+              </p>
+            </div>
+            <Sparkles className="size-5 text-[#a6f04a]" aria-hidden />
+          </div>
+          <Progress
+            value={confidence}
+            aria-label={`${recommendation.confidence} decision confidence`}
+            className="mt-4 h-1.5 bg-white/15 [&_[data-slot=progress-indicator]]:bg-[#a6f04a]"
+          />
+          <div className="mt-5 grid gap-4 border-t border-white/14 pt-5">
+            <HeroEvidenceRow label="Evidence" value={recommendation.evidenceLabel} />
+            <HeroEvidenceRow label="Main club" value={recommendation.clubLabel} />
+            <HeroEvidenceRow
+              label="Latest pattern"
+              value={
+                data.shots.length > 0
+                  ? `${formatRate(data.overall.today.playableRate)} lateral window`
+                  : "Awaiting measured session"
+              }
+            />
           </div>
         </div>
-        <Tabs defaultValue="overview" className="min-w-0 gap-5" data-desktop-today-tabs>
-          <TabsList variant="line" aria-label="Latest practice workspace" className="flex-wrap">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="practice">Practice</TabsTrigger>
-            <TabsTrigger value="evidence">Evidence</TabsTrigger>
-            <TabsTrigger value="data-quality">Data quality</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="grid min-w-0 gap-5">
-            <TodayVerdictHero data={data} linkedPracticePlan={linkedPracticePlan} />
-            <ConnectedMetricBar
-              metrics={todayConnectedMetrics(data, linkedPracticePlan)}
-              label="Latest practice connected metrics"
-            />
-            {hasShots ? (
-              <TodayShotCharts
-                shots={chartShots}
-                clubStatuses={chartClubStatuses}
-                patternInsight={chartPatternInsight}
-              />
-            ) : null}
-            <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
-              <WhatChangedCard items={whatChangedItems(data)} />
-              <DriverHealthCard summary={driverHealthSummary(data)} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="practice" className="grid min-w-0 gap-5">
-            <div className="@container/today-practice">
-              <div
-                data-equal-height-row="today-practice"
-                className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
-                  hasShots
-                    ? "today-practice-grid-has-prescription"
-                    : "today-practice-grid-no-prescription"
-                }`}
-              >
-                {hasShots ? (
-                  <div className="today-practice-prescription min-w-0">
-                    <TodayPracticePrescription data={data} />
-                  </div>
-                ) : null}
-                <div className="today-practice-mode min-w-0">
-                  <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
-                </div>
-                <div className="today-practice-plan min-w-0">
-                  <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="evidence" className="grid min-w-0 gap-5">
-            <TodayDesktopFilterBar
-              data={data}
-              activeFilterChips={activeFilterChips}
-              reviewMode={reviewMode}
-              clubSort={clubSort}
-            />
-            {hasShots ? (
-              <>
-                <SessionSignalStrip data={data} />
-                <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
-                <div className="grid items-start gap-5 xl:grid-cols-2">
-                  <TodaySocialLine
-                    data={data}
-                    socialContext={socialContext}
-                    loadHref={todaySocialHref(data, clubSort)}
-                  />
-                  <TodayRawShotListPanel data={data} shotDatabaseHref={shotDatabaseHref} />
-                </div>
-              </>
-            ) : null}
-          </TabsContent>
-
-          <TabsContent value="data-quality" className="grid min-w-0 gap-5">
-            {data.dataCleaning.excludedShotCount > 0 ? (
-              <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
-            ) : (
-              <section className="rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-5">
-                <div className="flex items-center gap-2 text-[var(--status-success-foreground)]">
-                  <ShieldCheck className="size-5" />
-                  <h2 className="font-semibold">All imported rows are in the trusted sample</h2>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-[var(--status-success-foreground)]">
-                  No shot rows were held out of today&apos;s scoring, comparisons or highlights.
-                </p>
-              </section>
-            )}
-            <TodayDesktopFilterBar
-              data={data}
-              activeFilterChips={activeFilterChips}
-              reviewMode={reviewMode}
-              clubSort={clubSort}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </DesktopWorkbenchLayout>
+      </CardContent>
+    </Card>
   );
 }
 
-function todayConnectedMetrics(
-  data: TodayPracticeData,
-  linkedPracticePlan: Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>,
+function HeroEvidenceRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="text-sm text-white/58">{label}</span>
+      <span className="text-right text-sm font-semibold text-white">{value}</span>
+    </div>
+  );
+}
+
+function EditorialSectionHeading({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  action?: ReactNode;
+}) {
+  const id = `${eyebrow.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-heading`;
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-5">
+      <div className="max-w-4xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>
+        <h2
+          id={id}
+          className="mt-2 text-balance text-3xl font-semibold tracking-[-0.03em] lg:text-4xl"
+        >
+          {title}
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function todayHomeContextMetrics(
+  context: PracticePlannerContext,
+  recommendation: TodayRecommendation,
+  handicapValue: number | null,
 ) {
-  return todayInsightMetrics(data, linkedPracticePlan)
-    .filter((metric) => metric.label !== "Practice usefulness")
-    .slice(0, 4)
-    .map(({ label, value, detail }) => ({ label, value, detail }));
+  const bagClubs = context.bag.clubs.filter((club) => club.sampleSize > 0);
+  const bagConfidence =
+    bagClubs.length > 0
+      ? Math.round(
+          bagClubs.reduce((total, club) => total + club.confidenceScore, 0) / bagClubs.length,
+        )
+      : null;
+  const form = context.trainingLoad.golfForm;
+
+  return [
+    {
+      label: "Current practice load",
+      value: context.trainingLoad.statusLabel,
+      detail: `${context.trainingLoad.recentLoad} load · ${context.trainingLoad.recommendation}`,
+    },
+    {
+      label: "Main club opportunity",
+      value: recommendation.clubLabel,
+      detail: `${recommendation.issue} · ${recommendation.evidenceLabel}`,
+    },
+    {
+      label: "Bag confidence",
+      value: bagConfidence === null ? "Building" : `${bagConfidence}/100`,
+      detail:
+        bagClubs.length > 0
+          ? `${bagClubs.length} measured ${bagClubs.length === 1 ? "club" : "clubs"}`
+          : "Add stock shots to establish trust",
+    },
+    {
+      label: "Handicap / form",
+      value: handicapValue === null ? signedInteger(form) : numberFormatter.format(handicapValue),
+      detail:
+        handicapValue === null
+          ? `Form ${signedInteger(form)} · handicap not established`
+          : `Playing estimate · form ${signedInteger(form)}`,
+    },
+  ];
+}
+
+function TodayNextUp({
+  currentPlan,
+  selectedCourse,
+  goal,
+  seasonOutcome,
+}: {
+  currentPlan: Awaited<ReturnType<typeof getCurrentPracticePlanSummary>>;
+  selectedCourse: TodaySelectedCourse;
+  goal: SeasonGoal | null;
+  seasonOutcome: string;
+}) {
+  return (
+    <section className="grid gap-4" aria-labelledby="next-up-heading">
+      <EditorialSectionHeading
+        eyebrow="Next up"
+        title="The next three things already in motion"
+        description="Plans, course context and goals stay compact until they need your attention."
+      />
+      <Card className="gap-0 py-0 shadow-none ring-foreground/8">
+        <NextUpRow
+          label="Current practice plan"
+          title={currentPlan?.title ?? "No saved plan"}
+          detail={
+            currentPlan
+              ? `${currentPlan.timeMinutes} min · ${practicePlanStatusLabel(currentPlan.status)}`
+              : "Build the next measured range session"
+          }
+          href="/practice"
+          badge={currentPlan ? practicePlanStatusLabel(currentPlan.status) : "Plan"}
+        />
+        <NextUpRow
+          label="Selected course"
+          title={selectedCourse?.name ?? "Choose where you’re playing"}
+          detail={
+            selectedCourse
+              ? "Ready for tee and strategy setup"
+              : "Add course context before the round"
+          }
+          href="/play"
+          badge={selectedCourse ? "Selected" : "Choose"}
+        />
+        <NextUpRow
+          label="Recent goal progress"
+          title={goal?.title ?? seasonOutcome}
+          detail={goal ? goalProgressDetail(goal) : "Set a measured goal to track movement here"}
+          href="/goals"
+          badge={goal ? `${goalProgress(goal)}%` : "Set goal"}
+          progress={goal ? goalProgress(goal) : null}
+          last
+        />
+      </Card>
+    </section>
+  );
+}
+
+function NextUpRow({
+  label,
+  title,
+  detail,
+  href,
+  badge,
+  progress,
+  last = false,
+}: {
+  label: string;
+  title: string;
+  detail: string;
+  href: string;
+  badge: string;
+  progress?: number | null;
+  last?: boolean;
+}) {
+  return (
+    <Link href={href} prefetch={false} className="focus-aaa block rounded-xl">
+      <Item
+        variant="default"
+        className={`rounded-none border-x-0 border-t-0 px-5 py-4 transition-colors hover:bg-muted/45 ${last ? "border-b-0" : "border-b"}`}
+      >
+        <ItemContent>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {label}
+          </p>
+          <ItemTitle className="mt-1 text-base">{title}</ItemTitle>
+          <ItemDescription className="mt-1">{detail}</ItemDescription>
+          {progress !== null && progress !== undefined ? (
+            <Progress
+              value={progress}
+              aria-label={`${title}: ${progress}% complete`}
+              className="mt-2 h-1.5"
+            />
+          ) : null}
+        </ItemContent>
+        <ItemActions>
+          <Badge variant="outline">{badge}</Badge>
+          <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+        </ItemActions>
+      </Item>
+    </Link>
+  );
+}
+
+function TodayActivityTimeline({ items }: { items: TodayHomeActivity[] }) {
+  return (
+    <section className="grid gap-4" aria-labelledby="recent-activity-heading">
+      <EditorialSectionHeading
+        eyebrow="Recent activity"
+        title="Your golf, in sequence"
+        description="Measured sessions, rounds, imports, PBs and goal movement when evidence exists."
+      />
+      <div className="relative grid gap-0 pl-5 before:absolute before:bottom-4 before:left-[5px] before:top-4 before:w-px before:bg-border">
+        {items.length > 0 ? (
+          items.slice(0, 5).map((item) => (
+            <Link
+              key={item.id}
+              href={item.href}
+              prefetch={false}
+              className="group relative grid min-w-0 gap-1 border-b border-border/70 py-4 first:pt-1 last:border-b-0"
+            >
+              <CircleDot
+                className="absolute -left-5 top-[1.15rem] size-3 bg-background text-primary first:top-1"
+                aria-hidden
+              />
+              <div className="flex items-center justify-between gap-3">
+                <Badge variant="outline" className="border-0 px-0 text-primary shadow-none">
+                  {item.kind}
+                </Badge>
+                <time className="shrink-0 text-xs text-muted-foreground">
+                  {relativeActivityDate(item.occurredAt)}
+                </time>
+              </div>
+              <p className="truncate font-semibold text-foreground transition-colors group-hover:text-primary">
+                {item.title}
+              </p>
+              <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+            </Link>
+          ))
+        ) : (
+          <p className="py-4 text-sm text-muted-foreground">
+            Your first measured session will start the timeline.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function goalProgressDetail(goal: SeasonGoal) {
+  return `${numberFormatter.format(goal.currentValue)} ${goal.unit} now · target ${numberFormatter.format(goal.targetValue)} ${goal.unit}`;
+}
+
+function practicePlanStatusLabel(status: string) {
+  return status.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function signedInteger(value: number) {
+  return `${value > 0 ? "+" : ""}${Math.round(value)}`;
+}
+
+async function getTodayInProgressRound(userId: string) {
+  return (
+    (
+      await getDb()
+        .select({ id: sessions.id, courseName: sessions.courseName })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.userId, userId),
+            inArray(sessions.type, ["round", "real_round", "simulator", "simulated_course"]),
+            inArray(sessions.roundStatus, ["in_progress", "active"]),
+          ),
+        )
+        .orderBy(desc(sessions.date))
+        .limit(1)
+    )[0] ?? null
+  );
+}
+
+async function getTodayHomeActivity(userId: string): Promise<TodayHomeActivity[]> {
+  const [sessionRows, feedRows] = await Promise.all([
+    getDb()
+      .select({
+        id: sessions.id,
+        type: sessions.type,
+        fileName: sessions.fileName,
+        courseId: sessions.courseId,
+        courseName: sessions.courseName,
+        date: sessions.date,
+      })
+      .from(sessions)
+      .where(eq(sessions.userId, userId))
+      .orderBy(desc(sessions.date))
+      .limit(8),
+    getDb()
+      .select({
+        id: feedItems.id,
+        itemType: feedItems.itemType,
+        headline: feedItems.headline,
+        metricValue: feedItems.metricValue,
+        context: feedItems.context,
+        proofUrl: feedItems.proofUrl,
+        sourceId: feedItems.sourceId,
+        createdAt: feedItems.createdAt,
+      })
+      .from(feedItems)
+      .where(eq(feedItems.userId, userId))
+      .orderBy(desc(feedItems.createdAt))
+      .limit(8)
+      .catch(() => []),
+  ]);
+  const feedSessionIds = new Set(
+    feedRows.map((row) => row.sourceId).filter((value): value is string => Boolean(value)),
+  );
+  const fromFeed: TodayHomeActivity[] = feedRows.map((row) => ({
+    id: `feed-${row.id}`,
+    kind: feedActivityKind(row.itemType),
+    title: row.headline,
+    detail: [row.metricValue, row.context].filter(Boolean).join(" · ") || "Verified golf activity",
+    href: safeActivityHref(row.proofUrl, "/feed"),
+    occurredAt: row.createdAt,
+    courseId: null,
+    courseName: null,
+  }));
+  const fromSessions: TodayHomeActivity[] = sessionRows
+    .filter((row) => !feedSessionIds.has(row.id))
+    .map((row) => {
+      const round = isRoundActivity(row.type);
+      return {
+        id: `session-${row.id}`,
+        kind: round ? "Round" : "Practice",
+        title: row.courseName ?? row.fileName ?? (round ? "Round recorded" : "Practice imported"),
+        detail: round
+          ? "Round evidence added to your playing record"
+          : "Measured session ready for review",
+        href: `/sessions/${row.id}`,
+        occurredAt: row.date,
+        courseId: row.courseId,
+        courseName: row.courseName,
+      } satisfies TodayHomeActivity;
+    });
+
+  return [...fromFeed, ...fromSessions]
+    .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())
+    .slice(0, 8);
+}
+
+async function getTodaySelectedCourse(
+  userId: string,
+  selectedCourseId: string | null,
+  activity: TodayHomeActivity[],
+): Promise<TodaySelectedCourse> {
+  if (selectedCourseId) {
+    const selected =
+      (
+        await getDb()
+          .select({ id: courses.id, name: courses.name })
+          .from(courses)
+          .where(
+            and(
+              eq(courses.id, selectedCourseId),
+              or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+            ),
+          )
+          .limit(1)
+      )[0] ?? null;
+    if (selected) return selected;
+  }
+
+  const recentCourse = activity.find((item) => item.courseId && item.courseName);
+  return recentCourse?.courseId && recentCourse.courseName
+    ? { id: recentCourse.courseId, name: recentCourse.courseName }
+    : null;
+}
+
+function feedActivityKind(itemType: string): TodayHomeActivity["kind"] {
+  if (/personal|record|pb/i.test(itemType)) return "PB";
+  if (/goal/i.test(itemType)) return "Goal movement";
+  if (/import|sync/i.test(itemType)) return "Import";
+  if (/round|score/i.test(itemType)) return "Round";
+  return "Practice";
+}
+
+function isRoundActivity(type: string) {
+  return ["round", "real_round", "simulator", "simulated_course"].includes(type);
+}
+
+function safeActivityHref(value: string | null, fallback: string) {
+  return value?.startsWith("/") ? value : fallback;
+}
+
+function relativeActivityDate(value: Date) {
+  const today = new Date();
+  const day = 24 * 60 * 60 * 1_000;
+  const difference = Math.max(0, Math.floor((today.getTime() - value.getTime()) / day));
+  if (difference === 0) return "Today";
+  if (difference === 1) return "Yesterday";
+  if (difference < 7) return `${difference} days ago`;
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(value);
 }
 
 function todayInsightMetrics(

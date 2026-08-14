@@ -7,6 +7,14 @@ const provenanceSource = readFileSync(
   join(process.cwd(), "src/app/analyse/compare/comparison-provenance-panel.tsx"),
   "utf8",
 );
+const toolbarSource = readFileSync(
+  join(process.cwd(), "src/app/analyse/compare/session-comparison-toolbar.tsx"),
+  "utf8",
+);
+const stageSource = readFileSync(
+  join(process.cwd(), "src/app/analyse/compare/session-comparison-stage.tsx"),
+  "utf8",
+);
 
 describe("session comparison page", () => {
   it("supports explicit focus/baseline sessions and keeps the existing compare path", () => {
@@ -20,18 +28,32 @@ describe("session comparison page", () => {
     expect(source).toContain("confidenceLabel");
     expect(source).toContain('href="/practice"');
     expect(source).toContain("ComparisonProvenancePanel");
-    expect(provenanceSource).toContain("Method & provenance");
+    expect(provenanceSource).toContain("Evidence & method");
     expect(provenanceSource).toContain("metric.source");
     expect(provenanceSource).toContain("metric.method");
     expect(source).toContain('href="/shots"');
   });
 
-  it("keeps one visible desktop evidence tree and preserves save/delete workflows", () => {
+  it("uses one connected comparison setup and a large switchable visual stage", () => {
     expect(source).toContain("<SessionComparisonToolbar");
+    expect(toolbarSource).toContain("Focus session");
+    expect(toolbarSource).toContain("Baseline session");
+    expect(toolbarSource).toContain("Environment / conditions");
+    expect(toolbarSource).toContain("<EntityCombobox");
+    expect(stageSource).toContain('value="overlay"');
+    expect(stageSource).toContain('value="side-by-side"');
+    expect(stageSource).toContain('value="delta"');
+    expect(stageSource).toContain("Carry distribution");
+    expect(stageSource).toContain("Direction");
+    expect(stageSource).toContain("Confidence");
+  });
+
+  it("keeps one visible evidence tree and preserves compact save/delete workflows", () => {
     expect(source).toContain("<Table>");
     expect(source).toContain("<SaveComparisonDialog");
     expect(source).toContain("<DeleteComparisonButton");
-    expect(source).toContain("<StatusTimeline");
+    expect(source).toContain("divide-y divide-border/70");
+    expect(source).not.toContain("<StatusTimeline");
     for (const obsoleteMobileSource of [
       "MobileSessionCompare",
       "MobileAppShell",

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
@@ -8,12 +8,14 @@ import {
   challengeTemplates,
   challenges,
   groupChallengeLinks,
+  groupInvites,
   groupMemberships,
   groupPosts,
   groups,
   leaderboardSnapshots,
   rivalryWindows,
   sessions,
+  tournaments,
   userProfiles,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -54,6 +56,7 @@ export type GroupListItem = {
   slug: string;
   name: string;
   description: string | null;
+  avatarUrl: string | null;
   groupType: GroupType;
   visibility: SocialVisibility;
   memberCount: number;
@@ -61,6 +64,23 @@ export type GroupListItem = {
   challengeCount: number;
   viewerRole: string | null;
   inviteCode: string | null;
+  latestActivity: {
+    label: string;
+    createdAt: Date;
+  } | null;
+  currentChallenge: {
+    id: string;
+    title: string;
+    status: string;
+    startsAt: Date;
+    endsAt: Date | null;
+  } | null;
+};
+
+export type GroupInviteItem = {
+  id: string;
+  createdAt: Date;
+  group: GroupListItem;
 };
 
 export type GroupLinkedChallengeItem = {
@@ -95,7 +115,16 @@ export type GroupDetailData = {
     title: string;
     templateName: string;
     status: string;
+    startsAt: Date;
+    endsAt: Date | null;
   }>;
+  nextEvent: {
+    id: string;
+    title: string;
+    startsAt: Date;
+    endsAt: Date | null;
+    status: string;
+  } | null;
   members: Array<{
     userId: string;
     role: string;
@@ -137,7 +166,8 @@ export async function getGroupsPageData(inviteCode?: string | null) {
     .from(groupMemberships)
     .where(and(eq(groupMemberships.userId, userId), eq(groupMemberships.status, "active")));
   const memberGroupIds = memberships.map((membership) => membership.groupId);
-  const rows = await getDb()
+  const db = getDb();
+  const rows = await db
     .select()
     .from(groups)
     .where(
@@ -151,8 +181,25 @@ export async function getGroupsPageData(inviteCode?: string | null) {
     )
     .orderBy(desc(groups.createdAt))
     .limit(80);
-  const [hydrated, linkedChallenges] = await Promise.all([
+  const pendingInviteRows = await db
+    .select({
+      id: groupInvites.id,
+      groupId: groupInvites.groupId,
+      createdAt: groupInvites.createdAt,
+    })
+    .from(groupInvites)
+    .where(and(eq(groupInvites.inviteeUserId, userId), eq(groupInvites.status, "pending")))
+    .orderBy(desc(groupInvites.createdAt))
+    .limit(40);
+  const invitedGroupRows = pendingInviteRows.length
+    ? await db
+        .select()
+        .from(groups)
+        .where(inArray(groups.id, [...new Set(pendingInviteRows.map((invite) => invite.groupId))]))
+    : [];
+  const [hydrated, invitedGroups, linkedChallenges] = await Promise.all([
     hydrateGroupList(rows, memberships),
+    hydrateGroupList(invitedGroupRows, memberships),
     getLinkedGroupChallenges(rows),
   ]);
   const invitePreview = inviteCode
@@ -168,6 +215,10 @@ export async function getGroupsPageData(inviteCode?: string | null) {
     groups: hydrated,
     mine: hydrated.filter((group) => group.viewerRole),
     discoverable: hydrated.filter((group) => !group.viewerRole && group.visibility === "public"),
+    invites: pendingInviteRows.flatMap((invite) => {
+      const group = invitedGroups.find((candidate) => candidate.id === invite.groupId);
+      return group ? [{ id: invite.id, createdAt: invite.createdAt, group }] : [];
+    }),
     linkedChallenges,
     groupTypes,
     invitePreview,
@@ -190,7 +241,7 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
   const memberships = await getDb()
     .select()
     .from(groupMemberships)
-    .where(eq(groupMemberships.groupId, group.id));
+    .where(and(eq(groupMemberships.groupId, group.id), eq(groupMemberships.status, "active")));
   const [listItem] = await hydrateGroupList([group], memberships);
   const postRows = await getDb()
     .select()
@@ -207,6 +258,8 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
       id: challenges.id,
       title: challenges.title,
       status: challenges.status,
+      startsAt: challenges.startsAt,
+      endsAt: challenges.endsAt,
       templateName: challengeTemplates.name,
     })
     .from(groupChallengeLinks)
@@ -215,6 +268,24 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     .where(eq(groupChallengeLinks.groupId, group.id))
     .orderBy(desc(groupChallengeLinks.createdAt))
     .limit(12);
+  const [nextEvent] = await getDb()
+    .select({
+      id: tournaments.id,
+      title: tournaments.title,
+      startsAt: tournaments.startsAt,
+      endsAt: tournaments.endsAt,
+      status: tournaments.status,
+    })
+    .from(tournaments)
+    .where(
+      and(
+        eq(tournaments.groupId, group.id),
+        gte(tournaments.startsAt, new Date()),
+        inArray(tournaments.status, ["open", "scheduled", "active"]),
+      ),
+    )
+    .orderBy(asc(tournaments.startsAt))
+    .limit(1);
   const viewerMembership = memberships.find(
     (membership) => membership.userId === userId && membership.status === "active",
   );
@@ -262,7 +333,10 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
       title: challenge.title,
       status: challenge.status,
       templateName: challenge.templateName ?? "Challenge",
+      startsAt: challenge.startsAt,
+      endsAt: challenge.endsAt,
     })),
+    nextEvent: nextEvent ?? null,
     members,
     rivalry,
     canPost: group.ownerUserId === userId || Boolean(viewerMembership),
@@ -339,7 +413,10 @@ export async function joinGroup(groupId: string, inviteCode?: string | null) {
     throw new Error("Group not found.");
   }
 
-  if (group.visibility !== "public" && group.inviteCode !== inviteCode) {
+  if (
+    group.visibility !== "public" &&
+    (!inviteCode || !group.inviteCode || group.inviteCode !== inviteCode)
+  ) {
     throw new Error("This group requires an invite link.");
   }
 
@@ -371,6 +448,55 @@ export async function joinGroupByInviteCode(inviteCode: string) {
   }
 
   await joinGroup(group.id, code);
+  return group.slug;
+}
+
+export async function respondToGroupInvite(inviteId: string, response: "accepted" | "declined") {
+  const userId = await requireCurrentUserId();
+  const [invite] = await getDb()
+    .select()
+    .from(groupInvites)
+    .where(
+      and(
+        eq(groupInvites.id, inviteId),
+        eq(groupInvites.inviteeUserId, userId),
+        eq(groupInvites.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  if (!invite) {
+    throw new Error("Group invite not found.");
+  }
+
+  const [group] = await getDb().select().from(groups).where(eq(groups.id, invite.groupId)).limit(1);
+
+  if (!group) {
+    throw new Error("Group not found.");
+  }
+
+  if (response === "accepted") {
+    await getDb()
+      .insert(groupMemberships)
+      .values({
+        groupId: group.id,
+        userId,
+        role: "member",
+        status: "active",
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: [groupMemberships.groupId, groupMemberships.userId],
+        set: { status: "active", updatedAt: new Date() },
+      });
+  }
+
+  await getDb()
+    .update(groupInvites)
+    .set({ status: response, respondedAt: new Date() })
+    .where(and(eq(groupInvites.id, invite.id), eq(groupInvites.inviteeUserId, userId)));
+  revalidateGroups(group.slug);
+
   return group.slug;
 }
 
@@ -455,35 +581,84 @@ async function hydrateGroupList(
   }
 
   const groupIds = groupRows.map((group) => group.id);
-  const [memberCounts, postCounts, challengeCounts] = await Promise.all([
-    getDb()
-      .select({ groupId: groupMemberships.groupId, value: sql<number>`count(*)::int` })
-      .from(groupMemberships)
-      .where(
-        and(inArray(groupMemberships.groupId, groupIds), eq(groupMemberships.status, "active")),
-      )
-      .groupBy(groupMemberships.groupId),
-    getDb()
-      .select({ groupId: groupPosts.groupId, value: sql<number>`count(*)::int` })
-      .from(groupPosts)
-      .where(and(inArray(groupPosts.groupId, groupIds), sql`${groupPosts.deletedAt} IS NULL`))
-      .groupBy(groupPosts.groupId),
-    getDb()
-      .select({ groupId: groupChallengeLinks.groupId, value: sql<number>`count(*)::int` })
-      .from(groupChallengeLinks)
-      .where(inArray(groupChallengeLinks.groupId, groupIds))
-      .groupBy(groupChallengeLinks.groupId),
-  ]);
+  const [memberCounts, postCounts, challengeCounts, recentPosts, linkedChallengeRows] =
+    await Promise.all([
+      getDb()
+        .select({ groupId: groupMemberships.groupId, value: sql<number>`count(*)::int` })
+        .from(groupMemberships)
+        .where(
+          and(inArray(groupMemberships.groupId, groupIds), eq(groupMemberships.status, "active")),
+        )
+        .groupBy(groupMemberships.groupId),
+      getDb()
+        .select({ groupId: groupPosts.groupId, value: sql<number>`count(*)::int` })
+        .from(groupPosts)
+        .where(and(inArray(groupPosts.groupId, groupIds), sql`${groupPosts.deletedAt} IS NULL`))
+        .groupBy(groupPosts.groupId),
+      getDb()
+        .select({ groupId: groupChallengeLinks.groupId, value: sql<number>`count(*)::int` })
+        .from(groupChallengeLinks)
+        .where(inArray(groupChallengeLinks.groupId, groupIds))
+        .groupBy(groupChallengeLinks.groupId),
+      getDb()
+        .selectDistinctOn([groupPosts.groupId], {
+          groupId: groupPosts.groupId,
+          title: groupPosts.title,
+          body: groupPosts.body,
+          createdAt: groupPosts.createdAt,
+        })
+        .from(groupPosts)
+        .where(and(inArray(groupPosts.groupId, groupIds), sql`${groupPosts.deletedAt} IS NULL`))
+        .orderBy(groupPosts.groupId, desc(groupPosts.createdAt)),
+      getDb()
+        .select({
+          groupId: groupChallengeLinks.groupId,
+          id: challenges.id,
+          title: challenges.title,
+          status: challenges.status,
+          startsAt: challenges.startsAt,
+          endsAt: challenges.endsAt,
+        })
+        .from(groupChallengeLinks)
+        .innerJoin(challenges, eq(groupChallengeLinks.challengeId, challenges.id))
+        .where(inArray(groupChallengeLinks.groupId, groupIds))
+        .orderBy(asc(challenges.startsAt)),
+    ]);
   const memberCountMap = new Map(memberCounts.map((row) => [row.groupId, row.value]));
   const postCountMap = new Map(postCounts.map((row) => [row.groupId, row.value]));
   const challengeCountMap = new Map(challengeCounts.map((row) => [row.groupId, row.value]));
   const membershipMap = new Map(memberships.map((membership) => [membership.groupId, membership]));
+  const latestActivityMap = new Map<string, { label: string; createdAt: Date }>();
+  for (const post of recentPosts) {
+    if (!latestActivityMap.has(post.groupId)) {
+      latestActivityMap.set(post.groupId, {
+        label: post.title?.trim() || post.body.trim(),
+        createdAt: post.createdAt,
+      });
+    }
+  }
+  const currentChallengeMap = new Map<string, GroupListItem["currentChallenge"]>();
+  for (const challenge of linkedChallengeRows) {
+    if (
+      !currentChallengeMap.has(challenge.groupId) &&
+      !["complete", "completed", "cancelled", "closed"].includes(challenge.status)
+    ) {
+      currentChallengeMap.set(challenge.groupId, {
+        id: challenge.id,
+        title: challenge.title,
+        status: challenge.status,
+        startsAt: challenge.startsAt,
+        endsAt: challenge.endsAt,
+      });
+    }
+  }
 
   return groupRows.map((group) => ({
     id: group.id,
     slug: group.slug,
     name: group.name,
     description: group.description,
+    avatarUrl: group.avatarUrl,
     groupType: parseGroupType(group.groupType),
     visibility: parseVisibility(group.visibility),
     memberCount: memberCountMap.get(group.id) ?? 0,
@@ -491,6 +666,8 @@ async function hydrateGroupList(
     challengeCount: challengeCountMap.get(group.id) ?? 0,
     viewerRole: membershipMap.get(group.id)?.role ?? null,
     inviteCode: group.inviteCode,
+    latestActivity: latestActivityMap.get(group.id) ?? null,
+    currentChallenge: currentChallengeMap.get(group.id) ?? null,
   }));
 }
 

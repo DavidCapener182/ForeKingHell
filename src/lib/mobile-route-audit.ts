@@ -280,6 +280,13 @@ export const mobileRouteAudit = [
     note: "Keep one map-first selected-hole editor; remove duplicated mobile and batch forms.",
   },
   {
+    file: "src/app/(app)/courses/[courseId]/page.tsx",
+    route: "/courses/[courseId]",
+    classification: 4,
+    resolution: "redirect",
+    note: "Course profiles remain a full workbench; companion requests return to the Play or Courses decision surface.",
+  },
+  {
     file: "src/app/(app)/courses/[courseId]/records/[recordId]/page.tsx",
     route: "/courses/[courseId]/records/[recordId]",
     classification: 1,

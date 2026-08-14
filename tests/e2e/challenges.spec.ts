@@ -56,8 +56,8 @@ test.describe("challenge competition flow", () => {
     const comment = `Challenge comment ${data.token}`;
 
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto("/challenges");
-    await expectPageReady(page, /Competition hub/i);
+    await page.goto("/challenges?tab=available");
+    await expectPageReady(page, /^Challenges$/i);
     await expect(page.locator("body")).toContainText(data.title);
 
     await page.goto(`/challenges/${data.challengeId}`);

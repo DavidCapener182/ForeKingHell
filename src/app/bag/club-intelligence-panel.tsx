@@ -14,7 +14,6 @@ import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DataPanel, SectionHeader, StatusPill, type Tone } from "@/components/premium";
@@ -36,6 +35,14 @@ export type ClubIntelligenceItem = {
   latestReliableLabel: string;
   latestReliableRangeLabel: string;
   personalBestLabel: string;
+  totalLabel: string;
+  dispersionLabel: string;
+  commonMissLabel: string;
+  launchLabel: string;
+  apexLabel: string;
+  speedLabel: string;
+  latestChangeLabel: string;
+  latestChangeDetail: string;
   trustScore: number;
   sampleSize: number;
   shotCount: number;
@@ -77,8 +84,8 @@ export function ClubIntelligencePanel({
   return (
     <DataPanel id="club-intelligence" className="scroll-mt-28">
       <SectionHeader
-        title="Club intelligence"
-        description="One selected club at a time, with the supporting numbers kept visible but not repeated down the page."
+        title="Club browser"
+        description="Choose the club from your bag. Its measured flight, miss and latest change open in the detail panel on the right."
         action={
           <StatusPill tone={selectedClub.health.tone}>{selectedClub.health.label}</StatusPill>
         }
@@ -161,7 +168,7 @@ export function ClubIntelligencePanel({
               onOpenChange={setDetailOpen}
               inlineAtUltrawide
               title={`${selectedClub.label} intelligence`}
-              description="Measured carry, trust, miss and dispersion evidence for the selected club."
+              description={`${selectedClub.brandModel} · measured performance and current setup confidence.`}
               trigger={
                 <Button type="button" className="w-fit" data-selected-club-detail-trigger>
                   Review {selectedClub.label}
@@ -171,19 +178,15 @@ export function ClubIntelligencePanel({
               className="shadow-sm"
               contentClassName="grid gap-3"
             >
-              <div className="grid gap-3 md:grid-cols-3">
-                <ClubSignal signal={selectedClub.health} label="Health" />
-                <ClubSignal signal={selectedClub.miss} label="Current miss" />
-                <ClubSignal
-                  signal={
-                    selectedClub.trend ?? {
-                      label: "Trend building",
-                      detail: "Need two clean stock samples.",
-                      tone: "slate",
-                    }
-                  }
-                  label="Trend"
-                />
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-4">
+                <ClubDetailMetric label="Trusted carry" value={selectedClub.primaryCarryLabel} />
+                <ClubDetailMetric label="Total" value={selectedClub.totalLabel} />
+                <ClubDetailMetric label="Dispersion" value={selectedClub.dispersionLabel} />
+                <ClubDetailMetric label="Common miss" value={selectedClub.commonMissLabel} />
+                <ClubDetailMetric label="Launch" value={selectedClub.launchLabel} />
+                <ClubDetailMetric label="Apex" value={selectedClub.apexLabel} />
+                <ClubDetailMetric label="Ball speed" value={selectedClub.speedLabel} />
+                <ClubDetailMetric label="Confidence" value={`${selectedClub.trustScore}%`} />
               </div>
 
               <section className="grid gap-3" aria-label="Selected club shot pattern">
@@ -216,6 +219,17 @@ export function ClubIntelligencePanel({
               </section>
 
               <Separator />
+              <div className="rounded-lg border border-border bg-muted/35 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Latest change
+                </p>
+                <p className="mt-2 text-base font-semibold">{selectedClub.latestChangeLabel}</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                  {selectedClub.latestChangeDetail}
+                </p>
+              </div>
+
+              <Separator />
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">Full detail remains available</p>
@@ -238,6 +252,17 @@ export function ClubIntelligencePanel({
   );
 }
 
+function ClubDetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-h-24 bg-card p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-2 text-lg font-semibold tracking-tight text-foreground">{value}</p>
+    </div>
+  );
+}
+
 function ClubIntelligenceMetric({
   label,
   value,
@@ -256,30 +281,6 @@ function ClubIntelligenceMetric({
         {value}
       </p>
       {detail ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p> : null}
-    </div>
-  );
-}
-
-function ClubSignal({ label, signal }: { label: string; signal: ClubIntelligenceSignal }) {
-  return (
-    <div className={cn("min-h-28 rounded-lg border px-3 py-3", metricToneClass(signal.tone))}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</p>
-      <p className="mt-1 text-base font-semibold leading-5 text-foreground">{signal.label}</p>
-      <p className="mt-1 text-xs leading-4 text-muted-foreground">{signal.detail}</p>
-      {label === "Health" ? (
-        <Progress
-          value={
-            signal.tone === "green"
-              ? 92
-              : signal.tone === "sky"
-                ? 72
-                : signal.tone === "amber"
-                  ? 48
-                  : 32
-          }
-          className="mt-3 h-1.5"
-        />
-      ) : null}
     </div>
   );
 }

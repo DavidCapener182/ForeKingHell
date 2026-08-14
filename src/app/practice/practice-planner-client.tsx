@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import {
   AlertCircle,
+  ArrowRight,
+  BookOpen,
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
@@ -15,7 +17,7 @@ import {
   RefreshCw,
   Save,
   SlidersHorizontal,
-  Target,
+  Timer,
   Upload,
   WandSparkles,
 } from "lucide-react";
@@ -24,9 +26,11 @@ import {
   abandonPracticePlanAction,
   generatePracticePlanAction,
   linkPracticePlanSessionAction,
+  saveAndStartPracticePlanAction,
   savePracticePlanAction,
   startPracticePlanAction,
 } from "@/app/practice/actions";
+import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
 import {
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
@@ -49,9 +53,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -68,8 +71,6 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -77,6 +78,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table,
   TableBody,
@@ -256,6 +258,7 @@ export function PracticePlannerClient({
   );
   const [savedImageDialogOpen, setSavedImageDialogOpen] = useState(false);
   const [savedImagePreviewUrl, setSavedImagePreviewUrl] = useState<string | null>(null);
+  const [blockSheetOpen, setBlockSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const sessionSummary = useMemo(
     () => summarizePracticeImportControl(plan, comparison),
@@ -455,6 +458,26 @@ export function PracticePlannerClient({
     });
   }
 
+  function saveAndStartPractice() {
+    setOutcome(null);
+    startTransition(async () => {
+      const result = await saveAndStartPracticePlanAction(plan);
+      setSavedPlanId(result.planId);
+      setPlan((current) => ({
+        ...current,
+        id: result.planId,
+        status: result.status,
+      }));
+      setComparison(null);
+      setPracticeScore(null);
+      setOutcome(
+        successOutcome(
+          "Practice started. The matching launch-monitor upload will score each block when the session is finished.",
+        ),
+      );
+    });
+  }
+
   function abandonPlan() {
     if (!savedPlanId) {
       return;
@@ -508,18 +531,20 @@ export function PracticePlannerClient({
   return (
     <div
       id="practice-plan"
-      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 scroll-mt-28 lg:gap-4"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 scroll-mt-28 pb-20"
+      data-practice-training-workspace
     >
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
-        <PracticeSetupBar
-          options={options}
-          updateOptions={updateOptions}
-          updateFacility={updateFacility}
-          generatePlan={generatePlan}
-          isPending={isPending}
-          trainingBlocked={context.trainingLoad.highRecentLoad}
-        />
+      <PracticeWorkflow plan={plan} savedPlanId={savedPlanId} comparison={comparison} />
 
+      <PracticeTodayCard plan={plan} focusSummary={focusSummary} outcome={outcome} />
+
+      <div className="flex flex-wrap items-center gap-2 border-y border-border/70 py-2.5">
+        <PracticeLibrary
+          templates={templates}
+          savedPlans={localSavedPlans}
+          onUseTemplate={useTemplate}
+          onLoadSavedPlan={loadSavedPlan}
+        />
         <PracticeSessionImportBar
           importOptions={importOptions}
           selectedImportId={selectedImportId}
@@ -529,61 +554,80 @@ export function PracticePlannerClient({
           hasImport={Boolean(comparison?.sourceSessionId || practiceScore)}
           isPending={isPending}
         />
+        <PracticeEvidenceLedgerDrawer blocks={plan.blocks} comparison={comparison} />
+        {savedPlanId ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => openSavedImageDialog(true)}
+          >
+            <Eye className="size-4" />
+            Range reference
+          </Button>
+        ) : null}
+      </div>
 
-        <PracticeTodayCard plan={plan} focusSummary={focusSummary} outcome={outcome} />
-        <PracticeResultsOverview
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(15rem,0.72fr)_minmax(34rem,1.8fr)_minmax(17rem,0.78fr)] xl:items-start 2xl:gap-8">
+        <PracticeSetupBar
+          options={options}
+          updateOptions={updateOptions}
+          updateFacility={updateFacility}
+          generatePlan={generatePlan}
+          isPending={isPending}
+          trainingBlocked={context.trainingLoad.highRecentLoad}
+          trainingGuidance={context.trainingLoad.recommendation}
+          trainingStatus={context.trainingLoad.statusLabel}
+        />
+
+        <PracticeAgenda
+          blocks={plan.blocks}
           comparison={comparison}
           score={practiceScore}
-          summary={sessionSummary}
+          selectedBlockId={selectedBlock?.id ?? null}
+          onSelect={setSelectedBlockId}
+          onEdit={(blockId) => {
+            setSelectedBlockId(blockId);
+            setBlockSheetOpen(true);
+          }}
         />
 
-        <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
-          <div className="min-w-0 lg:col-span-5 xl:col-span-4">
-            <PracticeAgenda
-              blocks={plan.blocks}
-              comparison={comparison}
-              selectedBlockId={selectedBlock?.id ?? null}
-              onSelect={setSelectedBlockId}
-            />
-          </div>
-          <div className="min-w-0 lg:sticky lg:top-4 lg:col-span-5 lg:self-start xl:col-span-5">
-            <SelectedBlockDetail
-              block={selectedBlock}
-              comparison={comparison}
-              drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
-              onBallCountChange={updateSelectedBlockBalls}
-              onSwapDrill={swapSelectedBlockDrill}
-              onSuggestDrill={suggestSelectedBlockDrill}
-              isPending={isPending}
-            />
-          </div>
-          <div className="min-w-0 lg:col-span-2 xl:col-span-3">
-            <SessionControlPanel
-              context={context}
-              plan={plan}
-              savedPlanId={savedPlanId}
-              summary={sessionSummary}
-              score={practiceScore}
-              comparison={comparison}
-              onSave={savePlan}
-              onStart={startPractice}
-              onAbandon={abandonPlan}
-              onShowPracticeImage={() => openSavedImageDialog(true)}
-              isPending={isPending}
-            />
-          </div>
-        </div>
-
-        {comparison?.decisions.length ? <PlanVsActual comparison={comparison} /> : null}
-        <PracticeBlockLedger blocks={plan.blocks} comparison={comparison} />
-
-        <PracticeLibrary
-          templates={templates}
-          savedPlans={localSavedPlans}
-          onUseTemplate={useTemplate}
-          onLoadSavedPlan={loadSavedPlan}
+        <SessionControlPanel
+          context={context}
+          plan={plan}
+          savedPlanId={savedPlanId}
+          summary={sessionSummary}
+          score={practiceScore}
+          comparison={comparison}
+          onSave={savePlan}
+          onStart={startPractice}
+          onAbandon={abandonPlan}
+          onShowPracticeImage={() => openSavedImageDialog(true)}
+          isPending={isPending}
         />
       </div>
+
+      <SelectedBlockDetail
+        open={blockSheetOpen}
+        onOpenChange={setBlockSheetOpen}
+        block={selectedBlock}
+        comparison={comparison}
+        drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
+        onBallCountChange={updateSelectedBlockBalls}
+        onSwapDrill={swapSelectedBlockDrill}
+        onSuggestDrill={suggestSelectedBlockDrill}
+        isPending={isPending}
+      />
+
+      <PracticeStickyAction
+        plan={plan}
+        savedPlanId={savedPlanId}
+        hasImport={Boolean(comparison?.sourceSessionId || practiceScore)}
+        isPending={isPending}
+        onSave={savePlan}
+        onSaveAndStart={saveAndStartPractice}
+        onStart={startPractice}
+      />
 
       <PracticePlanImageDialog
         open={savedImageDialogOpen}
@@ -593,6 +637,163 @@ export function PracticePlannerClient({
         pngPreviewUrl={savedImagePreviewUrl}
         onPngPreviewChange={setSavedImagePreviewUrl}
       />
+    </div>
+  );
+}
+
+function PracticeWorkflow({
+  plan,
+  savedPlanId,
+  comparison,
+}: {
+  plan: PracticePlan;
+  savedPlanId: string | null;
+  comparison: PracticeComparison | null;
+}) {
+  const hasEvidence = Boolean(comparison?.decisions.some((decision) => decision.actualBalls > 0));
+  const hasStarted = Boolean(
+    savedPlanId &&
+    plan.status &&
+    ["awaiting_import", "match_found", "analysed", "active", "completed"].includes(plan.status),
+  );
+  const steps: OperationStep[] = [
+    { id: "brief", label: "Brief", status: "complete" },
+    { id: "plan", label: "Plan", status: savedPlanId || hasStarted ? "complete" : "current" },
+    {
+      id: "start",
+      label: "Start",
+      status: hasStarted ? "complete" : savedPlanId ? "current" : "upcoming",
+    },
+    {
+      id: "evidence",
+      label: "Evidence",
+      status: hasEvidence ? "complete" : hasStarted ? "current" : "upcoming",
+    },
+    { id: "review", label: "Review", status: hasEvidence ? "current" : "upcoming" },
+  ];
+
+  return (
+    <OperationStepper
+      compact
+      label="Practice workflow"
+      steps={steps}
+      className="rounded-lg border-border/70 bg-card/55 shadow-none"
+    />
+  );
+}
+
+function PracticeEvidenceLedgerDrawer({
+  blocks,
+  comparison,
+}: {
+  blocks: PracticeBlock[];
+  comparison: PracticeComparison | null;
+}) {
+  const matched = comparison?.decisions.filter((decision) => decision.actualBalls > 0).length ?? 0;
+
+  return (
+    <Drawer direction="right">
+      <DrawerTrigger asChild>
+        <Button type="button" variant="ghost" size="sm">
+          <BookOpen className="size-4" />
+          Evidence ledger
+          {matched > 0 ? <Badge variant="secondary">{matched}</Badge> : null}
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent className="inset-y-0 right-0 left-auto mt-0 h-full w-full max-w-4xl rounded-none">
+        <DrawerHeader className="border-b text-left">
+          <DrawerTitle>Practice evidence ledger</DrawerTitle>
+          <DrawerDescription>
+            Exportable plan-versus-upload detail for coach review and reporting.
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <PracticeBlockLedger blocks={blocks} comparison={comparison} />
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function PracticeStickyAction({
+  plan,
+  savedPlanId,
+  hasImport,
+  isPending,
+  onSave,
+  onSaveAndStart,
+  onStart,
+}: {
+  plan: PracticePlan;
+  savedPlanId: string | null;
+  hasImport: boolean;
+  isPending: boolean;
+  onSave: () => void;
+  onSaveAndStart: () => void;
+  onStart: () => void;
+}) {
+  const status = plan.status ?? (savedPlanId ? "planned" : "draft");
+  const volume =
+    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plan.totalBalls} balls`;
+
+  return (
+    <div className="sticky bottom-3 z-30 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-primary/25 bg-card/95 p-2.5 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/88">
+      <div className="hidden min-w-0 items-center gap-3 px-2 sm:flex">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+          <Timer className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Today&apos;s programme
+          </span>
+          <span className="block truncate text-sm font-semibold">
+            {plan.blocks.length} blocks · {volume}
+          </span>
+        </span>
+      </div>
+
+      <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+        {!savedPlanId && status === "draft" ? (
+          <Button type="button" variant="ghost" onClick={onSave} disabled={isPending}>
+            Save only
+          </Button>
+        ) : null}
+        {hasImport ? (
+          <Button asChild className="min-h-11 flex-1 rounded-lg px-5 sm:flex-none">
+            <Link href="/today" prefetch={false}>
+              Review evidence
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        ) : status === "draft" || !savedPlanId ? (
+          <Button
+            type="button"
+            className="premium-action min-h-11 flex-1 rounded-lg px-5 sm:flex-none"
+            onClick={onSaveAndStart}
+            disabled={isPending}
+          >
+            <Save className="size-4" />
+            Save &amp; Start Practice
+          </Button>
+        ) : status === "planned" ? (
+          <Button
+            type="button"
+            className="premium-action min-h-11 flex-1 rounded-lg px-5 sm:flex-none"
+            onClick={onStart}
+            disabled={isPending}
+          >
+            <ClipboardCheck className="size-4" />
+            Start Practice
+          </Button>
+        ) : (
+          <Button asChild className="premium-action min-h-11 flex-1 rounded-lg px-5 sm:flex-none">
+            <Link href="/import" prefetch={false}>
+              <Upload className="size-4" />
+              Add Practice Evidence
+            </Link>
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -909,6 +1110,8 @@ function PracticeSetupBar({
   generatePlan,
   isPending,
   trainingBlocked,
+  trainingGuidance,
+  trainingStatus,
 }: {
   options: GeneratePracticePlanOptions;
   updateOptions: (patch: Partial<GeneratePracticePlanOptions>) => void;
@@ -916,15 +1119,36 @@ function PracticeSetupBar({
   generatePlan: () => void;
   isPending: boolean;
   trainingBlocked: boolean;
+  trainingGuidance: string;
+  trainingStatus: string;
 }) {
   const showBalls = ["range", "course_warmup", "mixed"].includes(options.sessionType);
   const selectedBallCount = options.facility?.customBalls
     ? "custom"
     : String(options.ballCount ?? 80);
+  const facilities = [
+    { value: "golfClubOnly", label: "Range" },
+    { value: "chippingGreen", label: "Short game" },
+    { value: "puttingGreen", label: "Putting" },
+    { value: "bunker", label: "Bunker" },
+  ] as const;
+  const selectedFacilities = facilities
+    .filter((facility) => Boolean(options.facility?.[facility.value]))
+    .map((facility) => facility.value);
 
   return (
-    <Card className="p-2.5 shadow-sm" data-practice-setup-card>
-      <div className="flex flex-wrap items-end gap-2">
+    <aside className="min-w-0 xl:sticky xl:top-4" data-practice-session-brief>
+      <div className="border-b border-border/70 pb-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Session brief
+        </p>
+        <h2 className="mt-1 font-heading text-xl font-semibold">Set the conditions</h2>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
+          Give the coach enough context to shape today, then rebuild the programme.
+        </p>
+      </div>
+
+      <div className="grid gap-4 py-4">
         <CompactSelect
           label="Session"
           value={options.sessionType}
@@ -970,110 +1194,72 @@ function PracticeSetupBar({
           options={intentOptions}
           onChange={(value) => updateOptions({ intent: value as PracticeIntent })}
         />
-        <Button className="h-9 rounded-lg" onClick={generatePlan} disabled={isPending}>
-          <WandSparkles className="size-4" />
-          Generate
-        </Button>
       </div>
 
-      <Collapsible className="group mt-2">
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="sm" className="justify-start px-0 text-muted-foreground">
-            <SlidersHorizontal className="size-4" />
-            Adjust setup
-            <span className="text-xs group-data-[state=open]:hidden">
-              Facility options and custom balls
-            </span>
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-3 grid gap-3 rounded-lg border bg-muted/20 p-3 md:grid-cols-3">
-          {showBalls ? (
-            <label className="grid gap-1 text-sm font-medium">
-              Custom balls
-              <Input
-                inputMode="numeric"
-                className="h-9 rounded-lg"
-                value={options.facility?.customBalls?.toString() ?? ""}
-                placeholder="80"
-                onChange={(event) =>
-                  updateFacility({
-                    customBalls: Number(event.target.value) || null,
-                  })
-                }
-              />
-            </label>
-          ) : null}
+      <div className="border-t border-border/70 py-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Facilities
+        </p>
+        <ToggleGroup
+          type="multiple"
+          value={selectedFacilities}
+          onValueChange={(values) => {
+            facilities.forEach((facility) => {
+              updateFacility({ [facility.value]: values.includes(facility.value) });
+            });
+          }}
+          variant="outline"
+          className="flex w-full flex-wrap justify-start gap-1.5"
+          aria-label="Available practice facilities"
+        >
+          {facilities.map((facility) => (
+            <ToggleGroupItem
+              key={facility.value}
+              value={facility.value}
+              className="min-h-9 rounded-lg px-2.5 text-xs"
+            >
+              {facility.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
 
-          {options.sessionType === "short_game" ? (
-            <ToggleGroup>
-              <FacilityToggle
-                checked={Boolean(options.facility?.chippingGreen)}
-                label="Chipping green"
-                onChange={(checked) => updateFacility({ chippingGreen: checked })}
-              />
-              <FacilityToggle
-                checked={Boolean(options.facility?.bunker)}
-                label="Bunker"
-                onChange={(checked) => updateFacility({ bunker: checked })}
-              />
-              <FacilityToggle
-                checked={Boolean(options.facility?.puttingGreen)}
-                label="Putting green"
-                onChange={(checked) => updateFacility({ puttingGreen: checked })}
-              />
-            </ToggleGroup>
-          ) : null}
+        {options.sessionType === "speed" && trainingBlocked ? (
+          <label className="mt-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+            <Checkbox
+              checked={Boolean(options.facility?.overrideTrainingLoad)}
+              onCheckedChange={(checked) =>
+                updateFacility({ overrideTrainingLoad: checked === true })
+              }
+            />
+            Override training-load block
+          </label>
+        ) : null}
+      </div>
 
-          {options.sessionType === "speed" ? (
-            <ToggleGroup>
-              <FacilityToggle
-                checked={Boolean(options.facility?.speedSticks)}
-                label="Speed sticks"
-                onChange={(checked) => updateFacility({ speedSticks: checked })}
-              />
-              <FacilityToggle
-                checked={Boolean(options.facility?.golfClubOnly)}
-                label="Golf club only"
-                onChange={(checked) => updateFacility({ golfClubOnly: checked })}
-              />
-              <FacilityToggle
-                checked={Boolean(options.facility?.rapsodoSpeed)}
-                label="Rapsodo R-Speed"
-                onChange={(checked) => updateFacility({ rapsodoSpeed: checked })}
-              />
-              {trainingBlocked ? (
-                <FacilityToggle
-                  checked={Boolean(options.facility?.overrideTrainingLoad)}
-                  label="Override load block"
-                  onChange={(checked) => updateFacility({ overrideTrainingLoad: checked })}
-                />
-              ) : null}
-            </ToggleGroup>
-          ) : null}
+      <div
+        className={cn(
+          "border-y border-border/70 py-4",
+          trainingBlocked && "border-[var(--status-warning-border)]",
+        )}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Current training load
+          </p>
+          <Badge variant={trainingBlocked ? "destructive" : "secondary"}>{trainingStatus}</Badge>
+        </div>
+        <p className="mt-2 text-sm leading-5 text-foreground">{trainingGuidance}</p>
+      </div>
 
-          {options.sessionType === "putting" ? (
-            <ToggleGroup>
-              <FacilityToggle
-                checked={Boolean(options.facility?.indoorMat)}
-                label="Indoor mat"
-                onChange={(checked) => updateFacility({ indoorMat: checked })}
-              />
-              <label className="grid gap-1 text-sm font-medium">
-                Distance available
-                <Input
-                  inputMode="numeric"
-                  className="h-9 rounded-lg"
-                  value={options.facility?.distanceAvailableFt?.toString() ?? "30"}
-                  onChange={(event) =>
-                    updateFacility({ distanceAvailableFt: Number(event.target.value) || 30 })
-                  }
-                />
-              </label>
-            </ToggleGroup>
-          ) : null}
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+      <Button
+        className="mt-4 min-h-11 w-full rounded-lg"
+        onClick={generatePlan}
+        disabled={isPending}
+      >
+        <WandSparkles className="size-4" />
+        Rebuild today&apos;s plan
+      </Button>
+    </aside>
   );
 }
 
@@ -1097,55 +1283,68 @@ function PracticeSessionImportBar({
   const selectedSession = importOptions.find((option) => option.id === selectedImportId) ?? null;
 
   return (
-    <Card className="min-w-0 overflow-hidden p-3 shadow-sm" data-practice-import-card>
-      <div className="flex min-w-0 flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-[1_1_16rem]">
-          <p className="text-sm font-semibold">Score the planned drill</p>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Choose an uploaded range session and LM World Tour will score this plan from its shot
-            data. This does not grade the whole session.
-          </p>
-        </div>
-
-        {importOptions.length > 0 ? (
-          <>
-            <label className="grid min-w-0 flex-[1_1_18rem] gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Uploaded session
-              <Select value={selectedImportId} onValueChange={onSelect}>
-                <SelectTrigger className="h-9 w-full min-w-0 max-w-full normal-case tracking-normal">
-                  <SelectValue placeholder="Choose uploaded session" />
-                </SelectTrigger>
-                <SelectContent>
-                  {importOptions.map((option) => (
-                    <SelectItem key={option.id} value={option.id}>
-                      {option.dateLabel} | {option.shotCount} shots |{" "}
-                      {formatSessionOptionType(option.sessionType)} | {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <div className="grid min-w-[11rem] gap-1 rounded-lg border bg-muted/20 px-3 py-2 text-xs">
-              <span className="font-semibold text-foreground">
-                {selectedSession ? `${selectedSession.shotCount} shots` : "No session"}
-              </span>
-              <span className="text-muted-foreground">
-                {selectedSession
-                  ? `${selectedSession.dateLabel} | ${formatSessionOptionType(selectedSession.sessionType)}`
-                  : "Upload first"}
-              </span>
-            </div>
-            <Button
-              className="h-9 rounded-lg"
-              onClick={onLink}
-              disabled={isPending || !selectedImportId || !savedPlanId}
-            >
-              <Upload className="size-4" />
-              {savedPlanId ? (hasImport ? "Switch session" : "Use session") : "Save plan first"}
-            </Button>
-          </>
-        ) : (
-          <>
+    <Drawer direction="right">
+      <DrawerTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" data-practice-import-trigger>
+          <Upload className="size-4" />
+          {hasImport ? "Change evidence" : "Import evidence"}
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent className="inset-y-0 right-0 left-auto mt-0 h-full w-full max-w-xl rounded-none">
+        <DrawerHeader className="border-b text-left">
+          <DrawerTitle>Match practice evidence</DrawerTitle>
+          <DrawerDescription>
+            Choose an uploaded session. Every result is calculated from its launch-monitor rows.
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-4">
+          {importOptions.length > 0 ? (
+            <>
+              <label className="grid min-w-0 gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Uploaded session
+                <Select value={selectedImportId} onValueChange={onSelect}>
+                  <SelectTrigger className="min-h-11 w-full min-w-0 max-w-full normal-case tracking-normal">
+                    <SelectValue placeholder="Choose uploaded session" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {importOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.dateLabel} | {option.shotCount} shots |{" "}
+                        {formatSessionOptionType(option.sessionType)} | {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <div className="border-y border-border/70 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Selected evidence
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {selectedSession
+                    ? `${selectedSession.shotCount} measured shots`
+                    : "No session selected"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedSession
+                    ? `${selectedSession.dateLabel} · ${formatSessionOptionType(selectedSession.sessionType)}`
+                    : "Upload a launch-monitor session first."}
+                </p>
+              </div>
+              <Button
+                className="min-h-11 rounded-lg"
+                onClick={onLink}
+                disabled={isPending || !selectedImportId || !savedPlanId}
+              >
+                <Upload className="size-4" />
+                {savedPlanId
+                  ? hasImport
+                    ? "Use this evidence"
+                    : "Score this plan"
+                  : "Save plan first"}
+              </Button>
+            </>
+          ) : (
             <AppEmptyState
               icon={<Upload className="size-5" />}
               title="No uploaded sessions yet"
@@ -1158,12 +1357,11 @@ function PracticeSessionImportBar({
                   </Link>
                 </Button>
               }
-              className="min-w-[18rem] flex-1 py-3"
             />
-          </>
-        )}
-      </div>
-    </Card>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -1179,40 +1377,26 @@ function PracticeTodayCard({
   const plannedBalls = plan.totalBalls === null ? "Timed" : `${plan.totalBalls} balls`;
 
   return (
-    <Card className="p-3 shadow-sm" data-practice-answer-card>
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <header className="grid gap-3 border-b border-border/70 pb-5" data-practice-answer-card>
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex flex-wrap gap-2">
-            <Badge>Practise this today</Badge>
-            <Badge variant="outline">{plannedBalls}</Badge>
-            <Badge variant="outline">{plan.estimatedTimeMinutes} min</Badge>
-            <Badge variant="outline">{plan.trainingStatus}</Badge>
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal md:text-3xl">
-            {focusSummary.main}
-          </h2>
-          <div className="mt-2 grid gap-1.5 text-sm leading-5 md:grid-cols-2">
-            <FocusLine label="Secondary" value={focusSummary.secondary} />
-            <FocusLine label="Scoring" value={focusSummary.scoring} />
-            <FocusLine label="Maintenance" value={focusSummary.maintenance} />
-            <FocusLine label="How" value={focusSummary.howToPractice} />
-          </div>
-        </div>
-
-        <div className="grid gap-2 rounded-lg border bg-muted/20 p-3">
-          <p className="text-sm font-semibold">Why this plan</p>
-          <div className="grid gap-1.5">
-            {plan.why.slice(0, 4).map((line) => (
-              <div key={line} className="flex gap-2 text-xs leading-5 text-muted-foreground">
-                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                <span className="line-clamp-1">{line}</span>
-              </div>
-            ))}
-          </div>
-          <p className="border-t pt-2 text-xs leading-5 text-muted-foreground">
-            After practice, upload the matching Rapsodo session and LM World Tour will score the
-            plan from the shot data.
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+            Premium training workspace
           </p>
+          <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight md:text-4xl">
+            Practice Planner
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            Today&apos;s programme is led by{" "}
+            <span className="font-semibold text-foreground">{focusSummary.main}</span>. Build it,
+            work it, then let measured evidence decide what comes next.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Badge>{plan.blocks.length} blocks</Badge>
+          <Badge variant="outline">{plannedBalls}</Badge>
+          <Badge variant="outline">{plan.estimatedTimeMinutes} min</Badge>
+          <Badge variant="outline">{plan.trainingStatus}</Badge>
         </div>
       </div>
 
@@ -1222,7 +1406,6 @@ function PracticeTodayCard({
           role={outcome.status === "error" ? "alert" : "status"}
           aria-live={outcome.status === "error" ? "assertive" : "polite"}
           className={cn(
-            "mt-3",
             outcome.status === "success" &&
               "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]",
           )}
@@ -1236,103 +1419,7 @@ function PracticeTodayCard({
           <AlertDescription className="font-medium">{outcome.message}</AlertDescription>
         </Alert>
       ) : null}
-    </Card>
-  );
-}
-
-function PracticeResultsOverview({
-  comparison,
-  score,
-  summary,
-}: {
-  comparison: PracticeComparison | null;
-  score: PracticeScore | null;
-  summary: ReturnType<typeof summarizePracticeImportControl>;
-}) {
-  if (!comparison?.decisions.length) {
-    return null;
-  }
-
-  const decisionsWithEvidence = comparison.decisions.filter((item) => item.actualBalls > 0);
-  const passed = decisionsWithEvidence.filter((item) => item.result === "passed");
-  const repeat = decisionsWithEvidence.filter((item) => item.result === "mixed");
-  const missed = decisionsWithEvidence.filter(
-    (item) => item.result === "failed" || item.result === "insufficient_data",
-  );
-  const volumeShort = decisionsWithEvidence.filter((item) => !item.matchedPlannedVolume);
-  const importedSessionLabel = comparison.importedSession
-    ? `${comparison.importedSession.shotCount}-shot ${formatSessionOptionType(
-        comparison.importedSession.sessionType,
-      ).toLowerCase()} · ${comparison.importedSession.dateLabel}`
-    : `${comparison.planVsActual.actualShots} imported shots`;
-
-  return (
-    <Card className="border-primary/25 bg-primary/5 p-3 shadow-sm" data-practice-result-card>
-      <div className="grid gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge>Analysed from upload</Badge>
-            <Badge variant="outline">{importedSessionLabel}</Badge>
-            <Badge variant="outline">{comparison.matchConfidence ?? "--"}% match</Badge>
-          </div>
-          <h3 className="mt-2 text-xl font-semibold tracking-normal">
-            Practice result: {score ? `${score.score}/100` : "session matched"}
-          </h3>
-          <p className="mt-1 max-w-5xl text-sm leading-5 text-muted-foreground">
-            {comparison.summary}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-border bg-background/60 md:grid-cols-4 md:divide-x md:divide-border">
-          <MiniMetric
-            label="Matched balls"
-            value={`${summary.importedBalls}/${summary.totalBalls}`}
-          />
-          <MiniMetric
-            label="Blocks scored"
-            value={`${decisionsWithEvidence.length}/${comparison.decisions.length}`}
-          />
-          <MiniMetric label="Passed" value={`${passed.length}`} />
-          <MiniMetric label="Repeat" value={`${repeat.length + missed.length}`} />
-        </div>
-      </div>
-
-      <div className="mt-3 grid overflow-hidden rounded-lg border border-border bg-background/60 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_18rem] lg:divide-x lg:divide-border">
-        <ResultCallout
-          label="Worked"
-          value={
-            comparison.whatWorked.length
-              ? comparison.whatWorked.join(" ")
-              : "No block reached a clear passed result."
-          }
-        />
-        <ResultCallout
-          label="Repeat"
-          value={
-            comparison.needsWork.length
-              ? comparison.needsWork.join(" ")
-              : "No repeat block flagged from this upload."
-          }
-        />
-        <ResultCallout
-          label="Volume"
-          value={
-            volumeShort.length
-              ? `${volumeShort.length} blocks were short of the planned ball count but still carry evidence.`
-              : "Every matched block met planned volume."
-          }
-        />
-      </div>
-    </Card>
-  );
-}
-
-function ResultCallout({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 border-b border-border p-3 last:border-b-0 lg:border-b-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 line-clamp-3 text-sm leading-5 text-foreground">{value}</p>
-    </div>
+    </header>
   );
 }
 
@@ -1344,90 +1431,203 @@ function formatSessionOptionType(sessionType: string) {
     .join(" ");
 }
 
-function FocusLine({ label, value }: { label: string; value: string | null }) {
-  return (
-    <p className="min-w-0 text-muted-foreground">
-      <span className="font-semibold text-foreground">{label}: </span>
-      <span>{value ?? "Not needed today"}</span>
-    </p>
-  );
-}
-
 function PracticeAgenda({
   blocks,
   comparison,
+  score,
   selectedBlockId,
   onSelect,
+  onEdit,
 }: {
   blocks: PracticeBlock[];
   comparison: PracticeComparison | null;
+  score: PracticeScore | null;
   selectedBlockId: string | null;
   onSelect: (blockId: string) => void;
+  onEdit: (blockId: string) => void;
 }) {
   const totalBalls = blocks.reduce((total, block) => total + (block.ballCount ?? 0), 0);
+  const hasEvidence = Boolean(comparison?.decisions.some((decision) => decision.actualBalls > 0));
+  const programmeBlocks = primaryProgrammeBlocks(blocks);
+  const programmeBlockIds = new Set(programmeBlocks.map((block) => block.id));
+  const supportingBlocks = blocks.filter((block) => !programmeBlockIds.has(block.id));
 
   return (
-    <Card className="p-3 shadow-sm" data-practice-agenda>
-      <div className="mb-2 flex items-center justify-between gap-3">
+    <main className="min-w-0" data-practice-agenda>
+      <div className="mb-4 flex items-end justify-between gap-3 border-b border-border/70 pb-3">
         <div>
-          <h3 className="text-lg font-semibold tracking-normal">Practice agenda</h3>
-          <p className="text-xs text-muted-foreground">
-            {blocks.length} blocks · {totalBalls} planned balls
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            {hasEvidence ? "Measured review" : "Today's practice plan"}
+          </p>
+          <h2 className="mt-1 font-heading text-2xl font-semibold tracking-tight">
+            {hasEvidence ? "Plan versus actual" : "Your training programme"}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {hasEvidence
+              ? "Targets are shown beside the imported values that scored them."
+              : `${programmeBlocks.length} connected blocks${supportingBlocks.length ? ` · ${supportingBlocks.length} supporting` : ""} · ${totalBalls} planned balls`}
           </p>
         </div>
-        <Badge variant="outline">Scored after upload</Badge>
+        <Badge variant={hasEvidence ? "secondary" : "outline"}>
+          {hasEvidence ? `${score?.score ?? "—"}/100` : "Scored after upload"}
+        </Badge>
       </div>
 
-      <div className="grid gap-2">
-        {blocks.map((block) => {
-          const row = compactPracticeBlockRow(block, comparison);
-          const selected = block.id === selectedBlockId;
+      {hasEvidence ? (
+        <PlanVsActual comparison={comparison} blocks={blocks} />
+      ) : (
+        <div className="grid gap-3">
+          <ol className="relative grid gap-3 before:absolute before:top-8 before:bottom-8 before:left-[1.45rem] before:w-px before:bg-gradient-to-b before:from-primary before:via-primary/45 before:to-border motion-reduce:before:bg-border">
+            {programmeBlocks.map((block) => {
+              const row = compactPracticeBlockRow(block, comparison);
+              const selected = block.id === selectedBlockId;
 
-          return (
-            <Button
-              key={block.id}
-              type="button"
-              variant={selected ? "secondary" : "outline"}
-              onClick={() => onSelect(block.id)}
-              className={cn(
-                "h-auto w-full justify-start whitespace-normal rounded-lg p-2.5 text-left transition-colors",
-                selected ? "border-primary/30 shadow-sm" : "bg-card hover:bg-muted/50",
-              )}
-              aria-pressed={selected}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="outline">{row.blockLabel}</Badge>
-                    <Badge className={blockTone(block.type)}>{row.typeLabel}</Badge>
-                  </div>
-                  <p className="mt-1 truncate text-sm font-semibold">{row.title}</p>
-                </div>
-                <span className="shrink-0 text-sm font-semibold">{row.volumeLabel}</span>
+              return (
+                <li key={block.id} className="relative grid grid-cols-[3rem_minmax(0,1fr)] gap-3">
+                  <button
+                    type="button"
+                    className={cn(
+                      "relative z-10 mt-5 grid size-12 place-items-center rounded-full border bg-card font-heading text-lg font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      selected && "border-primary bg-primary text-primary-foreground",
+                    )}
+                    onClick={() => onSelect(block.id)}
+                    aria-label={`Select block ${block.order}: ${block.title}`}
+                    aria-pressed={selected}
+                  >
+                    {String(block.order).padStart(2, "0")}
+                  </button>
+
+                  <Card
+                    className={cn(
+                      "relative gap-0 overflow-visible py-0 shadow-sm transition-all",
+                      selected && "ring-primary/35 shadow-lg",
+                    )}
+                    data-practice-programme-block
+                  >
+                    <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_11rem]">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className={blockTone(block.type)}>
+                            {row.clubLabel || "Mixed clubs"}
+                          </Badge>
+                          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                            {row.typeLabel}
+                          </span>
+                        </div>
+                        <h3 className="mt-2 font-heading text-xl font-semibold tracking-tight">
+                          {block.title}
+                        </h3>
+                        <p className="mt-2 text-sm leading-6 text-foreground">{block.drill}</p>
+                      </div>
+
+                      <div className="grid content-start gap-3 border-l border-border/70 pl-4">
+                        <ProgrammeFact label="Volume" value={row.volumeLabel} />
+                        <ProgrammeFact label="Success target" value={block.successTarget} />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/25 px-4 py-3">
+                      <p className="min-w-0 flex-1 text-xs leading-5 text-muted-foreground">
+                        <span className="font-semibold text-foreground">Why this block: </span>
+                        {block.purpose}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onEdit(block.id)}
+                        className="shrink-0"
+                      >
+                        Edit block
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                </li>
+              );
+            })}
+          </ol>
+          {supportingBlocks.length > 0 ? (
+            <SupportingBlocksDrawer blocks={supportingBlocks} onEdit={onEdit} />
+          ) : null}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function primaryProgrammeBlocks(blocks: PracticeBlock[]) {
+  if (blocks.length <= 5) return blocks;
+
+  const supportBlock =
+    blocks.find((block) => block.type === "baseline") ??
+    blocks.find((block) => block.type === "warmup" || block.type === "warmup_round") ??
+    blocks[blocks.length - 1];
+
+  return blocks.filter((block) => block.id !== supportBlock?.id).slice(0, 5);
+}
+
+function SupportingBlocksDrawer({
+  blocks,
+  onEdit,
+}: {
+  blocks: PracticeBlock[];
+  onEdit: (blockId: string) => void;
+}) {
+  return (
+    <Drawer direction="right">
+      <DrawerTrigger asChild>
+        <Button type="button" variant="outline" className="ml-12 min-h-11 justify-between">
+          {blocks.length} supporting {blocks.length === 1 ? "block" : "blocks"} kept in the plan
+          <ChevronRight className="size-4" />
+        </Button>
+      </DrawerTrigger>
+      <DrawerContent className="inset-y-0 right-0 left-auto mt-0 h-full w-full max-w-xl rounded-none">
+        <DrawerHeader className="border-b text-left">
+          <DrawerTitle>Supporting practice blocks</DrawerTitle>
+          <DrawerDescription>
+            These remain in the saved programme and its calculations, outside the five-block visual
+            focus.
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto p-4">
+          {blocks.map((block) => (
+            <Card key={block.id} className="gap-0 py-0">
+              <div className="p-4">
+                <Badge variant="outline">Block {block.order}</Badge>
+                <h3 className="mt-2 font-heading text-lg font-semibold">{block.title}</h3>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">{block.drill}</p>
               </div>
-              <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground">
-                {row.clubLabel || "Mixed"} · target {row.successTarget}
-              </p>
-              <div className="mt-1.5 flex items-start justify-between gap-2">
-                <Badge variant="outline" className={importStatusTone(row.importStatus)}>
-                  {row.statusLabel}
-                </Badge>
-                <div className="min-w-0 text-right text-xs leading-5 text-muted-foreground">
-                  <p>{row.resultNote}</p>
-                  {row.importedEvidence !== "Scored after upload." ? (
-                    <p className="line-clamp-2">{row.importedEvidence}</p>
-                  ) : null}
-                </div>
+              <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3">
+                <span className="text-xs font-semibold">
+                  {block.ballCount ?? block.timeMinutes}{" "}
+                  {block.ballCount === null ? "min" : "balls"}
+                </span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(block.id)}>
+                  Edit block <ChevronRight className="size-4" />
+                </Button>
               </div>
-            </Button>
-          );
-        })}
-      </div>
-    </Card>
+            </Card>
+          ))}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+}
+
+function ProgrammeFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold leading-5 text-foreground">{value}</p>
+    </div>
   );
 }
 
 function SelectedBlockDetail({
+  open,
+  onOpenChange,
   block,
   comparison,
   drillOptions,
@@ -1436,6 +1636,8 @@ function SelectedBlockDetail({
   onSuggestDrill,
   isPending,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   block: PracticeBlock | null;
   comparison: PracticeComparison | null;
   drillOptions: PracticeDrillSuggestion[];
@@ -1444,16 +1646,8 @@ function SelectedBlockDetail({
   onSuggestDrill: () => void;
   isPending: boolean;
 }) {
-  const [detailOpen, setDetailOpen] = useState(false);
-
   if (!block) {
-    return (
-      <Card className="p-3 shadow-sm">
-        <p className="text-sm text-muted-foreground">
-          Generate a plan to see the main practice block.
-        </p>
-      </Card>
-    );
+    return null;
   }
 
   const row = compactPracticeBlockRow(block, comparison);
@@ -1461,36 +1655,12 @@ function SelectedBlockDetail({
   const options = drillOptions.length > 0 ? drillOptions : buildPracticeDrillOptions(block);
 
   return (
-    <div className="grid gap-2" data-selected-practice-block>
-      <Card className="p-3 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{row.blockLabel}</Badge>
-              <Badge className={blockTone(block.type)}>{row.typeLabel}</Badge>
-              <Badge variant="outline" className={importStatusTone(row.importStatus)}>
-                {row.statusLabel}
-              </Badge>
-            </div>
-            <h3 className="mt-2 text-xl font-semibold tracking-normal">{block.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {row.clubLabel || "Mixed"} · {row.volumeLabel}
-            </p>
-          </div>
-          <MiniMetric label="Target" value={shortTarget(block.successTarget)} />
-        </div>
-      </Card>
+    <div data-selected-practice-block>
       <ResponsiveDetailPanel
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
+        open={open}
+        onOpenChange={onOpenChange}
         title={block.title}
         description={`${row.blockLabel} · ${row.clubLabel || "Mixed"} · ${row.volumeLabel}`}
-        trigger={
-          <Button type="button" variant="outline" className="w-full justify-between">
-            Open selected block controls
-            <ChevronRight className="size-4" />
-          </Button>
-        }
         contentClassName="grid gap-3"
       >
         <div className="grid gap-3" data-selected-block-sheet-content>
@@ -1679,364 +1849,202 @@ function SessionControlPanel({
 }) {
   const hasImport = Boolean(score || comparison?.sourceSessionId);
   const status = plan.status ?? (savedPlanId ? "planned" : "draft");
-  const plannedBalls = plan.totalBalls ?? summary.totalBalls;
-  const plannedVolume =
-    plan.totalBalls === null ? `${plan.estimatedTimeMinutes} min` : `${plannedBalls} balls`;
-  const focus = plan.focusClubs.map((club) => club.toUpperCase()).join(", ") || "Baseline";
-  const statusLabel = hasImport
-    ? status === "draft"
-      ? "Latest session review"
-      : "Analysed from upload"
-    : status === "awaiting_import" || status === "match_found"
-      ? "Waiting for upload"
-      : status === "planned"
-        ? "Saved plan"
-        : status === "abandoned"
-          ? "Abandoned"
-          : "Draft";
+  const evidenceConfidence = comparison?.matchConfidence
+    ? `${comparison.matchConfidence}% match`
+    : `${plan.confidenceLabel} plan confidence`;
+  const latestWeakness =
+    context.latestPractice.biggestOpportunity ?? context.latestPractice.scoringIssue;
+  const currentGoal =
+    context.progress.priorities[0]?.title ??
+    context.progress.weakestSignal ??
+    "Build a trusted baseline";
+  const previousSession = score
+    ? `${score.verdict} · ${score.score}/100`
+    : `${context.latestPractice.dateLabel} · ${context.latestPractice.scoringIssue}`;
 
   return (
-    <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-      <Card className="premium-card overflow-hidden">
-        <CardHeader className="gap-3 pb-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <ClipboardCheck className="size-5 text-primary" />
-              Session Control
-            </CardTitle>
-            <CardDescription>{statusLabel}</CardDescription>
-          </div>
-          {hasImport ? <Progress value={summary.progressPercent} /> : null}
-          <div className="grid grid-cols-2 gap-2">
-            <MiniMetric label="Planned" value={plannedVolume} />
-            <MiniMetric label="Focus" value={focus} />
-            <MiniMetric label="Expected" value="Rapsodo range" />
-            <MiniMetric
-              label="Imported"
-              value={hasImport ? `${summary.importedBalls}/${summary.totalBalls}` : "0"}
-            />
-          </div>
-          <div className="rounded-lg border bg-muted/20 p-3 text-xs leading-5 text-muted-foreground">
-            {hasImport ? (
-              <>
-                <p className="font-semibold text-foreground">
-                  Match confidence: {comparison?.matchConfidence ?? "--"}%
-                </p>
-                <p>{comparison?.nextRecommendation ?? score?.nextAction}</p>
-              </>
-            ) : (
-              <>
-                <p className="font-semibold text-foreground">Match rule</p>
-                <p>
-                  Auto-match uses newer uploads. If needed, choose the exact uploaded session near
-                  the top.
-                </p>
-              </>
-            )}
-          </div>
-          <div className="grid gap-2">
-            {hasImport ? (
-              <Button asChild variant="outline" className="rounded-lg">
-                <Link href="/today" prefetch={false}>
-                  <Upload className="size-4" />
-                  Review latest session
-                </Link>
-              </Button>
-            ) : null}
-            {status === "draft" ? (
-              <Button
-                onClick={onSave}
-                disabled={isPending || Boolean(savedPlanId)}
-                className="rounded-lg"
-              >
-                <Save className="size-4" />
-                {hasImport ? "Save reviewed plan" : "Save plan"}
-              </Button>
-            ) : null}
-            {status === "planned" && !hasImport ? (
-              <Button onClick={onStart} disabled={isPending || !savedPlanId} className="rounded-lg">
-                <ClipboardCheck className="size-4" />
-                Start practice
-              </Button>
-            ) : null}
-            {savedPlanId ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-lg"
-                onClick={onShowPracticeImage}
-                disabled={isPending}
-              >
-                <Eye className="size-4" />
-                Show PNG
-              </Button>
-            ) : null}
-            {(status === "awaiting_import" || status === "match_found" || status === "analysed") &&
-            !hasImport ? (
-              <Button asChild variant="outline" className="rounded-lg">
-                <Link href="/import" prefetch={false}>
-                  <Upload className="size-4" />
-                  Import data
-                </Link>
-              </Button>
-            ) : null}
-            {status === "draft" && !hasImport ? (
-              <Button variant="outline" className="rounded-lg" disabled>
-                <Upload className="size-4" />
-                Import after saving
-              </Button>
-            ) : null}
-            {(status === "planned" || status === "awaiting_import" || status === "match_found") &&
-            !hasImport ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" className="rounded-lg" disabled={isPending}>
-                    Mark abandoned
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Abandon this practice plan?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      The plan will remain in history, but it will no longer wait for uploaded
-                      evidence.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep plan</AlertDialogCancel>
-                    <AlertDialogAction variant="destructive" onClick={onAbandon}>
-                      Mark abandoned
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : null}
-          </div>
-        </CardHeader>
+    <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start" data-practice-context>
+      <div className="border-b border-border/70 pb-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Context</p>
+        <h2 className="mt-1 font-heading text-xl font-semibold">Why today looks like this</h2>
+      </div>
 
-        <CardContent className="grid gap-3">
-          <ScorecardPanel score={score} summary={summary} />
-          <CoachPanel context={context} plan={plan} score={score} />
-          <ImportPanel savedPlanId={savedPlanId} hasImport={hasImport} />
-        </CardContent>
-      </Card>
+      <div className="divide-y divide-border/70">
+        <ContextItem label="Why this plan" value={plan.why.slice(0, 2).join(" ") || plan.summary} />
+        <ContextItem
+          label="Evidence confidence"
+          value={evidenceConfidence}
+          detail={
+            hasImport
+              ? `${summary.matchedBlocks}/${summary.totalBlocks} blocks matched`
+              : plan.generation.label
+          }
+        />
+        <ContextItem label="Latest weakness" value={latestWeakness} />
+        <ContextItem
+          label="Current goal"
+          value={currentGoal}
+          detail={context.progress.priorities[0]?.reason}
+        />
+        <ContextItem label="Previous session result" value={previousSession} />
+      </div>
+
+      <div className="mt-4 border-l-2 border-primary bg-primary/5 px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+        Manual notes can add context. Only imported launch-monitor rows can pass, partially pass, or
+        fail a block.
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {savedPlanId ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onShowPracticeImage}
+            disabled={isPending}
+          >
+            <Eye className="size-4" /> Range reference
+          </Button>
+        ) : (
+          <Button type="button" variant="outline" size="sm" onClick={onSave} disabled={isPending}>
+            <Save className="size-4" /> Save draft
+          </Button>
+        )}
+        {status === "planned" && !hasImport ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onStart} disabled={isPending}>
+            Start now
+          </Button>
+        ) : null}
+        {(status === "planned" || status === "awaiting_import" || status === "match_found") &&
+        !hasImport ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={isPending}>
+                Abandon
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Abandon this practice plan?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  The plan remains in history, but it will stop waiting for uploaded evidence.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep plan</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" onClick={onAbandon}>
+                  Mark abandoned
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : null}
+      </div>
     </aside>
   );
 }
 
-function ScorecardPanel({
-  score,
-  summary,
-}: {
-  score: PracticeScore | null;
-  summary: ReturnType<typeof summarizePracticeImportControl>;
-}) {
+function ContextItem({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <div className="grid gap-3">
-      <div className="rounded-lg border bg-muted/20 p-3">
-        <p className="text-sm font-semibold">Import progress</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {summary.importedBalls}/{summary.totalBalls} planned balls found. {summary.matchedBlocks}/
-          {summary.totalBlocks} blocks met planned volume.
-        </p>
-      </div>
-      <div className="rounded-lg border bg-card/70 p-3">
-        <p className="text-sm font-semibold">Planned drill score</p>
-        {score ? (
-          <>
-            <p className="mt-2 text-3xl font-semibold tracking-normal">
-              {score.score}
-              <span className="text-base text-muted-foreground"> / 100</span>
-            </p>
-            <Progress value={score.score} className="mt-2" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              Measures how closely the uploaded shots proved this plan; it does not grade the whole
-              session. {score.nextAction}
-            </p>
-          </>
-        ) : (
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">
-            Planned drill score appears after upload.
-          </p>
-        )}
-      </div>
+    <div className="py-3.5">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold leading-5 text-foreground">{value}</p>
+      {detail ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p> : null}
     </div>
   );
 }
 
-function PlanVsActual({ comparison }: { comparison: PracticeComparison | null }) {
-  return (
-    <Card data-plan-vs-actual>
-      <CardHeader className="flex-row items-start justify-between gap-3">
-        <div className="min-w-0">
-          <CardTitle>Plan vs Actual</CardTitle>
-          <CardDescription>
-            Every block is scored from matched launch-monitor rows, never from a checked note.
-          </CardDescription>
-        </div>
-        {comparison?.decisions.length ? (
-          <Badge variant="outline" className="w-fit">
-            {comparison.decisions.filter((item) => item.actualBalls > 0).length}/
-            {comparison.decisions.length} blocks scored
-          </Badge>
-        ) : null}
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        {comparison?.decisions.length ? (
-          <>
-            <div className="overflow-x-auto rounded-lg border">
-              <Table>
-                <TableCaption>
-                  Planned {comparison.planVsActual.plannedBalls ?? "timed"} · Actual{" "}
-                  {comparison.planVsActual.actualShots} shots · Match{" "}
-                  {comparison.matchConfidence ?? "--"}% · {comparison.scoringMode} · Clubs{" "}
-                  {comparison.planVsActual.actualClubs
-                    .map((club) => club.toUpperCase())
-                    .join(", ") || "none"}
-                </TableCaption>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Block</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead>Actual</TableHead>
-                    <TableHead>Volume</TableHead>
-                    <TableHead>Result</TableHead>
-                    <TableHead>Evidence summary</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {comparison.decisions.map((item) => (
-                    <TableRow key={item.blockId}>
-                      <TableCell className="font-medium">{item.title}</TableCell>
-                      <TableCell className="max-w-64 whitespace-normal">{item.target}</TableCell>
-                      <TableCell className="max-w-64 whitespace-normal">{item.actual}</TableCell>
-                      <TableCell>
-                        {item.actualBalls}/{item.plannedBalls ?? "timed"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={practiceComparisonResultTone(item.result)}
-                        >
-                          {practiceComparisonResultLabel(item)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="min-w-72 whitespace-normal text-muted-foreground">
-                        {item.summary}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="grid gap-2" aria-label="Plan versus actual recommendations">
-              {comparison.whatWorked.length ? (
-                <PracticeResultItem label="Worked" value={comparison.whatWorked.join(" ")} />
-              ) : null}
-              {comparison.needsWork.length ? (
-                <PracticeResultItem label="Repeat" value={comparison.needsWork.join(" ")} />
-              ) : null}
-              <PracticeResultItem label="Next" value={comparison.nextRecommendation} />
-            </div>
-          </>
-        ) : (
-          <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-            Upload the matching launch-monitor session to see whether the practice worked.
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function PracticeResultItem({ label, value }: { label: string; value: string }) {
-  return (
-    <Item variant="muted" size="sm" className="items-start">
-      <ItemContent>
-        <ItemTitle>{label}</ItemTitle>
-        <ItemDescription className="overflow-visible whitespace-normal text-clip">
-          {value}
-        </ItemDescription>
-      </ItemContent>
-    </Item>
-  );
-}
-
-function CoachPanel({
-  context,
-  plan,
-  score,
+function PlanVsActual({
+  comparison,
+  blocks,
 }: {
-  context: PracticePlannerContext;
-  plan: PracticePlan;
-  score: PracticeScore | null;
+  comparison: PracticeComparison | null;
+  blocks: PracticeBlock[];
 }) {
-  const lead = score
-    ? score.nextAction
-    : context.trainingLoad.highRecentLoad
-      ? "Technical practice only. Avoid speed chasing."
-      : plan.postSessionRules[0];
-
-  return (
-    <div className="grid gap-2 text-sm">
-      <DetailLine label="Coach note" value={lead} />
-      <DetailLine label="Load" value={context.trainingLoad.recommendation} />
-      <DetailLine label="Latest issue" value={context.latestPractice.scoringIssue} />
-      <DetailLine label="Bag signal" value={context.bag.issues[0] ?? "Building"} />
-    </div>
-  );
-}
-
-function ImportPanel({
-  savedPlanId,
-  hasImport,
-}: {
-  savedPlanId: string | null;
-  hasImport: boolean;
-}) {
-  if (hasImport) {
+  if (!comparison?.decisions.length) {
     return (
-      <div className="grid gap-2">
-        <p className="text-sm leading-6 text-muted-foreground">
-          The latest uploaded session is being used for this review. Save the plan if you want
-          future uploads to auto-link to it.
-        </p>
-        <Button asChild variant="outline" className="rounded-lg">
-          <Link href="/today" prefetch={false}>
-            <Target className="size-4" />
-            Open latest practice
-          </Link>
-        </Button>
+      <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        Upload the matching launch-monitor session to see whether the practice worked.
       </div>
     );
   }
 
+  const mostImportant =
+    comparison.decisions.find((decision) => decision.decision === "keep_priority") ??
+    comparison.decisions.find((decision) => decision.result === "failed") ??
+    comparison.decisions.find((decision) => decision.result === "mixed") ??
+    comparison.decisions[0];
+
   return (
-    <div className="grid gap-2">
-      <p className="text-sm leading-6 text-muted-foreground">
-        Upload the next matching Rapsodo session and LM World Tour will score the plan from the shot
-        data.
-      </p>
-      {savedPlanId ? (
-        <div className="grid gap-2">
-          <Button asChild className="premium-action rounded-lg">
-            <Link href="/import" prefetch={false}>
-              <Upload className="size-4" />
-              Upload CSV
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-lg">
-            <Link href="/rapsodo" prefetch={false}>
-              <Target className="size-4" />
-              Sync Rapsodo
-            </Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-          Save this plan before importing the range session.
-        </div>
-      )}
+    <div className="grid gap-3" data-plan-vs-actual>
+      {comparison.decisions.map((decision, index) => {
+        const block = blocks.find((item) => item.id === decision.blockId) ?? null;
+        const mattersMost = decision.blockId === mostImportant?.blockId;
+
+        return (
+          <Card
+            key={decision.blockId}
+            className={cn("gap-0 py-0 shadow-sm", mattersMost && "ring-primary/45 shadow-lg")}
+            data-practice-measured-block
+          >
+            <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="grid size-8 place-items-center rounded-full bg-muted font-heading text-sm font-semibold">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={practiceComparisonResultTone(decision.result)}
+                  >
+                    {practiceComparisonResultLabel(decision)}
+                  </Badge>
+                  {mattersMost ? <Badge>Block that mattered most</Badge> : null}
+                </div>
+                <h3 className="mt-3 font-heading text-xl font-semibold tracking-tight">
+                  {decision.title}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {block?.clubs.map((club) => club.toUpperCase()).join(", ") || "Mixed clubs"} ·{" "}
+                  {decision.actualBalls}/{decision.plannedBalls ?? "timed"} measured
+                </p>
+              </div>
+
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:w-[25rem]">
+                <div className="border-l-2 border-border pl-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Planned target
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-5">{decision.target}</p>
+                </div>
+                <div className="border-l-2 border-primary pl-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Measured actual
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-5">{decision.actual}</p>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-border/70 bg-muted/25 px-4 py-3 text-xs leading-5 text-muted-foreground">
+              {decision.summary}
+            </div>
+          </Card>
+        );
+      })}
+
+      <div className="mt-2 border-y border-primary/30 bg-primary/5 px-4 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+          Next Practice
+        </p>
+        <p className="mt-2 font-heading text-lg font-semibold leading-6">
+          {comparison.nextRecommendation}
+        </p>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          Recommendation derived from the matched shot rows in this review.
+        </p>
+      </div>
     </div>
   );
 }
@@ -2055,8 +2063,9 @@ function PracticeLibrary({
   return (
     <Drawer direction="right">
       <DrawerTrigger asChild>
-        <Button variant="outline" className="min-h-11 justify-between">
-          Templates and saved practice plans
+        <Button type="button" variant="ghost" size="sm">
+          <SlidersHorizontal className="size-4" />
+          Templates &amp; saved plans
           <Badge variant="secondary">{templates.length + savedPlans.length}</Badge>
         </Button>
       </DrawerTrigger>
@@ -2160,10 +2169,10 @@ function CompactSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <label className="grid min-w-0 gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-9 min-w-28 normal-case tracking-normal">
+        <SelectTrigger className="h-10 w-full min-w-0 normal-case tracking-normal">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -2174,27 +2183,6 @@ function CompactSelect({
           ))}
         </SelectContent>
       </Select>
-    </label>
-  );
-}
-
-function ToggleGroup({ children }: { children: React.ReactNode }) {
-  return <div className="grid content-start gap-2">{children}</div>;
-}
-
-function FacilityToggle({
-  checked,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex items-center gap-2 text-sm font-medium">
-      <Checkbox checked={checked} onCheckedChange={(value) => onChange(Boolean(value))} />
-      {label}
     </label>
   );
 }
@@ -2277,13 +2265,13 @@ function practiceComparisonResultLabel(
 ) {
   switch (decision.result) {
     case "passed":
-      return "Passed";
+      return "Pass";
     case "mixed":
-      return "Repeat once";
+      return "Partial";
     case "failed":
-      return "Missed target";
+      return "Fail";
     case "insufficient_data":
-      return "Low evidence";
+      return "Partial";
   }
 }
 

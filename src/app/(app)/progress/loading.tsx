@@ -3,8 +3,8 @@ import { GolfRouteLoading } from "@/components/golf-loading";
 export default function ProgressLoading() {
   return (
     <GolfRouteLoading
-      title="Building progression roadmap"
-      subtitle="Comparing recent sessions, weak spots, and the practice priority for this week."
+      title="Reading your golf direction"
+      subtitle="Connecting performance, goals, training load, and the moments that changed the story."
       variant="progress"
     />
   );

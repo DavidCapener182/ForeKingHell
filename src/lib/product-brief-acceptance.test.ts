@@ -86,6 +86,7 @@ describe("product brief acceptance", () => {
     ]) {
       expect(progress).toContain(field);
     }
+    expect(progress).toContain("data-weekly-evidence-strip");
     for (const field of [
       "What felt different?",
       "Which club caused trouble?",
@@ -98,7 +99,14 @@ describe("product brief acceptance", () => {
     ]) {
       expect(courseStrategy).toContain(field);
     }
-    expect(challenges).toContain("Seasonal leagues");
-    expect(challenges).toContain("Long-form boards, measured automatically");
+    for (const component of [
+      "ChallengeTabs",
+      "ActiveChallengeGrid",
+      "AvailableChallengeGrid",
+      "CompletedChallengeGrid",
+      "challengeImageSrc",
+    ]) {
+      expect(challenges).toContain(component);
+    }
   });
 });

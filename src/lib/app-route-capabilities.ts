@@ -79,7 +79,7 @@ export const mobileCapabilities = {
     "/practice",
     "Long-form Data Chat is available in the full workbench.",
   ),
-  challenges: summaryMore(),
+  challenges: companionMore(),
   tournaments: summaryMore(),
   leaderboard: summaryMore(),
   "course-records": desktopOnly(
@@ -194,8 +194,6 @@ const summaryOnlyPrefixes = [
   "/progress",
   "/handicap",
   "/goals",
-  "/challenges",
-  "/tournaments",
   "/leaderboard",
   "/achievements",
 ] as const;

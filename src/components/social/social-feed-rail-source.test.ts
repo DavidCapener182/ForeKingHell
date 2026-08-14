@@ -14,12 +14,15 @@ describe("social feed rail route suppression", () => {
       "/rapsodo",
       "/providers",
       "/play",
+      "/sessions",
       "/coach",
       "/practice",
+      "/analyse",
       "/data-chat",
       "/shots",
       "/compare",
       "/speed",
+      "/challenges",
       "/shared",
       "/admin",
       "/partners",
@@ -29,7 +32,7 @@ describe("social feed rail route suppression", () => {
   });
 
   it("keeps social graph destinations available instead of hiding every social route", () => {
-    for (const route of ["/friends", "/groups", "/profile", "/leaderboard", "/challenges"]) {
+    for (const route of ["/friends", "/groups", "/profile", "/leaderboard"]) {
       expect(source).not.toContain(`"${route}"`);
     }
   });

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/analyse/page.tsx"), "utf8");
 
 describe("Analyse hub", () => {
-  it("uses the planned desktop tabs and compact evidence navigation", () => {
+  it("uses performance-lab tabs and an asymmetric editorial overview", () => {
     expect(source).toContain("data-analyse-workspace-tabs");
     for (const tab of ["Overview", "Compare", "Shots", "Conditions", "Data Quality"]) {
       expect(source).toContain(`>${tab}</TabsTrigger>`);
@@ -13,20 +13,32 @@ describe("Analyse hub", () => {
     expect(source).toContain("ConnectedMetricBar");
     expect(source).toContain("AnalyseProvenancePanel");
     expect(source).toContain("AppCommandContentTrigger");
-    expect(source).toContain("<Alert");
-    expect(source).toContain("var(--status-warning-surface)");
-    expect(source).not.toContain("bg-amber-50");
-    expect(source).toContain("AnalyseDestinationList");
+    expect(source).toContain("What does the data say?");
+    expect(source).toContain("Understand what changed");
+    expect(source).toContain("Find your real dispersion and miss");
+    expect(source).toContain("See how environment changes your numbers");
+    expect(source).toContain("Know what evidence you can trust");
+    expect(source).toContain("xl:grid-cols-12");
+    expect(source).toContain("ComparisonGraphic");
+    expect(source).toContain("DispersionGraphic");
+    expect(source).toContain("ConfidenceDistribution");
+    expect(source).not.toContain("AnalyseDestinationList");
     expect(source).not.toContain("AnalysisRoute");
 
-    for (const href of ["/progress", "/analyse/compare", "/shots", "/bag", "/practice", "/coach"]) {
-      expect(source).toContain(`href: "${href}"`);
+    for (const href of ["/analyse/compare", "/analyse/conditions", "/analyse/workspace"]) {
+      expect(source).toContain(`href="${href}"`);
     }
 
     expect(source).toContain("analysisConfidence({");
-    expect(source).toContain("Test session impact");
-    expect(source).toContain("Open analysis workspace");
-    expect(source).toContain('href: "/analyse/workspace"');
+    expect(source).toContain("Advanced tools stay in the command centre");
+    const provenance = readFileSync(
+      join(process.cwd(), "src/app/analyse/analyse-provenance-panel.tsx"),
+      "utf8",
+    );
+    expect(provenance).toContain("Evidence & calculation");
+    expect(provenance).toContain("ResponsiveDetailPanel");
+    expect(provenance).toContain("bg-[#0b2a1d] text-white");
+    expect(provenance).toContain("hover:bg-[#123c2b]");
   });
 
   it("ships one visible desktop workbench because companion traffic falls back to Sessions", () => {

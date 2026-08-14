@@ -1,27 +1,10 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, ShieldCheck, UserPlus, Zap } from "lucide-react";
+import { Search } from "lucide-react";
 
-import { grantAdminAccessAction, grantLifetimeFullAction } from "@/app/admin/actions";
-import { AdminConfirmSubmitButton } from "@/app/admin/admin-confirm-submit-button";
-import { AdminUserActions } from "@/app/admin/admin-user-actions";
+import { AdminAccessDialog, AdminUserActions } from "@/app/admin/admin-user-actions";
+import { AdminNav, AdminNotice } from "@/app/admin/admin-components";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import {
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  DesktopSavedViewSuggestion,
-  DesktopWorkbenchColumn,
-} from "@/components/app/desktop-workbench";
-import {
-  AdminMetric,
-  AdminNav,
-  AdminNotice,
-  AdminPageHeader,
-  AdminSection,
-  formatDateTime,
-  label,
-  PlanBadge,
-} from "@/app/admin/admin-components";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { DataTableFrame, PageShell } from "@/components/premium";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getAdminUsers, requireAdminUser } from "@/lib/admin";
 import {
   Table,
   TableBody,
@@ -41,79 +23,52 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { getAdminUsers, requireAdminUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
 type AdminUsersPageProps = {
   searchParams?: Promise<{
     q?: string;
+    role?: string;
+    plan?: string;
+    status?: string;
+    order?: string;
     adminStatus?: string;
     adminError?: string;
-    sort?: string;
-    dir?: string;
-    view?: string;
   }>;
 };
 
 type AdminUserListItem = Awaited<ReturnType<typeof getAdminUsers>>[number];
-type AdminUserSortMetric = "user" | "plan" | "activity" | "admin" | "created";
-type AdminUserSortDirection = "asc" | "desc";
-type AdminUserSortState = {
-  metric: AdminUserSortMetric;
-  dir: AdminUserSortDirection;
-};
-
-const adminUserColumns: DesktopWorkbenchColumn[] = [
-  { id: "user", label: "User", locked: true },
-  { id: "plan", label: "Plan" },
-  { id: "activity", label: "Activity" },
-  { id: "admin", label: "Admin" },
-  { id: "created", label: "Created" },
-  { id: "action", label: "Action", locked: true },
-];
-
-const adminUserSortLabels: Record<AdminUserSortMetric, string> = {
-  user: "User",
-  plan: "Plan",
-  activity: "Activity",
-  admin: "Admin",
-  created: "Created",
-};
-
-const adminUserSortDefaultDirections: Record<AdminUserSortMetric, AdminUserSortDirection> = {
-  user: "asc",
-  plan: "desc",
-  activity: "desc",
-  admin: "desc",
-  created: "desc",
-};
-
-const adminUserSuggestedViews: DesktopSavedViewSuggestion[] = [
-  {
-    title: "Owner/operator review",
-    href: "/admin/users",
-    detail: "Check current admin roles before changing access.",
-  },
-  {
-    title: "Lifetime entitlement audit",
-    href: "/admin/billing",
-    detail: "Review permanent full-plan grants and subscription state.",
-  },
-  {
-    title: "Moderation follow-up",
-    href: "/admin/moderation",
-    detail: "Move from user lookup to reports and safety decisions.",
-  },
-];
+type AdminUserRoleFilter = "all" | "owner" | "operator" | "none";
+type AdminUserPlanFilter = "all" | "free" | "plus" | "pro" | "full";
+type AdminUserStatusFilter = "all" | "active" | "inactive" | "standard";
+type AdminUserSortOrder =
+  | "created_desc"
+  | "created_asc"
+  | "user_asc"
+  | "user_desc"
+  | "activity_desc"
+  | "activity_asc"
+  | "plan_desc"
+  | "plan_asc"
+  | "admin_desc"
+  | "admin_asc";
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   const params = await searchParams;
-  const sortState = parseAdminUserSort(params?.sort, params?.dir);
-  const [actor, users] = await Promise.all([requireAdminUser(), getAdminUsers({ q: params?.q })]);
+  const filters = {
+    role: parseRoleFilter(params?.role),
+    plan: parsePlanFilter(params?.plan),
+    status: parseStatusFilter(params?.status),
+  };
+  const order = parseSortOrder(params?.order);
+  const [actor, users] = await Promise.all([
+    requireAdminUser(),
+    getAdminUsers({ q: params?.q, limit: 100 }),
+  ]);
   const canManageOwners = actor.role === "owner";
-  const sortedUsers = sortAdminUsers(users, sortState);
-  const adminCount = users.filter((user) => user.adminRole).length;
-  const lifetimeCount = users.filter((user) => user.activePlan === "full").length;
+  const visibleUsers = sortAdminUsers(filterAdminUsers(users, filters), order);
 
   return (
     <PageShell>
@@ -122,474 +77,334 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
-      <DesktopWorkbenchLayout scope="admin-users">
-        <AdminPageHeader
-          eyebrow="Admin users"
-          title="Users and access"
-          description="Search accounts, grant lifetime full access and add owner/operator access for people running the site."
-        />
+      <DesktopWorkbenchLayout scope="admin-users" className="gap-4">
+        <header className="flex flex-col gap-3 border-b border-border/70 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Admin users
+            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Account management
+            </h1>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+              Search accounts, inspect access, and make controlled plan or role changes.
+            </p>
+          </div>
+          <AdminAccessDialog canManageOwners={canManageOwners} />
+        </header>
 
-        <section className="grid gap-3 md:grid-cols-3">
-          <AdminMetric
-            icon={Search}
-            label="Listed users"
-            value={users.length}
-            detail={params?.q ? `Filtered by ${params.q}` : "Latest accounts"}
-          />
-          <AdminMetric
-            icon={Zap}
-            label="Lifetime full"
-            value={lifetimeCount}
-            detail="Permanent entitlement grants in this view"
-          />
-          <AdminMetric
-            icon={ShieldCheck}
-            label="Admin access"
-            value={adminCount}
-            detail="Active owner/operator rows in this view"
-          />
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
-          <section className="grid gap-4 lg:sticky lg:top-28">
-            <AdminSection title="Find user" description="Search by email, profile name or handle.">
-              <form action="/admin/users" className="grid gap-3">
-                <input type="hidden" name="sort" value={sortState.metric} />
-                <input type="hidden" name="dir" value={sortState.dir} />
-                <Input
-                  name="q"
-                  defaultValue={params?.q ?? ""}
-                  placeholder="Email, name or username"
-                  className="h-10 rounded-xl bg-background"
-                />
-                <Button type="submit" className="rounded-xl">
-                  <Search className="size-4" />
-                  Search
-                </Button>
-              </form>
-            </AdminSection>
-
-            {canManageOwners ? (
-              <AdminSection
-                title="Grant lifetime full"
-                description="Creates a lifetime plan row and all full entitlements."
-              >
-                <form action={grantLifetimeFullAction} className="grid gap-3">
-                  <input type="hidden" name="returnTo" value="/admin/users" />
-                  <Input
-                    name="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    className="h-10 rounded-xl bg-background"
-                    required
-                  />
-                  <AdminConfirmSubmitButton
-                    type="submit"
-                    className="rounded-xl"
-                    confirmTitle="Grant lifetime full access"
-                    confirmMessage="Grant lifetime full access to this email? This creates a permanent full-plan entitlement and writes admin billing state."
-                    confirmActionLabel="Grant full access"
-                  >
-                    <Zap className="size-4" />
-                    Grant full
-                  </AdminConfirmSubmitButton>
-                </form>
-              </AdminSection>
-            ) : null}
-
-            <AdminSection
-              title="Add admin operator"
-              description="Owner has all operations; operator is for routine site work."
-            >
-              <form action={grantAdminAccessAction} className="grid gap-3">
-                <input type="hidden" name="returnTo" value="/admin/users" />
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="user@example.com"
-                  className="h-10 rounded-xl bg-background"
-                  required
-                />
-                <Select name="role" defaultValue="operator">
-                  <SelectTrigger className="w-full bg-background" aria-label="Admin role">
-                    <SelectValue placeholder="Choose admin role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="operator">Operator</SelectItem>
-                    {canManageOwners ? <SelectItem value="owner">Owner</SelectItem> : null}
-                  </SelectContent>
-                </Select>
-                <AdminConfirmSubmitButton
-                  type="submit"
-                  variant="outline"
-                  confirmTitle="Grant admin access"
-                  confirmMessage="Grant admin access to this email? Owner and operator roles can change platform operations."
-                  confirmActionLabel="Grant admin"
-                >
-                  <UserPlus className="size-4" />
-                  Grant admin
-                </AdminConfirmSubmitButton>
-              </form>
-            </AdminSection>
-          </section>
-
-          <AdminSection
-            title="Accounts"
-            description="Names are cleaned before display so shared database artifacts are not exposed."
-          >
-            <DesktopTableWorkbenchControls
-              viewKey="admin-users"
-              scope="admin-users"
-              currentViewLabel={params?.q ? `User search: ${params.q}` : "Admin user accounts"}
-              resultLabel={`${users.length.toLocaleString("en-GB")} users`}
-              columns={adminUserColumns}
-              suggestedViews={adminUserSuggestedViews}
-              exportTableId="admin-users"
-              exportFileName="forekinghell-admin-users-view.csv"
-              className="mb-3"
+        <form
+          action="/admin/users"
+          className="grid gap-3 rounded-xl border border-border/80 bg-card p-3 shadow-xs md:grid-cols-2 xl:grid-cols-[minmax(260px,1.6fr)_minmax(150px,0.7fr)_minmax(150px,0.7fr)_minmax(170px,0.8fr)_minmax(190px,0.9fr)_auto] xl:items-end"
+          aria-label="Filter admin users"
+        >
+          <ToolbarField label="Search">
+            <Input
+              name="q"
+              defaultValue={params?.q ?? ""}
+              placeholder="Name, username, or email"
+              className="h-9 bg-background"
             />
-            <DataTableFrame
-              mainTable
-              mainTableLabel="Admin user accounts table"
-              stickyFirstColumn
-              className="overflow-x-auto"
-            >
-              <Table
-                className="w-full min-w-[900px] text-left text-sm"
-                data-workbench-scope="admin-users"
-                data-workbench-export-table="admin-users"
-                aria-describedby="admin-users-table-summary"
-              >
-                <TableCaption id="admin-users-table-summary" className="sr-only">
-                  Admin user accounts with plan, activity, admin role, creation date and actions.
-                </TableCaption>
-                <TableHeader className="border-b text-xs uppercase text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-                  <TableRow>
-                    <SortableAdminUserHead
-                      columnId="user"
-                      metric="user"
-                      query={params?.q ?? ""}
-                      sortState={sortState}
-                      className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+          </ToolbarField>
+
+          <ToolbarField label="Role">
+            <Select name="role" defaultValue={filters.role}>
+              <SelectTrigger className="w-full bg-background" aria-label="Filter by admin role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="operator">Operator</SelectItem>
+                <SelectItem value="none">No admin role</SelectItem>
+              </SelectContent>
+            </Select>
+          </ToolbarField>
+
+          <ToolbarField label="Plan">
+            <Select name="plan" defaultValue={filters.plan}>
+              <SelectTrigger className="w-full bg-background" aria-label="Filter by plan">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All plans</SelectItem>
+                <SelectItem value="free">Free</SelectItem>
+                <SelectItem value="plus">Plus</SelectItem>
+                <SelectItem value="pro">Pro</SelectItem>
+                <SelectItem value="full">Lifetime full</SelectItem>
+              </SelectContent>
+            </Select>
+          </ToolbarField>
+
+          <ToolbarField label="Status">
+            <Select name="status" defaultValue={filters.status}>
+              <SelectTrigger className="w-full bg-background" aria-label="Filter by admin status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Admin active</SelectItem>
+                <SelectItem value="inactive">Admin inactive</SelectItem>
+                <SelectItem value="standard">No admin record</SelectItem>
+              </SelectContent>
+            </Select>
+          </ToolbarField>
+
+          <ToolbarField label="Sort">
+            <Select name="order" defaultValue={order}>
+              <SelectTrigger className="w-full bg-background" aria-label="Sort users">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_desc">Newest first</SelectItem>
+                <SelectItem value="created_asc">Oldest first</SelectItem>
+                <SelectItem value="user_asc">User A–Z</SelectItem>
+                <SelectItem value="user_desc">User Z–A</SelectItem>
+                <SelectItem value="activity_desc">Most active</SelectItem>
+                <SelectItem value="activity_asc">Least active</SelectItem>
+                <SelectItem value="plan_desc">Plan high–low</SelectItem>
+                <SelectItem value="plan_asc">Plan low–high</SelectItem>
+                <SelectItem value="admin_desc">Admin role high–low</SelectItem>
+                <SelectItem value="admin_asc">Admin role low–high</SelectItem>
+              </SelectContent>
+            </Select>
+          </ToolbarField>
+
+          <div className="flex items-center gap-2 xl:justify-end">
+            <Button type="submit" size="sm">
+              Apply
+            </Button>
+            <Button asChild type="button" variant="ghost" size="sm">
+              <a href="/admin/users">Reset</a>
+            </Button>
+          </div>
+        </form>
+
+        <div className="flex items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">
+              {visibleUsers.length.toLocaleString("en-GB")}
+            </span>{" "}
+            {visibleUsers.length === 1 ? "account" : "accounts"}
+          </p>
+          <p className="hidden sm:block">Select a user to inspect the full account record.</p>
+        </div>
+
+        <DataTableFrame
+          mainTable
+          mainTableLabel="Admin user accounts table"
+          stickyFirstColumn
+          className="w-full overflow-hidden rounded-xl"
+        >
+          <Table
+            className="w-full min-w-[1180px] text-left text-sm"
+            data-workbench-scope="admin-users"
+            data-workbench-export-table="admin-users"
+            aria-describedby="admin-users-table-summary"
+          >
+            <TableCaption id="admin-users-table-summary" className="sr-only">
+              Admin user accounts with identity, email, plan, activity, admin role, creation date,
+              and account actions.
+            </TableCaption>
+            <TableHeader className="bg-muted/70 text-xs uppercase tracking-wide text-muted-foreground [&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+              <TableRow>
+                <TableHead
+                  data-column="user"
+                  className="sticky left-0 z-20 min-w-[230px] bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                >
+                  User
+                </TableHead>
+                <TableHead data-column="email" className="min-w-[250px]">
+                  Email
+                </TableHead>
+                <TableHead data-column="plan" className="min-w-[120px]">
+                  Plan
+                </TableHead>
+                <TableHead data-column="activity" className="min-w-[190px]">
+                  Activity
+                </TableHead>
+                <TableHead data-column="admin" className="min-w-[180px]">
+                  Admin role
+                </TableHead>
+                <TableHead data-column="created" className="min-w-[170px]">
+                  Created
+                </TableHead>
+                <TableHead data-column="action" className="w-16 text-right">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleUsers.length > 0 ? (
+                visibleUsers.map((user) => (
+                  <AdminUserActions
+                    key={user.id}
+                    canManageOwners={canManageOwners}
+                    isCurrentUser={user.id === actor.userId}
+                    user={{
+                      id: user.id,
+                      displayName: user.displayName,
+                      email: user.email,
+                      username: user.username,
+                      activePlan: user.activePlan,
+                      sessionCount: user.sessionCount,
+                      feedCount: user.feedCount,
+                      adminRole: user.adminRole,
+                      adminStatus: user.adminStatus,
+                      createdLabel: formatAdminDateTime(user.createdAt),
+                      auditEvents: user.recentAuditEvents.map((event) => ({
+                        id: event.id,
+                        actionLabel: formatAdminLabel(event.action),
+                        createdLabel: formatAdminDateTime(event.createdAt),
+                      })),
+                    }}
+                  />
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="p-4">
+                    <AppEmptyState
+                      icon={<Search className="size-5" />}
+                      title="No users match this view"
+                      description="Clear the current filters to return to the full account directory."
+                      primaryAction={
+                        <Button asChild variant="outline" size="sm">
+                          <a href="/admin/users">Clear filters</a>
+                        </Button>
+                      }
                     />
-                    <SortableAdminUserHead
-                      columnId="plan"
-                      metric="plan"
-                      query={params?.q ?? ""}
-                      sortState={sortState}
-                    />
-                    <SortableAdminUserHead
-                      columnId="activity"
-                      metric="activity"
-                      query={params?.q ?? ""}
-                      sortState={sortState}
-                    />
-                    <SortableAdminUserHead
-                      columnId="admin"
-                      metric="admin"
-                      query={params?.q ?? ""}
-                      sortState={sortState}
-                    />
-                    <SortableAdminUserHead
-                      columnId="created"
-                      metric="created"
-                      query={params?.q ?? ""}
-                      sortState={sortState}
-                    />
-                    <TableHead data-column="action" className="px-3 py-2 font-medium">
-                      Action
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedUsers.length > 0 ? (
-                    sortedUsers.map((user) => (
-                      <TableRow
-                        key={user.id}
-                        tabIndex={0}
-                        className="focus-aaa border-b outline-none last:border-b-0"
-                      >
-                        <TableCell
-                          data-column="user"
-                          className="sticky left-0 z-10 bg-card px-3 py-3 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                        >
-                          <p className="font-medium">{user.displayName}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {user.email ?? "No email"}
-                          </p>
-                          {user.username ? (
-                            <p className="mt-1 text-xs text-muted-foreground">@{user.username}</p>
-                          ) : null}
-                        </TableCell>
-                        <TableCell data-column="plan" className="px-3 py-3">
-                          <PlanBadge plan={user.activePlan} />
-                        </TableCell>
-                        <TableCell
-                          data-column="activity"
-                          className="px-3 py-3 text-muted-foreground"
-                        >
-                          {user.sessionCount} sessions · {user.feedCount} cards
-                        </TableCell>
-                        <TableCell data-column="admin" className="px-3 py-3">
-                          {user.adminRole && canManageOwners && user.id !== actor.userId ? (
-                            <div className="flex flex-wrap gap-2">
-                              <Badge variant="secondary">{label(user.adminRole)}</Badge>
-                              <Badge variant="outline">{label(user.adminStatus ?? "active")}</Badge>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">No admin access</span>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          data-column="created"
-                          className="px-3 py-3 text-xs text-muted-foreground"
-                        >
-                          {formatDateTime(user.createdAt)}
-                        </TableCell>
-                        <TableCell data-column="action" className="px-3 py-3">
-                          <AdminUserActions
-                            user={{
-                              id: user.id,
-                              displayName: user.displayName,
-                              email: user.email,
-                              username: user.username,
-                              activePlan: user.activePlan,
-                              sessionCount: user.sessionCount,
-                              feedCount: user.feedCount,
-                              adminRole: user.adminRole,
-                              adminStatus: user.adminStatus,
-                              createdLabel: formatDateTime(user.createdAt),
-                            }}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="p-4">
-                        <AppEmptyState
-                          icon={<Search className="size-5" />}
-                          title="No users match this view"
-                          description="Clear the current search and filters to return to the full account directory."
-                          primaryAction={
-                            <Button asChild variant="outline" size="sm">
-                              <a href="/admin/users">Clear filters</a>
-                            </Button>
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </DataTableFrame>
-          </AdminSection>
-        </section>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
       </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
 
-function SortableAdminUserHead({
-  className,
-  columnId,
-  metric,
-  query,
-  sortState,
-}: {
-  className?: string;
-  columnId: string;
-  metric: AdminUserSortMetric;
-  query: string;
-  sortState: AdminUserSortState;
-}) {
-  const active = sortState.metric === metric;
-
+function ToolbarField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <TableHead
-      data-column={columnId}
-      className={["px-3 py-2 font-medium", className].filter(Boolean).join(" ")}
-      aria-sort={active ? adminUserSortAriaValue(sortState.dir) : "none"}
-    >
-      <SortableAdminUserHeadLink metric={metric} query={query} sortState={sortState} />
-    </TableHead>
+    <label className="grid min-w-0 gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
+    </label>
   );
 }
 
-function SortableAdminUserHeadLink({
-  metric,
-  query,
-  sortState,
-}: {
-  metric: AdminUserSortMetric;
-  query: string;
-  sortState: AdminUserSortState;
-}) {
-  const active = sortState.metric === metric;
-  const nextDir: AdminUserSortDirection = active
-    ? sortState.dir === "desc"
-      ? "asc"
-      : "desc"
-    : adminUserSortDefaultDirections[metric];
-  const Icon = active ? (sortState.dir === "desc" ? ArrowDown : ArrowUp) : ArrowUpDown;
-  const label = adminUserSortLabels[metric];
+function filterAdminUsers(
+  users: AdminUserListItem[],
+  filters: {
+    role: AdminUserRoleFilter;
+    plan: AdminUserPlanFilter;
+    status: AdminUserStatusFilter;
+  },
+) {
+  return users.filter((user) => {
+    const roleMatches =
+      filters.role === "all" ||
+      (filters.role === "none" ? !user.adminRole : user.adminRole === filters.role);
+    const planMatches = filters.plan === "all" || user.activePlan === filters.plan;
+    const statusMatches =
+      filters.status === "all" ||
+      (filters.status === "standard" ? !user.adminStatus : user.adminStatus === filters.status);
 
-  return (
-    <a
-      href={adminUserSortHref({ dir: nextDir, metric, query })}
-      className="focus-aaa inline-flex w-full items-center gap-1 rounded-md text-xs font-semibold outline-none transition-colors hover:text-foreground"
-      aria-label={`Sort admin users by ${label}, ${adminUserSortDirectionCopy(metric, nextDir)}`}
-    >
-      {label}
-      <Icon className={`size-3.5 ${active ? "text-primary" : "opacity-45"}`} aria-hidden />
-    </a>
-  );
-}
-
-function adminUserSortHref({
-  dir,
-  metric,
-  query,
-}: {
-  dir: AdminUserSortDirection;
-  metric: AdminUserSortMetric;
-  query: string;
-}) {
-  const params = new URLSearchParams();
-
-  if (query.trim()) {
-    params.set("q", query.trim());
-  }
-
-  params.set("sort", metric);
-  params.set("dir", dir);
-
-  return `/admin/users?${params.toString()}`;
-}
-
-function sortAdminUsers(users: AdminUserListItem[], sortState: AdminUserSortState) {
-  return [...users].sort((left, right) => {
-    const result = compareAdminUserValues(left, right, sortState);
-
-    if (result !== 0) {
-      return result;
-    }
-
-    return compareAdminUserDates(left.createdAt, right.createdAt, "desc");
+    return roleMatches && planMatches && statusMatches;
   });
 }
 
-function compareAdminUserValues(
-  left: AdminUserListItem,
-  right: AdminUserListItem,
-  sortState: AdminUserSortState,
-) {
-  switch (sortState.metric) {
-    case "user":
-      return compareAdminUserStrings(left.displayName, right.displayName, sortState.dir);
-    case "plan":
-      return compareAdminUserNumbers(
-        planSortWeight(left.activePlan),
-        planSortWeight(right.activePlan),
-        sortState.dir,
-      );
-    case "activity":
-      return compareAdminUserNumbers(
-        left.sessionCount + left.feedCount,
-        right.sessionCount + right.feedCount,
-        sortState.dir,
-      );
-    case "admin":
-      return compareAdminUserNumbers(
-        adminRoleSortWeight(left),
-        adminRoleSortWeight(right),
-        sortState.dir,
-      );
-    case "created":
-      return compareAdminUserDates(left.createdAt, right.createdAt, sortState.dir);
-  }
+function sortAdminUsers(users: AdminUserListItem[], order: AdminUserSortOrder) {
+  return [...users].sort((left, right) => {
+    switch (order) {
+      case "created_asc":
+        return left.createdAt.getTime() - right.createdAt.getTime();
+      case "created_desc":
+        return right.createdAt.getTime() - left.createdAt.getTime();
+      case "user_asc":
+        return left.displayName.localeCompare(right.displayName);
+      case "user_desc":
+        return right.displayName.localeCompare(left.displayName);
+      case "activity_asc":
+        return activityTotal(left) - activityTotal(right);
+      case "activity_desc":
+        return activityTotal(right) - activityTotal(left);
+      case "plan_asc":
+        return planSortWeight(left.activePlan) - planSortWeight(right.activePlan);
+      case "plan_desc":
+        return planSortWeight(right.activePlan) - planSortWeight(left.activePlan);
+      case "admin_asc":
+        return adminSortWeight(left) - adminSortWeight(right);
+      case "admin_desc":
+        return adminSortWeight(right) - adminSortWeight(left);
+    }
+  });
+}
+
+function activityTotal(user: AdminUserListItem) {
+  return user.sessionCount + user.feedCount;
 }
 
 function planSortWeight(plan: string) {
-  if (plan === "full") return 3;
-  if (plan === "pro") return 2;
-  if (plan === "plus") return 1;
+  if (plan === "full") return 4;
+  if (plan === "pro") return 3;
+  if (plan === "plus") return 2;
+  if (plan === "free") return 1;
   return 0;
 }
 
-function adminRoleSortWeight(user: AdminUserListItem) {
+function adminSortWeight(user: AdminUserListItem) {
   if (user.adminRole === "owner") return 3;
   if (user.adminRole === "operator") return 2;
   if (user.adminStatus) return 1;
   return 0;
 }
 
-function compareAdminUserNumbers(left: number, right: number, dir: AdminUserSortDirection) {
-  return dir === "asc" ? left - right : right - left;
+function parseRoleFilter(value: string | undefined): AdminUserRoleFilter {
+  return value === "owner" || value === "operator" || value === "none" ? value : "all";
 }
 
-function compareAdminUserDates(left: Date, right: Date, dir: AdminUserSortDirection) {
-  return compareAdminUserNumbers(left.getTime(), right.getTime(), dir);
+function parsePlanFilter(value: string | undefined): AdminUserPlanFilter {
+  return value === "free" || value === "plus" || value === "pro" || value === "full"
+    ? value
+    : "all";
 }
 
-function compareAdminUserStrings(
-  left: string | null,
-  right: string | null,
-  dir: AdminUserSortDirection,
-) {
-  if (!left && !right) return 0;
-  if (!left) return 1;
-  if (!right) return -1;
-
-  const result = left.localeCompare(right);
-  return dir === "asc" ? result : -result;
+function parseStatusFilter(value: string | undefined): AdminUserStatusFilter {
+  return value === "active" || value === "inactive" || value === "standard" ? value : "all";
 }
 
-function parseAdminUserSort(
-  metricValue: string | undefined,
-  dirValue: string | undefined,
-): AdminUserSortState {
-  const metric = parseAdminUserSortMetric(metricValue);
-
-  return {
-    metric,
-    dir: parseAdminUserSortDirection(dirValue, adminUserSortDefaultDirections[metric]),
-  };
-}
-
-function parseAdminUserSortMetric(value: string | undefined): AdminUserSortMetric {
+function parseSortOrder(value: string | undefined): AdminUserSortOrder {
   if (
-    value === "user" ||
-    value === "plan" ||
-    value === "activity" ||
-    value === "admin" ||
-    value === "created"
+    value === "created_asc" ||
+    value === "user_asc" ||
+    value === "user_desc" ||
+    value === "activity_desc" ||
+    value === "activity_asc" ||
+    value === "plan_desc" ||
+    value === "plan_asc" ||
+    value === "admin_desc" ||
+    value === "admin_asc"
   ) {
     return value;
   }
 
-  return "created";
+  return "created_desc";
 }
 
-function parseAdminUserSortDirection(
-  value: string | undefined,
-  fallback: AdminUserSortDirection,
-): AdminUserSortDirection {
-  return value === "asc" || value === "desc" ? value : fallback;
+function formatAdminLabel(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
-function adminUserSortAriaValue(dir: AdminUserSortDirection) {
-  return dir === "desc" ? "descending" : "ascending";
-}
-
-function adminUserSortDirectionCopy(metric: AdminUserSortMetric, dir: AdminUserSortDirection) {
-  if (metric === "user") {
-    return dir === "asc" ? "A to Z" : "Z to A";
-  }
-
-  if (metric === "created") {
-    return dir === "desc" ? "newest first" : "oldest first";
-  }
-
-  return dir === "desc" ? "high to low" : "low to high";
+function formatAdminDateTime(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(value);
 }

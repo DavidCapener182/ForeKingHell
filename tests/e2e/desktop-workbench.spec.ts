@@ -3115,7 +3115,7 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI settings rail/i);
 
     await gotoAppRoute(page, "/billing");
-    await expectAppText(page, /Choose the plan|Pricing/i, 45_000);
+    await expectAppText(page, /Your plan/i, 45_000);
     await expectNoAiRail(page, /AI billing rail/i);
 
     await gotoAppRoute(page, "/social-intelligence");

@@ -6,56 +6,59 @@ const source = readFileSync(
   join(process.cwd(), "src/app/(app)/groups/[groupSlug]/page.tsx"),
   "utf8",
 );
+const tabsSource = readFileSync(
+  join(process.cwd(), "src/app/groups/group-section-tabs.tsx"),
+  "utf8",
+);
 const memberDialogSource = readFileSync(
   join(process.cwd(), "src/app/groups/group-members-dialog.tsx"),
   "utf8",
 );
+const dangerSource = readFileSync(
+  join(process.cwd(), "src/app/groups/group-danger-actions.tsx"),
+  "utf8",
+);
 
-describe("group detail desktop route", () => {
-  it("keeps group detail pages as desktop operations workspaces", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="group-detail">');
-    expect(source).not.toContain("getRequestAppSurface");
-    expect(source).not.toContain('surface === "companion"');
-    expect(source).toContain('await import("@/components/app/desktop-workbench")');
-    expect(source).toContain('id="group-operations"');
-    expect(source).toContain('data-workbench-scope="group-members"');
-    expect(source).toContain('data-workbench-export-table="group-member-roster"');
-    expect(source).toContain('mainTableLabel="Group member roster table"');
-    expect(source).toContain('mainTableLabel="Group member roster table" stickyFirstColumn');
-    expect(source).toContain('data-workbench-scope="group-challenges"');
-    expect(source).toContain('data-workbench-export-table="group-linked-challenges"');
-    expect(source).toContain('label="Group linked challenges table" stickyFirstColumn');
-    expect(source).toContain("tabIndex={0}");
-    expect(source).not.toContain("DesktopInsightRail");
-    expect(source).not.toContain("WorkbenchPrompts");
-    expect(source).not.toContain("rail={");
-  });
-
-  it("renders exactly one Overview, Activity or Members work surface from the active tab", () => {
-    expect(source).toContain("const activeSection = parseGroupDetailSection(flags?.section)");
-    expect(source).toContain(
-      "<GroupSectionTabs activeSection={activeSection} baseHref={sectionBaseHref} />",
-    );
+describe("group clubhouse detail", () => {
+  it("uses the required Overview, Activity and Members tabs", () => {
+    expect(tabsSource).toContain('label: "Overview"');
+    expect(tabsSource).toContain('label: "Activity"');
+    expect(tabsSource).toContain('label: "Members"');
     expect(source).toContain('activeSection === "overview"');
     expect(source).toContain('activeSection === "activity"');
-    expect(source).toContain("<GroupActivitySection data={data} />");
-    expect(source).toContain("<GroupMemberTable");
-    expect(source).toContain("<GroupChallengeTable");
-    expect(source).not.toContain("<GroupOperationsBoard");
+    expect(source).toContain("<GroupOverview data={data} />");
+    expect(source).toContain("<GroupActivity data={data} />");
+    expect(source).toContain("<GroupMembers data={data} />");
   });
 
-  it("preserves real group authority without shipping a companion duplicate", () => {
-    expect(source).not.toMatch(
-      /MobileAppShell|MobileTabBar|MobileGroupFeed|MobileGroupOverviewDetails|MobileGroupMembers|IOSGroupedList/,
-    );
-    expect(source).toContain("data.canAdmin");
-    expect(source).toContain("data.canAdmin && data.group.inviteCode");
-    expect(source).toContain("value={data.group.memberCount}");
-    expect(source).toContain("<GroupDangerActions");
+  it("makes overview about the group, live play and what is next", () => {
+    expect(source).toContain("About this group");
+    expect(source).toContain("Current challenge");
+    expect(source).toContain("Recent group performance");
+    expect(source).toContain("Next event");
+    expect(source).toContain("data.group.description");
+    expect(source).toContain("data.group.currentChallenge");
+    expect(source).toContain("data.rivalry.standings");
+    expect(source).toContain("data.nextEvent");
+  });
+
+  it("keeps the feed and member roster compact instead of using admin tables", () => {
+    expect(source).toContain("data.posts.map");
+    expect(source).toContain("data.members.map");
+    expect(source).toContain("<Item");
+    expect(source).not.toContain("DataTableFrame");
+    expect(source).not.toContain("DesktopTableWorkbenchControls");
+    expect(source).not.toContain("<Table");
+    expect(source).not.toContain("DesktopWorkbenchLayout");
+  });
+
+  it("opens members in a dialog and confirms leave or delete in an alert dialog", () => {
     expect(source).toContain("<GroupMembersDialog");
-    expect(source).not.toContain("records ready");
-    expect(source).not.toContain('data.group.ownerUserId ? "Admin controls ready" : "Member view"');
-    expect(memberDialogSource).toContain("AppEmptyState");
+    expect(memberDialogSource).toContain("<Dialog>");
+    expect(memberDialogSource).toContain("<DialogContent");
+    expect(source).toContain("<GroupDangerActions");
+    expect(dangerSource).toContain("<AlertDialog>");
+    expect(dangerSource).toContain("Delete group");
+    expect(dangerSource).toContain("Leave group");
   });
 });

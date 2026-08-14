@@ -2,11 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Flag, Globe2, Medal, Trophy, Users } from "lucide-react";
+import { Flag, Globe2, Medal, Trophy, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Select,
   SelectContent,
@@ -14,64 +12,69 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type LeaderboardTab = "friends" | "monthly" | "courses" | "challenges" | "tournaments" | "public";
+type LeaderboardPeriod = "all-time" | "monthly";
 
 const tabs: Array<{
-  value: LeaderboardTab;
+  value: Exclude<LeaderboardTab, "monthly">;
   label: string;
   icon: typeof Users;
 }> = [
   { value: "friends", label: "Friends", icon: Users },
-  { value: "monthly", label: "Monthly", icon: CalendarDays },
-  { value: "courses", label: "Course champions", icon: Medal },
-  { value: "challenges", label: "Challenges", icon: Trophy },
-  { value: "tournaments", label: "Tournaments", icon: Flag },
-  { value: "public", label: "Public opt-in", icon: Globe2 },
+  { value: "public", label: "Global", icon: Globe2 },
+  { value: "courses", label: "Course", icon: Medal },
+  { value: "challenges", label: "Challenge", icon: Trophy },
+  { value: "tournaments", label: "Tournament", icon: Flag },
 ];
 
-export function LeaderboardTypeTabs({ activeTab }: { activeTab: LeaderboardTab }) {
-  return (
-    <ButtonGroup
-      aria-label="Leaderboard views"
-      className="max-w-full justify-start overflow-x-auto"
-      data-leaderboard-type-tabs
-    >
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const active = tab.value === activeTab;
+export function LeaderboardTypeTabs({
+  activeTab,
+  period,
+}: {
+  activeTab: LeaderboardTab;
+  period: LeaderboardPeriod;
+}) {
+  const selectedTab = activeTab === "monthly" ? "friends" : activeTab;
 
-        return (
-          <Button
-            key={tab.value}
-            asChild
-            size="sm"
-            variant={active ? "secondary" : "outline"}
-            className="whitespace-nowrap"
-          >
-            <Link
-              href={`/leaderboard?tab=${tab.value}`}
-              prefetch={false}
-              aria-current={active ? "page" : undefined}
-            >
-              <Icon aria-hidden />
-              {tab.label}
-            </Link>
-          </Button>
-        );
-      })}
-    </ButtonGroup>
+  return (
+    <Tabs value={selectedTab} data-leaderboard-type-tabs>
+      <TabsList
+        variant="line"
+        aria-label="Leaderboard views"
+        className="h-auto max-w-full justify-start overflow-x-auto border-b border-border px-0 pb-2"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const active = tab.value === selectedTab;
+          const keepPeriod = tab.value === "friends" || tab.value === "public";
+          const href = `/leaderboard?tab=${tab.value}${keepPeriod && period === "monthly" ? "&period=monthly" : ""}`;
+
+          return (
+            <TabsTrigger key={tab.value} value={tab.value} asChild>
+              <Link href={href} prefetch={false} aria-current={active ? "page" : undefined}>
+                <Icon aria-hidden />
+                {tab.label}
+              </Link>
+            </TabsTrigger>
+          );
+        })}
+      </TabsList>
+    </Tabs>
   );
 }
 
 export function LeaderboardPlayerControls({
   activeTab,
+  period,
   monthLabel,
   provider,
   verification,
 }: {
   activeTab: "friends" | "monthly" | "public";
+  period: LeaderboardPeriod;
   monthLabel: string;
   provider: string;
   verification: string;
@@ -82,7 +85,7 @@ export function LeaderboardPlayerControls({
     const params = new URLSearchParams(window.location.search);
 
     Object.entries(updates).forEach(([key, value]) => {
-      if (value === "all") {
+      if (value === "all" || value === "all-time") {
         params.delete(key);
       } else {
         params.set(key, value);
@@ -102,12 +105,10 @@ export function LeaderboardPlayerControls({
           type="single"
           variant="outline"
           size="sm"
-          value={activeTab === "monthly" ? "monthly" : "all-time"}
+          value={period}
           onValueChange={(value) => {
             if (!value) return;
-            updateQuery({
-              tab: value === "monthly" ? "monthly" : activeTab === "public" ? "public" : "friends",
-            });
+            updateQuery({ period: value });
           }}
           aria-label="Leaderboard period"
         >
@@ -116,7 +117,7 @@ export function LeaderboardPlayerControls({
         </ToggleGroup>
       </ControlGroup>
 
-      <ControlGroup label="Audience">
+      <ControlGroup label="Scope">
         <ToggleGroup
           type="single"
           variant="outline"
@@ -126,10 +127,10 @@ export function LeaderboardPlayerControls({
             if (!value) return;
             updateQuery({ tab: value === "global" ? "public" : "friends" });
           }}
-          aria-label="Leaderboard audience"
+          aria-label="Leaderboard scope"
         >
           <ToggleGroupItem value="friends">Friends</ToggleGroupItem>
-          <ToggleGroupItem value="global">Global opt-in</ToggleGroupItem>
+          <ToggleGroupItem value="global">Global</ToggleGroupItem>
         </ToggleGroup>
       </ControlGroup>
 
@@ -148,12 +149,12 @@ export function LeaderboardPlayerControls({
         </Select>
       </ControlGroup>
 
-      <ControlGroup label="Verification">
+      <ControlGroup label="Proof">
         <Select
           value={verification}
           onValueChange={(value) => updateQuery({ verification: value })}
         >
-          <SelectTrigger size="sm" aria-label="Leaderboard verification">
+          <SelectTrigger size="sm" aria-label="Leaderboard proof status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -165,7 +166,7 @@ export function LeaderboardPlayerControls({
       </ControlGroup>
 
       <Badge variant="secondary" className="ml-auto">
-        {activeTab === "monthly" ? monthLabel : "All recorded results"}
+        {period === "monthly" ? monthLabel : "All recorded results"}
       </Badge>
     </section>
   );

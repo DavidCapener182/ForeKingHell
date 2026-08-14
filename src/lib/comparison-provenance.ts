@@ -126,7 +126,16 @@ function metricDirection(
   lowerIsBetter: boolean,
 ): ComparisonMetricProvenance["direction"] {
   if (value === null) return "unavailable";
-  if (key === "launchDeltaDeg" || Math.abs(value) < 0.05) return "mixed";
+  const meaningfulChange: Record<keyof CompareDelta, number> = {
+    carryDeltaYd: 2,
+    ballSpeedDeltaMph: 1,
+    launchDeltaDeg: Number.POSITIVE_INFINITY,
+    offlineDeltaYd: 2,
+    coneDeltaYd: 4,
+    playableRateDelta: 5,
+    bigMissRateDelta: 4,
+  };
+  if (Math.abs(value) < meaningfulChange[key]) return "mixed";
   const improved = lowerIsBetter ? value < 0 : value > 0;
   return improved ? "better" : "worse";
 }

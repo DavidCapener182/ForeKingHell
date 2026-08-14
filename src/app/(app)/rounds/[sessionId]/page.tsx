@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import {
   ArrowLeft,
+  BarChart3,
   Brain,
   ChevronDown,
   ClipboardCheck,
@@ -31,7 +32,6 @@ import type {
   DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import {
-  IOSDisclosureGroup,
   IOSGroupedList,
   IOSInlineStatus,
   IOSListRow,
@@ -49,11 +49,9 @@ import {
   DataTableFrame,
   MobileDataCard,
   MobileDataList,
-  PageHeader,
   PageShell,
   StatusPill,
 } from "@/components/premium";
-import { ProofChecklistPanel } from "@/components/product-polish";
 import { Input } from "@/components/ui/input";
 import { LazyRoundEditSelect } from "@/app/rounds/[sessionId]/lazy-round-edit-select";
 import {
@@ -84,15 +82,12 @@ import type { CourseAutoImportResult } from "@/lib/course-auto-enrichment";
 import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
 import { formatClubType } from "@/lib/rapsodo/parser";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import type { RoundMapHole, RoundMapShot } from "@/app/rounds/[sessionId]/round-shot-map";
 import { LazyRoundShotMap } from "@/app/rounds/[sessionId]/lazy-round-shot-map";
 import { LazyCourseScorecard } from "@/app/rounds/[sessionId]/lazy-course-scorecard";
 import { MobileCollapsible } from "@/app/rounds/[sessionId]/mobile-collapsible";
 import { LazyRoundReviewTabs } from "@/app/rounds/[sessionId]/lazy-round-review-tabs";
 import type { RoundReviewView } from "@/app/rounds/[sessionId]/round-review-tabs";
-import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { ResultHero } from "@/components/app/result-hero";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 
@@ -261,6 +256,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
       {surface === "companion" ? (
         <MobileRoundDetail
           round={round}
+          view={view}
           focusHole={currentHole}
           nextIncompleteHole={nextIncompleteHole}
           hasClubData={hasClubData}
@@ -391,113 +387,12 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               />
             }
           >
-            <PageHeader
-              eyebrow={<StatusPill tone="sky">{formatSessionType(round.session.type)}</StatusPill>}
-              title={round.session.courseName ?? round.session.fileName ?? "Round review"}
-              description={`${formatDate(round.session.date)} - ${
-                isRealRound
-                  ? "Scorecard-only real round with no club data."
-                  : `${round.session.fileName ?? "CSV import"} - ${integerFormatter.format(round.shots.length)} launch monitor shots.`
-              }`}
-              metrics={[
-                { label: "Score", value: formatNullableInteger(round.totalScore) },
-                { label: "Par", value: formatNullableInteger(round.totalPar) },
-                { label: "Putts", value: formatNullableInteger(round.totalPutts) },
-                { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
-              ]}
-              visual={
-                <PageArtwork
-                  variant="fairway"
-                  alt=""
-                  crop="random"
-                  cropKey={sessionId}
-                  className="h-full min-h-44"
-                  priority
-                />
-              }
-            />
+            <RoundReviewHeader round={round} />
 
             <LazyRoundReviewTabs value={view} sessionId={sessionId} />
 
             {view === "summary" ? (
-              <section className="grid gap-4" data-round-review-summary>
-                <ResultHero
-                  eyebrow="Round outcome"
-                  title={
-                    round.totalScore === null
-                      ? "Scorecard needs completing"
-                      : `${round.totalScore} ${formatScoreToPar(round.totalScore, round.totalPar)}`
-                  }
-                  summary={`${round.session.courseName ?? "Saved round"} · ${formatDate(round.session.date)}. Review the result first, then open the focused scorecard, map, evidence or correction tab.`}
-                  confidence={{
-                    label: hasClubData ? "Shot-linked evidence" : "Scorecard evidence",
-                    tone: hasClubData ? "secondary" : "outline",
-                  }}
-                  action={
-                    <>
-                      <Button asChild size="sm">
-                        <Link href="?view=scorecard#scorecard" prefetch={false}>
-                          <ClipboardCheck className="size-4" />
-                          Review scorecard
-                        </Link>
-                      </Button>
-                      <Button asChild size="sm" variant="outline">
-                        <Link href="?view=evidence" prefetch={false}>
-                          <ShieldCheck className="size-4" />
-                          Check evidence
-                        </Link>
-                      </Button>
-                    </>
-                  }
-                />
-                <ConnectedMetricBar
-                  label="Round summary metrics"
-                  metrics={[
-                    {
-                      label: "Putts",
-                      value: formatNullableInteger(round.totalPutts),
-                      detail: `${integerFormatter.format(round.holes.length)} holes in this scorecard.`,
-                    },
-                    {
-                      label: "Differential",
-                      value: formatHandicapValue(round.handicapDifferential),
-                      detail: formatRatingSlope(
-                        round.session.courseRating,
-                        round.session.slopeRating,
-                      ),
-                    },
-                    {
-                      label: "Shot evidence",
-                      value: hasClubData
-                        ? integerFormatter.format(round.shots.length)
-                        : "Scorecard only",
-                      detail: hasClubData
-                        ? `${integerFormatter.format(round.roundClubs.length)} clubs linked.`
-                        : "Import shot rows when they are available.",
-                    },
-                    {
-                      label: "Proof ready",
-                      value: `${proofItems.filter((item) => item.status === "ready").length}/${proofItems.length}`,
-                      detail: proofItems.some((item) => item.status === "needed")
-                        ? "Open Evidence to resolve the remaining proof gaps."
-                        : "The visible proof checklist is ready.",
-                    },
-                  ]}
-                />
-
-                {currentHole ? (
-                  <>
-                    <RoundHoleSelector holes={round.holes} />
-                    <CurrentHoleCard
-                      sessionId={round.session.id}
-                      recordVersion={round.session.updatedAt.toISOString()}
-                      hole={currentHole}
-                      hasClubData={hasClubData}
-                      isRealRound={isRealRound}
-                    />
-                  </>
-                ) : null}
-              </section>
+              <RoundLearningSummary round={round} hasClubData={hasClubData} />
             ) : null}
 
             {view === "map" ? (
@@ -574,6 +469,15 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             ) : null}
 
             {view === "evidence" ? (
+              <RoundEvidenceSummary
+                round={round}
+                hasClubData={hasClubData}
+                hasMap={hasMap}
+                proofItems={proofItems}
+              />
+            ) : null}
+
+            {view === "corrections" ? (
               <>
                 <MobileCollapsible
                   title="Round context"
@@ -705,16 +609,6 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                   </Card>
                 </MobileCollapsible>
 
-                <RecordOpportunitiesCard round={round} />
-
-                <ProofChecklistPanel
-                  title="Round proof checklist"
-                  description="Before this round can support a record or tournament result, confirm the data behind the score."
-                  items={proofItems}
-                  actionHref="?view=scorecard#scorecard"
-                  actionLabel="Review scorecard"
-                />
-
                 {!hasClubData ? (
                   <MobileCollapsible
                     title="Real round data"
@@ -760,31 +654,10 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               </>
             ) : null}
 
-            {view === "scorecard" ? (
-              <section id="scorecard" className="grid scroll-mt-28 gap-3">
-                {round.holes.length > 0 ? (
-                  <LazyCourseScorecard
-                    courseName={
-                      round.session.courseName ?? round.session.fileName ?? "Round scorecard"
-                    }
-                    holes={round.holes.map((hole) => ({
-                      holeNumber: hole.holeNumber,
-                      par: hole.par,
-                      yards: hole.yards,
-                      score: hole.score,
-                      putts: hole.putts,
-                      penalties: hole.penalties,
-                      shotCount: hole.shots.length > 0 ? hole.shots.length : null,
-                    }))}
-                    playerName="ForeKingHell"
-                    showPenalties={round.holes.some(
-                      (hole) => typeof hole.penalties === "number" && hole.penalties > 0,
-                    )}
-                    showShotCounts={hasClubData}
-                    subtitle={`${formatDate(round.session.date)} · ${formatSessionType(round.session.type)}`}
-                  />
-                ) : null}
+            {view === "scorecard" ? <DigitalRoundScorecard round={round} /> : null}
 
+            {view === "corrections" ? (
+              <section id="scorecard" className="grid scroll-mt-28 gap-3">
                 <ReviewAccordion
                   title="Hole-by-hole scorecard"
                   description={
@@ -1197,8 +1070,412 @@ function parseRoundReviewView(value: string | string[] | undefined): RoundReview
 type RoundDetail = NonNullable<Awaited<ReturnType<typeof getRoundDetail>>>;
 type RoundDetailHole = RoundDetail["holes"][number];
 
+function RoundReviewHeader({ round }: { round: RoundDetail }) {
+  return (
+    <header className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill tone="sky">{formatSessionType(round.session.type)}</StatusPill>
+          <span className="text-xs font-medium text-muted-foreground">
+            {round.session.roundStatus === "in_progress" ? "In progress" : "Complete"}
+          </span>
+        </div>
+        <h1 className="mt-3 truncate text-3xl font-semibold tracking-tight">
+          {round.session.courseName ?? round.session.fileName ?? "Round review"}
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {formatDate(round.session.date)} · {round.session.teeName ?? "Tee not set"}
+        </p>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {round.holes.length} holes ·{" "}
+        {formatRatingSlope(round.session.courseRating, round.session.slopeRating)} rating / slope
+      </p>
+    </header>
+  );
+}
+
+function RoundLearningSummary({
+  round,
+  hasClubData,
+}: {
+  round: RoundDetail;
+  hasClubData: boolean;
+}) {
+  const review = getCompanionRoundReview(round);
+
+  return (
+    <section className="grid gap-4" data-round-review-summary>
+      <section className="grid gap-5 rounded-xl border bg-card p-5 shadow-sm xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1.2fr)] xl:items-center">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Final score
+          </p>
+          <div className="mt-3 flex items-end gap-4">
+            <p className="text-6xl font-semibold leading-none tracking-[-0.055em] tabular-nums sm:text-7xl">
+              {formatNullableInteger(round.totalScore)}
+            </p>
+            <p className="pb-1 text-2xl font-semibold text-primary tabular-nums">
+              {formatScoreToPar(round.totalScore, round.totalPar)}
+            </p>
+          </div>
+          <div className="mt-5 grid grid-cols-3 divide-x rounded-xl bg-muted/45 py-3 text-center">
+            <MiniSummaryStat label="Putts" value={formatNullableInteger(round.totalPutts)} />
+            <MiniSummaryStat
+              label="Differential"
+              value={formatHandicapValue(round.handicapDifferential)}
+            />
+            <MiniSummaryStat
+              label="Evidence"
+              value={hasClubData ? `${round.shots.length} shots` : "Scorecard"}
+            />
+          </div>
+        </div>
+        <ScoringBreakdown holes={round.holes} />
+      </section>
+
+      <section
+        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+        aria-label="Round learning review"
+      >
+        <LearningRow label="Best part" value={review.strongestArea} />
+        <LearningRow label="Costliest part" value={review.costliestArea} />
+        <LearningRow label="Turning point" value={review.turningPoint} />
+        <LearningRow label="Strategy result" value={review.strategyResult} />
+        <LearningRow
+          label="Next practice action"
+          value={review.nextPractice}
+          action={
+            <Button asChild size="sm">
+              <Link
+                href={`/practice?intent=round_preparation&source=round_review&roundId=${round.session.id}`}
+              >
+                Build practice
+              </Link>
+            </Button>
+          }
+        />
+      </section>
+    </section>
+  );
+}
+
+function LearningRow({
+  label,
+  value,
+  action,
+}: {
+  label: string;
+  value: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 border-b px-4 py-4 last:border-b-0 sm:grid-cols-[180px_minmax(0,1fr)_auto] sm:items-center">
+      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="font-semibold">{value}</p>
+      {action ? <div>{action}</div> : null}
+    </div>
+  );
+}
+
+function ScoringBreakdown({
+  holes,
+  compact = false,
+}: {
+  holes: RoundDetail["holes"];
+  compact?: boolean;
+}) {
+  const scored = holes.filter(
+    (hole): hole is typeof hole & { score: number } => typeof hole.score === "number",
+  );
+  const segments = [
+    {
+      label: "Birdie or better",
+      count: scored.filter((hole) => hole.score < hole.par).length,
+      className: "bg-[var(--status-success-foreground)]",
+    },
+    {
+      label: "Par",
+      count: scored.filter((hole) => hole.score === hole.par).length,
+      className: "bg-primary",
+    },
+    {
+      label: "Bogey",
+      count: scored.filter((hole) => hole.score - hole.par === 1).length,
+      className: "bg-[var(--status-warning-foreground)]",
+    },
+    {
+      label: "Double+",
+      count: scored.filter((hole) => hole.score - hole.par >= 2).length,
+      className: "bg-destructive",
+    },
+  ];
+
+  return (
+    <section
+      className={compact ? "mt-4" : "rounded-xl bg-muted/30 p-4"}
+      aria-label="Scoring breakdown"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Scoring breakdown
+          </p>
+          {!compact ? (
+            <p className="mt-1 text-sm text-muted-foreground">Where the card was won and lost.</p>
+          ) : null}
+        </div>
+        <BarChart3 className="size-4 text-muted-foreground" aria-hidden />
+      </div>
+      {scored.length > 0 ? (
+        <>
+          <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-muted" aria-hidden>
+            {segments.map((segment) =>
+              segment.count > 0 ? (
+                <span
+                  key={segment.label}
+                  className={segment.className}
+                  style={{ width: `${(segment.count / scored.length) * 100}%` }}
+                />
+              ) : null,
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+            {segments.map((segment) => (
+              <div key={segment.label} className="flex items-center justify-between gap-2 text-xs">
+                <span className="text-muted-foreground">{segment.label}</span>
+                <span className="font-semibold tabular-nums">{segment.count}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Complete the scorecard to see the scoring shape.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function DigitalRoundScorecard({
+  round,
+  compact = false,
+}: {
+  round: RoundDetail;
+  compact?: boolean;
+}) {
+  if (round.holes.length === 0) {
+    return (
+      <section className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">
+        No scorecard holes are saved.
+      </section>
+    );
+  }
+
+  return (
+    <section
+      id="scorecard"
+      className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm"
+      data-digital-scorecard
+    >
+      <div className="flex items-end justify-between gap-4 border-b bg-muted/35 px-4 py-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Scorecard
+          </p>
+          <h2 className="mt-1 text-xl font-semibold">
+            {round.session.courseName ?? round.session.fileName ?? "Saved round"}
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {round.session.teeName ?? "Tee not set"} · {formatDate(round.session.date)}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-3xl font-semibold leading-none tabular-nums">
+            {formatNullableInteger(round.totalScore)}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-primary">
+            {formatScoreToPar(round.totalScore, round.totalPar)}
+          </p>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table
+          className={compact ? "w-full min-w-[34rem] text-sm" : "w-full min-w-[46rem] text-sm"}
+        >
+          <caption className="sr-only">Digital hole-by-hole scorecard.</caption>
+          <thead className="bg-muted/30 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3 text-left">Hole</th>
+              <th className="px-3 py-3 text-center">Par</th>
+              <th className="px-3 py-3 text-center">Score</th>
+              <th className="px-3 py-3 text-center">Putts</th>
+              <th className="px-3 py-3 text-center">GIR</th>
+              <th className="px-3 py-3 text-center">Penalty</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {round.holes.map((hole) => (
+              <tr key={hole.holeNumber} className="hover:bg-muted/25">
+                <td className="px-4 py-3 font-semibold tabular-nums">{hole.holeNumber}</td>
+                <td className="px-3 py-3 text-center text-muted-foreground tabular-nums">
+                  {hole.par}
+                </td>
+                <td className="px-3 py-3 text-center">
+                  <ScoreMark score={hole.score} par={hole.par} />
+                </td>
+                <td className="px-3 py-3 text-center tabular-nums">
+                  {formatNullableInteger(hole.putts)}
+                </td>
+                <td className="px-3 py-3 text-center">
+                  <span
+                    className={
+                      hole.gir === true
+                        ? "font-semibold text-[var(--status-success-foreground)]"
+                        : "text-muted-foreground"
+                    }
+                  >
+                    {hole.gir === null ? "--" : hole.gir ? "Yes" : "No"}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-center tabular-nums">
+                  {formatNullableInteger(hole.penalties)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t-2 bg-muted/35 font-semibold">
+            <tr>
+              <td className="px-4 py-3">Total</td>
+              <td className="px-3 py-3 text-center tabular-nums">
+                {formatNullableInteger(round.totalPar)}
+              </td>
+              <td className="px-3 py-3 text-center tabular-nums">
+                {formatNullableInteger(round.totalScore)}
+              </td>
+              <td className="px-3 py-3 text-center tabular-nums">
+                {formatNullableInteger(round.totalPutts)}
+              </td>
+              <td className="px-3 py-3 text-center tabular-nums">{round.gir}</td>
+              <td className="px-3 py-3 text-center tabular-nums">
+                {formatNullableInteger(round.totalPenalties)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function ScoreMark({ score, par }: { score: number | null | undefined; par: number }) {
+  if (typeof score !== "number") return <span className="text-muted-foreground">--</span>;
+  const difference = score - par;
+  return (
+    <span
+      className={`inline-grid size-8 place-items-center font-semibold tabular-nums ${
+        difference < 0
+          ? "rounded-full border-2 border-[var(--status-success-foreground)]"
+          : difference >= 2
+            ? "rounded-md border-2 border-destructive"
+            : difference === 1
+              ? "rounded-full border border-muted-foreground/60"
+              : ""
+      }`}
+      aria-label={`${score}, ${formatHoleToPar(score, par)}`}
+    >
+      {score}
+    </span>
+  );
+}
+
+function RoundEvidenceSummary({
+  round,
+  hasClubData,
+  hasMap,
+  proofItems,
+  compact = false,
+}: {
+  round: RoundDetail;
+  hasClubData: boolean;
+  hasMap: boolean;
+  proofItems: RoundProofItem[];
+  compact?: boolean;
+}) {
+  const ready = proofItems.filter((item) => item.status === "ready").length;
+  const scored = round.holes.filter((hole) => hole.score !== null).length;
+  const rows = [
+    {
+      label: "Scorecard",
+      value: `${scored}/${round.holes.length} holes`,
+      status: scored === round.holes.length ? "Ready" : "Needed",
+    },
+    {
+      label: "Course & tee",
+      value: `${round.session.courseName ?? "Not linked"} · ${round.session.teeName ?? "Tee not set"}`,
+      status: round.session.courseId && round.session.teeSetId ? "Ready" : "Needed",
+    },
+    {
+      label: "Shot evidence",
+      value: hasClubData ? `${round.shots.length} linked shots` : "Scorecard only",
+      status: hasClubData ? "Linked" : "Optional",
+    },
+    {
+      label: "Map",
+      value: hasMap ? `${round.mapHoles.length} mapped holes` : "No course geometry",
+      status: hasMap ? "Ready" : "Pending",
+    },
+    {
+      label: "Proof status",
+      value: `${ready}/${proofItems.length} checks ready`,
+      status: ready === proofItems.length ? "Ready" : "Review",
+    },
+  ];
+
+  return (
+    <section
+      className={`overflow-hidden rounded-xl border bg-card shadow-sm ${compact ? "" : ""}`}
+      data-round-evidence-summary
+    >
+      <div className="border-b px-4 py-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Evidence</p>
+        <h2 className="mt-1 text-xl font-semibold">What supports this review</h2>
+      </div>
+      <div className="divide-y">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="grid gap-1 px-4 py-3 sm:grid-cols-[150px_minmax(0,1fr)_auto] sm:items-center"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {row.label}
+            </p>
+            <p className="text-sm font-medium">{row.value}</p>
+            <span className="text-xs font-semibold text-muted-foreground">{row.status}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MiniSummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 px-2">
+      <p className="truncate text-base font-semibold tabular-nums">{value}</p>
+      <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+      </p>
+    </div>
+  );
+}
+
 function MobileRoundDetail({
   round,
+  view,
   focusHole,
   nextIncompleteHole,
   hasClubData,
@@ -1208,6 +1485,7 @@ function MobileRoundDetail({
   shotPatternEnabled,
 }: {
   round: RoundDetail;
+  view: RoundReviewView;
   focusHole: RoundDetailHole | null;
   nextIncompleteHole: RoundDetailHole | null;
   hasClubData: boolean;
@@ -1236,45 +1514,50 @@ function MobileRoundDetail({
         </p>
       </div>
 
-      {roundIsComplete ? (
-        <MobileRoundResultCard
-          totalScore={round.totalScore}
-          totalPar={round.totalPar}
-          totalPutts={round.totalPutts}
-          handicapDifferential={round.handicapDifferential}
-          evidenceSummary={evidenceSummary}
-          proofReadyCount={proofReadyCount}
-          proofItemCount={proofItems.length}
-          review={companionReview}
-          sessionId={round.session.id}
-          courseId={round.session.courseId}
-        />
-      ) : focusHole ? (
-        <MobileRoundFirstCard
-          hole={focusHole}
-          completedHoleCount={completedHoleCount}
-          holeCount={round.holes.length}
-          hasClubData={hasClubData}
-        />
-      ) : (
-        <section className="rounded-[1.2rem] bg-card p-4 ring-1 ring-border/70">
-          <IOSInlineStatus label="Scorecard needed" tone="attention" />
-          <h2 className="mt-2 text-[28px] font-semibold leading-8 tracking-[-0.025em]">
-            No holes saved
-          </h2>
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">
-            Add or import round data before reviewing performance.
-          </p>
-          <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
-            <Link href="/import" prefetch={false}>
-              <Upload className="size-4" aria-hidden />
-              Import round data
-            </Link>
-          </Button>
-        </section>
-      )}
+      <LazyRoundReviewTabs value={view} sessionId={round.session.id} />
 
-      {round.unmappedShots.length > 0 ? (
+      <div className={view === "summary" ? "contents" : "hidden"}>
+        {roundIsComplete ? (
+          <MobileRoundResultCard
+            totalScore={round.totalScore}
+            totalPar={round.totalPar}
+            totalPutts={round.totalPutts}
+            handicapDifferential={round.handicapDifferential}
+            evidenceSummary={evidenceSummary}
+            proofReadyCount={proofReadyCount}
+            proofItemCount={proofItems.length}
+            holes={round.holes}
+            review={companionReview}
+            sessionId={round.session.id}
+            courseId={round.session.courseId}
+          />
+        ) : focusHole ? (
+          <MobileRoundFirstCard
+            hole={focusHole}
+            completedHoleCount={completedHoleCount}
+            holeCount={round.holes.length}
+            hasClubData={hasClubData}
+          />
+        ) : (
+          <section className="rounded-[1.2rem] bg-card p-4 ring-1 ring-border/70">
+            <IOSInlineStatus label="Scorecard needed" tone="attention" />
+            <h2 className="mt-2 text-[28px] font-semibold leading-8 tracking-[-0.025em]">
+              No holes saved
+            </h2>
+            <p className="mt-2 text-sm leading-5 text-muted-foreground">
+              Add or import round data before reviewing performance.
+            </p>
+            <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
+              <Link href="/import" prefetch={false}>
+                <Upload className="size-4" aria-hidden />
+                Import round data
+              </Link>
+            </Button>
+          </section>
+        )}
+      </div>
+
+      {view === "corrections" && round.unmappedShots.length > 0 ? (
         <div
           className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-sm text-[var(--status-warning-foreground)]"
           role="status"
@@ -1286,7 +1569,7 @@ function MobileRoundDetail({
         </div>
       ) : null}
 
-      {!roundIsComplete && focusHole ? (
+      {view === "corrections" && !roundIsComplete && focusHole ? (
         <MobileCurrentHoleEditor
           sessionId={round.session.id}
           recordVersion={round.session.updatedAt.toISOString()}
@@ -1296,104 +1579,47 @@ function MobileRoundDetail({
         />
       ) : null}
 
-      <section
-        id="mobile-round-review"
-        className="grid scroll-mt-28 gap-2"
-        aria-labelledby="mobile-round-depth-title"
-      >
-        <IOSSectionHeader
-          title="Round review"
-          description="Open one section at a time for the supporting detail."
+      {view === "scorecard" ? <DigitalRoundScorecard round={round} compact /> : null}
+
+      {view === "map" ? (
+        <MobileRoundMap
+          round={round}
+          hasClubData={hasClubData}
+          hasMap={hasMap}
+          shotPatternEnabled={shotPatternEnabled}
+          completedReview={roundIsComplete}
         />
-        <h2 id="mobile-round-depth-title" className="sr-only">
-          Round review sections
-        </h2>
-        <IOSDisclosureGroup
-          label="Round review details"
-          items={
-            roundIsComplete
-              ? [
-                  {
-                    value: "scorecard",
-                    title: "Scorecard",
-                    summary: `${round.holes.length} holes`,
-                    description: "Read-only hole results.",
-                    content: <MobileCompletedScorecard round={round} />,
-                  },
-                  {
-                    value: "map",
-                    title: "Map & replay",
-                    summary: hasMap ? `${round.mapHoles.length} holes` : "Not ready",
-                    description: "Round replay and mapped shot context.",
-                    content: (
-                      <MobileRoundMap
-                        round={round}
-                        hasClubData={hasClubData}
-                        hasMap={hasMap}
-                        shotPatternEnabled={false}
-                        completedReview
-                      />
-                    ),
-                  },
-                  {
-                    value: "full-site",
-                    title: "Corrections & proof",
-                    summary: "Full Site",
-                    description: "Course links, proof and shot corrections stay in the workbench.",
-                    content: (
-                      <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
-                        <Link href={`/surface/workbench?next=/rounds/${round.session.id}`}>
-                          Open Full Site
-                        </Link>
-                      </Button>
-                    ),
-                  },
-                ]
-              : [
-                  {
-                    value: "performance",
-                    title: "Performance & context",
-                    summary: `${completedHoleCount}/${round.holes.length}`,
-                    description: "Scoring, conditions, notes and handicap inputs.",
-                    content: (
-                      <MobileRoundPerformance
-                        round={round}
-                        hasClubData={hasClubData}
-                        isRealRound={isRealRound}
-                      />
-                    ),
-                  },
-                  {
-                    value: "scorecard",
-                    title: "Scorecard",
-                    summary: `${round.holes.length} holes`,
-                    description: "Hole results and corrections.",
-                    content: (
-                      <MobileRoundScorecard
-                        round={round}
-                        hasClubData={hasClubData}
-                        isRealRound={isRealRound}
-                      />
-                    ),
-                  },
-                  {
-                    value: "map",
-                    title: "Map & replay",
-                    summary: hasMap ? `${round.mapHoles.length} holes` : "Not ready",
-                    description: "Specialist shot canvas and replay actions.",
-                    content: (
-                      <MobileRoundMap
-                        round={round}
-                        hasClubData={hasClubData}
-                        hasMap={hasMap}
-                        shotPatternEnabled={shotPatternEnabled}
-                      />
-                    ),
-                  },
-                ]
-          }
+      ) : null}
+
+      {view === "evidence" ? (
+        <RoundEvidenceSummary
+          round={round}
+          hasClubData={hasClubData}
+          hasMap={hasMap}
+          proofItems={proofItems}
+          compact
         />
-      </section>
+      ) : null}
+
+      {view === "corrections" ? (
+        <div className="grid gap-5">
+          <MobileRoundPerformance
+            round={round}
+            hasClubData={hasClubData}
+            isRealRound={isRealRound}
+          />
+          <MobileRoundScorecard round={round} hasClubData={hasClubData} isRealRound={isRealRound} />
+          {hasClubData ? (
+            <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
+              <Link
+                href={`/surface/workbench?next=${encodeURIComponent(`/rounds/${round.session.id}?view=corrections`)}`}
+              >
+                Open shot correction table
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </MobileAppShell>
   );
 }
@@ -1406,6 +1632,7 @@ function MobileRoundResultCard({
   evidenceSummary,
   proofReadyCount,
   proofItemCount,
+  holes,
   review,
   sessionId,
   courseId,
@@ -1417,6 +1644,7 @@ function MobileRoundResultCard({
   evidenceSummary: string;
   proofReadyCount: number;
   proofItemCount: number;
+  holes: RoundDetail["holes"];
   review: ReturnType<typeof getCompanionRoundReview>;
   sessionId: string;
   courseId: string | null;
@@ -1438,18 +1666,18 @@ function MobileRoundResultCard({
           {formatScoreToPar(totalScore, totalPar)}
         </p>
       </div>
+      <div className="mt-4 grid grid-cols-3 divide-x rounded-xl bg-muted/45 py-3 text-center">
+        <MiniSummaryStat label="Putts" value={formatNullableInteger(totalPutts)} />
+        <MiniSummaryStat label="Differential" value={formatHandicapValue(handicapDifferential)} />
+        <MiniSummaryStat label="Evidence" value={evidenceSummary} />
+      </div>
+      <ScoringBreakdown holes={holes} compact />
       <IOSGroupedList className="mt-4">
-        <IOSMetricRow label="Putts" value={formatNullableInteger(totalPutts)} />
-        <IOSMetricRow
-          label="Handicap differential"
-          value={formatHandicapValue(handicapDifferential)}
-        />
-        <IOSMetricRow label="Evidence" value={evidenceSummary} />
+        <IOSListRow label="Best part" value={review.strongestArea} />
+        <IOSListRow label="Costliest part" value={review.costliestArea} />
         <IOSListRow label="Turning point" value={review.turningPoint} />
-        <IOSListRow label="Strongest area" value={review.strongestArea} />
-        <IOSListRow label="Most costly area" value={review.costliestArea} />
         <IOSListRow label="Strategy result" value={review.strategyResult} />
-        <IOSListRow label="Next practice" value={review.nextPractice} />
+        <IOSListRow label="Next practice action" value={review.nextPractice} />
       </IOSGroupedList>
       <div className="mt-4 grid gap-2">
         {courseId ? (
@@ -1583,53 +1811,57 @@ function MobileRoundPerformance({
   round,
   hasClubData,
   isRealRound,
+  showResult = false,
 }: {
   round: RoundDetail;
   hasClubData: boolean;
   isRealRound: boolean;
+  showResult?: boolean;
 }) {
   return (
     <div className="grid gap-5">
-      <section className="grid gap-2">
-        <IOSSectionHeader title="Key result" />
-        <IOSGroupedList>
-          <IOSMetricRow
-            label="Gross score"
-            value={formatNullableInteger(round.totalScore)}
-            detail={
-              round.totalPar !== null
-                ? `${formatScoreToPar(round.totalScore, round.totalPar)} against par ${round.totalPar}`
-                : undefined
-            }
-          />
-          {isRealRound ? (
-            <IOSMetricRow label="Net score" value={formatNullableInteger(round.totalNetScore)} />
-          ) : null}
-          <IOSMetricRow label="Putts" value={formatNullableInteger(round.totalPutts)} />
-          <IOSMetricRow label="Fairways / GIR" value={`${round.fairwaysHit} / ${round.gir}`} />
-          <IOSMetricRow
-            label="Handicap differential"
-            value={formatHandicapValue(round.handicapDifferential)}
-            detail={formatRatingSlope(round.session.courseRating, round.session.slopeRating)}
-          />
-          {isRealRound ? (
-            <>
-              <IOSMetricRow label="Chips" value={formatNullableInteger(round.totalChipShots)} />
-              <IOSMetricRow label="Sand" value={formatNullableInteger(round.totalSandShots)} />
-              <IOSMetricRow
-                label="Penalty / missing strokes"
-                value={formatNullableInteger(round.totalPenalties)}
-              />
-            </>
-          ) : (
+      {showResult ? (
+        <section className="grid gap-2">
+          <IOSSectionHeader title="Key result" />
+          <IOSGroupedList>
             <IOSMetricRow
-              label="Launch-monitor evidence"
-              value={`${integerFormatter.format(round.shots.length)} shots`}
-              detail={`${integerFormatter.format(round.roundClubs.length)} clubs linked`}
+              label="Gross score"
+              value={formatNullableInteger(round.totalScore)}
+              detail={
+                round.totalPar !== null
+                  ? `${formatScoreToPar(round.totalScore, round.totalPar)} against par ${round.totalPar}`
+                  : undefined
+              }
             />
-          )}
-        </IOSGroupedList>
-      </section>
+            {isRealRound ? (
+              <IOSMetricRow label="Net score" value={formatNullableInteger(round.totalNetScore)} />
+            ) : null}
+            <IOSMetricRow label="Putts" value={formatNullableInteger(round.totalPutts)} />
+            <IOSMetricRow label="Fairways / GIR" value={`${round.fairwaysHit} / ${round.gir}`} />
+            <IOSMetricRow
+              label="Handicap differential"
+              value={formatHandicapValue(round.handicapDifferential)}
+              detail={formatRatingSlope(round.session.courseRating, round.session.slopeRating)}
+            />
+            {isRealRound ? (
+              <>
+                <IOSMetricRow label="Chips" value={formatNullableInteger(round.totalChipShots)} />
+                <IOSMetricRow label="Sand" value={formatNullableInteger(round.totalSandShots)} />
+                <IOSMetricRow
+                  label="Penalty / missing strokes"
+                  value={formatNullableInteger(round.totalPenalties)}
+                />
+              </>
+            ) : (
+              <IOSMetricRow
+                label="Launch-monitor evidence"
+                value={`${integerFormatter.format(round.shots.length)} shots`}
+                detail={`${integerFormatter.format(round.roundClubs.length)} clubs linked`}
+              />
+            )}
+          </IOSGroupedList>
+        </section>
+      ) : null}
 
       <section className="grid gap-2">
         <IOSSectionHeader
@@ -1700,14 +1932,16 @@ function MobileRoundScorecard({
   round,
   hasClubData,
   isRealRound,
+  showOverview = false,
 }: {
   round: RoundDetail;
   hasClubData: boolean;
   isRealRound: boolean;
+  showOverview?: boolean;
 }) {
   return (
     <div id="mobile-round-scorecard" className="grid scroll-mt-28 gap-5">
-      {round.holes.length > 0 ? (
+      {showOverview && round.holes.length > 0 ? (
         <section className="grid gap-2">
           <IOSSectionHeader
             title="Score overview"
@@ -1814,29 +2048,6 @@ function MobileRoundScorecard({
   );
 }
 
-function MobileCompletedScorecard({ round }: { round: RoundDetail }) {
-  return (
-    <IOSGroupedList label="Completed round scorecard">
-      {round.holes.map((hole) => (
-        <IOSListRow
-          key={hole.holeNumber}
-          label={`Hole ${hole.holeNumber}`}
-          value={formatNullableInteger(hole.score)}
-          detail={`Par ${hole.par}${hole.putts === null ? "" : ` · ${hole.putts} putts`}`}
-          status={
-            <IOSInlineStatus
-              label={formatHoleToPar(hole.score, hole.par)}
-              tone={
-                typeof hole.score === "number" && hole.score <= hole.par ? "positive" : "attention"
-              }
-            />
-          }
-        />
-      ))}
-    </IOSGroupedList>
-  );
-}
-
 function MobileRoundMap({
   round,
   hasClubData,
@@ -1922,81 +2133,6 @@ function MobileRoundMap({
   );
 }
 
-function RecordOpportunitiesCard({ round }: { round: RoundDetail }) {
-  if (round.recordOpportunities.length === 0 && round.tournamentOpportunities.length === 0) {
-    return null;
-  }
-
-  return (
-    <Card className="premium-card">
-      <CardHeader>
-        <CardTitle>Record opportunities</CardTitle>
-        <CardDescription>
-          This round can go straight into the boards it qualifies for.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2">
-        {round.recordOpportunities.slice(0, 4).map((item) => (
-          <div key={item.record.id} className="rounded-lg border bg-muted/45 p-3 text-sm">
-            <p className="font-semibold">{item.category.name}</p>
-            <p className="mt-1 text-muted-foreground">
-              {item.record.period === "month" ? "Monthly board" : "Course record"}
-            </p>
-            {item.attempt ? (
-              <p
-                className="mt-2 rounded-md bg-[var(--status-success-surface)] px-2 py-1 text-xs font-medium text-[var(--status-success-foreground)]"
-                role="status"
-              >
-                Submitted - {item.attempt.verificationStatus.replace(/_/g, " ")}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">Not submitted yet.</p>
-            )}
-            <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-              <Link
-                href={
-                  item.attempt
-                    ? `/course-records/${item.record.id}?attempt=${encodeURIComponent(item.attempt.id)}`
-                    : `/course-records/${item.record.id}?sessionId=${encodeURIComponent(round.session.id)}#submit-record`
-                }
-                prefetch={false}
-              >
-                {item.attempt ? "View board" : "Review and submit"}
-              </Link>
-            </Button>
-          </div>
-        ))}
-        {round.tournamentOpportunities.slice(0, 4).map((event) => (
-          <div key={event.id} className="rounded-lg border bg-muted/45 p-3 text-sm">
-            <p className="font-semibold">{event.title}</p>
-            <p className="mt-1 text-muted-foreground">Round submission available</p>
-            {event.submission ? (
-              <p
-                className="mt-2 rounded-md bg-[var(--status-success-surface)] px-2 py-1 text-xs font-medium text-[var(--status-success-foreground)]"
-                role="status"
-              >
-                Submitted - {event.submission.verificationStatus.replace(/_/g, " ")}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">Not submitted yet.</p>
-            )}
-            <Button asChild variant="outline" size="sm" className="mt-3 w-full">
-              <Link
-                href={
-                  event.submission ? `/tournaments/${event.id}` : `/tournaments/${event.id}/submit`
-                }
-                prefetch={false}
-              >
-                {event.submission ? "View event" : "Review and submit"}
-              </Link>
-            </Button>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
 function ReviewAccordion({
   id,
   title,
@@ -2042,104 +2178,6 @@ function ReviewAccordion({
           {children}
         </CollapsibleContent>
       </Collapsible>
-    </Card>
-  );
-}
-
-function RoundHoleSelector({ holes }: { holes: RoundDetail["holes"] }) {
-  return (
-    <nav
-      aria-label="Hole selector"
-      className="sticky top-[7.75rem] z-30 -mx-1 flex gap-1 overflow-x-auto px-1 py-1 sm:hidden"
-    >
-      {holes.map((hole) => (
-        <a
-          key={hole.holeNumber}
-          href={`#hole-${hole.holeNumber}`}
-          className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-sm font-semibold shadow-sm"
-        >
-          {hole.holeNumber}
-        </a>
-      ))}
-    </nav>
-  );
-}
-
-function CurrentHoleCard({
-  sessionId,
-  recordVersion,
-  hole,
-  hasClubData,
-  isRealRound,
-}: {
-  sessionId: string;
-  recordVersion: string;
-  hole: RoundDetailHole;
-  hasClubData: boolean;
-  isRealRound: boolean;
-}) {
-  return (
-    <Card id="current-hole" className="premium-card scroll-mt-36 sm:hidden">
-      <CardHeader>
-        <CardTitle>Hole {hole.holeNumber}</CardTitle>
-        <CardDescription>{formatHoleSummary(hole)}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <PageArtwork
-          variant="fairway"
-          alt=""
-          crop="random"
-          cropKey={`${sessionId}-${hole.holeNumber}`}
-          className="mb-3 block h-24 min-h-0 rounded-xl"
-          sizes="calc(100vw - 2rem)"
-        />
-        <OfflineRoundEditForm
-          action={updateRoundHoleAction}
-          editKind="round-hole"
-          recordVersion={recordVersion}
-          className="grid gap-3"
-        >
-          <input type="hidden" name="sessionId" value={sessionId} />
-          <input type="hidden" name="holeNumber" value={hole.holeNumber} />
-          <div className="grid grid-cols-3 gap-2">
-            <RoundNumberInput label="Score" name="score" value={hole.score} />
-            <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
-            <RoundNumberInput label="Missing" name="penalties" value={hole.penalties} />
-          </div>
-          {isRealRound ? (
-            <div className="grid grid-cols-2 gap-2">
-              <RoundNumberInput label="Chips" name="chipShots" value={hole.chipShots} />
-              <RoundNumberInput
-                label="Sand"
-                name="greensideSandShots"
-                value={hole.greensideSandShots}
-              />
-            </div>
-          ) : null}
-          <div className="grid grid-cols-2 gap-2">
-            <RoundSelect label="Fairway" name="fairwayHit" value={hole.fairwayHit} />
-            <RoundSelect label="GIR" name="gir" value={hole.gir} />
-          </div>
-          <div className="grid grid-cols-3 gap-2 rounded-lg bg-card p-2 ring-1 ring-border">
-            <MiniMetric label="Par" value={integerFormatter.format(hole.par)} />
-            <MiniMetric
-              label="Yards"
-              value={hole.yards > 0 ? integerFormatter.format(hole.yards) : "--"}
-            />
-            <MiniMetric
-              label="Shots"
-              value={hasClubData ? hole.shots.length.toString() : "Score"}
-            />
-          </div>
-          <Button
-            type="submit"
-            className="rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Save className="size-4" />
-            Save hole
-          </Button>
-        </OfflineRoundEditForm>
-      </CardContent>
     </Card>
   );
 }

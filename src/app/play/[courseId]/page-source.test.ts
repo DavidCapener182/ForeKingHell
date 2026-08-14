@@ -209,7 +209,7 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("bushBillboards");
     expect(sceneSource).toContain("holes={manifest.holes}");
     expect(sceneSource).toContain("buildCourseTwinScreenTrees");
-    expect(sceneSource).toContain("native screening vegetation completes");
+    expect(sceneSource).toContain("native screening vegetation");
     expect(sceneSource).not.toContain("TreeCanopyLobes");
     expect(vegetationLedgerSource).toContain("Course Twin British Parkland Vegetation Billboards");
     expect(vegetationLedgerSource).toContain("OpenAI generated asset");
@@ -308,8 +308,9 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("<Canvas");
     expect(sceneSource).toContain("mobileStyles.stage");
     expect(sceneSource).toContain("mobileStyles.canvas");
-    expect(sceneSource).toContain("mobileStyles.hud");
-    expect(sceneSource).toContain("mobileStyles.hudPanel");
+    expect(sceneSource).toContain("<Drawer");
+    expect(sceneSource).toContain("<Sheet");
+    expect(sceneSource.match(/data-mobile-preserve-dark/g) ?? []).toHaveLength(3);
 
     expect(mobileStylesSource).toContain("position: fixed !important;");
     expect(mobileStylesSource).toContain("height: 100dvh !important;");
@@ -320,14 +321,18 @@ describe("Course Twin route boundaries", () => {
     expect(mobileStylesSource).toContain(".canvas canvas");
   });
 
-  it("keeps every mobile mode and shot action over the scene without a scrolling dock", () => {
+  it("keeps the three primary mobile modes and shot actions over the scene", () => {
     expect(sceneSource).toContain("data-course-twin-mobile-chrome");
     expect(sceneSource).toContain("data-course-twin-mode-dock");
     expect(sceneSource).toContain("data-course-twin-action-tray");
     expect(sceneSource).toContain("mobileStyles.mobileChrome");
     expect(sceneSource).toContain("mobileStyles.modeDock");
     expect(sceneSource).toContain("mobileStyles.actionTray");
-    expect(mobileStylesSource).toContain("grid-template-columns: repeat(6, minmax(0, 1fr));");
+    expect(mobileStylesSource).toContain("grid-template-columns: repeat(3, minmax(0, 1fr));");
+    expect(mobileStylesSource).toContain("grid-template-columns: repeat(5, minmax(0, 1fr));");
+    for (const label of ["Club", "Carry", "Target", "Shape / miss", "Next"]) {
+      expect(sceneSource).toContain(`>${label}<`);
+    }
     const mobileModeDockSource = mobileStylesSource.slice(
       mobileStylesSource.indexOf(".modeDock {"),
       mobileStylesSource.indexOf(".modeButton {"),
@@ -336,6 +341,21 @@ describe("Course Twin route boundaries", () => {
     expect(mobileStylesSource).toContain("min-height: 2.75rem;");
     expect(mobileStylesSource).toContain("touch-action: manipulation;");
     expect(mobileStylesSource).toContain("@media (max-height: 500px) and (orientation: landscape)");
+  });
+
+  it("uses a minimal custom HUD with ToggleGroup modes and on-demand controls", () => {
+    expect(sceneSource).toContain("<CourseTwinMinimalHud");
+    expect(sceneSource).toContain("<ToggleGroup");
+    expect(sceneSource).toContain("<ToggleGroupItem");
+    expect(sceneSource).toContain('aria-label="Open Course Twin settings"');
+    expect(sceneSource).toContain('"Replay selection"');
+    expect(sceneSource).toContain('"Personal strategy unavailable"');
+    expect(sceneSource).toContain('label="Expected carry"');
+    expect(sceneSource).toContain('label="Dispersion"');
+    expect(sceneSource).toContain('label="Target"');
+    expect(sceneSource).toContain('label="Carry"');
+    expect(sceneSource).toContain('label="Hazards"');
+    expect(sceneSource).not.toContain("<Card");
   });
 
   it("keeps the mobile Play tray compact without hiding modelled provenance", () => {
@@ -362,8 +382,9 @@ describe("Course Twin route boundaries", () => {
   });
 
   it("treats full-screen mobile panels as focus-managed modal dialogs", () => {
-    expect(sceneSource).toContain('role={isCompactViewport ? "dialog" : undefined}');
-    expect(sceneSource).toContain('aria-modal={isCompactViewport ? "true" : undefined}');
+    expect(sceneSource).toContain("<DrawerContent");
+    expect(sceneSource).toContain("<SheetContent");
+    expect(sceneSource).toContain("open={Boolean(hudPanel)}");
     expect(sceneSource).toContain("hudReturnFocusRef");
     expect(sceneSource).toContain("toggleHudPanel");
     expect(sceneSource).toContain("closeHudPanel");

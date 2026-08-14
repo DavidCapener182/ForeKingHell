@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
-  CalendarDays,
   CheckCircle2,
   Flame,
   LineChart,
@@ -24,7 +23,6 @@ import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel"
 import { DataTableFrame, SectionHeader, StatusPill, type Tone } from "@/components/premium";
 import { RecentTrainingSessions } from "@/components/training/RecentTrainingSessions";
 import { TrainingSessionForm } from "@/components/training/TrainingSessionForm";
-import { TrainingSourceSuggestions } from "@/components/training/TrainingSourceSuggestions";
 import { TrainingStatusCard } from "@/components/training/TrainingStatusCard";
 import { TrainingSummaryCards } from "@/components/training/TrainingSummaryCards";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -43,13 +41,15 @@ import {
 } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { selectTrainingRangeData } from "@/lib/training/rangeSelection";
-import { TRAINING_RANGE_OPTIONS, type TrainingRangeKey } from "@/lib/training/ranges";
+import type { TrainingRangeKey } from "@/lib/training/ranges";
 import type {
   TrainingEfficiencyCard,
   TrainingOverTimeData,
   TrainingSessionListItem,
 } from "@/lib/training/trainingData";
 import { cn } from "@/lib/utils";
+
+import styles from "./TrainingLoadRangeView.module.css";
 
 const TrainingOverTimeChart = dynamic(
   () =>
@@ -71,9 +71,6 @@ type TrainingLoadRangeViewProps = {
 const integerFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
 });
-const weekdayFormatter = new Intl.DateTimeFormat("en-GB", {
-  weekday: "long",
-});
 const ledgerDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
   month: "short",
@@ -93,12 +90,12 @@ const trainingSessionColumns: DesktopWorkbenchColumn[] = [
 const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Heavy golf load",
-    href: "/stats/training-over-time?range=90d#training-load-sessions",
+    href: "/stats/training-over-time?range=3m#training-load-sessions",
     detail: "High-load rounds, range work and speed sessions",
   },
   {
     title: "Recent practice rhythm",
-    href: "/stats/training-over-time?range=30d#training-load-sessions",
+    href: "/stats/training-over-time?range=4w#training-load-sessions",
     detail: "Last month of logged golf workload",
   },
   {
@@ -106,6 +103,13 @@ const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
     href: "/stats/training-over-time?range=1y#training-load-sessions",
     detail: "Long-range fitness, fatigue and form evidence",
   },
+];
+
+const READINESS_RANGE_OPTIONS: Array<{ key: TrainingRangeKey; label: string }> = [
+  { key: "4w", label: "4 weeks" },
+  { key: "3m", label: "3 months" },
+  { key: "6m", label: "6 months" },
+  { key: "1y", label: "1 year" },
 ];
 
 function DeferredChartLoading({ label }: { label: string }) {
@@ -123,8 +127,11 @@ function DeferredChartLoading({ label }: { label: string }) {
 }
 
 export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRangeViewProps) {
-  const [activeRangeKey, setActiveRangeKey] = useState(initialRangeKey);
+  const [activeRangeKey, setActiveRangeKey] = useState<TrainingRangeKey>(
+    initialRangeKey === "7d" ? "4w" : initialRangeKey,
+  );
   const [logOpen, setLogOpen] = useState(false);
+  const isDesktopViewport = useDesktopViewport();
   const displayData = useMemo(
     () => selectTrainingRangeData(data, activeRangeKey),
     [activeRangeKey, data],
@@ -136,8 +143,6 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
 
   return (
     <>
-      <RangeControls activeKey={activeRangeKey} onRangeChange={handleRangeChange} />
-
       {!displayData.hasTrainingData ? (
         <TrainingEmptyState conditioningDays={displayData.conditioningDays} />
       ) : null}
@@ -150,202 +155,167 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
         />
       </div>
 
-      <Card id="chart" className="shadow-sm" data-training-status-chart-card>
-        <SectionHeader
-          title="Training Status"
-          description="Golf Form is the trend signal. Session Quality shows how good each scored session was."
-          action={
-            <StatusPill tone={displayData.status.tone}>{displayData.status.label}</StatusPill>
-          }
+      <Card
+        id="chart"
+        className="overflow-hidden border-border/70 bg-card shadow-md"
+        data-training-status-chart-card
+      >
+        <div className="border-b border-border/70 bg-muted/20 px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusPill tone={displayData.status.tone}>{displayData.status.label}</StatusPill>
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Fitness &amp; freshness
+                </span>
+              </div>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                Your golf readiness trend
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Fitness builds slowly, Recent Load reacts quickly, and Golf Form shows how ready
+                your current game is to perform.
+              </p>
+            </div>
+            <div className={styles.desktopRanges}>
+              <RangeControls activeKey={activeRangeKey} onRangeChange={handleRangeChange} />
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="grid gap-0 p-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 px-3 py-4 sm:px-5 sm:py-6 lg:border-r lg:border-border/70 lg:px-6">
+            <TrainingOverTimeChart
+              data={displayData.series}
+              sessionMarkers={displayData.sessionMarkers}
+            />
+          </div>
+          <ReadinessRecommendation data={displayData} />
+        </CardContent>
+      </Card>
+
+      <ResponsiveDetailPanel
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        title="Log golf training"
+        description="Add a round, practice block, speed session or manual workload entry."
+        trigger={
+          <Button type="button" className="min-h-11 w-full sm:w-fit" data-training-log-trigger>
+            <Plus className="size-4" aria-hidden="true" />
+            Log Training
+          </Button>
+        }
+      >
+        <TrainingSessionForm
+          rangeKey={activeRangeKey}
+          today={displayData.today}
+          idPrefix="training-load"
         />
-        <CardContent>
-          <TrainingOverTimeChart
-            data={displayData.series}
-            sessionMarkers={displayData.sessionMarkers}
+      </ResponsiveDetailPanel>
+
+      {isDesktopViewport ? (
+        <div className={styles.desktopHistory} data-training-desktop-history>
+          <TrainingRhythmWorkbench data={displayData} streakData={data} />
+
+          <Card id="load" className="shadow-sm" data-training-daily-load-chart>
+            <SectionHeader
+              title="Daily swing load"
+              description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
+              action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
+            />
+            <CardContent className="grid gap-3">
+              <LoadLegend />
+              <TrainingLoadBars data={displayData.series} />
+            </CardContent>
+          </Card>
+
+          <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
+
+          <TrainingStatusCard
+            latest={displayData.latest}
+            status={displayData.status}
+            trend={displayData.trend}
+            confidence={displayData.confidence}
+            sessionFormSignal={displayData.sessionFormSignal}
           />
-        </CardContent>
-      </Card>
 
-      <RecoveryWorkbench data={displayData} />
+          <EfficiencyCards cards={displayData.efficiencyCards} />
 
-      <TrainingRhythmWorkbench data={displayData} streakData={data} />
+          <Card id="log-load" className="shadow-sm" data-training-load-actions>
+            <CardContent className="flex items-center justify-between gap-4 p-4">
+              <div>
+                <p className="font-semibold">Training history</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Review every round and practice entry behind this readiness signal.
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/sessions">View session history</Link>
+              </Button>
+            </CardContent>
+          </Card>
 
-      <Card id="load" className="shadow-sm" data-training-daily-load-chart>
-        <SectionHeader
-          title="Daily swing load"
-          description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
-          action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
-        />
-        <CardContent className="grid gap-3">
-          <LoadLegend />
-          <TrainingLoadBars data={displayData.series} />
-        </CardContent>
-      </Card>
-
-      <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
-
-      <TrainingStatusCard
-        latest={displayData.latest}
-        status={displayData.status}
-        trend={displayData.trend}
-        confidence={displayData.confidence}
-        sessionFormSignal={displayData.sessionFormSignal}
-      />
-
-      <EfficiencyCards cards={displayData.efficiencyCards} />
-
-      <TrainingSourceSuggestions
-        suggestions={displayData.suggestions}
-        rangeKey={activeRangeKey}
-        idPrefix="desktop-suggested-rpe"
-      />
-
-      <Card id="log-load" className="shadow-sm" data-training-load-actions>
-        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-semibold">Update the evidence</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Log a session here, or use Sessions for the full workload history.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <ResponsiveDetailPanel
-              open={logOpen}
-              onOpenChange={setLogOpen}
-              title="Log golf training"
-              description="Add a round, practice block, speed session or manual workload entry."
-              trigger={
-                <Button type="button">
-                  <Plus className="size-4" aria-hidden />
-                  Log training
-                </Button>
-              }
-            >
-              <TrainingSessionForm
-                rangeKey={activeRangeKey}
-                today={displayData.today}
-                idPrefix="desktop-training-load"
-              />
-            </ResponsiveDetailPanel>
-            <Button asChild variant="outline">
-              <Link href="/sessions">View session history</Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <RecentTrainingSessions sessions={displayData.recentSessions} />
+          <RecentTrainingSessions sessions={displayData.recentSessions} />
+        </div>
+      ) : null}
     </>
   );
 }
 
-function RecoveryWorkbench({ data }: { data: TrainingOverTimeData }) {
-  const recovery = buildRecoveryRecommendation(data);
-  const next48Hours = buildNext48Plan(data);
+function useDesktopViewport() {
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  return (
-    <Card id="recovery" className="scroll-mt-28 shadow-sm" data-training-recovery-workbench>
-      <SectionHeader
-        title="Recovery and next 48 hours"
-        description="Turn today's workload and Golf Form into a specific next-session decision."
-        action={<StatusPill tone={recovery.tone}>{recovery.label}</StatusPill>}
-      />
-      <CardContent className="grid gap-6 lg:grid-cols-2 lg:gap-0 lg:divide-x lg:divide-border">
-        <section aria-labelledby="recovery-recommendation-title" className="min-w-0 lg:pr-6">
-          <div className={cn("rounded-lg border p-4", statusSurfaceClass(recovery.tone))}>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-80">Tomorrow</p>
-            <h3
-              id="recovery-recommendation-title"
-              className="mt-2 text-xl font-semibold tracking-normal"
-            >
-              {recovery.title}
-            </h3>
-            <p className="mt-2 text-sm leading-6 opacity-90">{recovery.summary}</p>
-          </div>
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(query.matches);
 
-          <dl className="mt-3 divide-y divide-border rounded-lg border border-border">
-            <RecoveryDecision label="Best" value={recovery.best} tone="green" />
-            <RecoveryDecision label="Optional" value={recovery.acceptable} tone="amber" />
-            <RecoveryDecision label="Avoid" value={recovery.avoid} tone="red" />
-          </dl>
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
-          <div className="mt-3 border-l-2 border-primary/35 pl-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Why
-            </p>
-            <ul className="mt-2 grid gap-1.5 text-sm leading-5 text-muted-foreground">
-              {recovery.reasonLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section
-          id="next-48-hours"
-          aria-labelledby="next-48-hours-title"
-          className="min-w-0 border-t border-border pt-6 lg:border-t-0 lg:pl-6 lg:pt-0"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h3 id="next-48-hours-title" className="text-lg font-semibold tracking-normal">
-                Next 48 hours
-              </h3>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                How the next two golf days should be paced.
-              </p>
-            </div>
-            <StatusPill tone={next48Hours.tone}>Predictive</StatusPill>
-          </div>
-
-          <ol className="mt-4 divide-y divide-border rounded-lg border border-border">
-            {next48Hours.items.map((item) => (
-              <li key={item.label} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-3">
-                <span
-                  className={cn(
-                    "mt-0.5 inline-flex size-8 items-center justify-center rounded-full border",
-                    statusSurfaceClass(item.tone),
-                  )}
-                >
-                  <CalendarDays className="size-4" aria-hidden="true" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{item.activity}</p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.reason}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </section>
-      </CardContent>
-    </Card>
-  );
+  return isDesktop;
 }
 
-function RecoveryDecision({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: "green" | "amber" | "red";
-}) {
-  const Icon = tone === "red" ? AlertTriangle : CheckCircle2;
+function ReadinessRecommendation({ data }: { data: TrainingOverTimeData }) {
+  const recommendation = buildReadinessRecommendation(data);
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-3 py-2.5">
-      <Icon className={cn("size-4", statusIconClass(tone))} aria-hidden="true" />
-      <div className="flex min-w-0 items-baseline justify-between gap-3">
-        <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          {label}
-        </dt>
-        <dd className="text-right text-sm font-semibold text-foreground">{value}</dd>
+    <aside
+      className="flex min-w-0 flex-col justify-between border-t border-border/70 bg-muted/15 p-5 lg:border-t-0 lg:p-6"
+      aria-labelledby="readiness-recommendation-title"
+      data-training-recommendation
+    >
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Recommendation
+          </p>
+          <Sparkles className="size-4 text-primary" aria-hidden="true" />
+        </div>
+        <StatusPill tone={recommendation.tone} className="mt-4">
+          {recommendation.decision}
+        </StatusPill>
+        <h3
+          id="readiness-recommendation-title"
+          className="mt-4 text-xl font-semibold tracking-tight text-foreground"
+        >
+          {recommendation.title}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{recommendation.explanation}</p>
+        <ul className="mt-4 grid gap-2 border-t border-border/70 pt-4 text-sm leading-5 text-foreground">
+          {recommendation.reasons.map((reason) => (
+            <li key={reason} className="flex gap-2">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>{reason}</span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </div>
+      <p className="mt-5 text-xs leading-5 text-muted-foreground">
+        Based on logged golf workload and comparable session evidence.
+      </p>
+    </aside>
   );
 }
 
@@ -592,7 +562,7 @@ function TrainingSessionLedger({
   rangeKey: TrainingRangeKey;
 }) {
   const rangeLabel =
-    TRAINING_RANGE_OPTIONS.find((option) => option.key === rangeKey)?.label ?? rangeKey;
+    READINESS_RANGE_OPTIONS.find((option) => option.key === rangeKey)?.label ?? rangeKey;
 
   return (
     <Card
@@ -724,7 +694,7 @@ function RangeControls({
       spacing={1}
       className="premium-command-surface flex w-full gap-1 overflow-x-auto rounded-lg p-1 sm:w-fit"
     >
-      {TRAINING_RANGE_OPTIONS.map((option) => (
+      {READINESS_RANGE_OPTIONS.map((option) => (
         <ToggleGroupItem
           key={option.key}
           value={option.key}
@@ -833,20 +803,18 @@ function buildWeeklyTrainingScore(data: TrainingOverTimeData) {
   };
 }
 
-function buildRecoveryRecommendation(data: TrainingOverTimeData) {
+function buildReadinessRecommendation(data: TrainingOverTimeData) {
   const latest = data.latest;
 
   if (!latest) {
     return {
-      label: "Build baseline",
-      title: "Log first",
-      summary: "Recovery advice unlocks once the page has workload and form data.",
-      best: "Log a session",
-      acceptable: "Light putting",
-      avoid: "Speed training",
-      reasonLines: [
-        "Training Load needs at least one logged round, practice block or speed session.",
-        "Comparison confidence will build once comparable sessions exist.",
+      decision: "Technical only",
+      title: "Build your golf baseline",
+      explanation:
+        "Keep the first session controlled so the readiness model has useful evidence to compare.",
+      reasons: [
+        "No recent golf workload is logged yet.",
+        "One measured round or practice block will start the trend.",
       ],
       tone: "slate" as const,
     };
@@ -854,134 +822,64 @@ function buildRecoveryRecommendation(data: TrainingOverTimeData) {
 
   if (latest.load >= 500 || latest.fatigue >= 120 || latest.fatigue > latest.fitness * 1.8) {
     return {
-      label: "Rest",
-      title: "Rest or go light",
-      summary: "Today's workload is high enough that more volume is the wrong lever.",
-      best: "Putting + mobility",
-      acceptable: "Short game",
-      avoid: "Speed training",
-      reasonLines: [
-        "Recent Load is elevated.",
-        "Allow recovery before adding intensity.",
-        "Keep tomorrow technical, not heavy.",
+      decision: "Recovery",
+      title: "Let the load settle",
+      explanation:
+        "Choose rest, mobility or light putting before another high-volume range block or round.",
+      reasons: [
+        `Recent Load is ${formatMetric(latest.fatigue)}, above your current Training Fitness of ${formatMetric(latest.fitness)}.`,
+        "Adding intensity now is more likely to deepen fatigue than improve the signal.",
       ],
       tone: "amber" as const,
     };
   }
 
-  if (latest.fatigue <= latest.fitness * 1.2 && latest.form >= 100) {
+  if (
+    latest.form < 100 ||
+    data.trend.key === "form_dropping" ||
+    data.sessionFormSignal.direction === "dipping"
+  ) {
     return {
-      label: "Practice window",
-      title: "Tomorrow: practise",
-      summary: "Recent Load is controlled and Golf Form is holding above baseline.",
-      best: "Driver practice",
-      acceptable: "Short game",
-      avoid: "Speed training",
-      reasonLines: [
-        "Recent Load is controlled.",
-        "Golf Form remains high.",
-        "Build skill before adding intensity.",
+      decision: "Technical only",
+      title: "Improve the pattern, not the volume",
+      explanation:
+        "Use a focused block for the weakest part of the game and stop once the quality drops.",
+      reasons: [
+        `Golf Form is ${formatMetric(latest.form)}, below the 100 baseline.`,
+        data.sessionFormSignal.detail,
+      ],
+      tone: "amber" as const,
+    };
+  }
+
+  if (
+    latest.form >= 110 &&
+    latest.fatigue <= latest.fitness * 1.25 &&
+    data.summary.fitness.change >= 0
+  ) {
+    return {
+      decision: "Push",
+      title: "Use the performance window",
+      explanation:
+        "A quality range session, speed block or competitive round fits the current readiness signal.",
+      reasons: [
+        `Golf Form is ${formatMetric(latest.form)}, clearly above baseline.`,
+        "Recent Load is controlled while Training Fitness is holding or building.",
       ],
       tone: "green" as const,
     };
   }
 
   return {
-    label: "Controlled",
-    title: "Keep it specific",
-    summary: "Workload is manageable, but the next session should have a clear job.",
-    best: "Technical practice",
-    acceptable: "Short game",
-    avoid: "Speed training",
-    reasonLines: [
-      "Recent Load is manageable.",
-      "Golf Form is not the limiting issue.",
-      "Avoid adding volume without a practice target.",
+    decision: "Maintain",
+    title: "Keep the rhythm steady",
+    explanation:
+      "Repeat a normal golf session at familiar volume rather than adding a sharp workload spike.",
+    reasons: [
+      `Golf Form is ${formatMetric(latest.form)} and holding around your baseline.`,
+      `Recent Load is ${formatMetric(latest.fatigue)} against Training Fitness of ${formatMetric(latest.fitness)}.`,
     ],
     tone: "sky" as const,
-  };
-}
-
-function buildNext48Plan(data: TrainingOverTimeData) {
-  const latest = data.latest;
-  const dayAfter = addDays(data.today, 2);
-
-  if (!latest) {
-    return {
-      tone: "slate" as const,
-      items: [
-        {
-          label: "Tomorrow",
-          activity: "Log a baseline",
-          reason: "Start with one round or practice block.",
-          tone: "amber" as const,
-        },
-        {
-          label: weekdayLabel(dayAfter),
-          activity: "Light putting",
-          reason: "Keep it simple until workload exists.",
-          tone: "green" as const,
-        },
-      ],
-    };
-  }
-
-  if (latest.load >= 500 || latest.fatigue >= 120 || latest.fatigue > latest.fitness * 1.8) {
-    return {
-      tone: "amber" as const,
-      items: [
-        {
-          label: "Tomorrow",
-          activity: "Recovery",
-          reason: "Load is high enough to avoid more volume.",
-          tone: "red" as const,
-        },
-        {
-          label: weekdayLabel(dayAfter),
-          activity: "Short game",
-          reason: "Reintroduce skill work before intensity.",
-          tone: "amber" as const,
-        },
-      ],
-    };
-  }
-
-  if (latest.fatigue <= latest.fitness * 1.2 && latest.form >= 100) {
-    return {
-      tone: "green" as const,
-      items: [
-        {
-          label: "Tomorrow",
-          activity: "Driver practice",
-          reason: "Golf Form is holding above baseline.",
-          tone: "green" as const,
-        },
-        {
-          label: weekdayLabel(dayAfter),
-          activity: "Ideal for round",
-          reason: "Workload is controlled.",
-          tone: "green" as const,
-        },
-      ],
-    };
-  }
-
-  return {
-    tone: "sky" as const,
-    items: [
-      {
-        label: "Tomorrow",
-        activity: "Technical practice",
-        reason: "Keep the session specific.",
-        tone: "green" as const,
-      },
-      {
-        label: weekdayLabel(dayAfter),
-        activity: "Normal range",
-        reason: "Add volume only if recovery feels good.",
-        tone: "amber" as const,
-      },
-    ],
   };
 }
 
@@ -1238,12 +1136,6 @@ function statusSurfaceClass(tone: Tone | "red") {
   }
 }
 
-function statusIconClass(tone: "green" | "amber" | "red") {
-  if (tone === "green") return "text-primary";
-  if (tone === "amber") return "text-[var(--status-warning-foreground)]";
-  return "text-destructive";
-}
-
 function formatLedgerDate(dateKey: string) {
   return ledgerDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
 }
@@ -1331,10 +1223,6 @@ function dateDiffDays(a: string, b: string) {
   const first = new Date(`${a}T00:00:00.000Z`).getTime();
   const second = new Date(`${b}T00:00:00.000Z`).getTime();
   return Math.round((second - first) / 86_400_000);
-}
-
-function weekdayLabel(dateKey: string) {
-  return weekdayFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
 }
 
 function addDays(dateKey: string, days: number) {

@@ -1,36 +1,32 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { and, asc, countDistinct, desc, eq, inArray, or } from "drizzle-orm";
-import { Cuboid, Flag, MapPinned, MoreHorizontal, ShieldCheck } from "lucide-react";
+import { and, asc, countDistinct, desc, eq, gt, inArray, or } from "drizzle-orm";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Circle,
+  CloudSun,
+  Cuboid,
+  Flag,
+  Gauge,
+  MapPinned,
+  ShieldCheck,
+  Target,
+  Wind,
+} from "lucide-react";
 
 import { LazyPlaySetupDrawer } from "@/app/play/lazy-play-setup-drawer";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
+import { IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
 import { getDb } from "@/db/client";
-import { courses, holes, sessions, stockYardages, teeSets } from "@/db/schema";
+import { courses, holes, sessions, stockYardages, teeSets, weatherSnapshots } from "@/db/schema";
+import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
@@ -41,6 +37,12 @@ import {
 import { SELECTED_COURSE_COOKIE, SELECTED_TEE_COOKIE } from "@/lib/selected-course";
 
 export const dynamic = "force-dynamic";
+
+const shortDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
 
 export default async function PlayCompanionPage({
   searchParams,
@@ -58,7 +60,7 @@ export default async function PlayCompanionPage({
       getTrustedBagCount(userId),
     ]);
   const requestedCourseId = params.courseId ?? cookieStore.get(SELECTED_COURSE_COOKIE)?.value;
-  const recentRound = await getMostRecentRound(
+  const fallbackRecentRound = await getMostRecentRound(
     userId,
     requestedCourseId ?? activeRound?.courseId ?? null,
   );
@@ -67,7 +69,7 @@ export default async function PlayCompanionPage({
     (requestedCourseId && availableCourses.some((course) => course.id === requestedCourseId)
       ? requestedCourseId
       : null) ??
-    recentRound?.courseId ??
+    fallbackRecentRound?.courseId ??
     availableCourses[0]?.id ??
     null;
   const selected = availableCourses.find((course) => course.id === selectedCourseId) ?? null;
@@ -77,21 +79,65 @@ export default async function PlayCompanionPage({
     tees,
     activeRoundTeeId: activeRound?.teeSetId,
     explicitTeeId: savedTeeId,
-    recentRoundTeeId: recentRound?.teeSetId,
+    recentRoundTeeId: fallbackRecentRound?.teeSetId,
   });
   const teeIsDefault = Boolean(
     selectedTee &&
     selectedTee.id !== activeRound?.teeSetId &&
     selectedTee.id !== savedTeeId &&
-    selectedTee.id !== recentRound?.teeSetId,
+    selectedTee.id !== fallbackRecentRound?.teeSetId,
   );
   const twin = twins.find((course) => course.courseId === selected?.id) ?? null;
-  const { strategyReady } = companionCourseReadiness({
+  const { strategyReady: mappedStrategyReady } = companionCourseReadiness({
     holeCount: selected?.holeCount ?? 0,
     teeCount: tees.length,
     courseTwinAvailable: Boolean(twin),
   });
-  const playReady = strategyReady && trustedBagCount > 0;
+  const trustedBagReady = trustedBagCount > 0;
+  const [strategyData, cachedWeather, recentCourseRounds] = selected
+    ? await Promise.all([
+        getCourseStrategyData(selected.id, selectedTee?.id),
+        getCachedCourseWeather(userId, selected.id),
+        getRecentCourseRounds(userId, selected.id),
+      ])
+    : [null, null, []];
+  const weatherLabel = formatWeather(cachedWeather?.conditionsJson);
+  const lastPlayed = recentCourseRounds[0]?.date ?? null;
+  const trustedClubs =
+    strategyData?.trustedBag
+      .filter((club) => club.sampleSize >= 5)
+      .sort(
+        (left, right) => right.confidence - left.confidence || right.sampleSize - left.sampleSize,
+      )
+      .slice(0, 4) ?? [];
+  const strategies = strategyData?.strategies ?? [];
+  const strategyReady =
+    mappedStrategyReady &&
+    trustedClubs.length > 0 &&
+    strategies.some((strategy) => strategy.recommendedClub !== "Build bag evidence");
+  const actionableStrategies = strategyReady
+    ? strategies.filter((strategy) => strategy.recommendedClub !== "Build bag evidence")
+    : [];
+  const firstPlan = actionableStrategies[0] ?? null;
+  const keyHoles = [...actionableStrategies]
+    .sort((left, right) => right.yards - left.yards)
+    .slice(0, 3);
+  const commonMiss = mostCommonMiss(actionableStrategies.map((strategy) => strategy.commonMiss));
+  const readiness = [
+    { label: "Course selected", ready: Boolean(selected) },
+    { label: "Tee selected", ready: Boolean(selectedTee) },
+    { label: "Trusted bag available", ready: trustedBagReady },
+    { label: "Strategy ready", ready: strategyReady },
+    { label: "Course Twin mapped", ready: Boolean(twin) },
+  ];
+  const readyCount = readiness.filter((item) => item.ready).length;
+  const strategyHref = selected
+    ? `/courses/strategy?courseId=${selected.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`
+    : "/courses/strategy";
+  const startRoundHref = selected
+    ? `/rounds/new?courseId=${selected.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`
+    : "/rounds/new";
+  const twinHref = twin ? `/play/${twin.courseId}?mode=strategy` : "/course-twins";
   const selectionProps = {
     courses: availableCourses.map((course) => ({
       id: course.id,
@@ -108,260 +154,713 @@ export default async function PlayCompanionPage({
   };
 
   return (
-    <PageShell>
+    <PageShell contentClassName="lg:gap-6">
       <MobileAppShell className="gap-4" data-play-companion-hub>
         <MobileTopBar title="Play" />
 
         {activeRound ? (
-          <Card className="border-primary/30 bg-primary/5" data-active-round>
-            <CardHeader>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                  Round in progress
-                </p>
-                <h1 className="mt-1 text-2xl font-bold">
-                  {activeRound.courseName ?? "Current round"}
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {activeRound.teeName ?? "Tee not recorded"}
-                </p>
-              </div>
-              <CardAction>
-                <Badge>In progress</Badge>
-              </CardAction>
-            </CardHeader>
-            <CardFooter className="bg-background/70 p-3">
-              <Button asChild className="min-h-12 w-full rounded-xl text-base">
-                <Link href={`/rounds/${activeRound.id}`}>Continue Round</Link>
-              </Button>
-            </CardFooter>
-          </Card>
-        ) : null}
+          <ActiveRoundMobile round={activeRound} />
+        ) : selected ? (
+          <>
+            <SelectedCourseMobile
+              course={selected}
+              tee={selectedTee}
+              teeIsDefault={teeIsDefault}
+              strategyReady={strategyReady}
+              twinGrade={twin?.grade ?? null}
+              lastPlayed={lastPlayed}
+              weatherLabel={weatherLabel}
+              readyCount={readyCount}
+              strategyHref={strategyHref}
+              twinHref={twinHref}
+              startRoundHref={startRoundHref}
+            />
 
-        {!activeRound && playReady ? (
-          <Card className="overflow-hidden pt-0" data-selected-course>
-            <div className="relative h-28 overflow-hidden border-b">
-              <Image
-                src="/assets/generated/course-twin-premium-desktop.webp"
-                alt="Aerial golf-hole strategy view"
-                fill
-                sizes="(max-width: 768px) 100vw, 480px"
-                className="object-cover brightness-75"
+            <section className="grid gap-2.5" data-course-prep>
+              <IOSSectionHeader
+                title="Course prep"
+                description="One briefing. Five checks. No surprises on the first tee."
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
-              <p className="absolute bottom-3 left-4 text-xs font-semibold uppercase tracking-[0.14em] text-white">
-                Selected course
-              </p>
-            </div>
-            <CardHeader>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  {selected?.name ?? "Choose a course"}
-                </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {selectedTee
-                    ? `${teeIsDefault ? "Default: " : ""}${selectedTee.name}${selectedTee.yards ? ` · ${selectedTee.yards.toLocaleString("en-GB")} yd` : ""}`
-                    : "Choose a tee"}
-                </p>
-              </div>
-              <CardAction>
-                <Badge>Ready</Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              <SetupItem label="Course strategy" value="Ready" icon={MapPinned} />
-              <SetupItem
-                label="Course Twin"
-                value={twin ? `Ready · Grade ${twin.grade}` : "Not built"}
-                icon={Cuboid}
-              />
-              <SetupItem label="Selected tee" value={selectedTee?.name ?? "Not selected"} />
-            </CardContent>
-            <CardFooter className="grid gap-2 bg-background/70 p-3">
-              <ButtonGroup className="w-full">
-                <Button asChild className="min-h-12 flex-1 rounded-l-xl text-base">
-                  <Link
-                    href={`/courses/strategy?courseId=${selected!.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`}
-                  >
-                    <MapPinned className="size-4" aria-hidden />
-                    Open course strategy
-                  </Link>
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    type="button"
-                    data-variant="outline"
-                    data-size="icon"
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "icon",
-                      className: "min-h-12 w-12 rounded-r-xl",
-                    })}
-                    aria-label="More play actions"
-                  >
-                    <MoreHorizontal aria-hidden />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-56">
-                    <DropdownMenuLabel>Play actions</DropdownMenuLabel>
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={`/rounds/new?courseId=${selected!.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`}
-                      >
-                        <Flag aria-hidden />
-                        Start round
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href={twin ? `/play/${twin.courseId}?mode=strategy` : "/course-twins"}>
-                        <Cuboid aria-hidden />
-                        {twin ? "Open Course Twin" : "Browse Course Twins"}
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </ButtonGroup>
+              <ReadinessPanel items={readiness} />
               <LazyPlaySetupDrawer {...selectionProps} />
-            </CardFooter>
-          </Card>
-        ) : null}
-
-        {!activeRound && !selected ? (
-          <AppEmptyState
-            icon={<MapPinned aria-hidden />}
-            title="Choose a course to prepare"
-            description="Add or select a mapped course before building the tee, strategy and trusted-bag setup."
-            primaryAction={
-              <Button asChild className="min-h-11 w-full sm:w-auto">
-                <Link href="/courses/new">Add a course</Link>
-              </Button>
-            }
-            secondaryAction={
-              <Button asChild variant="outline" className="min-h-11 w-full sm:w-auto">
-                <Link href="/courses">Browse courses</Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {!activeRound && selected && !playReady ? (
-          <Card data-play-setup-guide>
-            <CardHeader>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                  Setup guide
-                </p>
-                <h1 className="mt-1 text-2xl font-bold">Prepare this course</h1>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                  Complete the playing context before the selected-course decision replaces this
-                  checklist.
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <OperationStepper
-                label="Course readiness"
-                steps={playReadinessSteps({
-                  courseReady: Boolean(selected),
-                  teeReady: Boolean(selectedTee),
-                  strategyReady,
-                  trustedBagReady: trustedBagCount > 0,
-                })}
-              />
-              <div className="grid gap-2">
-                <SetupItem icon={MapPinned} label="Course" value={selected?.name ?? "Choose"} />
-                <SetupItem label="Tee" value={selectedTee?.name ?? "Choose"} />
-                <SetupItem
-                  label="Strategy"
-                  value={strategyReady ? "Ready" : "Needs mapped holes"}
-                />
-                <SetupItem
-                  icon={ShieldCheck}
-                  label="Trusted bag"
-                  value={
-                    trustedBagCount > 0 ? `${trustedBagCount} measured clubs` : "Build baseline"
-                  }
-                  href="/quick-bag"
-                />
-                <SetupItem
-                  icon={Cuboid}
-                  label="Course Twin availability"
-                  value={twin ? `Ready · Grade ${twin.grade}` : "Not available"}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="bg-background/70 p-3">
-              <LazyPlaySetupDrawer label="Complete course setup" {...selectionProps} />
-            </CardFooter>
-          </Card>
-        ) : null}
+            </section>
+          </>
+        ) : (
+          <PlayEmptyState />
+        )}
       </MobileAppShell>
+
+      <section className="hidden lg:grid" data-play-desktop-command-centre>
+        {activeRound ? (
+          <ActiveRoundDesktop round={activeRound} />
+        ) : selected ? (
+          <DesktopPreRoundCommandCentre
+            course={selected}
+            tee={selectedTee}
+            strategyReady={strategyReady}
+            twinGrade={twin?.grade ?? null}
+            lastPlayed={lastPlayed}
+            weatherLabel={weatherLabel}
+            readiness={readiness}
+            strategyHref={strategyHref}
+            twinHref={twinHref}
+            startRoundHref={startRoundHref}
+            selectionProps={selectionProps}
+            firstPlan={firstPlan}
+            keyHoles={keyHoles}
+            trustedClubs={trustedClubs}
+            commonMiss={commonMiss}
+            recentRounds={recentCourseRounds}
+          />
+        ) : (
+          <PlayEmptyState />
+        )}
+      </section>
     </PageShell>
   );
 }
 
-function SetupItem({
+function SelectedCourseMobile({
+  course,
+  tee,
+  teeIsDefault,
+  strategyReady,
+  twinGrade,
+  lastPlayed,
+  weatherLabel,
+  readyCount,
+  strategyHref,
+  twinHref,
+  startRoundHref,
+}: {
+  course: PlayCourse;
+  tee: PlayTee | null;
+  teeIsDefault: boolean;
+  strategyReady: boolean;
+  twinGrade: string | null;
+  lastPlayed: Date | null;
+  weatherLabel: string | null;
+  readyCount: number;
+  strategyHref: string;
+  twinHref: string;
+  startRoundHref: string;
+}) {
+  return (
+    <Card className="overflow-hidden pt-0" data-selected-course>
+      <div className="relative h-48 overflow-hidden bg-slate-950">
+        <Image
+          src="/assets/generated/course-twin-premium-desktop.webp"
+          alt="Aerial golf-hole planning view"
+          fill
+          priority
+          sizes="(max-width: 1023px) calc(100vw - 2rem), 1px"
+          className="object-cover opacity-85"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-black/20" />
+        <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
+          <span className="rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+            Selected course
+          </span>
+          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-950">
+            {readyCount}/5 ready
+          </span>
+        </div>
+        <div className="absolute inset-x-4 bottom-4 text-white">
+          <h1 className="text-balance text-[1.85rem] font-bold leading-[1.05] tracking-tight">
+            {course.name}
+          </h1>
+          <p className="mt-2 text-sm font-medium text-white/80">
+            {tee ? `${teeIsDefault ? "Default · " : ""}${tee.name}` : "Tee not selected"}
+            {tee?.par ? ` · Par ${tee.par}` : ""}
+            {tee?.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
+          </p>
+        </div>
+      </div>
+
+      <CardContent className="grid gap-3">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3" aria-label="Course briefing">
+          <BriefingMetric
+            label="Strategy"
+            value={strategyReady ? "Ready" : "Needs prep"}
+            icon={Target}
+          />
+          <BriefingMetric
+            label="Course Twin"
+            value={twinGrade ? `Mapped · ${twinGrade}` : "Not mapped"}
+            icon={Cuboid}
+          />
+          <BriefingMetric
+            label="Last played"
+            value={lastPlayed ? shortDateFormatter.format(lastPlayed) : "No round yet"}
+            icon={CalendarDays}
+          />
+          {weatherLabel ? (
+            <BriefingMetric label="Course weather" value={weatherLabel} icon={CloudSun} />
+          ) : (
+            <BriefingMetric
+              label="Playing context"
+              value={tee ? `Par ${tee.par}` : "Choose tee"}
+              icon={Gauge}
+            />
+          )}
+        </div>
+      </CardContent>
+
+      <CardFooter className="grid gap-2 bg-background/80 p-3" data-primary-action>
+        <Button asChild className="min-h-12 w-full rounded-xl text-[15px]">
+          <Link href={strategyHref}>
+            <MapPinned aria-hidden />
+            Open Strategy
+          </Link>
+        </Button>
+        <div className="grid grid-cols-3 gap-2">
+          <Button asChild variant="outline" className="min-h-12 rounded-xl px-2 text-xs">
+            <Link href={twinHref} aria-label="Open Course Twin">
+              <Cuboid aria-hidden />
+              Course Twin
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-12 rounded-xl px-2 text-xs">
+            <Link href={startRoundHref}>
+              <Flag aria-hidden />
+              Start Round
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-12 rounded-xl px-2 text-xs">
+            <Link href="/quick-bag">
+              <ShieldCheck aria-hidden />
+              Quick Bag
+            </Link>
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function ActiveRoundMobile({ round }: { round: ActiveRound }) {
+  const summary = summarizeScorecard(round.scorecardJson);
+
+  return (
+    <Card
+      className="overflow-hidden border-0 bg-slate-950 py-0 text-white shadow-[0_24px_60px_rgba(2,44,28,0.28)]"
+      data-active-round
+      data-mobile-preserve-dark
+    >
+      <div className="relative overflow-hidden px-5 pb-5 pt-6">
+        <div className="absolute -right-16 -top-24 size-56 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
+              Round in progress
+            </p>
+            <Badge className="border-emerald-300/20 bg-emerald-300/15 text-emerald-100">
+              Active
+            </Badge>
+          </div>
+          <h1 className="mt-5 text-balance text-[2rem] font-bold leading-none tracking-tight">
+            {round.courseName ?? "Current round"}
+          </h1>
+          <p className="mt-2 text-sm text-white/65">{round.teeName ?? "Tee not recorded"}</p>
+          <div className="mt-7 grid grid-cols-3 gap-3 border-t border-white/10 pt-4">
+            <DarkMetric label="Progress" value={summary.progressLabel} />
+            <DarkMetric label="Score" value={summary.scoreLabel} />
+            <DarkMetric label="To par" value={summary.toParLabel} />
+          </div>
+        </div>
+      </div>
+      <CardFooter className="grid gap-2 border-white/10 bg-white/[0.06] p-3" data-primary-action>
+        <Button asChild className="min-h-12 w-full rounded-xl bg-emerald-500 text-base text-white">
+          <Link href={`/rounds/${round.id}`}>
+            <Flag aria-hidden />
+            Continue Round
+          </Link>
+        </Button>
+        <Button
+          asChild
+          variant="ghost"
+          className="min-h-11 w-full rounded-xl text-white hover:bg-white/10 hover:text-white"
+        >
+          <Link href="/quick-bag">
+            <ShieldCheck aria-hidden />
+            Open Quick Bag
+          </Link>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function DesktopPreRoundCommandCentre({
+  course,
+  tee,
+  strategyReady,
+  twinGrade,
+  lastPlayed,
+  weatherLabel,
+  readiness,
+  strategyHref,
+  twinHref,
+  startRoundHref,
+  selectionProps,
+  firstPlan,
+  keyHoles,
+  trustedClubs,
+  commonMiss,
+  recentRounds,
+}: {
+  course: PlayCourse;
+  tee: PlayTee | null;
+  strategyReady: boolean;
+  twinGrade: string | null;
+  lastPlayed: Date | null;
+  weatherLabel: string | null;
+  readiness: ReadinessItem[];
+  strategyHref: string;
+  twinHref: string;
+  startRoundHref: string;
+  selectionProps: SelectionProps;
+  firstPlan: StrategyPlan | null;
+  keyHoles: StrategyPlan[];
+  trustedClubs: TrustedClub[];
+  commonMiss: string;
+  recentRounds: RecentCourseRound[];
+}) {
+  return (
+    <div className="grid gap-6">
+      <header className="flex items-end justify-between gap-8">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            Pre-round command centre
+          </p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight">{course.name}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Your caddie briefing for the next round: the course, the decisions and the clubs you can
+            trust.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" className="min-h-11 px-4">
+            <Link href="/quick-bag">
+              <ShieldCheck aria-hidden />
+              Quick Bag
+            </Link>
+          </Button>
+          <Button asChild className="min-h-11 px-5">
+            <Link href={strategyHref}>
+              <MapPinned aria-hidden />
+              Open Strategy
+            </Link>
+          </Button>
+        </div>
+      </header>
+
+      <div className="grid min-h-[25rem] gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(22rem,0.7fr)]">
+        <Card className="relative min-h-[25rem] overflow-hidden border-0 py-0 text-white ring-0">
+          <Image
+            src="/assets/generated/course-twin-premium-desktop.webp"
+            alt="Aerial golf-hole planning view"
+            fill
+            sizes="(min-width: 1280px) 68vw, 62vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/25 to-transparent" />
+          <div className="relative flex h-full max-w-xl flex-col justify-between p-8">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                {tee?.name ?? "Tee not selected"}
+              </span>
+              {tee ? (
+                <span className="rounded-full border border-white/20 bg-black/20 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+                  Par {tee.par}
+                  {tee.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
+                </span>
+              ) : null}
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                Caddie call
+              </p>
+              <h2 className="mt-3 text-3xl font-semibold leading-tight">
+                {firstPlan
+                  ? `Open with ${firstPlan.recommendedClub} and favour ${firstPlan.safeTarget.toLowerCase()}.`
+                  : "Finish the course setup before choosing the opening line."}
+              </h2>
+              <p className="mt-4 max-w-lg text-sm leading-6 text-white/70">
+                {strategyReady
+                  ? `${strategiesReadyLabel(keyHoles.length)} from mapped holes and your measured bag.`
+                  : "A mapped tee and trusted bag are required before this briefing is strategy-ready."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-white/70">
+              <span className="inline-flex items-center gap-2">
+                <CalendarDays className="size-4" aria-hidden />
+                {lastPlayed
+                  ? `Last played ${shortDateFormatter.format(lastPlayed)}`
+                  : "No round yet"}
+              </span>
+              {weatherLabel ? (
+                <span className="inline-flex items-center gap-2">
+                  <Wind className="size-4" aria-hidden />
+                  {weatherLabel}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="h-full">
+          <CardHeader>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Course prep
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold">Ready for the first tee</h2>
+            </div>
+            <CardAction>
+              <Badge variant={readiness.every((item) => item.ready) ? "default" : "outline"}>
+                {readiness.filter((item) => item.ready).length}/5
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <ReadinessPanel items={readiness} desktop />
+            <div className="grid grid-cols-2 gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={twinHref}>
+                  <Cuboid aria-hidden />
+                  Course Twin
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={startRoundHref}>
+                  <Flag aria-hidden />
+                  Start Round
+                </Link>
+              </Button>
+            </div>
+            <LazyPlaySetupDrawer {...selectionProps} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.2fr_0.9fr]">
+        <Card>
+          <CardHeader>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Strategy summary
+              </p>
+              <h2 className="mt-1 text-xl font-semibold">The opening brief</h2>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            <DesktopBrief label="First shot" value={firstPlan?.recommendedClub ?? "Not ready"} />
+            <DesktopBrief label="Safe line" value={firstPlan?.safeTarget ?? "Not available"} />
+            <DesktopBrief label="Common miss" value={commonMiss} />
+            <DesktopBrief
+              label="Course Twin"
+              value={twinGrade ? `Mapped · Grade ${twinGrade}` : "Not mapped"}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Key holes
+              </p>
+              <h2 className="mt-1 text-xl font-semibold">Longest mapped decisions</h2>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {keyHoles.length ? (
+              <div className="divide-y divide-border/70">
+                {keyHoles.map((hole) => (
+                  <div
+                    key={hole.holeNumber}
+                    className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] items-center gap-4 py-3 first:pt-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                        Hole {hole.holeNumber}
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold">
+                        Par {hole.par} · {hole.yards} yd
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold">{hole.recommendedClub}</p>
+                      <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                        {hole.safeTarget} · {hole.commonMiss}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{hole.confidence}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm leading-6 text-muted-foreground">
+                Finish the selected tee and trusted bag to reveal the holes that need a decision
+                before the round.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Bag and record
+              </p>
+              <h2 className="mt-1 text-xl font-semibold">Trusted clubs</h2>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-5">
+            {trustedClubs.length ? (
+              <div className="grid grid-cols-2 gap-2">
+                {trustedClubs.map((club) => (
+                  <div key={club.clubId} className="rounded-lg bg-secondary/55 p-3">
+                    <p className="font-semibold">{club.label}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {Math.round(club.minCarryYd)}–{Math.round(club.maxCarryYd)} yd
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No trusted measured clubs yet.</p>
+            )}
+            <div className="border-t pt-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Recent course record
+              </p>
+              <div className="mt-3 grid gap-2">
+                {recentRounds.length ? (
+                  recentRounds.map((round) => {
+                    const summary = summarizeScorecard(round.scorecardJson);
+                    return (
+                      <Link
+                        key={round.id}
+                        href={`/rounds/${round.id}`}
+                        className="flex items-center justify-between gap-3 rounded-lg bg-secondary/45 px-3 py-2 transition-colors hover:bg-secondary motion-reduce:transition-none"
+                      >
+                        <span className="text-sm font-medium">
+                          {shortDateFormatter.format(round.date)}
+                        </span>
+                        <span className="text-sm font-semibold tabular-nums">
+                          {summary.scoreLabel} · {summary.toParLabel}
+                        </span>
+                      </Link>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground">No completed course rounds yet.</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function ActiveRoundDesktop({ round }: { round: ActiveRound }) {
+  const summary = summarizeScorecard(round.scorecardJson);
+
+  return (
+    <Card className="relative min-h-[34rem] overflow-hidden border-0 bg-slate-950 py-0 text-white ring-0">
+      <Image
+        src="/assets/generated/course-twin-premium-desktop.webp"
+        alt="Aerial golf-hole planning view"
+        fill
+        sizes="(min-width: 1024px) calc(100vw - 18rem), 1px"
+        className="object-cover opacity-60"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/75 to-slate-950/20" />
+      <div className="relative flex min-h-[34rem] max-w-3xl flex-col justify-center p-12">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+          Active round · first priority
+        </p>
+        <h1 className="mt-4 text-5xl font-semibold tracking-tight">
+          {round.courseName ?? "Current round"}
+        </h1>
+        <p className="mt-3 text-lg text-white/65">{round.teeName ?? "Tee not recorded"}</p>
+        <div className="mt-8 grid max-w-xl grid-cols-3 gap-4 border-y border-white/10 py-5">
+          <DarkMetric label="Progress" value={summary.progressLabel} />
+          <DarkMetric label="Score" value={summary.scoreLabel} />
+          <DarkMetric label="To par" value={summary.toParLabel} />
+        </div>
+        <div className="mt-8 flex gap-3">
+          <Button asChild className="min-h-12 px-6 text-base">
+            <Link href={`/rounds/${round.id}`}>
+              <Flag aria-hidden />
+              Continue Round
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="min-h-12 border-white/20 bg-white/10 px-5 text-white hover:bg-white/15 hover:text-white"
+          >
+            <Link href="/quick-bag">
+              <ShieldCheck aria-hidden />
+              Quick Bag
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ReadinessPanel({ items, desktop = false }: { items: ReadinessItem[]; desktop?: boolean }) {
+  return (
+    <ul
+      className={
+        desktop
+          ? "overflow-hidden rounded-xl border border-border/80 bg-secondary/30"
+          : "overflow-hidden rounded-xl bg-card"
+      }
+      aria-label="Course preparation status"
+    >
+      {items.map((item) => (
+        <li
+          key={item.label}
+          className="flex min-h-11 items-center justify-between gap-3 border-b border-border/70 px-4 py-2.5 last:border-b-0"
+        >
+          <span className="text-[15px] font-medium">{item.label}</span>
+          <span
+            className={
+              item.ready
+                ? "inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"
+                : "inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
+            }
+          >
+            {item.ready ? (
+              <CheckCircle2 className="size-4" aria-hidden />
+            ) : (
+              <Circle className="size-4" aria-hidden />
+            )}
+            {item.ready ? "Ready" : "Needed"}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BriefingMetric({
   label,
   value,
   icon: Icon,
-  href,
 }: {
   label: string;
   value: string;
-  icon?: typeof MapPinned;
-  href?: string;
+  icon: typeof Target;
 }) {
-  const content = (
-    <Item variant="muted" size="sm">
-      {Icon ? (
-        <ItemMedia>
-          <Icon className="size-4 text-primary" aria-hidden />
-        </ItemMedia>
-      ) : null}
-      <ItemContent>
-        <ItemTitle>{label}</ItemTitle>
-        {href ? <ItemDescription>Open setup</ItemDescription> : null}
-      </ItemContent>
-      <ItemActions>
-        <Badge variant="outline">{value}</Badge>
-      </ItemActions>
-    </Item>
+  return (
+    <div className="min-w-0 border-l-2 border-primary/25 pl-3">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Icon className="size-3.5" aria-hidden />
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold">{value}</p>
+    </div>
   );
-  return href ? <Link href={href}>{content}</Link> : content;
 }
 
-function playReadinessSteps({
-  courseReady,
-  teeReady,
-  strategyReady,
-  trustedBagReady,
-}: {
-  courseReady: boolean;
-  teeReady: boolean;
-  strategyReady: boolean;
-  trustedBagReady: boolean;
-}): OperationStep[] {
-  const statuses = [courseReady, teeReady, strategyReady, trustedBagReady];
-  const firstIncomplete = statuses.findIndex((ready) => !ready);
-  return [
-    { id: "course", label: "Course", status: courseReady ? "complete" : "current" },
-    {
-      id: "tee",
-      label: "Tee",
-      status: teeReady ? "complete" : firstIncomplete === 1 ? "current" : "upcoming",
-    },
-    {
-      id: "strategy",
-      label: "Strategy",
-      status: strategyReady ? "complete" : firstIncomplete === 2 ? "current" : "upcoming",
-    },
-    {
-      id: "bag",
-      label: "Trusted bag",
-      status: trustedBagReady ? "complete" : firstIncomplete === 3 ? "current" : "upcoming",
-    },
-    { id: "twin", label: "Twin checked", status: "complete" },
-  ];
+function DesktopBrief({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-border/70 pb-3 last:border-0 last:pb-0">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="max-w-[60%] text-right text-sm font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function DarkMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-white/50">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function PlayEmptyState() {
+  return (
+    <AppEmptyState
+      icon={<MapPinned aria-hidden />}
+      title="Choose a course to prepare"
+      description="Add or select a mapped course before building the tee, strategy and trusted-bag setup."
+      primaryAction={
+        <Button asChild className="min-h-11 w-full sm:w-auto">
+          <Link href="/courses/new">Add a course</Link>
+        </Button>
+      }
+      secondaryAction={
+        <Button asChild variant="outline" className="min-h-11 w-full sm:w-auto">
+          <Link href="/courses">Browse courses</Link>
+        </Button>
+      }
+    />
+  );
+}
+
+function summarizeScorecard(scorecard: ActiveRound["scorecardJson"]) {
+  const holes = Array.isArray(scorecard) ? scorecard : [];
+  const scored = holes.filter((hole) => typeof hole.score === "number");
+  if (!scored.length) {
+    return { progressLabel: "Not started", scoreLabel: "—", toParLabel: "—" };
+  }
+  const score = scored.reduce((total, hole) => total + (hole.score ?? 0), 0);
+  const par = scored.reduce((total, hole) => total + (hole.par ?? 0), 0);
+  const toPar = score - par;
+  return {
+    progressLabel: `${scored.length} hole${scored.length === 1 ? "" : "s"}`,
+    scoreLabel: String(score),
+    toParLabel: toPar === 0 ? "E" : toPar > 0 ? `+${toPar}` : String(toPar),
+  };
+}
+
+function mostCommonMiss(values: string[]) {
+  const measured = values.filter((value) => !value.toLowerCase().includes("no measured"));
+  if (!measured.length) return "No measured pattern";
+  const counts = new Map<string, number>();
+  for (const value of measured) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? measured[0]!;
+}
+
+function strategiesReadyLabel(keyHoleCount: number) {
+  if (keyHoleCount === 0) return "No key-hole decisions are ready";
+  return `${keyHoleCount} key-hole decision${keyHoleCount === 1 ? " is" : "s are"} ready`;
+}
+
+function formatWeather(value: Record<string, unknown> | undefined) {
+  if (!value) return null;
+  const temperature = finiteNumber(value.temperatureC);
+  const windSpeed = finiteNumber(value.windSpeedMph);
+  const windDirection =
+    typeof value.windDirectionLabel === "string" && value.windDirectionLabel.trim()
+      ? value.windDirectionLabel.trim()
+      : null;
+  const parts = [
+    temperature === null ? null : `${Math.round(temperature)}°C`,
+    windSpeed === null
+      ? null
+      : `${windDirection ? `${windDirection} ` : ""}${Math.round(windSpeed)} mph`,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+function finiteNumber(value: unknown) {
+  const parsed =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 async function getTrustedBagCount(userId: string) {
@@ -374,7 +873,7 @@ async function getTrustedBagCount(userId: string) {
 
 async function getPlayCourses(userId: string) {
   const rows = await getDb()
-    .select({ id: courses.id, name: courses.name, holeCount: countDistinct(holes.id) })
+    .select({ id: courses.id, name: courses.name, holeCount: countDistinct(holes.holeNumber) })
     .from(courses)
     .leftJoin(holes, eq(holes.courseId, courses.id))
     .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
@@ -385,7 +884,7 @@ async function getPlayCourses(userId: string) {
 
 async function getCourseTees(courseId: string) {
   return getDb()
-    .select({ id: teeSets.id, name: teeSets.name, yards: teeSets.yards })
+    .select({ id: teeSets.id, name: teeSets.name, yards: teeSets.yards, par: teeSets.par })
     .from(teeSets)
     .where(eq(teeSets.courseId, courseId))
     .orderBy(asc(teeSets.name));
@@ -401,6 +900,7 @@ async function getInProgressRound(userId: string) {
       teeName: teeSets.name,
       roundStatus: sessions.roundStatus,
       date: sessions.date,
+      scorecardJson: sessions.scorecardJson,
     })
     .from(sessions)
     .leftJoin(teeSets, eq(teeSets.id, sessions.teeSetId))
@@ -432,3 +932,52 @@ async function getMostRecentRound(userId: string, courseId: string | null) {
     )[0] ?? null
   );
 }
+
+async function getRecentCourseRounds(userId: string, courseId: string) {
+  return getDb()
+    .select({ id: sessions.id, date: sessions.date, scorecardJson: sessions.scorecardJson })
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        eq(sessions.courseId, courseId),
+        inArray(sessions.type, ["round", "real_round", "simulator", "simulated_course"]),
+      ),
+    )
+    .orderBy(desc(sessions.date))
+    .limit(3);
+}
+
+async function getCachedCourseWeather(userId: string, courseId: string) {
+  return (
+    (
+      await getDb()
+        .select({ conditionsJson: weatherSnapshots.conditionsJson })
+        .from(weatherSnapshots)
+        .where(
+          and(
+            eq(weatherSnapshots.userId, userId),
+            eq(weatherSnapshots.courseId, courseId),
+            gt(weatherSnapshots.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(desc(weatherSnapshots.fetchedAt))
+        .limit(1)
+    )[0] ?? null
+  );
+}
+
+type PlayCourse = Awaited<ReturnType<typeof getPlayCourses>>[number];
+type PlayTee = Awaited<ReturnType<typeof getCourseTees>>[number];
+type ActiveRound = NonNullable<Awaited<ReturnType<typeof getInProgressRound>>>;
+type RecentCourseRound = Awaited<ReturnType<typeof getRecentCourseRounds>>[number];
+type StrategyData = NonNullable<Awaited<ReturnType<typeof getCourseStrategyData>>>;
+type StrategyPlan = StrategyData["strategies"][number];
+type TrustedClub = StrategyData["trustedBag"][number];
+type ReadinessItem = { label: string; ready: boolean };
+type SelectionProps = {
+  courses: Array<{ id: string; name: string; detail: string }>;
+  tees: Array<{ id: string; name: string; detail: string | undefined }>;
+  selectedCourseId: string | null;
+  selectedTeeId: string | null;
+};

@@ -3,12 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/challenges/page.tsx"), "utf8");
-const gridSectionSource = readFileSync(
-  join(process.cwd(), "src/app/challenges/challenge-grid-section.tsx"),
-  "utf8",
-);
+const challengeDataSource = readFileSync(join(process.cwd(), "src/lib/challenges.ts"), "utf8");
 
-describe("challenges desktop board", () => {
+describe("challenge progression hub", () => {
   it("selects one request surface before loading the desktop workbench", () => {
     const staticWorkbenchImport =
       source.match(
@@ -22,98 +19,84 @@ describe("challenges desktop board", () => {
     expect(source).toContain('surface === "companion" ? (');
     expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
     expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
-    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
     expect(source).not.toContain('className="hidden lg:contents"');
-    expect(source).not.toContain('<DesktopWorkbenchLayout scope="challenges" className="hidden');
   });
 
-  it("uses semantic tokens outside the deliberate illustrated mobile feature card", () => {
-    const ordinarySource = source.replace(
-      /function MobilePremiumChallengeCard[\s\S]*?(?=function challengeImageSrc)/,
-      "",
+  it("uses exactly the active, available and completed progression tabs", () => {
+    expect(source).toContain('{ key: "active", label: "Active", href: "/challenges" }');
+    expect(source).toContain(
+      '{ key: "available", label: "Available", href: "/challenges?tab=available" }',
     );
-    const featureCard =
-      source.match(
-        /function MobilePremiumChallengeCard[\s\S]*?(?=function challengeImageSrc)/,
-      )?.[0] ?? "";
-
-    expect(ordinarySource).toContain("bg-muted");
-    expect(ordinarySource).toContain("bg-card");
-    expect(ordinarySource).not.toMatch(
-      /bg-white|bg-\[#|text-\[#|border-\[#|(?:bg|text|border)-(?:slate|green|emerald|amber|rose|sky)-\d+/,
+    expect(source).toContain(
+      '{ key: "completed", label: "Completed", href: "/challenges?tab=completed" }',
     );
-    expect(featureCard).toContain("challengeImageSrc");
-    expect(featureCard).toContain("bg-emerald-950");
-    expect(featureCard).toContain("bg-white/12");
+    expect(source).not.toContain('label: "Seasons"');
+    expect(source).not.toContain('label: "Templates"');
+    expect(source).toContain('aria-label="Challenge status"');
+    expect(source).toContain('aria-current={activeTab === tab.key ? "page" : undefined}');
   });
 
-  it("uses the challenges artwork variant in the desktop competition header", () => {
-    expect(source).toContain('variant="challenges"');
-    expect(source).toMatch(/visual=\{\s*<PageArtwork/);
-    expect(source).toContain("min-h-36");
+  it("makes active progress and the next attempt the primary hierarchy", () => {
+    expect(source).toContain("data-active-challenge-card");
+    expect(source).toContain("aria-label={`${challenge.title} progress`}");
+    expect(source).toContain("h-4 bg-background/80");
+    expect(source).toContain("Current value");
+    expect(source).toContain("Time remaining");
+    expect(source).toContain("Best attempt");
+    expect(source).toContain("Next useful action");
+    expect(source).toContain("nextChallengeAction(challenge)");
+    expect(source).toContain("Attempts timeline");
   });
 
-  it("keeps live, joined, templates and past boards table-first on desktop", () => {
-    expect(source).toContain("<PageShell>");
-    expect(source).not.toContain('<PageShell size="7xl"');
-    expect(source).toContain("ChallengeBoardTable");
-    expect(source).toContain("ChallengeBoardFilterTabs");
-    expect(source).toContain('aria-label="Challenge board views"');
-    expect(source).toContain("<ButtonGroup");
-    expect(source).toContain('aria-current={active ? "page" : undefined}');
-    expect(source).not.toContain("<TabsTrigger");
-    expect(source).toContain("buildChallengeBoardRows");
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain('data-workbench-scope="challenge-board"');
-    expect(source).toContain('exportTableId="challenge-board"');
-    expect(source).toContain('data-workbench-export-table="challenge-board"');
-    expect(source).toContain('mainTableLabel="Challenge board table"');
-    expect(source).toContain('mainTableLabel="Challenge board table" stickyFirstColumn');
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source).toContain('href: "/challenges?tab=templates"');
-    expect(source).toContain('href: "/challenges?tab=past"');
+  it("keeps available cards compact and defers rules to a sheet", () => {
+    expect(source).toContain("data-available-challenge-tile");
+    expect(source).toContain('label="Evidence"');
+    expect(source).toContain('label="Achievement"');
+    expect(source).toContain("<RulesSheet challenge={challenge} />");
+    expect(source).toContain("<SheetContent");
+    expect(source).toContain("challenge.rulesBullets.map");
+    expect(source).toContain("joinChallengeAction");
+  });
 
-    for (const column of [
-      "board",
-      "status",
-      "visibility",
-      "template",
-      "window",
-      "players",
-      "leader",
-      "proof",
-      "action",
+  it("renders completed challenges as achievement cards", () => {
+    expect(source).toContain("data-completed-challenge-card");
+    expect(source).toContain("Achievement cabinet");
+    expect(source).toContain("Challenge achievement");
+    expect(source).toContain("Finished #");
+    expect(source).toContain("viewerScoreLabel");
+  });
+
+  it("uses verified imported evidence for progress fields", () => {
+    for (const field of [
+      "viewerScoreLabel",
+      "viewerVerificationLabel",
+      "viewerEvidenceCount",
+      "evidenceTargetCount",
+      "evidenceRequirement",
+      "rulesBullets",
     ]) {
-      expect(source).toContain(`data-column="${column}"`);
+      expect(challengeDataSource).toContain(field);
     }
-  });
-
-  it("keeps challenge Cards out of outer DataPanel Card shells", () => {
-    expect(source.match(/<ChallengeGridSection/g)).toHaveLength(3);
-    expect(source).toContain('title="My active entries"');
-    expect(source).toContain('title="Friends competing"');
-    expect(source).toContain('title="Public and friend boards"');
-    expect(gridSectionSource).toContain("data-challenge-grid-section");
-    expect(source.match(/<ChallengeGrid\b/g)).toHaveLength(3);
-    expect(gridSectionSource).not.toMatch(/<DataPanel(?:\s|>)/);
-    expect(gridSectionSource).not.toMatch(/<Card(?:\s|>)/);
-    expect(gridSectionSource).not.toContain("<CardContent");
-    expect(source).toContain("data-challenge-card");
+    expect(challengeDataSource).toContain(
+      "const viewerEvidenceCount = evidenceCounts.get(viewerUserId) ?? 0",
+    );
+    expect(challengeDataSource).toContain("const evidenceCounts = new Map<string, number>()");
+    expect(challengeDataSource).toContain("eligibleRows.length");
   });
 });
 
-describe("challenges mobile board", () => {
-  it("renders every mobile tab from the same filtered board rows as desktop", () => {
-    expect(source).toContain("const mobileChallenges = challengeBoardRows.flatMap");
-    expect(source).toContain("const mobileTemplates = challengeBoardRows.flatMap");
-    expect(source).toContain("const mobilePrimaryChallenge = mobileChallenges[0] ?? null;");
-    expect(source).toContain("const mobileRemainingChallenges = mobileChallenges.slice(1);");
-    expect(source).toContain("mobileRemainingChallenges.map");
-    expect(source).not.toMatch(/activeTab === "joined" \? data\.mine : data\.challenges/);
+describe("challenge progression mobile", () => {
+  it("puts the current active challenge before every secondary item", () => {
+    expect(source).toContain("const [current, ...remaining] = challenges;");
+    expect(source).toContain("<ActiveChallengeCard challenge={current} featured />");
+    expect(source).toContain("remaining.map");
+    expect(source).toContain("Current challenge");
+    expect(source).toContain("Also in progress");
   });
 
-  it("keeps the mobile composition active until the lg desktop breakpoint", () => {
+  it("keeps the mobile composition active until the desktop surface takes over", () => {
+    expect(source).toContain("<MobileAppShell>");
+    expect(source).toContain("<MobileTabBar");
     expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden sm:contents"');
   });

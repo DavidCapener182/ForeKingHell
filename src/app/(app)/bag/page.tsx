@@ -2,10 +2,11 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
-  Award,
   Bot,
   Brain,
+  CalendarClock,
   ChevronDown,
+  CircleDot,
   Database,
   Gauge,
   Grid3X3,
@@ -20,6 +21,7 @@ import {
   TrendingUp,
   Upload,
   Users,
+  Wrench,
 } from "lucide-react";
 import { and, asc, count, desc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
@@ -44,7 +46,6 @@ import { Badge } from "@/components/ui/badge";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { FacePathDeliveryChart } from "@/components/visuals/face-path-delivery-chart";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   CompactReadoutGrid,
@@ -66,8 +67,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { clubs, sessions, shots, strokesGainedShotEvents, userProfiles } from "@/db/schema";
+import {
+  ballModels,
+  clubEquipmentHistory,
+  clubs,
+  sessions,
+  shots,
+  strokesGainedShotEvents,
+  userProfiles,
+} from "@/db/schema";
 import { LazyBagSimulator } from "@/app/bag/lazy-bag-simulator";
+import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
+import { MobileTopBar } from "@/components/mobile-sports";
 import { getDb } from "@/db/client";
 import { reportServerFailure } from "@/lib/server-observability";
 import {
@@ -143,6 +154,8 @@ import {
   type ClubIntelligenceItem,
 } from "@/app/bag/club-intelligence-panel";
 
+import styles from "./bag-page.module.css";
+
 export const dynamic = "force-dynamic";
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
@@ -153,6 +166,11 @@ const integerFormatter = new Intl.NumberFormat("en-GB", {
 });
 const shortMonthFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
+});
+const bagDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
 });
 
 const RECENT_SHOTS_PER_CLUB = 200;
@@ -276,15 +294,23 @@ export default async function BagPage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const activeTab = parseBagWorkspaceTab(resolvedSearchParams.tab);
   const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);
-  const [bag, profile, challengeData, featureData, personalStrokesGainedEvents, speedSummary] =
-    await Promise.all([
-      getBag(),
-      ensureCurrentSocialProfile(),
-      getBagChallengeData(),
-      getFeatureIdeasData(),
-      getPersonalStrokesGainedEvents(),
-      getBagSpeedSummary(),
-    ]);
+  const [
+    bag,
+    profile,
+    challengeData,
+    featureData,
+    personalStrokesGainedEvents,
+    speedSummary,
+    equipmentContext,
+  ] = await Promise.all([
+    getBag(),
+    ensureCurrentSocialProfile(),
+    getBagChallengeData(),
+    getFeatureIdeasData(),
+    getPersonalStrokesGainedEvents(),
+    getBagSpeedSummary(),
+    getBagEquipmentContext(),
+  ]);
   const gappingRows = buildGappingRows(bag, {
     handicapBand: profile.handicapBand,
   });
@@ -333,10 +359,16 @@ export default async function BagPage({ searchParams }: PageProps) {
   const weakestClub = findWeakestClub(stockConfidenceClubs);
   const biggestOpportunity = smartBagBuilder.suggestions[0] ?? null;
   const currentGapRisk = buildCurrentGapRisk(gappingRows);
+  const trustedClubCount = gappingRows.filter(
+    (row) => row.sampleSize >= 10 && row.confidenceScore >= 75,
+  ).length;
+  const scoringConcern = personalStrokesGained.weakestCategory;
   const bagScoreTrend = buildBagScoreTrend(bag, {
     handicapBand: profile.handicapBand,
   });
   const clubIntelligenceItems = buildClubIntelligenceItems(bag);
+  const quickBagClubs = buildQuickBagClubs(bag);
+  const historyTimeline = buildBagHistoryTimeline(bag, equipmentContext);
   const bagWorkbenchPrompts = [
     {
       label: "Explain bag confidence",
@@ -366,219 +398,254 @@ export default async function BagPage({ searchParams }: PageProps) {
 
   return (
     <PageShell contentClassName="overflow-x-clip pb-5">
-      <div className="flex items-center justify-between gap-4">
-        <Button asChild variant="ghost" className="px-0">
-          <Link href="/dashboard">
-            <ArrowLeft className="size-4" />
-            Dashboard
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/import">
-            <Upload className="size-4" />
-            Import CSV
-          </Link>
-        </Button>
+      <div className={styles.mobileSurface} data-bag-mobile-surface>
+        <section className="grid gap-5" data-bag-mobile-quick-only>
+          <MobileTopBar title="Quick Bag" />
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              On-course bag
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+              Which number can you trust?
+            </h1>
+            <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+              Search a club or target. The full fitting workbench stays on desktop.
+            </p>
+          </div>
+          <QuickBagClient clubs={quickBagClubs} accountId={bag[0]?.userId ?? "current"} />
+        </section>
       </div>
 
-      <DesktopWorkbenchLayout
-        scope="bag"
-        railBreakpoint="wide"
-        rail={
-          <DesktopInsightRail
-            title="AI bag rail"
-            description="Club trust, gaps and equipment actions stay visible while reviewing the bag."
-            metrics={[
-              {
-                label: "Bag score",
-                value: `${smartBagBuilder.currentScore}%`,
-                detail: smartBagBuilder.scoreLabel,
-                tone: smartBagBuilder.currentScore >= 85 ? "green" : "amber",
-              },
-              {
-                label: "Average confidence",
-                value: `${averageConfidence}%`,
-                detail: `${bag.length} clubs and ${totalShots.toLocaleString(
-                  "en-GB",
-                )} shots feed this readout.`,
-                tone: averageConfidence >= 75 ? "green" : "sky",
-              },
-              {
-                label: "Gap risk",
-                value: currentGapRisk.value,
-                detail: currentGapRisk.detail,
-                tone: currentGapRisk.tone,
-              },
-              {
-                label: "Next action",
-                value: biggestOpportunity ? "Review" : "Maintain",
-                detail: biggestOpportunity?.detail ?? "No urgent equipment or gapping move.",
-                tone: biggestOpportunity ? "amber" : "green",
-              },
-            ]}
-            evidence={[
-              "Recommended course numbers stay primary; Best Stock remains supporting context.",
-              "Weak or low-shot clubs should be treated as low confidence, especially wedges.",
-              "Gapping and equipment actions should cite visible club trust and shot evidence.",
-            ]}
-            prompts={[...bagWorkbenchPrompts, ...commonAiPrompts("bag intelligence").slice(1, 3)]}
-            actions={[
-              {
-                label: "Shot explorer",
-                href: "/shots",
-                detail: "Open the raw shot evidence behind club trust.",
-                icon: Database,
-              },
-              {
-                label: "Compare",
-                href: "/compare",
-                detail: "Review club or session changes side by side.",
-                icon: Layers3,
-              },
-              {
-                label: "Practice planner",
-                href: "/practice",
-                detail: "Turn the bag issue into a practice block.",
-                icon: Target,
-              },
-            ]}
+      <div className={styles.desktopSurface} data-bag-desktop-surface>
+        <div className="flex items-center justify-between gap-4">
+          <Button asChild variant="ghost" className="px-0">
+            <Link href="/dashboard">
+              <ArrowLeft className="size-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/import">
+              <Upload className="size-4" />
+              Import CSV
+            </Link>
+          </Button>
+        </div>
+
+        <DesktopWorkbenchLayout
+          scope="bag"
+          railBreakpoint="wide"
+          rail={
+            <DesktopInsightRail
+              title="AI bag rail"
+              description="Club trust, gaps and equipment actions stay visible while reviewing the bag."
+              metrics={[
+                {
+                  label: "Bag score",
+                  value: `${smartBagBuilder.currentScore}%`,
+                  detail: smartBagBuilder.scoreLabel,
+                  tone: smartBagBuilder.currentScore >= 85 ? "green" : "amber",
+                },
+                {
+                  label: "Average confidence",
+                  value: `${averageConfidence}%`,
+                  detail: `${bag.length} clubs and ${totalShots.toLocaleString(
+                    "en-GB",
+                  )} shots feed this readout.`,
+                  tone: averageConfidence >= 75 ? "green" : "sky",
+                },
+                {
+                  label: "Gap risk",
+                  value: currentGapRisk.value,
+                  detail: currentGapRisk.detail,
+                  tone: currentGapRisk.tone,
+                },
+                {
+                  label: "Next action",
+                  value: biggestOpportunity ? "Review" : "Maintain",
+                  detail: biggestOpportunity?.detail ?? "No urgent equipment or gapping move.",
+                  tone: biggestOpportunity ? "amber" : "green",
+                },
+              ]}
+              evidence={[
+                "Recommended course numbers stay primary; Best Stock remains supporting context.",
+                "Weak or low-shot clubs should be treated as low confidence, especially wedges.",
+                "Gapping and equipment actions should cite visible club trust and shot evidence.",
+              ]}
+              prompts={[...bagWorkbenchPrompts, ...commonAiPrompts("bag intelligence").slice(1, 3)]}
+              actions={[
+                {
+                  label: "Shot explorer",
+                  href: "/shots",
+                  detail: "Open the raw shot evidence behind club trust.",
+                  icon: Database,
+                },
+                {
+                  label: "Compare",
+                  href: "/compare",
+                  detail: "Review club or session changes side by side.",
+                  icon: Layers3,
+                },
+                {
+                  label: "Practice planner",
+                  href: "/practice",
+                  detail: "Turn the bag issue into a practice block.",
+                  icon: Target,
+                },
+              ]}
+            />
+          }
+        >
+          <BagHealthHero
+            bagScore={smartBagBuilder.currentScore}
+            scoreLabel={smartBagBuilder.scoreLabel}
+            confidence={averageConfidence}
+            dataTrust={featureData.dataHealth.metric ?? "--"}
+            dataTrustDetail={featureData.dataHealth.status ?? "Data health building"}
+            shots={totalShots}
+            clubs={bag.length}
+            strongestClub={bestClub}
+            weakestClub={weakestClub}
+            biggestOpportunity={biggestOpportunity}
+            currentGapRisk={currentGapRisk}
+            trustedClubCount={trustedClubCount}
+            gappingClubCount={gappingRows.length}
+            scoringConcern={scoringConcern}
           />
-        }
-      >
-        <BagHealthHero
-          bagScore={smartBagBuilder.currentScore}
-          scoreLabel={smartBagBuilder.scoreLabel}
-          confidence={averageConfidence}
-          dataTrust={featureData.dataHealth.metric ?? "--"}
-          dataTrustDetail={featureData.dataHealth.status ?? "Data health building"}
-          shots={totalShots}
-          clubs={bag.length}
-          strongestClub={bestClub}
-          weakestClub={weakestClub}
-          biggestOpportunity={biggestOpportunity}
-          currentGapRisk={currentGapRisk}
-          trend={bagScoreTrend}
-        />
 
-        {bag.length === 0 ? (
-          <AppEmptyState
-            icon={<Target className="size-5" />}
-            title="No clubs imported yet"
-            description="Import Rapsodo CSVs to build the bag map. Trusted distances and gapping evidence will appear here."
-            primaryAction={
-              <Button asChild>
-                <Link href="/import">Import club data</Link>
-              </Button>
-            }
-          />
-        ) : (
-          <Tabs defaultValue={activeTab} className="min-w-0 gap-5" data-bag-workspace>
-            <TabsList variant="line" aria-label="Bag workspace">
-              <TabsTrigger value="distances">Distances</TabsTrigger>
-              <TabsTrigger value="clubs">Clubs</TabsTrigger>
-              <TabsTrigger value="scoring">Scoring</TabsTrigger>
-              <TabsTrigger value="fitting">Fitting</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
+          {bag.length === 0 ? (
+            <AppEmptyState
+              icon={<Target className="size-5" />}
+              title="No clubs imported yet"
+              description="Import Rapsodo CSVs to build the bag map. Trusted distances and gapping evidence will appear here."
+              primaryAction={
+                <Button asChild>
+                  <Link href="/import">Import club data</Link>
+                </Button>
+              }
+            />
+          ) : (
+            <Tabs defaultValue={activeTab} className="min-w-0 gap-5" data-bag-workspace>
+              <TabsList variant="line" aria-label="Bag workspace">
+                <TabsTrigger value="distances">Distances</TabsTrigger>
+                <TabsTrigger value="clubs">Clubs</TabsTrigger>
+                <TabsTrigger value="scoring">Scoring</TabsTrigger>
+                <TabsTrigger value="fitting">Fitting</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="distances" className="grid min-w-0 gap-5">
-              <BagConfidenceLadder
-                rows={gappingRows}
-                maxCarryYd={maxDisplayCarry}
-                findings={bagDoctorFindings}
-              />
-              <BagSupportingEvidence
-                title="Full gapping evidence"
-                description="Open the complete club table, target recommendations and speed context only when you need to audit the decision."
-              >
-                {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
-                {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
-                <BagStickySummary rows={gappingRows} />
-              </BagSupportingEvidence>
-            </TabsContent>
-
-            <TabsContent value="clubs" className="grid min-w-0 gap-5">
-              <ClubIntelligencePanel
-                clubs={clubIntelligenceItems}
-                initialClubId={bestClub?.id ?? bag[0]?.id}
-              />
-              <BagSupportingEvidence
-                title="Club supporting tools"
-                description="Personal bests, target-distance matching and stock-shot filters are grouped behind one review control."
-              >
-                <PersonalBestSnapshotPanel clubs={bag} />
-                <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
-                {stockFilterClubs.length > 0 ? <StockFilterPanel clubs={stockFilterClubs} /> : null}
-              </BagSupportingEvidence>
-            </TabsContent>
-
-            <TabsContent value="scoring" className="grid min-w-0 gap-5">
-              <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
-              <CourseDecisionPanel advice={courseAdvice} />
-              <BagSupportingEvidence
-                title="Scoring supporting evidence"
-                description="Shot-pattern, delivery, strokes-gained and wedge evidence is available as one secondary review."
-              >
-                <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
-                <PathTrendPanel trend={pathTrend} />
-                <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
-                <WedgeMatrixPanel matrix={wedgeMatrix} />
-              </BagSupportingEvidence>
-            </TabsContent>
-
-            <TabsContent value="fitting" className="grid min-w-0 gap-5">
-              <SmartBagBuilderPanel model={smartBagBuilder} />
-              <LazyBagSimulator
-                clubs={bag.flatMap((club) => {
-                  const carry = clubPrimaryCarryYd(club);
-                  if (carry === null) return [];
-                  return [
-                    {
-                      id: club.id,
-                      label: formatClubType(club.type),
-                      carryYd: carry,
-                      p25Yd: club.stock.latestReliableCarryP25Yd ?? carry - 6,
-                      p75Yd: club.stock.latestReliableCarryP75Yd ?? carry + 6,
-                      leftYd: Math.abs(club.stock.dispersionLeftYd ?? 0),
-                      rightYd: Math.abs(club.stock.dispersionRightYd ?? 0),
-                      confidence: club.stock.confidenceScore,
-                    },
-                  ];
-                })}
-              />
-              <BagSupportingEvidence
-                title="Fitting supporting evidence"
-                description="Caddie prompts, methodology and wedge-role detail are consolidated into one secondary review."
-              >
-                <AiCaddiePanel cards={aiCaddieCards} />
-                <BagFeaturePanel data={featureData} />
-                {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
-              </BagSupportingEvidence>
-            </TabsContent>
-
-            <TabsContent value="history" className="grid min-w-0 gap-5">
-              <ClubEvolutionPanel clubs={bag} />
-              <BagSupportingEvidence
-                title="History supporting evidence"
-                description="Benchmarks and social comparison are grouped behind one review control."
-              >
-                {benchmarkRows.length > 0 ? (
-                  <BenchmarkReferencePanel
-                    rows={benchmarkRows}
-                    peerSummary={peerBenchmarkSummary}
-                    peerBenchmarksLoaded={peerBenchmarksLoaded}
-                  />
-                ) : null}
-                <BagSocialComparison
-                  bestClub={bestClub}
-                  leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
-                  challenges={challengeData.active}
+              <TabsContent value="distances" className="grid min-w-0 gap-5">
+                <BagConfidenceLadder
+                  rows={gappingRows}
+                  maxCarryYd={maxDisplayCarry}
+                  findings={bagDoctorFindings}
                 />
-              </BagSupportingEvidence>
-            </TabsContent>
-          </Tabs>
-        )}
-      </DesktopWorkbenchLayout>
+                <BagSupportingEvidence
+                  title="Full gapping evidence"
+                  description="Open the complete club table, target recommendations and speed context only when you need to audit the decision."
+                >
+                  {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
+                  {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
+                  <BagStickySummary rows={gappingRows} />
+                </BagSupportingEvidence>
+              </TabsContent>
+
+              <TabsContent value="clubs" className="grid min-w-0 gap-5">
+                <ClubIntelligencePanel
+                  clubs={clubIntelligenceItems}
+                  initialClubId={bestClub?.id ?? bag[0]?.id}
+                />
+                <BagSupportingEvidence
+                  title="Club supporting tools"
+                  description="Personal bests, target-distance matching and stock-shot filters are grouped behind one review control."
+                >
+                  <PersonalBestSnapshotPanel clubs={bag} />
+                  <TargetDistanceSelector rows={targetDistanceRows} initialTargetYd={150} />
+                  {stockFilterClubs.length > 0 ? (
+                    <StockFilterPanel clubs={stockFilterClubs} />
+                  ) : null}
+                </BagSupportingEvidence>
+              </TabsContent>
+
+              <TabsContent value="scoring" className="grid min-w-0 gap-5">
+                <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
+                <CourseDecisionPanel advice={courseAdvice} />
+                <BagSupportingEvidence
+                  title="Scoring supporting evidence"
+                  description="Shot-pattern, delivery, strokes-gained and wedge evidence is available as one secondary review."
+                >
+                  <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
+                  <PathTrendPanel trend={pathTrend} />
+                  <PersonalStrokesGainedModelPanel model={personalStrokesGained} />
+                  <WedgeMatrixPanel matrix={wedgeMatrix} />
+                </BagSupportingEvidence>
+              </TabsContent>
+
+              <TabsContent value="fitting" className="grid min-w-0 gap-5">
+                <FittingStudio
+                  bag={bag}
+                  equipment={equipmentContext}
+                  wedgeMatrix={wedgeMatrix}
+                  smartBag={smartBagBuilder}
+                />
+                <BagSupportingEvidence
+                  title="Fitting experiment tools"
+                  description="Model a change only after reviewing the current specification and measured evidence."
+                >
+                  <SmartBagBuilderPanel model={smartBagBuilder} />
+                  <LazyBagSimulator
+                    clubs={bag.flatMap((club) => {
+                      const carry = clubPrimaryCarryYd(club);
+                      if (carry === null) return [];
+                      return [
+                        {
+                          id: club.id,
+                          label: formatClubType(club.type),
+                          carryYd: carry,
+                          p25Yd: club.stock.latestReliableCarryP25Yd ?? carry - 6,
+                          p75Yd: club.stock.latestReliableCarryP75Yd ?? carry + 6,
+                          leftYd: Math.abs(club.stock.dispersionLeftYd ?? 0),
+                          rightYd: Math.abs(club.stock.dispersionRightYd ?? 0),
+                          confidence: club.stock.confidenceScore,
+                        },
+                      ];
+                    })}
+                  />
+                  <AiCaddiePanel cards={aiCaddieCards} />
+                  <BagFeaturePanel data={featureData} />
+                  {wedgeRoleClubs.length > 0 ? <WedgeRolePanel clubs={wedgeRoleClubs} /> : null}
+                </BagSupportingEvidence>
+              </TabsContent>
+
+              <TabsContent value="history" className="grid min-w-0 gap-5">
+                <BagHistoryTimeline events={historyTimeline} />
+                <BagSupportingEvidence
+                  title="History supporting evidence"
+                  description="Open measured club evolution, benchmarks and comparison only when investigating a change."
+                >
+                  <BagScoreTrendPanel
+                    points={bagScoreTrend}
+                    currentScore={smartBagBuilder.currentScore}
+                  />
+                  <ClubEvolutionPanel clubs={bag} />
+                  {benchmarkRows.length > 0 ? (
+                    <BenchmarkReferencePanel
+                      rows={benchmarkRows}
+                      peerSummary={peerBenchmarkSummary}
+                      peerBenchmarksLoaded={peerBenchmarksLoaded}
+                    />
+                  ) : null}
+                  <BagSocialComparison
+                    bestClub={bestClub}
+                    leaderboardOptedIn={profile.leaderboardVisibility !== "private"}
+                    challenges={challengeData.active}
+                  />
+                </BagSupportingEvidence>
+              </TabsContent>
+            </Tabs>
+          )}
+        </DesktopWorkbenchLayout>
+      </div>
     </PageShell>
   );
 }
@@ -622,6 +689,337 @@ function BagSupportingEvidence({
       </Collapsible>
     </section>
   );
+}
+
+function FittingStudio({
+  bag,
+  equipment,
+  wedgeMatrix,
+  smartBag,
+}: {
+  bag: BagClub[];
+  equipment: BagEquipmentContext;
+  wedgeMatrix: WedgeMatrixClub[];
+  smartBag: SmartBagBuilder;
+}) {
+  const currentSetups = equipment.history.filter((row) => row.effectiveTo === null);
+  const recordedBallModels = new Set(
+    currentSetups
+      .map((row) => [row.ballBrand, row.ballModel].filter(Boolean).join(" "))
+      .filter(Boolean),
+  );
+  const specRows = currentSetups.filter(
+    (row) => row.loftDeg !== null || row.lieDeg !== null || row.shaft || row.swingWeight,
+  );
+
+  return (
+    <div className="grid gap-5" data-bag-fitting-studio>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <FittingFocusSection
+          eyebrow="Equipment spec"
+          title={`${bag.length} clubs in the active bag`}
+          detail={`${bag.filter((club) => club.brand || club.model).length} identify their make or model. Open Equipment to complete the physical build.`}
+          href="/equipment"
+          icon={<ShoppingBag className="size-5" />}
+        >
+          <div className="grid gap-2 sm:grid-cols-2">
+            {bag.slice(0, 6).map((club) => (
+              <div
+                key={club.id}
+                className="flex items-center justify-between gap-3 border-b border-border/70 py-2 text-sm"
+              >
+                <span className="font-semibold">{formatClubType(club.type)}</span>
+                <span className="truncate text-right text-muted-foreground">{club.brandModel}</span>
+              </div>
+            ))}
+          </div>
+        </FittingFocusSection>
+
+        <FittingFocusSection
+          eyebrow="Experiment history"
+          title={
+            equipment.history.length > 0
+              ? `${equipment.history.length} recorded setup changes`
+              : "No controlled tests recorded"
+          }
+          detail={
+            smartBag.suggestions[0]?.detail ?? "The measured bag has no urgent fitting experiment."
+          }
+          href="/equipment/experiments"
+          icon={<CalendarClock className="size-5" />}
+        >
+          <div className="rounded-lg border border-border bg-muted/35 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              Evidence-led next test
+            </p>
+            <p className="mt-2 font-semibold">
+              {smartBag.suggestions[0]?.title ?? "Hold the current setup"}
+            </p>
+          </div>
+        </FittingFocusSection>
+
+        <FittingFocusSection
+          eyebrow="Ball model"
+          title={recordedBallModels.size > 0 ? [...recordedBallModels].join(", ") : "Not recorded"}
+          detail="The ball is part of the fitting baseline. No model is inferred from shot data."
+          href="/equipment"
+          icon={<CircleDot className="size-5" />}
+        />
+
+        <FittingFocusSection
+          eyebrow="Loft · lie · shaft"
+          title={`${specRows.length} of ${bag.length} clubs have a recorded build`}
+          detail="Capture exact loft, lie, shaft and swing weight before comparing equipment changes."
+          href="/equipment"
+          icon={<Wrench className="size-5" />}
+        />
+      </div>
+
+      <section aria-labelledby="fitting-wedge-matrix-title">
+        <div className="mb-3 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+              Scoring end
+            </p>
+            <h2
+              id="fitting-wedge-matrix-title"
+              className="mt-1 text-2xl font-semibold tracking-tight"
+            >
+              Wedge matrix
+            </h2>
+          </div>
+          <StatusPill tone="sky">{wedgeMatrix.length} wedges</StatusPill>
+        </div>
+        <WedgeMatrixPanel matrix={wedgeMatrix} />
+      </section>
+    </div>
+  );
+}
+
+function FittingFocusSection({
+  eyebrow,
+  title,
+  detail,
+  href,
+  icon,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  detail: string;
+  href: string;
+  icon: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Card className="group overflow-hidden transition-colors hover:border-primary/35">
+      <CardContent className="grid h-full content-between gap-5 p-5">
+        <div>
+          <div className="flex items-center justify-between gap-3 text-primary">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em]">{eyebrow}</p>
+            {icon}
+          </div>
+          <h3 className="mt-3 text-2xl font-semibold tracking-tight">{title}</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+          {children ? <div className="mt-4">{children}</div> : null}
+        </div>
+        <Button asChild variant="outline" size="sm" className="w-fit">
+          <Link href={href} prefetch={false}>
+            Open section
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BagHistoryTimeline({ events }: { events: BagHistoryEvent[] }) {
+  return (
+    <DataPanel id="bag-history" className="overflow-hidden">
+      <SectionHeader
+        title="Bag history"
+        description="Equipment changes, trusted baselines, retired clubs and meaningful yardage movements in one chronological record."
+        action={<CalendarClock className="size-5 text-primary" />}
+      />
+      <CardContent className="p-0">
+        {events.length > 0 ? (
+          <ol className="divide-y divide-border" aria-label="Bag history timeline">
+            {events.map((event) => (
+              <li
+                key={event.id}
+                className="grid grid-cols-[9rem_1.5rem_minmax(0,1fr)] gap-4 px-5 py-5"
+              >
+                <div>
+                  <p className="text-sm font-semibold">{bagDateFormatter.format(event.date)}</p>
+                  <p className={`mt-1 text-xs font-medium ${toneTextClass(event.tone)}`}>
+                    {event.kind}
+                  </p>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="absolute inset-y-[-1.25rem] w-px bg-border" aria-hidden />
+                  <span
+                    className={`relative mt-1 size-3 rounded-full ring-4 ring-card ${confidenceBarClass(event.tone)}`}
+                    aria-hidden
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{event.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{event.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <div className="p-6 text-sm text-muted-foreground">
+            History begins when you establish a baseline, record a setup change or retire a club.
+          </div>
+        )}
+      </CardContent>
+    </DataPanel>
+  );
+}
+
+function buildBagHistoryTimeline(
+  bag: BagClub[],
+  equipment: BagEquipmentContext,
+): BagHistoryEvent[] {
+  const equipmentEvents = equipment.history.map((row) => {
+    const equipmentDetail = [
+      row.ballModel ? `ball ${[row.ballBrand, row.ballModel].filter(Boolean).join(" ")}` : null,
+      row.loftDeg === null ? null : `${formatMetric(row.loftDeg)}° loft`,
+      row.lieDeg === null ? null : `${formatMetric(row.lieDeg)}° lie`,
+      row.shaft,
+      row.swingWeight ? `${row.swingWeight} swing weight` : null,
+      row.notes,
+    ].filter(Boolean);
+
+    return {
+      id: `equipment-${row.id}`,
+      date: row.effectiveFrom,
+      kind: "Equipment change" as const,
+      title: `${formatClubType(row.clubType)} setup recorded`,
+      detail:
+        equipmentDetail.length > 0
+          ? equipmentDetail.join(" · ")
+          : "A setup baseline was recorded without detailed specification.",
+      tone: "sky" as const,
+    };
+  });
+  const retiredEvents = equipment.retired.map((club) => ({
+    id: `retired-${club.id}`,
+    date: club.updatedAt,
+    kind: "Retired club" as const,
+    title: `${formatClubType(club.type)} removed from the active bag`,
+    detail: [club.brand, club.model].filter(Boolean).join(" ") || "No make or model was recorded.",
+    tone: "slate" as const,
+  }));
+  const baselineEvents = bag.flatMap((club) => {
+    const latestShot = club.evolutionShots[0]?.shotAt ?? club.shots[0]?.shotAt ?? null;
+    const carry = club.stock.latestReliableCarryYd;
+    if (!(latestShot instanceof Date) || carry === null) return [];
+
+    return [
+      {
+        id: `baseline-${club.id}`,
+        date: latestShot,
+        kind: "New baseline" as const,
+        title: `${formatClubType(club.type)} trusted at ${formatCarryYards(carry)}`,
+        detail: `${club.stock.latestReliableSampleSize} recent reliable shots · ${club.stock.confidenceScore}% confidence.`,
+        tone: club.stock.confidenceScore >= 75 ? ("green" as const) : ("amber" as const),
+      },
+    ];
+  });
+  const movementEvents = bag.flatMap((club) => {
+    const delta = club.stockTrend?.deltaYd ?? null;
+    const latestShot = club.shots[0]?.shotAt ?? null;
+    if (delta === null || Math.abs(delta) < 5 || !(latestShot instanceof Date)) return [];
+
+    return [
+      {
+        id: `movement-${club.id}`,
+        date: latestShot,
+        kind: "Yardage movement" as const,
+        title: `${formatClubType(club.type)} moved ${formatSignedYards(delta)}`,
+        detail: `${club.stockTrend?.latestSampleSize ?? 0} recent stock shots compared with ${club.stockTrend?.previousSampleSize ?? 0} previous shots.`,
+        tone: "amber" as const,
+      },
+    ];
+  });
+
+  return [...equipmentEvents, ...retiredEvents, ...movementEvents, ...baselineEvents]
+    .sort((left, right) => right.date.getTime() - left.date.getTime())
+    .slice(0, 24);
+}
+
+function buildQuickBagClubs(bag: BagClub[]): QuickBagClub[] {
+  return bag.map((club) => {
+    const widerSide =
+      club.stock.dispersionLeftYd === null || club.stock.dispersionRightYd === null
+        ? null
+        : Math.abs(club.stock.dispersionLeftYd) > Math.abs(club.stock.dispersionRightYd)
+          ? "Left"
+          : Math.abs(club.stock.dispersionRightYd) > Math.abs(club.stock.dispersionLeftYd)
+            ? "Right"
+            : "Balanced";
+
+    return {
+      id: club.id,
+      label: formatClubType(club.type),
+      model: club.brandModel,
+      trustedCarryYd: clubPrimaryCarryYd(club),
+      playNumberYd: club.stock.coursePlayCarryYd,
+      lowYd: club.stock.latestReliableCarryP25Yd,
+      highYd: club.stock.latestReliableCarryP75Yd,
+      typicalMiss: clubCurrentMiss(club).label,
+      widerSide,
+      medianLateralYd: null,
+      lateralLowYd: club.stock.dispersionLeftYd,
+      lateralHighYd: club.stock.dispersionRightYd,
+      patternSampleSize: club.shots.length,
+      confidence: clubTrustScore(club),
+      sampleSize: club.stock.sampleSize,
+      latestEvidenceDate: club.shots[0]?.shotAt?.toISOString() ?? null,
+    };
+  });
+}
+
+async function getBagEquipmentContext() {
+  const userId = await requireCurrentUserId();
+  const db = getDb();
+  const [history, retired] = await Promise.all([
+    db
+      .select({
+        id: clubEquipmentHistory.id,
+        clubType: clubs.type,
+        ballBrand: ballModels.brand,
+        ballModel: ballModels.model,
+        effectiveFrom: clubEquipmentHistory.effectiveFrom,
+        effectiveTo: clubEquipmentHistory.effectiveTo,
+        loftDeg: clubEquipmentHistory.loftDeg,
+        lieDeg: clubEquipmentHistory.lieDeg,
+        shaft: clubEquipmentHistory.shaft,
+        swingWeight: clubEquipmentHistory.swingWeight,
+        notes: clubEquipmentHistory.notes,
+      })
+      .from(clubEquipmentHistory)
+      .innerJoin(clubs, eq(clubs.id, clubEquipmentHistory.clubId))
+      .leftJoin(ballModels, eq(ballModels.id, clubEquipmentHistory.ballModelId))
+      .where(eq(clubEquipmentHistory.userId, userId))
+      .orderBy(desc(clubEquipmentHistory.effectiveFrom)),
+    db
+      .select({
+        id: clubs.id,
+        type: clubs.type,
+        brand: clubs.brand,
+        model: clubs.model,
+        updatedAt: clubs.updatedAt,
+      })
+      .from(clubs)
+      .where(and(eq(clubs.userId, userId), eq(clubs.active, false)))
+      .orderBy(desc(clubs.updatedAt)),
+  ]);
+
+  return { history, retired };
 }
 
 async function getBagChallengeData(): Promise<{ active: ChallengeListItem[] }> {
@@ -975,6 +1373,16 @@ type BagScoreTrendPoint = {
   tone: BagDoctorFinding["tone"];
 };
 
+type BagEquipmentContext = Awaited<ReturnType<typeof getBagEquipmentContext>>;
+type BagHistoryEvent = {
+  id: string;
+  date: Date;
+  kind: "Equipment change" | "New baseline" | "Retired club" | "Yardage movement";
+  title: string;
+  detail: string;
+  tone: BagDoctorFinding["tone"];
+};
+
 function BagSpeedPotentialPanel({ summary }: { summary: SpeedCentreSummary }) {
   const carryGain = summary.carryProjection.carryGainYd;
   const projectedCarry =
@@ -1030,7 +1438,9 @@ function BagHealthHero({
   weakestClub,
   biggestOpportunity,
   currentGapRisk,
-  trend,
+  trustedClubCount,
+  gappingClubCount,
+  scoringConcern,
 }: {
   bagScore: number;
   scoreLabel: string;
@@ -1043,107 +1453,118 @@ function BagHealthHero({
   weakestClub: BagClub | null;
   biggestOpportunity: SmartBagBuilder["suggestions"][number] | null;
   currentGapRisk: BagGapRisk;
-  trend: BagScoreTrendPoint[];
+  trustedClubCount: number;
+  gappingClubCount: number;
+  scoringConcern: PersonalStrokesGainedModel["weakestCategory"];
 }) {
+  const healthAnswer =
+    gappingClubCount === 0
+      ? "Your trusted numbers are still building"
+      : `${trustedClubCount} of ${gappingClubCount} clubs have trusted numbers`;
+
   return (
-    <Card
+    <section
       id="bag-health"
-      className="scroll-mt-28 overflow-hidden border-primary/20 shadow-sm"
+      className="scroll-mt-28 overflow-hidden rounded-xl border border-foreground/15 bg-foreground text-background shadow-lg"
       data-bag-health-card
     >
-      <CardContent className="grid gap-4 p-4 lg:p-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.52fr)]">
-        <div className="grid gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-3xl">
-              <StatusPill tone={bagScore >= 85 ? "green" : bagScore >= 70 ? "sky" : "amber"}>
-                Bag health
-              </StatusPill>
-              <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-normal text-foreground">
-                Bag health
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                How the bag is performing, where the weak points are, and what has changed across
-                the current stock-yardage model.
-              </p>
+      <div className="grid gap-6 p-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(420px,0.9fr)] xl:p-8">
+        <div className="grid content-between gap-8">
+          <div>
+            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-background/65">
+              <span>My bag</span>
+              <span className="h-px w-10 bg-background/35" aria-hidden />
+              <span>
+                {clubs} clubs · {shots.toLocaleString("en-GB")} shots
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline">
-                <Link href="/bag/longest">
-                  <Trophy className="size-4" />
-                  Longest shots
-                </Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/achievements">
-                  <Award className="size-4" />
-                  Achievements
-                </Link>
-              </Button>
-            </div>
+            <h1 className="mt-5 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-background xl:text-6xl">
+              {healthAnswer}
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-background/68">
+              These are the numbers ready to take to the course. Anything untrusted stays visible,
+              but it does not get promoted into a decision.
+            </p>
           </div>
 
           <ConnectedMetricBar
             embedded
             label="Bag health metrics"
+            className="border-background/15 bg-background/5 text-background [&_*]:border-background/10 [&_p]:text-background/65"
             metrics={[
-              { label: "Bag score", value: `${bagScore}%`, detail: scoreLabel },
-              {
-                label: "Confidence",
-                value: `${confidence}%`,
-                detail: `${clubs} active clubs`,
-              },
-              { label: "Data trust", value: dataTrust, detail: dataTrustDetail },
-              { label: "Shots", value: shots.toString(), detail: "Saved rows" },
+              { label: "Bag health", value: `${bagScore}%`, detail: scoreLabel },
+              { label: "Average trust", value: `${confidence}%`, detail: `${clubs} active clubs` },
+              { label: "Data health", value: dataTrust, detail: dataTrustDetail },
+              { label: "Measured", value: shots.toLocaleString("en-GB"), detail: "saved shots" },
             ]}
           />
-
-          <BagScoreTrendPanel points={trend} currentScore={bagScore} />
         </div>
 
-        <div className="grid gap-3">
-          <PageArtwork variant="stockYardages" alt="" className="h-48 rounded-lg" priority />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+        <div className="grid content-start gap-3">
+          <div className="flex items-center justify-between gap-3 border-b border-background/15 pb-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-background/60">
+              Bag check
+            </p>
+            <span className="text-sm font-semibold text-background">{scoreLabel}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
             <BagHealthSignal
-              label="Most trusted historically"
-              value={strongestClub ? formatClubType(strongestClub.type) : "--"}
-              detail={
-                strongestClub
-                  ? `${clubTrustScore(strongestClub)}% trust · ${clubHealthReadout(strongestClub).label}`
-                  : "Need stock samples"
-              }
-              tone="green"
-              href={strongestClub ? `/bag/${strongestClub.id}` : undefined}
-            />
-            <BagHealthSignal
-              label="Weakest club"
-              value={weakestClub ? formatClubType(weakestClub.type) : "--"}
-              detail={
-                weakestClub
-                  ? `${clubTrustScore(weakestClub)}% trust · ${clubCurrentMiss(weakestClub).label}`
-                  : "No weak club yet"
-              }
-              tone={weakestClub ? clubHealthReadout(weakestClub).tone : "slate"}
-              href={weakestClub ? `/bag/${weakestClub.id}` : undefined}
-            />
-            <BagHealthSignal
-              label="Biggest opportunity"
-              value={biggestOpportunity?.title ?? "No urgent move"}
-              detail={
-                biggestOpportunity?.detail ?? "Current equipment setup has no obvious red flag."
-              }
-              tone={biggestOpportunity ? "violet" : "green"}
-            />
-            <BagHealthSignal
-              label="Current gap risk"
+              label="Largest gap"
               value={currentGapRisk.value}
               detail={currentGapRisk.detail}
               tone={currentGapRisk.tone}
               href={currentGapRisk.href}
             />
+            <BagHealthSignal
+              label="Weakest confidence"
+              value={weakestClub ? formatClubType(weakestClub.type) : "--"}
+              detail={
+                weakestClub
+                  ? `${clubTrustScore(weakestClub)}% trust · ${weakestClub.stock.sampleSize} stock shots`
+                  : "Every active club has usable evidence"
+              }
+              tone={weakestClub ? clubHealthReadout(weakestClub).tone : "slate"}
+              href={weakestClub ? `/bag/${weakestClub.id}` : undefined}
+            />
+            <BagHealthSignal
+              label="Current scoring concern"
+              value={scoringConcern?.label ?? "Scoring read building"}
+              detail={
+                scoringConcern?.total === null || scoringConcern?.total === undefined
+                  ? "Add scored rounds to connect bag numbers to scoring."
+                  : `${formatSignedMetric(scoringConcern.total)} strokes across ${scoringConcern.sampleSize} judged shots.`
+              }
+              tone={scoringConcern?.tone ?? "slate"}
+            />
+            <BagHealthSignal
+              label="Next bag action"
+              value={biggestOpportunity?.title ?? "Keep the setup"}
+              detail={biggestOpportunity?.detail ?? "No evidence-backed equipment move is urgent."}
+              tone={biggestOpportunity?.tone ?? "green"}
+            />
+          </div>
+          <div className="flex flex-wrap justify-between gap-3 pt-2">
+            <p className="text-xs leading-5 text-background/55">
+              Most trusted: {strongestClub ? formatClubType(strongestClub.type) : "building"}
+            </p>
+            <div className="flex gap-2">
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/equipment">
+                  <Wrench className="size-4" />
+                  Equipment
+                </Link>
+              </Button>
+              <Button asChild variant="secondary" size="sm">
+                <Link href="/bag/longest">
+                  <Trophy className="size-4" />
+                  Longest
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -1161,22 +1582,23 @@ function BagHealthSignal({
   href?: string;
 }) {
   const content = (
-    <Item variant="outline" className="h-full items-start" data-bag-health-signal>
-      <ItemContent className="space-y-2">
-        <ItemDescription className="overflow-visible text-clip whitespace-normal font-semibold uppercase tracking-[0.12em]">
+    <div
+      className="grid h-full min-h-36 content-between gap-3 rounded-lg border border-background/20 bg-background p-3 text-foreground"
+      data-bag-health-signal
+    >
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {label}
-        </ItemDescription>
-        <ItemTitle className="overflow-visible text-clip whitespace-normal text-xl font-semibold leading-6 tracking-normal">
+        </p>
+        <p className="mt-3 text-xl font-semibold leading-6 tracking-tight text-foreground">
           {value}
-        </ItemTitle>
-        <ItemDescription className="overflow-visible text-clip whitespace-normal text-sm leading-5">
-          {detail}
-        </ItemDescription>
-      </ItemContent>
-      <ItemActions>
-        <StatusPill tone={tone === "violet" ? "pink" : tone}>Signal</StatusPill>
-      </ItemActions>
-    </Item>
+        </p>
+        <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
+      </div>
+      <StatusPill tone={tone === "violet" ? "pink" : tone} className="w-fit">
+        Signal
+      </StatusPill>
+    </div>
   );
 
   if (!href) {
@@ -1266,6 +1688,10 @@ function maxVisualCarryYd(rows: GappingRow[]) {
 
 function formatCarryYards(carryYd: number | null) {
   return carryYd === null ? "--" : `${formatMetric(carryYd)} yd`;
+}
+
+function formatSignedMetric(value: number) {
+  return `${value > 0 ? "+" : ""}${formatMetric(value)}`;
 }
 
 function formatSideYards(sideYd: number | null) {
@@ -2024,91 +2450,106 @@ function BagConfidenceLadder({
     >
       <DataPanel className="min-w-0 overflow-x-clip">
         <SectionHeader
-          title="Bag confidence ladder"
-          description="Recommended is the primary course number. Best Stock stays visible as potential."
+          title="Distance ladder"
+          description="Your trusted carry is the marker. The shaded rail is the expected range; the connector is the measured gap to the next club."
           action={<Gauge className="size-5 text-primary" />}
         />
-        <CardContent>
-          <div className="max-w-full overflow-hidden">
-            <div
-              aria-label="Bag confidence ladder"
-              tabIndex={0}
-              className="-mx-4 flex max-w-full gap-3 overflow-x-auto px-4 pb-2 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mx-0 sm:px-0"
-            >
-              {rows.map((row) => {
-                const confidence = confidenceReadout(row);
-                const gap = gapReadout(row);
-                const visualCarry = visualCarryYd(row);
+        <CardContent className="p-0">
+          <div
+            aria-label="Bag distance ladder"
+            className="divide-y divide-border/70"
+            data-bag-distance-ladder
+          >
+            {rows.map((row, index) => {
+              const confidence = confidenceReadout(row);
+              const gap = gapReadout(row);
+              const visualCarry = visualCarryYd(row);
+              const rangeLow = row.latestReliableCarryP25Yd ?? visualCarry;
+              const rangeHigh = row.latestReliableCarryP75Yd ?? visualCarry;
+              const hasRange = rangeLow !== null && rangeHigh !== null;
+              const nextRow = rows[index + 1] ?? null;
 
-                return (
+              return (
+                <div key={row.id} className="group relative">
                   <Link
-                    key={row.id}
                     href={`/bag/${row.id}`}
                     prefetch={false}
-                    className="premium-rail-card grid min-h-[15rem] w-40 shrink-0 content-between rounded-lg p-3 transition-colors hover:border-primary/40"
+                    className="focus-aaa grid min-h-24 grid-cols-[minmax(120px,0.34fr)_minmax(260px,1fr)_110px] items-center gap-5 px-5 py-4 outline-none transition-colors hover:bg-muted/35"
                   >
                     <div className="min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-xs text-muted-foreground">{row.brandModel}</p>
-                          <p className="mt-1 text-lg font-semibold tracking-normal">
-                            {formatClubType(row.clubType)}
-                          </p>
-                        </div>
-                        <StatusPill tone={confidence.tone}>{confidence.label}</StatusPill>
-                      </div>
-
-                      <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
-                        {row.playNumberYd === null ? "Best stock" : "Recommended"}
-                      </p>
-                      <p className="mt-1 text-3xl font-semibold tracking-normal">
-                        {formatCarryYards(visualCarry)}
-                      </p>
-                      <div className="mt-3 h-2 rounded-full bg-muted">
+                      <div className="flex items-center gap-2">
                         <span
-                          className="block h-2 rounded-full bg-primary"
+                          className={`size-2.5 shrink-0 rounded-full ${confidenceBarClass(confidence.tone)}`}
+                          aria-hidden
+                        />
+                        <p className="text-xl font-semibold tracking-tight">
+                          {formatClubType(row.clubType)}
+                        </p>
+                      </div>
+                      <p className="mt-1 truncate pl-[1.125rem] text-xs text-muted-foreground">
+                        {row.brandModel}
+                      </p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="relative h-9" aria-hidden>
+                        <span className="absolute inset-x-0 top-4 h-px bg-border" />
+                        {hasRange ? (
+                          <span
+                            className="absolute top-2 h-5 rounded-full bg-primary/18 ring-1 ring-inset ring-primary/25"
+                            style={{
+                              left: `${carryWidthPercent(rangeLow, maxCarryYd)}%`,
+                              width: `${Math.max(3, carryWidthPercent(rangeHigh, maxCarryYd) - carryWidthPercent(rangeLow, maxCarryYd))}%`,
+                            }}
+                          />
+                        ) : null}
+                        <span
+                          className="absolute left-0 top-[0.875rem] h-1 rounded-full bg-primary/45 transition-colors group-hover:bg-primary"
                           style={{
                             width: `${carryWidthPercent(visualCarry, maxCarryYd)}%`,
                           }}
                         />
+                        <span
+                          className="absolute top-1 size-7 -translate-x-1/2 rounded-full border-4 border-card bg-primary shadow-md ring-1 ring-primary/30"
+                          style={{ left: `${carryWidthPercent(visualCarry, maxCarryYd)}%` }}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 text-xs">
+                        <span>
+                          <span className="text-muted-foreground">Range </span>
+                          {formatCarryRange(rangeLow, rangeHigh)}
+                        </span>
+                        <span>
+                          <span className="text-muted-foreground">Trust </span>
+                          {row.confidenceScore}%
+                        </span>
+                        <span>
+                          <span className="text-muted-foreground">Sample </span>
+                          {row.sampleSize}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="grid gap-2 text-xs">
-                      <div className="rounded-md bg-muted/30 px-2 py-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-muted-foreground">Trust</span>
-                          <span className="font-semibold">{row.confidenceScore}%</span>
-                        </div>
-                        <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-card">
-                          <span
-                            className={`block h-full rounded-full ${confidenceBarClass(
-                              confidence.tone,
-                            )}`}
-                            style={{ width: `${Math.max(5, Math.min(100, row.confidenceScore))}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5">
-                        <span className="text-muted-foreground">
-                          {row.playNumberYd === null ? "Recommended" : "Best stock"}
-                        </span>
-                        <span className="font-semibold">
-                          {row.playNumberYd === null ? "--" : formatCarryYards(row.carryYd)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2 py-1.5">
-                        <span className="text-muted-foreground">Course gap</span>
-                        <span className="font-semibold">{gap.value}</span>
-                      </div>
-                      <StatusPill tone={gap.tone} className="max-w-full justify-center truncate">
-                        {gap.label}
+                    <div className="text-right">
+                      <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                        {compactCarryYards(visualCarry)}
+                        <span className="ml-1 text-sm font-medium text-muted-foreground">yd</span>
+                      </p>
+                      <StatusPill tone={confidence.tone} className="mt-2">
+                        {confidence.label}
                       </StatusPill>
                     </div>
                   </Link>
-                );
-              })}
-            </div>
+                  {nextRow ? (
+                    <div className="pointer-events-none absolute -bottom-3 right-[7.35rem] z-10 flex translate-y-1/2 items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold shadow-sm">
+                      <span className="text-muted-foreground">Gap</span>
+                      <span className={toneTextClass(gap.tone)}>{gap.value}</span>
+                      <span className="sr-only">to {formatClubType(nextRow.clubType)}</span>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </DataPanel>
@@ -3048,6 +3489,20 @@ function buildClubIntelligenceItems(bag: BagClub[]): ClubIntelligenceItem[] {
           };
     const primaryCarryYd = clubPrimaryCarryYd(club);
     const secondaryCarryYd = clubSecondaryCarryYd(club);
+    const averageApexFt = averageNumber(
+      club.shots.flatMap((shot) => (isFiniteMetric(shot.apexFt) ? [shot.apexFt] : [])),
+    );
+    const averageBallSpeedMph =
+      club.stock.averageBallSpeedMph ??
+      averageNumber(
+        club.shots.flatMap((shot) =>
+          isFiniteMetric(shot.ballSpeedMph) ? [shot.ballSpeedMph] : [],
+        ),
+      );
+    const dispersionWidth =
+      club.stock.dispersionLeftYd === null || club.stock.dispersionRightYd === null
+        ? null
+        : Math.abs(club.stock.dispersionLeftYd) + Math.abs(club.stock.dispersionRightYd);
     const chartShots = club.shots
       .flatMap((shot) =>
         typeof shot.carryYd === "number" && Number.isFinite(shot.carryYd)
@@ -3086,6 +3541,19 @@ function buildClubIntelligenceItems(bag: BagClub[]): ClubIntelligenceItem[] {
               club.stock.latestReliableCarryP75Yd,
             ),
       personalBestLabel: formatCarryYards(club.stock.personalBestCarryYd),
+      totalLabel: formatCarryYards(club.stock.totalMedianYd),
+      dispersionLabel:
+        dispersionWidth === null ? "Building" : `${formatMetric(dispersionWidth)} yd wide`,
+      commonMissLabel: miss.label,
+      launchLabel:
+        club.stock.averageLaunchAngleDeg === null
+          ? "Building"
+          : `${formatMetric(club.stock.averageLaunchAngleDeg)}°`,
+      apexLabel: averageApexFt === null ? "Building" : `${formatMetric(averageApexFt)} ft`,
+      speedLabel:
+        averageBallSpeedMph === null ? "Building" : `${formatMetric(averageBallSpeedMph)} mph`,
+      latestChangeLabel: trend?.label ?? "Baseline building",
+      latestChangeDetail: trend?.detail ?? "Add two clean stock samples to establish movement.",
       trustScore: clubTrustScore(club),
       sampleSize:
         club.isShortGameTouch && club.type !== "sw" ? club.touch.sampleSize : club.stock.sampleSize,

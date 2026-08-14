@@ -32,6 +32,12 @@ describe("companion route capabilities", () => {
     expect(mobileCapabilities.courses.mobileExperience).toBe("companion");
     expect(mobileCapabilities.courses.mobileNav).toBe("more");
     expect(isDesktopOnlyCompanionPath("/quick-bag")).toBe(false);
+    expect(mobileCapabilities.challenges.mobileExperience).toBe("companion");
+    expect(mobileCapabilities.challenges.mobileNav).toBe("more");
+    expect(isSummaryOnlyCompanionPath("/challenges")).toBe(false);
+    expect(isSummaryOnlyCompanionPath("/challenges/challenge-id")).toBe(false);
+    expect(isSummaryOnlyCompanionPath("/tournaments")).toBe(false);
+    expect(isSummaryOnlyCompanionPath("/tournaments/tournament-id")).toBe(false);
   });
 
   it("routes summary-only phone pages through the compact read-only surface", () => {

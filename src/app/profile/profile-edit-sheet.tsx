@@ -16,8 +16,8 @@ export function ProfileEditSheet({ children }: { children: React.ReactNode }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button>
-          <Pencil className="size-4" /> Edit profile and privacy
+        <Button variant="secondary" className="bg-background/92 shadow-sm hover:bg-background">
+          <Pencil className="size-4" /> Edit profile
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">

@@ -11,7 +11,7 @@ import { getRecentSessionHistory } from "@/lib/session-history";
 
 export default async function SessionsCompanionPage() {
   const userId = await requireCurrentUserId();
-  const sessions = await getRecentSessionHistory(userId, 24);
+  const sessions = await getRecentSessionHistory(userId, 24, { includeShotPatterns: false });
 
   return (
     <PageShell>

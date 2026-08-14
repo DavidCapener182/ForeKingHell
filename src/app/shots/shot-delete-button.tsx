@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { LoaderCircle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-export function ShotDeleteButton({ shotId }: { shotId: string }) {
+export function ShotDeleteButton({ shotId, trigger }: { shotId: string; trigger?: ReactNode }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -41,10 +41,12 @@ export function ShotDeleteButton({ shotId }: { shotId: string }) {
     <div className="grid gap-2">
       <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button type="button" variant="destructive" className="justify-between">
-            Delete shot
-            <Trash2 className="size-4" />
-          </Button>
+          {trigger ?? (
+            <Button type="button" variant="destructive" className="justify-between">
+              Delete shot
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>

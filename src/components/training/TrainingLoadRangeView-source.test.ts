@@ -29,34 +29,26 @@ function componentBody(name: string, nextName: string) {
   return source.slice(resolvedStart, end);
 }
 
-describe("TrainingLoadRangeView desktop workbench", () => {
-  it("preserves the complete selected-range workbench in one responsive render tree", () => {
-    const desktop = componentBody("TrainingLoadRangeView", "RecoveryWorkbench");
+describe("TrainingLoadRangeView readiness experience", () => {
+  it("puts the connected metrics, central chart and one recommendation first", () => {
+    const experience = componentBody("TrainingLoadRangeView", "ReadinessRecommendation");
 
-    expect(desktop).toContain("<TrainingSummaryCards");
-    expect(desktop).toContain("<TrainingOverTimeChart");
-    expect(desktop).toContain("<RecoveryWorkbench");
-    expect(desktop).toContain("<TrainingRhythmWorkbench");
-    expect(desktop).toContain("<TrainingLoadBars");
-    expect(desktop).toContain("<TrainingSessionLedger");
-    expect(desktop).toContain("<TrainingStatusCard");
-    expect(desktop).toContain("<EfficiencyCards");
-    expect(desktop).toContain("<TrainingSourceSuggestions");
-    expect(desktop).toContain("<ResponsiveDetailPanel");
-    expect(desktop).toContain("<RecentTrainingSessions");
-    expect(desktop).toContain("data-training-load-actions");
-    expect(desktop.indexOf("<RecoveryWorkbench")).toBeLessThan(
-      desktop.indexOf("<TrainingSessionLedger"),
+    expect(experience).toContain("<TrainingSummaryCards");
+    expect(experience).toContain("<TrainingOverTimeChart");
+    expect(experience).toContain("<ReadinessRecommendation");
+    expect(experience).toContain("Fitness &amp; freshness");
+    expect(experience).toContain("Your golf readiness trend");
+    expect(experience).toContain("<ResponsiveDetailPanel");
+    expect(experience).toContain("data-training-log-trigger");
+    expect(experience).toContain("data-training-desktop-history");
+    expect(experience.indexOf("<TrainingSummaryCards")).toBeLessThan(
+      experience.indexOf("<TrainingOverTimeChart"),
     );
-    expect(desktop.indexOf("<TrainingSessionLedger")).toBeLessThan(
-      desktop.indexOf("<TrainingStatusCard"),
+    expect(experience.indexOf("<TrainingOverTimeChart")).toBeLessThan(
+      experience.indexOf("<TrainingRhythmWorkbench"),
     );
-    expect(desktop.indexOf("<TrainingStatusCard")).toBeLessThan(
-      desktop.indexOf("<EfficiencyCards"),
-    );
-    expect(desktop.indexOf("<EfficiencyCards")).toBeLessThan(
-      desktop.indexOf("<RecentTrainingSessions"),
-    );
+    expect(source.match(/<TrainingOverTimeChart/g)).toHaveLength(1);
+    expect(source.match(/data-training-recommendation/g)).toHaveLength(1);
 
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('data-workbench-export-table="training-load-sessions"');
@@ -74,6 +66,10 @@ describe("TrainingLoadRangeView desktop workbench", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).toContain("<ToggleGroup");
     expect(source).toContain("<ToggleGroupItem");
+    expect(source).toContain('{ key: "4w", label: "4 weeks" }');
+    expect(source).toContain('{ key: "3m", label: "3 months" }');
+    expect(source).toContain('{ key: "6m", label: "6 months" }');
+    expect(source).toContain('{ key: "1y", label: "1 year" }');
     const rangeControls = componentBody("RangeControls", "TrainingEmptyState");
     expect(rangeControls).not.toContain("<button");
     const chartLoading = componentBody("DeferredChartLoading", "TrainingLoadRangeView");
@@ -81,15 +77,22 @@ describe("TrainingLoadRangeView desktop workbench", () => {
     expect(chartLoading).not.toContain(">Loading {label.toLowerCase()}…</div>");
   });
 
-  it("restores recovery, weekly rhythm and balance without nested card walls", () => {
-    const recovery = componentBody("RecoveryWorkbench", "RecoveryDecision");
+  it("keeps one golfer-facing decision and moves deeper history off mobile", () => {
+    const recommendation = componentBody("ReadinessRecommendation", "TrainingRhythmWorkbench");
     const rhythm = componentBody("TrainingRhythmWorkbench", "GradeRow");
 
-    expect(recovery.match(/<Card(?:\s|>)/g)).toHaveLength(1);
-    expect(recovery.match(/<CardContent/g)).toHaveLength(1);
-    expect(recovery).toContain('id="next-48-hours"');
-    expect(recovery).toContain("buildRecoveryRecommendation");
-    expect(recovery).toContain("buildNext48Plan");
+    expect(recommendation).toContain("buildReadinessRecommendation");
+    expect(recommendation).toContain("Recommendation");
+    expect(source).toContain('decision: "Push"');
+    expect(source).toContain('decision: "Maintain"');
+    expect(source).toContain('decision: "Technical only"');
+    expect(source).toContain('decision: "Recovery"');
+    expect(source).toContain("className={styles.desktopRanges}");
+    expect(source).toContain("className={styles.desktopHistory}");
+    expect(source).toContain("const isDesktopViewport = useDesktopViewport()");
+    expect(source).toContain("{isDesktopViewport ? (");
+    expect(source).not.toContain("RecoveryWorkbench");
+    expect(source).not.toContain("buildNext48Plan");
 
     expect(rhythm.match(/<Card(?:\s|>)/g)).toHaveLength(1);
     expect(rhythm.match(/<CardContent/g)).toHaveLength(1);
@@ -100,7 +103,7 @@ describe("TrainingLoadRangeView desktop workbench", () => {
     expect(rhythm).toContain("buildTrainingRatio");
     expect(rhythm).toContain("<Progress");
 
-    for (const body of [recovery, rhythm]) {
+    for (const body of [recommendation, rhythm]) {
       expect(body).not.toContain("<DataPanel");
       expect(body).not.toContain("bg-white");
       expect(body).not.toContain("border-slate");
@@ -172,10 +175,12 @@ describe("Training Load workbench bundle separation", () => {
       "BottomSheet",
       'idPrefix="mobile-training-load"',
       'className="hidden lg:grid"',
+      'className="hidden lg:block"',
+      'className="hidden lg:contents"',
     ]) {
       expect(source).not.toContain(legacy);
     }
-    expect(source).toContain('idPrefix="desktop-training-load"');
+    expect(source).toContain('idPrefix="training-load"');
     expect(source.match(/<TrainingOverTimeChart/g)).toHaveLength(1);
     expect(source.match(/<TrainingLoadBars/g)).toHaveLength(1);
     expect(source.match(/<TrainingStatusCard/g)).toHaveLength(1);

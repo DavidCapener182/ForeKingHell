@@ -33,7 +33,7 @@ export function ComparisonProvenancePanel({ metrics }: { metrics: ProvenanceMetr
       trigger={
         <Button type="button" variant="outline" size="sm">
           <Info className="size-4" aria-hidden="true" />
-          Method & provenance
+          Evidence & method
         </Button>
       }
     >

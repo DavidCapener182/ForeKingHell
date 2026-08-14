@@ -1,19 +1,22 @@
 import Link from "next/link";
 import {
   Award,
-  BarChart3,
-  CalendarDays,
-  ChevronDown,
+  CircleDot,
+  Flag,
   Globe2,
+  Goal,
   Lock,
+  MapPin,
+  Medal,
   MessageCircle,
-  MoreHorizontal,
   Radio,
   Share2,
   ShieldCheck,
+  Sparkles,
+  Target,
   ThumbsUp,
+  Trophy,
   Users,
-  Zap,
 } from "lucide-react";
 
 import {
@@ -25,39 +28,33 @@ import {
   removeFeedReactionAction,
 } from "@/app/feed/actions";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
-import { Badge } from "@/components/ui/badge";
-import { ButtonGroup } from "@/components/ui/button-group";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
+import { FeedItemControls } from "@/components/social/feed-item-controls";
+import { ReelExportButton } from "@/components/social/reel-export-button";
+import { SocialAvatar } from "@/components/social/social-avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-  InputGroupTextarea,
 } from "@/components/ui/input-group";
-import { Item } from "@/components/ui/item";
-import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
-import { ReelExportButton } from "@/components/social/reel-export-button";
-import { SocialAvatar } from "@/components/social/social-avatar";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { type FeedItemView } from "@/lib/social";
-import { FeedItemControls } from "@/components/social/feed-item-controls";
+import { cn } from "@/lib/utils";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
   hour: "2-digit",
   minute: "2-digit",
 });
 
 const dayFormatter = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
   timeZone: "Europe/London",
 });
 
@@ -68,7 +65,15 @@ const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/London",
 });
 
-const numberFormatter = new Intl.NumberFormat("en-GB");
+type ActivityKind =
+  | "round"
+  | "practice"
+  | "pb"
+  | "achievement"
+  | "challenge"
+  | "course-record"
+  | "goal"
+  | "status";
 
 export function FeedCardList({
   items,
@@ -80,12 +85,12 @@ export function FeedCardList({
   if (items.length === 0) {
     return (
       <AppEmptyState
-        title="No activity yet"
-        description="Import a session, set a course record, enter an event, unlock an achievement, or join a challenge to start the feed."
+        title="No activity in this view"
+        description="Rounds, practice, PBs and golf updates will appear here in the order they happened."
         primaryAction={
           <Button asChild variant="outline">
             <Link href="/import" prefetch={false}>
-              Import a session
+              Import activity
             </Link>
           </Button>
         }
@@ -93,525 +98,354 @@ export function FeedCardList({
     );
   }
 
+  if (compact) {
+    return (
+      <div className="grid gap-3">
+        {items.map((item) => (
+          <Card key={item.id} className="overflow-hidden py-0">
+            <FeedActivityRow item={item} compact />
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <Card className="overflow-hidden py-0 shadow-sm" data-feed-activity-timeline>
+      {groupItemsByDay(items).map((group) => (
+        <section key={group.key} aria-labelledby={`feed-day-${group.key}`}>
+          <div className="flex items-center gap-3 border-b bg-muted/35 px-4 py-2.5 sm:px-5">
+            <span className="grid size-6 place-items-center rounded-full border bg-card text-primary">
+              <Radio className="size-3" aria-hidden />
+            </span>
+            <h3
+              id={`feed-day-${group.key}`}
+              className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+            >
+              {group.label}
+            </h3>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {group.items.length} {group.items.length === 1 ? "activity" : "activities"}
+            </span>
+          </div>
+          <div className="divide-y">
+            {group.items.map((item) => (
+              <FeedActivityRow key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </Card>
+  );
+}
+
+function FeedActivityRow({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
+  const kind = activityKind(item.itemType);
+
+  return (
+    <article
+      className={cn(
+        "relative grid grid-cols-[auto_minmax(0,1fr)] gap-3 bg-card px-4 py-4 transition-colors hover:bg-muted/15 sm:px-5",
+        compact && "px-3 py-3 sm:px-3",
+      )}
+      data-feed-item-id={item.id}
+      data-activity-template={kind}
+    >
+      <SocialAvatar
+        displayName={item.profile.displayName}
+        username={item.profile.username}
+        avatarUrl={item.profile.avatarUrl}
+        href={`/profile/${item.profile.username}`}
+        size={compact ? "sm" : "md"}
+      />
+
+      <div className="min-w-0">
+        <header className="flex min-w-0 items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <Link
+                href={`/profile/${item.profile.username}`}
+                prefetch={false}
+                className="truncate text-sm font-semibold hover:underline"
+              >
+                {item.profile.displayName}
+              </Link>
+              <span className="text-xs text-muted-foreground">@{item.profile.username}</span>
+              <span aria-hidden className="text-xs text-muted-foreground">
+                ·
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {dateFormatter.format(item.createdAt)}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <ActivityLabel kind={kind} />
+              <span className="inline-flex items-center gap-1 text-[0.72rem] text-muted-foreground">
+                <VisibilityIcon visibility={item.visibility} />
+                {titleCase(item.visibility)}
+              </span>
+            </div>
+          </div>
+          <FeedItemControls
+            feedItemId={item.id}
+            visibility={item.visibility}
+            isOwnItem={item.profile.relationship === "self"}
+            compact
+          />
+        </header>
+
+        <ActivityTemplate item={item} kind={kind} compact={compact} />
+        <ActivityEngagement item={item} compact={compact} />
+      </div>
+    </article>
+  );
+}
+
+function ActivityTemplate({
+  item,
+  kind,
+  compact,
+}: {
+  item: FeedItemView;
+  kind: ActivityKind;
+  compact: boolean;
+}) {
+  if (kind === "round") {
+    return (
+      <div className="mt-3 grid overflow-hidden rounded-xl border bg-muted/15 sm:grid-cols-[7rem_minmax(10rem,0.8fr)_minmax(12rem,1.2fr)]">
+        <ActivityFact label="Score" value={item.metricValue ?? "Logged"} strong />
+        <ActivityFact label="Course" value={item.metricLabel ?? "Course not set"} />
+        <ActivityFact
+          label="Highlight"
+          value={roundHighlight(item)}
+          className="border-t sm:border-l sm:border-t-0"
+        />
+      </div>
+    );
+  }
+
+  if (kind === "practice") {
+    return (
+      <div className="mt-3 grid gap-3 rounded-xl border bg-muted/15 p-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
+        <div className="grid content-center gap-2 sm:grid-cols-2">
+          <ActivityFact label="Focus" value={item.context ?? item.headline} borderless />
+          <ActivityFact
+            label="Result"
+            value={item.metricValue ?? item.verificationLabel}
+            borderless
+          />
+        </div>
+        <DispersionThumbnail href={item.proofUrl} />
+      </div>
+    );
+  }
+
+  if (kind === "pb") {
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border bg-primary/5 px-3 py-3">
+        <div className="min-w-[7rem]">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {pbClub(item)}
+          </p>
+          <p className="text-2xl font-semibold tabular-nums tracking-tight">
+            {item.metricValue ?? "New best"}
+          </p>
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">{item.headline}</p>
+          {item.context ? (
+            <p className="mt-1 text-xs text-muted-foreground">{item.context}</p>
+          ) : null}
+        </div>
+        <VerificationLabel label={item.verificationLabel} />
+      </div>
+    );
+  }
+
+  if (kind === "achievement") {
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-xl border bg-muted/15 p-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full border bg-card text-primary">
+          <Medal className="size-5" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{achievementTitle(item)}</p>
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+            {item.context ?? item.headline}
+          </p>
+        </div>
+        {item.metricValue ? <Badge variant="secondary">{item.metricValue}</Badge> : null}
+      </div>
+    );
+  }
+
+  if (kind === "challenge") {
+    return (
+      <div className="mt-3 grid gap-2 rounded-xl border bg-muted/15 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{item.headline}</p>
+          {item.context ? (
+            <p className="mt-1 text-xs text-muted-foreground">{item.context}</p>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          {item.metricValue ? <Badge variant="secondary">{item.metricValue}</Badge> : null}
+          <VerificationLabel label={item.verificationLabel} />
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === "course-record") {
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border bg-muted/15 p-3">
+        <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
+          <Flag className="size-4" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{item.headline}</p>
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="size-3" aria-hidden />
+            {item.context ?? item.metricLabel ?? "Course record"}
+          </p>
+        </div>
+        {item.metricValue ? (
+          <span className="text-lg font-semibold tabular-nums">{item.metricValue}</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (kind === "goal") {
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-xl border bg-muted/15 p-3">
+        <Goal className="size-5 shrink-0 text-primary" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{item.headline}</p>
+          {item.context ? (
+            <p className="mt-1 text-xs text-muted-foreground">{item.context}</p>
+          ) : null}
+        </div>
+        {item.metricValue ? <Badge variant="outline">{item.metricValue}</Badge> : null}
+      </div>
+    );
+  }
+
+  const statusImage = isStatusImage(item.proofUrl) ? item.proofUrl : null;
+
   return (
     <div
-      className={
-        compact
-          ? "grid gap-3"
-          : "relative grid gap-4 before:absolute before:inset-y-3 before:left-3 before:w-px before:bg-border"
-      }
-      data-feed-activity-timeline={!compact || undefined}
+      className={cn(
+        "mt-3",
+        statusImage && !compact && "grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]",
+      )}
     >
-      {compact
-        ? items.map((item) => <FeedItemCard key={item.id} item={item} compact />)
-        : groupItemsByDayAndUser(items).map((group) => (
-            <div key={group.key} className="relative pl-8">
-              <span
-                className="absolute left-0 top-5 z-10 grid size-6 place-items-center rounded-full border bg-card text-primary"
-                aria-hidden
-              >
-                <Radio className="size-3" />
-              </span>
-              <FeedDayDigestCard group={group} />
-            </div>
-          ))}
+      <div className="min-w-0">
+        <p className="text-sm font-medium leading-6">{item.context ?? item.headline}</p>
+        {item.context && item.headline !== "Shared a golf update" ? (
+          <p className="mt-1 text-xs text-muted-foreground">{item.headline}</p>
+        ) : null}
+      </div>
+      {statusImage && !compact ? (
+        // Status images are kept intentionally small so the activity stays readable in the stream.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={statusImage}
+          alt="Attached golf update"
+          className="h-20 w-full rounded-lg border object-cover sm:h-20"
+        />
+      ) : null}
     </div>
   );
 }
 
-function FeedDayDigestCard({ group }: { group: FeedDayGroup }) {
-  const firstItem = group.items[0];
-
-  if (!firstItem) {
-    return null;
-  }
-
-  const achievements = group.items.filter((item) => item.itemType === "achievement_unlock");
-  const nonAchievementHighlights = group.items.filter(
-    (item) => item.itemType !== "achievement_unlock",
-  );
-  const highlights = nonAchievementHighlights.slice(0, 2);
-  const multipleProfiles = new Set(group.items.map((item) => item.userId)).size > 1;
-  const visibility = groupedVisibility(group.items);
-  const hasXp = group.xpGained > 0;
-
-  return (
-    <Card role="article" className="premium-card">
-      <CardContent className="grid gap-4">
-        <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
-          <SocialAvatar
-            displayName={firstItem.profile.displayName}
-            username={firstItem.profile.username}
-            avatarUrl={firstItem.profile.avatarUrl}
-            href={`/profile/${firstItem.profile.username}`}
-            size="md"
-          />
-          <div className="min-w-0">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1">
-                <CalendarDays className="size-3" />
-                {group.label}
-              </Badge>
-              <Link
-                href={`/profile/${firstItem.profile.username}`}
-                prefetch={false}
-                className="text-sm font-semibold hover:underline"
-              >
-                {firstItem.profile.displayName}
-              </Link>
-              <span className="text-xs text-muted-foreground">@{firstItem.profile.username}</span>
-              <span className="text-xs text-muted-foreground">Daily activity digest</span>
-            </div>
-            <h2 className="mt-2 text-lg font-semibold leading-6">
-              {digestHeadline(group, achievements.length)}
-            </h2>
-          </div>
-          <Badge variant="outline" className="h-fit gap-1">
-            {visibility === "mixed" ? (
-              <Users className="size-3" />
-            ) : (
-              <VisibilityIcon visibility={visibility} />
-            )}
-            {visibility === "mixed" ? "Mixed" : titleCase(visibility)}
-          </Badge>
-        </header>
-
-        <div className={hasXp ? "grid gap-3 sm:grid-cols-[220px_minmax(0,1fr)]" : "grid gap-3"}>
-          {hasXp ? (
-            <Item variant="muted" className="block border-primary/20 bg-primary/5 p-3">
-              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-primary">
-                <Zap className="size-3.5" />
-                XP gained
-              </p>
-              <p className="text-3xl font-semibold tracking-normal text-foreground">
-                +{numberFormatter.format(group.xpGained)} XP
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {group.reactionCount} kudos · {group.commentCount} comments
-              </p>
-            </Item>
-          ) : null}
-
-          <div className="grid gap-3">
-            <div className="flex flex-wrap gap-2">
-              {group.typeSummaries.map((summary) => (
-                <Badge key={summary.type} variant="outline">
-                  {summary.label}
-                </Badge>
-              ))}
-            </div>
-            {!hasXp ? (
-              <p className="text-xs text-muted-foreground">
-                {group.reactionCount} kudos · {group.commentCount} comments
-              </p>
-            ) : null}
-            {highlights.length > 0 ? (
-              <div className="grid gap-2">
-                {highlights.map((item) => (
-                  <HighlightRow key={item.id} item={item} showProfile={multipleProfiles} />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <DigestComments items={group.items} />
-
-        {achievements.length > 0 ? (
-          <Collapsible className="rounded-lg border bg-muted/45">
-            <CollapsibleTrigger
-              type="button"
-              className={buttonVariants({
-                variant: "ghost",
-                className: "group w-full min-h-12 justify-between rounded-lg px-3",
-              })}
-            >
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                <Award className="size-4 text-primary" />
-                Achievements unlocked
-              </span>
-              <span className="flex items-center gap-2">
-                <Badge variant="secondary">{achievements.length} total</Badge>
-                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-              </span>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="grid gap-2 border-t p-3 sm:grid-cols-2">
-              {achievements.map((item) => (
-                <Item key={item.id} className="block px-3 py-2 text-sm">
-                  <p className="line-clamp-1 font-medium">{achievementTitle(item)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.metricValue ?? "Achievement"} · {item.context ?? "Verified activity"}
-                  </p>
-                  <ActivityActions item={item} showCommentThread={false} />
-                </Item>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        ) : null}
-
-        <Collapsible className="rounded-lg border bg-muted/45">
-          <CollapsibleTrigger
-            type="button"
-            className={buttonVariants({
-              variant: "ghost",
-              className: "group w-full min-h-12 justify-between rounded-lg px-3",
-            })}
-          >
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <MoreHorizontal className="size-4 text-muted-foreground" />
-              Individual cards
-            </span>
-            <span className="flex items-center gap-2">
-              <Badge variant="outline">{group.items.length} posts</Badge>
-              <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-            </span>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="grid gap-3 border-t p-3">
-            {group.items.map((item) => (
-              <FeedDigestItemRow key={item.id} item={item} />
-            ))}
-          </CollapsibleContent>
-        </Collapsible>
-
-        <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link href={`/api/share-cards/feed/${firstItem.id}`} target="_blank" prefetch={false}>
-              <Share2 className="size-4" />
-              Share latest
-            </Link>
-          </Button>
-          {firstItem.viewerCanManage ? <ReelExportButton feedItemId={firstItem.id} /> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function FeedItemCard({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
-  return (
-    <Card
-      role="article"
-      className="premium-card transition hover:border-emerald-200"
-      data-feed-item-id={item.id}
-    >
-      <CardContent className={compact ? "grid gap-3" : "grid gap-4"}>
-        <FeedItemContent item={item} compact={compact} />
-      </CardContent>
-    </Card>
-  );
-}
-
-function FeedDigestItemRow({ item }: { item: FeedItemView }) {
-  return (
-    <Item
-      role="article"
-      variant="outline"
-      className="block p-3"
-      data-feed-item-id={item.id}
-      data-feed-digest-item-row
-    >
-      <div className="grid gap-4">
-        <FeedItemContent item={item} />
-      </div>
-    </Item>
-  );
-}
-
-function FeedItemContent({ item, compact = false }: { item: FeedItemView; compact?: boolean }) {
-  return (
-    <>
-      <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-3">
-        <SocialAvatar
-          displayName={item.profile.displayName}
-          username={item.profile.username}
-          avatarUrl={item.profile.avatarUrl}
-          href={`/profile/${item.profile.username}`}
-          size={compact ? "sm" : "md"}
-        />
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <Link
-              href={`/profile/${item.profile.username}`}
-              prefetch={false}
-              className="truncate text-sm font-semibold hover:underline"
-            >
-              {item.profile.displayName}
-            </Link>
-            <span className="text-xs text-muted-foreground">@{item.profile.username}</span>
-            <span className="text-xs text-muted-foreground">
-              {dateFormatter.format(item.createdAt)}
-            </span>
-          </div>
-          <h2
-            className={
-              compact
-                ? "mt-1 text-sm font-medium leading-5"
-                : "mt-1 text-lg font-semibold leading-6"
-            }
-          >
-            {item.headline}
-          </h2>
-        </div>
-        <Badge variant="outline" className="h-fit gap-1">
-          <VisibilityIcon visibility={item.visibility} />
-          {titleCase(item.visibility)}
-        </Badge>
-      </header>
-
-      <div className="grid gap-3">
-        {item.metricValue ? (
-          <Item variant="muted" className="block p-3">
-            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-              <BarChart3 className="size-3.5" />
-              {item.metricLabel ?? "Metric"}
-            </p>
-            <p className="text-3xl font-semibold tracking-normal text-foreground">
-              {item.metricValue}
-            </p>
-          </Item>
-        ) : null}
-        {!compact && isPbFeedType(item.itemType) ? (
-          <PageArtwork
-            variant="feedPb"
-            alt=""
-            className="block h-24 min-h-0 md:h-28"
-            sizes="(min-width: 768px) 680px, 100vw"
-          />
-        ) : null}
-        {item.context ? (
-          <p className="text-sm leading-6 text-muted-foreground">{item.context}</p>
-        ) : null}
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="gap-1">
-            <ShieldCheck className="size-3" />
-            {item.verificationLabel}
-          </Badge>
-          <Badge variant="outline">{feedTypeLabel(item.itemType)}</Badge>
-        </div>
-      </div>
-
-      <div className="grid gap-3 border-t border-border pt-3">
-        <ButtonGroup className="flex-wrap">
-          <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
-            <input type="hidden" name="feedItemId" value={item.id} />
-            <Button type="submit" variant={item.viewerReacted ? "default" : "ghost"} size="sm">
-              <ThumbsUp className="size-4" />
-              Kudos {item.reactionCount > 0 ? item.reactionCount : ""}
-            </Button>
-          </form>
-          {!compact ? (
-            <Button variant="ghost" size="sm" type="button">
-              <MessageCircle className="size-4" />
-              Comments {item.commentCount > 0 ? item.commentCount : ""}
-            </Button>
-          ) : null}
-          <Button asChild variant="ghost" size="sm">
-            <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
-              <Share2 className="size-4" />
-              Share card
-            </Link>
-          </Button>
-          <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
-          {item.viewerCanManage ? <ReelExportButton feedItemId={item.id} /> : null}
-          {item.proofUrl ? (
-            <Button asChild variant="ghost" size="sm">
-              <Link href={item.proofUrl} prefetch={false}>
-                Open related
-              </Link>
-            </Button>
-          ) : null}
-        </ButtonGroup>
-
-        {!compact ? (
-          <>
-            {item.comments.length > 0 ? (
-              <div className="grid gap-2">
-                {item.comments.map((comment) => (
-                  <CommentCard key={comment.id} comment={comment} />
-                ))}
-              </div>
-            ) : null}
-            <form action={addFeedCommentAction}>
-              <input type="hidden" name="feedItemId" value={item.id} />
-              <InputGroup className="h-auto min-h-10 bg-card">
-                <InputGroupTextarea name="body" placeholder="Write a comment" rows={2} />
-                <InputGroupAddon align="block-end" className="justify-end border-t">
-                  <InputGroupButton type="submit" variant="outline" size="sm">
-                    <MessageCircle className="size-4" />
-                    Post
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-            </form>
-          </>
-        ) : null}
-        <FeedItemControls
-          feedItemId={item.id}
-          visibility={item.visibility}
-          isOwnItem={item.profile.relationship === "self"}
-          compact={compact}
-        />
-      </div>
-    </>
-  );
-}
-
-function HighlightRow({ item, showProfile }: { item: FeedItemView; showProfile: boolean }) {
-  return (
-    <Item className="block px-3 py-2 text-sm">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-        <div className="min-w-0">
-          <p className="line-clamp-2 font-medium">
-            {showProfile ? `${item.profile.displayName}: ` : ""}
-            {item.headline}
-          </p>
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {item.metricValue
-              ? `${item.metricLabel ?? "Metric"} ${item.metricValue}`
-              : feedTypeLabel(item.itemType)}
-            {item.context ? ` · ${item.context}` : ""}
-          </p>
-        </div>
-      </div>
-      <ActivityActions item={item} showCommentThread={false} />
-    </Item>
-  );
-}
-
-function DigestComments({ items }: { items: FeedItemView[] }) {
-  const commentedItems = items.filter((item) => item.comments.length > 0);
-  const commentCount = commentedItems.reduce((total, item) => total + item.comments.length, 0);
-
-  if (commentedItems.length === 0) {
-    return null;
-  }
-
-  return (
-    <Item variant="muted" className="block p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="flex items-center gap-2 text-sm font-semibold">
-          <MessageCircle className="size-4 text-primary" />
-          Comments
-        </p>
-        <Badge variant="secondary">{commentCount} total</Badge>
-      </div>
-      <div className="mt-3 grid gap-3">
-        {commentedItems.map((item) => (
-          <Item key={item.id} variant="outline" className="block p-3">
-            <p className="line-clamp-2 text-sm font-medium">{item.headline}</p>
-            <div className="mt-2 grid gap-2">
-              {item.comments.map((comment) => (
-                <CommentCard key={comment.id} comment={comment} />
-              ))}
-            </div>
-            <form action={addFeedCommentAction} className="mt-2">
-              <input type="hidden" name="feedItemId" value={item.id} />
-              <InputGroup className="h-auto min-h-10 bg-card">
-                <InputGroupTextarea name="body" placeholder="Write a comment" rows={2} />
-                <InputGroupAddon align="block-end" className="justify-end border-t">
-                  <InputGroupButton type="submit" variant="outline" size="sm">
-                    <MessageCircle className="size-4" />
-                    Post
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-            </form>
-          </Item>
-        ))}
-      </div>
-    </Item>
-  );
-}
-
-function CommentCard({
-  comment,
-  compact = false,
+function ActivityFact({
+  label,
+  value,
+  strong = false,
+  borderless = false,
+  className,
 }: {
-  comment: FeedItemView["comments"][number];
-  compact?: boolean;
+  label: string;
+  value: string;
+  strong?: boolean;
+  borderless?: boolean;
+  className?: string;
 }) {
   return (
-    <Item
-      variant="outline"
-      className={`grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-card ${compact ? "px-2 py-1.5 text-xs" : "px-3 py-2 text-sm"}`}
+    <div
+      className={cn(
+        "min-w-0 px-3 py-2.5",
+        !borderless && "sm:border-l first:sm:border-l-0",
+        className,
+      )}
     >
-      <SocialAvatar
-        displayName={comment.profile.displayName}
-        username={comment.profile.username}
-        avatarUrl={comment.profile.avatarUrl}
-        href={`/profile/${comment.profile.username}`}
-        size="sm"
-      />
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="font-medium">{comment.profile.displayName}</p>
-          <form
-            action={
-              comment.viewerLiked ? removeFeedCommentReactionAction : addFeedCommentReactionAction
-            }
-          >
-            <input type="hidden" name="commentId" value={comment.id} />
-            <Button type="submit" variant={comment.viewerLiked ? "secondary" : "ghost"} size="xs">
-              <ThumbsUp className="size-3" />
-              Like {comment.likeCount > 0 ? comment.likeCount : ""}
-            </Button>
-          </form>
-          {comment.viewerCanDelete ? (
-            <form action={deleteFeedCommentAction}>
-              <input type="hidden" name="commentId" value={comment.id} />
-              <ConfirmSubmitButton
-                confirmMessage="Delete this feed comment? This removes it from the conversation."
-                variant="destructive"
-                size="xs"
-              >
-                Delete
-              </ConfirmSubmitButton>
-            </form>
-          ) : null}
-        </div>
-        <p className="mt-0.5 text-muted-foreground">{comment.body}</p>
-      </div>
-    </Item>
+      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p className={cn("mt-1 truncate text-sm font-medium", strong && "text-xl tabular-nums")}>
+        {value}
+      </p>
+    </div>
   );
 }
 
-function ActivityActions({
-  item,
-  showCommentThread = true,
-}: {
-  item: FeedItemView;
-  showCommentThread?: boolean;
-}) {
+function DispersionThumbnail({ href }: { href: string | null }) {
+  const content = (
+    <div
+      className="relative h-16 overflow-hidden rounded-lg border bg-card"
+      aria-label="Dispersion thumbnail"
+    >
+      <span className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-primary/35" />
+      <span className="absolute left-1/2 top-1/2 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35" />
+      <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
+      <span className="absolute bottom-1.5 left-2 text-[0.62rem] font-medium text-muted-foreground">
+        Open session plot
+      </span>
+    </div>
+  );
+
+  return href ? (
+    <Link href={href} prefetch={false} className="focus-aaa rounded-lg">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: boolean }) {
   return (
-    <div className="mt-2 grid gap-2 border-t border-border pt-2">
-      <ButtonGroup className="flex-wrap">
+    <div className="mt-3 border-t pt-2">
+      <div className="flex flex-wrap items-center gap-1">
         <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
           <input type="hidden" name="feedItemId" value={item.id} />
-          <Button type="submit" variant={item.viewerReacted ? "default" : "ghost"} size="sm">
-            <ThumbsUp className="size-4" />
-            Kudos {item.reactionCount > 0 ? item.reactionCount : ""}
+          <Button type="submit" variant={item.viewerReacted ? "secondary" : "ghost"} size="xs">
+            <ThumbsUp className="size-3.5" />
+            Kudos{item.reactionCount > 0 ? ` ${item.reactionCount}` : ""}
           </Button>
         </form>
-        {showCommentThread ? (
-          <Collapsible defaultOpen={item.commentCount > 0} className="w-full sm:w-auto">
+
+        {!compact ? (
+          <Collapsible className="contents">
             <CollapsibleTrigger
               type="button"
-              className={buttonVariants({ variant: "ghost", size: "sm" })}
+              className={buttonVariants({ variant: "ghost", size: "xs" })}
             >
-              <MessageCircle className="size-4" />
-              Comments {item.commentCount > 0 ? item.commentCount : ""}
+              <MessageCircle className="size-3.5" />
+              Comments{item.commentCount > 0 ? ` ${item.commentCount}` : ""}
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 grid min-w-72 gap-2 rounded-lg border bg-muted/45 p-2">
+            <CollapsibleContent className="order-last mt-2 w-full rounded-lg border bg-muted/25 p-2.5">
               {item.comments.length > 0 ? (
-                <div className="grid gap-2">
+                <div className="mb-2 grid gap-2">
                   {item.comments.map((comment) => (
-                    <CommentCard key={comment.id} comment={comment} compact />
+                    <CommentRow key={comment.id} comment={comment} />
                   ))}
                 </div>
               ) : null}
               <form action={addFeedCommentAction}>
                 <input type="hidden" name="feedItemId" value={item.id} />
-                <InputGroup>
+                <InputGroup className="bg-card">
                   <InputGroupInput name="body" placeholder="Write a comment" />
                   <InputGroupAddon align="inline-end">
                     <InputGroupButton type="submit" variant="outline">
@@ -623,182 +457,176 @@ function ActivityActions({
             </CollapsibleContent>
           </Collapsible>
         ) : (
-          <span className="inline-flex h-7 items-center justify-center gap-1 rounded-lg px-2.5 text-[0.8rem] font-medium text-muted-foreground">
-            <MessageCircle className="size-4" />
-            Comments {item.commentCount > 0 ? item.commentCount : ""}
+          <span className="inline-flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground">
+            <MessageCircle className="size-3.5" />
+            {item.commentCount}
           </span>
         )}
-        <Button asChild variant="ghost" size="sm">
+
+        <Button asChild variant="ghost" size="xs">
           <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
-            <Share2 className="size-4" />
-            Share card
+            <Share2 className="size-3.5" />
+            Share
           </Link>
         </Button>
-        <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} />
-      </ButtonGroup>
-      <FeedItemControls
-        feedItemId={item.id}
-        visibility={item.visibility}
-        isOwnItem={item.profile.relationship === "self"}
-        compact
-      />
+        {!compact ? <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} /> : null}
+        {item.viewerCanManage ? <ReelExportButton feedItemId={item.id} /> : null}
+        {item.proofUrl && !isStatusImage(item.proofUrl) ? (
+          <Button asChild variant="ghost" size="xs" className="ml-auto">
+            <Link href={item.proofUrl} prefetch={false}>
+              Open activity
+            </Link>
+          </Button>
+        ) : null}
+      </div>
     </div>
+  );
+}
+
+function CommentRow({ comment }: { comment: FeedItemView["comments"][number] }) {
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-2 rounded-lg bg-card p-2 text-xs">
+      <SocialAvatar
+        displayName={comment.profile.displayName}
+        username={comment.profile.username}
+        avatarUrl={comment.profile.avatarUrl}
+        href={`/profile/${comment.profile.username}`}
+        size="sm"
+      />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-semibold">{comment.profile.displayName}</span>
+          <form
+            action={
+              comment.viewerLiked ? removeFeedCommentReactionAction : addFeedCommentReactionAction
+            }
+          >
+            <input type="hidden" name="commentId" value={comment.id} />
+            <Button type="submit" variant={comment.viewerLiked ? "secondary" : "ghost"} size="xs">
+              <ThumbsUp className="size-3" />
+              {comment.likeCount > 0 ? comment.likeCount : "Like"}
+            </Button>
+          </form>
+          {comment.viewerCanDelete ? (
+            <form action={deleteFeedCommentAction}>
+              <input type="hidden" name="commentId" value={comment.id} />
+              <ConfirmSubmitButton
+                confirmMessage="Delete this feed comment? This removes it from the conversation."
+                variant="ghost"
+                size="xs"
+              >
+                Delete
+              </ConfirmSubmitButton>
+            </form>
+          ) : null}
+        </div>
+        <p className="mt-0.5 leading-5 text-muted-foreground">{comment.body}</p>
+      </div>
+    </div>
+  );
+}
+
+function ActivityLabel({ kind }: { kind: ActivityKind }) {
+  const config = activityLabelConfig[kind];
+  const Icon = config.icon;
+
+  return (
+    <Badge variant="secondary" className="h-5 gap-1 rounded-md px-1.5 text-[0.68rem]">
+      <Icon className="size-3" aria-hidden />
+      {config.label}
+    </Badge>
+  );
+}
+
+const activityLabelConfig = {
+  round: { label: "Round", icon: Flag },
+  practice: { label: "Practice", icon: Target },
+  pb: { label: "PB", icon: Sparkles },
+  achievement: { label: "Achievement", icon: Award },
+  challenge: { label: "Challenge", icon: Trophy },
+  "course-record": { label: "Course record", icon: Medal },
+  goal: { label: "Goal", icon: Goal },
+  status: { label: "Status update", icon: CircleDot },
+} satisfies Record<ActivityKind, { label: string; icon: typeof Award }>;
+
+function VerificationLabel({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[0.7rem] font-medium text-muted-foreground">
+      <ShieldCheck className="size-3" aria-hidden />
+      {label}
+    </span>
   );
 }
 
 function VisibilityIcon({ visibility }: { visibility: FeedItemView["visibility"] }) {
   if (visibility === "public") {
-    return <Globe2 className="size-3" />;
+    return <Globe2 className="size-3" aria-hidden />;
   }
 
   if (visibility === "friends") {
-    return <Users className="size-3" />;
+    return <Users className="size-3" aria-hidden />;
   }
 
-  return <Lock className="size-3" />;
+  return <Lock className="size-3" aria-hidden />;
+}
+
+function activityKind(itemType: string): ActivityKind {
+  if (itemType.includes("round") || itemType === "post_round_recap") return "round";
+  if (itemType.includes("practice") || itemType === "session_roast") return "practice";
+  if (["new_pb", "longest_drive", "weekly_pb"].includes(itemType)) return "pb";
+  if (itemType === "achievement_unlock" || itemType === "level_up") return "achievement";
+  if (
+    itemType.startsWith("challenge_") ||
+    itemType.startsWith("tournament_") ||
+    itemType === "rivalry_win" ||
+    itemType === "squad_streak"
+  ) {
+    return "challenge";
+  }
+  if (itemType.startsWith("course_record")) return "course-record";
+  if (itemType.startsWith("goal_")) return "goal";
+  return "status";
+}
+
+function groupItemsByDay(items: FeedItemView[]) {
+  const groups = new Map<string, FeedItemView[]>();
+
+  for (const item of [...items].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())) {
+    const key = dayKeyFormatter.format(item.createdAt);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+
+  return [...groups.entries()].map(([key, groupItems]) => ({
+    key,
+    label: dayFormatter.format(groupItems[0]?.createdAt ?? new Date()),
+    items: groupItems,
+  }));
+}
+
+function roundHighlight(item: FeedItemView) {
+  const context = item.context?.trim();
+  const course = item.metricLabel?.trim();
+
+  if (!context || context === course) return "Round logged";
+  return context;
+}
+
+function pbClub(item: FeedItemView) {
+  if (item.itemType === "longest_drive") return item.metricLabel ?? "Driver";
+
+  const match = item.headline.match(/new\s+(.+?)\s+PB/i);
+  return match?.[1] ?? "Club best";
+}
+
+function achievementTitle(item: FeedItemView) {
+  const match = item.headline.match(/unlocked\s+[“\"](.+?)[”\"]/i);
+  return match?.[1] ?? item.headline;
+}
+
+function isStatusImage(value: string | null): value is string {
+  return Boolean(value?.startsWith("data:image/"));
 }
 
 function titleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function feedTypeLabel(value: string) {
-  const labels: Record<string, string> = {
-    rivalry_win: "Rivalry Win",
-    squad_streak: "Squad Streak",
-    weekly_pb: "Weekly PB",
-  };
-
-  if (labels[value]) {
-    return labels[value];
-  }
-
-  return value
-    .split("_")
-    .map((part) => titleCase(part))
-    .join(" ");
-}
-
-function isPbFeedType(type: string) {
-  return type === "new_pb" || type === "longest_drive" || type === "weekly_pb";
-}
-
-type FeedDayGroup = {
-  key: string;
-  label: string;
-  items: FeedItemView[];
-  xpGained: number;
-  reactionCount: number;
-  commentCount: number;
-  typeSummaries: Array<{ type: string; label: string }>;
-};
-
-function groupItemsByDayAndUser(items: FeedItemView[]): FeedDayGroup[] {
-  const grouped = new Map<string, FeedItemView[]>();
-
-  for (const item of items) {
-    const key = `${dayKeyFormatter.format(item.createdAt)}:${item.userId}`;
-    grouped.set(key, [...(grouped.get(key) ?? []), item]);
-  }
-
-  return [...grouped.entries()]
-    .map(([key, groupItems]) => {
-      const sortedItems = [...groupItems].sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-      );
-      const firstItem = sortedItems[0];
-
-      return {
-        key,
-        label: firstItem ? dayFormatter.format(firstItem.createdAt) : key,
-        items: sortedItems,
-        xpGained: sortedItems.reduce((total, item) => total + xpFromFeedItem(item.metricValue), 0),
-        reactionCount: sortedItems.reduce((total, item) => total + item.reactionCount, 0),
-        commentCount: sortedItems.reduce((total, item) => total + item.commentCount, 0),
-        typeSummaries: summarizeItemTypes(sortedItems),
-      };
-    })
-    .sort(
-      (left, right) =>
-        (right.items[0]?.createdAt.getTime() ?? 0) - (left.items[0]?.createdAt.getTime() ?? 0),
-    );
-}
-
-function summarizeItemTypes(items: FeedItemView[]) {
-  const counts = new Map<string, number>();
-
-  for (const item of items) {
-    counts.set(item.itemType, (counts.get(item.itemType) ?? 0) + 1);
-  }
-
-  return [...counts.entries()]
-    .sort((left, right) => right[1] - left[1])
-    .map(([type, count]) => ({
-      type,
-      label: `${numberFormatter.format(count)} ${pluralFeedTypeLabel(type, count)}`,
-    }));
-}
-
-function pluralFeedTypeLabel(type: string, count: number) {
-  const labels: Record<string, [string, string]> = {
-    achievement_unlock: ["achievement", "achievements"],
-    challenge_completed: ["challenge completion", "challenge completions"],
-    challenge_joined: ["challenge join", "challenge joins"],
-    challenge_won: ["challenge win", "challenge wins"],
-    course_record_set: ["course record", "course records"],
-    course_record_beaten: ["record beat", "record beats"],
-    course_record_defended: ["record defence", "record defences"],
-    import_summary: ["import", "imports"],
-    level_up: ["level up", "level ups"],
-    longest_drive: ["longest drive", "longest drives"],
-    new_pb: ["PB", "PBs"],
-    rivalry_win: ["rivalry win", "rivalry wins"],
-    round_completed: ["round", "rounds"],
-    squad_streak: ["squad streak", "squad streaks"],
-    tournament_created: ["tournament", "tournaments"],
-    tournament_joined: ["tournament entry", "tournament entries"],
-    tournament_round_submitted: ["tournament round", "tournament rounds"],
-    weekly_pb: ["weekly PB", "weekly PBs"],
-  };
-  const fallback = feedTypeLabel(type).toLowerCase();
-  const [single, plural] = labels[type] ?? [fallback, `${fallback}s`];
-
-  return count === 1 ? single : plural;
-}
-
-function xpFromFeedItem(metricValue: string | null) {
-  const match = metricValue?.replace(/,/g, "").match(/^\+?(\d+(?:\.\d+)?)\s*XP$/i);
-  return match ? Math.round(Number(match[1])) : 0;
-}
-
-function groupedVisibility(items: FeedItemView[]) {
-  const firstVisibility = items[0]?.visibility ?? "private";
-
-  return items.every((item) => item.visibility === firstVisibility) ? firstVisibility : "mixed";
-}
-
-function digestHeadline(group: FeedDayGroup, achievementCount: number) {
-  if (achievementCount > 0 && group.xpGained > 0) {
-    return `${numberFormatter.format(achievementCount)} ${achievementNoun(achievementCount)} and ${numberFormatter.format(group.xpGained)} XP gained`;
-  }
-
-  if (achievementCount > 0) {
-    return `${numberFormatter.format(achievementCount)} ${achievementNoun(achievementCount)} unlocked`;
-  }
-
-  if (group.xpGained > 0) {
-    return `${numberFormatter.format(group.xpGained)} XP gained`;
-  }
-
-  return `${group.label} golf activity`;
-}
-
-function achievementTitle(item: FeedItemView) {
-  const match = item.headline.match(/unlocked\s+"(.+)"$/i);
-
-  return match?.[1] ?? item.headline;
-}
-
-function achievementNoun(count: number) {
-  return count === 1 ? "achievement" : "achievements";
 }

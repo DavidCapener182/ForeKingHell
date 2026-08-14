@@ -1,0 +1,14 @@
+.desktopRanges,
+.desktopHistory {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .desktopRanges {
+    display: block;
+  }
+
+  .desktopHistory {
+    display: contents;
+  }
+}

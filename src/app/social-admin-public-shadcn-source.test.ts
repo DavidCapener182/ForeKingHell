@@ -77,7 +77,7 @@ describe("social, account, admin and public shadcn pass", () => {
     for (const route of desktopOnlySocialRoutes) {
       const source = read(route);
 
-      expect(source, route).toContain("DesktopWorkbenchLayout");
+      expect(source, route).toContain("PageShell");
       expect(source, route).not.toContain("getRequestAppSurface");
       expect(source, route).not.toContain('surface === "companion"');
       expect(source, route).not.toMatch(
@@ -211,16 +211,17 @@ describe("social, account, admin and public shadcn pass", () => {
     }
   });
 
-  it("uses shadcn Items for feed insets instead of hand-built nested card shells", () => {
+  it("uses one chronological shadcn Card timeline instead of nested feed cards", () => {
     const feedCards = read("src/components/social/feed-card-list.tsx");
     const feedComposer = read("src/app/feed/status-update-composer.tsx");
     const feedFilters = read("src/app/feed/feed-filter-controls.tsx");
     const friends = read("src/app/(app)/friends/page.tsx");
 
-    expect(feedCards).toContain('import { Item } from "@/components/ui/item"');
-    expect(feedCards).toContain('<Item variant="muted" className="block p-3">');
-    expect(feedCards).toMatch(/<Item key=\{item\.id\} variant="outline" className="block p-3">/);
-    expect(feedCards).not.toMatch(/rounded-xl border bg-(?:card|background|muted\/35) p-/);
+    expect(feedCards).toContain("data-feed-activity-timeline");
+    expect(feedCards).toContain("data-feed-item-id={item.id}");
+    expect(feedCards).toContain("groupItemsByDay(items)");
+    expect(feedCards).toContain("<FeedActivityRow key={item.id} item={item} />");
+    expect(feedCards).not.toContain("<Item");
     expect(feedComposer).toContain("<Sheet>");
     expect(feedComposer).toContain("<Card");
     expect(feedComposer).toContain("<Alert");
@@ -239,14 +240,14 @@ describe("social, account, admin and public shadcn pass", () => {
     const profile = read("src/app/(app)/profile/page.tsx");
 
     expect(friends).toContain("<FriendsTabs");
-    expect(friends).toContain("<FriendGraphTable");
+    expect(friends).toContain("<PeopleDirectory");
     expect(friends).not.toContain("CompareWithFriendPanel");
     expect(friends).not.toContain("ProfileList");
     expect(friends).not.toContain("RequestList");
     expect(friends).not.toContain("BlockedList");
 
     expect(groups).toContain(
-      '<GroupSectionTabs activeSection={activeSection} baseHref="/groups" />',
+      "<GroupDirectoryTabs activeTab={activeTab} inviteCount={data.invites.length} />",
     );
     expect(groups).not.toContain("GroupBoardFilterTabs");
     expect(groups).not.toContain("function GroupGrid");
@@ -259,27 +260,29 @@ describe("social, account, admin and public shadcn pass", () => {
     expect(profile).not.toContain("<ProfileFeaturePanel");
     expect(profile).not.toContain("getProgressData");
     expect(profile).not.toContain("getFeatureIdeasData");
-    expect(profile).toContain(
-      "await Promise.all([getChallengesPageData(), getProfileHonoursData(profile.userId)])",
-    );
-    expect(profile).toContain('title="Golf workspaces"');
+    expect(profile).toContain("getAchievementPageData(profile.userId)");
+    expect(profile).toContain("getProfileHonoursData(profile.userId)");
+    expect(profile).toContain("getProfilePageData(profile.username)");
+    expect(profile).toContain("<ProfileSectionTabs");
+    expect(profile).not.toContain("Your golf workspaces");
   });
 
   it("gates destructive social and account server actions with shadcn AlertDialogs", () => {
-    const friends = read("src/app/(app)/friends/page.tsx");
+    const friendMenu = read("src/app/friends/friend-action-menu.tsx");
     const feedCards = read("src/components/social/feed-card-list.tsx");
     const feedControls = read("src/components/social/feed-item-controls.tsx");
     const profile = read("src/app/(app)/profile/[username]/page.tsx");
     const settings = read("src/app/(app)/settings/page.tsx");
 
-    for (const actionName of ["declineFriendRequestAction", "cancelFriendRequestAction"]) {
-      expectServerActionFormsToConfirm(friends, actionName);
+    for (const actionName of [
+      "declineFriendRequestAction",
+      "cancelFriendRequestAction",
+      "removeFriendAction",
+    ]) {
+      expect(friendMenu).toContain(actionName);
     }
-
-    const friendMenu = read("src/app/friends/friend-action-menu.tsx");
-    for (const actionName of ["removeFriendAction", "blockUserAction"]) {
-      expectServerActionFormsToConfirm(friendMenu, actionName);
-    }
+    expect(friendMenu).toContain("<AlertDialog");
+    expect(friendMenu).toContain("<AlertDialogAction");
 
     expectServerActionFormsToConfirm(feedCards, "deleteFeedCommentAction");
     expectServerActionFormsToConfirm(feedControls, "deleteFeedItemAction");
@@ -300,14 +303,14 @@ describe("social, account, admin and public shadcn pass", () => {
 
   it("keeps non-destructive form submissions direct", () => {
     const feedCards = read("src/components/social/feed-card-list.tsx");
-    const friends = read("src/app/(app)/friends/page.tsx");
+    const friendMenu = read("src/app/friends/friend-action-menu.tsx");
     const groups = read("src/app/(app)/groups/page.tsx");
 
     expect(feedCards).toContain("addFeedReactionAction");
     expect(feedCards).toContain("addFeedCommentAction");
-    expect(friends).toContain("acceptFriendRequestAction");
-    expect(friends).toContain("sendFriendRequestAction");
-    expect(friends).toContain("unblockUserAction");
+    expect(friendMenu).toContain("acceptFriendRequestAction");
+    expect(friendMenu).toContain("sendFriendRequestAction");
+    expect(friendMenu).toContain("unblockUserAction");
     expect(groups).toContain("joinGroupAction");
   });
 

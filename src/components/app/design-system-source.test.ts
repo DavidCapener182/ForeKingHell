@@ -76,10 +76,7 @@ describe("composable analysis design primitives", () => {
   it("supports flat connected metrics inside an existing Card", () => {
     const metrics = source("src/components/app/connected-metric-bar.tsx");
     const nestedCallers = [
-      source("src/app/(app)/practice/practice-workbench-page.tsx"),
       source("src/app/(app)/goals/page.tsx"),
-      source("src/app/(app)/stats/training-over-time/page.tsx"),
-      source("src/app/(app)/courses/page.tsx"),
       source("src/app/(app)/providers/page.tsx"),
       source("src/app/rapsodo/rapsodo-sync-client.tsx"),
     ];

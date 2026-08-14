@@ -673,8 +673,9 @@ export async function unblockUser(blockedUserId: string) {
 export async function getFeedPageData() {
   const viewerUserId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(viewerUserId);
-  const [friendIds, publicProfileCount, totalXp, items] = await Promise.all([
+  const [friendIds, followingIds, publicProfileCount, totalXp, items] = await Promise.all([
     getFriendIds(viewerUserId),
+    getFollowingIds(viewerUserId),
     getDb()
       .select({ value: sql<number>`count(*)::int` })
       .from(userProfiles)
@@ -690,6 +691,8 @@ export async function getFeedPageData() {
 
   return {
     viewerUserId,
+    friendIds,
+    followingIds,
     profile: profileSummary(profile, "self"),
     friendCount: friendIds.length,
     publicProfileCount,

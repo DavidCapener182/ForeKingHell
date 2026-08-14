@@ -37,7 +37,7 @@ export function GroupCreateSheet({ groupTypes }: { groupTypes: readonly string[]
         <SheetHeader>
           <SheetTitle>Create a group</SheetTitle>
           <SheetDescription>
-            Start a private friend group, society, coach stable, or public launch-monitor league.
+            Start a home for your regular fourball, society, coaching squad, or simulator crew.
           </SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-6">
@@ -53,7 +53,7 @@ export function GroupCreateForm({ groupTypes }: { groupTypes: readonly string[] 
     <form action={createGroupAction} className="grid gap-4">
       <div className="grid gap-2">
         <Label htmlFor="group-name">Name</Label>
-        <Input id="group-name" name="name" placeholder="LM World Tour league" required />
+        <Input id="group-name" name="name" placeholder="Sunday morning crew" required />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="group-type">Type</Label>
@@ -91,7 +91,7 @@ export function GroupCreateForm({ groupTypes }: { groupTypes: readonly string[] 
           id="group-description"
           name="description"
           rows={4}
-          placeholder="What the group is for and who should join"
+          placeholder="Tell golfers what brings this crew together"
         />
       </div>
       <Button type="submit">

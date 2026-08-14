@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -7,62 +7,70 @@ const tabsSource = readFileSync(
   join(process.cwd(), "src/app/profile/profile-section-tabs.tsx"),
   "utf8",
 );
-const profileHeaderPath = join(process.cwd(), "src/app/profile/profile-header.tsx");
+const editSheetSource = readFileSync(
+  join(process.cwd(), "src/app/profile/profile-edit-sheet.tsx"),
+  "utf8",
+);
 
-describe("profile mobile real-data contract", () => {
-  it("does not invent a session count or draw fixed progress artwork", () => {
-    expect(source).not.toContain("trackedCleanShots / 120");
-    expect(source).not.toContain("#0B7A3B_0_18%");
-    expect(source).not.toContain("cleanShotPercentage");
-    expect(source).not.toContain('aria-label="Clean shot coverage"');
-  });
-
-  it("removes mini workspaces from companion profile and keeps focused controls", () => {
-    const controls = source.indexOf('title="Profile controls"');
-
-    expect(controls).toBeGreaterThan(0);
-    expect(source).not.toContain("<MobileTabBar");
-    expect(source).not.toContain("<PBCard");
-    expect(source).not.toContain("<ProgressCard");
-    expect(source).not.toContain("<DataHealthFeaturePanel");
-    expect(source).not.toContain("<ProfileFeaturePanel");
-    expect(source).not.toContain("getProgressData");
-    expect(source).not.toContain("getFeatureIdeasData");
-    expect(source).toContain('title="Golf workspaces"');
-    expect(source).toContain('href="/progress"');
-    expect(source).toContain('href="/bag"');
-    expect(source).toContain('href="/goals"');
-    expect(source).not.toContain('title="Season plan"');
-    expect(source).not.toContain('title="Bag"');
-    expect(source).not.toContain('title="Activity"');
-    expect(source).not.toContain('title="This week"');
-    expect(source).toContain('value: "sharing"');
-    expect(source).not.toContain('value: "data-health"');
-    expect(source).toContain("IOSDisclosureGroup");
-  });
-
-  it("loads challenge and honours evidence only for the desktop workbench", () => {
-    expect(source).toContain('surface === "workbench"');
+describe("profile golf identity contract", () => {
+  it("keeps the page identity-first on both app surfaces", () => {
+    expect(source).toContain("data-profile-identity-page");
+    expect(source).toContain("<ProfileIdentityHero");
+    expect(source).toContain('aria-label="Golf identity"');
+    expect(source).toContain("<MobileAppShell>{experience}</MobileAppShell>");
     expect(source).toContain(
-      "await Promise.all([getChallengesPageData(), getProfileHonoursData(profile.userId)])",
+      '<DesktopWorkbenchLayout scope="profile">{experience}</DesktopWorkbenchLayout>',
     );
-    expect(source).toContain("DesktopWorkbenchLayout && challenges && honours");
-    expect(source).not.toContain('className="hidden lg:contents"');
+    expect(source).toContain("profile.headerImageUrl");
+    expect(source).toContain("profile.avatarUrl");
   });
 
-  it("composes the identity surface directly from Card primitives", () => {
-    expect(source).not.toContain("ProfileHeader");
-    expect(source).toContain('<Card className="gap-0 overflow-hidden">');
-    expect(source).toContain('<CardContent className="grid gap-4 p-5 pt-1">');
-    expect(existsSync(profileHeaderPath)).toBe(false);
+  it("uses exactly the requested profile tabs", () => {
+    for (const [value, label] of [
+      ["overview", "Overview"],
+      ["achievements", "Achievements"],
+      ["records", "Records"],
+      ["sharing", "Sharing"],
+    ]) {
+      expect(tabsSource).toContain(`{ value: "${value}", label: "${label}" }`);
+      expect(tabsSource).toContain(`<TabsContent value="${value}"`);
+    }
+
+    expect(tabsSource).not.toContain("workspaces");
   });
 
-  it("labels and targets the profile workspace section consistently", () => {
-    expect(tabsSource).toContain('{ value: "workspaces", label: "Workspaces" }');
-    expect(tabsSource).toContain('hash === "workspaces"');
-    expect(tabsSource).not.toContain('value: "achievements"');
-    expect(tabsSource).not.toContain('hash === "achievements"');
-    expect(source).toContain('<Card id="workspaces" className="scroll-mt-28">');
-    expect(source).not.toContain('id="achievements"');
+  it("keeps overview concise and avoids embedded Bag, Progress, and Goals dashboards", () => {
+    expect(source).toContain("Short golf profile");
+    expect(source).toContain("Recent highlight");
+    expect(source).toContain("Current handicap");
+    expect(source).toContain("Favourite / home course");
+    expect(source).toContain("Launch monitor");
+    expect(source).toContain("Recent meaningful activity");
+    expect(source).not.toContain("Your golf workspaces");
+    expect(source).not.toContain('href="/progress"');
+    expect(source).not.toContain('href="/bag"');
+    expect(source).not.toContain('href="/goals"');
+  });
+
+  it("uses real achievements, course records, PBs, and self-visible activity", () => {
+    expect(source).toContain("getAchievementPageData(profile.userId)");
+    expect(source).toContain("getProfileHonoursData(profile.userId)");
+    expect(source).toContain("getProfilePageData(profile.username)");
+    expect(source).toContain("selectProfileAchievements(achievements.achievements)");
+    expect(source).toContain("records={honours.records}");
+    expect(source).toContain("launchRecords={profile.pbShowcaseJson}");
+    expect(source).not.toContain("trackedCleanShots / 120");
+    expect(source).not.toContain("cleanShotPercentage");
+  });
+
+  it("keeps visibility, QR, coach scope, friend scope, and editing in a sheet", () => {
+    expect(source).toContain("Profile visibility");
+    expect(source).toContain("Coach sharing");
+    expect(source).toContain("Friend scope");
+    expect(source).toContain("Share link");
+    expect(source).toContain("src={`/friends/qr/${profile.username}`}");
+    expect(source).toContain("<ProfileEditSheet>");
+    expect(editSheetSource).toContain("<Sheet>");
+    expect(editSheetSource).toContain("Edit profile");
   });
 });

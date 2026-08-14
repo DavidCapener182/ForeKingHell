@@ -44,14 +44,6 @@ describe("ordinary workbench card composition", () => {
       ranges: [['id="board"', "<ChallengeCommandTables"]],
     },
     {
-      route: "tournament hub",
-      source: read("src/app/(app)/tournaments/page.tsx"),
-      ranges: [
-        ["Rotation rules", "</DesktopWorkbenchLayout>"],
-        ["async function TournamentHubEventTable", "function TournamentHubFilterTabs"],
-      ],
-    },
-    {
       route: "course record detail",
       source: read("src/app/(app)/course-records/[recordId]/page.tsx"),
       ranges: [["<DesktopWorkbenchLayout", "type CourseRecordLeaderboardRow"]],
@@ -72,7 +64,10 @@ describe("ordinary workbench card composition", () => {
     {
       route: "challenge directory",
       source: read("src/app/(app)/challenges/page.tsx"),
-      ranges: [["{featured ? (", "<DataFirstFlowPanel"]],
+      ranges: [
+        ["function ActiveChallengeCard", "function ChallengeMetric"],
+        ["function AvailableChallengeTile", "function CompactFact"],
+      ],
     },
     {
       route: "provider sessions",
@@ -102,7 +97,10 @@ describe("ordinary workbench card composition", () => {
     {
       route: "tournament detail",
       source: read("src/app/(app)/tournaments/[tournamentId]/page.tsx"),
-      ranges: [['id="overview"', "</DesktopWorkbenchLayout>"]],
+      ranges: [
+        ['<section id="leaderboard"', '<section className="grid gap-4 lg:grid-cols-2">'],
+        ['<Card id="your-result"', "</DesktopWorkbenchLayout>"],
+      ],
     },
     {
       route: "course record directory",
@@ -117,7 +115,7 @@ describe("ordinary workbench card composition", () => {
     {
       route: "round review",
       source: read("src/app/(app)/rounds/[sessionId]/page.tsx"),
-      ranges: [["function ReviewAccordion", "function CurrentHoleCard"]],
+      ranges: [["function ReviewAccordion", "async function getRoundDetail"]],
     },
     {
       route: "new round review",
@@ -142,6 +140,14 @@ describe("ordinary workbench card composition", () => {
     );
 
     expect(block).toContain("<Card");
+    expect(block).not.toMatch(nativePremiumCardShell);
+  });
+
+  it("uses the shared table frame for the tournament event workbench", () => {
+    const source = read("src/app/(app)/tournaments/page.tsx");
+    const block = slice(source, "function TournamentEventTable", "function TournamentMobileList");
+
+    expect(block).toContain("<DataTableFrame");
     expect(block).not.toMatch(nativePremiumCardShell);
   });
 });

@@ -42,7 +42,7 @@ describe("challenge detail desktop route", () => {
     expect(source).not.toMatch(/<SheetTrigger\s+asChild>[\s\S]*?<Button/);
   });
 
-  it("keeps challenge detail pages as exportable command boards", () => {
+  it("keeps the leaderboard exportable and presents attempts as a timeline", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');
     expect(source).toContain("DesktopWorkbenchLayout");
@@ -52,22 +52,27 @@ describe("challenge detail desktop route", () => {
     expect(source).toContain('data-workbench-export-table="challenge-leaderboard"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table" stickyFirstColumn');
-    expect(source).toContain('data-workbench-scope="challenge-attempts"');
-    expect(source).toContain('data-workbench-export-table="challenge-attempts"');
-    expect(source).toContain('label="Challenge imported shot evidence table" stickyFirstColumn');
-    expect(source).toContain("Exportable leaderboard and imported-shot evidence");
+    expect(source).toContain('id="challenge-attempts"');
+    expect(source).toContain("data-challenge-attempt-timeline");
+    expect(source).toContain('label="Challenge attempt history"');
+    expect(source).toContain("challengeAttemptTimelineItem(row)");
+    expect(source).not.toContain('data-workbench-scope="challenge-attempts"');
+    expect(source).not.toContain('data-workbench-export-table="challenge-attempts"');
     expect(source).toContain("tabIndex={0}");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
 
-  it("keeps a complete mobile board and invite flow without linking to desktop anchors", () => {
+  it("keeps a complete mobile board, attempt timeline and invite flow", () => {
     expect(source).toContain("IOSDisclosureGroup");
     expect(source).toContain('label="Full challenge leaderboard"');
     expect(source).toContain("data.results.map");
     expect(source).toContain("ChallengeInviteSheet");
     expect(source).toContain('title="Invite to this challenge"');
+    expect(source).toContain('label: "Attempts"');
+    expect(source).toContain('title="Attempt timeline"');
+    expect(source).toContain('label="Challenge attempt timeline"');
     expect(source).not.toContain(
       '<DesktopWorkbenchLayout scope="challenge-detail" className="hidden',
     );

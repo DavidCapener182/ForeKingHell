@@ -42,9 +42,14 @@ export function FeedItemControls({
     <div className="flex flex-wrap items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size={compact ? "xs" : "sm"}>
+          <Button
+            type="button"
+            variant={compact ? "ghost" : "outline"}
+            size={compact ? "icon-xs" : "sm"}
+            aria-label="Activity actions"
+          >
             <MoreHorizontal className="size-4" />
-            Actions
+            {compact ? <span className="sr-only">Actions</span> : "Actions"}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-52">
@@ -147,20 +152,26 @@ export function FeedItemControls({
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
+          {isOwnItem ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <form action={deleteFeedItemAction} className="w-full">
+                  <input type="hidden" name="feedItemId" value={feedItemId} />
+                  <ConfirmSubmitButton
+                    confirmMessage="Delete this feed item? This removes it from the feed for everyone who can see it."
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto w-full justify-start rounded-none p-0 text-left font-normal text-destructive hover:bg-transparent hover:text-destructive focus-visible:ring-0"
+                  >
+                    <Trash2 className="size-4" /> Delete
+                  </ConfirmSubmitButton>
+                </form>
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
-      {isOwnItem ? (
-        <form action={deleteFeedItemAction}>
-          <input type="hidden" name="feedItemId" value={feedItemId} />
-          <ConfirmSubmitButton
-            confirmMessage="Delete this feed item? This removes it from the feed for everyone who can see it."
-            variant="destructive"
-            size={compact ? "xs" : "sm"}
-          >
-            <Trash2 className="size-4" /> Delete
-          </ConfirmSubmitButton>
-        </form>
-      ) : null}
     </div>
   );
 }

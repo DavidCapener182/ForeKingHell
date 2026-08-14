@@ -39,8 +39,8 @@ describe("confirm submit button", () => {
   });
 
   it("guards admin destructive actions with clear confirmation copy", () => {
-    expect(adminUsersSource).toContain("AdminConfirmSubmitButton");
     expect(adminUsersSource).toContain("<AdminUserActions");
+    expect(adminUserActionsSource).toContain("AdminConfirmSubmitButton");
     expect(adminUserActionsSource).toContain("<AlertDialog");
     expect(adminUserActionsSource).toContain("Deactivate admin");
     expect(adminUserActionsSource).toContain("writes an audit entry");

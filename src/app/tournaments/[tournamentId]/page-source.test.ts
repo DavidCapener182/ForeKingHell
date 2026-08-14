@@ -7,7 +7,7 @@ const source = readFileSync(
   "utf8",
 );
 
-describe("tournament detail theme semantics", () => {
+describe("active tournament event product", () => {
   it("selects one request surface before loading the desktop workbench", () => {
     const staticWorkbenchImport =
       source.match(
@@ -21,71 +21,60 @@ describe("tournament detail theme semantics", () => {
     expect(source).toContain('surface === "companion" ? (');
     expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
     expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
-    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
-    expect(source).not.toContain(
-      '<DesktopWorkbenchLayout scope="tournament-detail" className="hidden',
-    );
   });
 
-  it("uses semantic surfaces and status tokens for ordinary interface chrome", () => {
+  it("builds the desktop detail around the requested event hierarchy", () => {
+    expect(source).toContain('className="premium-hero overflow-hidden p-0"');
+    expect(source).toContain("Round progress");
+    expect(source).toContain("Leaderboard");
+    expect(source).toContain("Your current result");
+    expect(source).toContain("Submission status");
+    expect(source).toContain("TournamentRulesSheet");
+    expect(source.match(/<OperationStepper/g)).toHaveLength(2);
+  });
+
+  it("uses a proper event leaderboard table", () => {
+    expect(source).toContain("TournamentStandingsTable");
+    expect(source).toContain('mainTableLabel="Tournament leaderboard"');
+    expect(source).toContain("<TableCaption");
+    for (const label of ["Pos", "Player", "Thru", "Gross", "Net", "Points", "Status"]) {
+      expect(source).toContain(`>${label}<`);
+    }
+    expect(source).toContain('<Badge variant="secondary">You</Badge>');
+  });
+
+  it("puts rules in a Sheet and round submission in a Dialog", () => {
+    expect(source).toMatch(/<SheetTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
+    expect(source).toMatch(/<DialogTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
+    expect(source).toContain("<DialogTitle>Submit round {data.nextRoundNumber}</DialogTitle>");
+    expect(source).toContain("<SheetTitle>{data.tournament.title} rules</SheetTitle>");
+  });
+
+  it("does not offer entry or submission actions once an event is completed", () => {
+    expect(source).toContain('if (tournamentStatus(data.tournament) === "Completed")');
+    expect(source).toContain('data.viewerEntered ? "Open result" : "View result"');
+    expect(source).toContain("Submissions are closed");
+    expect(source).toContain("const eventCompleted");
+    expect(source).toContain('eventCompleted\n          ? ("upcoming" as const)');
+  });
+
+  it("delivers the mobile event, position, next round, action and leaderboard preview", () => {
+    expect(source).toContain('<MobileTopBar\n            title="Tournament"'.replace("\\n", "\n"));
+    expect(source).toContain('label="Your position"');
+    expect(source).toContain('<NativeListSection title="Next round">');
+    expect(source).toContain("<TournamentPrimaryAction");
+    expect(source).toContain('<NativeListSection title="Leaderboard preview">');
+    expect(source).toContain("visibleStandings.slice(0, 5)");
+    expect(source).toContain("LeaderboardSheet");
+  });
+
+  it("keeps semantic surfaces and the full-width layout contract", () => {
+    expect(source).toContain("<PageShell>");
     expect(source).toContain("bg-card");
     expect(source).toContain("bg-muted");
-    expect(source).toContain("var(--status-warning-surface)");
     expect(source).not.toMatch(
       /bg-white|bg-\[#|text-\[#|border-\[#|(?:bg|text|border)-(?:slate|green|emerald|amber|rose|sky)-\d+/,
     );
-  });
-
-  it("renders server-authored rules and submission triggers directly across RSC boundaries", () => {
-    expect(source).toContain('import { Button, buttonVariants } from "@/components/ui/button"');
-    expect(source).toMatch(/<SheetTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
-    expect(source).toMatch(/<DialogTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
-    expect(source).not.toMatch(/<(?:Sheet|Dialog)Trigger\s+asChild>[\s\S]*?<Button/);
-  });
-});
-
-describe("tournament detail desktop standings", () => {
-  it("keeps event standings table-first with saved views, column control and export", () => {
-    expect(source).toContain("<PageShell>");
-    expect(source).not.toContain('<PageShell size="7xl"');
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="tournament-detail"');
-    expect(source).toContain("TournamentStandingsTable");
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain('data-workbench-scope="tournament-standings"');
-    expect(source).toContain('exportTableId="tournament-standings"');
-    expect(source).toContain('data-workbench-export-table="tournament-standings"');
-    expect(source).toContain('mainTableLabel="Tournament standings table"');
-    expect(source).toContain('mainTableLabel="Tournament standings table" stickyFirstColumn');
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-
-    for (const column of [
-      "rank",
-      "player",
-      "gross",
-      "net",
-      "stableford",
-      "rounds",
-      "status",
-      "updated",
-      "action",
-    ]) {
-      expect(source).toContain(`data-column="${column}"`);
-    }
-
-    expect(source).not.toContain("DesktopInsightRail");
-    expect(source).not.toContain("rail={");
-  });
-});
-
-describe("tournament detail mobile standings", () => {
-  it("keeps the complete board available from the board tab", () => {
-    expect(source).toContain("MobileTournamentStandings");
-    expect(source).toContain("visibleStandings={visibleStandings}");
-    expect(source).not.toContain("viewAllHref={`/tournaments/${data.tournament.id}#standings`}");
-    expect(source).not.toContain(
-      '<DesktopWorkbenchLayout scope="tournament-detail" className="hidden',
-    );
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl)|max-w-\[1500px\]/);
   });
 });

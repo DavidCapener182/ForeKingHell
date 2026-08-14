@@ -28,76 +28,94 @@ function session(index: number): SessionTimelineItem {
     id: `session-${index}`,
     isRound: index % 3 === 0,
     title: `A deliberately long session name ${index} that should remain readable`,
+    dateGroup: index === 0 ? "Today" : index < 5 ? "This week" : "Earlier",
     dateLabel: `${String(index).padStart(2, "0")} Aug 2026`,
     shotCount: index + 20,
+    resultLabel: index % 3 === 0 ? `${72 + index} gross` : `${index + 20} shots`,
     sourceLabel: "Rapsodo",
     typeLabel: index % 3 === 0 ? "Round" : "Range",
     contextLabel: "Practice",
+    clubs: ["7i"],
+    clubsLabel: "7i",
     notes: null,
     equipmentNotes: index === 2 ? "Changed ball" : null,
     verdict: "Measured review ready",
+    mainImprovement: "A measured baseline is ready.",
+    mainIssue: "The typical miss finished right.",
     planLinked: index === 1,
     importedEvidence: index % 2 === 0 && index % 3 !== 0,
     roundScoreLabel: index % 3 === 0 ? `${72 + index} gross` : null,
     evidenceConfidence: "High",
+    points: [],
+    importantMetrics: [
+      { label: "Measured shots", value: String(index + 20) },
+      { label: "Average carry", value: "150 yd" },
+    ],
   };
 }
 
-describe("SessionTimeline mobile hierarchy", () => {
-  it("renders date-grouped status nodes with tabs and review actions", () => {
+describe("SessionTimeline golf history", () => {
+  it("renders date-grouped desktop rows, filters and a persistent review preview", () => {
     const markup = renderToStaticMarkup(
       <SessionTimeline sessions={Array.from({ length: 13 }, (_, index) => session(index))} />,
     );
 
     expect(markup).toContain("A deliberately long session name 0");
     expect(markup).toContain("A deliberately long session name 12");
-    expect(markup).toContain('data-status-timeline="true"');
-    expect(markup).toContain('data-timeline-kind="round"');
-    expect(markup).toContain('data-timeline-kind="practice"');
-    expect(markup).toContain('data-timeline-kind="import"');
+    expect(markup).toContain('data-sessions-history-workbench="true"');
+    expect(markup).toContain('data-selected-session-preview="true"');
+    expect(markup).toContain("Today");
+    expect(markup).toContain("This week");
+    expect(markup).toContain("Earlier");
     expect(markup).toContain("72 gross");
-    expect(markup).toContain("Review · High");
     expect(markup).toContain("All");
     expect(markup).toContain("Practice");
     expect(markup).toContain("Rounds");
-    expect(markup).toContain("Open review");
+    expect(markup).toContain("Source");
+    expect(markup).toContain("Club");
+    expect(markup).toContain("Date");
+    expect(markup).toContain("Open full review");
     expect(markup).toContain("Measured review ready");
-    expect(markup).toContain("Compare tray · 0/2 selected");
+    expect(markup).not.toContain('data-session-compare-tray="true"');
   });
 
-  it("keeps the selection tray deterministic when the route has no rows", () => {
+  it("keeps empty history deterministic without showing comparison UI", () => {
     const markup = renderToStaticMarkup(<SessionTimeline sessions={[]} />);
 
-    expect(markup).toContain("0 sessions and rounds");
-    expect(markup).toContain("Choose two sessions from the timeline.");
+    expect(markup).toContain("0 of 0");
+    expect(markup).toContain("No sessions match these filters");
+    expect(markup).not.toContain('data-session-compare-tray="true"');
   });
 
-  it("uses a searchable responsive master-detail workbench above the compare tray", () => {
-    expect(timelineSource).toContain("<DataToolbar");
+  it("uses a two-column master-detail workbench with compact evidence, charts and a sticky compare bar", () => {
     expect(timelineSource).toContain("data-session-master-detail");
-    expect(timelineSource).toContain("<ResponsiveDetailPanel");
-    expect(timelineSource).toContain("inlineAtUltrawide");
-    expect(timelineSource).toContain("<ConnectedMetricBar");
-    expect(timelineSource).toContain("Inspect");
+    expect(timelineSource).toContain("lg:grid-cols-");
+    expect(timelineSource).toContain("<PatternThumbnail");
+    expect(timelineSource).toContain("Main improvement");
+    expect(timelineSource).toContain("Main issue");
+    expect(timelineSource).toContain("Important metrics");
+    expect(timelineSource).toContain("<Sheet");
+    expect(timelineSource).toContain("<Item");
+    expect(timelineSource).toContain("<Skeleton");
     expect(timelineSource.indexOf("data-session-master-detail")).toBeLessThan(
       timelineSource.indexOf("data-session-compare-tray"),
     );
-    const detail =
-      timelineSource.match(/<ResponsiveDetailPanel[\s\S]*?<\/ResponsiveDetailPanel>/)?.[0] ?? "";
-    expect(detail).toContain("<Item");
-    expect(detail).toContain("embedded");
-    expect(detail).not.toContain("<Card");
+    expect(timelineSource).not.toContain("ConnectedMetricBar");
+    expect(timelineSource).not.toContain("ResponsiveDetailPanel");
   });
 
-  it("uses controlled ToggleGroups for filters without orphaned tab panels", () => {
-    expect(companionListSource).toContain("Recent sessions");
+  it("uses controlled Tabs for All, Practice and Rounds on both surfaces", () => {
+    expect(companionListSource).toContain("Your golf history");
     for (const filterSource of [timelineSource, companionListSource]) {
-      expect(filterSource).toContain("<ToggleGroup");
-      expect(filterSource).toContain('type="single"');
-      expect(filterSource).toContain("if (value) setFilter");
-      expect(filterSource).not.toContain("<Tabs");
-      expect(filterSource).not.toContain("TabsTrigger");
+      expect(filterSource).toContain("<Tabs");
+      expect(filterSource).toContain("<TabsList");
+      expect(filterSource).toContain('<TabsTrigger value="all">All</TabsTrigger>');
+      expect(filterSource).toContain('<TabsTrigger value="practice">Practice</TabsTrigger>');
+      expect(filterSource).toContain('<TabsTrigger value="round">Rounds</TabsTrigger>');
     }
+    expect(companionListSource).toContain("<StatusTimeline");
+    expect(companionListSource).toContain("featured: index === 0");
+    expect(companionListSource).not.toContain("Compare");
   });
 
   it("keeps score and import evidence honest and upgrades the companion review composition", () => {

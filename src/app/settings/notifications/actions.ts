@@ -26,7 +26,13 @@ export async function saveNotificationPreferencesAction(formData: FormData) {
   });
 
   await updateProductPreferences(userId, { notifications: parsed.notifications });
+  const returnToSettingsSection = formData.get("settingsReturnTo") === "section";
+  revalidatePath("/settings");
   revalidatePath("/settings/notifications");
   revalidatePath("/api/desktop-workbench/notifications");
-  redirect("/settings/notifications?saved=1");
+  redirect(
+    returnToSettingsSection
+      ? "/settings?section=notifications&saved=1"
+      : "/settings/notifications?saved=1",
+  );
 }

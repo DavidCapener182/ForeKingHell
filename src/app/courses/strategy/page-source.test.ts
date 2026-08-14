@@ -18,6 +18,14 @@ const mobileHoleSource = readFileSync(
   join(process.cwd(), "src/app/courses/strategy/mobile-hole-strategy.tsx"),
   "utf8",
 );
+const digitalBookSource = readFileSync(
+  join(process.cwd(), "src/app/courses/strategy/digital-caddie-book.tsx"),
+  "utf8",
+);
+const visualSource = readFileSync(
+  join(process.cwd(), "src/app/courses/strategy/hole-strategy-visual.tsx"),
+  "utf8",
+);
 
 describe("course strategy surface split", () => {
   it("loads the companion before the dashboard-backed workbench", () => {
@@ -29,23 +37,25 @@ describe("course strategy surface split", () => {
     expect(companionSource).toContain("courseTwinAvailable={courseTwinAvailable}");
     expect(companionSource).toContain("listAvailableCourseTwins(userId)");
     expect(companionSource).toContain("PlaySetupDrawer");
-    expect(companionSource).toContain("<StrategySummaryItem");
-    expect(companionSource).toContain("<Item");
+    expect(companionSource).toContain('title="Caddie Book"');
     expect(companionSource).not.toContain("IOSGroupedList");
     expect(companionSource).not.toContain("getDashboardData");
   });
 
-  it("uses carousel semantics, compact progress and explicit hole controls", () => {
-    expect(mobileHoleSource).toContain("<Carousel");
-    expect(mobileHoleSource).toContain("<CarouselContent");
-    expect(mobileHoleSource).toContain("<CarouselItem");
-    expect(mobileHoleSource).toContain("<CarouselPrevious");
-    expect(mobileHoleSource).toContain("<CarouselNext");
-    expect(mobileHoleSource).toContain("valueAsBadge");
-    expect(mobileHoleSource).toContain("<Progress");
-    expect(mobileHoleSource).toContain("Hole {strategy.holeNumber} of {strategies.length}");
+  it("renders one mobile hole with a prominent visual and fixed navigation", () => {
+    expect(mobileHoleSource).toContain("data-mobile-one-hole-strategy");
+    expect(mobileHoleSource).toContain("<HoleStrategyVisual");
+    expect(mobileHoleSource).toContain("Recommended play");
+    expect(mobileHoleSource).toContain('<MobileRow label="Club"');
+    expect(mobileHoleSource).toContain('<MobileRow label="Target"');
+    expect(mobileHoleSource).toContain('<MobileRow label="Carry"');
+    expect(mobileHoleSource).toContain('<MobileRow label="Miss"');
+    expect(mobileHoleSource).toContain('<MobileRow label="Hazard"');
+    expect(mobileHoleSource).toContain('<MobileRow label="Alternative"');
+    expect(mobileHoleSource).toContain("mobileFixedControls");
     expect(mobileHoleSource).toContain('aria-label="Previous hole"');
     expect(mobileHoleSource).toContain('aria-label="Next hole"');
+    expect(mobileHoleSource).not.toContain("strategies.map((holeStrategy)");
   });
 
   it("keeps companion and iOS rendering out of the workbench bundle", () => {
@@ -66,7 +76,7 @@ describe("course strategy surface split", () => {
 
     expect(source).not.toContain("@/components/app/ios-mobile");
     expect(source).not.toContain("@/app/courses/strategy/mobile-hole-strategy");
-    expect(source).toContain("Hole-by-hole plan");
+    expect(source).toContain("<DigitalCaddieBook");
     expect(source).toContain("Guided post-round review");
   });
 
@@ -77,23 +87,22 @@ describe("course strategy surface split", () => {
     expect(reviewQuestion).not.toContain("<textarea");
   });
 
-  it("renders the hole hazard as a semantic shadcn alert", () => {
-    const hazard =
-      source.match(
-        /<Alert className="border-\[var\(--status-warning-border\)\][\s\S]*?<\/Alert>/,
-      )?.[0] ?? "";
-
-    expect(source).toContain("import { Alert, AlertDescription, AlertTitle }");
-    expect(hazard).toContain("<AlertTitle>Hazard check</AlertTitle>");
-    expect(hazard).toContain("var(--status-warning-surface)");
-    expect(hazard).not.toContain("bg-amber-50");
+  it("uses three desktop zones and labels modelled overlay evidence", () => {
+    expect(digitalBookSource).toContain('aria-label="Hole navigator"');
+    expect(digitalBookSource).toContain("className={styles.mapZone}");
+    expect(digitalBookSource).toContain('aria-label="Strategy panel"');
+    expect(digitalBookSource).toContain("Safe target");
+    expect(digitalBookSource).toContain("Ideal leave");
+    expect(digitalBookSource).toContain("Open Course Twin");
+    expect(visualSource).toContain("Recommended landing");
+    expect(visualSource).toContain("Measured dispersion");
+    expect(visualSource).toContain("Hazard distance");
   });
 
   it("uses one visible shadcn composition for each workbench mode", () => {
     expect(source).toContain("data-course-strategy-plan");
     expect(source).toContain("data-course-strategy-post-round");
     expect(source).toContain('from "@/components/ui/item"');
-    expect(source).toContain("<Item key={strategy.holeNumber}");
     expect(source).toContain("<AlertTitle>No completed round yet</AlertTitle>");
     expect(source).toContain("<AlertTitle>Review context saved</AlertTitle>");
     expect(source).not.toContain('className="hidden lg:contents"');

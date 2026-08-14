@@ -27,20 +27,40 @@ describe("Play companion selection", () => {
     expect(controlsSource).toContain("<FieldLabel");
   });
 
-  it("shows setup guidance only until the selected-course decision is ready", () => {
-    expect(pageSource).toContain("data-play-setup-guide");
-    expect(pageSource).toContain("OperationStepper");
+  it("prioritises the active round, then presents one selected-course command centre", () => {
+    expect(pageSource).toContain("activeRound ?");
+    expect(pageSource).toContain("ActiveRoundMobile");
+    expect(pageSource).toContain("SelectedCourseMobile");
+    expect(pageSource).toContain("data-course-prep");
+    expect(pageSource).toContain("ReadinessPanel");
     expect(pageSource).toContain("LazyPlaySetupDrawer");
-    expect(pageSource).toContain("<ButtonGroup");
-    expect(pageSource).toContain("<DropdownMenu");
-    expect(pageSource).toContain("buttonVariants({");
-    expect(pageSource).not.toContain("<DropdownMenuTrigger asChild>");
-    expect(pageSource).toContain('aria-label="More play actions"');
-    expect(pageSource).not.toContain("grid-cols-4");
+    expect(pageSource).toContain("Course selected");
+    expect(pageSource).toContain("Tee selected");
+    expect(pageSource).toContain("Trusted bag available");
+    expect(pageSource).toContain("Strategy ready");
+    expect(pageSource).toContain("Course Twin mapped");
+    expect(pageSource).toContain("Open Strategy");
+    expect(pageSource).toContain("Course Twin");
+    expect(pageSource).toContain("Start Round");
+    expect(pageSource).toContain("Quick Bag");
     expect(pageSource).toContain("<AppEmptyState");
-    expect(pageSource).toContain("playReady ?");
-    expect(pageSource).toContain("selected && !playReady ?");
     expect(pageSource).toContain("Continue Round");
+    expect(pageSource).not.toContain("OperationStepper");
+    expect(pageSource).not.toContain("<DropdownMenu");
+  });
+
+  it("adds the desktop caddie briefing without turning Play into Course Twin", () => {
+    expect(pageSource).toContain("data-play-desktop-command-centre");
+    expect(pageSource).toContain("Pre-round command centre");
+    expect(pageSource).toContain("Strategy summary");
+    expect(pageSource).toContain("Key holes");
+    expect(pageSource).toContain("Trusted clubs");
+    expect(pageSource).toContain("Common miss");
+    expect(pageSource).toContain("Recent course record");
+    expect(pageSource).toContain("getCachedCourseWeather");
+    expect(pageSource).toContain("gt(weatherSnapshots.expiresAt, new Date())");
+    expect(pageSource).not.toContain("max-w-6xl");
+    expect(pageSource).not.toContain("max-w-7xl");
   });
 
   it("defers Drawer and Select setup controls until the setup action is opened", () => {

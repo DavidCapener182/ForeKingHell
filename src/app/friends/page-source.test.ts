@@ -2,80 +2,81 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/(app)/friends/page.tsx"), "utf8");
+const pageSource = readFileSync(join(process.cwd(), "src/app/(app)/friends/page.tsx"), "utf8");
+const directorySource = readFileSync(
+  join(process.cwd(), "src/app/friends/people-directory.tsx"),
+  "utf8",
+);
+const menuSource = readFileSync(
+  join(process.cwd(), "src/app/friends/friend-action-menu.tsx"),
+  "utf8",
+);
 const tabsSource = readFileSync(join(process.cwd(), "src/app/friends/friends-tabs.tsx"), "utf8");
 
-describe("friends desktop manager", () => {
-  it("keeps relationship views as query links in a shadcn ButtonGroup", () => {
+describe("friends people directory", () => {
+  it("keeps the five relationship views as query links", () => {
     expect(tabsSource).toContain("<ButtonGroup");
     expect(tabsSource).toContain('aria-label="Friend sections"');
-    expect(tabsSource).toContain("<Button");
-    expect(tabsSource).toContain('variant={active ? "secondary" : "ghost"}');
-    expect(tabsSource).toContain("href={tab.href}");
+    for (const label of ["Friends", "Incoming", "Sent", "Discover", "Blocked"]) {
+      expect(tabsSource).toContain(`label: "${label}"`);
+    }
     expect(tabsSource).toContain('aria-current={active ? "page" : undefined}');
     expect(tabsSource).not.toContain("TabsTrigger");
-    expect(tabsSource).not.toContain('from "@/components/ui/tabs"');
   });
 
-  it("keeps the friend graph table exportable, captioned and keyboard-focusable", () => {
-    expect(source).toContain("FriendGraphTable");
-    expect(source).toContain("<PageShell>");
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain("buildFriendGraphRows");
-    expect(source).toContain('data-workbench-scope="friend-graph"');
-    expect(source).toContain('exportTableId="friend-graph"');
-    expect(source).toContain('data-workbench-export-table="friend-graph"');
-    expect(source).toContain('mainTableLabel="Friend graph table"');
-    expect(source).toContain('mainTableLabel="Friend graph table" stickyFirstColumn');
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source).toContain("FriendInviteDialog");
-    expect(source).toContain("FriendsTabs");
-    expect(source).toContain("FriendActionMenu");
-    expect(source).toContain("<Item");
-    expect(source).toContain('aria-label="Search public profiles by username"');
-    expect(source).not.toContain('title="Incoming requests"');
-    expect(source).not.toContain('title="Outgoing requests"');
-    expect(source).not.toContain('title="Suggested friends"');
-    expect(source).not.toContain("CompareWithFriendPanel");
-    expect(source).not.toContain("ProfileList");
-    expect(source).not.toContain("RequestList");
-    expect(source).not.toContain("BlockedList");
-    expect(source).not.toContain('<PageShell size="6xl">');
-
-    for (const column of [
-      "golfer",
-      "status",
-      "visibility",
-      "home-course",
-      "monitor",
-      "handicap",
-      "action",
-    ]) {
-      expect(source).toContain(`data-column="${column}"`);
-    }
-  });
-
-  it("keeps one tab-controlled desktop relationship manager without a companion bundle", () => {
-    expect(source).toContain('<DesktopWorkbenchLayout scope="friends">');
-    expect(source).toContain("<FriendsTabs activeTab={activeTab} />");
-    expect(source).toContain(
-      "<FriendGraphTable rows={friendGraphRows} query={query} activeTab={activeTab} />",
+  it("renders one responsive people directory for every active tab", () => {
+    expect(pageSource).toContain(
+      "<PeopleDirectory rows={rows} query={query} activeTab={activeTab} />",
     );
-    expect(source).toContain("const friendGraphRows = filterFriendGraphRows(");
-    expect(source).toContain('await import("@/components/app/desktop-workbench")');
-    expect(source).not.toContain("getRequestAppSurface");
-    expect(source).not.toContain('surface === "companion"');
-    expect(source).not.toMatch(
-      /MobileAppShell|MobileFriendRequests|MobileFriendList|MobileFriendSearch|MobileFriendDetails|MobileRouteHeader|IOSGroupedList/,
-    );
+    expect(pageSource).toContain("buildPeopleDirectoryRows");
+    expect(pageSource).toContain('<DesktopWorkbenchLayout scope="friends">');
+    expect(pageSource).toContain("<FriendsTabs activeTab={activeTab} />");
+    expect(directorySource).toContain("export function PeopleDirectory");
+    expect(directorySource).toContain("<DataTableFrame");
+    expect(directorySource).toContain('className="hidden min-[1024px]:block"');
+    expect(directorySource).toContain('className="min-w-0 min-[1024px]:hidden"');
+    expect(directorySource).toContain("<PeopleTableRow");
+    expect(directorySource).toContain("<PeopleItemRow");
+    expect(directorySource).toContain("<TableCaption");
+    expect(directorySource).toContain("<Item");
   });
 
-  it("opens each suggested relationship view on the tab that owns its target", () => {
-    expect(source).toContain('href: "/friends?tab=incoming#friend-graph-table"');
-    expect(source).toContain('href: "/friends?tab=discover#find-friends"');
-    expect(source).toContain('href: "/friends?tab=blocked#friend-graph-table"');
-    expect(source).not.toContain('href: "#find-friends"');
-    expect(source).not.toContain('href: "#blocked-users"');
+  it("keeps every required person field and one contextual menu per row", () => {
+    expect(directorySource).toContain("<SocialAvatar");
+    expect(directorySource).toContain("row.profile.displayName");
+    expect(directorySource).toContain("@{row.profile.username}");
+    expect(directorySource).toContain("row.profile.homeCourse");
+    expect(directorySource).toContain("row.profile.handicapBand");
+    expect(directorySource).toContain("connectionLabel(row)");
+    expect(directorySource).toContain("<PeopleActionMenu");
+    expect(menuSource).toContain("<DropdownMenu");
+    expect(menuSource).toContain("Profile");
+    expect(menuSource).toContain("Invite to group");
+    expect(menuSource).toContain("Remove");
+    expect(menuSource).toContain("Accept");
+    expect(menuSource).toContain("Decline");
+    expect(menuSource).toContain("Unblock");
+  });
+
+  it("places discover search above recommended golfers", () => {
+    const searchIndex = directorySource.indexOf('id="find-friends"');
+    const recommendedIndex = directorySource.indexOf('label: "Recommended golfers"');
+    expect(searchIndex).toBeGreaterThan(-1);
+    expect(recommendedIndex).toBeGreaterThan(searchIndex);
+    expect(directorySource).toContain('aria-label="Search golfers by username or name"');
+    expect(pageSource).toContain('section: "recommended"');
+  });
+
+  it("does not reintroduce duplicate request or friend panels", () => {
+    const combined = `${pageSource}\n${directorySource}`;
+    expect(combined).not.toContain("FriendGraphTable");
+    expect(combined).not.toContain("DesktopTableWorkbenchControls");
+    expect(combined).not.toContain("ProfileList");
+    expect(combined).not.toContain("RequestList");
+    expect(combined).not.toContain("BlockedList");
+    expect(combined).not.toContain("SocialStat");
+    expect(combined).not.toContain("premium-hero");
+    expect(combined).not.toContain("max-w-6xl");
+    expect(combined).not.toContain("max-w-7xl");
   });
 });

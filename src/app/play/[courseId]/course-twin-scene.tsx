@@ -27,7 +27,9 @@ import {
   LogOut,
   Users,
   Radio,
+  Radar,
   RotateCcw,
+  Settings,
   Wifi,
   WifiOff,
   ZoomIn,
@@ -40,6 +42,21 @@ import mobileStyles from "@/app/play/[courseId]/course-twin-mobile.module.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CourseTwinComms } from "@/app/play/[courseId]/course-twin-comms";
 import type {
   CourseTwinEvidenceValue,
@@ -326,16 +343,21 @@ export function CourseTwinScene({
   initialMode?: RuntimeMode;
   initialHoleNumber?: number;
 }) {
+  const initialCompactViewport =
+    typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
   const [holeNumber, setHoleNumber] = useState(
     manifest.holes.some((hole) => hole.holeNumber === initialHoleNumber)
       ? initialHoleNumber!
       : (manifest.holes[0]?.holeNumber ?? 1),
   );
   const [mode, setMode] = useState<RuntimeMode>(
-    initialMode ?? (replay?.shots.length ? "replay" : "flyover"),
+    initialMode ??
+      (initialCompactViewport ? "strategy" : replay?.shots.length ? "replay" : "strategy"),
   );
   const [cameraView, setCameraView] = useState<CameraView>(
-    initialMode === "strategy" || replay?.shots.length ? "aerial" : "golfer",
+    initialMode === "strategy" || initialCompactViewport || replay?.shots.length
+      ? "aerial"
+      : "golfer",
   );
   const [shotIndex, setShotIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -1545,10 +1567,10 @@ export function CourseTwinScene({
   );
 
   useEffect(() => {
-    if (initialMode !== "strategy" || strategyState.status !== "idle") return;
+    if (mode !== "strategy" || strategyState.status !== "idle") return;
     const timer = window.setTimeout(() => loadStrategy(selectedHole.holeNumber), 0);
     return () => window.clearTimeout(timer);
-  }, [initialMode, loadStrategy, selectedHole.holeNumber, strategyState.status]);
+  }, [loadStrategy, mode, selectedHole.holeNumber, strategyState.status]);
 
   const activateRuntimeMode = (nextMode: RuntimeMode) => {
     selectMode(nextMode);
@@ -2243,6 +2265,37 @@ export function CourseTwinScene({
       />
     );
 
+  const hudStrategyClub = mode === "play" ? virtualStrategyClub : strategyClub;
+  const hudClub =
+    mode === "replay" ? (selectedShot?.clubType ?? "—") : (hudStrategyClub?.clubType ?? "—");
+  const hudCarryYd =
+    mode === "replay"
+      ? (selectedShot?.metrics.carryYd.value ?? null)
+      : mode === "play" && virtualShot
+        ? virtualShot.sampled.carryYd
+        : (hudStrategyClub?.carryMedianYd ?? null);
+  const hudTarget =
+    mode === "play"
+      ? formatMobileAim(virtualAimDirectionDeg)
+      : mode === "strategy" && strategyClub
+        ? formatStrategyTarget(strategyClub.aimOffsetYd)
+        : "Mapped target";
+  const hudMissPattern = formatStrategyMissPattern(hudStrategyClub);
+  const hudCurrent =
+    mode === "replay"
+      ? selectedShot
+        ? `Shot ${selectedShot.holeShotNumber ?? shotIndex + 1} · measured replay`
+        : "No measured replay on this hole"
+      : mode === "play"
+        ? virtualShot
+          ? `${formatVirtualShotKind(virtualShot.sampled.shotKind)} · modelled result`
+          : `Shot ${virtualShotNumber} · ${formatMobileAim(virtualAimDirectionDeg)}`
+        : strategyClub
+          ? `${formatProbability(strategyClub.probabilities.fairway)} fairway · ${strategyClub.averageRemainingYd.toFixed(0)} yd leave`
+          : strategyState.status === "loading"
+            ? "Building your personal strategy…"
+            : "Personal strategy unavailable";
+
   return (
     <div
       data-mobile-preserve-dark
@@ -2252,750 +2305,775 @@ export function CourseTwinScene({
         "relative grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:h-full xl:min-h-0 xl:overflow-hidden",
       )}
     >
-      <aside
-        data-course-twin-hud
-        className={cn(
-          mobileStyles.hud,
-          "order-2 border-t border-white/10 bg-[#0b1d13] p-4",
-          hudPanel ? "block" : "hidden",
-          "xl:pointer-events-none xl:absolute xl:inset-0 xl:z-20 xl:flex xl:items-start xl:justify-between xl:gap-4 xl:border-0 xl:bg-transparent xl:p-3",
-        )}
-      >
-        <div
-          data-course-twin-primary-controls
-          role={isCompactViewport ? "dialog" : undefined}
-          aria-modal={isCompactViewport ? "true" : undefined}
-          aria-label={isCompactViewport ? "Course controls" : undefined}
-          tabIndex={isCompactViewport ? -1 : undefined}
-          className={cn(
-            mobileStyles.hudPanel,
-            hudPanel === "course" ? "block" : "hidden",
-            "xl:max-h-[calc(100%-5.5rem)] xl:w-[300px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
-            hudPanel === "course"
-              ? "xl:pointer-events-auto xl:translate-x-0 xl:opacity-100"
-              : "xl:pointer-events-none xl:-translate-x-3 xl:opacity-0",
-          )}
-        >
-          <div className="relative space-y-1 xl:pr-9">
-            <button
-              type="button"
-              className="absolute right-0 top-0 grid size-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white lg:size-8"
-              aria-label="Close course controls"
-              onClick={closeHudPanel}
+      {(() => {
+        const controls = (
+          <aside data-course-twin-hud className="w-full text-white">
+            <div
+              data-course-twin-primary-controls
+              aria-label="Course Twin settings"
+              className={cn(hudPanel === "course" ? "block" : "hidden", "w-full px-4 pb-6")}
             >
-              <X className="size-4" />
-            </button>
-            <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
-              Grade {manifest.quality.grade} · {manifest.terrain.resolutionM?.toFixed(1)} m terrain
-            </Badge>
-            <h1 className="pt-2 text-2xl font-semibold tracking-tight xl:text-lg">
-              {manifest.course.name}
-            </h1>
-            <p className="text-sm leading-6 text-emerald-100/70 xl:text-xs xl:leading-4">
-              Real mapped holes over Environment Agency LiDAR terrain and georeferenced aerial
-              reference imagery.{" "}
-              {manifest.quality.verified
-                ? "Putting contours are backed by reviewed high-resolution green surveys."
-                : "Green contours remain unverified for putting."}
-            </p>
-          </div>
+              <div className="relative space-y-1 xl:pr-9">
+                <button
+                  type="button"
+                  className="absolute right-0 top-0 grid size-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white lg:size-8"
+                  aria-label="Close course controls"
+                  onClick={closeHudPanel}
+                >
+                  <X className="size-4" />
+                </button>
+                <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
+                  Grade {manifest.quality.grade} · {manifest.terrain.resolutionM?.toFixed(1)} m
+                  terrain
+                </Badge>
+                <h1 className="pt-2 text-2xl font-semibold tracking-tight xl:text-lg">
+                  {manifest.course.name}
+                </h1>
+                <p className="text-sm leading-6 text-emerald-100/70 xl:text-xs xl:leading-4">
+                  Real mapped holes over Environment Agency LiDAR terrain and georeferenced aerial
+                  reference imagery.{" "}
+                  {manifest.quality.verified
+                    ? "Putting contours are backed by reviewed high-resolution green surveys."
+                    : "Green contours remain unverified for putting."}
+                </p>
+              </div>
 
-          <div
-            className={cn(
-              "mt-5 grid gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1 xl:mt-3",
-              readOnly ? "grid-cols-2" : "grid-cols-3",
-            )}
-          >
-            <ModeButton
-              active={mode === "flyover"}
-              onClick={() => {
-                selectMode("flyover");
-                setCameraView("aerial");
-                setCameraCommand(null);
-              }}
-            >
-              Flyover
-            </ModeButton>
-            <ModeButton
-              active={mode === "replay"}
-              disabled={!replay?.shots.length}
-              onClick={() => {
-                selectMode("replay");
-                setCameraView("aerial");
-                setCameraCommand(null);
-              }}
-            >
-              Replay
-            </ModeButton>
-            {!readOnly ? (
-              <>
+              <div
+                className={cn(
+                  "mt-5 grid gap-1.5 rounded-xl border border-white/10 bg-white/5 p-1 xl:mt-3",
+                  readOnly ? "grid-cols-2" : "grid-cols-3",
+                )}
+              >
                 <ModeButton
-                  active={mode === "strategy"}
+                  active={mode === "flyover"}
                   onClick={() => {
-                    selectMode("strategy");
+                    selectMode("flyover");
                     setCameraView("aerial");
                     setCameraCommand(null);
-                    if (
-                      strategyState.holeNumber !== selectedHole.holeNumber ||
-                      strategyState.status === "idle" ||
-                      strategyState.status === "error"
-                    ) {
-                      loadStrategy(selectedHole.holeNumber);
-                    }
                   }}
                 >
-                  Strategy
+                  Flyover
                 </ModeButton>
                 <ModeButton
-                  active={mode === "play"}
+                  active={mode === "replay"}
+                  disabled={!replay?.shots.length}
                   onClick={() => {
-                    selectMode("play");
-                    setCameraView("golfer");
+                    selectMode("replay");
+                    setCameraView("aerial");
                     setCameraCommand(null);
-                    if (
-                      strategyState.holeNumber !== selectedHole.holeNumber ||
-                      strategyState.status === "idle" ||
-                      strategyState.status === "error"
-                    ) {
-                      loadStrategy(selectedHole.holeNumber);
-                    }
                   }}
                 >
-                  Play
+                  Replay
                 </ModeButton>
-                <ModeButton
-                  active={mode === "live"}
-                  onClick={() => {
-                    selectMode("live");
-                    setCameraView("golfer");
-                    setCameraCommand(null);
-                    if (
-                      strategyState.holeNumber !== selectedHole.holeNumber ||
-                      strategyState.status === "idle" ||
-                      strategyState.status === "error"
-                    ) {
-                      loadStrategy(selectedHole.holeNumber);
-                    }
-                    if (bridgeState.status === "idle" || bridgeState.status === "error") {
-                      detectBridge();
-                    }
-                  }}
-                >
-                  Live
-                </ModeButton>
-                <ModeButton
-                  active={mode === "explore"}
-                  onClick={() => {
-                    selectMode("explore");
-                    setPlaying(false);
-                    setCameraCommand(null);
-                    setExplorePosition(selectedHole.tee);
-                  }}
-                >
-                  Explore
-                </ModeButton>
-              </>
-            ) : null}
-          </div>
-
-          {mode === "explore" ? (
-            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
-              <ModeButton
-                active={exploreTransport === "walk"}
-                onClick={() => setExploreTransport("walk")}
-              >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  <Footprints className="size-4" /> Walk
-                </span>
-              </ModeButton>
-              <ModeButton
-                active={exploreTransport === "cart"}
-                onClick={() => setExploreTransport("cart")}
-              >
-                <span className="inline-flex items-center justify-center gap-1.5">
-                  <CarFront className="size-4" /> Cart
-                </span>
-              </ModeButton>
-            </div>
-          ) : (
-            <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
-              <ModeButton
-                active={cameraView === "golfer"}
-                onClick={() => {
-                  setCameraView("golfer");
-                  setCameraCommand(null);
-                }}
-              >
-                {mode === "replay" || mode === "play" || mode === "live"
-                  ? "Shot view"
-                  : "Golfer view"}
-              </ModeButton>
-              <ModeButton
-                active={cameraView === "aerial"}
-                onClick={() => {
-                  setCameraView("aerial");
-                  setCameraCommand(null);
-                }}
-              >
-                Aerial view
-              </ModeButton>
-            </div>
-          )}
-
-          {mode === "explore" ? (
-            <>
-              <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-5 text-emerald-100/65">
-                {exploreTransport === "walk"
-                  ? "Walk the mapped terrain with W/S, strafe with A/D and turn with the arrow keys."
-                  : "Drive the course with W/S and steer with A/D or the arrow keys. Hold Shift for a faster cart pace."}
+                {!readOnly ? (
+                  <>
+                    <ModeButton
+                      active={mode === "strategy"}
+                      onClick={() => {
+                        selectMode("strategy");
+                        setCameraView("aerial");
+                        setCameraCommand(null);
+                        if (
+                          strategyState.holeNumber !== selectedHole.holeNumber ||
+                          strategyState.status === "idle" ||
+                          strategyState.status === "error"
+                        ) {
+                          loadStrategy(selectedHole.holeNumber);
+                        }
+                      }}
+                    >
+                      Strategy
+                    </ModeButton>
+                    <ModeButton
+                      active={mode === "play"}
+                      onClick={() => {
+                        selectMode("play");
+                        setCameraView("golfer");
+                        setCameraCommand(null);
+                        if (
+                          strategyState.holeNumber !== selectedHole.holeNumber ||
+                          strategyState.status === "idle" ||
+                          strategyState.status === "error"
+                        ) {
+                          loadStrategy(selectedHole.holeNumber);
+                        }
+                      }}
+                    >
+                      Play
+                    </ModeButton>
+                    <ModeButton
+                      active={mode === "live"}
+                      onClick={() => {
+                        selectMode("live");
+                        setCameraView("golfer");
+                        setCameraCommand(null);
+                        if (
+                          strategyState.holeNumber !== selectedHole.holeNumber ||
+                          strategyState.status === "idle" ||
+                          strategyState.status === "error"
+                        ) {
+                          loadStrategy(selectedHole.holeNumber);
+                        }
+                        if (bridgeState.status === "idle" || bridgeState.status === "error") {
+                          detectBridge();
+                        }
+                      }}
+                    >
+                      Live
+                    </ModeButton>
+                    <ModeButton
+                      active={mode === "explore"}
+                      onClick={() => {
+                        selectMode("explore");
+                        setPlaying(false);
+                        setCameraCommand(null);
+                        setExplorePosition(selectedHole.tee);
+                      }}
+                    >
+                      Explore
+                    </ModeButton>
+                  </>
+                ) : null}
               </div>
-              <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="flex items-center gap-2">
-                  <Users className="size-4 text-emerald-200" />
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/70">
-                    Group session
-                  </p>
+
+              {mode === "explore" ? (
+                <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+                  <ModeButton
+                    active={exploreTransport === "walk"}
+                    onClick={() => setExploreTransport("walk")}
+                  >
+                    <span className="inline-flex items-center justify-center gap-1.5">
+                      <Footprints className="size-4" /> Walk
+                    </span>
+                  </ModeButton>
+                  <ModeButton
+                    active={exploreTransport === "cart"}
+                    onClick={() => setExploreTransport("cart")}
+                  >
+                    <span className="inline-flex items-center justify-center gap-1.5">
+                      <CarFront className="size-4" /> Cart
+                    </span>
+                  </ModeButton>
                 </div>
-                {roomState.status === "ready" && roomState.room ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
-                      <div>
-                        <p className="text-[11px] text-emerald-100/50">Invite code</p>
-                        <p className="font-mono text-base font-semibold tracking-[0.18em]">
-                          {roomState.room.inviteCode}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                        aria-label="Copy group invite code"
-                        onClick={() => {
-                          void navigator.clipboard.writeText(roomState.room?.inviteCode ?? "");
-                          setRoomCodeCopied(true);
-                          window.setTimeout(() => setRoomCodeCopied(false), 1_500);
-                        }}
-                      >
-                        <Copy className="size-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-emerald-100/65">
-                      {roomCodeCopied
-                        ? "Invite code copied."
-                        : `${roomState.room.members.filter((member) => member.role !== "spectator").length} golfer(s) · ${roomState.room.members.filter((member) => member.role === "spectator").length} spectator(s) connected.`}
-                    </p>
-                    <div className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/65">
-                      <p className="font-semibold text-emerald-100">
-                        {roomState.room.competition
-                          ? "Verified competition room"
-                          : "Shared practice room"}
-                      </p>
-                      <p className="mt-1">
-                        {roomState.room.visibility === "public" ? "Public lobby" : "Private invite"}{" "}
-                        · You joined as {roomState.room.currentRole} ·{" "}
-                        {roomState.room.sharedEventCount} verified{" "}
-                        {roomState.room.sharedEventCount === 1 ? "event" : "events"}
-                      </p>
-                      {roomState.room.finalEventHash ? (
-                        <p className="mt-1 font-mono text-[10px] text-emerald-200/70">
-                          Locked {roomState.room.finalEventHash.slice(0, 12)}…
-                        </p>
-                      ) : roomState.room.latestSharedEvent ? (
-                        <p className="mt-1 text-[11px] text-emerald-200/70">
-                          Latest: {roomState.room.latestSharedEvent.eventType.replaceAll(".", " ")}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-1.5">
-                      {roomState.room.members.map((member) => (
-                        <div
-                          key={member.userId}
-                          className="flex items-center justify-between text-xs text-emerald-100/75"
-                        >
-                          <span>
-                            {member.displayName}
-                            <span className="ml-1 text-emerald-100/40">· {member.role}</span>
-                          </span>
-                          <span>
-                            Hole {member.holeNumber} · {member.transport}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <CourseTwinComms
-                      roomId={roomState.room.id}
-                      currentUserId={roomState.room.currentUserId}
-                      members={roomState.room.members}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                      onClick={leaveRoom}
-                    >
-                      <LogOut className="mr-2 size-4" /> Leave group
-                    </Button>
+              ) : (
+                <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+                  <ModeButton
+                    active={cameraView === "golfer"}
+                    onClick={() => {
+                      setCameraView("golfer");
+                      setCameraCommand(null);
+                    }}
+                  >
+                    {mode === "replay" || mode === "play" || mode === "live"
+                      ? "Shot view"
+                      : "Golfer view"}
+                  </ModeButton>
+                  <ModeButton
+                    active={cameraView === "aerial"}
+                    onClick={() => {
+                      setCameraView("aerial");
+                      setCameraCommand(null);
+                    }}
+                  >
+                    Aerial view
+                  </ModeButton>
+                </div>
+              )}
+
+              {mode === "explore" ? (
+                <>
+                  <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs leading-5 text-emerald-100/65">
+                    {exploreTransport === "walk"
+                      ? "Walk the mapped terrain with W/S, strafe with A/D and turn with the arrow keys."
+                      : "Drive the course with W/S and steer with A/D or the arrow keys. Hold Shift for a faster cart pace."}
                   </div>
-                ) : (
-                  <div className="mt-3 space-y-2">
-                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
-                      {([false, true] as const).map((competition) => (
-                        <button
-                          key={String(competition)}
-                          type="button"
-                          className={cn(
-                            "rounded-md px-2 py-1.5 text-xs font-semibold",
-                            roomCompetition === competition
-                              ? "bg-[#e7ff6a] text-[#102217]"
-                              : "text-emerald-100/60",
-                          )}
-                          onClick={() => setRoomCompetition(competition)}
-                        >
-                          {competition ? "Competition" : "Practice"}
-                        </button>
-                      ))}
+                  <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="size-4 text-emerald-200" />
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/70">
+                        Group session
+                      </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
-                      {(["private", "public"] as const).map((visibility) => (
-                        <button
-                          key={visibility}
-                          type="button"
-                          className={cn(
-                            "rounded-md px-2 py-1.5 text-xs font-semibold capitalize",
-                            roomVisibility === visibility
-                              ? "bg-white/15 text-white"
-                              : "text-emerald-100/55",
-                          )}
-                          onClick={() => setRoomVisibility(visibility)}
-                        >
-                          {visibility === "private" ? "Invite only" : "Public lobby"}
-                        </button>
-                      ))}
-                    </div>
-                    <Button
-                      type="button"
-                      className="w-full bg-emerald-300 text-[#092013] hover:bg-emerald-200"
-                      disabled={roomState.status === "loading"}
-                      onClick={createRoom}
-                    >
-                      Start group session
-                    </Button>
-                    <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
-                      {(["player", "spectator"] as const).map((role) => (
-                        <button
-                          key={role}
-                          type="button"
-                          className={cn(
-                            "rounded-md px-2 py-1.5 text-xs font-semibold",
-                            roomJoinRole === role
-                              ? "bg-white/15 text-white"
-                              : "text-emerald-100/55",
-                          )}
-                          onClick={() => setRoomJoinRole(role)}
-                        >
-                          Join as {role}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        value={roomInviteCode}
-                        onChange={(event) => setRoomInviteCode(event.target.value.toUpperCase())}
-                        maxLength={12}
-                        placeholder="Invite code"
-                        aria-label="Group invite code"
-                        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-3 text-sm uppercase tracking-[0.12em] text-white outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 focus:border-emerald-300"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                        disabled={roomState.status === "loading" || roomInviteCode.length < 6}
-                        onClick={joinRoom}
-                      >
-                        Join
-                      </Button>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
-                      disabled={publicRoomsLoading}
-                      onClick={() => void loadPublicRooms()}
-                    >
-                      {publicRoomsLoading ? "Finding public rooms…" : "Browse public rooms"}
-                    </Button>
-                    {publicRooms.length ? (
-                      <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-white/10 bg-black/15 p-2">
-                        {publicRooms.map((room) => (
-                          <button
-                            key={room.id}
+                    {roomState.status === "ready" && roomState.room ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="flex items-center justify-between rounded-lg bg-black/20 px-3 py-2">
+                          <div>
+                            <p className="text-[11px] text-emerald-100/50">Invite code</p>
+                            <p className="font-mono text-base font-semibold tracking-[0.18em]">
+                              {roomState.room.inviteCode}
+                            </p>
+                          </div>
+                          <Button
                             type="button"
-                            disabled={!room.canJoin}
-                            onClick={() => void joinPublicRoom(room.inviteCode)}
-                            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-emerald-100/75 hover:bg-white/10 disabled:opacity-40"
+                            size="icon"
+                            variant="outline"
+                            className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                            aria-label="Copy group invite code"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(roomState.room?.inviteCode ?? "");
+                              setRoomCodeCopied(true);
+                              window.setTimeout(() => setRoomCodeCopied(false), 1_500);
+                            }}
                           >
-                            <span>
-                              <span className="block font-semibold text-emerald-100">
-                                {room.hostName}
+                            <Copy className="size-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-emerald-100/65">
+                          {roomCodeCopied
+                            ? "Invite code copied."
+                            : `${roomState.room.members.filter((member) => member.role !== "spectator").length} golfer(s) · ${roomState.room.members.filter((member) => member.role === "spectator").length} spectator(s) connected.`}
+                        </p>
+                        <div className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/65">
+                          <p className="font-semibold text-emerald-100">
+                            {roomState.room.competition
+                              ? "Verified competition room"
+                              : "Shared practice room"}
+                          </p>
+                          <p className="mt-1">
+                            {roomState.room.visibility === "public"
+                              ? "Public lobby"
+                              : "Private invite"}{" "}
+                            · You joined as {roomState.room.currentRole} ·{" "}
+                            {roomState.room.sharedEventCount} verified{" "}
+                            {roomState.room.sharedEventCount === 1 ? "event" : "events"}
+                          </p>
+                          {roomState.room.finalEventHash ? (
+                            <p className="mt-1 font-mono text-[10px] text-emerald-200/70">
+                              Locked {roomState.room.finalEventHash.slice(0, 12)}…
+                            </p>
+                          ) : roomState.room.latestSharedEvent ? (
+                            <p className="mt-1 text-[11px] text-emerald-200/70">
+                              Latest:{" "}
+                              {roomState.room.latestSharedEvent.eventType.replaceAll(".", " ")}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1.5">
+                          {roomState.room.members.map((member) => (
+                            <div
+                              key={member.userId}
+                              className="flex items-center justify-between text-xs text-emerald-100/75"
+                            >
+                              <span>
+                                {member.displayName}
+                                <span className="ml-1 text-emerald-100/40">· {member.role}</span>
                               </span>
-                              Hole {room.holeNumber} ·{" "}
-                              {room.competition ? "competition" : room.mode}
-                            </span>
-                            <span>
-                              {room.memberCount}/{room.maxPlayers}
-                            </span>
-                          </button>
-                        ))}
+                              <span>
+                                Hole {member.holeNumber} · {member.transport}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <CourseTwinComms
+                          roomId={roomState.room.id}
+                          currentUserId={roomState.room.currentUserId}
+                          members={roomState.room.members}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                          onClick={leaveRoom}
+                        >
+                          <LogOut className="mr-2 size-4" /> Leave group
+                        </Button>
                       </div>
-                    ) : null}
-                    {roomState.status === "error" ? (
-                      <p className="text-xs text-amber-200">{roomState.error}</p>
-                    ) : null}
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                          {([false, true] as const).map((competition) => (
+                            <button
+                              key={String(competition)}
+                              type="button"
+                              className={cn(
+                                "rounded-md px-2 py-1.5 text-xs font-semibold",
+                                roomCompetition === competition
+                                  ? "bg-[#e7ff6a] text-[#102217]"
+                                  : "text-emerald-100/60",
+                              )}
+                              onClick={() => setRoomCompetition(competition)}
+                            >
+                              {competition ? "Competition" : "Practice"}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                          {(["private", "public"] as const).map((visibility) => (
+                            <button
+                              key={visibility}
+                              type="button"
+                              className={cn(
+                                "rounded-md px-2 py-1.5 text-xs font-semibold capitalize",
+                                roomVisibility === visibility
+                                  ? "bg-white/15 text-white"
+                                  : "text-emerald-100/55",
+                              )}
+                              onClick={() => setRoomVisibility(visibility)}
+                            >
+                              {visibility === "private" ? "Invite only" : "Public lobby"}
+                            </button>
+                          ))}
+                        </div>
+                        <Button
+                          type="button"
+                          className="w-full bg-emerald-300 text-[#092013] hover:bg-emerald-200"
+                          disabled={roomState.status === "loading"}
+                          onClick={createRoom}
+                        >
+                          Start group session
+                        </Button>
+                        <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-black/15 p-1">
+                          {(["player", "spectator"] as const).map((role) => (
+                            <button
+                              key={role}
+                              type="button"
+                              className={cn(
+                                "rounded-md px-2 py-1.5 text-xs font-semibold",
+                                roomJoinRole === role
+                                  ? "bg-white/15 text-white"
+                                  : "text-emerald-100/55",
+                              )}
+                              onClick={() => setRoomJoinRole(role)}
+                            >
+                              Join as {role}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            value={roomInviteCode}
+                            onChange={(event) =>
+                              setRoomInviteCode(event.target.value.toUpperCase())
+                            }
+                            maxLength={12}
+                            placeholder="Invite code"
+                            aria-label="Group invite code"
+                            className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/20 px-3 text-sm uppercase tracking-[0.12em] text-white outline-none placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 focus:border-emerald-300"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                            disabled={roomState.status === "loading" || roomInviteCode.length < 6}
+                            onClick={joinRoom}
+                          >
+                            Join
+                          </Button>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full !border-white/15 !bg-transparent !text-white hover:!bg-white/10"
+                          disabled={publicRoomsLoading}
+                          onClick={() => void loadPublicRooms()}
+                        >
+                          {publicRoomsLoading ? "Finding public rooms…" : "Browse public rooms"}
+                        </Button>
+                        {publicRooms.length ? (
+                          <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-white/10 bg-black/15 p-2">
+                            {publicRooms.map((room) => (
+                              <button
+                                key={room.id}
+                                type="button"
+                                disabled={!room.canJoin}
+                                onClick={() => void joinPublicRoom(room.inviteCode)}
+                                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-emerald-100/75 hover:bg-white/10 disabled:opacity-40"
+                              >
+                                <span>
+                                  <span className="block font-semibold text-emerald-100">
+                                    {room.hostName}
+                                  </span>
+                                  Hole {room.holeNumber} ·{" "}
+                                  {room.competition ? "competition" : room.mode}
+                                </span>
+                                <span>
+                                  {room.memberCount}/{room.maxPlayers}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        {roomState.status === "error" ? (
+                          <p className="text-xs text-amber-200">{roomState.error}</p>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
-                  Camera controls
-                </p>
-                <p className="text-[11px] text-emerald-100/45">Drag to orbit · scroll to zoom</p>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                <CameraControlButton
-                  label="Orbit camera left"
-                  onClick={() => issueCameraCommand("orbit-left")}
-                >
-                  <ChevronLeft className="size-4" />
-                </CameraControlButton>
-                <CameraControlButton
-                  label="Zoom camera in"
-                  onClick={() => issueCameraCommand("zoom-in")}
-                >
-                  <ZoomIn className="size-4" />
-                </CameraControlButton>
-                <CameraControlButton
-                  label={
-                    mode === "replay" ? "Reset camera to selected shot" : "Reset camera to tee"
-                  }
-                  onClick={() => issueCameraCommand("reset")}
-                >
-                  <LocateFixed className="size-4" />
-                </CameraControlButton>
-                <CameraControlButton
-                  label="Zoom camera out"
-                  onClick={() => issueCameraCommand("zoom-out")}
-                >
-                  <ZoomOut className="size-4" />
-                </CameraControlButton>
-                <CameraControlButton
-                  label="Orbit camera right"
-                  onClick={() => issueCameraCommand("orbit-right")}
-                >
-                  <ChevronRight className="size-4" />
-                </CameraControlButton>
-              </div>
-            </div>
-          )}
+                </>
+              ) : (
+                <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-200/60">
+                      Camera controls
+                    </p>
+                    <p className="text-[11px] text-emerald-100/45">
+                      Drag to orbit · scroll to zoom
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <CameraControlButton
+                      label="Orbit camera left"
+                      onClick={() => issueCameraCommand("orbit-left")}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </CameraControlButton>
+                    <CameraControlButton
+                      label="Zoom camera in"
+                      onClick={() => issueCameraCommand("zoom-in")}
+                    >
+                      <ZoomIn className="size-4" />
+                    </CameraControlButton>
+                    <CameraControlButton
+                      label={
+                        mode === "replay" ? "Reset camera to selected shot" : "Reset camera to tee"
+                      }
+                      onClick={() => issueCameraCommand("reset")}
+                    >
+                      <LocateFixed className="size-4" />
+                    </CameraControlButton>
+                    <CameraControlButton
+                      label="Zoom camera out"
+                      onClick={() => issueCameraCommand("zoom-out")}
+                    >
+                      <ZoomOut className="size-4" />
+                    </CameraControlButton>
+                    <CameraControlButton
+                      label="Orbit camera right"
+                      onClick={() => issueCameraCommand("orbit-right")}
+                    >
+                      <ChevronRight className="size-4" />
+                    </CameraControlButton>
+                  </div>
+                </div>
+              )}
 
-          <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 xl:mt-2 xl:p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
-                  Viewing
-                </p>
-                <p className="mt-1 text-xl font-semibold">Hole {selectedHole.holeNumber}</p>
-                <p className="text-sm text-emerald-100/60">
-                  {roundLocksHole && activeRound.currentHole !== activeRoundPhysicalHoleNumber
-                    ? `Round hole ${activeRound.currentHole} · mapped hole ${selectedHole.holeNumber} · Par ${selectedHole.par} · ${selectedHole.yards} yd`
-                    : `Par ${selectedHole.par} · ${selectedHole.yards} yd`}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
-                  disabled={roundLocksHole || selectedHoleIndex <= 0}
-                  onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
-                  aria-label="Previous hole"
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
-                  disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
-                  onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
-                  aria-label="Next hole"
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
+              <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 xl:mt-2 xl:p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/60">
+                      Viewing
+                    </p>
+                    <p className="mt-1 text-xl font-semibold">Hole {selectedHole.holeNumber}</p>
+                    <p className="text-sm text-emerald-100/60">
+                      {roundLocksHole && activeRound.currentHole !== activeRoundPhysicalHoleNumber
+                        ? `Round hole ${activeRound.currentHole} · mapped hole ${selectedHole.holeNumber} · Par ${selectedHole.par} · ${selectedHole.yards} yd`
+                        : `Par ${selectedHole.par} · ${selectedHole.yards} yd`}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
+                      disabled={roundLocksHole || selectedHoleIndex <= 0}
+                      onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+                      aria-label="Previous hole"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="!border-white/15 !bg-transparent !text-white hover:!bg-white/10 hover:!text-white"
+                      disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
+                      onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+                      aria-label="Next hole"
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-6 gap-1.5 xl:mt-3 xl:gap-1">
+                  {manifest.holes.map((hole) => (
+                    <button
+                      key={hole.holeNumber}
+                      type="button"
+                      className={cn(
+                        "min-h-10 rounded-lg border text-sm font-semibold transition-colors xl:min-h-8 xl:text-xs",
+                        hole.holeNumber === selectedHole.holeNumber
+                          ? "border-emerald-300 bg-emerald-300 text-[#092013]"
+                          : "border-white/10 bg-white/5 text-white hover:bg-white/10",
+                      )}
+                      disabled={roundLocksHole && hole.holeNumber !== activeRoundPhysicalHoleNumber}
+                      onClick={() => selectHole(hole.holeNumber)}
+                    >
+                      {hole.holeNumber}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-6 gap-1.5 xl:mt-3 xl:gap-1">
-              {manifest.holes.map((hole) => (
-                <button
-                  key={hole.holeNumber}
-                  type="button"
-                  className={cn(
-                    "min-h-10 rounded-lg border text-sm font-semibold transition-colors xl:min-h-8 xl:text-xs",
-                    hole.holeNumber === selectedHole.holeNumber
-                      ? "border-emerald-300 bg-emerald-300 text-[#092013]"
-                      : "border-white/10 bg-white/5 text-white hover:bg-white/10",
-                  )}
-                  disabled={roundLocksHole && hole.holeNumber !== activeRoundPhysicalHoleNumber}
-                  onClick={() => selectHole(hole.holeNumber)}
-                >
-                  {hole.holeNumber}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
 
-        <div
-          data-course-twin-shot-controls
-          role={isCompactViewport ? "dialog" : undefined}
-          aria-modal={isCompactViewport ? "true" : undefined}
-          aria-label={isCompactViewport ? "Shot details" : undefined}
-          tabIndex={isCompactViewport ? -1 : undefined}
-          className={cn(
-            mobileStyles.hudPanel,
-            hudPanel === "analysis" ? "block" : "hidden",
-            "xl:ml-auto xl:max-h-[calc(100%-5.5rem)] xl:w-[350px] xl:overflow-y-auto xl:rounded-[1.35rem] xl:border xl:border-white/15 xl:bg-[#07150e]/88 xl:p-3 xl:shadow-2xl xl:shadow-black/35 xl:backdrop-blur-2xl xl:transition xl:duration-200",
-            hudPanel === "analysis"
-              ? "xl:pointer-events-auto xl:translate-x-0 xl:opacity-100"
-              : "xl:pointer-events-none xl:translate-x-3 xl:opacity-0",
-          )}
-        >
-          <div className="mb-1 flex items-center justify-between px-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/45">
-              {mode === "replay"
-                ? "Shot detail"
-                : mode === "strategy"
-                  ? "Model detail"
-                  : mode === "play"
-                    ? "Round controls"
-                    : mode === "live"
-                      ? "Live controls"
-                      : "Course detail"}
-            </p>
-            <button
-              type="button"
-              className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white lg:size-8"
-              aria-label="Close analysis controls"
-              onClick={closeHudPanel}
+            <div
+              data-course-twin-shot-controls
+              aria-label={mode === "replay" ? "Replay selection" : "Advanced controls"}
+              className={cn(hudPanel === "analysis" ? "block" : "hidden", "w-full px-4 pb-6")}
             >
-              <X className="size-4" />
-            </button>
-          </div>
-          {mode === "replay" ? (
-            <ReplayControls
-              replay={replay}
-              shots={holeShots}
-              selectedShot={selectedShot}
-              shotIndex={shotIndex}
-              playing={playing}
-              playback={playback}
-              simulation={selectedSimulation}
-              onSelectShot={(index) => {
-                setShotIndex(index);
-                setPlayback(0);
-                setPlaying(false);
-                setCameraView("aerial");
-                setCameraCommand(null);
-              }}
-              onToggle={() => {
-                if (playback >= 1) setPlayback(0);
-                setPlaying((current) => !current);
-              }}
-              onReset={() => {
-                setPlaying(false);
-                setPlayback(0);
-              }}
-            />
-          ) : mode === "strategy" ? (
-            <StrategyControls
-              state={strategyState}
-              selectedClub={strategyClub}
-              onSelectClub={setStrategyClubId}
-              onRetry={() => loadStrategy(selectedHole.holeNumber)}
-            />
-          ) : mode === "play" ? (
-            <>
-              <RoundSetupControls
-                mode="play"
-                puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
-                activeRound={activeRound}
-                holes={manifest.holes}
-                currentHoleStrokes={virtualStrokes}
-                rules={roundRules}
-                holeCount={roundHoleCount}
-                startingHole={roundStartingHole}
-                sync={roundSync}
-                onRulesChange={setRoundRules}
-                onHoleCountChange={setRoundHoleCount}
-                onStartingHoleChange={setRoundStartingHole}
-                onStart={() => void startPersistedRound("play")}
-                onRetry={() => setRoundRetryToken((value) => value + 1)}
-              />
-              {activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
-                manualPuttingVisible && !virtualShot && virtualPuttStart ? (
-                  <ManualPuttingControls
-                    hole={selectedHole}
-                    start={virtualPuttStart}
-                    puttNumber={virtualPuttNumber}
-                    strokes={virtualStrokes}
-                    aimOffsetDeg={virtualPuttAimDeg}
-                    pacePercent={virtualPuttPacePercent}
-                    result={virtualPuttResult}
-                    playback={playback}
-                    sync={roundSync}
-                    verified={manifest.quality.grade === "A" && manifest.quality.verified}
-                    onAimChange={setVirtualPuttAimDeg}
-                    onPaceChange={setVirtualPuttPacePercent}
-                    onPlay={playVirtualPutt}
-                    onContinue={continueVirtualPutt}
-                    onRetry={() => {
-                      if (virtualPuttEventId) {
-                        submittedRoundEventsRef.current.delete(virtualPuttEventId);
-                      }
-                      setRoundRetryToken((value) => value + 1);
-                    }}
-                  />
-                ) : (
-                  <VirtualRoundControls
-                    state={strategyState}
-                    hole={selectedHole}
-                    selectedClub={virtualStrategyClub}
-                    availableClubs={virtualClubOptions}
-                    lieSurface={virtualLieSurface}
-                    shotKind={virtualShotKind}
-                    shotKindOptions={virtualShotKindOptions}
-                    onShotKindChange={(kind) => {
-                      setVirtualShotKindChoice(kind);
-                      setVirtualAimDirectionDeg(0);
-                    }}
-                    onSelectClub={setStrategyClubId}
-                    start={virtualStart}
-                    aimDirectionDeg={virtualAimDirectionDeg}
-                    onAimDirectionChange={setVirtualAimDirectionDeg}
-                    shotNumber={virtualShotNumber}
-                    strokes={virtualStrokes}
-                    penaltyStrokes={virtualPenaltyStrokes}
-                    shot={virtualShot}
-                    simulation={virtualSimulation}
-                    playback={playback}
-                    sync={roundSync.status}
-                    rules={activeRound.rulesJson}
-                    onPlay={playVirtualShot}
-                    onContinue={continueVirtualShot}
-                    onMulligan={() => {
-                      if (virtualRoundEventId) {
-                        void takePersistedMulligan("play", virtualRoundEventId);
-                      }
-                    }}
-                    onRetry={() => {
-                      if (virtualRoundEventId) {
-                        submittedRoundEventsRef.current.delete(virtualRoundEventId);
-                      }
-                      setRoundRetryToken((value) => value + 1);
-                    }}
-                    onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
-                  />
-                )
-              ) : null}
-            </>
-          ) : mode === "live" ? (
-            <>
-              <RoundSetupControls
-                mode="live"
-                puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
-                activeRound={activeRound}
-                holes={manifest.holes}
-                currentHoleStrokes={liveStrokes}
-                rules={roundRules}
-                holeCount={roundHoleCount}
-                startingHole={roundStartingHole}
-                sync={roundSync}
-                onRulesChange={setRoundRules}
-                onHoleCountChange={setRoundHoleCount}
-                onStartingHoleChange={setRoundStartingHole}
-                onStart={() => void startPersistedRound("live")}
-                onRetry={() => setRoundRetryToken((value) => value + 1)}
-              />
-              {activeRound?.mode === "live" && activeRound.status === "in_progress" ? (
-                <LiveRoundControls
-                  bridge={bridgeState}
-                  pairingCode={pairingCode}
-                  onPairingCodeChange={setPairingCode}
-                  onDetect={detectBridge}
-                  onPair={pairBridge}
-                  onDownloadDiagnostics={downloadBridgeDiagnostics}
-                  hole={selectedHole}
-                  strategy={strategyState}
-                  selectedClub={strategyClub}
-                  onSelectClub={setStrategyClubId}
-                  handed={liveHanded}
-                  onHandedChange={setLiveHanded}
-                  shotNumber={liveShotNumber}
-                  strokes={liveStrokes}
-                  penaltyStrokes={livePenaltyStrokes}
-                  shot={liveShot}
-                  simulation={liveSimulation}
+              <div className="mb-1 flex items-center justify-between px-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/45">
+                  {mode === "replay"
+                    ? "Shot detail"
+                    : mode === "strategy"
+                      ? "Model detail"
+                      : mode === "play"
+                        ? "Round controls"
+                        : mode === "live"
+                          ? "Live controls"
+                          : "Course detail"}
+                </p>
+                <button
+                  type="button"
+                  className="grid size-11 place-items-center rounded-full border border-white/10 bg-white/5 text-white/65 transition hover:bg-white/10 hover:text-white lg:size-8"
+                  aria-label="Close analysis controls"
+                  onClick={closeHudPanel}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              {mode === "replay" ? (
+                <ReplayControls
+                  replay={replay}
+                  shots={holeShots}
+                  selectedShot={selectedShot}
+                  shotIndex={shotIndex}
+                  playing={playing}
                   playback={playback}
-                  sync={roundSync.status}
-                  rules={activeRound.rulesJson}
-                  onContinue={continueLiveShot}
-                  onMulligan={() => {
-                    if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
+                  simulation={selectedSimulation}
+                  onSelectShot={(index) => {
+                    setShotIndex(index);
+                    setPlayback(0);
+                    setPlaying(false);
+                    setCameraView("aerial");
+                    setCameraCommand(null);
                   }}
-                  onRetry={() => {
-                    if (liveRoundEventId) {
-                      submittedRoundEventsRef.current.delete(liveRoundEventId);
-                    }
-                    setRoundRetryToken((value) => value + 1);
+                  onToggle={() => {
+                    if (playback >= 1) setPlayback(0);
+                    setPlaying((current) => !current);
+                  }}
+                  onReset={() => {
+                    setPlaying(false);
+                    setPlayback(0);
                   }}
                 />
-              ) : null}
-            </>
-          ) : (
-            <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/70">
-              Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways, greens
-              and hazards come from saved semantic geometry; native screening vegetation completes
-              the visual course context where source tree geometry is incomplete.
-            </div>
-          )}
+              ) : mode === "strategy" ? (
+                <StrategyControls
+                  state={strategyState}
+                  selectedClub={strategyClub}
+                  onSelectClub={setStrategyClubId}
+                  onRetry={() => loadStrategy(selectedHole.holeNumber)}
+                />
+              ) : mode === "play" ? (
+                <>
+                  <RoundSetupControls
+                    mode="play"
+                    puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
+                    activeRound={activeRound}
+                    holes={manifest.holes}
+                    currentHoleStrokes={virtualStrokes}
+                    rules={roundRules}
+                    holeCount={roundHoleCount}
+                    startingHole={roundStartingHole}
+                    sync={roundSync}
+                    onRulesChange={setRoundRules}
+                    onHoleCountChange={setRoundHoleCount}
+                    onStartingHoleChange={setRoundStartingHole}
+                    onStart={() => void startPersistedRound("play")}
+                    onRetry={() => setRoundRetryToken((value) => value + 1)}
+                  />
+                  {activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
+                    manualPuttingVisible && !virtualShot && virtualPuttStart ? (
+                      <ManualPuttingControls
+                        hole={selectedHole}
+                        start={virtualPuttStart}
+                        puttNumber={virtualPuttNumber}
+                        strokes={virtualStrokes}
+                        aimOffsetDeg={virtualPuttAimDeg}
+                        pacePercent={virtualPuttPacePercent}
+                        result={virtualPuttResult}
+                        playback={playback}
+                        sync={roundSync}
+                        verified={manifest.quality.grade === "A" && manifest.quality.verified}
+                        onAimChange={setVirtualPuttAimDeg}
+                        onPaceChange={setVirtualPuttPacePercent}
+                        onPlay={playVirtualPutt}
+                        onContinue={continueVirtualPutt}
+                        onRetry={() => {
+                          if (virtualPuttEventId) {
+                            submittedRoundEventsRef.current.delete(virtualPuttEventId);
+                          }
+                          setRoundRetryToken((value) => value + 1);
+                        }}
+                      />
+                    ) : (
+                      <VirtualRoundControls
+                        state={strategyState}
+                        hole={selectedHole}
+                        selectedClub={virtualStrategyClub}
+                        availableClubs={virtualClubOptions}
+                        lieSurface={virtualLieSurface}
+                        shotKind={virtualShotKind}
+                        shotKindOptions={virtualShotKindOptions}
+                        onShotKindChange={(kind) => {
+                          setVirtualShotKindChoice(kind);
+                          setVirtualAimDirectionDeg(0);
+                        }}
+                        onSelectClub={setStrategyClubId}
+                        start={virtualStart}
+                        aimDirectionDeg={virtualAimDirectionDeg}
+                        onAimDirectionChange={setVirtualAimDirectionDeg}
+                        shotNumber={virtualShotNumber}
+                        strokes={virtualStrokes}
+                        penaltyStrokes={virtualPenaltyStrokes}
+                        shot={virtualShot}
+                        simulation={virtualSimulation}
+                        playback={playback}
+                        sync={roundSync.status}
+                        rules={activeRound.rulesJson}
+                        onPlay={playVirtualShot}
+                        onContinue={continueVirtualShot}
+                        onMulligan={() => {
+                          if (virtualRoundEventId) {
+                            void takePersistedMulligan("play", virtualRoundEventId);
+                          }
+                        }}
+                        onRetry={() => {
+                          if (virtualRoundEventId) {
+                            submittedRoundEventsRef.current.delete(virtualRoundEventId);
+                          }
+                          setRoundRetryToken((value) => value + 1);
+                        }}
+                        onStrategyRetry={() => loadStrategy(selectedHole.holeNumber)}
+                      />
+                    )
+                  ) : null}
+                </>
+              ) : mode === "live" ? (
+                <>
+                  <RoundSetupControls
+                    mode="live"
+                    puttingVerified={manifest.quality.grade === "A" && manifest.quality.verified}
+                    activeRound={activeRound}
+                    holes={manifest.holes}
+                    currentHoleStrokes={liveStrokes}
+                    rules={roundRules}
+                    holeCount={roundHoleCount}
+                    startingHole={roundStartingHole}
+                    sync={roundSync}
+                    onRulesChange={setRoundRules}
+                    onHoleCountChange={setRoundHoleCount}
+                    onStartingHoleChange={setRoundStartingHole}
+                    onStart={() => void startPersistedRound("live")}
+                    onRetry={() => setRoundRetryToken((value) => value + 1)}
+                  />
+                  {activeRound?.mode === "live" && activeRound.status === "in_progress" ? (
+                    <LiveRoundControls
+                      bridge={bridgeState}
+                      pairingCode={pairingCode}
+                      onPairingCodeChange={setPairingCode}
+                      onDetect={detectBridge}
+                      onPair={pairBridge}
+                      onDownloadDiagnostics={downloadBridgeDiagnostics}
+                      hole={selectedHole}
+                      strategy={strategyState}
+                      selectedClub={strategyClub}
+                      onSelectClub={setStrategyClubId}
+                      handed={liveHanded}
+                      onHandedChange={setLiveHanded}
+                      shotNumber={liveShotNumber}
+                      strokes={liveStrokes}
+                      penaltyStrokes={livePenaltyStrokes}
+                      shot={liveShot}
+                      simulation={liveSimulation}
+                      playback={playback}
+                      sync={roundSync.status}
+                      rules={activeRound.rulesJson}
+                      onContinue={continueLiveShot}
+                      onMulligan={() => {
+                        if (liveRoundEventId) void takePersistedMulligan("live", liveRoundEventId);
+                      }}
+                      onRetry={() => {
+                        if (liveRoundEventId) {
+                          submittedRoundEventsRef.current.delete(liveRoundEventId);
+                        }
+                        setRoundRetryToken((value) => value + 1);
+                      }}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <div className="mt-5 rounded-xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-emerald-100/70">
+                  Drag to orbit, scroll to zoom, and choose a hole to move the camera. Fairways,
+                  greens and hazards come from saved semantic geometry; native screening vegetation
+                  completes the visual course context where source tree geometry is incomplete.
+                </div>
+              )}
 
-          <Collapsible className="group/attribution mt-4 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/50">
-            <CollapsibleTrigger className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 text-left font-medium text-emerald-100/65">
-              Course data & licences
-              <ChevronDown className="size-4 transition-transform group-data-[state=open]/attribution:rotate-180 motion-reduce:transition-none" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 leading-5">
-              {manifest.attribution.map((item) => (
-                <a
-                  key={item.url}
-                  href={item.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block underline"
-                >
-                  {item.label} · {item.licence}
-                </a>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-      </aside>
+              <Collapsible className="group/attribution mt-4 rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-emerald-100/50">
+                <CollapsibleTrigger className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-2 text-left font-medium text-emerald-100/65">
+                  Course data & licences
+                  <ChevronDown className="size-4 transition-transform group-data-[state=open]/attribution:rotate-180 motion-reduce:transition-none" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2 leading-5">
+                  {manifest.attribution.map((item) => (
+                    <a
+                      key={item.url}
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block underline"
+                    >
+                      {item.label} · {item.licence}
+                    </a>
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </aside>
+        );
+        const panelTitle =
+          hudPanel === "course"
+            ? "Course Twin settings"
+            : mode === "replay"
+              ? "Replay selection"
+              : "Advanced controls";
+        const panelDescription =
+          hudPanel === "course"
+            ? "Course, camera and secondary viewing controls."
+            : "Choose a replay or adjust the current shot workflow.";
+        return isCompactViewport ? (
+          <Drawer open={Boolean(hudPanel)} onOpenChange={(open) => !open && closeHudPanel()}>
+            <DrawerContent
+              data-mobile-preserve-dark
+              className="max-h-[86dvh] overflow-y-auto border-white/12 bg-[#07150e] text-white"
+              style={{ colorScheme: "dark" }}
+            >
+              <DrawerHeader className="sr-only">
+                <DrawerTitle>{panelTitle}</DrawerTitle>
+                <DrawerDescription>{panelDescription}</DrawerDescription>
+              </DrawerHeader>
+              {controls}
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          <Sheet open={Boolean(hudPanel)} onOpenChange={(open) => !open && closeHudPanel()}>
+            <SheetContent
+              data-mobile-preserve-dark
+              side="right"
+              showCloseButton={false}
+              className="w-[390px] overflow-y-auto border-white/12 bg-[#07150e] p-0 text-white sm:max-w-[390px]"
+              style={{ colorScheme: "dark" }}
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>{panelTitle}</SheetTitle>
+                <SheetDescription>{panelDescription}</SheetDescription>
+              </SheetHeader>
+              {controls}
+            </SheetContent>
+          </Sheet>
+        );
+      })()}
 
       <section
         data-course-twin-canvas
@@ -3148,6 +3226,10 @@ export function CourseTwinScene({
           selectedHoleIndex={selectedHoleIndex}
           holeCount={manifest.holes.length}
           statusText={mobileHoleStatus}
+          clubLabel={hudClub}
+          carryLabel={hudCarryYd === null ? "—" : `${Math.round(hudCarryYd)} yd`}
+          targetLabel={hudTarget}
+          missLabel={hudMissPattern}
           roundLocksHole={roundLocksHole}
           coursePanelOpen={hudPanel === "course"}
           analysisPanelOpen={hudPanel === "analysis"}
@@ -3159,253 +3241,127 @@ export function CourseTwinScene({
         >
           {mobileActionContent}
         </MobileCourseTwinChrome>
-        <div className="hidden lg:contents">
-          <CinematicPerformanceHud
-            mode={mode}
-            replay={replay}
-            selectedHole={selectedHole}
-            shots={holeShots}
-            selectedShot={selectedShot}
-            shotIndex={shotIndex}
-            playing={playing}
-            playback={playback}
-            simulation={
-              mode === "replay"
-                ? selectedSimulation
-                : mode === "play"
-                  ? (virtualPuttReplay?.simulation ?? virtualSimulation)
+        <CourseTwinMinimalHud
+          mode={mode}
+          readOnly={readOnly}
+          replayAvailable={Boolean(replay?.shots.length)}
+          selectedHole={selectedHole}
+          selectedHoleIndex={selectedHoleIndex}
+          holeCount={manifest.holes.length}
+          roundLocksHole={roundLocksHole}
+          clubLabel={hudClub}
+          carryLabel={hudCarryYd === null ? "—" : `${Math.round(hudCarryYd)} yd`}
+          currentLabel={hudCurrent}
+          onSelectMode={activateRuntimeMode}
+          onOpenSettings={() => toggleHudPanel("course")}
+          onOpenAdvanced={() => toggleHudPanel("analysis")}
+          onPreviousHole={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+          onNextHole={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+        />
+        <div className="hidden" aria-hidden="true">
+          <div className="hidden lg:contents">
+            <CinematicPerformanceHud
+              mode={mode}
+              replay={replay}
+              selectedHole={selectedHole}
+              shots={holeShots}
+              selectedShot={selectedShot}
+              shotIndex={shotIndex}
+              playing={playing}
+              playback={playback}
+              simulation={
+                mode === "replay"
+                  ? selectedSimulation
+                  : mode === "play"
+                    ? (virtualPuttReplay?.simulation ?? virtualSimulation)
+                    : mode === "live"
+                      ? liveSimulation
+                      : null
+              }
+              strategy={strategyClub}
+              strategyStatus={strategyState.status}
+              remainingYd={
+                mode === "play"
+                  ? virtualRemainingYd
                   : mode === "live"
                     ? liveSimulation
+                      ? courseTwinDistanceToPinYd(
+                          simulationDropPoint(liveSimulation),
+                          selectedHole.green,
+                        )
+                      : courseTwinDistanceToPinYd(liveStart, selectedHole.green)
                     : null
-            }
-            strategy={strategyClub}
-            strategyStatus={strategyState.status}
-            remainingYd={
-              mode === "play"
-                ? virtualRemainingYd
-                : mode === "live"
-                  ? liveSimulation
-                    ? courseTwinDistanceToPinYd(
-                        simulationDropPoint(liveSimulation),
-                        selectedHole.green,
-                      )
-                    : courseTwinDistanceToPinYd(liveStart, selectedHole.green)
-                  : null
-            }
-            strokes={mode === "play" ? virtualStrokes : mode === "live" ? liveStrokes : null}
-            onSelectShot={(index) => {
-              setShotIndex(index);
-              setPlayback(0);
-              setPlaying(false);
-              setCameraView("aerial");
-              setCameraCommand(null);
-            }}
-            onToggleReplay={() => {
-              if (playback >= 1) setPlayback(0);
-              setPlaying((current) => !current);
-            }}
-          />
-        </div>
-        <div
-          data-course-twin-tablet-controls
-          className="pointer-events-none absolute inset-x-3 top-3 z-10 hidden items-center justify-between gap-2 lg:flex xl:hidden"
-        >
-          <button
-            type="button"
-            className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-[#07150e]/80 px-2.5 py-2 text-left text-white shadow-xl backdrop-blur-2xl"
-            aria-label="Open course controls"
-            aria-expanded={hudPanel === "course"}
-            onClick={() => setHudPanel((current) => (current === "course" ? null : "course"))}
-          >
-            <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-[#e7ff6a] text-xs font-black text-[#102217]">
-              CT
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-100/45">
-                Course Twin
-              </span>
-              <span className="block max-w-[150px] truncate text-xs font-semibold">
-                {manifest.course.name}
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "pointer-events-auto inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold shadow-xl backdrop-blur-2xl",
-              hudPanel === "analysis"
-                ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
-                : "border-white/15 bg-[#07150e]/80 text-white",
-            )}
-            aria-label="Open analysis controls"
-            aria-expanded={hudPanel === "analysis"}
-            onClick={() => setHudPanel((current) => (current === "analysis" ? null : "analysis"))}
-          >
-            <BarChart3 className="size-4" /> Details
-          </button>
-        </div>
-
-        <div
-          data-course-twin-tablet-controls
-          className="pointer-events-none absolute inset-x-3 bottom-20 z-10 hidden lg:block xl:hidden"
-        >
-          <div className="mb-2 flex items-end justify-between">
-            <div className="rounded-2xl border border-white/15 bg-[#07150e]/80 px-3 py-2 text-white shadow-xl backdrop-blur-2xl">
-              <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#e7ff6a]/70">
-                Hole {selectedHole.holeNumber}
-              </p>
-              <p className="text-sm font-bold">
-                {selectedHole.yards} yd · Par {selectedHole.par}
-              </p>
-            </div>
-            <div className="pointer-events-auto flex gap-1 rounded-full border border-white/15 bg-[#07150e]/80 p-1 shadow-xl backdrop-blur-2xl">
-              <button
-                type="button"
-                className="grid size-8 place-items-center rounded-full text-white disabled:opacity-30"
-                disabled={roundLocksHole || selectedHoleIndex <= 0}
-                onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
-                aria-label="Previous hole"
-              >
-                <ChevronLeft className="size-4" />
-              </button>
-              <button
-                type="button"
-                className="grid size-8 place-items-center rounded-full text-white disabled:opacity-30"
-                disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
-                onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
-                aria-label="Next hole"
-              >
-                <ChevronRight className="size-4" />
-              </button>
-            </div>
+              }
+              strokes={mode === "play" ? virtualStrokes : mode === "live" ? liveStrokes : null}
+              onSelectShot={(index) => {
+                setShotIndex(index);
+                setPlayback(0);
+                setPlaying(false);
+                setCameraView("aerial");
+                setCameraCommand(null);
+              }}
+              onToggleReplay={() => {
+                if (playback >= 1) setPlayback(0);
+                setPlaying((current) => !current);
+              }}
+            />
           </div>
           <div
-            data-course-twin-runtime-mode-dock
-            className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-[#07150e]/84 p-1.5 shadow-2xl backdrop-blur-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            data-course-twin-tablet-controls
+            className="pointer-events-none absolute inset-x-3 top-3 z-10 hidden items-center justify-between gap-2 lg:flex xl:hidden"
           >
-            <RuntimeDockButton
-              active={mode === "flyover"}
-              label="Flyover"
-              onClick={() => activateRuntimeMode("flyover")}
-            />
-            <RuntimeDockButton
-              active={mode === "replay"}
-              label="Replay"
-              disabled={!replay?.shots.length}
-              onClick={() => activateRuntimeMode("replay")}
-            />
-            {!readOnly ? (
-              <>
-                <RuntimeDockButton
-                  active={mode === "strategy"}
-                  label="Strategy"
-                  onClick={() => activateRuntimeMode("strategy")}
-                />
-                <RuntimeDockButton
-                  active={mode === "play"}
-                  label="Play"
-                  onClick={() => activateRuntimeMode("play")}
-                />
-                <RuntimeDockButton
-                  active={mode === "live"}
-                  label="Live"
-                  onClick={() => activateRuntimeMode("live")}
-                />
-                <RuntimeDockButton
-                  active={mode === "explore"}
-                  label="Explore"
-                  onClick={() => activateRuntimeMode("explore")}
-                />
-              </>
-            ) : null}
-          </div>
-        </div>
-        <div className="pointer-events-none absolute inset-0 z-10 hidden xl:block">
-          <button
-            type="button"
-            className="pointer-events-auto absolute left-4 top-4 flex max-w-[280px] items-center gap-3 rounded-2xl border border-white/15 bg-[#07150e]/76 px-3.5 py-2.5 text-left text-white shadow-xl shadow-black/20 backdrop-blur-2xl transition hover:border-white/25 hover:bg-[#07150e]/88"
-            aria-label="Open course controls"
-            aria-expanded={hudPanel === "course"}
-            onClick={() => setHudPanel((current) => (current === "course" ? null : "course"))}
-          >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#e7ff6a] text-sm font-black text-[#102217]">
-              CT
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/50">
-                Course Twin · Grade {manifest.quality.grade}
+            <button
+              type="button"
+              className="pointer-events-auto flex min-w-0 items-center gap-2 rounded-2xl border border-white/15 bg-[#07150e]/80 px-2.5 py-2 text-left text-white shadow-xl backdrop-blur-2xl"
+              aria-label="Open course controls"
+              aria-expanded={hudPanel === "course"}
+              onClick={() => setHudPanel((current) => (current === "course" ? null : "course"))}
+            >
+              <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-[#e7ff6a] text-xs font-black text-[#102217]">
+                CT
               </span>
-              <span className="mt-0.5 block truncate text-sm font-semibold">
-                {manifest.course.name}
+              <span className="min-w-0">
+                <span className="block text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-100/45">
+                  Course Twin
+                </span>
+                <span className="block max-w-[150px] truncate text-xs font-semibold">
+                  {manifest.course.name}
+                </span>
               </span>
-            </span>
-            <SlidersHorizontal className="ml-1 size-4 shrink-0 text-emerald-100/55" />
-          </button>
-
-          <div className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2">
+            </button>
             <button
               type="button"
               className={cn(
-                "inline-flex h-10 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold shadow-xl shadow-black/20 backdrop-blur-2xl transition",
+                "pointer-events-auto inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold shadow-xl backdrop-blur-2xl",
                 hudPanel === "analysis"
-                  ? "border-[#e7ff6a]/50 bg-[#e7ff6a] text-[#102217]"
-                  : "border-white/15 bg-[#07150e]/76 text-white hover:border-white/25 hover:bg-[#07150e]/88",
+                  ? "border-[#e7ff6a] bg-[#e7ff6a] text-[#102217]"
+                  : "border-white/15 bg-[#07150e]/80 text-white",
               )}
               aria-label="Open analysis controls"
               aria-expanded={hudPanel === "analysis"}
               onClick={() => setHudPanel((current) => (current === "analysis" ? null : "analysis"))}
             >
-              <BarChart3 className="size-4" />
-              Details
+              <BarChart3 className="size-4" /> Details
             </button>
-            <div className="flex items-center rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
-              <button
-                type="button"
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                  cameraView === "golfer" ? "bg-white/15 text-white" : "text-white/55",
-                )}
-                onClick={() => {
-                  setCameraView("golfer");
-                  setCameraCommand(null);
-                }}
-              >
-                Shot
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition",
-                  cameraView === "aerial" ? "bg-white/15 text-white" : "text-white/55",
-                )}
-                onClick={() => {
-                  setCameraView("aerial");
-                  setCameraCommand(null);
-                }}
-              >
-                Aerial
-              </button>
-            </div>
           </div>
 
           <div
-            data-course-twin-hole-hud
-            className="pointer-events-auto absolute bottom-4 left-4 w-[180px] rounded-[1.35rem] border border-white/15 bg-[#07150e]/78 p-4 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl 2xl:w-[190px]"
+            data-course-twin-tablet-controls
+            className="pointer-events-none absolute inset-x-3 bottom-20 z-10 hidden lg:block xl:hidden"
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#e7ff6a]/75">
-              Now viewing
-            </p>
-            <div className="mt-1 flex items-end justify-between gap-3">
-              <div>
-                <p className="text-4xl font-black tracking-[-0.06em]">{selectedHole.holeNumber}</p>
-                <p className="mt-0.5 text-sm font-semibold text-white/85">
+            <div className="mb-2 flex items-end justify-between">
+              <div className="rounded-2xl border border-white/15 bg-[#07150e]/80 px-3 py-2 text-white shadow-xl backdrop-blur-2xl">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#e7ff6a]/70">
+                  Hole {selectedHole.holeNumber}
+                </p>
+                <p className="text-sm font-bold">
                   {selectedHole.yards} yd · Par {selectedHole.par}
                 </p>
               </div>
-              <div className="flex gap-1">
+              <div className="pointer-events-auto flex gap-1 rounded-full border border-white/15 bg-[#07150e]/80 p-1 shadow-xl backdrop-blur-2xl">
                 <button
                   type="button"
-                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 disabled:opacity-30"
+                  className="grid size-8 place-items-center rounded-full text-white disabled:opacity-30"
                   disabled={roundLocksHole || selectedHoleIndex <= 0}
                   onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
                   aria-label="Previous hole"
@@ -3414,7 +3370,7 @@ export function CourseTwinScene({
                 </button>
                 <button
                   type="button"
-                  className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 disabled:opacity-30"
+                  className="grid size-8 place-items-center rounded-full text-white disabled:opacity-30"
                   disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
                   onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
                   aria-label="Next hole"
@@ -3423,75 +3379,221 @@ export function CourseTwinScene({
                 </button>
               </div>
             </div>
-            <div className="mt-3 h-px bg-gradient-to-r from-[#e7ff6a]/70 to-transparent" />
-          </div>
-
-          <div
-            data-course-twin-runtime-mode-dock
-            className="pointer-events-auto absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/15 bg-[#07150e]/82 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-2xl"
-          >
-            <RuntimeDockButton
-              active={mode === "flyover"}
-              label="Flyover"
-              onClick={() => activateRuntimeMode("flyover")}
-            />
-            <RuntimeDockButton
-              active={mode === "replay"}
-              label="Replay"
-              disabled={!replay?.shots.length}
-              onClick={() => activateRuntimeMode("replay")}
-            />
-            {!readOnly ? (
-              <>
-                <RuntimeDockButton
-                  active={mode === "strategy"}
-                  label="Strategy"
-                  onClick={() => activateRuntimeMode("strategy")}
-                />
-                <RuntimeDockButton
-                  active={mode === "play"}
-                  label="Play"
-                  onClick={() => activateRuntimeMode("play")}
-                />
-                <RuntimeDockButton
-                  active={mode === "live"}
-                  label="Live"
-                  onClick={() => activateRuntimeMode("live")}
-                />
-                <RuntimeDockButton
-                  active={mode === "explore"}
-                  label="Explore"
-                  onClick={() => activateRuntimeMode("explore")}
-                />
-              </>
-            ) : null}
-          </div>
-
-          <div
-            data-course-twin-camera-controls
-            className="pointer-events-auto absolute bottom-4 right-4 flex items-center gap-1 rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl"
-          >
-            <CameraControlButton
-              label="Orbit camera left"
-              onClick={() => issueCameraCommand("orbit-left")}
+            <div
+              data-course-twin-runtime-mode-dock
+              className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-2xl border border-white/15 bg-[#07150e]/84 p-1.5 shadow-2xl backdrop-blur-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              <ChevronLeft className="size-4" />
-            </CameraControlButton>
-            <CameraControlButton label="Reset camera" onClick={() => issueCameraCommand("reset")}>
-              <LocateFixed className="size-4" />
-            </CameraControlButton>
-            <CameraControlButton
-              label="Orbit camera right"
-              onClick={() => issueCameraCommand("orbit-right")}
+              <RuntimeDockButton
+                active={mode === "flyover"}
+                label="Flyover"
+                onClick={() => activateRuntimeMode("flyover")}
+              />
+              <RuntimeDockButton
+                active={mode === "replay"}
+                label="Replay"
+                disabled={!replay?.shots.length}
+                onClick={() => activateRuntimeMode("replay")}
+              />
+              {!readOnly ? (
+                <>
+                  <RuntimeDockButton
+                    active={mode === "strategy"}
+                    label="Strategy"
+                    onClick={() => activateRuntimeMode("strategy")}
+                  />
+                  <RuntimeDockButton
+                    active={mode === "play"}
+                    label="Play"
+                    onClick={() => activateRuntimeMode("play")}
+                  />
+                  <RuntimeDockButton
+                    active={mode === "live"}
+                    label="Live"
+                    onClick={() => activateRuntimeMode("live")}
+                  />
+                  <RuntimeDockButton
+                    active={mode === "explore"}
+                    label="Explore"
+                    onClick={() => activateRuntimeMode("explore")}
+                  />
+                </>
+              ) : null}
+            </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 z-10 hidden xl:block">
+            <button
+              type="button"
+              className="pointer-events-auto absolute left-4 top-4 flex max-w-[280px] items-center gap-3 rounded-2xl border border-white/15 bg-[#07150e]/76 px-3.5 py-2.5 text-left text-white shadow-xl shadow-black/20 backdrop-blur-2xl transition hover:border-white/25 hover:bg-[#07150e]/88"
+              aria-label="Open course controls"
+              aria-expanded={hudPanel === "course"}
+              onClick={() => setHudPanel((current) => (current === "course" ? null : "course"))}
             >
-              <ChevronRight className="size-4" />
-            </CameraControlButton>
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#e7ff6a] text-sm font-black text-[#102217]">
+                CT
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/50">
+                  Course Twin · Grade {manifest.quality.grade}
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-semibold">
+                  {manifest.course.name}
+                </span>
+              </span>
+              <SlidersHorizontal className="ml-1 size-4 shrink-0 text-emerald-100/55" />
+            </button>
+
+            <div className="pointer-events-auto absolute right-4 top-4 flex items-center gap-2">
+              <button
+                type="button"
+                className={cn(
+                  "inline-flex h-10 items-center gap-2 rounded-full border px-3.5 text-xs font-semibold shadow-xl shadow-black/20 backdrop-blur-2xl transition",
+                  hudPanel === "analysis"
+                    ? "border-[#e7ff6a]/50 bg-[#e7ff6a] text-[#102217]"
+                    : "border-white/15 bg-[#07150e]/76 text-white hover:border-white/25 hover:bg-[#07150e]/88",
+                )}
+                aria-label="Open analysis controls"
+                aria-expanded={hudPanel === "analysis"}
+                onClick={() =>
+                  setHudPanel((current) => (current === "analysis" ? null : "analysis"))
+                }
+              >
+                <BarChart3 className="size-4" />
+                Details
+              </button>
+              <div className="flex items-center rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                    cameraView === "golfer" ? "bg-white/15 text-white" : "text-white/55",
+                  )}
+                  onClick={() => {
+                    setCameraView("golfer");
+                    setCameraCommand(null);
+                  }}
+                >
+                  Shot
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                    cameraView === "aerial" ? "bg-white/15 text-white" : "text-white/55",
+                  )}
+                  onClick={() => {
+                    setCameraView("aerial");
+                    setCameraCommand(null);
+                  }}
+                >
+                  Aerial
+                </button>
+              </div>
+            </div>
+
+            <div
+              data-course-twin-hole-hud
+              className="pointer-events-auto absolute bottom-4 left-4 w-[180px] rounded-[1.35rem] border border-white/15 bg-[#07150e]/78 p-4 text-white shadow-2xl shadow-black/30 backdrop-blur-2xl 2xl:w-[190px]"
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#e7ff6a]/75">
+                Now viewing
+              </p>
+              <div className="mt-1 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-4xl font-black tracking-[-0.06em]">
+                    {selectedHole.holeNumber}
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold text-white/85">
+                    {selectedHole.yards} yd · Par {selectedHole.par}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 disabled:opacity-30"
+                    disabled={roundLocksHole || selectedHoleIndex <= 0}
+                    onClick={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+                    aria-label="Previous hole"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="grid size-8 place-items-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 disabled:opacity-30"
+                    disabled={roundLocksHole || selectedHoleIndex >= manifest.holes.length - 1}
+                    onClick={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+                    aria-label="Next hole"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 h-px bg-gradient-to-r from-[#e7ff6a]/70 to-transparent" />
+            </div>
+
+            <div
+              data-course-twin-runtime-mode-dock
+              className="pointer-events-auto absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/15 bg-[#07150e]/82 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            >
+              <RuntimeDockButton
+                active={mode === "flyover"}
+                label="Flyover"
+                onClick={() => activateRuntimeMode("flyover")}
+              />
+              <RuntimeDockButton
+                active={mode === "replay"}
+                label="Replay"
+                disabled={!replay?.shots.length}
+                onClick={() => activateRuntimeMode("replay")}
+              />
+              {!readOnly ? (
+                <>
+                  <RuntimeDockButton
+                    active={mode === "strategy"}
+                    label="Strategy"
+                    onClick={() => activateRuntimeMode("strategy")}
+                  />
+                  <RuntimeDockButton
+                    active={mode === "play"}
+                    label="Play"
+                    onClick={() => activateRuntimeMode("play")}
+                  />
+                  <RuntimeDockButton
+                    active={mode === "live"}
+                    label="Live"
+                    onClick={() => activateRuntimeMode("live")}
+                  />
+                  <RuntimeDockButton
+                    active={mode === "explore"}
+                    label="Explore"
+                    onClick={() => activateRuntimeMode("explore")}
+                  />
+                </>
+              ) : null}
+            </div>
+
+            <div
+              data-course-twin-camera-controls
+              className="pointer-events-auto absolute bottom-4 right-4 flex items-center gap-1 rounded-full border border-white/15 bg-[#07150e]/76 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl"
+            >
+              <CameraControlButton
+                label="Orbit camera left"
+                onClick={() => issueCameraCommand("orbit-left")}
+              >
+                <ChevronLeft className="size-4" />
+              </CameraControlButton>
+              <CameraControlButton label="Reset camera" onClick={() => issueCameraCommand("reset")}>
+                <LocateFixed className="size-4" />
+              </CameraControlButton>
+              <CameraControlButton
+                label="Orbit camera right"
+                onClick={() => issueCameraCommand("orbit-right")}
+              >
+                <ChevronRight className="size-4" />
+              </CameraControlButton>
+            </div>
           </div>
         </div>
-        <div
-          data-course-twin-tablet-controls
-          className="pointer-events-none absolute bottom-4 left-4 hidden rounded-lg border border-white/30 bg-[#07150e]/78 px-3 py-2 text-xs font-medium text-emerald-50 shadow-lg backdrop-blur lg:block xl:hidden"
-        >
+        <div data-course-twin-tablet-controls className="hidden">
           {terrainError
             ? `Terrain unavailable · ${terrainError}`
             : sampleTerrain
@@ -3527,6 +3629,183 @@ export function CourseTwinScene({
   );
 }
 
+function CourseTwinMinimalHud({
+  mode,
+  readOnly,
+  replayAvailable,
+  selectedHole,
+  selectedHoleIndex,
+  holeCount,
+  roundLocksHole,
+  clubLabel,
+  carryLabel,
+  currentLabel,
+  onSelectMode,
+  onOpenSettings,
+  onOpenAdvanced,
+  onPreviousHole,
+  onNextHole,
+}: {
+  mode: RuntimeMode;
+  readOnly: boolean;
+  replayAvailable: boolean;
+  selectedHole: CourseTwinHole;
+  selectedHoleIndex: number;
+  holeCount: number;
+  roundLocksHole: boolean;
+  clubLabel: string;
+  carryLabel: string;
+  currentLabel: string;
+  onSelectMode: (mode: RuntimeMode) => void;
+  onOpenSettings: () => void;
+  onOpenAdvanced: () => void;
+  onPreviousHole: () => void;
+  onNextHole: () => void;
+}) {
+  const primaryMode = mode === "strategy" || mode === "replay" || mode === "play" ? mode : "";
+  const modes: Array<"strategy" | "replay" | "play"> = ["strategy", "replay", "play"];
+
+  return (
+    <div
+      data-course-twin-desktop-hud
+      className="pointer-events-none absolute inset-0 z-10 hidden lg:block"
+      aria-label="Course Twin heads-up display"
+    >
+      <div className="absolute inset-x-4 top-4 flex items-start justify-between gap-4">
+        <div
+          data-course-twin-hole-hud
+          className="pointer-events-auto flex h-11 items-center divide-x divide-white/12 rounded-full border border-white/14 bg-[#07150e]/68 px-1 text-white shadow-lg shadow-black/15 backdrop-blur-xl"
+        >
+          <HudFact label="Hole" value={String(selectedHole.holeNumber)} />
+          <HudFact label="Par" value={String(selectedHole.par)} />
+          <HudFact label="Distance" value={`${selectedHole.yards} yd`} />
+        </div>
+
+        <ToggleGroup
+          data-course-twin-runtime-mode-dock
+          type="single"
+          value={primaryMode}
+          onValueChange={(value) => value && onSelectMode(value as RuntimeMode)}
+          spacing={1}
+          className="pointer-events-auto rounded-full border border-white/14 bg-[#07150e]/72 p-1 shadow-lg shadow-black/15 backdrop-blur-xl"
+          aria-label="Course Twin mode"
+        >
+          {modes.map((item) => (
+            <ToggleGroupItem
+              key={item}
+              value={item}
+              disabled={(item === "replay" && !replayAvailable) || (item === "play" && readOnly)}
+              className="h-9 rounded-full border-0 px-4 text-xs font-semibold text-white/62 hover:bg-white/8 hover:text-white data-[state=on]:bg-[#e7ff6a] data-[state=on]:text-[#102217]"
+            >
+              {runtimeModeLabel(item)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+
+        <div
+          data-course-twin-hud-actions
+          className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/14 bg-[#07150e]/68 p-1 shadow-lg shadow-black/15 backdrop-blur-xl"
+        >
+          <button
+            type="button"
+            className="inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold text-white/72 transition hover:bg-white/10 hover:text-white"
+            aria-label={mode === "replay" ? "Open replay selection" : "Open advanced controls"}
+            onClick={onOpenAdvanced}
+          >
+            {mode === "replay" ? <CirclePlay className="size-4" /> : <Radar className="size-4" />}
+            {mode === "replay" ? "Replays" : "Advanced"}
+          </button>
+          <button
+            type="button"
+            className="grid size-9 place-items-center rounded-full text-white/72 transition hover:bg-white/10 hover:text-white"
+            aria-label="Open Course Twin settings"
+            onClick={onOpenSettings}
+          >
+            <Settings className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      <div
+        data-course-twin-current-plan
+        className="pointer-events-auto absolute bottom-4 left-1/2 flex w-[min(720px,calc(100%-31rem))] min-w-[470px] -translate-x-1/2 items-center justify-between gap-5 rounded-full border border-white/14 bg-[#07150e]/68 px-4 py-2.5 text-white shadow-lg shadow-black/15 backdrop-blur-xl"
+      >
+        <div className="flex min-w-0 items-center gap-5">
+          <HudFact label="Club" value={clubLabel} compact />
+          <HudFact label="Expected carry" value={carryLabel} compact />
+          <div className="min-w-0 border-l border-white/12 pl-5">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/38">
+              {mode === "strategy" ? "Current strategy" : "Current shot"}
+            </p>
+            <p className="mt-0.5 truncate text-xs font-semibold text-white/88">{currentLabel}</p>
+          </div>
+        </div>
+        <div
+          className="hidden shrink-0 items-center gap-3 text-[9px] font-medium text-white/46 2xl:flex"
+          aria-label="Visible course layers"
+        >
+          <VisualKey colour="#e7ff6a" label="Dispersion" />
+          <VisualKey colour="#ffffff" label="Target" />
+          <VisualKey colour="#66d9ff" label="Carry" />
+          <VisualKey colour="#ffaf70" label="Hazards" />
+        </div>
+      </div>
+
+      <div
+        data-course-twin-hole-nav
+        className="pointer-events-auto absolute bottom-4 right-4 flex items-center gap-1 rounded-full border border-white/14 bg-[#07150e]/68 p-1 shadow-lg shadow-black/15 backdrop-blur-xl"
+      >
+        <button
+          type="button"
+          className="grid size-9 place-items-center rounded-full text-white/72 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
+          disabled={roundLocksHole || selectedHoleIndex <= 0}
+          onClick={onPreviousHole}
+          aria-label="Previous hole"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <span className="px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/48">
+          Hole {selectedHole.holeNumber} / {holeCount}
+        </span>
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/9 px-3 text-xs font-semibold text-white transition hover:bg-white/14 disabled:opacity-30"
+          disabled={roundLocksHole || selectedHoleIndex >= holeCount - 1}
+          onClick={onNextHole}
+        >
+          Next hole <ChevronRight className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HudFact({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
+  return (
+    <div className={cn("px-3", compact && "px-0")}>
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-white/38">{label}</p>
+      <p className="mt-0.5 whitespace-nowrap text-xs font-semibold text-white/90">{value}</p>
+    </div>
+  );
+}
+
+function VisualKey({ colour, label }: { colour: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="size-1.5 rounded-full" style={{ backgroundColor: colour }} />
+      {label}
+    </span>
+  );
+}
+
 function MobileCourseTwinChrome({
   courseName,
   mode,
@@ -3536,6 +3815,10 @@ function MobileCourseTwinChrome({
   selectedHoleIndex,
   holeCount,
   statusText,
+  clubLabel,
+  carryLabel,
+  targetLabel,
+  missLabel,
   roundLocksHole,
   coursePanelOpen,
   analysisPanelOpen,
@@ -3554,6 +3837,10 @@ function MobileCourseTwinChrome({
   selectedHoleIndex: number;
   holeCount: number;
   statusText: string;
+  clubLabel: string;
+  carryLabel: string;
+  targetLabel: string;
+  missLabel: string;
   roundLocksHole: boolean;
   coursePanelOpen: boolean;
   analysisPanelOpen: boolean;
@@ -3578,7 +3865,7 @@ function MobileCourseTwinChrome({
         <button
           type="button"
           className={mobileStyles.courseButton}
-          aria-label="Open course controls"
+          aria-label="Open Course Twin settings"
           aria-expanded={coursePanelOpen}
           onClick={onOpenCourse}
         >
@@ -3593,7 +3880,7 @@ function MobileCourseTwinChrome({
         <button
           type="button"
           className={mobileStyles.detailsButton}
-          aria-label="Open shot details"
+          aria-label={mode === "replay" ? "Open replay selection" : "Open advanced controls"}
           aria-expanded={analysisPanelOpen}
           onClick={onOpenDetails}
         >
@@ -3634,13 +3921,48 @@ function MobileCourseTwinChrome({
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         </div>
-        {children}
+        <div className={mobileStyles.mobileActionSummary} aria-label="Current shot plan">
+          <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+            <span>Club</span>
+            <strong>{clubLabel}</strong>
+          </button>
+          <div className={mobileStyles.actionFact}>
+            <span>Carry</span>
+            <strong>{carryLabel}</strong>
+          </div>
+          <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+            <span>Target</span>
+            <strong>{targetLabel}</strong>
+          </button>
+          <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+            <span>Shape / miss</span>
+            <strong>{missLabel}</strong>
+          </button>
+          <button
+            type="button"
+            className={cn(mobileStyles.actionFact, mobileStyles.nextHoleAction)}
+            disabled={roundLocksHole || selectedHoleIndex >= holeCount - 1}
+            onClick={onNextHole}
+          >
+            <span>Next</span>
+            <strong>
+              Hole{" "}
+              {selectedHoleIndex >= holeCount - 1
+                ? selectedHole.holeNumber
+                : selectedHole.holeNumber + 1}
+            </strong>
+          </button>
+        </div>
+        {mode === "strategy" ? null : children}
       </div>
 
-      <div
+      <ToggleGroup
         data-course-twin-mode-dock
         className={mobileStyles.modeDock}
-        role="group"
+        type="single"
+        value={mode === "strategy" || mode === "replay" || mode === "play" ? mode : ""}
+        onValueChange={(value) => value && onSelectMode(value as RuntimeMode)}
+        spacing={0}
         aria-label="Course Twin mode"
       >
         {modes.map((item) => {
@@ -3648,22 +3970,20 @@ function MobileCourseTwinChrome({
             (item === "replay" && !replayAvailable) ||
             (readOnly && item !== "strategy" && item !== "replay");
           return (
-            <button
+            <ToggleGroupItem
               key={item}
-              type="button"
+              value={item}
               className={cn(
                 mobileStyles.modeButton,
                 mode === item && mobileStyles.modeButtonActive,
               )}
               disabled={unavailable}
-              aria-pressed={mode === item}
-              onClick={() => onSelectMode(item)}
             >
               {runtimeModeLabel(item)}
-            </button>
+            </ToggleGroupItem>
           );
         })}
-      </div>
+      </ToggleGroup>
     </div>
   );
 }
@@ -4314,6 +4634,19 @@ function runtimeModeLabel(mode: RuntimeMode) {
 function formatMobileAim(directionDeg: number) {
   if (Math.abs(directionDeg) < 0.25) return "Centre";
   return `${Math.abs(directionDeg).toFixed(directionDeg % 1 === 0 ? 0 : 1)}° ${directionDeg < 0 ? "left" : "right"}`;
+}
+
+function formatStrategyTarget(aimOffsetYd: number) {
+  if (Math.abs(aimOffsetYd) < 0.5) return "Centre line";
+  return `${Math.abs(aimOffsetYd).toFixed(0)} yd ${aimOffsetYd < 0 ? "left" : "right"}`;
+}
+
+function formatStrategyMissPattern(club: CourseTwinStrategyClub | null) {
+  if (!club) return "—";
+  const mean = club.shotModel.sideMeanYd;
+  const spread = club.shotModel.sideStdDevYd;
+  if (Math.abs(mean) < 1.5) return `±${spread.toFixed(0)} yd`;
+  return `${Math.abs(mean).toFixed(0)} yd ${mean < 0 ? "L" : "R"} · ±${spread.toFixed(0)}`;
 }
 
 function CinematicPerformanceHud({
@@ -6555,6 +6888,20 @@ function StrategyLandingCloud({
           color="#ffffff"
           transparent
           opacity={0.96}
+          depthWrite={false}
+          depthTest={false}
+        />
+      </mesh>
+      <mesh
+        position={[cloudCenter[0], cloudCenter[1] - 0.25, cloudCenter[2]]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        renderOrder={20}
+      >
+        <ringGeometry args={[4.7, 5.15, 72]} />
+        <meshBasicMaterial
+          color="#66d9ff"
+          transparent
+          opacity={0.76}
           depthWrite={false}
           depthTest={false}
         />

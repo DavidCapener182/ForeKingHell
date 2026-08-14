@@ -1,40 +1,23 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
-  Activity,
-  Brain,
+  AlertTriangle,
+  ArrowRight,
+  Cable,
+  CreditCard,
   Database,
-  FileText,
   Flag,
-  Radio,
-  Search,
-  ShieldCheck,
-  UserRound,
-  Zap,
+  ShieldAlert,
+  UserCog,
 } from "lucide-react";
 
-import {
-  AdminMetric,
-  AdminNav,
-  AdminNotice,
-  AdminPageHeader,
-  AdminSection,
-  formatDateTime,
-  label,
-  PlanBadge,
-} from "@/app/admin/admin-components";
-import { AppEmptyState } from "@/components/app/app-empty-state";
-import {
-  DesktopInsightRail,
-  DesktopTableWorkbenchControls,
-  DesktopWorkbenchLayout,
-  DesktopSavedViewSuggestion,
-  DesktopWorkbenchColumn,
-} from "@/components/app/desktop-workbench";
-import { DataTableFrame, PageShell } from "@/components/premium";
+import { AdminNav, AdminNotice, formatDateTime, label } from "@/app/admin/admin-components";
+import { StatusTimeline } from "@/components/app/status-timeline";
+import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
+import { PageShell } from "@/components/premium";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   Table,
   TableBody,
@@ -45,41 +28,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getAdminOverviewData } from "@/lib/admin";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-const adminWorkbenchPrompts = [
-  {
-    label: "Explain this page",
-    prompt:
-      "Explain my ForeKingHell Admin overview using only visible user, golf-data, feed, report, billing, provider, group and audit evidence.",
-    icon: Brain,
-  },
-  {
-    label: "Check operations",
-    prompt:
-      "Review visible admin operations and identify the first queue or provider issue that needs attention.",
-    icon: ShieldCheck,
-  },
-  {
-    label: "Find user risk",
-    prompt:
-      "Summarise visible user, plan, report and audit signals that may need owner review. Do not invent hidden user data.",
-    icon: Search,
-  },
-  {
-    label: "Provider health",
-    prompt:
-      "Review visible provider accounts, import jobs and provider failures from the admin snapshot and recommend the next check.",
-    icon: Database,
-  },
-  {
-    label: "Generate admin report",
-    prompt:
-      "Generate an admin operations report with network metrics, open reports, provider failures, billing failures, audit activity and next action.",
-    icon: FileText,
-  },
-];
 
 type AdminPageProps = {
   searchParams?: Promise<{
@@ -88,40 +39,172 @@ type AdminPageProps = {
   }>;
 };
 
-type AdminOverviewData = Awaited<ReturnType<typeof getAdminOverviewData>>;
-type AdminOverviewUser = AdminOverviewData["data"]["recentUsers"][number];
+type OperationalStatus = "failure" | "queue" | "recorded-none" | "unverified";
 
-const adminOverviewUserColumns: DesktopWorkbenchColumn[] = [
-  { id: "user", label: "User", locked: true },
-  { id: "plan", label: "Plan" },
-  { id: "role", label: "Admin role" },
-  { id: "sessions", label: "Sessions" },
-  { id: "feed", label: "Feed cards" },
-  { id: "created", label: "Created" },
-  { id: "action", label: "Action" },
-];
+type OperationalStatusItem = {
+  label: string;
+  value: string;
+  detail: string;
+  status: OperationalStatus;
+};
 
-const adminOverviewUserSuggestedViews: DesktopSavedViewSuggestion[] = [
+type AttentionRow = {
+  id: string;
+  area: string;
+  status: OperationalStatus;
+  statusLabel: string;
+  evidence: string;
+  href: string;
+  action: string;
+};
+
+const quickActions = [
   {
-    title: "New paid users",
     href: "/admin/users",
-    detail: "Open the full user lookup to review plan and account state.",
+    label: "User and account actions",
+    description: "Find an account, inspect plan state and manage admin access.",
+    icon: UserCog,
   },
   {
-    title: "Admin operators",
-    href: "/admin/users",
-    detail: "Review owner and operator accounts.",
+    href: "/admin/billing",
+    label: "Billing operations",
+    description: "Review subscriptions, entitlements and failed billing states.",
+    icon: CreditCard,
   },
   {
-    title: "Users with golf data",
-    href: "/admin/users",
-    detail: "Find users with sessions and feed activity.",
+    href: "/admin/moderation",
+    label: "Moderation queue",
+    description: "Resolve open reports and moderation events.",
+    icon: ShieldAlert,
   },
-];
+  {
+    href: "/admin/system-checks",
+    label: "System checks",
+    description: "Inspect recorded provider and platform evidence.",
+    icon: Cable,
+  },
+  {
+    href: "/providers?tab=diagnostics#provider-health",
+    label: "Provider diagnostics",
+    description: "Open provider accounts, import jobs and diagnostics.",
+    icon: Database,
+  },
+  {
+    href: "/admin/challenges",
+    label: "Challenge operations",
+    description: "Manage templates, entries, attempts and results.",
+    icon: Flag,
+  },
+] as const;
 
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = await searchParams;
   const { data, operations } = await getAdminOverviewData();
+  const moderationQueue = data.metrics.openReports + operations.openModerationEvents;
+  const actualFailureCount = operations.providerImportFailures + operations.billingFailures;
+
+  const statusItems: OperationalStatusItem[] = [
+    {
+      label: "Provider issues",
+      value:
+        operations.providerImportFailures > 0
+          ? `${operations.providerImportFailures} failed`
+          : "None recorded",
+      detail: `${operations.importJobs} import jobs · live health unverified`,
+      status: operations.providerImportFailures > 0 ? "failure" : "recorded-none",
+    },
+    {
+      label: "Billing issues",
+      value:
+        operations.billingFailures > 0 ? `${operations.billingFailures} failed` : "None recorded",
+      detail: "Failed subscription states in the current snapshot",
+      status: operations.billingFailures > 0 ? "failure" : "recorded-none",
+    },
+    {
+      label: "Moderation queue",
+      value: `${moderationQueue} open`,
+      detail: `${data.metrics.openReports} reports · ${operations.openModerationEvents} events`,
+      status: moderationQueue > 0 ? "queue" : "recorded-none",
+    },
+    {
+      label: "User/account actions",
+      value: "Unknown",
+      detail: "No account-action queue is connected",
+      status: "unverified",
+    },
+    {
+      label: "System verification",
+      value: "Unverified",
+      detail: "No live CI, RLS or automated test result",
+      status: "unverified",
+    },
+  ];
+
+  const attentionRows: AttentionRow[] = [
+    {
+      id: "provider-imports",
+      area: "Provider imports",
+      status: operations.providerImportFailures > 0 ? "failure" : "recorded-none",
+      statusLabel:
+        operations.providerImportFailures > 0
+          ? `${operations.providerImportFailures} failures`
+          : "No failures recorded",
+      evidence: `${operations.providerImportFailures} failed jobs across ${operations.importJobs} tracked import jobs. This is a database snapshot, not a live provider check.`,
+      href: "/admin/system-checks",
+      action: "Review checks",
+    },
+    {
+      id: "billing",
+      area: "Billing",
+      status: operations.billingFailures > 0 ? "failure" : "recorded-none",
+      statusLabel:
+        operations.billingFailures > 0
+          ? `${operations.billingFailures} failed states`
+          : "No failures recorded",
+      evidence: `${operations.billingFailures} subscriptions are recorded as past due, unpaid or incomplete expired. Payment-provider availability is not checked here.`,
+      href: "/admin/billing",
+      action: "Open billing",
+    },
+    {
+      id: "moderation",
+      area: "Moderation",
+      status: moderationQueue > 0 ? "queue" : "recorded-none",
+      statusLabel: moderationQueue > 0 ? `${moderationQueue} open` : "No open work recorded",
+      evidence: `${data.metrics.openReports} open reports and ${operations.openModerationEvents} open moderation events are recorded.`,
+      href: "/admin/moderation",
+      action: "Open queue",
+    },
+    {
+      id: "account-actions",
+      area: "User/account actions",
+      status: "unverified",
+      statusLabel: "Unknown",
+      evidence:
+        "No dedicated account-action or support queue is connected to this overview. Recent account creation does not prove that an action is required.",
+      href: "/admin/users",
+      action: "Search users",
+    },
+    {
+      id: "system-verification",
+      area: "System verification",
+      status: "unverified",
+      statusLabel: "Unverified",
+      evidence:
+        "This snapshot does not run deployment, CI, RLS or automated test checks. Missing verification is not treated as system health.",
+      href: "/admin/system-checks",
+      action: "View register",
+    },
+  ];
+
+  const auditTimeline = data.recentAuditRows.map((row) => ({
+    id: row.id,
+    dateGroup: formatDateGroup(row.createdAt),
+    timestamp: formatDateTime(row.createdAt),
+    title: label(row.action),
+    description: `${row.actorEmail ?? "System actor"} · ${row.targetType ?? "Unknown target type"} · ${row.targetId ?? "Unknown target"}`,
+    status: "Audit event",
+    kind: "reviewed" as const,
+  }));
 
   return (
     <PageShell>
@@ -130,338 +213,218 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
-      <DesktopWorkbenchLayout
-        scope="admin"
-        railBreakpoint="wide"
-        rail={
-          <DesktopInsightRail
-            title="AI admin rail"
-            description="Queues, health checks and audit context stay visible while running the protected console."
-            metrics={[
-              {
-                label: "Users",
-                value: String(data.metrics.users),
-                detail: `${data.metrics.activeSubscriptions} active paid rows.`,
-                tone: data.metrics.users > 0 ? "sky" : "slate",
-              },
-              {
-                label: "Open reports",
-                value: String(data.metrics.openReports),
-                detail: `${operations.comments} comments and moderation surfaces are visible.`,
-                tone: data.metrics.openReports > 0 ? "amber" : "green",
-              },
-              {
-                label: "Provider failures",
-                value: String(operations.providerImportFailures),
-                detail: `${operations.providerAccounts} provider accounts and ${operations.importJobs} import jobs.`,
-                tone: operations.providerImportFailures > 0 ? "amber" : "green",
-              },
-              {
-                label: "Billing failures",
-                value: String(operations.billingFailures),
-                detail: `${data.metrics.lifetimeGrants} lifetime grants are visible.`,
-                tone: operations.billingFailures > 0 ? "amber" : "green",
-              },
-            ]}
-            evidence={[
-              `${data.metrics.users} users and ${data.metrics.activeSubscriptions} active paid rows are visible.`,
-              `${data.metrics.openReports} open reports are visible.`,
-              `${operations.providerImportFailures} provider import failures and ${operations.billingFailures} billing failures are visible.`,
-              `${data.recentAuditRows.length} recent audit rows are visible.`,
-            ]}
-            prompts={adminWorkbenchPrompts}
-            actions={[
-              {
-                label: "User lookup",
-                href: "/admin/users",
-                detail: "Find accounts, roles and plan state.",
-                icon: UserRound,
-              },
-              {
-                label: "Moderation",
-                href: "/admin/moderation",
-                detail: "Resolve reports and safety events.",
-                icon: ShieldCheck,
-              },
-              {
-                label: "Billing admin",
-                href: "/admin/billing",
-                detail: "Inspect subscriptions and entitlements.",
-                icon: Zap,
-              },
-            ]}
-          />
-        }
-      >
-        <AdminPageHeader
-          eyebrow="Admin operations"
-          title="Site control room"
-          description="Monitor growth, billing access, social safety and challenge operations from one protected surface."
-          visual={
-            <PageArtwork
-              variant="admin"
-              alt=""
-              className="hidden h-28 w-48 shrink-0 lg:block"
-              sizes="192px"
-              priority
-            />
-          }
-          action={<Badge variant="secondary">Owner access</Badge>}
-        />
+      <DesktopWorkbenchLayout scope="admin">
+        <header className="border-b border-border pb-4 pt-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Admin operations
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                Operations console
+              </h1>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
+                Review recorded failures, queued work and operator activity from one protected
+                control surface.
+              </p>
+            </div>
+            <Badge variant="outline" className="w-fit rounded-md">
+              Protected operator surface
+            </Badge>
+          </div>
+        </header>
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <AdminMetric
-            icon={UserRound}
-            label="Users"
-            value={data.metrics.users}
-            detail={`${data.metrics.activeSubscriptions} active paid rows`}
-          />
-          <AdminMetric
-            icon={Database}
-            label="Golf data"
-            value={data.metrics.shots}
-            detail={`${data.metrics.sessions} sessions`}
-          />
-          <AdminMetric
-            icon={Radio}
-            label="Feed cards"
-            value={data.metrics.feedItems}
-            detail={`${operations.comments} comments`}
-          />
-          <AdminMetric
-            icon={ShieldCheck}
-            label="Open reports"
-            value={data.metrics.openReports}
-            detail={`${data.metrics.lifetimeGrants} lifetime grants`}
-          />
+        <section aria-labelledby="operational-status-title">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 id="operational-status-title" className="text-sm font-semibold">
+              Operational status
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Database snapshot · not a live uptime check
+            </p>
+          </div>
+          <OperationalStatusStrip items={statusItems} />
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-          <AdminSection
-            title="Operating pages"
-            description="Daily admin workflows for running the site."
+        {actualFailureCount > 0 ? (
+          <Alert variant="destructive">
+            <AlertTriangle className="size-4" />
+            <AlertTitle>Recorded operational failures require review</AlertTitle>
+            <AlertDescription>
+              {operations.providerImportFailures} failed provider imports and{" "}
+              {operations.billingFailures} failed billing states are present in the current
+              snapshot.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)] xl:items-start">
+          <OperationsPanel
+            title="Attention required"
+            description="Failures, open queues and verification gaps. Neutral rows mean no issue is recorded, not that a live service is healthy."
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AdminLink
-                href="/admin/users"
-                title="Users"
-                description="Find accounts, check plans, grant lifetime access and manage admin operators."
-              />
-              <AdminLink
-                href="/admin/billing"
-                title="Billing"
-                description="Inspect subscriptions, entitlements and plan limits."
-              />
-              <AdminLink
-                href="/admin/moderation"
-                title="Moderation"
-                description="Resolve reports and moderation events before the feed grows."
-              />
-              <AdminLink
-                href="/admin/challenges"
-                title="Challenges"
-                description="Track templates, open challenges, entries, attempts and results."
-              />
+            <div className="overflow-x-auto">
+              <Table>
+                <TableCaption className="sr-only">
+                  Admin attention table showing area, status, evidence and next action.
+                </TableCaption>
+                <TableHeader className="[&_th]:bg-muted/65">
+                  <TableRow>
+                    <TableHead className="min-w-44">Area</TableHead>
+                    <TableHead className="min-w-40">Status</TableHead>
+                    <TableHead className="min-w-[28rem]">Evidence</TableHead>
+                    <TableHead className="min-w-36 text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {attentionRows.map((row) => (
+                    <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
+                      <TableCell className="font-medium">{row.area}</TableCell>
+                      <TableCell>
+                        <OperationalBadge status={row.status}>{row.statusLabel}</OperationalBadge>
+                      </TableCell>
+                      <TableCell className="text-sm leading-5 text-muted-foreground">
+                        {row.evidence}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={row.href}>{row.action}</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          </AdminSection>
+          </OperationsPanel>
 
-          <AdminSection title="Network snapshot">
-            <div className="grid gap-2 text-sm">
-              <SnapshotRow label="New users" value={data.metrics.users} />
-              <SnapshotRow label="Feed reports" value={data.metrics.openReports} />
-              <SnapshotRow label="Billing failures" value={operations.billingFailures} />
-              <SnapshotRow
-                label="Provider import failures"
-                value={operations.providerImportFailures}
+          <OperationsPanel
+            title="Recent operational activity"
+            description="Latest recorded owner and operator audit events."
+          >
+            <div className="p-4">
+              <StatusTimeline
+                label="Recent admin audit events"
+                items={auditTimeline}
+                className="max-h-[31rem]"
+                empty={
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    No audit events are recorded. Activity outside this log is unknown.
+                  </p>
+                }
               />
-              <SnapshotRow label="Groups" value={operations.groups} />
-              <SnapshotRow label="Friendships" value={operations.friendships} />
-              <SnapshotRow label="Friend requests" value={operations.friendRequests} />
-              <SnapshotRow label="Provider accounts" value={operations.providerAccounts} />
-              <SnapshotRow label="Import jobs" value={operations.importJobs} />
-              <SnapshotRow label="Sponsors" value={operations.sponsors} />
-              <SnapshotRow label="Partner offers" value={operations.partnerOffers} />
-              <SnapshotRow label="AI summaries" value={operations.aiSummaries} />
             </div>
-          </AdminSection>
+          </OperationsPanel>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <AdminRecentUsersTable users={data.recentUsers} />
-
-          <AdminSection title="Audit log" description="Recent owner/operator changes.">
-            <div className="grid gap-2">
-              {data.recentAuditRows.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  No admin changes have been recorded yet.
-                </p>
-              ) : (
-                data.recentAuditRows.map((row) => (
-                  <div key={row.id} className="rounded-xl bg-muted/55 px-3 py-2 text-sm">
-                    <p className="font-medium">{label(row.action)}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {row.actorEmail ?? "System"} · {row.targetType ?? "target"} ·{" "}
-                      {row.targetId ?? "none"} · {formatDateTime(row.createdAt)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </AdminSection>
+        <section aria-labelledby="quick-admin-actions-title">
+          <div className="mb-2">
+            <h2 id="quick-admin-actions-title" className="text-sm font-semibold">
+              Quick admin actions
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Open the protected workflow that owns the underlying data.
+            </p>
+          </div>
+          <div className="grid overflow-hidden rounded-lg border border-border bg-background sm:grid-cols-2 xl:grid-cols-3">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="group flex min-h-24 items-start gap-3 border-b border-border p-4 outline-none transition-colors hover:bg-muted/45 focus-visible:bg-muted/45 sm:border-r sm:[&:nth-child(2n)]:border-r-0 sm:[&:nth-last-child(-n+2)]:border-b-0 xl:[&:nth-child(2n)]:border-r xl:[&:nth-child(3n)]:border-r-0 xl:[&:nth-last-child(-n+3)]:border-b-0"
+                >
+                  <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-3 text-sm font-medium">
+                      {action.label}
+                      <ArrowRight
+                        className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                        aria-hidden
+                      />
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                      {action.description}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </section>
       </DesktopWorkbenchLayout>
     </PageShell>
   );
 }
 
-async function AdminRecentUsersTable({ users }: { users: AdminOverviewUser[] }) {
+export function OperationalStatusStrip({ items }: { items: OperationalStatusItem[] }) {
   return (
-    <AdminSection
-      title="Recent users"
-      description="Desktop user lookup preview with plan, role and activity evidence."
-      action={
-        <Button asChild variant="outline">
-          <Link href="/admin/users">Open users</Link>
-        </Button>
-      }
-    >
-      <section data-workbench-scope="admin-overview-users" className="grid gap-3">
-        <DesktopTableWorkbenchControls
-          viewKey="admin-overview-users"
-          scope="admin-overview-users"
-          currentViewLabel="Recent admin users"
-          resultLabel={`${users.length} users`}
-          columns={adminOverviewUserColumns}
-          suggestedViews={adminOverviewUserSuggestedViews}
-          exportTableId="admin-overview-users"
-          exportFileName="forekinghell-admin-overview-users.csv"
-        />
-        <DataTableFrame mainTable mainTableLabel="Admin recent users table" stickyFirstColumn>
-          <Table
-            data-workbench-export-table="admin-overview-users"
-            aria-describedby="admin-overview-users-summary"
-          >
-            <TableCaption id="admin-overview-users-summary" className="sr-only">
-              Recent admin users table showing user, plan, admin role, session count, feed card
-              count, account creation date and action.
-            </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-              <TableRow>
-                <TableHead
-                  data-column="user"
-                  className="sticky left-0 z-20 min-w-64 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                >
-                  User
-                </TableHead>
-                <TableHead data-column="plan">Plan</TableHead>
-                <TableHead data-column="role">Admin role</TableHead>
-                <TableHead data-column="sessions">Sessions</TableHead>
-                <TableHead data-column="feed">Feed cards</TableHead>
-                <TableHead data-column="created">Created</TableHead>
-                <TableHead data-column="action" className="text-right">
-                  Action
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <TableRow key={user.id} tabIndex={0} className="focus-aaa outline-none">
-                    <TableCell
-                      data-column="user"
-                      className="sticky left-0 z-10 min-w-64 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                    >
-                      <span className="block max-w-72 truncate">{user.displayName}</span>
-                      <span className="mt-1 block truncate text-xs text-muted-foreground">
-                        {user.email ?? "No email"}
-                      </span>
-                    </TableCell>
-                    <TableCell data-column="plan">
-                      <PlanBadge plan={user.activePlan} />
-                    </TableCell>
-                    <TableCell data-column="role">
-                      {user.adminRole ? (
-                        <Badge variant="outline">{label(user.adminRole)}</Badge>
-                      ) : (
-                        "--"
-                      )}
-                    </TableCell>
-                    <TableCell data-column="sessions">{user.sessionCount}</TableCell>
-                    <TableCell data-column="feed">{user.feedCount}</TableCell>
-                    <TableCell data-column="created">{formatDateTime(user.createdAt)}</TableCell>
-                    <TableCell data-column="action" className="text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link
-                          href={`/admin/users?q=${encodeURIComponent(user.email ?? user.displayName)}`}
-                        >
-                          Open
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="p-4">
-                    <AppEmptyState
-                      icon={<UserRound className="size-5" />}
-                      title="No recent users"
-                      description="User accounts will appear here after their first verified account activity."
-                      primaryAction={
-                        <Button asChild variant="outline" size="sm">
-                          <Link href="/admin/users">Open user directory</Link>
-                        </Button>
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
-      </section>
-    </AdminSection>
-  );
-}
-
-export function AdminLink({
-  href,
-  title,
-  description,
-}: {
-  href: string;
-  title: string;
-  description: string;
-}) {
-  const Icon = title === "Challenges" ? Flag : title === "Billing" ? Zap : Activity;
-
-  return (
-    <Link
-      href={href}
-      className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-      data-admin-operating-link
-    >
-      <Item
-        variant="outline"
-        className="h-full items-start transition-colors hover:border-primary/40 hover:bg-muted/60"
-      >
-        <ItemMedia className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Icon className="size-4" aria-hidden />
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>{title}</ItemTitle>
-          <ItemDescription className="whitespace-normal leading-5">{description}</ItemDescription>
-        </ItemContent>
-      </Item>
-    </Link>
-  );
-}
-
-function SnapshotRow({ label: rowLabel, value }: { label: string; value: number | string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/55 px-3 py-2">
-      <span className="text-muted-foreground">{rowLabel}</span>
-      <span className="font-semibold">{value}</span>
+    <div className="grid overflow-hidden rounded-lg border border-border bg-background md:grid-cols-5">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="min-w-0 border-b border-border px-3 py-3 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
+        >
+          <p className="truncate text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            {item.label}
+          </p>
+          <div className="mt-2">
+            <OperationalBadge status={item.status}>{item.value}</OperationalBadge>
+          </div>
+          <p className="mt-2 text-xs leading-4 text-muted-foreground">{item.detail}</p>
+        </div>
+      ))}
     </div>
   );
+}
+
+export function OperationsPanel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-background">
+      <header className="border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {description ? (
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+        ) : null}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function OperationalBadge({
+  status,
+  children,
+}: {
+  status: OperationalStatus;
+  children: ReactNode;
+}) {
+  return (
+    <Badge
+      variant={status === "failure" ? "destructive" : status === "queue" ? "secondary" : "outline"}
+      className={cn(
+        "rounded-md font-medium",
+        status === "unverified" && "border-dashed text-muted-foreground",
+      )}
+    >
+      {children}
+    </Badge>
+  );
+}
+
+function formatDateGroup(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  }).format(value);
 }

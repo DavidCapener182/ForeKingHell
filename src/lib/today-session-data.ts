@@ -24,6 +24,7 @@ export type TodayPracticeFilters = {
 export type TodayPracticeShot = {
   id: string;
   sessionId: string;
+  source: string;
   fileName: string | null;
   sessionType: string;
   courseName: string | null;
@@ -197,6 +198,7 @@ const EXCLUDED_PRACTICE_QUALITY_TAGS = new Set([
 const practiceShotSelect = {
   id: shots.id,
   sessionId: shots.sessionId,
+  source: sessions.source,
   fileName: sessions.fileName,
   sessionType: sessions.type,
   courseName: sessions.courseName,
@@ -351,6 +353,7 @@ async function fetchPreviousPracticeRows(
     .select({
       id: rankedPreviousShots.id,
       sessionId: rankedPreviousShots.sessionId,
+      source: rankedPreviousShots.source,
       fileName: rankedPreviousShots.fileName,
       sessionType: rankedPreviousShots.sessionType,
       courseName: rankedPreviousShots.courseName,
