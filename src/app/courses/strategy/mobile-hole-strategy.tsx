@@ -136,6 +136,7 @@ export function MobileHoleStrategy({
               type="button"
               disabled={!supported}
               data-active={mode.id === id ? "true" : "false"}
+              aria-pressed={mode.id === id}
               onClick={() => setModeId(id)}
               title={supported ? `${id} strategy` : `${id} strategy needs more evidence`}
             >

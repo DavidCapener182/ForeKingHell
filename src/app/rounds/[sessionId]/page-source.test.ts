@@ -22,7 +22,9 @@ describe("round review scoring and learning redesign", () => {
     for (const tab of ["Summary", "Scorecard", "Map", "Evidence", "Corrections"]) {
       expect(tabsSource).toContain(tab);
     }
-    expect(source.match(/<LazyRoundReviewTabs/g)).toHaveLength(2);
+    expect(source.match(/<LazyRoundReviewTabs/g)).toHaveLength(1);
+    expect(source).toContain("<MobilePageTabs");
+    expect(source).toContain('ariaLabel="Round review sections"');
     expect(tabsSource).toContain("overflow-x-auto");
   });
 

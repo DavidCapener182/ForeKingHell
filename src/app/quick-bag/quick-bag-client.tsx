@@ -5,11 +5,11 @@ import { ChevronRight, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { rankQuickBagForTarget } from "@/lib/quick-bag-ranking";
 
 export type QuickBagClub = {
@@ -91,29 +91,15 @@ export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; ac
       aria-label="Quick Bag"
       data-quick-bag-hydrated={hydrated ? "true" : "false"}
     >
-      <ToggleGroup
-        type="single"
+      <MobileSegmentedControl
         value={mode}
-        onValueChange={(value) => {
-          if (value === "target" || value === "club") setMode(value);
-        }}
-        variant="outline"
-        className="grid w-full grid-cols-2 rounded-xl bg-secondary/80 p-1"
-        aria-label="Quick Bag mode"
-      >
-        <ToggleGroupItem
-          value="target"
-          className="min-h-11 rounded-lg text-sm font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm"
-        >
-          Target distance
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="club"
-          className="min-h-11 rounded-lg text-sm font-semibold data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm"
-        >
-          Search club
-        </ToggleGroupItem>
-      </ToggleGroup>
+        onValueChange={(value) => setMode(value as QuickBagMode)}
+        ariaLabel="Quick Bag mode"
+        options={[
+          { value: "target", label: "Target distance" },
+          { value: "club", label: "Search club" },
+        ]}
+      />
 
       {mode === "target" ? (
         <>

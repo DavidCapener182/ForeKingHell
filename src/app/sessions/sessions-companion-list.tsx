@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { SessionTimelineItem } from "@/app/sessions/session-timeline";
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { StatusTimeline } from "@/components/app/status-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Filter = "all" | "practice" | "round";
 
@@ -58,13 +58,16 @@ export function SessionsCompanionList({
           Practice, simulator sessions and rounds in one timeline.
         </p>
       </div>
-      <Tabs value={filter} onValueChange={(value) => setFilter(value as Filter)}>
-        <TabsList className="grid w-full grid-cols-3" aria-label="Session type">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="practice">Practice</TabsTrigger>
-          <TabsTrigger value="round">Rounds</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <MobileSegmentedControl
+        value={filter}
+        onValueChange={(value) => setFilter(value as Filter)}
+        ariaLabel="Session type"
+        options={[
+          { value: "all", label: "All" },
+          { value: "practice", label: "Practice" },
+          { value: "round", label: "Rounds" },
+        ]}
+      />
       <div className="ios-grouped-list rounded-2xl border bg-card p-3" aria-label="Session history">
         <StatusTimeline
           label="Session timeline"

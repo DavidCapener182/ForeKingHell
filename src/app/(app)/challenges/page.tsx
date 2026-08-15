@@ -16,7 +16,8 @@ import {
 
 import { createChallengeAction, joinChallengeAction } from "@/app/challenges/actions";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { MobileAppShell, MobileTabBar, MobileTopBar } from "@/components/mobile-sports";
+import { MobilePageTabs } from "@/components/app/mobile-controls";
+import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -84,24 +85,42 @@ export default async function ChallengesPage({ searchParams }: ChallengesPagePro
       {surface === "companion" ? (
         <MobileAppShell>
           <MobileTopBar title="Challenges" />
-          <MobileTabBar
-            activeKey={activeTab}
-            tabs={challengeTabs.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              href: tab.href,
-            }))}
+          <MobilePageTabs
+            initialValue={activeTab}
+            ariaLabel="Challenge status"
+            tabs={[
+              {
+                value: "active",
+                label: "Active",
+                href: "/challenges",
+                content: (
+                  <div className="grid gap-4" data-challenge-progression-hub>
+                    <MobileActiveView challenges={activeChallenges} />
+                  </div>
+                ),
+              },
+              {
+                value: "available",
+                label: "Available",
+                href: "/challenges?tab=available",
+                content: (
+                  <div className="grid gap-4" data-challenge-progression-hub>
+                    <AvailableChallengeGrid challenges={availableChallenges} mobile />
+                  </div>
+                ),
+              },
+              {
+                value: "completed",
+                label: "Completed",
+                href: "/challenges?tab=completed",
+                content: (
+                  <div className="grid gap-4" data-challenge-progression-hub>
+                    <CompletedChallengeGrid challenges={completedChallenges} mobile />
+                  </div>
+                ),
+              },
+            ]}
           />
-
-          <div className="grid gap-4" data-challenge-progression-hub>
-            {activeTab === "active" ? (
-              <MobileActiveView challenges={activeChallenges} />
-            ) : activeTab === "available" ? (
-              <AvailableChallengeGrid challenges={availableChallenges} mobile />
-            ) : (
-              <CompletedChallengeGrid challenges={completedChallenges} mobile />
-            )}
-          </div>
         </MobileAppShell>
       ) : null}
 

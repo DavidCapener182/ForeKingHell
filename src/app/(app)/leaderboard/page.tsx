@@ -39,6 +39,7 @@ import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { LeaderboardPlayerControls } from "@/app/leaderboard/leaderboard-controls";
+import { MobileLeaderboard } from "@/app/leaderboard/mobile-leaderboard";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 
 export const dynamic = "force-dynamic";
@@ -240,34 +241,34 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   const playerSort = parsePlayerLeaderboardSort(params?.sort, params?.dir);
   const challengeSort = parseChallengeLeaderboardSort(params?.sort, params?.dir);
   const data = await getLeaderboardData(activeTab, filters, period);
+  const companionScope = activeTab === "public" ? "public" : "friends";
+  const otherCompanionData =
+    surface === "companion"
+      ? await getLeaderboardData(
+          companionScope === "friends" ? "public" : "friends",
+          filters,
+          "monthly",
+        )
+      : null;
+  const friendsPlayers =
+    companionScope === "friends" ? data.players : (otherCompanionData?.players ?? []);
+  const globalPlayers =
+    companionScope === "public" ? data.players : (otherCompanionData?.players ?? []);
   const workbench =
     surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
   const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
-  const showFullMobileBoard = params?.full === "1";
 
   return (
     <PageShell>
       {surface === "companion" ? (
         <MobileAppShell>
           <MobileTopBar title="Leaderboards" />
-          <MobileLeaderboardSummary
-            activeTab={activeTab}
-            monthStart={data.monthStart}
-            players={data.players}
+          <MobileLeaderboard
+            initialScope={companionScope}
+            monthLabel={formatMonth(data.monthStart)}
+            friends={friendsPlayers.map(toMobileLeaderboardPlayer)}
+            global={globalPlayers.map(toMobileLeaderboardPlayer)}
           />
-          <MobileLeaderboardScopeSelector activeTab={activeTab} />
-          <MobileCompetitionLeaderboard
-            players={showFullMobileBoard ? data.players : data.players.slice(0, 5)}
-            period={period}
-          />
-          <Button asChild variant="outline" className="w-full">
-            <Link
-              href={`/leaderboard?tab=${activeTab}${showFullMobileBoard ? "" : "&full=1"}`}
-              prefetch={false}
-            >
-              {showFullMobileBoard ? "Show top 5" : "View full leaderboard"}
-            </Link>
-          </Button>
         </MobileAppShell>
       ) : null}
 
@@ -1237,110 +1238,6 @@ function LeaderboardCompetitionHeader({
   );
 }
 
-function MobileLeaderboardSummary({
-  activeTab,
-  monthStart,
-  players,
-}: {
-  activeTab: LeaderboardTab;
-  monthStart: Date;
-  players: PlayerRow[];
-}) {
-  const currentRank = players.findIndex((player) => player.isCurrentUser) + 1;
-
-  return (
-    <section className="rounded-xl border bg-card p-4" aria-label="Your monthly leaderboard rank">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {activeTab === "public" ? "Global" : "Friends"} · {formatMonth(monthStart)}
-      </p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-        {currentRank > 0 ? `You are #${currentRank} this month` : "You are not ranked this month"}
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {players.length} opted-in golfer{players.length === 1 ? "" : "s"} in this board.
-      </p>
-    </section>
-  );
-}
-
-function MobileLeaderboardScopeSelector({ activeTab }: { activeTab: LeaderboardTab }) {
-  return (
-    <nav className="grid grid-cols-2 gap-2" aria-label="Leaderboard audience">
-      <Button asChild variant={activeTab === "friends" ? "default" : "outline"}>
-        <Link href="/leaderboard?tab=friends" prefetch={false}>
-          Friends
-        </Link>
-      </Button>
-      <Button asChild variant={activeTab === "public" ? "default" : "outline"}>
-        <Link href="/leaderboard?tab=public" prefetch={false}>
-          Global
-        </Link>
-      </Button>
-    </nav>
-  );
-}
-
-function MobileCompetitionLeaderboard({
-  players,
-  period,
-}: {
-  players: PlayerRow[];
-  period: LeaderboardPeriod;
-}) {
-  return (
-    <section className="overflow-hidden rounded-xl border bg-card" aria-label="Player leaderboard">
-      <div className="grid grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] gap-2 border-b bg-muted px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <span>Rank</span>
-        <span>Golfer</span>
-        <span className="text-right">Score</span>
-        <span className="text-right">Move</span>
-      </div>
-      <div className="divide-y">
-        {players.length > 0 ? (
-          players.map((player, index) => {
-            const rank = index + 1;
-            const movement = rankMovementForPlayer(player);
-
-            return (
-              <div
-                key={player.userId}
-                className={`grid grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] items-center gap-2 px-3 py-3 ${leaderboardRowClassName(rank, player.isCurrentUser)}`}
-              >
-                <span className={rankNumberClassName(rank)}>{rank}</span>
-                <div className="min-w-0">
-                  <Link
-                    href={player.isCurrentUser ? "/profile" : `/profile/${player.username}`}
-                    prefetch={false}
-                    className="block truncate text-sm font-semibold hover:underline"
-                  >
-                    {player.displayName}
-                  </Link>
-                  {player.isCurrentUser ? (
-                    <span className="text-[11px] font-medium text-primary">You</span>
-                  ) : null}
-                </div>
-                <span className="text-right text-sm font-semibold tabular-nums">
-                  {integerFormatter.format(scoreForPeriod(player, period))}
-                </span>
-                <span
-                  className="text-right text-xs text-muted-foreground tabular-nums"
-                  title={movement ? undefined : "No prior rank snapshot"}
-                >
-                  {movement ?? "—"}
-                </span>
-              </div>
-            );
-          })
-        ) : (
-          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
-            No opted-in golfers match this scope.
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
 async function ChallengeBoards({
   boards,
   sortState,
@@ -1757,6 +1654,17 @@ function scorecardTotal(scorecard: Array<{ score?: number | null }>) {
 
 function scoreForPeriod(player: PlayerRow, period: LeaderboardPeriod) {
   return period === "monthly" ? player.monthlyXp : player.totalXp;
+}
+
+function toMobileLeaderboardPlayer(player: PlayerRow) {
+  return {
+    userId: player.userId,
+    displayName: player.displayName,
+    username: player.username,
+    isCurrentUser: player.isCurrentUser,
+    rankMovement: player.rankMovement,
+    monthlyXp: player.monthlyXp,
+  };
 }
 
 function leaderboardViewLabel(tab: LeaderboardTab, period: LeaderboardPeriod) {

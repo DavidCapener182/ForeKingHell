@@ -7,7 +7,6 @@ import { ArrowRight, FolderClock, MoreHorizontal, RefreshCw } from "lucide-react
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
   Card,
   CardAction,
@@ -84,7 +83,7 @@ export function TodayPrimaryAnswer({
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,35,25,0.98)_0%,rgba(3,35,25,0.88)_62%,rgba(3,35,25,0.42)_100%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,35,25,0.99)_0%,rgba(3,35,25,0.94)_66%,rgba(3,35,25,0.64)_100%)]"
         aria-hidden
       />
       <CardHeader className="gap-1 pr-3">
@@ -99,11 +98,14 @@ export function TodayPrimaryAnswer({
         <CardAction>
           <div className="flex flex-wrap justify-end gap-1.5">
             <Badge className="border-[#a6f04a] bg-[#a6f04a] !text-[#052f22] hover:bg-[#a6f04a]">
-              {state.status}
+              {recommendationStatusLabel(state)}
             </Badge>
             {trainingLoadLabel && !syncState ? (
-              <Badge variant="outline" className="border-white/25 bg-black/20 text-white">
-                {trainingLoadLabel}
+              <Badge
+                variant="outline"
+                className="hidden border-white/45 bg-black/45 !text-white min-[360px]:inline-flex"
+              >
+                Training load: {trainingLoadLabel}
               </Badge>
             ) : null}
           </div>
@@ -117,7 +119,9 @@ export function TodayPrimaryAnswer({
           {glanceFacts.map((fact) => (
             <div key={fact.label}>
               <p className="text-[11px] text-white/55">{fact.label}</p>
-              <p className="mt-0.5 truncate text-sm font-semibold text-white">{fact.value}</p>
+              <p className="mt-0.5 break-words text-sm font-semibold leading-5 text-white">
+                {fact.value}
+              </p>
             </div>
           ))}
         </div>
@@ -152,21 +156,26 @@ export function TodayPrimaryAnswer({
       </CardContent>
 
       <CardFooter className="border-white/14 bg-black/15 px-3 py-3">
-        <ButtonGroup className="w-full" aria-label="Today actions">
+        <div
+          className="grid w-full grid-cols-[minmax(0,1fr)_3rem_3rem] gap-1.5 min-[375px]:gap-2"
+          aria-label="Today actions"
+        >
           <Button
             asChild
-            className="min-h-12 flex-1 rounded-l-xl bg-white text-base text-[#073527] hover:bg-white/90"
+            data-today-primary-action
+            className="min-h-12 min-w-0 rounded-[var(--mobile-radius-md)] bg-white px-2 text-sm text-[#073527] hover:bg-white/90 min-[375px]:px-3 min-[375px]:text-base"
           >
             <Link href={state.href}>
-              {state.action}
-              <ArrowRight className="ml-2 size-4" aria-hidden />
+              <span className="truncate">{state.action}</span>
+              <ArrowRight className="ml-1 size-4 shrink-0" aria-hidden />
             </Link>
           </Button>
           <Button
             asChild
+            data-today-secondary-action
             variant="outline"
             size="icon"
-            className="min-h-12 min-w-12 border-white bg-white !text-[#073527] hover:bg-white/90 hover:!text-[#073527]"
+            className="min-h-12 min-w-12 rounded-[var(--mobile-radius-md)] border-white bg-white/92 !text-[#073527] hover:bg-white hover:!text-[#073527]"
           >
             <Link href="/sessions" aria-label="Open session history">
               <FolderClock className="size-4" aria-hidden />
@@ -178,10 +187,10 @@ export function TodayPrimaryAnswer({
                 type="button"
                 variant="outline"
                 size="icon"
-                className="min-h-12 min-w-12 rounded-r-xl border-white bg-white !text-[#073527] hover:bg-white/90 hover:!text-[#073527]"
+                className="min-h-12 min-w-12 rounded-[var(--mobile-radius-md)] border-white/55 bg-[#0b4334] !text-white hover:bg-[#125440] hover:!text-white"
                 aria-label="More Today actions"
               >
-                <MoreHorizontal className="size-4" aria-hidden />
+                <MoreHorizontal className="size-5" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -196,10 +205,16 @@ export function TodayPrimaryAnswer({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </ButtonGroup>
+        </div>
       </CardFooter>
     </Card>
   );
+}
+
+function recommendationStatusLabel(state: TodayPrimaryState) {
+  return /^(low|moderate|high)$/i.test(state.status)
+    ? `Confidence: ${state.status}`
+    : `Status: ${state.status}`;
 }
 
 function syncProgress(status: string) {

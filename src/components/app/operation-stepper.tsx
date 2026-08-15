@@ -34,16 +34,19 @@ export function OperationStepper({
       aria-label={label}
       className={cn(
         "grid gap-3 rounded-xl border bg-card p-3",
-        compact && "gap-2 p-2.5",
+        compact && "min-h-[4.5rem] gap-2 rounded-none border-0 bg-transparent p-0",
         className,
       )}
       data-operation-stepper
+      data-compact={compact ? "true" : undefined}
     >
-      <Progress
-        value={progress}
-        aria-label={`${label}: ${Math.round(progress)}%`}
-        className="h-1.5"
-      />
+      {!compact ? (
+        <Progress
+          value={progress}
+          aria-label={`${label}: ${Math.round(progress)}%`}
+          className="h-1.5"
+        />
+      ) : null}
       <ol
         className="grid grid-cols-[repeat(var(--step-count),minmax(0,1fr))] gap-1"
         style={{ "--step-count": steps.length } as React.CSSProperties}
@@ -83,7 +86,9 @@ export function OperationStepper({
                 <Separator className="mx-1 min-w-0 flex-1 data-horizontal:w-auto" aria-hidden />
               ) : null}
             </div>
-            <p className="mt-1 truncate text-xs font-semibold">{step.label}</p>
+            <p className="mt-1 truncate text-center text-[11px] font-semibold sm:text-left">
+              {step.label}
+            </p>
             {!compact && step.description ? (
               <p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
                 {step.description}

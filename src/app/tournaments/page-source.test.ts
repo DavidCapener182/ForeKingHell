@@ -56,8 +56,9 @@ describe("tournaments event index", () => {
   });
 
   it("uses the same real event collection for the mobile status tabs and list", () => {
-    expect(source).toContain("<TournamentMobileList events={visibleTournaments}");
-    expect(source).toContain("<MobileTabBar");
+    expect(source).toContain("<TournamentMobileList events={events}");
+    expect(source).toContain("<MobilePageTabs");
+    expect(source).not.toContain("MobileRouteTabs");
     expect(source).toContain("tournamentYourState(event)");
     expect(source).toContain("formatTournamentWindow(event)");
   });

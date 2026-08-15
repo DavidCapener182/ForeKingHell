@@ -38,6 +38,7 @@ import {
   IOSMetricRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
+import { MobilePageTabs } from "@/components/app/mobile-controls";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { LazyOfflineRoundEditForm as OfflineRoundEditForm } from "@/app/rounds/[sessionId]/lazy-offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
@@ -1514,50 +1515,97 @@ function MobileRoundDetail({
         </p>
       </div>
 
-      <LazyRoundReviewTabs value={view} sessionId={round.session.id} />
+      <MobileRoundReviewSections
+        round={round}
+        view={view}
+        focusHole={focusHole}
+        completedHoleCount={completedHoleCount}
+        roundIsComplete={roundIsComplete}
+        evidenceSummary={evidenceSummary}
+        proofReadyCount={proofReadyCount}
+        proofItems={proofItems}
+        companionReview={companionReview}
+        hasClubData={hasClubData}
+        hasMap={hasMap}
+        isRealRound={isRealRound}
+        shotPatternEnabled={shotPatternEnabled}
+      />
+    </MobileAppShell>
+  );
+}
 
-      <div className={view === "summary" ? "contents" : "hidden"}>
-        {roundIsComplete ? (
-          <MobileRoundResultCard
-            totalScore={round.totalScore}
-            totalPar={round.totalPar}
-            totalPutts={round.totalPutts}
-            handicapDifferential={round.handicapDifferential}
-            evidenceSummary={evidenceSummary}
-            proofReadyCount={proofReadyCount}
-            proofItemCount={proofItems.length}
-            holes={round.holes}
-            review={companionReview}
-            sessionId={round.session.id}
-            courseId={round.session.courseId}
-          />
-        ) : focusHole ? (
-          <MobileRoundFirstCard
-            hole={focusHole}
-            completedHoleCount={completedHoleCount}
-            holeCount={round.holes.length}
-            hasClubData={hasClubData}
-          />
-        ) : (
-          <section className="rounded-[1.2rem] bg-card p-4 ring-1 ring-border/70">
-            <IOSInlineStatus label="Scorecard needed" tone="attention" />
-            <h2 className="mt-2 text-[28px] font-semibold leading-8 tracking-[-0.025em]">
-              No holes saved
-            </h2>
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">
-              Add or import round data before reviewing performance.
-            </p>
-            <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
-              <Link href="/import" prefetch={false}>
-                <Upload className="size-4" aria-hidden />
-                Import round data
-              </Link>
-            </Button>
-          </section>
-        )}
-      </div>
+function MobileRoundReviewSections({
+  round,
+  view,
+  focusHole,
+  completedHoleCount,
+  roundIsComplete,
+  evidenceSummary,
+  proofReadyCount,
+  proofItems,
+  companionReview,
+  hasClubData,
+  hasMap,
+  isRealRound,
+  shotPatternEnabled,
+}: {
+  round: RoundDetail;
+  view: RoundReviewView;
+  focusHole: RoundDetailHole | null;
+  completedHoleCount: number;
+  roundIsComplete: boolean;
+  evidenceSummary: string;
+  proofReadyCount: number;
+  proofItems: RoundProofItem[];
+  companionReview: ReturnType<typeof getCompanionRoundReview>;
+  hasClubData: boolean;
+  hasMap: boolean;
+  isRealRound: boolean;
+  shotPatternEnabled: boolean;
+}) {
+  const baseHref = `/rounds/${round.session.id}`;
+  const summary = roundIsComplete ? (
+    <MobileRoundResultCard
+      totalScore={round.totalScore}
+      totalPar={round.totalPar}
+      totalPutts={round.totalPutts}
+      handicapDifferential={round.handicapDifferential}
+      evidenceSummary={evidenceSummary}
+      proofReadyCount={proofReadyCount}
+      proofItemCount={proofItems.length}
+      holes={round.holes}
+      review={companionReview}
+      sessionId={round.session.id}
+      courseId={round.session.courseId}
+    />
+  ) : focusHole ? (
+    <MobileRoundFirstCard
+      hole={focusHole}
+      completedHoleCount={completedHoleCount}
+      holeCount={round.holes.length}
+      hasClubData={hasClubData}
+    />
+  ) : (
+    <section className="rounded-[var(--mobile-radius-lg)] bg-card p-4 ring-1 ring-border/70">
+      <IOSInlineStatus label="Scorecard needed" tone="attention" />
+      <h2 className="mt-2 text-[28px] font-semibold leading-8 tracking-[-0.025em]">
+        No holes saved
+      </h2>
+      <p className="mt-2 text-sm leading-5 text-muted-foreground">
+        Add or import round data before reviewing performance.
+      </p>
+      <Button asChild className="mt-4 min-h-11 w-full rounded-xl">
+        <Link href="/import" prefetch={false}>
+          <Upload className="size-4" aria-hidden />
+          Import round data
+        </Link>
+      </Button>
+    </section>
+  );
 
-      {view === "corrections" && round.unmappedShots.length > 0 ? (
+  const corrections = (
+    <div className="grid gap-5">
+      {round.unmappedShots.length > 0 ? (
         <div
           className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-4 py-3 text-sm text-[var(--status-warning-foreground)]"
           role="status"
@@ -1568,8 +1616,7 @@ function MobileRoundDetail({
           </p>
         </div>
       ) : null}
-
-      {view === "corrections" && !roundIsComplete && focusHole ? (
+      {!roundIsComplete && focusHole ? (
         <MobileCurrentHoleEditor
           sessionId={round.session.id}
           recordVersion={round.session.updatedAt.toISOString()}
@@ -1578,49 +1625,68 @@ function MobileRoundDetail({
           isRealRound={isRealRound}
         />
       ) : null}
-
-      {view === "scorecard" ? <DigitalRoundScorecard round={round} compact /> : null}
-
-      {view === "map" ? (
-        <MobileRoundMap
-          round={round}
-          hasClubData={hasClubData}
-          hasMap={hasMap}
-          shotPatternEnabled={shotPatternEnabled}
-          completedReview={roundIsComplete}
-        />
+      <MobileRoundPerformance round={round} hasClubData={hasClubData} isRealRound={isRealRound} />
+      <MobileRoundScorecard round={round} hasClubData={hasClubData} isRealRound={isRealRound} />
+      {hasClubData ? (
+        <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
+          <Link
+            href={`/surface/workbench?next=${encodeURIComponent(`${baseHref}?view=corrections`)}`}
+          >
+            Open shot correction table
+          </Link>
+        </Button>
       ) : null}
+    </div>
+  );
 
-      {view === "evidence" ? (
-        <RoundEvidenceSummary
-          round={round}
-          hasClubData={hasClubData}
-          hasMap={hasMap}
-          proofItems={proofItems}
-          compact
-        />
-      ) : null}
-
-      {view === "corrections" ? (
-        <div className="grid gap-5">
-          <MobileRoundPerformance
-            round={round}
-            hasClubData={hasClubData}
-            isRealRound={isRealRound}
-          />
-          <MobileRoundScorecard round={round} hasClubData={hasClubData} isRealRound={isRealRound} />
-          {hasClubData ? (
-            <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
-              <Link
-                href={`/surface/workbench?next=${encodeURIComponent(`/rounds/${round.session.id}?view=corrections`)}`}
-              >
-                Open shot correction table
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-    </MobileAppShell>
+  return (
+    <MobilePageTabs
+      initialValue={view}
+      ariaLabel="Round review sections"
+      tabs={[
+        { value: "summary", label: "Summary", href: baseHref, content: summary },
+        {
+          value: "scorecard",
+          label: "Scorecard",
+          href: `${baseHref}?view=scorecard`,
+          content: <DigitalRoundScorecard round={round} compact />,
+        },
+        {
+          value: "map",
+          label: "Map",
+          href: `${baseHref}?view=map`,
+          content: (
+            <MobileRoundMap
+              round={round}
+              hasClubData={hasClubData}
+              hasMap={hasMap}
+              shotPatternEnabled={shotPatternEnabled}
+              completedReview={roundIsComplete}
+            />
+          ),
+        },
+        {
+          value: "evidence",
+          label: "Evidence",
+          href: `${baseHref}?view=evidence`,
+          content: (
+            <RoundEvidenceSummary
+              round={round}
+              hasClubData={hasClubData}
+              hasMap={hasMap}
+              proofItems={proofItems}
+              compact
+            />
+          ),
+        },
+        {
+          value: "corrections",
+          label: "Corrections",
+          href: `${baseHref}?view=corrections`,
+          content: corrections,
+        },
+      ]}
+    />
   );
 }
 

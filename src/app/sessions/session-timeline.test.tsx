@@ -104,15 +104,17 @@ describe("SessionTimeline golf history", () => {
     expect(timelineSource).not.toContain("ResponsiveDetailPanel");
   });
 
-  it("uses controlled Tabs for All, Practice and Rounds on both surfaces", () => {
+  it("uses local All, Practice and Rounds controls on both surfaces", () => {
     expect(companionListSource).toContain("Your golf history");
-    for (const filterSource of [timelineSource, companionListSource]) {
-      expect(filterSource).toContain("<Tabs");
-      expect(filterSource).toContain("<TabsList");
-      expect(filterSource).toContain('<TabsTrigger value="all">All</TabsTrigger>');
-      expect(filterSource).toContain('<TabsTrigger value="practice">Practice</TabsTrigger>');
-      expect(filterSource).toContain('<TabsTrigger value="round">Rounds</TabsTrigger>');
-    }
+    expect(timelineSource).toContain("<Tabs");
+    expect(timelineSource).toContain("<TabsList");
+    expect(timelineSource).toContain('<TabsTrigger value="all">All</TabsTrigger>');
+    expect(timelineSource).toContain('<TabsTrigger value="practice">Practice</TabsTrigger>');
+    expect(timelineSource).toContain('<TabsTrigger value="round">Rounds</TabsTrigger>');
+    expect(companionListSource).toContain("MobileSegmentedControl");
+    expect(companionListSource).toContain('{ value: "all", label: "All" }');
+    expect(companionListSource).toContain('{ value: "practice", label: "Practice" }');
+    expect(companionListSource).toContain('{ value: "round", label: "Rounds" }');
     expect(companionListSource).toContain("<StatusTimeline");
     expect(companionListSource).toContain("featured: index === 0");
     expect(companionListSource).not.toContain("Compare");

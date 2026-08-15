@@ -36,11 +36,11 @@ import {
   IOSInlineStatus,
   IOSListRow,
 } from "@/components/app/ios-mobile";
+import { MobilePageTabs } from "@/components/app/mobile-controls";
 import {
   BottomSheet,
   MobileAppShell,
   MobileStatusAction,
-  MobileTabBar,
   MobileTopBar,
   NativeListSection,
 } from "@/components/mobile-sports";
@@ -160,137 +160,15 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
               {data.challenge.rulesSummary}
             </p>
           </section>
-          <MobileTabBar
-            activeKey={activeTab}
-            tabs={[
-              { key: "board", label: "Board", href: `/challenges/${data.challenge.id}` },
-              { key: "rules", label: "Rules", href: `/challenges/${data.challenge.id}?tab=rules` },
-              {
-                key: "shots",
-                label: "Attempts",
-                href: `/challenges/${data.challenge.id}?tab=shots`,
-              },
-              { key: "chat", label: "Chat", href: `/challenges/${data.challenge.id}?tab=chat` },
-            ]}
-          />
           {query?.invite ? (
             <IOSInlineStatus label="Invite sent" tone="positive" className="px-1" />
           ) : null}
-          {activeTab === "rules" ? (
-            <NativeListSection title="Rules" description={data.challenge.rulesSummary}>
-              <IOSGroupedList label="Challenge rules">
-                {data.challenge.rulesBullets.map((rule) => (
-                  <IOSListRow
-                    key={rule}
-                    label={rule}
-                    leading={<ShieldCheck className="size-5 shrink-0 text-primary" aria-hidden />}
-                  />
-                ))}
-              </IOSGroupedList>
-            </NativeListSection>
-          ) : activeTab === "shots" ? (
-            <NativeListSection
-              title="Attempt timeline"
-              description="Every qualifying imported attempt, in the order it reached the challenge."
-            >
-              <StatusTimeline
-                label="Challenge attempt timeline"
-                items={data.attempts.map((row) => challengeAttemptTimelineItem(row))}
-                empty={
-                  <p className="text-sm text-muted-foreground">
-                    No qualifying attempts yet. Import shots during the active window to start the
-                    timeline.
-                  </p>
-                }
-              />
-            </NativeListSection>
-          ) : activeTab === "chat" ? (
-            <NativeListSection title="Chat">
-              <IOSGroupedList label="Challenge comments">
-                {data.comments.length > 0 ? (
-                  data.comments.map((comment) => (
-                    <IOSListRow
-                      key={comment.id}
-                      label={comment.profile.displayName}
-                      detail={comment.body}
-                      href={`/profile/${comment.profile.username}`}
-                    />
-                  ))
-                ) : (
-                  <IOSListRow
-                    label="No comments yet"
-                    detail="Start the challenge conversation below."
-                  />
-                )}
-              </IOSGroupedList>
-              <form action={addChallengeCommentAction} className="grid gap-2">
-                <input type="hidden" name="challengeId" value={data.challenge.id} />
-                <Input
-                  name="body"
-                  placeholder="Add a comment"
-                  className="h-11 rounded-xl bg-card text-base"
-                />
-                <Button type="submit" variant="outline" className="min-h-11 rounded-xl">
-                  Comment
-                </Button>
-              </form>
-            </NativeListSection>
-          ) : (
-            <NativeListSection
-              title="Leaderboard"
-              description={
-                viewerResult
-                  ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}`
-                  : "No qualifying imported shots yet"
-              }
-            >
-              <IOSGroupedList label="Challenge podium">
-                {podium.length > 0 ? (
-                  podium.map((row) => (
-                    <IOSListRow
-                      key={row.result.userId}
-                      label={`${row.result.rank}. ${row.profile.displayName}`}
-                      value={row.result.scoreLabel}
-                      detail={row.verificationLabel}
-                      href={`/profile/${row.profile.username}`}
-                    />
-                  ))
-                ) : (
-                  <IOSListRow
-                    label="No leaderboard result yet"
-                    detail="Qualifying imported shots will populate this board automatically."
-                  />
-                )}
-              </IOSGroupedList>
-              {data.results.length > 3 ? (
-                <IOSDisclosureGroup
-                  label="Full challenge leaderboard"
-                  items={[
-                    {
-                      value: "full-board",
-                      title: "Full leaderboard",
-                      summary: `${data.results.length}`,
-                      description: "Every qualifying result",
-                      content: (
-                        <IOSGroupedList label="All challenge leaderboard results">
-                          {data.results.map((row) => (
-                            <IOSListRow
-                              key={row.result.userId}
-                              label={`${row.result.rank}. ${row.profile.displayName}`}
-                              value={row.result.scoreLabel}
-                              detail={row.verificationLabel}
-                              href={`/profile/${row.profile.username}`}
-                            />
-                          ))}
-                        </IOSGroupedList>
-                      ),
-                    },
-                  ]}
-                />
-              ) : null}
-              <ChallengeInviteSheet data={data} />
-            </NativeListSection>
-          )}
+          <MobileChallengeSections
+            data={data}
+            activeTab={activeTab}
+            viewerResult={viewerResult}
+            podium={podium}
+          />
         </MobileAppShell>
       ) : null}
 
@@ -587,6 +465,167 @@ export default async function ChallengePage({ params, searchParams }: ChallengeP
         </DesktopWorkbenchLayout>
       ) : null}
     </PageShell>
+  );
+}
+
+function MobileChallengeSections({
+  data,
+  activeTab,
+  viewerResult,
+  podium,
+}: {
+  data: ChallengeDetail;
+  activeTab: "board" | "rules" | "shots" | "chat";
+  viewerResult: ChallengeResultRow | undefined;
+  podium: ChallengeResultRow[];
+}) {
+  const baseHref = `/challenges/${data.challenge.id}`;
+
+  return (
+    <MobilePageTabs
+      initialValue={activeTab}
+      ariaLabel="Challenge sections"
+      tabs={[
+        {
+          value: "board",
+          label: "Board",
+          href: baseHref,
+          content: (
+            <NativeListSection
+              title="Leaderboard"
+              description={
+                viewerResult
+                  ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}`
+                  : "No qualifying imported shots yet"
+              }
+            >
+              <IOSGroupedList label="Challenge podium">
+                {podium.length > 0 ? (
+                  podium.map((row) => (
+                    <IOSListRow
+                      key={row.result.userId}
+                      label={`${row.result.rank}. ${row.profile.displayName}`}
+                      value={row.result.scoreLabel}
+                      detail={row.verificationLabel}
+                      href={`/profile/${row.profile.username}`}
+                    />
+                  ))
+                ) : (
+                  <IOSListRow
+                    label="No leaderboard result yet"
+                    detail="Qualifying imported shots will populate this board automatically."
+                  />
+                )}
+              </IOSGroupedList>
+              {data.results.length > 3 ? (
+                <IOSDisclosureGroup
+                  label="Full challenge leaderboard"
+                  items={[
+                    {
+                      value: "full-board",
+                      title: "Full leaderboard",
+                      summary: `${data.results.length}`,
+                      description: "Every qualifying result",
+                      content: (
+                        <IOSGroupedList label="All challenge leaderboard results">
+                          {data.results.map((row) => (
+                            <IOSListRow
+                              key={row.result.userId}
+                              label={`${row.result.rank}. ${row.profile.displayName}`}
+                              value={row.result.scoreLabel}
+                              detail={row.verificationLabel}
+                              href={`/profile/${row.profile.username}`}
+                            />
+                          ))}
+                        </IOSGroupedList>
+                      ),
+                    },
+                  ]}
+                />
+              ) : null}
+              <ChallengeInviteSheet data={data} />
+            </NativeListSection>
+          ),
+        },
+        {
+          value: "rules",
+          label: "Rules",
+          href: `${baseHref}?tab=rules`,
+          content: (
+            <NativeListSection title="Rules" description={data.challenge.rulesSummary}>
+              <IOSGroupedList label="Challenge rules">
+                {data.challenge.rulesBullets.map((rule) => (
+                  <IOSListRow
+                    key={rule}
+                    label={rule}
+                    leading={<ShieldCheck className="size-5 shrink-0 text-primary" aria-hidden />}
+                  />
+                ))}
+              </IOSGroupedList>
+            </NativeListSection>
+          ),
+        },
+        {
+          value: "shots",
+          label: "Attempts",
+          href: `${baseHref}?tab=shots`,
+          content: (
+            <NativeListSection
+              title="Attempt timeline"
+              description="Every qualifying imported attempt, in the order it reached the challenge."
+            >
+              <StatusTimeline
+                label="Challenge attempt timeline"
+                items={data.attempts.map((row) => challengeAttemptTimelineItem(row))}
+                empty={
+                  <p className="text-sm text-muted-foreground">
+                    No qualifying attempts yet. Import shots during the active window to start the
+                    timeline.
+                  </p>
+                }
+              />
+            </NativeListSection>
+          ),
+        },
+        {
+          value: "chat",
+          label: "Chat",
+          href: `${baseHref}?tab=chat`,
+          content: (
+            <NativeListSection title="Chat">
+              <IOSGroupedList label="Challenge comments">
+                {data.comments.length > 0 ? (
+                  data.comments.map((comment) => (
+                    <IOSListRow
+                      key={comment.id}
+                      label={comment.profile.displayName}
+                      detail={comment.body}
+                      href={`/profile/${comment.profile.username}`}
+                    />
+                  ))
+                ) : (
+                  <IOSListRow
+                    label="No comments yet"
+                    detail="Start the challenge conversation below."
+                  />
+                )}
+              </IOSGroupedList>
+              <form action={addChallengeCommentAction} className="grid gap-2">
+                <input type="hidden" name="challengeId" value={data.challenge.id} />
+                <Input
+                  name="body"
+                  placeholder="Add a comment"
+                  className="h-11 rounded-xl bg-card text-base"
+                />
+                <Button type="submit" variant="outline" className="min-h-11 rounded-xl">
+                  Comment
+                </Button>
+              </form>
+            </NativeListSection>
+          ),
+        },
+      ]}
+    />
   );
 }
 

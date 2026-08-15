@@ -7,14 +7,18 @@ const controls = readFileSync(
   join(process.cwd(), "src/app/leaderboard/leaderboard-controls.tsx"),
   "utf8",
 );
+const mobile = readFileSync(
+  join(process.cwd(), "src/app/leaderboard/mobile-leaderboard.tsx"),
+  "utf8",
+);
 
 describe("leaderboard desktop workspace source", () => {
   it("keeps board audience and period independent from compete destinations", () => {
     expect(controls).not.toContain("<Tabs");
     expect(source).not.toContain("LeaderboardTypeTabs");
-    expect(source).toContain("MobileLeaderboardScopeSelector");
-    expect(source).toContain('href="/leaderboard?tab=friends"');
-    expect(source).toContain('href="/leaderboard?tab=public"');
+    expect(source).toContain("<MobileLeaderboard");
+    expect(mobile).toContain('href: "/leaderboard?tab=friends"');
+    expect(mobile).toContain('href: "/leaderboard?tab=public"');
   });
 
   it("keeps period and friends/global scope as independent toggle groups", () => {
@@ -125,18 +129,20 @@ describe("leaderboard mobile state", () => {
   it("keeps mobile to one monthly audience selector and top-five board", () => {
     expect(controls).toContain('<ToggleGroupItem value="monthly">This month</ToggleGroupItem>');
     expect(source).toContain('surface === "companion" ? "monthly"');
-    expect(source).toContain("data.players.slice(0, 5)");
-    expect(source).toContain("View full leaderboard");
+    expect(mobile).toContain("players.slice(0, 5)");
+    expect(mobile).toContain("View all ${players.length} golfers");
+    expect(mobile).toContain("<MobilePageTabs");
+    expect(mobile).not.toContain("router.push");
     expect(source).not.toContain("MobileRouteTabs");
     expect(source).not.toContain('<option value="mixed">Mixed</option>');
   });
 
   it("uses one compact mobile row list instead of golfer cards", () => {
-    expect(source).toContain("MobileCompetitionLeaderboard");
-    expect(source).toContain("Rank");
-    expect(source).toContain("Golfer");
-    expect(source).toContain("Score");
-    expect(source).toContain("Move");
+    expect(source).toContain("MobileLeaderboard");
+    expect(mobile).toContain("Rank");
+    expect(mobile).toContain("Golfer");
+    expect(mobile).toContain("Score");
+    expect(mobile).toContain("Move");
     expect(source).not.toContain('viewAllHref="#full-leaderboard"');
     expect(source).not.toContain("LeaderboardPodiumCard");
     expect(source).not.toContain('className="hidden lg:contents"');

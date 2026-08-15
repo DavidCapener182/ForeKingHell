@@ -97,8 +97,9 @@ describe("challenge progression mobile", () => {
 
   it("keeps the mobile composition active until the desktop surface takes over", () => {
     expect(source).toContain("<MobileAppShell>");
-    expect(source).toContain("<MobileTabBar");
+    expect(source).toContain("<MobilePageTabs");
     expect(source).not.toContain("MobileRouteTabs");
+    expect(source).not.toContain("<MobileTabBar");
     expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden sm:contents"');
   });

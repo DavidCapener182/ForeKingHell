@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
@@ -127,6 +129,8 @@ test.describe("site-wide Apple mobile presentation", () => {
     runOnceInBaseChromium(browserName, testInfo.project.name);
     skipWhenNoAuth();
     await page.setViewportSize({ width: 390, height: 844 });
+    const outputDirectory = path.join(process.cwd(), "output", "playwright");
+    mkdirSync(outputDirectory, { recursive: true });
 
     for (const appearance of [
       {
@@ -162,7 +166,23 @@ test.describe("site-wide Apple mobile presentation", () => {
       await expect(page.getByText("Home", { exact: true }).filter({ visible: true })).toHaveCount(
         0,
       );
+      await expectExactSurface(
+        page.locator("[data-today-primary-action]"),
+        "rgb(255, 255, 255)",
+        `${appearance.theme} Today primary action`,
+      );
+      await expect
+        .poll(() =>
+          page
+            .locator("[data-today-primary-action]")
+            .evaluate((element) => getComputedStyle(element).color),
+        )
+        .toBe("rgb(7, 53, 39)");
       await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: path.join(outputDirectory, `companion-today-${appearance.theme}-390x844.png`),
+        fullPage: true,
+      });
     }
   });
 

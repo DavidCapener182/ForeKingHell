@@ -47,9 +47,9 @@ test.describe("phone companion journeys", () => {
     await page.getByRole("button", { name: "30 min", exact: true }).click();
     await page.getByRole("button", { name: "Apply adjustments" }).click();
     await expect(page.locator("[data-current-practice-plan]")).toContainText("30 min");
-    await expect(
-      page.getByRole("toolbar", { name: "Practice blocks" }).getByRole("button"),
-    ).toHaveCount(3);
+    await expect(page.locator("[data-practice-block-carousel] button[aria-pressed]")).toHaveCount(
+      3,
+    );
     await page.getByRole("button", { name: "Save & Start Practice" }).click();
     const rangeMode = page.locator("[data-active-range-mode]");
     await expect(rangeMode).toBeVisible();
@@ -57,11 +57,11 @@ test.describe("phone companion journeys", () => {
     await expect(page.getByText(/Range Mode · Block 1 of 3/i)).toBeVisible();
     await expect(page.getByText(/activity only/i)).toBeVisible();
 
-    await page.getByRole("button", { name: "Complete block" }).click();
+    await page.getByRole("button", { name: "Complete Block" }).click();
     await expect(page.getByText(/Range Mode · Block 2 of 3/i)).toBeVisible();
-    await page.getByRole("button", { name: "Next block" }).click();
+    await page.getByRole("button", { name: "Next practice block" }).click();
     await expect(page.getByText(/Range Mode · Block 3 of 3/i)).toBeVisible();
-    await page.getByRole("button", { name: "Previous block" }).click();
+    await page.getByRole("button", { name: "Previous practice block" }).click();
     await expect(page.getByText(/Range Mode · Block 2 of 3/i)).toBeVisible();
 
     await page.getByRole("button", { name: "Finish Practice" }).click();
@@ -137,7 +137,7 @@ test.describe("phone companion journeys", () => {
     await expect(page.getByRole("link", { name: /Bag confidence|Shot rows/i })).toHaveCount(0);
 
     await page.goto("/sessions", { waitUntil: "commit" });
-    await expectPageReady(page, /Recent sessions/i);
+    await expectPageReady(page, /Your golf history/i);
     await page.getByRole("button", { name: "Practice", exact: true }).click();
     const measuredReview = page.locator(`a[href="/sessions/${savedSessionId}"]`).first();
     await expect(measuredReview).toBeVisible();
@@ -206,6 +206,24 @@ test.describe("phone companion journeys", () => {
     await page.getByRole("button", { name: "Target distance" }).click();
     await page.getByRole("textbox", { name: "Target distance" }).fill("165");
     await expect(page.locator("[data-quick-bag-best-match]")).toContainText(/Best match for 165/i);
+  });
+
+  test("local companion controls preserve the current document", async ({ page }) => {
+    await openCompanion(page, "/sessions", /Your golf history/i);
+    const sessionsDocument = await markCurrentDocument(page);
+    const sessionsUrl = page.url();
+    await page.getByRole("radio", { name: "Practice", exact: true }).click();
+    await expect(page.getByRole("radio", { name: "Practice", exact: true })).toBeChecked();
+    await expectCurrentDocument(page, sessionsDocument);
+    expect(page.url()).toBe(sessionsUrl);
+
+    await openCompanion(page, "/quick-bag", /Quick Bag/i);
+    const bagDocument = await markCurrentDocument(page);
+    const bagUrl = page.url();
+    await page.getByRole("radio", { name: "Target distance", exact: true }).click();
+    await expect(page.getByRole("radio", { name: "Target distance", exact: true })).toBeChecked();
+    await expectCurrentDocument(page, bagDocument);
+    expect(page.url()).toBe(bagUrl);
   });
 
   test("mocked R-Cloud inbox previews uncertain matches and opens the common review", async ({
@@ -278,4 +296,18 @@ async function openCompanion(page: Page, destination: string, ready: RegExp) {
     waitUntil: "commit",
   });
   await expectPageReady(page, ready);
+}
+
+async function markCurrentDocument(page: Page) {
+  return page.evaluate(() => {
+    const marker = crypto.randomUUID();
+    document.documentElement.dataset.companionDocumentMarker = marker;
+    return marker;
+  });
+}
+
+async function expectCurrentDocument(page: Page, marker: string) {
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.dataset.companionDocumentMarker))
+    .toBe(marker);
 }

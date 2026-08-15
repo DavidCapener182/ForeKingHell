@@ -42,7 +42,8 @@ describe("latest practice desktop dashboard", () => {
     expect(loadingSource.match(/aria-busy="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
     expect(loadingSource).toContain("aspect-[82/43]");
     expect(primaryAnswerSource).toContain("Retry sync");
-    expect(primaryAnswerSource).toContain("<ButtonGroup");
+    expect(primaryAnswerSource).toContain('aria-label="Today actions"');
+    expect(primaryAnswerSource).not.toContain("<ButtonGroup");
     expect(primaryAnswerSource).toContain("<DropdownMenu");
     expect(companionSource).toContain("resolveTodayPrimaryState");
     expect(primaryStateSource).toContain("Plan range session");

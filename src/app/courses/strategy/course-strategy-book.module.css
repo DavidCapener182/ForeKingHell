@@ -711,13 +711,13 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 0.25rem;
   padding: 0.25rem;
-  border-radius: 0.8rem;
+  border-radius: var(--mobile-radius-md, 0.875rem);
   background: var(--muted);
 }
 
 .mobileModeSwitcher button {
-  min-height: 2.5rem;
-  border-radius: 0.62rem;
+  min-height: 2.75rem;
+  border-radius: var(--mobile-radius-sm, 0.625rem);
   color: var(--muted-foreground);
   font-size: 0.72rem;
   font-weight: 750;

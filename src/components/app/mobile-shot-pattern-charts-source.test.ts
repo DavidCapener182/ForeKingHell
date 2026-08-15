@@ -9,10 +9,10 @@ const source = readFileSync(
 
 describe("mobile shot-pattern chart surface", () => {
   it("provides club, trust, dispersion and individual-versus-average flight controls", () => {
-    expect(source).toContain('label="Shot pattern view"');
-    expect(source).toContain('aria-label="Chart club"');
+    expect(source).toContain('ariaLabel="Shot pattern view"');
+    expect(source).toContain('ariaLabel="Chart club"');
     expect(source).toContain("All clubs");
-    expect(source).toContain("Trusted shots");
+    expect(source).toContain('{ value: "trusted", label: "Trusted" }');
     expect(source).toContain("All shots");
     expect(source).toContain("Individual shots");
     expect(source).toContain("Club average");
@@ -34,7 +34,7 @@ describe("mobile shot-pattern chart surface", () => {
   it("keeps summary, accessible desktop rows and tappable mobile shot detail explicit", () => {
     expect(source).toContain('mode="dispersion"');
     expect(source).toContain('mode="trajectory"');
-    expect(source).toContain("-side miss reaches");
+    expect(source).toContain("Typical miss reaches");
     expect(source).toContain("Accessible shot data");
     expect(source).toContain("<Table");
     expect(source).toContain("data-shot-detail-drawer");

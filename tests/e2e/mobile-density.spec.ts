@@ -67,15 +67,22 @@ test.describe("companion and workbench density contract", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const routes = [
       {
+        name: "practice",
         route: "/practice",
         ready: /Recommended session|Active Range Mode/i,
         answer: "[data-current-practice-plan], [data-active-range-mode]",
       },
-      { route: "/play", ready: /Play/i, answer: "[data-active-round], [data-selected-course]" },
       {
+        name: "play",
+        route: "/play",
+        ready: /Play/i,
+        answer: "[data-active-round], [data-selected-course]",
+      },
+      {
+        name: "sessions",
         route: "/sessions",
-        ready: /Recent sessions/i,
-        answer: '[role="group"][aria-label="Session type"]',
+        ready: /Your golf history/i,
+        answer: '[role="radiogroup"][aria-label="Session type"]',
       },
     ];
     for (const route of routes) {
@@ -89,6 +96,10 @@ test.describe("companion and workbench density contract", () => {
       expect(answerTop).toBeLessThan(tabTop);
       await expect(page.locator("[data-companion-image-hero]")).toHaveCount(0);
       await expectNoHorizontalOverflow(page);
+      await page.screenshot({
+        path: path.join(outputDirectory, `companion-${route.name}-390x844.png`),
+        fullPage: true,
+      });
     }
   });
 

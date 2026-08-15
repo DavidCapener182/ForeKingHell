@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { MobileFilterChipGroup, MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -24,8 +25,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   defaultShotPatternClub,
   filterShotPatternPoints,
@@ -107,14 +106,15 @@ export function MobileShotPatternCharts({
       data-mobile-shot-pattern-hydrated={hydrated ? "true" : "false"}
     >
       {!compact ? (
-        <Tabs value={mode} onValueChange={(value) => setMode(value as ChartMode)}>
-          <TabsList className="grid w-full grid-cols-2" aria-label="Shot pattern view">
-            <TabsTrigger value="dispersion">Dispersion</TabsTrigger>
-            <TabsTrigger value="flight" disabled={!hasFlight}>
-              Flight
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <MobileSegmentedControl
+          value={mode}
+          onValueChange={(value) => setMode(value as ChartMode)}
+          ariaLabel="Shot pattern view"
+          options={[
+            { value: "dispersion", label: "Dispersion" },
+            { value: "flight", label: "Flight", disabled: !hasFlight },
+          ]}
+        />
       ) : null}
       {!compact && !hasFlight ? (
         <p className="rounded-xl bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
@@ -123,70 +123,42 @@ export function MobileShotPatternCharts({
       ) : null}
 
       {!compact && mode === "flight" && hasFlight ? (
-        <ToggleGroup
-          type="single"
+        <MobileSegmentedControl
           value={flightMode}
-          onValueChange={(value) => value && setFlightMode(value as FlightMode)}
-          variant="outline"
-          className="grid w-full grid-cols-2"
-          aria-label="Flight detail"
-        >
-          <ToggleGroupItem value="shots" className="w-full">
-            Individual shots
-          </ToggleGroupItem>
-          <ToggleGroupItem value="average" className="w-full">
-            Club average
-          </ToggleGroupItem>
-        </ToggleGroup>
+          onValueChange={(value) => setFlightMode(value as FlightMode)}
+          ariaLabel="Flight detail"
+          options={[
+            { value: "shots", label: "Individual shots" },
+            { value: "average", label: "Club average" },
+          ]}
+        />
       ) : null}
 
-      <ToggleGroup
-        type="single"
+      <MobileFilterChipGroup
         value={club}
-        onValueChange={(value) => value && setClub(value)}
-        className="-mx-1 w-auto snap-x justify-start gap-2 overflow-x-auto px-1 pb-1"
-        aria-label="Chart club"
-      >
-        {clubs.map((item) => (
-          <ToggleGroupItem
-            key={item.type}
-            value={item.type}
-            variant="outline"
-            size="lg"
-            className="focus-aaa min-h-11 shrink-0 snap-start rounded-full px-3 text-sm font-semibold"
-          >
-            {item.label}
-          </ToggleGroupItem>
-        ))}
-        {clubs.length > 1 && !compact ? (
-          <ToggleGroupItem
-            value="all"
-            variant="outline"
-            size="lg"
-            className="focus-aaa min-h-11 shrink-0 snap-start rounded-full px-3 text-sm font-semibold"
-          >
-            All clubs
-          </ToggleGroupItem>
-        ) : null}
-      </ToggleGroup>
+        onValueChange={setClub}
+        ariaLabel="Chart club"
+        scrollable
+        options={[
+          ...clubs.map((item) => ({ value: item.type, label: item.label })),
+          ...(clubs.length > 1 && !compact ? [{ value: "all", label: "All clubs" }] : []),
+        ]}
+      />
 
       {!compact ? (
-        <div className="flex items-center justify-between gap-3">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <p className="text-xs text-muted-foreground">
             {confidence.sampleSize} measured landing points · {confidence.label} confidence
           </p>
-          <ToggleGroup
-            type="single"
+          <MobileSegmentedControl
             value={trustedOnly ? "trusted" : "all"}
-            onValueChange={(value) => value && setTrustedOnly(value === "trusted")}
-            variant="outline"
-            size="sm"
-            spacing={0}
-            aria-label="Evidence trust"
-          >
-            <ToggleGroupItem value="trusted">Trusted shots</ToggleGroupItem>
-            <ToggleGroupItem value="all">All shots</ToggleGroupItem>
-          </ToggleGroup>
+            onValueChange={(value) => setTrustedOnly(value === "trusted")}
+            ariaLabel="Evidence trust"
+            options={[
+              { value: "trusted", label: "Trusted" },
+              { value: "all", label: "All shots" },
+            ]}
+          />
         </div>
       ) : null}
 
@@ -238,9 +210,7 @@ export function MobileShotPatternCharts({
         </p>
       )}
 
-      <p className="text-sm font-medium leading-5" aria-live="polite">
-        {patternReadout(summary)}
-      </p>
+      <PatternSummary summary={summary} />
 
       {!compact && layout === "desktop" ? (
         <AccessibleShotTable points={selected} onSelect={setSelectedShot} />
@@ -728,25 +698,36 @@ function ShotMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function patternReadout(summary: ReturnType<typeof summarizeShotPattern>) {
+function PatternSummary({ summary }: { summary: ReturnType<typeof summarizeShotPattern> }) {
   if (summary.sampleSize === 0 || summary.medianSideYd === null) {
-    return "No measured carry and lateral coordinates are available for this selection.";
+    return (
+      <p className="text-sm leading-5 text-muted-foreground" aria-live="polite">
+        No measured carry and lateral coordinates are available for this selection.
+      </p>
+    );
   }
   const direction =
     Math.abs(summary.medianSideYd) < 1
       ? "on the centre line"
       : `${Math.abs(Math.round(summary.medianSideYd))} yd ${summary.medianSideYd < 0 ? "left" : "right"}`;
-  const miss = summary.typicalMiss
-    ? typicalMissReadout(summary)
-    : summary.widerSide
-      ? ` Wider side: ${summary.widerSide.toLowerCase()}.`
-      : "";
-  return `${summary.insideCorridor} of ${summary.sampleSize} shots finished inside the playable corridor. The pattern centres ${direction}.${miss}`;
+  const miss = typicalMissReadout(summary);
+
+  return (
+    <div className="grid gap-0.5" aria-live="polite" data-shot-pattern-summary>
+      <p className="text-base font-bold leading-5">
+        {summary.insideCorridor} / {summary.sampleSize} playable
+      </p>
+      <p className="text-sm leading-5 text-muted-foreground">Pattern centres {direction}.</p>
+      {miss ? <p className="text-sm leading-5 text-muted-foreground">{miss}</p> : null}
+    </div>
+  );
 }
 
 function typicalMissReadout(summary: ReturnType<typeof summarizeShotPattern>) {
   const typical = summary.typicalMiss?.toLowerCase();
-  if (!typical) return "";
+  if (!typical) {
+    return summary.widerSide ? `Wider side is ${summary.widerSide.toLowerCase()}.` : "";
+  }
   const extent =
     summary.typicalMiss === "Left"
       ? summary.sideLowYd === null
@@ -758,8 +739,8 @@ function typicalMissReadout(summary: ReturnType<typeof summarizeShotPattern>) {
           : Math.abs(summary.sideHighYd)
         : null;
   return extent === null
-    ? ` Typical pattern: ${typical}.`
-    : ` Typical pattern: ${typical}; the ${typical}-side miss reaches ${Math.round(extent)} yd.`;
+    ? `Typical pattern is ${typical}.`
+    : `Typical miss reaches ${Math.round(extent)} yd ${typical}.`;
 }
 
 function formatMeasure(value: number | null, unit: string) {

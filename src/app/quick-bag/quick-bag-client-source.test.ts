@@ -29,7 +29,8 @@ describe("Quick Bag companion composition", () => {
   });
 
   it("uses a separate club-search mode", () => {
-    expect(source).toContain('value="club"');
+    expect(source).toContain('{ value: "club", label: "Search club" }');
+    expect(source).toContain("MobileSegmentedControl");
     expect(source).toContain("Search club");
     expect(source).toContain('aria-label="Search by club"');
     expect(source).toContain("<SearchClubRow");

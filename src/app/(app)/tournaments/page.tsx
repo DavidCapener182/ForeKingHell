@@ -2,14 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight, Trophy } from "lucide-react";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
+import { MobilePageTabs } from "@/components/app/mobile-controls";
 import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
-import {
-  MobileAppShell,
-  MobileRouteTabs,
-  MobileTabBar,
-  MobileTopBar,
-  NativeListSection,
-} from "@/components/mobile-sports";
+import { MobileAppShell, MobileTopBar, NativeListSection } from "@/components/mobile-sports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,42 +60,45 @@ export default async function TournamentsPage({ searchParams }: TournamentsPageP
       {surface === "companion" ? (
         <MobileAppShell>
           <MobileTopBar title={courseId ? "Course events" : "Tournaments"} />
-          <MobileRouteTabs group="play" activeKey="tournaments" />
-          <MobileTabBar
-            activeKey={activeTab}
-            tabs={tournamentTabs(courseId).map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              href: tab.href,
-            }))}
-          />
-
-          <section className="overflow-hidden rounded-2xl border border-border bg-card">
-            <div className="border-b border-border bg-muted/45 px-4 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                Event calendar
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">
-                {tournamentTabHeading(activeTab)}
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {visibleTournaments.length} {visibleTournaments.length === 1 ? "event" : "events"}
-                {courseFilter ? ` at ${courseFilter.courseName}` : ""}
-              </p>
+          {courseFilter ? (
+            <div className="flex items-center justify-between gap-3 rounded-[var(--mobile-radius-md)] bg-card px-4 py-3 text-sm">
+              <span className="min-w-0 truncate">Course: {courseFilter.courseName}</span>
+              <Link href="/tournaments" className="shrink-0 font-semibold text-primary">
+                Clear
+              </Link>
             </div>
-            {courseFilter ? (
-              <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 text-sm">
-                <span className="min-w-0 truncate">Course: {courseFilter.courseName}</span>
-                <Link href="/tournaments" className="shrink-0 font-semibold text-primary">
-                  Clear
-                </Link>
-              </div>
-            ) : null}
-          </section>
-
-          <NativeListSection title={tournamentTabHeading(activeTab)}>
-            <TournamentMobileList events={visibleTournaments} activeTab={activeTab} />
-          </NativeListSection>
+          ) : null}
+          <MobilePageTabs
+            initialValue={activeTab}
+            ariaLabel="Tournament status"
+            tabs={tournamentTabs(courseId).map((tab) => {
+              const events = filterTournamentEvents(courseTournaments, tab.key);
+              return {
+                value: tab.key,
+                label: tab.label,
+                href: tab.href,
+                content: (
+                  <div className="grid gap-4">
+                    <section className="rounded-[var(--mobile-radius-lg)] bg-card px-4 py-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+                        Event calendar
+                      </p>
+                      <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+                        {tournamentTabHeading(tab.key)}
+                      </h1>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {events.length} {events.length === 1 ? "event" : "events"}
+                        {courseFilter ? ` at ${courseFilter.courseName}` : ""}
+                      </p>
+                    </section>
+                    <NativeListSection title={tournamentTabHeading(tab.key)}>
+                      <TournamentMobileList events={events} activeTab={tab.key} />
+                    </NativeListSection>
+                  </div>
+                ),
+              };
+            })}
+          />
         </MobileAppShell>
       ) : null}
 

@@ -17,6 +17,7 @@ import {
   IOSListRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
+import { MobileFilterChipGroup } from "@/components/app/mobile-controls";
 import { OperationStatus } from "@/components/app/operation-status";
 import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
 import {
@@ -61,7 +62,6 @@ import {
 import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type {
   GeneratePracticePlanOptions,
   PracticeBlock,
@@ -73,6 +73,7 @@ import type {
   SavedPracticePlan,
 } from "@/lib/practice-planner";
 import { formatClubType } from "@/lib/club-format";
+import { cn } from "@/lib/utils";
 
 type MeasuredResult = SavedPracticePlan["result"];
 
@@ -327,9 +328,9 @@ export function PracticeCompanionClient({
         </Button>
       ) : null}
 
-      <Card className="relative isolate gap-3 overflow-hidden py-4" data-current-practice-plan>
+      <Card className="relative isolate gap-3 overflow-hidden py-3" data-current-practice-plan>
         <div
-          className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/companion/practice-hero.avif')] bg-cover bg-[68%_center] opacity-30"
+          className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/companion/practice-hero.avif')] bg-cover bg-[68%_center] opacity-20"
           aria-hidden
         />
         <div
@@ -341,21 +342,22 @@ export function PracticeCompanionClient({
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Recommended session
             </p>
-            <CardTitle className="mt-1 text-2xl font-bold leading-7 tracking-tight">
+            <CardTitle className="mt-1 text-xl font-bold leading-6 tracking-tight">
               {plan.title}
             </CardTitle>
-            <p className="mt-2 text-sm leading-5 text-muted-foreground">{plan.summary}</p>
+            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+              {plan.why[0] ?? plan.summary}
+            </p>
           </div>
           <CardAction>
             <Badge variant="secondary">{plan.confidenceLabel}</Badge>
           </CardAction>
         </CardHeader>
-        <CardContent className="grid min-w-0 grid-cols-2 gap-2">
-          <PlanMetric label="Time" value={`${plan.estimatedTimeMinutes} min`} />
-          <PlanMetric
-            label="Volume"
-            value={plan.totalBalls === null ? "Time based" : `${plan.totalBalls} balls`}
-          />
+        <CardContent>
+          <p className="text-sm font-semibold text-foreground" aria-label="Plan summary">
+            {plan.totalBalls === null ? "Time based" : `${plan.totalBalls} balls`} ·{" "}
+            {plan.estimatedTimeMinutes} min · {clubSummary(plan)} · {plan.blocks.length} blocks
+          </p>
         </CardContent>
         {isPending ? (
           <CardContent>
@@ -391,34 +393,80 @@ export function PracticeCompanionClient({
         <Carousel
           opts={{ align: "start", containScroll: "trimSnaps", dragFree: false }}
           setApi={setBlockCarouselApi}
-          className="w-full min-w-0 max-w-full overflow-hidden px-10"
+          className="w-full min-w-0 max-w-full"
           aria-label="Practice blocks"
           data-practice-block-carousel
         >
-          <CarouselContent className="-ml-2">
+          <CarouselContent className="-ml-3 touch-pan-y">
             {plan.blocks.map((block, index) => (
-              <CarouselItem key={block.id} className="basis-[88%] pl-2 sm:basis-1/2">
-                <Button
+              <CarouselItem
+                key={block.id}
+                className="basis-[calc(100%-2rem)] pl-3 sm:basis-[calc(50%-0.5rem)]"
+                aria-label={`Block ${index + 1} of ${plan.blocks.length}`}
+              >
+                <button
                   type="button"
-                  variant={selectedIndex === index ? "default" : "outline"}
                   disabled={!hydrated}
                   aria-pressed={selectedIndex === index}
                   onClick={() => setSelectedIndex(index)}
-                  className="h-full min-h-24 w-full min-w-0 justify-start whitespace-normal rounded-xl p-3 text-left"
+                  className={cn(
+                    "focus-aaa h-full min-h-44 w-full min-w-0 touch-manipulation rounded-[var(--mobile-radius-lg)] border p-4 text-left outline-none transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
+                    selectedIndex === index
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground",
+                  )}
                 >
-                  <span className="min-w-0">
-                    <span className="block text-xs opacity-75">Block {block.order}</span>
-                    <span className="mt-1 block break-words text-sm font-semibold">
+                  <span className="block min-w-0">
+                    <span className="block text-xs font-semibold opacity-75">
+                      {index + 1} of {plan.blocks.length} · Block {block.order}
+                    </span>
+                    <span className="mt-2 block break-words text-lg font-bold leading-5">
                       {block.title}
                     </span>
-                    <span className="mt-1 block text-xs opacity-75">{blockVolume(block)}</span>
+                    <span className="mt-2 block text-sm font-medium opacity-90">
+                      {clubLabel(block)} · {blockVolume(block)}
+                    </span>
+                    <span className="mt-4 block border-t border-current/15 pt-3 text-xs font-semibold uppercase tracking-[0.08em] opacity-70">
+                      Target
+                    </span>
+                    <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-5">
+                      {block.successTarget}
+                    </span>
                   </span>
-                </Button>
+                </button>
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="left-0 size-9" />
-          <CarouselNext className="right-0 size-9" />
+          <div className="mt-3 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3">
+            <CarouselPrevious className="static size-11 translate-y-0 disabled:invisible" />
+            <div
+              className="flex items-center justify-center gap-2"
+              aria-label="Choose practice block"
+            >
+              {plan.blocks.map((block, index) => (
+                <button
+                  key={block.id}
+                  type="button"
+                  aria-label={`Show block ${index + 1}`}
+                  aria-current={selectedIndex === index ? "step" : undefined}
+                  onClick={() => blockCarouselApi?.scrollTo(index)}
+                  className="grid size-11 place-items-center rounded-full"
+                >
+                  <span
+                    className={cn(
+                      "block size-2 rounded-full transition-[background-color,transform] duration-150",
+                      selectedIndex === index ? "scale-125 bg-primary" : "bg-muted-foreground/35",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+              ))}
+            </div>
+            <CarouselNext className="static size-11 translate-y-0 disabled:invisible" />
+          </div>
+          <p className="sr-only" aria-live="polite">
+            Block {selectedIndex + 1} of {plan.blocks.length}: {selectedBlock?.title}
+          </p>
         </Carousel>
       </section>
 
@@ -491,29 +539,9 @@ export function PracticeCompanionClient({
   );
 }
 
-function PlanMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 rounded-xl border bg-background/70 p-3">
-      <span className="block break-words text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        {label}
-      </span>
-      <span className="mt-1 block break-words text-sm font-semibold text-foreground">{value}</span>
-    </div>
-  );
-}
-
 function BlockCard({ block }: { block: PracticeBlock }) {
   return (
     <Card size="sm">
-      <CardHeader>
-        <div>
-          <p className="text-xs text-muted-foreground">Club</p>
-          <h2 className="text-xl font-bold">{clubLabel(block)}</h2>
-        </div>
-        <CardAction>
-          <Badge variant="outline">{blockVolume(block)}</Badge>
-        </CardAction>
-      </CardHeader>
       <CardContent className="grid gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -526,6 +554,12 @@ function BlockCard({ block }: { block: PracticeBlock }) {
             Success
           </p>
           <p className="mt-1 text-sm font-semibold leading-5">{block.successTarget}</p>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+            Key focus
+          </p>
+          <p className="mt-1 text-sm leading-5">{block.recordPrompt}</p>
         </div>
       </CardContent>
     </Card>
@@ -673,27 +707,12 @@ function ChoiceGroup({
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
-      <ToggleGroup
-        type="single"
+      <MobileFilterChipGroup
         value={selected}
-        onValueChange={(value) => {
-          if (value) onSelect(value);
-        }}
-        variant="outline"
-        className="flex flex-wrap justify-start gap-2"
-        aria-label={label}
-      >
-        {options.map((option) => (
-          <ToggleGroupItem
-            key={option.value}
-            value={option.value}
-            disabled={disabled}
-            className="min-h-11 rounded-xl px-3 text-sm font-semibold"
-          >
-            {option.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+        onValueChange={onSelect}
+        ariaLabel={label}
+        options={options.map((option) => ({ ...option, disabled }))}
+      />
     </div>
   );
 }
@@ -753,9 +772,10 @@ function ActiveRangeMode({
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Range Mode · Block {blockIndex + 1} of {plan.blocks.length}
             </p>
-            <h1 className="mt-1 font-heading text-4xl font-bold tracking-tight">
-              {block ? clubLabel(block) : "Practice"}
-            </h1>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">{block?.title ?? "Practice"}</h1>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">
+              {block ? `${clubLabel(block)} · ${blockVolume(block)}` : plan.summary}
+            </p>
           </div>
           <CardAction>
             <Badge variant={allComplete ? "default" : "secondary"}>
@@ -769,20 +789,7 @@ function ActiveRangeMode({
             aria-label={`${completedBlockIds.length} of ${plan.blocks.length} practice blocks complete`}
             className="h-2"
           />
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 rounded-2xl bg-primary p-4 text-primary-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] opacity-75">
-                {manualRemaining !== null ? "Balls remaining" : "Time remaining"}
-              </p>
-              <p className="mt-1 font-heading text-5xl font-bold tabular-nums">
-                {manualRemaining ?? block?.timeMinutes ?? 0}
-              </p>
-            </div>
-            <p className="pb-1 text-sm font-semibold opacity-80">
-              {manualRemaining !== null ? "balls" : "minutes"}
-            </p>
-          </div>
-          <div className="rounded-xl bg-secondary/60 p-4">
+          <div className="rounded-[var(--mobile-radius-md)] bg-secondary/60 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Task
             </p>
@@ -800,39 +807,46 @@ function ActiveRangeMode({
               {block?.recordPrompt ?? "Complete the block, then move to the next task."}
             </p>
           </div>
-          <ButtonGroup className="grid w-full grid-cols-[1fr_1.25fr_1fr]">
+          <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
             <Button
               type="button"
               variant="outline"
-              className="min-h-12 px-2"
+              size="icon"
+              className="size-11 rounded-[var(--mobile-radius-md)]"
               disabled={blockIndex <= 0}
               onClick={onPrevious}
+              aria-label="Previous practice block"
             >
               <ChevronLeft className="size-4" />
-              Previous
             </Button>
-            <Button type="button" className="min-h-12 px-2" disabled={!block} onClick={onComplete}>
+            <Button
+              type="button"
+              className="min-h-11 rounded-[var(--mobile-radius-md)] px-3"
+              disabled={!block}
+              onClick={onComplete}
+            >
               <CheckCircle2 className="size-4" />
-              Complete
+              Complete Block
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="min-h-12 px-2"
+              size="icon"
+              className="size-11 rounded-[var(--mobile-radius-md)]"
               disabled={blockIndex >= plan.blocks.length - 1}
               onClick={onNext}
+              aria-label="Next practice block"
             >
-              Next
               <ChevronRight className="size-4" />
             </Button>
-          </ButtonGroup>
+          </div>
           <p className="text-xs leading-5 text-muted-foreground">
             Complete records activity only. Imported launch-monitor rows decide measured success.
           </p>
           {manualRemaining !== null ? (
             <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
               <div>
-                <p className="text-sm font-semibold">Adjust remaining</p>
+                <p className="text-sm font-semibold">{manualRemaining} balls remaining</p>
                 <p className="text-xs text-muted-foreground">Range counter only · not evidence</p>
               </div>
               <div className="flex items-center gap-2">
@@ -1004,6 +1018,11 @@ function FinishedActions({ message }: { message: string | null }) {
 
 function clubLabel(block: PracticeBlock) {
   return block.clubs.length > 0 ? block.clubs.map(formatClubType).join(" + ") : "Mixed clubs";
+}
+
+function clubSummary(plan: PracticePlan) {
+  if (plan.focusClubs.length === 0) return "Mixed clubs";
+  return plan.focusClubs.slice(0, 3).map(formatClubType).join(" + ");
 }
 
 function blockVolume(block: PracticeBlock) {

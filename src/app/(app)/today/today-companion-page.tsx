@@ -72,7 +72,7 @@ export default async function TodayCompanionPage() {
           facts={[
             { label: "Session", value: `${recommendation.minutes} min` },
             { label: "Club", value: recommendation.clubLabel },
-            { label: "Evidence", value: recommendation.evidenceLabel },
+            { label: "Evidence", value: compactEvidenceLabel(recommendation.evidenceLabel) },
           ]}
         />
 
@@ -176,4 +176,10 @@ function latestSessionDetail(context: PracticePlannerContext) {
   }
 
   return `${context.latestPractice.dateLabel} · ${context.latestPractice.clubs.reduce((total, club) => total + club.shotCount, 0)} measured shots`;
+}
+
+function compactEvidenceLabel(label: string) {
+  return label.replace(/ measured shots?$/i, (match) =>
+    match.endsWith("shots") ? " shots" : " shot",
+  );
 }
