@@ -17,6 +17,19 @@ const lazyBagSimulatorSource = readFileSync(
 );
 
 describe("bag desktop workbench source", () => {
+  it("keeps the full bag map available on mobile alongside Quick Bag", () => {
+    expect(source).toContain("data-bag-mobile-full");
+    expect(source).not.toContain("data-bag-mobile-quick-only");
+    expect(source).toContain('title="My Bag"');
+    expect(source).toContain('["#bag-yardages", "Yardages"]');
+    expect(source).toContain('["#bag-benchmarks", "Benchmarks"]');
+    expect(source).toContain('["#bag-quick", "Target finder"]');
+    expect(source).toContain("<DistanceBenchmarkPanel");
+    expect(source).toContain("<QuickBagClient");
+    expect(source).toContain("row.latestReliableCarryP25Yd");
+    expect(source).toContain("row.targetMessage");
+  });
+
   it("uses the condensed shadcn bag workspace and responsive selected-club detail", () => {
     const clubPanel = readFileSync(
       join(process.cwd(), "src/app/bag/club-intelligence-panel.tsx"),
@@ -337,9 +350,9 @@ describe("bag desktop and Quick Bag boundary", () => {
     expect(source).not.toContain("@/components/app/ios-mobile");
     expect(source).toContain("@/components/mobile-sports");
     expect(source).toContain("<MobileTopBar");
-    expect(source).toContain('<section className="grid gap-5" data-bag-mobile-quick-only>');
+    expect(source).toContain('<section className="grid gap-5" data-bag-mobile-full>');
     expect(source).toContain("<QuickBagClient");
-    expect(source).toContain("data-bag-mobile-quick-only");
+    expect(source).not.toContain("data-bag-mobile-quick-only");
     expect(source).toContain("data-bag-mobile-surface");
     expect(source).toContain("data-bag-desktop-surface");
     expect(source).toContain("<DesktopWorkbenchLayout");
