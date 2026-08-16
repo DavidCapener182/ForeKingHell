@@ -15,15 +15,21 @@ const lazyBagSimulatorSource = readFileSync(
   join(process.cwd(), "src/app/bag/lazy-bag-simulator.tsx"),
   "utf8",
 );
+const mobileYardageCarouselSource = readFileSync(
+  join(process.cwd(), "src/app/bag/mobile-bag-yardage-carousel.tsx"),
+  "utf8",
+);
 
 describe("bag desktop workbench source", () => {
   it("keeps the full bag map available on mobile alongside Quick Bag", () => {
     expect(source).toContain("data-bag-mobile-full");
     expect(source).not.toContain("data-bag-mobile-quick-only");
     expect(source).toContain('title="My Bag"');
-    expect(source).toContain('["#bag-yardages", "Yardages"]');
-    expect(source).toContain('["#bag-benchmarks", "Benchmarks"]');
-    expect(source).toContain('["#bag-quick", "Target finder"]');
+    expect(source).toContain("<MobilePageTabs");
+    expect(source).toContain('label: "Yardages"');
+    expect(source).toContain('label: "Benchmarks"');
+    expect(source).toContain('label: "Target"');
+    expect(source).toContain("<MobileBagYardageCarousel");
     expect(source).toContain("<DistanceBenchmarkPanel");
     expect(source).toContain("<QuickBagClient");
     expect(source).toContain("row.latestReliableCarryP25Yd");
@@ -33,6 +39,15 @@ describe("bag desktop workbench source", () => {
   it("contains every mobile Bag section within the phone content width", () => {
     expect(responsiveStyles).toContain(".mobileSurface > section > *");
     expect(responsiveStyles).toMatch(/\.mobileSurface > section > \*[\s\S]*?min-width:\s*0/);
+  });
+
+  it("uses a swipeable yardage carousel with progressive disclosure", () => {
+    expect(mobileYardageCarouselSource).toContain("<Carousel");
+    expect(mobileYardageCarouselSource).toContain("<CarouselContent");
+    expect(mobileYardageCarouselSource).toContain("<CarouselItem");
+    expect(mobileYardageCarouselSource).toContain("basis-[calc(100%-1.5rem)]");
+    expect(mobileYardageCarouselSource).toContain('<Accordion type="single" collapsible>');
+    expect(mobileYardageCarouselSource).toContain("Range, gap and next step");
   });
 
   it("uses the condensed shadcn bag workspace and responsive selected-club detail", () => {

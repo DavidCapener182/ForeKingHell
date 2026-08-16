@@ -25,6 +25,7 @@ import {
 } from "@/components/app/chart-accessible-fallback";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
+import { MobilePageTabs } from "@/components/app/mobile-controls";
 import {
   DesktopTableWorkbenchControls,
   DesktopWorkbenchLayout,
@@ -67,6 +68,10 @@ import {
   userProfiles,
 } from "@/db/schema";
 import { LazyBagSimulator } from "@/app/bag/lazy-bag-simulator";
+import {
+  MobileBagYardageCarousel,
+  type MobileBagYardage,
+} from "@/app/bag/mobile-bag-yardage-carousel";
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
 import { MobileTopBar } from "@/components/mobile-sports";
 import { getDb } from "@/db/client";
@@ -514,51 +519,45 @@ function MobileBagPage({
   averageConfidence: number;
   trustedClubCount: number;
 }) {
+  const mobileYardages: MobileBagYardage[] = gappingRows.map((row) => ({
+    id: row.id,
+    club: formatClubType(row.clubType),
+    model: row.brandModel,
+    playNumber: formatCarryYards(row.gappingCarryYd),
+    reliableRange: formatCarryRange(row.latestReliableCarryP25Yd, row.latestReliableCarryP75Yd),
+    gap: row.gapToNextYd === null ? "End of bag" : `${Math.round(row.gapToNextYd)} yd`,
+    confidence: row.confidenceScore,
+    nextStep: row.targetMessage,
+  }));
+
   return (
     <section className="grid gap-5" data-bag-mobile-full>
       <MobileTopBar title="My Bag" />
 
-      <div className="space-y-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Bag map</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Know every number</h1>
-          <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-            Your playable yardages, gaps, confidence and benchmark progress in one place.
-          </p>
-        </div>
-        <Button asChild className="w-full">
-          <Link href="/quick-bag">
-            <Target className="size-4" aria-hidden="true" />
-            Open Quick Bag
-          </Link>
-        </Button>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Bag map</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Know every number</h1>
+        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
+          Swipe through your playable yardages, then open benchmarks or the target finder when you
+          need them.
+        </p>
       </div>
 
-      <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1" aria-label="Bag sections">
-        {[
-          ["#bag-yardages", "Yardages"],
-          ["#bag-benchmarks", "Benchmarks"],
-          ["#bag-quick", "Target finder"],
-        ].map(([href, label]) => (
-          <Link
-            key={href}
-            href={href}
-            className={buttonVariants({ variant: "outline", size: "sm" })}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="grid grid-cols-3 gap-2" aria-label="Bag summary">
-        <MobileBagMetric label="Bag score" value={`${bagScore}`} suffix="/100" />
-        <MobileBagMetric
-          label="Trusted"
-          value={`${trustedClubCount}`}
-          suffix={`/${gappingRows.length}`}
-        />
-        <MobileBagMetric label="Confidence" value={`${averageConfidence}`} suffix="%" />
-      </div>
+      <MobileBagSummary
+        items={[
+          { label: "Bag score", value: `${bagScore}/100`, detail: "Overall bag readiness" },
+          {
+            label: "Trusted numbers",
+            value: `${trustedClubCount} of ${gappingRows.length}`,
+            detail: "Clubs ready for course decisions",
+          },
+          {
+            label: "Average confidence",
+            value: `${averageConfidence}%`,
+            detail: "Across your measured bag",
+          },
+        ]}
+      />
 
       {bag.length === 0 ? (
         <AppEmptyState
@@ -572,101 +571,76 @@ function MobileBagPage({
           }
         />
       ) : (
-        <>
-          <section id="bag-yardages" className="scroll-mt-24 space-y-3">
-            <SectionHeader
-              title="Yardages and gaps"
-              description="Recommended course number, reliable range and the next benchmark for every club."
-            />
-            <div className="grid gap-2">
-              {gappingRows.map((row) => (
-                <Link
-                  key={row.id}
-                  href={`/bag/${row.id}`}
-                  className="rounded-2xl border bg-card p-4 shadow-sm transition-colors active:bg-muted/60"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold">{formatClubType(row.clubType)}</p>
-                      <p className="truncate text-xs text-muted-foreground">{row.brandModel}</p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-2xl font-bold tabular-nums">
-                        {formatCarryYards(row.gappingCarryYd)}
-                      </p>
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Play number
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 border-t pt-3 text-xs">
-                    <MobileBagDatum
-                      label="Reliable"
-                      value={formatCarryRange(
-                        row.latestReliableCarryP25Yd,
-                        row.latestReliableCarryP75Yd,
-                      )}
-                    />
-                    <MobileBagDatum
-                      label="Gap"
-                      value={row.gapToNextYd === null ? "—" : `${Math.round(row.gapToNextYd)} yd`}
-                    />
-                    <MobileBagDatum label="Confidence" value={`${row.confidenceScore}%`} />
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-primary">{row.targetMessage}</p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section id="bag-benchmarks" className="scroll-mt-24">
-            <DistanceBenchmarkPanel
-              rows={benchmarkRows}
-              peerSummary={peerBenchmarkSummary}
-              peerBenchmarksLoaded={peerBenchmarksLoaded}
-            />
-          </section>
-
-          <section id="bag-quick" className="scroll-mt-24 space-y-3">
-            <SectionHeader
-              title="Target finder"
-              description="Choose a distance or search a club without leaving your full bag map."
-            />
-            <QuickBagClient clubs={quickBagClubs} accountId={accountId} />
-          </section>
-        </>
+        <MobilePageTabs
+          initialValue="yardages"
+          ariaLabel="Bag views"
+          tabs={[
+            {
+              value: "yardages",
+              label: "Yardages",
+              href: "#bag-yardages",
+              content: (
+                <div id="bag-yardages" className="min-w-0">
+                  <MobileBagYardageCarousel clubs={mobileYardages} />
+                </div>
+              ),
+            },
+            {
+              value: "benchmarks",
+              label: "Benchmarks",
+              href: "#bag-benchmarks",
+              content: (
+                <section id="bag-benchmarks" className="min-w-0">
+                  <DistanceBenchmarkPanel
+                    rows={benchmarkRows}
+                    peerSummary={peerBenchmarkSummary}
+                    peerBenchmarksLoaded={peerBenchmarksLoaded}
+                  />
+                </section>
+              ),
+            },
+            {
+              value: "target",
+              label: "Target",
+              href: "#bag-quick",
+              content: (
+                <section id="bag-quick" className="min-w-0 space-y-3">
+                  <SectionHeader
+                    title="Target finder"
+                    description="Choose a distance or search a club without leaving your bag map."
+                  />
+                  <QuickBagClient clubs={quickBagClubs} accountId={accountId} />
+                </section>
+              ),
+            },
+          ]}
+        />
       )}
     </section>
   );
 }
 
-function MobileBagMetric({
-  label,
-  value,
-  suffix,
+function MobileBagSummary({
+  items,
 }: {
-  label: string;
-  value: string;
-  suffix: string;
+  items: Array<{ label: string; value: string; detail: string }>;
 }) {
   return (
-    <div className="rounded-2xl border bg-card p-3 shadow-sm">
-      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-xl font-bold tabular-nums">
-        {value}
-        <span className="text-xs font-semibold text-muted-foreground">{suffix}</span>
-      </p>
-    </div>
-  );
-}
-
-function MobileBagDatum({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 truncate font-semibold tabular-nums">{value}</p>
+    <div className="ios-grouped-list" aria-label="Bag summary">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="ios-grouped-row grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">{item.label}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.detail}</p>
+          </div>
+          <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-foreground">
+            {item.value}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
