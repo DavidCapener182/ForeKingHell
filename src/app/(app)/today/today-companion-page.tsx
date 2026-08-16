@@ -80,17 +80,12 @@ export default async function TodayCompanionPage() {
               <CardDescription>{latestPracticeDayDetail(latestData)}</CardDescription>
             </CardHeader>
             <CardContent className="px-3">
-              <Link
-                href={`/sessions/${context.latestPractice.sessionId}`}
-                className="focus-aaa block rounded-xl"
-              >
-                <MobileShotPatternCharts
-                  points={patternPoints}
-                  preferredClub={recommendation.clubType}
-                  compact
-                  defaultToAllClubs
-                />
-              </Link>
+              <MobileShotPatternCharts
+                points={patternPoints}
+                preferredClub={recommendation.clubType}
+                compact
+                defaultToAllClubs
+              />
             </CardContent>
           </Card>
         ) : null}

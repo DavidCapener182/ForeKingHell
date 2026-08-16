@@ -60,6 +60,15 @@ describe("latest practice desktop dashboard", () => {
     expect(companionSource).not.toContain("getChallengesPageData");
   });
 
+  it("keeps the latest-pattern club controls outside session navigation", () => {
+    const latestPatternCard =
+      companionSource.match(/<Card aria-label="Latest measured pattern"[\s\S]*?<\/Card>/)?.[0] ??
+      "";
+
+    expect(latestPatternCard).toContain("<MobileShotPatternCharts");
+    expect(latestPatternCard).not.toContain("<Link");
+  });
+
   it("keeps companion and iOS rendering out of the workbench bundle", () => {
     for (const legacyMobileSymbol of [
       "MobileAppShell",
