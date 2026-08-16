@@ -36,6 +36,7 @@ describe("application navigation hierarchy", () => {
     );
     expect(mobileMoreRoutes).toEqual(
       expect.arrayContaining([
+        "/bag",
         "/quick-bag",
         "/import",
         "/handicap",

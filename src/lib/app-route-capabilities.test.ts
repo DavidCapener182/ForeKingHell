@@ -32,6 +32,9 @@ describe("companion route capabilities", () => {
     expect(mobileCapabilities.courses.mobileExperience).toBe("companion");
     expect(mobileCapabilities.courses.mobileNav).toBe("more");
     expect(isDesktopOnlyCompanionPath("/quick-bag")).toBe(false);
+    expect(isDesktopOnlyCompanionPath("/bag")).toBe(false);
+    expect(mobileCapabilities.bag.mobileExperience).toBe("companion");
+    expect(mobileCapabilities.bag.mobileNav).toBe("more");
     expect(mobileCapabilities.challenges.mobileExperience).toBe("companion");
     expect(mobileCapabilities.challenges.mobileNav).toBe("more");
     expect(isSummaryOnlyCompanionPath("/challenges")).toBe(false);

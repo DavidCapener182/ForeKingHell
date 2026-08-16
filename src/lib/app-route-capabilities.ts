@@ -33,11 +33,7 @@ export const mobileCapabilities = {
     "/sessions",
     "Raw shot exploration is available in the full workbench.",
   ),
-  bag: desktopOnly(
-    "Open Quick Bag",
-    "/quick-bag",
-    "Full bag analytics and fitting tools are available in the full workbench.",
-  ),
+  bag: companionMore(),
   compare: desktopOnly(
     "Review sessions",
     "/sessions",
@@ -166,7 +162,6 @@ const desktopOnlyPrefixes = [
   "/dashboard",
   "/analyse",
   "/shots",
-  "/bag",
   "/compare",
   "/strokes-gained",
   "/simulator-lab",

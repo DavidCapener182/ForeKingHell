@@ -90,7 +90,7 @@ export const mobilePrimaryItems: AppNavItem[] = [
 const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
 
 const mobileMoreIds = {
-  Golf: ["quick-bag", "import", "handicap", "goals"],
+  Golf: ["bag", "quick-bag", "import", "handicap", "goals"],
   Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
   Account: ["profile", "notifications", "settings"],
 } as const;
