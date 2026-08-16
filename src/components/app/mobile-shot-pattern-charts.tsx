@@ -54,17 +54,21 @@ export function MobileShotPatternCharts({
   points,
   preferredClub,
   compact = false,
+  defaultToAllClubs = false,
   layout = "mobile",
 }: {
   points: ShotPatternPoint[];
   preferredClub?: string | null;
   compact?: boolean;
+  defaultToAllClubs?: boolean;
   layout?: "mobile" | "desktop";
 }) {
   const clubs = useMemo(() => shotPatternClubs(points), [points]);
   const [mode, setMode] = useState<ChartMode>("dispersion");
   const [flightMode, setFlightMode] = useState<FlightMode>("shots");
-  const [club, setClub] = useState(() => defaultShotPatternClub(clubs, preferredClub));
+  const [club, setClub] = useState(() =>
+    defaultToAllClubs && clubs.length > 1 ? "all" : defaultShotPatternClub(clubs, preferredClub),
+  );
   const [trustedOnly, setTrustedOnly] = useState(true);
   const [selectedShot, setSelectedShot] = useState<ShotPatternPoint | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -141,7 +145,9 @@ export function MobileShotPatternCharts({
         scrollable
         options={[
           ...clubs.map((item) => ({ value: item.type, label: item.label })),
-          ...(clubs.length > 1 && !compact ? [{ value: "all", label: "All clubs" }] : []),
+          ...(clubs.length > 1 && (!compact || defaultToAllClubs)
+            ? [{ value: "all", label: "All clubs" }]
+            : []),
         ]}
       />
 

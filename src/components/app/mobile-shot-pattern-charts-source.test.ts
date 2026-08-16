@@ -18,6 +18,12 @@ describe("mobile shot-pattern chart surface", () => {
     expect(source).toContain("Club average");
   });
 
+  it("can make a compact day summary open on every club without changing session reviews", () => {
+    expect(source).toContain("defaultToAllClubs = false");
+    expect(source).toContain('defaultToAllClubs && clubs.length > 1 ? "all"');
+    expect(source).toContain("(!compact || defaultToAllClubs)");
+  });
+
   it("keeps the desktop engine and gives mobile purpose-built chart geometry", () => {
     expect(source).toContain('import("@/app/today/today-shot-charts")');
     expect(source).toContain("module.SharedShotPatternVisual");

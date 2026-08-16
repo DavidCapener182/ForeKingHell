@@ -18,6 +18,7 @@ const MIN_PREVIOUS_SHOTS_FOR_VERDICT = 5;
 export type TodayPracticeFilters = {
   date?: string;
   sessionId?: string;
+  scope?: "session" | "day";
   club?: string;
 };
 
@@ -262,10 +263,11 @@ export async function getTodayPracticeData(
 
   const sessionIds = new Set(allTodayRows.map((shot) => shot.sessionId));
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
+  const scopeToSession = filters.scope !== "day";
   const sessionId =
-    defaultSessionId && sessionIds.has(defaultSessionId)
+    scopeToSession && defaultSessionId && sessionIds.has(defaultSessionId)
       ? defaultSessionId
-      : filters.sessionId && sessionIds.has(filters.sessionId)
+      : scopeToSession && filters.sessionId && sessionIds.has(filters.sessionId)
         ? filters.sessionId
         : "";
   const club = filters.club && clubTypes.has(filters.club) ? filters.club : "";

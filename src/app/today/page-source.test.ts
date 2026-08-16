@@ -48,6 +48,12 @@ describe("latest practice desktop dashboard", () => {
     expect(companionSource).toContain("resolveTodayPrimaryState");
     expect(primaryStateSource).toContain("Plan range session");
     expect(companionSource).toContain("Why this recommendation?");
+    expect(companionSource).toContain("getTodayPracticeData({");
+    expect(companionSource).toContain("sessionId: context.latestPractice.sessionId");
+    expect(companionSource).toContain('scope: "day"');
+    expect(companionSource).toContain("const latestShots = latestData?.rawShots ?? []");
+    expect(companionSource).toContain("defaultToAllClubs");
+    expect(companionSource).toContain("measured shots across");
     expect(companionSource).toContain('href="/quick-bag"');
     expect(companionSource).not.toContain("TodayShotCharts");
     expect(companionSource).not.toContain("TodayMobileEvidence");

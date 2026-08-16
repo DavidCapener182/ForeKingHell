@@ -12,11 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
-import {
-  getCurrentPracticePlanSummary,
-  getPracticePlannerContext,
-  type PracticePlannerContext,
-} from "@/lib/practice-planner";
+import { getCurrentPracticePlanSummary, getPracticePlannerContext } from "@/lib/practice-planner";
 import { buildShotPatternPoints } from "@/lib/shot-pattern-chart-data";
 import { buildTodayRecommendation, resolveTodayPrimaryState } from "@/lib/today-primary-state";
 import { getTodayPracticeData } from "@/lib/today-session-data";
@@ -46,11 +42,12 @@ export default async function TodayCompanionPage() {
   ]);
   const recommendation = buildTodayRecommendation(context);
   const latestData = context.latestPractice.sessionId
-    ? await getTodayPracticeData({ sessionId: context.latestPractice.sessionId }).catch(() => null)
+    ? await getTodayPracticeData({
+        sessionId: context.latestPractice.sessionId,
+        scope: "day",
+      }).catch(() => null)
     : null;
-  const latestShots =
-    latestData?.rawShots.filter((shot) => shot.sessionId === context.latestPractice.sessionId) ??
-    [];
+  const latestShots = latestData?.rawShots ?? [];
   const patternPoints = buildShotPatternPoints(latestShots);
   const confidenceWarning = context.bag.issues.find(
     (issue) => !issue.startsWith("Bag trust is building"),
@@ -80,7 +77,7 @@ export default async function TodayCompanionPage() {
           <Card aria-label="Latest measured pattern" className="gap-3 py-3">
             <CardHeader className="px-3">
               <CardTitle>Latest pattern</CardTitle>
-              <CardDescription>{latestSessionDetail(context)}</CardDescription>
+              <CardDescription>{latestPracticeDayDetail(latestData)}</CardDescription>
             </CardHeader>
             <CardContent className="px-3">
               <Link
@@ -91,6 +88,7 @@ export default async function TodayCompanionPage() {
                   points={patternPoints}
                   preferredClub={recommendation.clubType}
                   compact
+                  defaultToAllClubs
                 />
               </Link>
             </CardContent>
@@ -120,8 +118,11 @@ export default async function TodayCompanionPage() {
                     Evidence used
                   </p>
                   <ul className="grid gap-2 text-sm leading-5 text-foreground">
-                    <li>Latest measured session · {context.latestPractice.dateLabel}</li>
-                    <li>{latestShots.length} measured shots in the latest session</li>
+                    <li>Latest measured practice day · {context.latestPractice.dateLabel}</li>
+                    <li>
+                      {latestShots.length} measured shots across{" "}
+                      {uploadLabel(latestData?.sessions.length ?? 0)}
+                    </li>
                     <li>Training load · {context.trainingLoad.statusLabel}</li>
                   </ul>
                   <p className="text-xs leading-5 text-muted-foreground">
@@ -170,12 +171,16 @@ async function getInProgressRound(userId: string) {
   );
 }
 
-function latestSessionDetail(context: PracticePlannerContext) {
-  if (!context.latestPractice.sessionId) {
+function latestPracticeDayDetail(data: Awaited<ReturnType<typeof getTodayPracticeData>> | null) {
+  if (!data) {
     return "Import a measured session to unlock a verdict.";
   }
 
-  return `${context.latestPractice.dateLabel} · ${context.latestPractice.clubs.reduce((total, club) => total + club.shotCount, 0)} measured shots`;
+  return `${data.dateLabel} · ${data.rawShots.length} measured shots · ${uploadLabel(data.sessions.length)}`;
+}
+
+function uploadLabel(count: number) {
+  return `${count} upload${count === 1 ? "" : "s"}`;
 }
 
 function compactEvidenceLabel(label: string) {
