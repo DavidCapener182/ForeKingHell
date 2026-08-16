@@ -30,6 +30,11 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain("row.targetMessage");
   });
 
+  it("contains every mobile Bag section within the phone content width", () => {
+    expect(responsiveStyles).toContain(".mobileSurface > section > *");
+    expect(responsiveStyles).toMatch(/\.mobileSurface > section > \*[\s\S]*?min-width:\s*0/);
+  });
+
   it("uses the condensed shadcn bag workspace and responsive selected-club detail", () => {
     const clubPanel = readFileSync(
       join(process.cwd(), "src/app/bag/club-intelligence-panel.tsx"),

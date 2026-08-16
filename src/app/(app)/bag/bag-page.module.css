@@ -4,6 +4,11 @@
 
 .mobileSurface > section {
   display: grid;
+  min-width: 0;
+}
+
+.mobileSurface > section > * {
+  min-width: 0;
 }
 
 .desktopSurface {
