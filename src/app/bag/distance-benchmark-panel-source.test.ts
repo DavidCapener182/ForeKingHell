@@ -84,6 +84,23 @@ describe("distance benchmark panel source", () => {
     expect(source).not.toContain('className="grid grid-cols-5 text-[10px]');
   });
 
+  it("keeps mobile metric tabs separate and presents one club per carousel slide", () => {
+    expect(source).toContain("data-benchmark-metric-tabs");
+    expect(source).toContain("shrink-0 flex-none snap-start");
+    expect(source).toContain("min-w-max");
+    expect(source).toContain("function MobileBenchmarkCarousel");
+    expect(source).toContain("data-mobile-benchmark-carousel");
+    expect(source).toContain("<CarouselContent");
+    expect(source).toContain("basis-[calc(100%-1.5rem)]");
+    expect(source).toContain("Swipe between clubs");
+  });
+
+  it("uses short mobile scale labels while preserving full desktop references", () => {
+    expect(source).toContain("benchmarkScaleShortLabel");
+    expect(source).toContain("sm:hidden");
+    expect(source).toContain("hidden sm:block");
+  });
+
   it("uses semantic shadcn tabs, alerts, badges and sticky table surfaces", () => {
     const fixedPalette =
       /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#|rgba\(|#[0-9a-f]{3,8}/i;

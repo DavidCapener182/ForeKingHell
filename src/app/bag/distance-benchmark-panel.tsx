@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Users } from "lucide-react";
 
 import {
@@ -12,15 +13,21 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CompactReadoutGrid,
   DataPair,
   DataPanel,
   DataTableFrame,
-  MobileAccordionSection,
   MobileDataCard,
-  MobileDataList,
   SectionHeader,
 } from "@/components/premium";
 import {
@@ -74,6 +81,12 @@ type PeerComparisonDisplayRow = {
   metric: MetricDefinition;
   actual: number | null;
   peer: ClubBenchmarkPeerComparison | null;
+};
+
+type MobileBenchmarkSlide = {
+  key: string;
+  label: string;
+  content: ReactNode;
 };
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
@@ -227,20 +240,23 @@ export function DistanceBenchmarkPanel({
           peerBenchmarksLoaded={peerBenchmarksLoaded}
         />
         <Tabs defaultValue="carryYd" className="gap-4">
-          <div className="-mx-1 overflow-x-auto px-1">
-            <TabsList className="h-auto w-max justify-start rounded-lg border bg-muted p-1 shadow-sm">
+          <div
+            data-benchmark-metric-tabs
+            className="-mx-4 snap-x snap-proximity overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+          >
+            <TabsList className="h-auto w-max gap-1 justify-start rounded-lg border bg-muted p-1 shadow-sm">
               {METRICS.map((metric) => (
                 <TabsTrigger
                   key={metric.key}
                   value={metric.key}
-                  className="min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                  className="min-h-11 shrink-0 flex-none snap-start min-w-max px-3 text-sm sm:min-h-8"
                 >
                   {metric.shortLabel}
                 </TabsTrigger>
               ))}
               <TabsTrigger
                 value={PEER_TAB_VALUE}
-                className="min-h-8 px-2 text-xs sm:px-3 sm:text-sm"
+                className="min-h-11 shrink-0 flex-none snap-start min-w-max px-3 text-sm sm:min-h-8"
               >
                 Peers
               </TabsTrigger>
@@ -267,6 +283,85 @@ export function DistanceBenchmarkPanel({
         </Tabs>
       </CardContent>
     </DataPanel>
+  );
+}
+
+function MobileBenchmarkCarousel({
+  title,
+  slides,
+}: {
+  title: string;
+  slides: MobileBenchmarkSlide[];
+}) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+
+    const updateSelectedIndex = () => setSelectedIndex(api.selectedScrollSnap());
+    queueMicrotask(updateSelectedIndex);
+    api.on("select", updateSelectedIndex);
+    api.on("reInit", updateSelectedIndex);
+
+    return () => {
+      api.off("select", updateSelectedIndex);
+      api.off("reInit", updateSelectedIndex);
+    };
+  }, [api]);
+
+  if (slides.length === 0) return null;
+
+  const selectedSlide = slides[selectedIndex] ?? slides[0];
+
+  return (
+    <section
+      data-mobile-benchmark-carousel
+      className="grid min-w-0 gap-3 sm:hidden"
+      aria-label={title}
+    >
+      <div className="flex min-w-0 items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+          <p className="mt-0.5 text-sm leading-5 text-muted-foreground">Swipe between clubs</p>
+        </div>
+        <span className="shrink-0 text-sm font-medium text-muted-foreground">
+          {slides.length} clubs
+        </span>
+      </div>
+
+      <Carousel
+        opts={{ align: "start", containScroll: "trimSnaps", dragFree: false }}
+        setApi={setApi}
+        className="w-full min-w-0 max-w-full"
+        aria-label={`${title} carousel`}
+      >
+        <CarouselContent className="-ml-3 touch-pan-y">
+          {slides.map((slide, index) => (
+            <CarouselItem
+              key={slide.key}
+              className="basis-[calc(100%-1.5rem)] pl-3"
+              aria-label={`${slide.label}, club ${index + 1} of ${slides.length}`}
+            >
+              {slide.content}
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <p
+            className="min-w-0 truncate text-sm font-medium text-muted-foreground tabular-nums"
+            aria-live="polite"
+          >
+            {selectedIndex + 1} of {slides.length} · {selectedSlide.label}
+          </p>
+          <div className="flex shrink-0 items-center gap-2">
+            <CarouselPrevious className="static size-11 translate-y-0" />
+            <CarouselNext className="static size-11 translate-y-0" />
+          </div>
+        </div>
+      </Carousel>
+    </section>
   );
 }
 
@@ -443,15 +538,18 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
         </AlertDescription>
       </Alert>
 
-      <MobileAccordionSection title="Club level table" count={`${rows.length} clubs`}>
-        <MobileDataList>
-          {rows.map((row) => (
+      <MobileBenchmarkCarousel
+        title="Club carry benchmarks"
+        slides={rows.map((row) => ({
+          key: row.clubId,
+          label: formatClubType(row.clubType),
+          content: (
             <MobileDataCard
-              key={row.clubId}
               href={`/bag/${row.clubId}`}
               title={formatClubType(row.clubType)}
               subtitle={row.brandModel}
               action={<BenchmarkBadge row={row} />}
+              className="h-full rounded-[var(--mobile-radius-lg)] border border-border bg-card px-4 py-4 shadow-sm"
             >
               <DataPair
                 label="Best 30 avg"
@@ -463,9 +561,9 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
               <DataPair label="Reference" value={benchmarkReferenceText(row)} />
               <BenchmarkMeter row={row} />
             </MobileDataCard>
-          ))}
-        </MobileDataList>
-      </MobileAccordionSection>
+          ),
+        }))}
+      />
 
       <div className="hidden sm:block">
         <DesktopTableWorkbenchControls
@@ -618,15 +716,18 @@ function LevelMetricContent({
         ]}
       />
 
-      <MobileAccordionSection title={`${metric.label} table`} count={`${comparisons.length} clubs`}>
-        <MobileDataList>
-          {comparisons.map((comparison) => (
+      <MobileBenchmarkCarousel
+        title={`${metric.label} by club`}
+        slides={comparisons.map((comparison) => ({
+          key: comparison.row.clubId,
+          label: formatClubType(comparison.row.clubType),
+          content: (
             <MobileDataCard
-              key={comparison.row.clubId}
               href={`/bag/${comparison.row.clubId}`}
               title={formatClubType(comparison.row.clubType)}
               subtitle={comparison.row.brandModel}
               action={<MetricLevelBadge comparison={comparison} metric={metric} />}
+              className="h-full rounded-[var(--mobile-radius-lg)] border border-border bg-card px-4 py-4 shadow-sm"
             >
               <DataPair label="You" value={formatMetricValue(comparison.actual, metric)} />
               <DataPair
@@ -642,9 +743,9 @@ function LevelMetricContent({
               <DataPair label="Evidence" value={benchmarkEvidenceText(comparison.row)} />
               <MetricLevelMeter comparison={comparison} metric={metric} />
             </MobileDataCard>
-          ))}
-        </MobileDataList>
-      </MobileAccordionSection>
+          ),
+        }))}
+      />
 
       <div className="hidden sm:block">
         <DesktopTableWorkbenchControls
@@ -839,30 +940,33 @@ function PeerComparisonContent({
         ]}
       />
 
-      <MobileAccordionSection title="Peer percentile table" count={`${peerRows.length} rows`}>
-        <MobileDataList>
-          {peerRows.map((peerRow) => (
-            <MobileDataCard
-              key={`${peerRow.row.clubId}-${peerRow.metric.key}`}
-              href={`/bag/${peerRow.row.clubId}`}
-              title={`${formatClubType(peerRow.row.clubType)} · ${peerRow.metric.shortLabel}`}
-              subtitle={peerRow.row.brandModel}
-              action={<PeerPercentileBadge percentile={peerRow.peer?.percentile ?? null} />}
-            >
-              <DataPair label="You" value={formatMetricValue(peerRow.actual, peerRow.metric)} />
-              <DataPair
-                label="Peer median"
-                value={formatMetricValue(peerRow.peer?.peerMedian ?? null, peerRow.metric)}
-              />
-              <DataPair
-                label="Top 25%"
-                value={formatMetricValue(peerRow.peer?.topQuartile ?? null, peerRow.metric)}
-              />
-              <DataPair label="Peer sample" value={peerSampleText(peerRow.peer)} />
-            </MobileDataCard>
-          ))}
-        </MobileDataList>
-      </MobileAccordionSection>
+      <MobileBenchmarkCarousel
+        title="Peer comparisons by club"
+        slides={rows.map((row) => {
+          const clubPeerRows = peerRows.filter((peerRow) => peerRow.row.clubId === row.clubId);
+          const bestClubRank = bestPeerRankRow(
+            clubPeerRows.filter((peerRow) => peerRow.peer?.percentile !== null),
+          );
+
+          return {
+            key: row.clubId,
+            label: formatClubType(row.clubType),
+            content: (
+              <MobileDataCard
+                href={`/bag/${row.clubId}`}
+                title={formatClubType(row.clubType)}
+                subtitle={row.brandModel}
+                action={<PeerPercentileBadge percentile={bestClubRank?.peer?.percentile ?? null} />}
+                className="h-full rounded-[var(--mobile-radius-lg)] border border-border bg-card px-4 py-4 shadow-sm"
+              >
+                {clubPeerRows.map((peerRow) => (
+                  <PeerMobileMetricRow key={peerRow.metric.key} peerRow={peerRow} />
+                ))}
+              </MobileDataCard>
+            ),
+          };
+        })}
+      />
 
       <div className="hidden sm:block">
         <DesktopTableWorkbenchControls
@@ -1052,28 +1156,45 @@ function MetricLevelMeter({
 
 function BenchmarkScaleLabels({ labels }: { labels: string[] }) {
   return (
-    <div className="relative h-4 text-[10px] leading-4 text-muted-foreground">
-      {labels.map((label, index) => {
-        const position = (index / Math.max(1, labels.length - 1)) * 100;
-        const alignmentClass =
-          index === 0
-            ? "translate-x-0"
-            : index === labels.length - 1
-              ? "-translate-x-full"
-              : "-translate-x-1/2";
-
-        return (
+    <>
+      <div className="flex items-center justify-between gap-1 text-[10px] leading-4 text-muted-foreground sm:hidden">
+        {labels.map((label, index) => (
           <span
             key={`${label}-${index}`}
-            className={`absolute top-0 whitespace-nowrap ${alignmentClass}`}
-            style={{ left: `${position}%` }}
+            className="min-w-0 flex-1 truncate text-center first:text-left last:text-right"
+            title={label}
           >
-            {label}
+            {benchmarkScaleShortLabel(label)}
           </span>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+      <div className="relative hidden h-4 text-[10px] leading-4 text-muted-foreground sm:block">
+        {labels.map((label, index) => {
+          const position = (index / Math.max(1, labels.length - 1)) * 100;
+          const alignmentClass =
+            index === 0
+              ? "translate-x-0"
+              : index === labels.length - 1
+                ? "-translate-x-full"
+                : "-translate-x-1/2";
+
+          return (
+            <span
+              key={`${label}-${index}`}
+              className={`absolute top-0 whitespace-nowrap ${alignmentClass}`}
+              style={{ left: `${position}%` }}
+            >
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </>
   );
+}
+
+function benchmarkScaleShortLabel(label: string) {
+  return label.split(" ")[0] ?? label;
 }
 
 function metricMeterMarkerPercent(
@@ -1164,6 +1285,29 @@ function peerComparisonFor(
         comparison.clubType === row.comparison.benchmark.clubType &&
         comparison.metricKey === metricKey,
     ) ?? null
+  );
+}
+
+function PeerMobileMetricRow({ peerRow }: { peerRow: PeerComparisonDisplayRow }) {
+  return (
+    <div className="min-w-0 rounded-[var(--mobile-radius-md)] bg-secondary px-3 py-2.5">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <span className="truncate text-sm font-semibold text-foreground">
+          {peerRow.metric.shortLabel}
+        </span>
+        <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+          {formatMetricValue(peerRow.actual, peerRow.metric)}
+        </span>
+      </div>
+      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+        Median {formatMetricValue(peerRow.peer?.peerMedian ?? null, peerRow.metric)} · Top 25%{" "}
+        {formatMetricValue(peerRow.peer?.topQuartile ?? null, peerRow.metric)} ·{" "}
+        {peerRow.peer?.percentile === null || peerRow.peer?.percentile === undefined
+          ? "No rank"
+          : formatPercentile(peerRow.peer.percentile)}
+      </p>
+      <p className="text-xs leading-5 text-muted-foreground">{peerSampleText(peerRow.peer)}</p>
+    </div>
   );
 }
 
