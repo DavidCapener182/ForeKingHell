@@ -8,6 +8,7 @@ describe("login actions", () => {
   it("keeps password sign-in failures visible to the login form", () => {
     expect(source).toContain("[login] Password sign-in request failed");
     expect(source).toContain("Sign-in could not reach the auth service");
+    expect(source).toContain('normalized.includes("fetch failed")');
     expect(source).toContain("[login] Profile setup failed after password sign-in");
     expect(source).toContain(
       "Your password was accepted, but your golf profile could not be loaded",

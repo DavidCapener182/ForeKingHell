@@ -176,6 +176,9 @@ function isAuthConfigurationError(message: string | undefined) {
   return (
     normalized.includes("invalid api key") ||
     normalized.includes("invalid jwt") ||
-    normalized.includes("project not found")
+    normalized.includes("project not found") ||
+    normalized.includes("fetch failed") ||
+    normalized.includes("failed to fetch") ||
+    normalized.includes("network error")
   );
 }
