@@ -12,13 +12,13 @@ test.describe("authentication", () => {
     await expect(page.getByRole("heading", { name: "Sign in or join" })).toBeVisible();
   });
 
-  test("exposes magic-link and OAuth sign-in options", async ({ page }) => {
+  test("exposes magic-link and supported OAuth sign-in options", async ({ page }) => {
     await page.goto("/login");
 
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByRole("button", { name: /email me a secure link/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /continue with google/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /continue with apple/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /continue with apple/i })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /read the data notice/i })).toBeVisible();
   });
 
