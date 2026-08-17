@@ -17,7 +17,7 @@ import {
   IOSListRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
-import { MobileFilterChipGroup } from "@/components/app/mobile-controls";
+import { MobileCarouselPagination, MobileFilterChipGroup } from "@/components/app/mobile-controls";
 import { OperationStatus } from "@/components/app/operation-status";
 import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
 import {
@@ -410,7 +410,7 @@ export function PracticeCompanionClient({
                   aria-pressed={selectedIndex === index}
                   onClick={() => setSelectedIndex(index)}
                   className={cn(
-                    "focus-aaa h-full min-h-44 w-full min-w-0 touch-manipulation rounded-[var(--mobile-radius-lg)] border p-4 text-left outline-none transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
+                    "focus-aaa h-full min-h-36 w-full min-w-0 touch-manipulation rounded-[var(--mobile-radius-lg)] border p-4 text-left outline-none transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
                     selectedIndex === index
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card text-foreground",
@@ -426,12 +426,6 @@ export function PracticeCompanionClient({
                     <span className="mt-2 block text-sm font-medium opacity-90">
                       {clubLabel(block)} · {blockVolume(block)}
                     </span>
-                    <span className="mt-4 block border-t border-current/15 pt-3 text-xs font-semibold uppercase tracking-[0.08em] opacity-70">
-                      Target
-                    </span>
-                    <span className="mt-1 line-clamp-2 block text-sm font-semibold leading-5">
-                      {block.successTarget}
-                    </span>
                   </span>
                 </button>
               </CarouselItem>
@@ -439,29 +433,12 @@ export function PracticeCompanionClient({
           </CarouselContent>
           <div className="mt-3 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3">
             <CarouselPrevious className="static size-11 translate-y-0 disabled:invisible" />
-            <div
-              className="flex items-center justify-center gap-2"
-              aria-label="Choose practice block"
-            >
-              {plan.blocks.map((block, index) => (
-                <button
-                  key={block.id}
-                  type="button"
-                  aria-label={`Show block ${index + 1}`}
-                  aria-current={selectedIndex === index ? "step" : undefined}
-                  onClick={() => blockCarouselApi?.scrollTo(index)}
-                  className="grid size-11 place-items-center rounded-full"
-                >
-                  <span
-                    className={cn(
-                      "block size-2 rounded-full transition-[background-color,transform] duration-150",
-                      selectedIndex === index ? "scale-125 bg-primary" : "bg-muted-foreground/35",
-                    )}
-                    aria-hidden
-                  />
-                </button>
-              ))}
-            </div>
+            <MobileCarouselPagination
+              labels={plan.blocks.map((_, index) => `block ${index + 1}`)}
+              selectedIndex={selectedIndex}
+              onSelect={(index) => blockCarouselApi?.scrollTo(index)}
+              ariaLabel="Choose practice block"
+            />
             <CarouselNext className="static size-11 translate-y-0 disabled:invisible" />
           </div>
           <p className="sr-only" aria-live="polite">

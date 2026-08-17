@@ -1,81 +1,383 @@
-import manifest0 from "./aberystwyth-golf-course-v1.json";
-import manifest1 from "./aintree-v1.json";
-import manifest2 from "./aldenham-golf-club-v1.json";
-import manifest3 from "./alexander-park-resort-v1.json";
-import manifest4 from "./alsager-golf-and-country-club-v1.json";
-import manifest5 from "./altrincham-golf-course-v1.json";
-import manifest6 from "./arrowe-park-v1.json";
-import manifest7 from "./arscott-v1.json";
-import manifest8 from "./ash-valley-golf-club-v1.json";
-import manifest9 from "./ashton-lea-golf-club-v1.json";
-import manifest10 from "./aspley-guise-woburn-sands-golf-club-v1.json";
-import manifest11 from "./astbury-golf-course-v1.json";
-import manifest12 from "./badgemore-park-golf-club-v1.json";
-import manifest13 from "./barkway-park-golf-club-v1.json";
-import manifest14 from "./barnard-castle-golf-course-v1.json";
-import manifest15 from "./bearwood-lakes-golf-club-v1.json";
-import manifest16 from "./belton-park-golf-club-v1.json";
-import manifest17 from "./bentham-golf-club-v1.json";
-import manifest18 from "./benton-hall-golf-and-country-club-v1.json";
-import manifest19 from "./bird-hills-golf-centre-v1.json";
-import manifest20 from "./blackwell-golf-club-v1.json";
-import manifest21 from "./bletchingley-golf-course-v1.json";
-import manifest22 from "./bowood-park-golf-course-v1.json";
-import manifest23 from "./bransford-golf-club-v1.json";
-import manifest24 from "./brean-golf-club-v1.json";
-import manifest25 from "./brett-vale-golf-course-v1.json";
-import manifest26 from "./brickhampton-court-golf-complex-v1.json";
-import manifest27 from "./bridport-and-west-dorset-golf-club-v1.json";
-import manifest28 from "./brookmans-park-golf-course-v1.json";
-import manifest29 from "./buckingham-golf-club-v1.json";
-import manifest30 from "./bulbury-woods-golf-club-v1.json";
-import manifest31 from "./doral-blue-monster-v1.json";
-import manifest32 from "./quail-hollow-club-v1.json";
-import manifest33 from "./firestone-south-v1.json";
-import manifest34 from "./sedgefield-country-club-v1.json";
-import manifest35 from "./teeth-of-the-dog-v1.json";
-import manifest36 from "./mountain-park-hotel-golf-club-v1.json";
-import manifest37 from "./tpc-sawgrass-players-stadium-course-v1.json";
-import manifest38 from "./bootle-golf-course-v1.json";
+import type { CourseTwinManifest } from "@/lib/course-twin-contract";
 
-export const localCourseTwinManifestsByCourseId: Record<string, unknown> = {
-  "486ddef6-5963-41d7-b2e6-82cec6732170": manifest0,
-  "4de11156-16fd-4a36-84e0-fadda53456b0": manifest1,
-  "1b95d085-59c0-476c-b0ff-c2d369c2aadc": manifest2,
-  "0036f96c-d14f-4cf1-a6d3-923cc664f3f6": manifest3,
-  "19930c7b-c92b-48f9-86a9-2428ed909fc6": manifest4,
-  "0c4ef63e-2172-41e7-b1c8-57e883b4624c": manifest5,
-  "65359509-5de2-485e-8f85-392bba752710": manifest6,
-  "53ee459c-235c-4c65-81bf-8d29ba052145": manifest7,
-  "742d90a2-797d-4032-a5a7-cb31d667ec20": manifest8,
-  "105ffa8e-c95f-4cae-bf1e-fa112938e68b": manifest9,
-  "2eebecd9-0513-4db4-b4a8-1e7ef1988550": manifest10,
-  "02ff11c8-fd08-42cb-99e5-1a792008fd38": manifest11,
-  "816b540a-6ca1-437b-a563-2b4558874dbf": manifest12,
-  "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757": manifest13,
-  "2c214875-84f0-43a7-b0de-7d8ab9a1efee": manifest14,
-  "6f648057-430a-4290-82c9-e39e50242160": manifest15,
-  "e77dcc63-9748-418e-a026-f4dd0c878c48": manifest16,
-  "1b52ef05-0c0a-4253-8245-013566b3d14b": manifest17,
-  "7171685a-331c-459e-a745-40f2aff561a3": manifest18,
-  "034d2dad-1e95-4319-bbdb-627b706364b4": manifest19,
-  "4cdf3280-af61-44a4-9b7d-5953042f1cd9": manifest20,
-  "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81": manifest21,
-  "c96251cd-979c-42d9-b961-f64f501a9f94": manifest22,
-  "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9": manifest23,
-  "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc": manifest24,
-  "852fa52c-51d2-4729-952c-159238faeb5d": manifest25,
-  "dc2fce54-9f8d-4799-bd89-23d019c3da4a": manifest26,
-  "e0328f91-81c5-42b4-a08e-3207f407fe2e": manifest27,
-  "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46": manifest28,
-  "c2517fe5-ee33-412a-a61f-10d82f5fe359": manifest29,
-  "b82a233d-968f-4a1a-8252-272580651d4b": manifest30,
-  "aceca512-19c4-47cc-998a-956d335f0ac8": manifest31,
-  "036df5ed-dda4-47b8-9864-1d030353ad3a": manifest32,
-  "1aff2799-7fc7-42e4-9d6f-cf1baecac4ee": manifest33,
-  "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3": manifest34,
-  "eb4763ae-fd6d-4685-b319-b6ed2634edab": manifest35,
-  "6d494abe-b587-43fe-9f67-804975c49560": manifest36,
-  "25c03168-562f-4651-8a48-c0111babc752": manifest37,
-  "9beb5429-67e4-4f4e-a187-adbe0df74b62": manifest38,
+export type LocalCourseTwinMetadata = {
+  courseId: string;
+  name: string;
+  grade: "A" | "B" | "C" | "D";
+  previewImageUrl: string | null;
+  mappedHoles: number;
+  terrainResolutionM: number | null;
 };
+
+/** Lightweight catalogue data used by directory and availability queries. */
+export const localCourseTwinMetadataByCourseId: Record<string, LocalCourseTwinMetadata> = {
+  "486ddef6-5963-41d7-b2e6-82cec6732170": {
+    courseId: "486ddef6-5963-41d7-b2e6-82cec6732170",
+    name: "Aberystwyth Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/aberystwyth-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.296875000000011,
+  },
+  "4de11156-16fd-4a36-84e0-fadda53456b0": {
+    courseId: "4de11156-16fd-4a36-84e0-fadda53456b0",
+    name: "Aintree Golf Centre",
+    grade: "B",
+    previewImageUrl: "/course-twins/aintree-v1/imagery.jpg",
+    mappedHoles: 9,
+    terrainResolutionM: 4.410890690051556,
+  },
+  "1b95d085-59c0-476c-b0ff-c2d369c2aadc": {
+    courseId: "1b95d085-59c0-476c-b0ff-c2d369c2aadc",
+    name: "Aldenham Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/aldenham-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.489649439115946,
+  },
+  "0036f96c-d14f-4cf1-a6d3-923cc664f3f6": {
+    courseId: "0036f96c-d14f-4cf1-a6d3-923cc664f3f6",
+    name: "Alexander Park Resort",
+    grade: "B",
+    previewImageUrl: "/course-twins/alexander-park-resort-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.358623031857441,
+  },
+  "19930c7b-c92b-48f9-86a9-2428ed909fc6": {
+    courseId: "19930c7b-c92b-48f9-86a9-2428ed909fc6",
+    name: "Alsager Golf and Country Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/alsager-golf-and-country-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.331950451012122,
+  },
+  "0c4ef63e-2172-41e7-b1c8-57e883b4624c": {
+    courseId: "0c4ef63e-2172-41e7-b1c8-57e883b4624c",
+    name: "Altrincham Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/altrincham-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.337225430404612,
+  },
+  "65359509-5de2-485e-8f85-392bba752710": {
+    courseId: "65359509-5de2-485e-8f85-392bba752710",
+    name: "Arrowe Park Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/arrowe-park-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.429243174288608,
+  },
+  "53ee459c-235c-4c65-81bf-8d29ba052145": {
+    courseId: "53ee459c-235c-4c65-81bf-8d29ba052145",
+    name: "Arscott",
+    grade: "B",
+    previewImageUrl: "/course-twins/arscott-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.397429738479087,
+  },
+  "742d90a2-797d-4032-a5a7-cb31d667ec20": {
+    courseId: "742d90a2-797d-4032-a5a7-cb31d667ec20",
+    name: "Ash Valley Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/ash-valley-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.540962010679301,
+  },
+  "105ffa8e-c95f-4cae-bf1e-fa112938e68b": {
+    courseId: "105ffa8e-c95f-4cae-bf1e-fa112938e68b",
+    name: "Ashton & Lea Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/ashton-lea-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.391274261539122,
+  },
+  "2eebecd9-0513-4db4-b4a8-1e7ef1988550": {
+    courseId: "2eebecd9-0513-4db4-b4a8-1e7ef1988550",
+    name: "Aspley Guise & Woburn Sands Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/aspley-guise-woburn-sands-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.457721782023685,
+  },
+  "02ff11c8-fd08-42cb-99e5-1a792008fd38": {
+    courseId: "02ff11c8-fd08-42cb-99e5-1a792008fd38",
+    name: "Astbury Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/astbury-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.346020194451139,
+  },
+  "816b540a-6ca1-437b-a563-2b4558874dbf": {
+    courseId: "816b540a-6ca1-437b-a563-2b4558874dbf",
+    name: "Badgemore Park Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/badgemore-park-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.422826224757953,
+  },
+  "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757": {
+    courseId: "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757",
+    name: "Barkway Park Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/barkway-park-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.536355589079749,
+  },
+  "2c214875-84f0-43a7-b0de-7d8ab9a1efee": {
+    courseId: "2c214875-84f0-43a7-b0de-7d8ab9a1efee",
+    name: "Barnard Castle Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/barnard-castle-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.304924524422384,
+  },
+  "6f648057-430a-4290-82c9-e39e50242160": {
+    courseId: "6f648057-430a-4290-82c9-e39e50242160",
+    name: "Bearwood Lakes Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/bearwood-lakes-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.427365195436385,
+  },
+  "e77dcc63-9748-418e-a026-f4dd0c878c48": {
+    courseId: "e77dcc63-9748-418e-a026-f4dd0c878c48",
+    name: "Belton Park Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/belton-park-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.463443205966348,
+  },
+  "1b52ef05-0c0a-4253-8245-013566b3d14b": {
+    courseId: "1b52ef05-0c0a-4253-8245-013566b3d14b",
+    name: "Bentham Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/bentham-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.356818324466886,
+  },
+  "7171685a-331c-459e-a745-40f2aff561a3": {
+    courseId: "7171685a-331c-459e-a745-40f2aff561a3",
+    name: "Benton Hall Golf and Country Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/benton-hall-golf-and-country-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.608719780432379,
+  },
+  "034d2dad-1e95-4319-bbdb-627b706364b4": {
+    courseId: "034d2dad-1e95-4319-bbdb-627b706364b4",
+    name: "Bird Hills Golf Centre",
+    grade: "B",
+    previewImageUrl: "/course-twins/bird-hills-golf-centre-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.443261488088126,
+  },
+  "4cdf3280-af61-44a4-9b7d-5953042f1cd9": {
+    courseId: "4cdf3280-af61-44a4-9b7d-5953042f1cd9",
+    name: "Blackwell Golf Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/blackwell-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81": {
+    courseId: "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81",
+    name: "Bletchingley Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/bletchingley-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.520892970398847,
+  },
+  "c96251cd-979c-42d9-b961-f64f501a9f94": {
+    courseId: "c96251cd-979c-42d9-b961-f64f501a9f94",
+    name: "Bowood Park Golf Course",
+    grade: "C",
+    previewImageUrl: "/course-twins/bowood-park-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9": {
+    courseId: "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9",
+    name: "Bransford Golf Club",
+    grade: "B",
+    previewImageUrl: "/course-twins/bransford-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.332926428669364,
+  },
+  "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc": {
+    courseId: "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc",
+    name: "Brean Golf Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/brean-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "852fa52c-51d2-4729-952c-159238faeb5d": {
+    courseId: "852fa52c-51d2-4729-952c-159238faeb5d",
+    name: "Brett Vale Golf Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/brett-vale-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.64790939403749,
+  },
+  "dc2fce54-9f8d-4799-bd89-23d019c3da4a": {
+    courseId: "dc2fce54-9f8d-4799-bd89-23d019c3da4a",
+    name: "Brickhampton Court Golf Complex",
+    grade: "B",
+    previewImageUrl: "/course-twins/brickhampton-court-golf-complex-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.319704865179002,
+  },
+  "e0328f91-81c5-42b4-a08e-3207f407fe2e": {
+    courseId: "e0328f91-81c5-42b4-a08e-3207f407fe2e",
+    name: "Bridport and West Dorset Golf Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/bridport-and-west-dorset-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46": {
+    courseId: "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46",
+    name: "Brookmans Park Golf Course",
+    grade: "C",
+    previewImageUrl: "/course-twins/brookmans-park-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "c2517fe5-ee33-412a-a61f-10d82f5fe359": {
+    courseId: "c2517fe5-ee33-412a-a61f-10d82f5fe359",
+    name: "Buckingham Golf Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/buckingham-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "b82a233d-968f-4a1a-8252-272580651d4b": {
+    courseId: "b82a233d-968f-4a1a-8252-272580651d4b",
+    name: "Bulbury Woods Golf Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/bulbury-woods-golf-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "aceca512-19c4-47cc-998a-956d335f0ac8": {
+    courseId: "aceca512-19c4-47cc-998a-956d335f0ac8",
+    name: "Doral - Blue Monster",
+    grade: "B",
+    previewImageUrl: "/course-twins/doral-blue-monster-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.773100864688082,
+  },
+  "036df5ed-dda4-47b8-9864-1d030353ad3a": {
+    courseId: "036df5ed-dda4-47b8-9864-1d030353ad3a",
+    name: "Quail Hollow Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/quail-hollow-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 5.252998759880758,
+  },
+  "1aff2799-7fc7-42e4-9d6f-cf1baecac4ee": {
+    courseId: "1aff2799-7fc7-42e4-9d6f-cf1baecac4ee",
+    name: "Firestone South",
+    grade: "C",
+    previewImageUrl: "/course-twins/firestone-south-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 5.694087840786088,
+  },
+  "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3": {
+    courseId: "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3",
+    name: "Sedgefield Country Club",
+    grade: "C",
+    previewImageUrl: "/course-twins/sedgefield-country-club-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 5.312199207145953,
+  },
+  "eb4763ae-fd6d-4685-b319-b6ed2634edab": {
+    courseId: "eb4763ae-fd6d-4685-b319-b6ed2634edab",
+    name: "Teeth of the Dog",
+    grade: "C",
+    previewImageUrl: "/course-twins/teeth-of-the-dog-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+  "6d494abe-b587-43fe-9f67-804975c49560": {
+    courseId: "6d494abe-b587-43fe-9f67-804975c49560",
+    name: "Mountain Park Hotel and Golf Club - Mountain Park",
+    grade: "B",
+    previewImageUrl: "/course-twins/mountain-park-hotel-golf-club-v1/imagery.jpg",
+    mappedHoles: 9,
+    terrainResolutionM: 4.296874999999997,
+  },
+  "25c03168-562f-4651-8a48-c0111babc752": {
+    courseId: "25c03168-562f-4651-8a48-c0111babc752",
+    name: "TPC Sawgrass - THE PLAYERS Stadium Course",
+    grade: "B",
+    previewImageUrl: "/course-twins/tpc-sawgrass-players-stadium-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.971529982500016,
+  },
+  "9beb5429-67e4-4f4e-a187-adbe0df74b62": {
+    courseId: "9beb5429-67e4-4f4e-a187-adbe0df74b62",
+    name: "Bootle Golf Course (Bootle)",
+    grade: "C",
+    previewImageUrl: "/course-twins/bootle-golf-course-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 30,
+  },
+};
+
+const manifestLoaders: Record<string, () => Promise<unknown>> = {
+  "486ddef6-5963-41d7-b2e6-82cec6732170": () => import("./aberystwyth-golf-course-v1.json"),
+  "4de11156-16fd-4a36-84e0-fadda53456b0": () => import("./aintree-v1.json"),
+  "1b95d085-59c0-476c-b0ff-c2d369c2aadc": () => import("./aldenham-golf-club-v1.json"),
+  "0036f96c-d14f-4cf1-a6d3-923cc664f3f6": () => import("./alexander-park-resort-v1.json"),
+  "19930c7b-c92b-48f9-86a9-2428ed909fc6": () => import("./alsager-golf-and-country-club-v1.json"),
+  "0c4ef63e-2172-41e7-b1c8-57e883b4624c": () => import("./altrincham-golf-course-v1.json"),
+  "65359509-5de2-485e-8f85-392bba752710": () => import("./arrowe-park-v1.json"),
+  "53ee459c-235c-4c65-81bf-8d29ba052145": () => import("./arscott-v1.json"),
+  "742d90a2-797d-4032-a5a7-cb31d667ec20": () => import("./ash-valley-golf-club-v1.json"),
+  "105ffa8e-c95f-4cae-bf1e-fa112938e68b": () => import("./ashton-lea-golf-club-v1.json"),
+  "2eebecd9-0513-4db4-b4a8-1e7ef1988550": () =>
+    import("./aspley-guise-woburn-sands-golf-club-v1.json"),
+  "02ff11c8-fd08-42cb-99e5-1a792008fd38": () => import("./astbury-golf-course-v1.json"),
+  "816b540a-6ca1-437b-a563-2b4558874dbf": () => import("./badgemore-park-golf-club-v1.json"),
+  "4cc812b1-87bc-44bc-a7a8-fb0df8fb6757": () => import("./barkway-park-golf-club-v1.json"),
+  "2c214875-84f0-43a7-b0de-7d8ab9a1efee": () => import("./barnard-castle-golf-course-v1.json"),
+  "6f648057-430a-4290-82c9-e39e50242160": () => import("./bearwood-lakes-golf-club-v1.json"),
+  "e77dcc63-9748-418e-a026-f4dd0c878c48": () => import("./belton-park-golf-club-v1.json"),
+  "1b52ef05-0c0a-4253-8245-013566b3d14b": () => import("./bentham-golf-club-v1.json"),
+  "7171685a-331c-459e-a745-40f2aff561a3": () =>
+    import("./benton-hall-golf-and-country-club-v1.json"),
+  "034d2dad-1e95-4319-bbdb-627b706364b4": () => import("./bird-hills-golf-centre-v1.json"),
+  "4cdf3280-af61-44a4-9b7d-5953042f1cd9": () => import("./blackwell-golf-club-v1.json"),
+  "f1ffb9ad-9eef-4f5c-98af-6e8b9796ed81": () => import("./bletchingley-golf-course-v1.json"),
+  "c96251cd-979c-42d9-b961-f64f501a9f94": () => import("./bowood-park-golf-course-v1.json"),
+  "aa31fd1a-2ec4-48fd-aad3-5ce88b61abe9": () => import("./bransford-golf-club-v1.json"),
+  "eaa650ca-bf49-45e1-9a3d-e8e3497c98dc": () => import("./brean-golf-club-v1.json"),
+  "852fa52c-51d2-4729-952c-159238faeb5d": () => import("./brett-vale-golf-course-v1.json"),
+  "dc2fce54-9f8d-4799-bd89-23d019c3da4a": () => import("./brickhampton-court-golf-complex-v1.json"),
+  "e0328f91-81c5-42b4-a08e-3207f407fe2e": () =>
+    import("./bridport-and-west-dorset-golf-club-v1.json"),
+  "7a794ae8-ffcc-42aa-bdb1-b9a2a4472c46": () => import("./brookmans-park-golf-course-v1.json"),
+  "c2517fe5-ee33-412a-a61f-10d82f5fe359": () => import("./buckingham-golf-club-v1.json"),
+  "b82a233d-968f-4a1a-8252-272580651d4b": () => import("./bulbury-woods-golf-club-v1.json"),
+  "aceca512-19c4-47cc-998a-956d335f0ac8": () => import("./doral-blue-monster-v1.json"),
+  "036df5ed-dda4-47b8-9864-1d030353ad3a": () => import("./quail-hollow-club-v1.json"),
+  "1aff2799-7fc7-42e4-9d6f-cf1baecac4ee": () => import("./firestone-south-v1.json"),
+  "bacfe022-1cb4-49bd-8e9b-f1c524bf73f3": () => import("./sedgefield-country-club-v1.json"),
+  "eb4763ae-fd6d-4685-b319-b6ed2634edab": () => import("./teeth-of-the-dog-v1.json"),
+  "6d494abe-b587-43fe-9f67-804975c49560": () => import("./mountain-park-hotel-golf-club-v1.json"),
+  "25c03168-562f-4651-8a48-c0111babc752": () =>
+    import("./tpc-sawgrass-players-stadium-course-v1.json"),
+  "9beb5429-67e4-4f4e-a187-adbe0df74b62": () => import("./bootle-golf-course-v1.json"),
+};
+
+/** Loads one complete manifest on demand, keeping the catalogue out of the base server module. */
+export async function loadLocalCourseTwinManifest(
+  courseId: string,
+): Promise<CourseTwinManifest | null> {
+  const loader = manifestLoaders[courseId];
+  if (!loader) return null;
+  const importedManifest = await loader();
+  return ((importedManifest as { default?: CourseTwinManifest }).default ??
+    importedManifest) as CourseTwinManifest;
+}

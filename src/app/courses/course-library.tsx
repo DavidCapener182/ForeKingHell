@@ -88,11 +88,9 @@ export function CourseLibrary({
   const [view, setView] = useState<"grid" | "table">(initialView);
   const [location, setLocation] = useState("all");
   const [filters, setFilters] = useState<Set<LibraryFilter>>(() => initialFilters(initialFilter));
-  const {
-    favourites,
-    isPending: favouritePending,
-    toggleFavourite,
-  } = useCourseFavourites(courses.filter((course) => course.favourite).map((course) => course.id));
+  const { favourites, pendingCourseIds, toggleFavourite } = useCourseFavourites(
+    courses.filter((course) => course.favourite).map((course) => course.id),
+  );
 
   const locations = useMemo(
     () =>
@@ -258,6 +256,7 @@ export function CourseLibrary({
             variant="outline"
             spacing={0}
             aria-label="Course library view"
+            className="hidden md:flex"
           >
             <ToggleGroupItem value="grid" aria-label="Grid view" className="min-h-9 px-3">
               <Grid2X2 className="size-4" aria-hidden />
@@ -361,18 +360,34 @@ export function CourseLibrary({
               course={course}
               favourite={favourites.has(course.id)}
               onFavourite={() => toggleFavourite(course.id)}
-              favouritePending={favouritePending}
+              favouritePending={pendingCourseIds.has(course.id)}
               priority={index < 3}
             />
           ))}
         </div>
       ) : (
-        <CourseTable
-          courses={filteredCourses}
-          favourites={favourites}
-          favouritePending={favouritePending}
-          onFavourite={toggleFavourite}
-        />
+        <>
+          <div className="hidden md:block">
+            <CourseTable
+              courses={filteredCourses}
+              favourites={favourites}
+              pendingCourseIds={pendingCourseIds}
+              onFavourite={toggleFavourite}
+            />
+          </div>
+          <div className="grid gap-4 md:hidden" data-course-grid>
+            {filteredCourses.map((course, index) => (
+              <CourseCard
+                key={course.id}
+                course={course}
+                favourite={favourites.has(course.id)}
+                onFavourite={() => toggleFavourite(course.id)}
+                favouritePending={pendingCourseIds.has(course.id)}
+                priority={index < 3}
+              />
+            ))}
+          </div>
+        </>
       )}
     </section>
   );
@@ -511,12 +526,12 @@ function CapabilityBadge({ icon: Icon, label }: { icon: typeof Target; label: st
 function CourseTable({
   courses,
   favourites,
-  favouritePending,
+  pendingCourseIds,
   onFavourite,
 }: {
   courses: CourseLibraryEntry[];
   favourites: Set<string>;
-  favouritePending: boolean;
+  pendingCourseIds: Set<string>;
   onFavourite: (courseId: string) => void;
 }) {
   return (
@@ -573,7 +588,7 @@ function CourseTable({
                     <button
                       type="button"
                       onClick={() => onFavourite(course.id)}
-                      disabled={favouritePending}
+                      disabled={pendingCourseIds.has(course.id)}
                       className={cn(
                         "focus-aaa inline-grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
                         favourite && "text-primary",

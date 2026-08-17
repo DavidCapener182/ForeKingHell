@@ -21,19 +21,63 @@ const mobileYardageCarouselSource = readFileSync(
 );
 
 describe("bag desktop workbench source", () => {
-  it("keeps the full bag map available on mobile alongside Quick Bag", () => {
+  it("keeps Yardages and Target primary while moving Benchmarks to secondary disclosure", () => {
     expect(source).toContain("data-bag-mobile-full");
     expect(source).not.toContain("data-bag-mobile-quick-only");
     expect(source).toContain('title="My Bag"');
     expect(source).toContain("<MobilePageTabs");
     expect(source).toContain('label: "Yardages"');
-    expect(source).toContain('label: "Benchmarks"');
     expect(source).toContain('label: "Target"');
+    const mobileTabsStart = source.indexOf("<MobilePageTabs");
+    const mobileTabsEnd = source.indexOf("\n        />", mobileTabsStart);
+    const mobileTabs = source.slice(mobileTabsStart, mobileTabsEnd);
+    expect(mobileTabs).not.toContain('label: "Benchmarks"');
+    expect(source).toContain('<p className="font-semibold text-foreground">Benchmarks</p>');
+    expect(source).toContain("mobile=benchmarks#bag-benchmarks");
     expect(source).toContain("<MobileBagYardageCarousel");
     expect(source).toContain("<DistanceBenchmarkPanel");
     expect(source).toContain("<QuickBagClient");
     expect(source).toContain("row.latestReliableCarryP25Yd");
     expect(source).toContain("row.targetMessage");
+  });
+
+  it("splits companion data work at the request surface boundary", () => {
+    const companion =
+      source.match(/async function BagCompanionPage[\s\S]*?async function BagWorkbenchPage/)?.[0] ??
+      "";
+
+    expect(source).toContain('import { getRequestAppSurface } from "@/lib/app-surface-server"');
+    expect(source.indexOf("getRequestAppSurface()")).toBeLessThan(
+      source.indexOf("<BagCompanionPage"),
+    );
+    expect(companion).toContain(
+      'getBag({ scope: mobileBenchmarksLoaded ? "companion-benchmarks" : "companion" })',
+    );
+    expect(companion).toContain("mobileBenchmarksLoaded ? buildBenchmarkRows(bag) : []");
+    expect(companion).not.toContain("getFeatureIdeasData()");
+    expect(companion).not.toContain("getBagSpeedSummary()");
+    expect(companion).not.toContain("getBagEquipmentContext()");
+    expect(companion).not.toContain("buildWedgeMatrix(bag)");
+    expect(companion).not.toContain("buildShotPatternOverlaySummaries(bag)");
+    expect(companion).not.toContain("buildConfidenceHeatMaps(bag)");
+    expect(source).toContain('const includeBenchmarkEvidence = scope !== "companion"');
+    expect(source).toContain('const includePersonalBest = scope === "workbench"');
+    expect(source).toContain("includePersonalBest && allClubMemberIds.length > 0");
+    expect(source).toContain("includeBenchmarkEvidence\n      ? db");
+  });
+
+  it("derives mobile Bag selection from the URL and keeps the summary compact", () => {
+    const summary =
+      source.match(/function MobileBagSummary[\s\S]*?function BagSupportingEvidence/)?.[0] ?? "";
+
+    expect(source).toContain("parseMobileBagPrimaryView(searchParams.view)");
+    expect(source).toContain("initialValue={initialView}");
+    expect(source).toContain('href: "/bag?view=yardages#bag-yardages"');
+    expect(source).toContain('href: "/bag?view=target#bag-quick"');
+    expect(summary).toContain("Bag {bagScore}");
+    expect(summary).toContain("{trustedClubCount}/{gappingClubCount} trusted");
+    expect(summary).toContain("{averageConfidence}% confidence");
+    expect(summary).not.toContain("ios-grouped-row");
   });
 
   it("contains every mobile Bag section within the phone content width", () => {
@@ -46,6 +90,9 @@ describe("bag desktop workbench source", () => {
     expect(mobileYardageCarouselSource).toContain("<CarouselContent");
     expect(mobileYardageCarouselSource).toContain("<CarouselItem");
     expect(mobileYardageCarouselSource).toContain("basis-[calc(100%-1.5rem)]");
+    expect(mobileYardageCarouselSource).toContain("<MobileCarouselPagination");
+    expect(mobileYardageCarouselSource).toContain('ariaLabel="Choose bag club"');
+    expect(mobileYardageCarouselSource).toContain("clubs.length <= 5");
     expect(mobileYardageCarouselSource).toContain('<Accordion type="single" collapsible>');
     expect(mobileYardageCarouselSource).toContain("Range, gap and next step");
   });
@@ -379,10 +426,13 @@ describe("bag desktop and Quick Bag boundary", () => {
     expect(source).toContain('scope="bag"');
     expect(source).toContain("styles.mobileSurface");
     expect(source).toContain("styles.desktopSurface");
-    expect(responsiveStyles).toContain("@media (min-width: 64rem)");
+    expect(responsiveStyles).not.toContain("@media (min-width: 64rem)");
     expect(responsiveStyles).toContain(".mobileSurface");
     expect(responsiveStyles).toContain(".mobileSurface > section");
     expect(responsiveStyles).toContain(".desktopSurface");
+    expect(source).toContain('if (surface === "companion")');
+    expect(source).toContain("return <BagCompanionPage");
+    expect(source).toContain("return <BagWorkbenchPage");
     expect(source).not.toContain('href="/dashboard"');
     expect(source).not.toContain("Import CSV");
     expect(source).toContain("data-bag-workspace");

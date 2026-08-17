@@ -39,6 +39,7 @@ const desktopViewportProjects = [
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}",
   timeout: 45_000,
   expect: {
     timeout: 10_000,

@@ -82,7 +82,16 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
   }
 
   return (
-    <Alert role="status" aria-live="polite" data-companion-sync-status>
+    <Alert
+      role={state.needsAttention ? "alert" : "status"}
+      aria-live={state.needsAttention ? "assertive" : "polite"}
+      className={
+        state.needsAttention
+          ? "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-[var(--status-error-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-error-foreground)]"
+          : undefined
+      }
+      data-companion-sync-status
+    >
       <Icon className="size-4" aria-hidden />
       <AlertTitle className="flex flex-wrap items-start justify-between gap-2">
         {presentation.title}
@@ -92,11 +101,13 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
       </AlertTitle>
       <AlertDescription className="grid gap-2">
         <span>{presentation.detail}</span>
-        <Progress
-          value={state.needsAttention ? 100 : isOnline ? 65 : 15}
-          aria-label={`${presentation.status} upload progress`}
-          className="h-1.5"
-        />
+        {!state.needsAttention ? (
+          <Progress
+            value={isOnline ? 65 : 15}
+            aria-label={`${presentation.status} upload progress`}
+            className="h-1.5"
+          />
+        ) : null}
         {state.count > 0 ? (
           <Button
             type="button"
@@ -105,6 +116,7 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
             className="w-fit"
             disabled={!isOnline}
             onClick={retrySync}
+            aria-label={isOnline ? "Retry queued upload sync" : "Retry queued upload when online"}
           >
             <RefreshCw className="size-3.5" aria-hidden />
             {isOnline ? "Retry sync" : "Retry when online"}

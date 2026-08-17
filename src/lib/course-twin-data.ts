@@ -32,7 +32,10 @@ import {
 import type { CourseTwinBagProfile } from "@/lib/course-twin-strategy";
 import { loadActiveCourseTwinManifest } from "@/lib/course-twin-package-store";
 import bootleTerrainPackage from "@/generated/course-twins/bootle-v3.json";
-import { localCourseTwinManifestsByCourseId } from "@/generated/course-twins/local-catalogue";
+import {
+  loadLocalCourseTwinManifest,
+  localCourseTwinMetadataByCourseId,
+} from "@/generated/course-twins/local-catalogue";
 
 const PILOT_EXTERNAL_ID = "bootle-golf-course";
 
@@ -59,7 +62,7 @@ export async function isCourseTwinAvailable({
   externalId: string | null;
 }) {
   if (!isCourseTwinFeatureEnabled()) return false;
-  if (localCourseTwinManifestsByCourseId[courseId] || externalId === PILOT_EXTERNAL_ID) return true;
+  if (localCourseTwinMetadataByCourseId[courseId] || externalId === PILOT_EXTERNAL_ID) return true;
 
   const [published] = await getDb()
     .select({ id: courseTwinVersions.id })
@@ -111,14 +114,14 @@ export async function listAvailableCourseTwins(userId: string): Promise<Availabl
   const publishedByCourseId = new Map(publishedRows.map((row) => [row.courseId, row.qualityJson]));
 
   return courseRows.flatMap((course) => {
-    const local = localCourseTwinManifestsByCourseId[course.id] as CourseTwinManifest | undefined;
+    const local = localCourseTwinMetadataByCourseId[course.id];
     const published = publishedByCourseId.get(course.id);
     const isBootlePilot = course.externalId === PILOT_EXTERNAL_ID;
     if (!local && !published && !isBootlePilot) return [];
 
     const publishedGrade = published?.grade;
     const grade =
-      local?.quality.grade ??
+      local?.grade ??
       (publishedGrade === "A" ||
       publishedGrade === "B" ||
       publishedGrade === "C" ||
@@ -128,18 +131,17 @@ export async function listAvailableCourseTwins(userId: string): Promise<Availabl
     return [
       {
         courseId: course.id,
-        name: local?.course.name ?? course.name,
-        country: local?.course.country ?? course.country,
+        name: local?.name ?? course.name,
+        country: course.country,
         previewImageUrl:
-          local?.terrain.imagery?.url ?? (isBootlePilot ? bootleTerrainPackage.imagery.url : null),
+          local?.previewImageUrl ?? (isBootlePilot ? bootleTerrainPackage.imagery.url : null),
         grade,
-        mappedHoles: local?.quality.mappedHoles ?? numericValue(published?.mappedHoles) ?? null,
+        mappedHoles: local?.mappedHoles ?? numericValue(published?.mappedHoles) ?? null,
         terrainResolutionM:
-          local?.terrain.resolutionM ??
+          local?.terrainResolutionM ??
           numericValue(published?.terrainResolutionM) ??
           (isBootlePilot ? bootleTerrainPackage.packageResolutionM : null),
         warning:
-          local?.quality.warnings[0] ??
           (typeof published?.warning === "string" ? published.warning : null) ??
           (isBootlePilot
             ? "Environment Agency LiDAR terrain with approximate, unverified putting contours."
@@ -183,7 +185,7 @@ export async function getCourseTwinManifest({
   if (!course) return null;
   const publishedManifest = await loadActiveCourseTwinManifest(course.id);
   if (publishedManifest) return publishedManifest;
-  const localManifest = localCourseTwinManifestsByCourseId[course.id];
+  const localManifest = await loadLocalCourseTwinManifest(course.id);
   if (localManifest) return localManifest as CourseTwinManifest;
   if (course.externalId !== PILOT_EXTERNAL_ID) return null;
 

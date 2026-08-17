@@ -522,9 +522,25 @@ html[data-theme="clubhouse"] .data-table-scroll tbody tr[data-state="selected"] 
   --status-warning-foreground: var(--accent-foreground);
   --status-error-surface: color-mix(in srgb, var(--destructive) 10%, var(--surface));
   --status-error-border: color-mix(in srgb, var(--destructive) 32%, var(--border));
+  --status-error-foreground: color-mix(in srgb, var(--destructive) 78%, var(--foreground));
   --status-information-surface: color-mix(in srgb, var(--chart-2) 10%, var(--surface));
   --status-information-border: color-mix(in srgb, var(--chart-2) 30%, var(--border));
   --status-information-foreground: color-mix(in srgb, var(--chart-2) 72%, var(--foreground));
+  /* Theme-derived SVG chart colours. Keep inline SVGs legible in every product theme. */
+  --mobile-chart-surface: var(--card);
+  --mobile-chart-grid: color-mix(in srgb, var(--border) 86%, var(--surface));
+  --mobile-chart-axis: var(--muted-foreground);
+  --mobile-chart-target: var(--foreground);
+  --mobile-chart-corridor: var(--status-success-surface);
+  --mobile-chart-corridor-border: var(--status-success-border);
+  --mobile-chart-zone: var(--primary);
+  --mobile-chart-median: var(--foreground);
+  --mobile-chart-marker-stroke: var(--card);
+  --mobile-chart-series-1: var(--chart-1);
+  --mobile-chart-series-2: var(--chart-2);
+  --mobile-chart-series-3: var(--chart-3);
+  --mobile-chart-series-4: var(--chart-4);
+  --mobile-chart-series-5: var(--chart-5);
   --focus-ring: var(--ring);
   --operational-metric: var(--primary);
   --confidence-high: var(--primary);

@@ -52,6 +52,9 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain('aria-label="Previous practice block"');
     expect(companionSource).toContain("Complete Block");
     expect(companionSource).toContain("basis-[calc(100%-2rem)]");
+    expect(companionSource).toContain("<MobileCarouselPagination");
+    expect(companionSource).toContain('ariaLabel="Choose practice block"');
+    expect(companionSource).not.toContain("Target\n                    </span>");
     expect(companionSource).toContain("Quick adjustments");
     expect(companionSource).not.toContain("w-40 shrink-0 snap-start");
     expect(companionSource).not.toContain("DesktopTableWorkbenchControls");

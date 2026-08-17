@@ -127,3 +127,85 @@ jobs:
         run: npm run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell
+
+  core-playwright:
+    name: Core Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: forekinghell
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d forekinghell"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell
+      NEXT_PUBLIC_SITE_URL: https://playwright.example.test
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-project.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-service-role-key
+      SCORECARD_PROOF_SECRET: ci-scorecard-proof-secret-32-characters
+      CRON_SECRET: ci-cron-secret-at-least-32-characters
+      PLAYWRIGHT_E2E_AUTH_BYPASS: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare database auth compatibility
+        run: |
+          node --input-type=module <<'NODE'
+          import postgres from "postgres";
+
+          const sql = postgres(process.env.DATABASE_URL);
+          await sql.unsafe(`
+            DO $$
+            BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
+            END
+            $$;
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS 'SELECT NULL::uuid';
+            CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS 'SELECT ''{}''::jsonb';
+          `);
+          await sql.end();
+          NODE
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Core companion suite
+        run: npx playwright test tests/e2e/ci-core.spec.ts --project=chromium
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7

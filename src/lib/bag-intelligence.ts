@@ -249,20 +249,7 @@ export function buildSmartBagBuilder({
   gappingRows: BagIntelligenceGappingRow[];
   wedgeMatrix: WedgeMatrixClub[];
 }): SmartBagBuilder {
-  const playableClubs = clubs.filter((club) => club.stock.sampleSize > 0);
-  const averageConfidence =
-    playableClubs.length === 0
-      ? 0
-      : (average(playableClubs.map((club) => club.stock.confidenceScore)) ?? 0);
-  const gapPenalty = gappingRows.reduce((total, row) => {
-    if (!isMissingYardageWindowGap(gapWindowInput(row))) {
-      return total;
-    }
-
-    const gap = row.gapToNextYd ?? 0;
-    return total + Math.min(isScoringEndGap(gapWindowInput(row)) ? 12 : 8, (gap - 18) / 2);
-  }, 0);
-  const currentScore = clamp(Math.round(averageConfidence - gapPenalty), 0, 100);
+  const currentScore = calculateBagReadinessScore(clubs, gappingRows);
   const suggestions: SmartBagSuggestion[] = [];
   const suggestedGapWedge = wedgeMatrix.find((club) => club.isSuggested);
   const topGap = [...gappingRows]
@@ -332,6 +319,27 @@ export function buildSmartBagBuilder({
       .sort((left, right) => right.scoreLift - left.scoreLift || right.scoreAfter - left.scoreAfter)
       .slice(0, 3),
   };
+}
+
+export function calculateBagReadinessScore(
+  clubs: BagIntelligenceClub[],
+  gappingRows: BagIntelligenceGappingRow[],
+) {
+  const playableClubs = clubs.filter((club) => club.stock.sampleSize > 0);
+  const averageConfidence =
+    playableClubs.length === 0
+      ? 0
+      : (average(playableClubs.map((club) => club.stock.confidenceScore)) ?? 0);
+  const gapPenalty = gappingRows.reduce((total, row) => {
+    if (!isMissingYardageWindowGap(gapWindowInput(row))) {
+      return total;
+    }
+
+    const gap = row.gapToNextYd ?? 0;
+    return total + Math.min(isScoringEndGap(gapWindowInput(row)) ? 12 : 8, (gap - 18) / 2);
+  }, 0);
+
+  return clamp(Math.round(averageConfidence - gapPenalty), 0, 100);
 }
 
 export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendTracking {

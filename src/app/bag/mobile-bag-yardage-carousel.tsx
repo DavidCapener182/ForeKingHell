@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 
+import { MobileCarouselPagination } from "@/components/app/mobile-controls";
 import {
   Accordion,
   AccordionContent,
@@ -142,15 +143,34 @@ export function MobileBagYardageCarousel({ clubs }: { clubs: MobileBagYardage[] 
           ))}
         </CarouselContent>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-muted-foreground tabular-nums" aria-live="polite">
-            {selectedIndex + 1} of {clubs.length} · {clubs[selectedIndex]?.club}
-          </p>
-          <div className="flex items-center gap-2">
-            <CarouselPrevious className="static size-11 translate-y-0" />
-            <CarouselNext className="static size-11 translate-y-0" />
+        {clubs.length <= 5 ? (
+          <div className="mt-3 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3">
+            <CarouselPrevious className="static size-11 translate-y-0 disabled:invisible" />
+            <MobileCarouselPagination
+              labels={clubs.map((club) => club.club)}
+              selectedIndex={selectedIndex}
+              onSelect={(index) => api?.scrollTo(index)}
+              ariaLabel="Choose bag club"
+            />
+            <CarouselNext className="static size-11 translate-y-0 disabled:invisible" />
           </div>
-        </div>
+        ) : (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p
+              className="text-sm font-medium text-muted-foreground tabular-nums"
+              aria-live="polite"
+            >
+              {selectedIndex + 1} of {clubs.length} · {clubs[selectedIndex]?.club}
+            </p>
+            <div className="flex items-center gap-2">
+              <CarouselPrevious className="static size-11 translate-y-0" />
+              <CarouselNext className="static size-11 translate-y-0" />
+            </div>
+          </div>
+        )}
+        <p className="sr-only" aria-live="polite">
+          Club {selectedIndex + 1} of {clubs.length}: {clubs[selectedIndex]?.club}
+        </p>
       </Carousel>
     </section>
   );

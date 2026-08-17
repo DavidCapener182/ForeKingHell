@@ -9,6 +9,7 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import { MobileCarouselPagination } from "@/components/app/mobile-controls";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -221,10 +222,12 @@ export function DistanceBenchmarkPanel({
   rows,
   peerSummary,
   peerBenchmarksLoaded,
+  loadPeerHref = "/bag?tab=evidence&peers=1#distance-benchmarks",
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
   peerBenchmarksLoaded: boolean;
+  loadPeerHref?: string;
 }) {
   return (
     <DataPanel>
@@ -278,6 +281,7 @@ export function DistanceBenchmarkPanel({
               rows={rows}
               peerSummary={peerSummary}
               peerBenchmarksLoaded={peerBenchmarksLoaded}
+              loadPeerHref={loadPeerHref}
             />
           </TabsContent>
         </Tabs>
@@ -348,18 +352,34 @@ function MobileBenchmarkCarousel({
           ))}
         </CarouselContent>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <p
-            className="min-w-0 truncate text-sm font-medium text-muted-foreground tabular-nums"
-            aria-live="polite"
-          >
-            {selectedIndex + 1} of {slides.length} · {selectedSlide.label}
-          </p>
-          <div className="flex shrink-0 items-center gap-2">
-            <CarouselPrevious className="static size-11 translate-y-0" />
-            <CarouselNext className="static size-11 translate-y-0" />
+        {slides.length <= 5 ? (
+          <div className="mt-3 grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-3">
+            <CarouselPrevious className="static size-11 translate-y-0 disabled:invisible" />
+            <MobileCarouselPagination
+              labels={slides.map((slide) => slide.label)}
+              selectedIndex={selectedIndex}
+              onSelect={(index) => api?.scrollTo(index)}
+              ariaLabel={`Choose ${title.toLowerCase()} club`}
+            />
+            <CarouselNext className="static size-11 translate-y-0 disabled:invisible" />
           </div>
-        </div>
+        ) : (
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p
+              className="min-w-0 truncate text-sm font-medium text-muted-foreground tabular-nums"
+              aria-live="polite"
+            >
+              {selectedIndex + 1} of {slides.length} · {selectedSlide.label}
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <CarouselPrevious className="static size-11 translate-y-0" />
+              <CarouselNext className="static size-11 translate-y-0" />
+            </div>
+          </div>
+        )}
+        <p className="sr-only" aria-live="polite">
+          Club {selectedIndex + 1} of {slides.length}: {selectedSlide.label}
+        </p>
       </Carousel>
     </section>
   );
@@ -861,10 +881,12 @@ function PeerComparisonContent({
   rows,
   peerSummary,
   peerBenchmarksLoaded,
+  loadPeerHref,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
   peerBenchmarksLoaded: boolean;
+  loadPeerHref: string;
 }) {
   const peerRows = buildPeerDisplayRows(rows, peerSummary);
   const rowsWithRank = peerRows.filter((row) => row.peer?.percentile !== null);
@@ -888,7 +910,7 @@ function PeerComparisonContent({
             </AlertDescription>
           </div>
           <Button asChild variant="outline" className="w-fit bg-card/70">
-            <Link href="/bag?tab=evidence&peers=1#distance-benchmarks" prefetch={false}>
+            <Link href={loadPeerHref} prefetch={false}>
               Load peer benchmarks
             </Link>
           </Button>

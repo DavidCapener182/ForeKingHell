@@ -24,6 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { listOfflineActions, type OfflineActionRecord } from "@/lib/offline-queue";
 import { getTodaySyncOverride, type TodayPrimaryState } from "@/lib/today-sync-state";
+import { cn } from "@/lib/utils";
 
 type TodayFact = { label: string; value: string };
 
@@ -86,7 +87,7 @@ export function TodayPrimaryAnswer({
         className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(3,35,25,0.99)_0%,rgba(3,35,25,0.94)_66%,rgba(3,35,25,0.64)_100%)]"
         aria-hidden
       />
-      <CardHeader className="gap-1 pr-3">
+      <CardHeader className="gap-2 pr-3 has-data-[slot=card-action]:grid-cols-1">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a6f04a]">
             {state.eyebrow}
@@ -95,8 +96,8 @@ export function TodayPrimaryAnswer({
             {state.title}
           </CardTitle>
         </div>
-        <CardAction>
-          <div className="flex flex-wrap justify-end gap-1.5">
+        <CardAction className="col-start-1 row-span-1 row-start-2 justify-self-start">
+          <div className="flex flex-wrap justify-start gap-1.5">
             <Badge className="border-[#a6f04a] bg-[#a6f04a] !text-[#052f22] hover:bg-[#a6f04a]">
               {recommendationStatusLabel(state)}
             </Badge>
@@ -128,17 +129,26 @@ export function TodayPrimaryAnswer({
 
         {syncState ? (
           <Alert
-            className="gap-y-1 border-white/18 bg-black/20 py-2.5 text-white [&_[data-slot=alert-description]]:text-white/75"
+            role={syncState.status === "Needs attention" ? "alert" : "status"}
+            aria-live={syncState.status === "Needs attention" ? "assertive" : "polite"}
+            className={cn(
+              "gap-y-1 py-2.5",
+              syncState.status === "Needs attention"
+                ? "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-[var(--status-error-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-error-foreground)]"
+                : "border-white/18 bg-black/20 text-white [&_[data-slot=alert-description]]:text-white/75",
+            )}
             data-today-sync-state
           >
             <AlertTitle className="text-sm">{syncState.status}</AlertTitle>
             <AlertDescription className="grid gap-2 text-xs">
               <span>{syncState.reason}</span>
-              <Progress
-                value={syncProgress(syncState.status)}
-                aria-label={`${syncState.status}: ${syncProgress(syncState.status)}%`}
-                className="h-1.5"
-              />
+              {syncState.status !== "Needs attention" ? (
+                <Progress
+                  value={syncProgress(syncState.status)}
+                  aria-label={`${syncState.status}: ${syncProgress(syncState.status)}%`}
+                  className="h-1.5"
+                />
+              ) : null}
               <Button
                 type="button"
                 size="sm"
@@ -146,6 +156,9 @@ export function TodayPrimaryAnswer({
                 className="w-fit"
                 disabled={!isOnline}
                 onClick={retrySync}
+                aria-label={
+                  isOnline ? "Retry session upload sync" : "Retry session upload when online"
+                }
               >
                 <RefreshCw className="size-3.5" aria-hidden />
                 {isOnline ? "Retry sync" : "Retry when online"}
@@ -219,7 +232,6 @@ function recommendationStatusLabel(state: TodayPrimaryState) {
 
 function syncProgress(status: string) {
   if (status === "Syncing") return 70;
-  if (status === "Needs attention") return 100;
   return 20;
 }
 

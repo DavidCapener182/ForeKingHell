@@ -131,6 +131,7 @@ describe("leaderboard mobile state", () => {
     expect(source).toContain('surface === "companion" ? "monthly"');
     expect(mobile).toContain("players.slice(0, 5)");
     expect(mobile).toContain("View all ${players.length} golfers");
+    expect(mobile).toContain("!expanded && currentRank > 5");
     expect(mobile).toContain("<MobilePageTabs");
     expect(mobile).not.toContain("router.push");
     expect(source).not.toContain("MobileRouteTabs");
@@ -141,8 +142,10 @@ describe("leaderboard mobile state", () => {
     expect(source).toContain("MobileLeaderboard");
     expect(mobile).toContain("Rank");
     expect(mobile).toContain("Golfer");
-    expect(mobile).toContain("Score");
+    expect(mobile).toContain(">XP<");
     expect(mobile).toContain("Move");
+    expect(mobile).toContain("currentRank > 5");
+    expect(mobile).toContain('aria-label="Your position"');
     expect(source).not.toContain('viewAllHref="#full-leaderboard"');
     expect(source).not.toContain("LeaderboardPodiumCard");
     expect(source).not.toContain('className="hidden lg:contents"');

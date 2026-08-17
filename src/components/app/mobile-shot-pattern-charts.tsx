@@ -172,7 +172,6 @@ export function MobileShotPatternCharts({
         <div
           className={cn(
             "overflow-hidden rounded-xl bg-background",
-            compact && "max-h-52",
             layout === "desktop" && "border bg-slate-50/70 p-2 shadow-inner xl:p-4",
           )}
         >
@@ -181,6 +180,7 @@ export function MobileShotPatternCharts({
               points={selected}
               trustedPoints={trustedSelection}
               mode="dispersion"
+              compact={compact}
               onSelect={setSelectedShot}
             />
           ) : (
@@ -234,17 +234,24 @@ function MobileShotPatternVisual({
   points,
   trustedPoints,
   mode,
+  compact = false,
   flightMode = "shots",
   onSelect,
 }: {
   points: ShotPatternPoint[];
   trustedPoints: ShotPatternPoint[];
   mode: "dispersion" | "flight";
+  compact?: boolean;
   flightMode?: FlightMode;
   onSelect: (point: ShotPatternPoint) => void;
 }) {
   return mode === "dispersion" ? (
-    <MobileDispersionVisual points={points} trustedPoints={trustedPoints} onSelect={onSelect} />
+    <MobileDispersionVisual
+      points={points}
+      trustedPoints={trustedPoints}
+      compact={compact}
+      onSelect={onSelect}
+    />
   ) : (
     <MobileFlightVisual points={points} flightMode={flightMode} onSelect={onSelect} />
   );
@@ -253,17 +260,22 @@ function MobileShotPatternVisual({
 function MobileDispersionVisual({
   points,
   trustedPoints,
+  compact,
   onSelect,
 }: {
   points: ShotPatternPoint[];
   trustedPoints: ShotPatternPoint[];
+  compact: boolean;
   onSelect: (point: ShotPatternPoint) => void;
 }) {
   const landing = points.filter(hasLandingPoint);
   const trustedSummary = summarizeShotPattern(trustedPoints);
   const width = 360;
-  const height = 420;
-  const frame = { top: 28, right: 18, bottom: 48, left: 42 };
+  // Today gets a purpose-built complete preview rather than a cropped full chart.
+  const height = compact ? 220 : 420;
+  const frame = compact
+    ? { top: 24, right: 16, bottom: 34, left: 38 }
+    : { top: 28, right: 18, bottom: 48, left: 42 };
   const plotWidth = width - frame.left - frame.right;
   const plotHeight = height - frame.top - frame.bottom;
   const maxCarry = niceCeiling(Math.max(25, ...landing.map((point) => point.carryYd ?? 0)), 25);
@@ -273,7 +285,9 @@ function MobileDispersionVisual({
   );
   const x = (value: number) => frame.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
   const y = (value: number) => frame.top + plotHeight - (value / maxCarry) * plotHeight;
-  const carryTicks = [0, maxCarry / 4, maxCarry / 2, (maxCarry * 3) / 4, maxCarry];
+  const carryTicks = compact
+    ? [0, maxCarry / 2, maxCarry]
+    : [0, maxCarry / 4, maxCarry / 2, (maxCarry * 3) / 4, maxCarry];
   const corridor = Math.min(maxSide, trustedSummary.corridorYd || 10);
   const hasTrustedZone =
     trustedSummary.sampleSize >= 4 &&
@@ -284,7 +298,7 @@ function MobileDispersionVisual({
 
   return (
     <div
-      className="overflow-hidden rounded-2xl border bg-slate-50 shadow-inner"
+      className="overflow-hidden rounded-2xl border bg-[var(--mobile-chart-surface)] shadow-inner"
       data-mobile-dispersion-layout
     >
       <svg
@@ -293,13 +307,13 @@ function MobileDispersionVisual({
         role="img"
         aria-label="Mobile dispersion chart. Tap any shot to inspect its measurements."
       >
-        <rect width={width} height={height} fill="#f8fafc" />
+        <rect width={width} height={height} fill="var(--mobile-chart-surface)" />
         <rect
           x={x(-corridor)}
           y={frame.top}
           width={x(corridor) - x(-corridor)}
           height={plotHeight}
-          fill="#dcfce7"
+          fill="var(--mobile-chart-corridor)"
           opacity={0.72}
         />
         {hasTrustedZone ? (
@@ -309,9 +323,9 @@ function MobileDispersionVisual({
             width={Math.max(4, x(trustedSummary.sideHighYd!) - x(trustedSummary.sideLowYd!))}
             height={Math.max(4, y(trustedSummary.carryLowYd!) - y(trustedSummary.carryHighYd!))}
             rx={12}
-            fill="#0f766e"
+            fill="var(--mobile-chart-zone)"
             fillOpacity={0.1}
-            stroke="#0f766e"
+            stroke="var(--mobile-chart-zone)"
             strokeDasharray="6 5"
             strokeWidth={1.5}
           />
@@ -323,14 +337,15 @@ function MobileDispersionVisual({
               x2={width - frame.right}
               y1={y(tick)}
               y2={y(tick)}
-              stroke="#cbd5e1"
+              stroke="var(--mobile-chart-grid)"
               strokeDasharray={tick === 0 ? undefined : "3 5"}
             />
             <text
               x={frame.left - 8}
               y={y(tick) + 4}
               textAnchor="end"
-              className="fill-slate-500 text-[11px]"
+              fill="var(--mobile-chart-axis)"
+              className="text-[11px]"
             >
               {Math.round(tick)}
             </text>
@@ -341,28 +356,40 @@ function MobileDispersionVisual({
           x2={x(0)}
           y1={frame.top}
           y2={height - frame.bottom}
-          stroke="#0f172a"
+          stroke="var(--mobile-chart-target)"
           strokeWidth={1.75}
         />
         <text
           x={x(0)}
           y={frame.top - 9}
           textAnchor="middle"
-          className="fill-slate-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
+          fill="var(--mobile-chart-target)"
+          className="text-[10px] font-semibold uppercase tracking-[0.08em]"
         >
           target line
         </text>
-        <text x={frame.left} y={15} className="fill-slate-500 text-[10px] font-medium">
+        <text
+          x={frame.left}
+          y={15}
+          fill="var(--mobile-chart-axis)"
+          className="text-[10px] font-medium"
+        >
           carry yd
         </text>
-        <text x={frame.left} y={height - 16} className="fill-slate-500 text-[11px]">
+        <text
+          x={frame.left}
+          y={height - 12}
+          fill="var(--mobile-chart-axis)"
+          className="text-[11px]"
+        >
           {maxSide} L
         </text>
         <text
           x={width - frame.right}
-          y={height - 16}
+          y={height - 12}
           textAnchor="end"
-          className="fill-slate-500 text-[11px]"
+          fill="var(--mobile-chart-axis)"
+          className="text-[11px]"
         >
           {maxSide} R
         </text>
@@ -374,12 +401,12 @@ function MobileDispersionVisual({
             r={6.5}
             fill={mobileClubColor(point.clubType)}
             fillOpacity={point.trusted ? 0.88 : 0.38}
-            stroke="white"
+            stroke="var(--mobile-chart-marker-stroke)"
             strokeWidth={2}
             role="button"
             tabIndex={0}
             aria-label={`${point.clubLabel} shot ${point.shotNumber ?? "detail"}`}
-            className="cursor-pointer outline-none focus-visible:stroke-slate-950 focus-visible:stroke-[4px]"
+            className="cursor-pointer outline-none focus-visible:stroke-[var(--focus-ring)] focus-visible:stroke-[4px]"
             onClick={() => onSelect(point)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") onSelect(point);
@@ -394,25 +421,35 @@ function MobileDispersionVisual({
               cx={x(trustedSummary.medianSideYd)}
               cy={y(trustedSummary.medianCarryYd)}
               r={10}
-              fill="#0f172a"
-              stroke="white"
+              fill="var(--mobile-chart-median)"
+              stroke="var(--mobile-chart-marker-stroke)"
               strokeWidth={2}
             />
             <text
               x={x(trustedSummary.medianSideYd)}
               y={y(trustedSummary.medianCarryYd) + 3.5}
               textAnchor="middle"
-              className="fill-white text-[9px] font-bold"
+              fill="var(--mobile-chart-surface)"
+              className="text-[9px] font-bold"
             >
               M
             </text>
           </g>
         ) : null}
       </svg>
-      <div className="grid grid-cols-3 border-t bg-white text-[10px] font-medium text-slate-600">
-        <ChartKey tone="bg-emerald-100 ring-emerald-300" label="Playable corridor" />
-        <ChartKey tone="border border-dashed border-teal-700 bg-teal-50" label="Trusted zone" />
-        <ChartKey tone="bg-slate-900 text-white" label="M median" />
+      <div className="grid grid-cols-3 border-t bg-card text-[10px] font-medium text-muted-foreground">
+        <ChartKey
+          tone="bg-[var(--mobile-chart-corridor)] ring-[var(--mobile-chart-corridor-border)]"
+          label="Playable corridor"
+        />
+        <ChartKey
+          tone="border border-dashed border-[var(--mobile-chart-zone)] bg-[var(--status-success-surface)]"
+          label="Trusted zone"
+        />
+        <ChartKey
+          tone="bg-[var(--mobile-chart-median)] text-[var(--mobile-chart-surface)]"
+          label="M median"
+        />
       </div>
     </div>
   );
@@ -441,7 +478,7 @@ function MobileFlightVisual({
 
   return (
     <div
-      className="overflow-hidden rounded-2xl border bg-slate-50 shadow-inner"
+      className="overflow-hidden rounded-2xl border bg-[var(--mobile-chart-surface)] shadow-inner"
       data-mobile-flight-layout
     >
       <svg
@@ -450,7 +487,7 @@ function MobileFlightVisual({
         role="img"
         aria-label="Mobile flight chart"
       >
-        <rect width={width} height={height} fill="#f8fafc" />
+        <rect width={width} height={height} fill="var(--mobile-chart-surface)" />
         {[0, maxApex / 2, maxApex].map((tick) => (
           <g key={tick}>
             <line
@@ -458,27 +495,34 @@ function MobileFlightVisual({
               x2={width - frame.right}
               y1={y(tick)}
               y2={y(tick)}
-              stroke="#cbd5e1"
+              stroke="var(--mobile-chart-grid)"
               strokeDasharray={tick === 0 ? undefined : "3 5"}
             />
             <text
               x={frame.left - 7}
               y={y(tick) + 4}
               textAnchor="end"
-              className="fill-slate-500 text-[10px]"
+              fill="var(--mobile-chart-axis)"
+              className="text-[10px]"
             >
               {Math.round(tick)}
             </text>
           </g>
         ))}
-        <text x={frame.left} y={14} className="fill-slate-500 text-[10px] font-medium">
+        <text
+          x={frame.left}
+          y={14}
+          fill="var(--mobile-chart-axis)"
+          className="text-[10px] font-medium"
+        >
           apex ft
         </text>
         <text
           x={width / 2}
           y={height - 10}
           textAnchor="middle"
-          className="fill-slate-500 text-[10px] font-medium"
+          fill="var(--mobile-chart-axis)"
+          className="text-[10px] font-medium"
         >
           carry yd
         </text>
@@ -500,11 +544,11 @@ function MobileFlightVisual({
                 cy={y(0)}
                 r={flightMode === "average" ? 6 : 5}
                 fill={mobileClubColor(point.clubType)}
-                stroke="white"
+                stroke="var(--mobile-chart-marker-stroke)"
                 strokeWidth={2}
                 role="button"
                 tabIndex={0}
-                className="cursor-pointer outline-none focus-visible:stroke-slate-950 focus-visible:stroke-[4px]"
+                className="cursor-pointer outline-none focus-visible:stroke-[var(--focus-ring)] focus-visible:stroke-[4px]"
                 aria-label={`${point.clubLabel} flight ${formatMeasure(point.carryYd, "yd")}`}
                 onClick={() => onSelect(point)}
                 onKeyDown={(event) => {
@@ -514,14 +558,20 @@ function MobileFlightVisual({
             </g>
           );
         })}
-        <text x={frame.left} y={height - 25} className="fill-slate-500 text-[10px]">
+        <text
+          x={frame.left}
+          y={height - 25}
+          fill="var(--mobile-chart-axis)"
+          className="text-[10px]"
+        >
           0
         </text>
         <text
           x={width - frame.right}
           y={height - 25}
           textAnchor="end"
-          className="fill-slate-500 text-[10px]"
+          fill="var(--mobile-chart-axis)"
+          className="text-[10px]"
         >
           {maxCarry}
         </text>
@@ -580,25 +630,25 @@ function niceCeiling(value: number, step: number) {
 }
 
 function mobileClubColor(clubType: string) {
-  const colors: Record<string, string> = {
-    driver: "#2563eb",
-    "3w": "#7c3aed",
-    "5w": "#a21caf",
-    "4h": "#0891b2",
-    "5h": "#0f766e",
-    "4i": "#16a34a",
-    "5i": "#65a30d",
-    "6i": "#ca8a04",
-    "7i": "#f97316",
-    "8i": "#dc2626",
-    "9i": "#be123c",
-    pw: "#7c3aed",
-    gw: "#4f46e5",
-    aw: "#0284c7",
-    sw: "#059669",
-    lw: "#64748b",
+  const series: Record<string, number> = {
+    driver: 2,
+    "3w": 3,
+    "5w": 4,
+    "4h": 2,
+    "5h": 1,
+    "4i": 1,
+    "5i": 5,
+    "6i": 4,
+    "7i": 3,
+    "8i": 2,
+    "9i": 3,
+    pw: 3,
+    gw: 2,
+    aw: 2,
+    sw: 1,
+    lw: 5,
   };
-  return colors[clubType] ?? "#334155";
+  return `var(--mobile-chart-series-${series[clubType] ?? 1})`;
 }
 
 function AccessibleShotTable({

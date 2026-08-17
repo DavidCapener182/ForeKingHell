@@ -139,17 +139,28 @@ function reportEntry(written, slug) {
     mappedFeatures: written.manifest.quality.mappedFeatures,
     terrainKind: written.manifest.terrain.kind,
     terrainResolutionM: written.manifest.terrain.resolutionM,
+    previewImageUrl: written.manifest.terrain.imagery?.url ?? null,
     warnings: written.manifest.quality.warnings,
     assets: written.assets,
   };
 }
 
 function generatedRegistrySource(entries) {
-  const imports = entries
-    .map((entry, index) => `import manifest${index} from "./${entry.slug}.json";`)
+  const metadata = entries
+    .map((entry) => {
+      const value = {
+        courseId: entry.courseId,
+        name: entry.name,
+        grade: entry.qualityGrade,
+        previewImageUrl: entry.previewImageUrl ?? null,
+        mappedHoles: entry.mappedHoles,
+        terrainResolutionM: entry.terrainResolutionM ?? null,
+      };
+      return `  ${JSON.stringify(entry.courseId)}: ${JSON.stringify(value)},`;
+    })
     .join("\n");
-  const mappings = entries
-    .map((entry, index) => `  ${JSON.stringify(entry.courseId)}: manifest${index},`)
+  const loaders = entries
+    .map((entry) => `  ${JSON.stringify(entry.courseId)}: () => import("./${entry.slug}.json"),`)
     .join("\n");
-  return `${imports}\n\nexport const localCourseTwinManifestsByCourseId: Record<string, unknown> = {\n${mappings}\n};\n`;
+  return `import type { CourseTwinManifest } from "@/lib/course-twin-contract";\n\nexport type LocalCourseTwinMetadata = {\n  courseId: string;\n  name: string;\n  grade: "A" | "B" | "C" | "D";\n  previewImageUrl: string | null;\n  mappedHoles: number;\n  terrainResolutionM: number | null;\n};\n\n/** Lightweight catalogue data used by directory and availability queries. */\nexport const localCourseTwinMetadataByCourseId: Record<string, LocalCourseTwinMetadata> = {\n${metadata}\n};\n\nconst manifestLoaders: Record<string, () => Promise<unknown>> = {\n${loaders}\n};\n\n/** Loads one complete manifest on demand, keeping the catalogue out of the base server module. */\nexport async function loadLocalCourseTwinManifest(courseId: string): Promise<CourseTwinManifest | null> {\n  const loader = manifestLoaders[courseId];\n  if (!loader) return null;\n  const importedManifest = await loader();\n  return ((importedManifest as { default?: CourseTwinManifest }).default ?? importedManifest) as CourseTwinManifest;\n}\n`;
 }

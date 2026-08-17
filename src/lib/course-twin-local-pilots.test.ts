@@ -5,7 +5,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import aintree from "@/generated/course-twins/aintree-v1.json";
-import { localCourseTwinManifestsByCourseId } from "@/generated/course-twins/local-catalogue";
+import {
+  loadLocalCourseTwinManifest,
+  localCourseTwinMetadataByCourseId,
+} from "@/generated/course-twins/local-catalogue";
 
 describe("checked-in Course Twin pilot packages", () => {
   it("ships Aintree as a real nine-hole LiDAR and aerial package", () => {
@@ -39,7 +42,7 @@ describe("checked-in Course Twin pilot packages", () => {
     expect(imagery.byteLength).toBeGreaterThan(100_000);
   });
 
-  it("ships and verifies the complete 20-to-50-course production pilot catalogue", () => {
+  it("ships and verifies the complete 20-to-50-course production pilot catalogue", async () => {
     const report = JSON.parse(
       readFileSync(
         resolve("tools/course-twin-builder/catalog/uk-first-wave-packages.json"),
@@ -81,16 +84,21 @@ describe("checked-in Course Twin pilot packages", () => {
         rejected: [],
       },
     });
-    expect(Object.keys(localCourseTwinManifestsByCourseId).length).toBeGreaterThanOrEqual(
+    expect(Object.keys(localCourseTwinMetadataByCourseId).length).toBeGreaterThanOrEqual(
       report.completed,
     );
 
     for (const entry of report.packages) {
-      const manifest = localCourseTwinManifestsByCourseId[entry.courseId] as typeof aintree;
-      expect(manifest.course.id).toBe(entry.courseId);
-      expect(manifest.quality.grade).toBe(entry.qualityGrade);
-      expect(manifest.holes).toHaveLength(entry.mappedHoles);
-      expect(manifest.terrain.heightmap).toMatchObject({ width: 513, height: 513 });
+      const metadata = localCourseTwinMetadataByCourseId[entry.courseId];
+      expect(metadata).toMatchObject({
+        courseId: entry.courseId,
+        grade: entry.qualityGrade,
+        mappedHoles: entry.mappedHoles,
+      });
+      const manifest = await loadLocalCourseTwinManifest(entry.courseId);
+      expect(manifest?.course.id).toBe(entry.courseId);
+      expect(manifest?.holes).toHaveLength(entry.mappedHoles);
+      expect(manifest?.terrain.heightmap).toMatchObject({ width: 513, height: 513 });
       for (const asset of entry.assets) {
         const bytes = readFileSync(resolve("public/course-twins", entry.slug, asset.fileName));
         expect(bytes.byteLength).toBe(asset.byteLength);

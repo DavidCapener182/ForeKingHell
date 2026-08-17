@@ -17,6 +17,7 @@ Configure a branch ruleset for the repository default branch with these settings
 - require these status checks:
   - `Format, lint, typecheck, test, build` from `.github/workflows/ci.yml`;
   - `Migrations from zero` from `.github/workflows/ci.yml`;
+  - `Core Playwright` from `.github/workflows/ci.yml`;
   - `codeql` from `.github/workflows/security.yml`;
   - `secret-scan` from `.github/workflows/security.yml`;
   - `dependency-review` for pull requests from `.github/workflows/security.yml`.

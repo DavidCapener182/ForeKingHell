@@ -62,7 +62,8 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("peerBenchmarksLoaded");
     expect(source).toContain("Peer benchmarks are on demand");
     expect(source).toContain("Load peer benchmarks");
-    expect(source).toContain('href="/bag?tab=evidence&peers=1#distance-benchmarks"');
+    expect(source).toContain('loadPeerHref = "/bag?tab=evidence&peers=1#distance-benchmarks"');
+    expect(source).toContain("<Link href={loadPeerHref}");
     expect(source).toContain("Carry, speed and flight benchmarks are loaded.");
     expect(source).toContain("peerBenchmarksLoaded && peerChase");
   });
@@ -90,6 +91,8 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("min-w-max");
     expect(source).toContain("function MobileBenchmarkCarousel");
     expect(source).toContain("data-mobile-benchmark-carousel");
+    expect(source).toContain("<MobileCarouselPagination");
+    expect(source).toContain("slides.length <= 5");
     expect(source).toContain("<CarouselContent");
     expect(source).toContain("basis-[calc(100%-1.5rem)]");
     expect(source).toContain("Swipe between clubs");

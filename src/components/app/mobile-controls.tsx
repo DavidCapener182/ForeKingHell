@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -123,28 +123,134 @@ export function MobileFilterChipGroup({
 }
 
 export type MobilePageTab = MobileControlOption & {
-  href: string;
+  href?: string;
   content: ReactNode;
 };
 
+export type MobilePageTabsMode = "local" | "navigable";
+
 /**
- * Meaningful sections within one companion destination. Content is switched in place and
- * the URL is synchronised with history.replaceState, so the document never reloads.
+ * Shared compact pagination for companion carousels. Small sets get directly selectable dots
+ * with full touch targets; longer sets keep the centre control to a terse position readout.
+ */
+export function MobileCarouselPagination({
+  labels,
+  selectedIndex,
+  onSelect,
+  ariaLabel,
+}: {
+  labels: string[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+  ariaLabel: string;
+}) {
+  if (labels.length === 0) return null;
+
+  if (labels.length > 5) {
+    return (
+      <p className="text-center text-sm font-semibold tabular-nums" aria-live="polite">
+        {selectedIndex + 1} of {labels.length}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-2" aria-label={ariaLabel}>
+      {labels.map((label, index) => (
+        <button
+          key={`${label}-${index}`}
+          type="button"
+          aria-label={`Show ${label}`}
+          aria-current={selectedIndex === index ? "step" : undefined}
+          onClick={() => onSelect(index)}
+          className="grid size-11 place-items-center rounded-full"
+        >
+          <span
+            className={cn(
+              "block size-2 rounded-full transition-[background-color,transform] duration-150",
+              selectedIndex === index ? "scale-125 bg-primary" : "bg-muted-foreground/35",
+            )}
+            aria-hidden
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function resolveMobilePageTabValue(tabs: MobilePageTab[], currentHref: string) {
+  const currentUrl = new URL(currentHref, "http://localhost");
+  const candidates = tabs.flatMap((tab) => {
+    if (tab.disabled || !tab.href) return [];
+
+    const url = new URL(tab.href, currentUrl);
+    return [{ tab, url }];
+  });
+  const exactMatch = candidates.find(
+    ({ url }) =>
+      url.pathname === currentUrl.pathname &&
+      url.search === currentUrl.search &&
+      url.hash === currentUrl.hash,
+  );
+
+  if (exactMatch) return exactMatch.tab.value;
+
+  if (currentUrl.hash) {
+    const hashMatch = candidates.find(
+      ({ url }) => url.pathname === currentUrl.pathname && url.hash === currentUrl.hash,
+    );
+
+    if (hashMatch) return hashMatch.tab.value;
+  }
+
+  const queryMatch = candidates
+    .filter(({ url }) => {
+      if (url.pathname !== currentUrl.pathname || url.searchParams.size === 0) return false;
+
+      return [...url.searchParams].every(
+        ([key, candidateValue]) => currentUrl.searchParams.get(key) === candidateValue,
+      );
+    })
+    .sort((left, right) => right.url.searchParams.size - left.url.searchParams.size)[0];
+
+  return queryMatch?.tab.value ?? null;
+}
+
+/**
+ * Meaningful sections within one companion destination. Local mode keeps presentation state out
+ * of the URL. Navigable mode creates browser-history entries and restores the matching panel on
+ * Back/Forward without reloading the document.
  */
 export function MobilePageTabs({
   initialValue,
   tabs,
   ariaLabel,
   className,
+  mode = "navigable",
 }: {
   initialValue: string;
   tabs: MobilePageTab[];
   ariaLabel: string;
   className?: string;
+  mode?: MobilePageTabsMode;
 }) {
   const [value, setValue] = useState(initialValue);
   const panelId = useId();
   const selected = tabs.find((tab) => tab.value === value) ?? tabs[0];
+
+  useEffect(() => {
+    if (mode !== "navigable") return;
+
+    const syncValueFromUrl = () => {
+      const urlValue = resolveMobilePageTabValue(tabs, window.location.href);
+      if (urlValue) setValue(urlValue);
+    };
+
+    syncValueFromUrl();
+    window.addEventListener("popstate", syncValueFromUrl);
+
+    return () => window.removeEventListener("popstate", syncValueFromUrl);
+  }, [mode, tabs]);
 
   if (!selected) return null;
 
@@ -168,7 +274,9 @@ export function MobilePageTabs({
               disabled={tab.disabled}
               onClick={() => {
                 setValue(tab.value);
-                window.history.replaceState(window.history.state, "", tab.href);
+                if (mode === "navigable" && tab.href) {
+                  window.history.pushState(window.history.state, "", tab.href);
+                }
               }}
               className={cn(
                 "focus-aaa relative min-h-11 flex-1 shrink-0 touch-manipulation whitespace-nowrap px-3 py-2 text-sm font-semibold outline-none transition-[color,transform] duration-150 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",

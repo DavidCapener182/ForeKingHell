@@ -75,12 +75,14 @@ import {
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
 import { MobileTopBar } from "@/components/mobile-sports";
 import { getDb } from "@/db/client";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { reportServerFailure } from "@/lib/server-observability";
 import {
   buildConfidenceHeatMaps,
   buildShotPatternOverlaySummaries,
   buildSmartBagBuilder,
   buildWedgeMatrix,
+  calculateBagReadinessScore,
   type ConfidenceHeatMap,
   type ShotPatternOverlaySummary,
   type SmartBagBuilder,
@@ -225,10 +227,26 @@ const PEER_PERCENTILE_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
 
 type PageProps = {
   searchParams?: Promise<{
+    mobile?: string | string[];
     peers?: string | string[];
     tab?: string | string[];
+    view?: string | string[];
   }>;
 };
+
+type MobileBagPrimaryView = "yardages" | "target";
+
+function parseMobileBagPrimaryView(value: string | string[] | undefined): MobileBagPrimaryView {
+  const candidate = Array.isArray(value) ? value[0] : value;
+
+  return candidate === "target" ? "target" : "yardages";
+}
+
+function shouldLoadMobileBenchmarks(value: string | string[] | undefined) {
+  const candidate = Array.isArray(value) ? value[0] : value;
+
+  return candidate === "benchmarks";
+}
 
 const BAG_WORKSPACE_TABS = [
   "distances",
@@ -281,7 +299,77 @@ const bagShotSelect = {
 };
 
 export default async function BagPage({ searchParams }: PageProps) {
-  const resolvedSearchParams = (await searchParams) ?? {};
+  const [resolvedSearchParams, surface] = await Promise.all([
+    searchParams ?? Promise.resolve({}),
+    getRequestAppSurface(),
+  ]);
+
+  if (surface === "companion") {
+    return <BagCompanionPage searchParams={resolvedSearchParams} />;
+  }
+
+  return <BagWorkbenchPage searchParams={resolvedSearchParams} />;
+}
+
+async function BagCompanionPage({
+  searchParams,
+}: {
+  searchParams: Awaited<NonNullable<PageProps["searchParams"]>>;
+}) {
+  const mobileView = parseMobileBagPrimaryView(searchParams.view);
+  const mobileBenchmarksLoaded = shouldLoadMobileBenchmarks(searchParams.mobile);
+  const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(searchParams.peers);
+  const [bag, profile] = await Promise.all([
+    getBag({ scope: mobileBenchmarksLoaded ? "companion-benchmarks" : "companion" }),
+    ensureCurrentSocialProfile(),
+  ]);
+  const gappingRows = buildGappingRows(bag, {
+    handicapBand: profile.handicapBand,
+  });
+  const benchmarkRows = mobileBenchmarksLoaded ? buildBenchmarkRows(bag) : [];
+  const peerBenchmarkSummary =
+    benchmarkRows.length > 0 && peerBenchmarksLoaded
+      ? await getPeerBenchmarkSummary(benchmarkRows)
+      : emptyPeerSummary();
+  const stockConfidenceClubs = bag.filter(shouldShowInCarryGapping);
+  const averageConfidence =
+    stockConfidenceClubs.length === 0
+      ? 0
+      : Math.round(
+          stockConfidenceClubs.reduce((total, club) => total + club.stock.confidenceScore, 0) /
+            stockConfidenceClubs.length,
+        );
+  const trustedClubCount = gappingRows.filter(
+    (row) => row.sampleSize >= 10 && row.confidenceScore >= 75,
+  ).length;
+
+  return (
+    <PageShell contentClassName="overflow-x-clip pb-5">
+      <div className={styles.mobileSurface} data-bag-mobile-surface>
+        <MobileBagPage
+          bag={bag}
+          gappingRows={gappingRows}
+          benchmarkRows={benchmarkRows}
+          peerBenchmarkSummary={peerBenchmarkSummary}
+          peerBenchmarksLoaded={peerBenchmarksLoaded}
+          mobileBenchmarksLoaded={mobileBenchmarksLoaded}
+          initialView={mobileView}
+          quickBagClubs={buildQuickBagClubs(bag)}
+          accountId={bag[0]?.userId ?? "current"}
+          bagScore={calculateBagReadinessScore(bag, gappingRows)}
+          averageConfidence={averageConfidence}
+          trustedClubCount={trustedClubCount}
+        />
+      </div>
+    </PageShell>
+  );
+}
+
+async function BagWorkbenchPage({
+  searchParams: resolvedSearchParams,
+}: {
+  searchParams: Awaited<NonNullable<PageProps["searchParams"]>>;
+}) {
   const activeTab = parseBagWorkspaceTab(resolvedSearchParams.tab);
   const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);
   const [bag, profile, featureData, speedSummary, equipmentContext] = await Promise.all([
@@ -334,25 +422,9 @@ export default async function BagPage({ searchParams }: PageProps) {
     handicapBand: profile.handicapBand,
   });
   const clubIntelligenceItems = buildClubIntelligenceItems(bag);
-  const quickBagClubs = buildQuickBagClubs(bag);
   const historyTimeline = buildBagHistoryTimeline(bag, equipmentContext);
   return (
     <PageShell contentClassName="overflow-x-clip pb-5">
-      <div className={styles.mobileSurface} data-bag-mobile-surface>
-        <MobileBagPage
-          bag={bag}
-          gappingRows={gappingRows}
-          benchmarkRows={benchmarkRows}
-          peerBenchmarkSummary={peerBenchmarkSummary}
-          peerBenchmarksLoaded={peerBenchmarksLoaded}
-          quickBagClubs={quickBagClubs}
-          accountId={bag[0]?.userId ?? "current"}
-          bagScore={smartBagBuilder.currentScore}
-          averageConfidence={averageConfidence}
-          trustedClubCount={trustedClubCount}
-        />
-      </div>
-
       <div className={styles.desktopSurface} data-bag-desktop-surface>
         <DesktopWorkbenchLayout scope="bag">
           <BagHealthHero
@@ -502,6 +574,8 @@ function MobileBagPage({
   benchmarkRows,
   peerBenchmarkSummary,
   peerBenchmarksLoaded,
+  mobileBenchmarksLoaded,
+  initialView,
   quickBagClubs,
   accountId,
   bagScore,
@@ -513,6 +587,8 @@ function MobileBagPage({
   benchmarkRows: ClubBenchmarkRow[];
   peerBenchmarkSummary: ClubBenchmarkPeerSummary;
   peerBenchmarksLoaded: boolean;
+  mobileBenchmarksLoaded: boolean;
+  initialView: MobileBagPrimaryView;
   quickBagClubs: QuickBagClub[];
   accountId: string;
   bagScore: number;
@@ -538,25 +614,15 @@ function MobileBagPage({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Bag map</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Know every number</h1>
         <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-          Swipe through your playable yardages, then open benchmarks or the target finder when you
-          need them.
+          Swipe through playable yardages or find the club that covers your next target.
         </p>
       </div>
 
       <MobileBagSummary
-        items={[
-          { label: "Bag score", value: `${bagScore}/100`, detail: "Overall bag readiness" },
-          {
-            label: "Trusted numbers",
-            value: `${trustedClubCount} of ${gappingRows.length}`,
-            detail: "Clubs ready for course decisions",
-          },
-          {
-            label: "Average confidence",
-            value: `${averageConfidence}%`,
-            detail: "Across your measured bag",
-          },
-        ]}
+        bagScore={bagScore}
+        trustedClubCount={trustedClubCount}
+        gappingClubCount={gappingRows.length}
+        averageConfidence={averageConfidence}
       />
 
       {bag.length === 0 ? (
@@ -572,13 +638,14 @@ function MobileBagPage({
         />
       ) : (
         <MobilePageTabs
-          initialValue="yardages"
+          initialValue={initialView}
           ariaLabel="Bag views"
+          mode="navigable"
           tabs={[
             {
               value: "yardages",
               label: "Yardages",
-              href: "#bag-yardages",
+              href: "/bag?view=yardages#bag-yardages",
               content: (
                 <div id="bag-yardages" className="min-w-0">
                   <MobileBagYardageCarousel clubs={mobileYardages} />
@@ -586,23 +653,9 @@ function MobileBagPage({
               ),
             },
             {
-              value: "benchmarks",
-              label: "Benchmarks",
-              href: "#bag-benchmarks",
-              content: (
-                <section id="bag-benchmarks" className="min-w-0">
-                  <DistanceBenchmarkPanel
-                    rows={benchmarkRows}
-                    peerSummary={peerBenchmarkSummary}
-                    peerBenchmarksLoaded={peerBenchmarksLoaded}
-                  />
-                </section>
-              ),
-            },
-            {
               value: "target",
               label: "Target",
-              href: "#bag-quick",
+              href: "/bag?view=target#bag-quick",
               content: (
                 <section id="bag-quick" className="min-w-0 space-y-3">
                   <SectionHeader
@@ -616,32 +669,74 @@ function MobileBagPage({
           ]}
         />
       )}
+
+      {bag.length > 0 ? (
+        <section id="bag-benchmarks" className="grid min-w-0 gap-3 scroll-mt-24">
+          <div className="rounded-[var(--mobile-radius-md)] border border-border bg-card px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground">Benchmarks</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">
+                  Optional fitting context when you want to compare carry, speed and flight.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="shrink-0">
+                <Link
+                  href={
+                    mobileBenchmarksLoaded
+                      ? `/bag?view=${initialView}`
+                      : `/bag?view=${initialView}&mobile=benchmarks#bag-benchmarks`
+                  }
+                  prefetch={false}
+                >
+                  {mobileBenchmarksLoaded ? "Hide" : "Open"}
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {mobileBenchmarksLoaded ? (
+            <DistanceBenchmarkPanel
+              rows={benchmarkRows}
+              peerSummary={peerBenchmarkSummary}
+              peerBenchmarksLoaded={peerBenchmarksLoaded}
+              loadPeerHref={`/bag?view=${initialView}&mobile=benchmarks&peers=1#bag-benchmarks`}
+            />
+          ) : null}
+        </section>
+      ) : null}
     </section>
   );
 }
 
 function MobileBagSummary({
-  items,
+  bagScore,
+  trustedClubCount,
+  gappingClubCount,
+  averageConfidence,
 }: {
-  items: Array<{ label: string; value: string; detail: string }>;
+  bagScore: number;
+  trustedClubCount: number;
+  gappingClubCount: number;
+  averageConfidence: number;
 }) {
   return (
-    <div className="ios-grouped-list" aria-label="Bag summary">
-      {items.map((item) => (
-        <div
-          key={item.label}
-          className="ios-grouped-row grid min-h-[4.25rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5"
-        >
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground">{item.label}</p>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.detail}</p>
-          </div>
-          <p className="shrink-0 text-xl font-bold tracking-tight tabular-nums text-foreground">
-            {item.value}
-          </p>
-        </div>
-      ))}
-    </div>
+    <p
+      className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--mobile-radius-md)] bg-card px-4 py-2.5 text-sm font-semibold tabular-nums text-foreground"
+      aria-label={`Bag score ${bagScore} out of 100, ${trustedClubCount} of ${gappingClubCount} trusted, ${averageConfidence} percent average confidence`}
+    >
+      <span>Bag {bagScore}</span>
+      <span aria-hidden className="text-muted-foreground">
+        ·
+      </span>
+      <span>
+        {trustedClubCount}/{gappingClubCount} trusted
+      </span>
+      <span aria-hidden className="text-muted-foreground">
+        ·
+      </span>
+      <span>{averageConfidence}% confidence</span>
+    </p>
   );
 }
 
@@ -1031,9 +1126,13 @@ async function getBagSpeedSummary(): Promise<SpeedCentreSummary | null> {
   }
 }
 
-async function getBag() {
+type BagDataScope = "companion" | "companion-benchmarks" | "workbench";
+
+async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
   const db = getDb();
   const userId = await requireCurrentUserId();
+  const includeBenchmarkEvidence = scope !== "companion";
+  const includePersonalBest = scope === "workbench";
 
   const clubRows = await db
     .select({
@@ -1085,7 +1184,7 @@ async function getBag() {
   );
 
   const personalBestRows =
-    allClubMemberIds.length > 0
+    includePersonalBest && allClubMemberIds.length > 0
       ? await db
           .select({
             clubId: shots.clubId,
@@ -1176,21 +1275,25 @@ async function getBag() {
       .from(rankedClubShots)
       .where(lte(rankedClubShots.clubRank, RECENT_SHOTS_PER_CLUB))
       .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber)),
-    db
-      .select({
-        ...rankedBagShotSelect,
-      })
-      .from(rankedClubShots)
-      .where(lte(rankedClubShots.clubRank, EVOLUTION_SHOTS_PER_CLUB))
-      .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber)),
-    db
-      .select({
-        clubType: shots.clubType,
-        value: count(),
-      })
-      .from(shots)
-      .where(and(eq(shots.userId, userId), inArray(shots.clubId, allClubMemberIds)))
-      .groupBy(shots.clubType),
+    includeBenchmarkEvidence
+      ? db
+          .select({
+            ...rankedBagShotSelect,
+          })
+          .from(rankedClubShots)
+          .where(lte(rankedClubShots.clubRank, EVOLUTION_SHOTS_PER_CLUB))
+          .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber))
+      : Promise.resolve([]),
+    includeBenchmarkEvidence
+      ? db
+          .select({
+            clubType: shots.clubType,
+            value: count(),
+          })
+          .from(shots)
+          .where(and(eq(shots.userId, userId), inArray(shots.clubId, allClubMemberIds)))
+          .groupBy(shots.clubType)
+      : Promise.resolve([]),
   ]);
 
   const recentShotsByClubType = new Map<string, typeof recentShotRows>();

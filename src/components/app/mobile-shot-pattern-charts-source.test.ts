@@ -35,6 +35,16 @@ describe("mobile shot-pattern chart surface", () => {
     expect(source).toContain("target line");
     expect(source).toContain("Trusted zone");
     expect(source).toContain("M median");
+    expect(source).toContain("compact ? 220 : 420");
+    expect(source).not.toContain('compact && "max-h-52"');
+  });
+
+  it("derives mobile SVG colours from semantic theme tokens", () => {
+    expect(source).toContain("--mobile-chart-surface");
+    expect(source).toContain("--mobile-chart-grid");
+    expect(source).toContain("--mobile-chart-series-");
+    expect(source).not.toContain('fill="#f8fafc"');
+    expect(source).not.toContain('stroke="#cbd5e1"');
   });
 
   it("keeps summary, accessible desktop rows and tappable mobile shot detail explicit", () => {

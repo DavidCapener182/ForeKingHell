@@ -31,9 +31,12 @@ describe("repository governance", () => {
     expect(ci).toContain("merge_group:");
     expect(ci).toContain("permissions:\n  contents: read");
     expect(ci).toContain("npm audit --audit-level=high");
+    expect(ci).toContain("name: Core Playwright");
+    expect(ci).toContain("tests/e2e/ci-core.spec.ts");
     expect(security).toContain("merge_group:");
     expect(protection).toContain("require a pull request before merging");
     expect(protection).toContain("Migrations from zero");
+    expect(protection).toContain("Core Playwright");
     expect(protection).toContain("dependency-review");
     expect(protection).toContain("do not allow bypass");
   });

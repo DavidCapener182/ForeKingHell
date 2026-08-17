@@ -63,8 +63,9 @@ function MobileLeaderboardBoard({
   players: MobileLeaderboardPlayer[];
 }) {
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? players : players.slice(0, 5);
   const currentRank = players.findIndex((player) => player.isCurrentUser) + 1;
+  const visible = expanded ? players : players.slice(0, 5);
+  const currentPlayer = !expanded && currentRank > 5 ? players[currentRank - 1] : null;
 
   return (
     <div className="grid gap-4">
@@ -90,53 +91,24 @@ function MobileLeaderboardBoard({
         <div className="grid grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] gap-2 border-b bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground">
           <span>Rank</span>
           <span>Golfer</span>
-          <span className="text-right">Score</span>
+          <span className="text-right">XP</span>
           <span className="text-right">Move</span>
         </div>
         <div className="divide-y">
           {visible.length > 0 ? (
-            visible.map((player, index) => {
-              const rank = index + 1;
-              return (
-                <div
-                  key={player.userId}
-                  className={cn(
-                    "grid min-h-14 grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] items-center gap-2 px-3 py-3",
-                    player.isCurrentUser && "bg-primary/10",
-                    !player.isCurrentUser && rank === 1 && "bg-[var(--status-warning-surface)]",
-                    !player.isCurrentUser && rank > 1 && rank <= 3 && "bg-muted/55",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "tabular-nums",
-                      rank <= 3
-                        ? "text-lg font-semibold text-foreground"
-                        : "text-sm font-medium text-muted-foreground",
-                    )}
-                  >
-                    {rank}
-                  </span>
-                  <div className="min-w-0">
-                    <Link
-                      href={player.isCurrentUser ? "/profile" : `/profile/${player.username}`}
-                      className="focus-aaa block min-h-11 truncate py-3 text-sm font-semibold outline-none"
-                    >
-                      {player.displayName}
-                    </Link>
-                    {player.isCurrentUser ? (
-                      <span className="text-[11px] font-medium text-primary">You</span>
-                    ) : null}
+            <>
+              {visible.map((player, index) => (
+                <LeaderboardRow key={player.userId} player={player} rank={index + 1} />
+              ))}
+              {currentPlayer ? (
+                <>
+                  <div className="px-3 py-2" role="separator" aria-label="Your position">
+                    <span className="block border-t border-dashed border-border" />
                   </div>
-                  <span className="text-right text-sm font-semibold tabular-nums">
-                    {new Intl.NumberFormat("en-GB").format(player.monthlyXp)}
-                  </span>
-                  <span className="text-right text-xs text-muted-foreground tabular-nums">
-                    {rankMovementLabel(player.rankMovement)}
-                  </span>
-                </div>
-              );
-            })
+                  <LeaderboardRow player={currentPlayer} rank={currentRank} />
+                </>
+              ) : null}
+            </>
           ) : (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               No opted-in golfers are ranked yet.
@@ -155,6 +127,47 @@ function MobileLeaderboardBoard({
           {expanded ? "Show top 5" : `View all ${players.length} golfers`}
         </Button>
       ) : null}
+    </div>
+  );
+}
+
+function LeaderboardRow({ player, rank }: { player: MobileLeaderboardPlayer; rank: number }) {
+  return (
+    <div
+      className={cn(
+        "grid min-h-14 grid-cols-[2rem_minmax(0,1fr)_auto_2.25rem] items-center gap-2 px-3 py-3",
+        player.isCurrentUser && "bg-primary/10",
+        !player.isCurrentUser && rank === 1 && "bg-[var(--status-warning-surface)]",
+        !player.isCurrentUser && rank > 1 && rank <= 3 && "bg-muted/55",
+      )}
+    >
+      <span
+        className={cn(
+          "tabular-nums",
+          rank <= 3
+            ? "text-lg font-semibold text-foreground"
+            : "text-sm font-medium text-muted-foreground",
+        )}
+      >
+        {rank}
+      </span>
+      <div className="min-w-0">
+        <Link
+          href={player.isCurrentUser ? "/profile" : `/profile/${player.username}`}
+          className="focus-aaa block min-h-11 truncate py-3 text-sm font-semibold outline-none"
+        >
+          {player.displayName}
+        </Link>
+        {player.isCurrentUser ? (
+          <span className="text-[11px] font-medium text-primary">You</span>
+        ) : null}
+      </div>
+      <span className="text-right text-sm font-semibold tabular-nums">
+        {new Intl.NumberFormat("en-GB").format(player.monthlyXp)}
+      </span>
+      <span className="text-right text-xs text-muted-foreground tabular-nums">
+        {rankMovementLabel(player.rankMovement)}
+      </span>
     </div>
   );
 }
