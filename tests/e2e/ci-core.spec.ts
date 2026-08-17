@@ -47,7 +47,7 @@ async function expectCompanionRoute(
   path: RegExp,
 ) {
   await expect(page).toHaveURL(path);
-  await expect(page.locator("[data-mobile-route-label]")).toHaveText(routeLabel, {
+  await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
     timeout: 60_000,
   });
   await expect(page.locator("main#main-content:visible").first()).toBeVisible();
