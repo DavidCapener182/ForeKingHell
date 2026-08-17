@@ -258,6 +258,7 @@ function BestMatchCard({
       className="gap-0 rounded-2xl bg-primary py-0 text-primary-foreground shadow-[0_18px_40px_rgba(11,122,59,0.22)] ring-primary/30"
       data-quick-bag-best-match
       data-quick-bag-answer
+      style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
     >
       <CardContent className="grid gap-4 p-5">
         <div className="flex items-center justify-between gap-3">

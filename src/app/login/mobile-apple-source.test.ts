@@ -65,12 +65,14 @@ describe("mobile Apple login", () => {
     expect(formSource).toContain("focus-visible:ring-[var(--ios-tint)]");
   });
 
-  it("preserves the authentication choices and factual account-data copy", () => {
+  it("preserves the supported authentication choices and factual account-data copy", () => {
     expect(formSource).toContain("action={passwordAction}");
     expect(formSource).toContain("action={signInWithOAuthAction}");
     expect(formSource).toContain("action={magicAction}");
     expect(formSource).toContain('value="google"');
-    expect(formSource).toContain('value="apple"');
+    expect(formSource).not.toContain('value="apple"');
+    expect(formSource).not.toContain("Continue with Apple");
+    expect(pageSource).not.toContain("Google, Apple");
     expect(pageSource).toContain("Your shot data stays scoped to your account.");
     expect(pageSource).toContain("Read the data notice");
     expect(pageSource).toContain('aria-label="Read the data notice"');

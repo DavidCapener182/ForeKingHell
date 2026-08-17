@@ -3962,7 +3962,7 @@ function MobileCourseTwinChrome({
         type="single"
         value={mode === "strategy" || mode === "replay" || mode === "play" ? mode : ""}
         onValueChange={(value) => value && onSelectMode(value as RuntimeMode)}
-        spacing={0}
+        spacing={0.5}
         aria-label="Course Twin mode"
       >
         {modes.map((item) => {

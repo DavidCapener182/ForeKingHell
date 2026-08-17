@@ -334,10 +334,17 @@ describe("Course Twin route boundaries", () => {
       expect(sceneSource).toContain(`>${label}<`);
     }
     const mobileModeDockSource = mobileStylesSource.slice(
-      mobileStylesSource.indexOf(".modeDock {"),
+      mobileStylesSource.indexOf(".modeDock {\n    position: absolute;"),
       mobileStylesSource.indexOf(".modeButton {"),
     );
     expect(mobileModeDockSource).not.toContain("overflow-x");
+    expect(mobileModeDockSource).toContain("overflow: hidden;");
+    const mobileChromeSource = sceneSource.slice(
+      sceneSource.indexOf("function MobileCourseTwinChrome"),
+      sceneSource.indexOf("function MobileSummaryTray"),
+    );
+    expect(mobileChromeSource).toContain("spacing={0.5}");
+    expect(mobileChromeSource).not.toContain("spacing={0}");
     expect(mobileStylesSource).toContain("min-height: 2.75rem;");
     expect(mobileStylesSource).toContain("touch-action: manipulation;");
     expect(mobileStylesSource).toContain("@media (max-height: 500px) and (orientation: landscape)");

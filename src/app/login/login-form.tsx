@@ -109,15 +109,6 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           {next ? <input type="hidden" name="next" value={next} /> : null}
           <OAuthButton icon={<GoogleIcon />} label="Continue with Google" />
         </form>
-        <form action={signInWithOAuthAction}>
-          <input type="hidden" name="provider" value="apple" />
-          {next ? <input type="hidden" name="next" value={next} /> : null}
-          <OAuthButton
-            icon={<AppleIcon />}
-            label="Continue with Apple"
-            className="border-[var(--ios-label)] bg-[var(--ios-label)] text-[var(--ios-background)] hover:bg-[var(--ios-label)] hover:text-[var(--ios-background)] dark:border-[var(--ios-label)] dark:bg-[var(--ios-label)] dark:hover:bg-[var(--ios-label)] lg:border-black lg:bg-black lg:text-white lg:hover:bg-black/90 lg:hover:text-white"
-          />
-        </form>
       </div>
 
       <div className="grid gap-3 rounded-[14px] bg-[var(--ios-secondary-surface)] p-4 lg:rounded-lg lg:border lg:border-slate-200 lg:bg-slate-50 lg:p-3">
@@ -222,14 +213,6 @@ function GoogleIcon() {
         fill="#EA4335"
         d="M12 6c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.7 9.7 0 0 0 12 2a10 10 0 0 0-8.9 5.6l3.3 2.5C7.2 7.8 9.4 6 12 6Z"
       />
-    </svg>
-  );
-}
-
-function AppleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" fill="currentColor" aria-hidden="true">
-      <path d="M16.7 12.8c0-2.1 1.7-3.1 1.8-3.2-1-1.5-2.6-1.7-3.1-1.7-1.3-.1-2.6.8-3.3.8s-1.7-.8-2.8-.8c-1.4 0-2.7.8-3.5 2.1-1.5 2.7-.4 6.7 1.1 8.8.7 1.1 1.6 2.3 2.8 2.3 1.1 0 1.5-.7 2.8-.7s1.7.7 2.8.7c1.2 0 1.9-1.1 2.7-2.2.8-1.2 1.1-2.3 1.1-2.4 0-.1-2.3-.9-2.4-3.7ZM14.6 6.5c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2-.5 2.6-1.3Z" />
     </svg>
   );
 }

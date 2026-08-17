@@ -7,6 +7,7 @@ const drawer = readFileSync(
   join(process.cwd(), "src/app/quick-bag/quick-bag-club-drawer.tsx"),
   "utf8",
 );
+const page = readFileSync(join(process.cwd(), "src/app/(app)/quick-bag/page.tsx"), "utf8");
 
 describe("Quick Bag companion composition", () => {
   it("puts a large target input and one-tap distances first", () => {
@@ -28,6 +29,12 @@ describe("Quick Bag companion composition", () => {
     expect(source).toContain("rankedClubs.slice(1, 4)");
   });
 
+  it("keeps the recommended club legible in the Clubhouse desktop theme", () => {
+    expect(source).toContain(
+      'style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}',
+    );
+  });
+
   it("uses a separate club-search mode", () => {
     expect(source).toContain('{ value: "club", label: "Search club" }');
     expect(source).toContain("MobileSegmentedControl");
@@ -45,5 +52,15 @@ describe("Quick Bag companion composition", () => {
     expect(drawer).toContain("<LateralDispersionGraphic club={club} />");
     expect(drawer).toContain("Latest evidence");
     expect(drawer).toContain("env(safe-area-inset-bottom)");
+  });
+});
+
+describe("Quick Bag responsive route", () => {
+  it("renders an explicit desktop surface alongside the mobile companion", () => {
+    expect(page).toContain("<MobileAppShell");
+    expect(page).toContain("data-quick-bag-desktop");
+    expect(page).toContain('<section className="hidden gap-5 lg:grid"');
+    expect(page).toContain("<PageHeader");
+    expect(page.match(/<QuickBagClient/g)).toHaveLength(2);
   });
 });

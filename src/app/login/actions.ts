@@ -145,7 +145,7 @@ export async function signInWithOAuthAction(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
   const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
-  if (provider !== "google" && provider !== "apple") {
+  if (provider !== "google") {
     redirect("/login?error=Unsupported%20auth%20provider");
   }
 

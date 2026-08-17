@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { getDb } from "@/db/client";
 import { clubs, shots, stockYardages } from "@/db/schema";
 import { formatClubType } from "@/lib/club-format";
@@ -21,6 +21,19 @@ export default async function QuickBagPage() {
         <MobileTopBar title="Quick Bag" />
         <QuickBagClient clubs={clubs} accountId={userId} />
       </MobileAppShell>
+
+      <section className="hidden gap-5 lg:grid" data-quick-bag-desktop>
+        <PageHeader
+          eyebrow={
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+              On-course reference
+            </p>
+          }
+          title="Quick Bag"
+          description="Enter a target distance or search your bag to check the latest measured play number, carry range and miss pattern."
+        />
+        <QuickBagClient clubs={clubs} accountId={userId} />
+      </section>
     </PageShell>
   );
 }
