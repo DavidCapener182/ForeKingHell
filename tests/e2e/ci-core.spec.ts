@@ -18,16 +18,18 @@ test.describe("clean-database companion smoke", () => {
     await expect(primaryNavigation).toBeVisible();
 
     for (const destination of [
-      { label: "Practice", path: /\/practice(?:\?|$)/ },
-      { label: "Play", path: /\/play(?:\?|$)/ },
-      { label: "Sessions", path: /\/sessions(?:\?|$)/ },
+      { navigationLabel: "Practice", routeLabel: "Practice Planner", path: /\/practice(?:\?|$)/ },
+      { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
+      { navigationLabel: "Sessions", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
     ]) {
-      await primaryNavigation.getByRole("link", { name: destination.label, exact: true }).click();
-      await expectCompanionRoute(page, destination.label, destination.path);
+      await primaryNavigation
+        .getByRole("link", { name: destination.navigationLabel, exact: true })
+        .click();
+      await expectCompanionRoute(page, destination.routeLabel, destination.path);
     }
 
     await page.goto("/bag", { waitUntil: "commit" });
-    await expectCompanionRoute(page, "Bag", /\/bag(?:\?|$)/);
+    await expectCompanionRoute(page, "Bag map", /\/bag(?:\?|$)/);
     await expect(
       page
         .getByText("No clubs imported yet", { exact: true })
@@ -35,7 +37,7 @@ test.describe("clean-database companion smoke", () => {
     ).toBeVisible();
 
     await page.getByRole("link", { name: "Import launch-monitor data" }).click();
-    await expectCompanionRoute(page, "Import", /\/import(?:\?|$)/);
+    await expectCompanionRoute(page, "Import data", /\/import(?:\?|$)/);
   });
 });
 
@@ -48,6 +50,6 @@ async function expectCompanionRoute(
   await expect(page.locator("[data-mobile-route-label]")).toHaveText(routeLabel, {
     timeout: 60_000,
   });
-  await expect(page.locator("main#main-content")).toBeVisible();
+  await expect(page.locator("main#main-content:visible").first()).toBeVisible();
   await expect(page.locator("body")).not.toContainText(/Internal Server Error|Application error/i);
 }
