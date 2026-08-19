@@ -9,25 +9,29 @@ const pageSource = readSource("src/app/page.tsx");
 const marketingCssSource = readSource("src/components/marketing/marketing.module.css");
 const storySource = readSource("src/components/marketing/scroll-product-story.tsx");
 const zoomSource = readSource("src/components/marketing/scroll-zoom-frame.tsx");
+const heroSource = readSource("src/components/marketing/hero-product-stage.tsx");
+const tourSource = readSource("src/components/marketing/sample-product-tour.tsx");
+const mobileShowcaseSource = readSource("src/components/marketing/mobile-product-showcase.tsx");
+
+const compactRule = "@media (max-width: 767px)";
+const mobileStart = marketingCssSource.indexOf(compactRule);
+const desktopMarketingCss = marketingCssSource.slice(0, mobileStart);
+const mobileMarketingCss = marketingCssSource.slice(mobileStart);
 
 describe("public homepage mobile design source contract", () => {
   it("scopes the Apple system stack to the exact compact breakpoint", () => {
-    const compactRule = "@media (max-width: 767px)";
-    const mobileStart = marketingCssSource.indexOf(compactRule);
     expect(mobileStart).toBeGreaterThan(0);
 
-    const desktopSource = marketingCssSource.slice(0, mobileStart);
-    const mobileSource = marketingCssSource.slice(mobileStart);
     const appleStack =
       '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
 
-    expect(desktopSource).toContain("font-family: var(--font-ui-source), sans-serif;");
-    expect(desktopSource).not.toContain("--font-mobile-apple");
-    expect(desktopSource).not.toContain(appleStack);
-    expect(mobileSource).toMatch(
+    expect(desktopMarketingCss).toContain("font-family: var(--font-ui-source), sans-serif;");
+    expect(desktopMarketingCss).not.toContain("--font-mobile-apple");
+    expect(desktopMarketingCss).not.toContain(appleStack);
+    expect(mobileMarketingCss).toMatch(
       /--font-mobile-apple:\s+-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial,\s+sans-serif/,
     );
-    expect(mobileSource).toContain("font-family: var(--font-mobile-apple);");
+    expect(mobileMarketingCss).toContain("font-family: var(--font-mobile-apple);");
     expect(marketingCssSource).not.toContain("@media (max-width: 768px)");
   });
 
@@ -41,6 +45,67 @@ describe("public homepage mobile design source contract", () => {
     expect(marketingCssSource).toContain("outline: 3px solid #17824f;");
     expect(marketingCssSource).toContain("100dvh");
     expect(marketingCssSource).toContain("100svh");
+  });
+
+  it("keeps a safe-area-aware primary beta action reachable without covering the footer", () => {
+    expect(heroSource).toContain("data-mobile-sticky-cta");
+    expect(heroSource).toContain("className={styles.mobileStickyCtaButton}");
+    expect(heroSource).toContain("href={marketingJoinBetaHref}");
+    expect(desktopMarketingCss).toMatch(/\.mobileStickyCtaDock\s*{\s*display: none;/);
+    expect(mobileMarketingCss).toMatch(
+      /\.mobileStickyCtaDock\s*{[\s\S]*?position: fixed;[\s\S]*?bottom: 0;[\s\S]*?env\(safe-area-inset-bottom\)/,
+    );
+    expect(mobileMarketingCss).toContain(
+      "padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));",
+    );
+    expect(mobileMarketingCss).toContain("background: var(--mobile-grouped);");
+    expect(mobileMarketingCss).toContain("background: var(--marketing-green);");
+  });
+
+  it("turns the compact sample chapters into an accessible swipe rail with a next-card peek", () => {
+    expect(tourSource).toContain('aria-roledescription="carousel"');
+    expect(tourSource).toContain('aria-roledescription="slide"');
+    expect(tourSource).toContain("Swipe or use arrow keys to explore each chapter");
+    expect(tourSource).toContain('event.key === "ArrowRight"');
+    expect(tourSource).toContain('event.key === "ArrowLeft"');
+    expect(tourSource).toContain('event.key === "Home"');
+    expect(tourSource).toContain('event.key === "End"');
+    expect(tourSource).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
+    expect(tourSource).toContain("controlledMobileScrollTargetRef");
+    expect(tourSource).toContain("scheduleMobileRailCommit");
+    expect(tourSource).toContain("commitStepFromMobileRail");
+    expect(tourSource).toContain("onScrollEnd=");
+    expect(tourSource).toContain("data-tour-step-status");
+    expect(tourSource).not.toContain("nextStep !== step");
+    expect(tourSource).toContain("<Tabs");
+    expect(desktopMarketingCss).toMatch(/\.tourMobileExperience\s*{\s*display: none;/);
+    expect(mobileMarketingCss).toMatch(/\.tourDesktopExperience\s*{\s*display: none;/);
+    expect(mobileMarketingCss).toContain("scroll-snap-type: x mandatory;");
+    expect(mobileMarketingCss).toContain("scroll-snap-stop: always;");
+    expect(mobileMarketingCss).toContain("flex: 0 0 calc(100% - 2.75rem);");
+    expect(mobileMarketingCss).toContain("background: var(--mobile-surface);");
+  });
+
+  it("keeps the opening proposition compact and shows the established companion destinations", () => {
+    expect(mobileMarketingCss).toContain("min-height: clamp(26rem, 118vw, 30rem);");
+    expect(mobileMarketingCss).not.toContain("min-height: clamp(33rem, 140vw, 38rem);");
+    expect(heroSource).toContain("Turn every measured shot into a better golf game.");
+    expect(mobileShowcaseSource).toContain("Today, Practice, Play, Sessions and More");
+    expect(mobileShowcaseSource).toContain("Today · Demo data");
+    expect(mobileShowcaseSource).not.toContain("Home, Sessions, Analyse, Practice and More");
+
+    const destinationMarkup = [
+      "<span>Today</span>",
+      "<span>Practice</span>",
+      "<span>Play</span>",
+      "<span>Sessions</span>",
+      "/> More",
+    ];
+    const destinationPositions = destinationMarkup.map((markup) =>
+      mobileShowcaseSource.indexOf(markup),
+    );
+    expect(destinationPositions.every((position) => position > 0)).toBe(true);
+    expect(destinationPositions).toEqual([...destinationPositions].sort((a, b) => a - b));
   });
 
   it("removes compact scroll choreography and supplies motion and material fallbacks", () => {
@@ -58,6 +123,9 @@ describe("public homepage mobile design source contract", () => {
     );
     expect(marketingCssSource).toContain("animation: none;");
     expect(marketingCssSource).toContain("transition: none;");
+    expect(mobileMarketingCss).toMatch(
+      /prefers-reduced-motion: reduce[\s\S]*?\.tourSwipeRail\s*{\s*scroll-behavior: auto;/,
+    );
   });
 
   it("keeps the redesign inside the public marketing CSS module", () => {

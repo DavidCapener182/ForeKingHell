@@ -63,6 +63,7 @@ const directUserOwned = [
   "importRows",
   "importFiles",
   "shots",
+  "shotReviewEvents",
   "stockYardages",
   "ballModels",
   "clubEquipmentHistory",
@@ -250,6 +251,7 @@ const allSchemaDatasets = [
   "importRows",
   "importFiles",
   "shots",
+  "shotReviewEvents",
   "stockYardages",
   "ballModels",
   "clubEquipmentHistory",
@@ -420,7 +422,7 @@ function categoryFor(dataset: string): DataGovernanceCategory {
   )
     return "reference";
   if (
-    /^(clubs|courses|weather|sessions|shots|stock|ball|clubEquipment|equipment|strokes|speed|golfTraining|practice|weekly|achievement|xp)/.test(
+    /^(clubs|courses|weather|sessions|shots|shotReview|stock|ball|clubEquipment|equipment|strokes|speed|golfTraining|practice|weekly|achievement|xp)/.test(
       dataset,
     )
   )

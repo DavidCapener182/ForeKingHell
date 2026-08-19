@@ -87,6 +87,69 @@ describe("practice planner", () => {
     expect(plan.blocks.some((block) => block.type === "random")).toBe(true);
   });
 
+  it("adds a separate no-ball speed block without losing any of an 80-ball range plan", () => {
+    const plannerContext = context();
+    plannerContext.speed.readinessStatus = "ready";
+    plannerContext.speed.readinessLabel = "READY";
+    plannerContext.speed.projectCoachMessage =
+      "Ball speed is the next ingredient; carry remains the outcome.";
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "speed",
+    });
+
+    expect(totalBalls(plan)).toBe(80);
+    expect(plan.summary).toContain("12 no-ball swings");
+    expect(
+      plan.blocks.find((block) => block.title === "R-Speed ceiling block")?.ballCount,
+    ).toBeNull();
+    expect(plan.blocks.some((block) => block.title === "Driver transfer")).toBe(true);
+    expect(plan.blocks.at(-1)?.title).toBe("Random course finish");
+  });
+
+  it("removes maximum-speed work when Speed Readiness says recover", () => {
+    const plannerContext = context();
+    plannerContext.speed.readinessStatus = "recover";
+    plannerContext.speed.readinessLabel = "RECOVER";
+    plannerContext.speed.recommendation = "Technical Driver only — no maximum-speed work today.";
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "speed",
+    });
+
+    expect(totalBalls(plan)).toBe(80);
+    expect(plan.blocks.some((block) => block.title === "Speed work removed")).toBe(true);
+    expect(plan.blocks.some((block) => block.title === "R-Speed ceiling block")).toBe(false);
+    expect(plan.blocks.some((block) => block.title === "Technical Driver")).toBe(true);
+  });
+
+  it("uses a controlled baseline rather than maximum blocks while readiness is building", () => {
+    const plannerContext = context();
+    plannerContext.speed.readinessStatus = "build";
+    plannerContext.speed.readinessLabel = "BUILD";
+    plannerContext.speed.recommendation =
+      "Build the baseline with one controlled speed block and transfer shots.";
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "speed",
+      ballCount: null,
+      timeMinutes: 20,
+      energy: "normal",
+      intent: "speed",
+    });
+
+    expect(plan.title).toBe("Speed transfer baseline");
+    expect(plan.blocks.some((block) => block.title === "Controlled speed baseline")).toBe(true);
+    expect(plan.blocks.map((block) => `${block.title} ${block.drill}`).join(" ")).not.toContain(
+      "maximum",
+    );
+  });
+
   it("keeps high recent load away from overspeed work", () => {
     const plan = generatePracticePlan(context({ highRecentLoad: true }), {
       sessionType: "speed",

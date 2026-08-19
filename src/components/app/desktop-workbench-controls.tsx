@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { resolveVisibleColumnIds } from "@/components/app/desktop-workbench-columns";
 import { csvCell } from "@/lib/csv";
 import { cn } from "@/lib/utils";
 
@@ -131,11 +132,8 @@ export function DesktopWorkbenchControls({
         visibleColumnsKey,
         columns.map((column) => column.id),
       );
-      const validIds = new Set(columns.map((column) => column.id));
-      const nextVisible = storedVisible.filter((id) => validIds.has(id));
-      setVisibleColumnIds(
-        new Set(nextVisible.length > 0 ? nextVisible : columns.map((column) => column.id)),
-      );
+      const nextVisible = resolveVisibleColumnIds(columns, storedVisible);
+      setVisibleColumnIds(new Set(nextVisible));
 
       const storedDensity = window.localStorage.getItem(densityStorageKey);
       setDensity(storedDensity === "compact" ? "compact" : "comfortable");
@@ -245,8 +243,7 @@ export function DesktopWorkbenchControls({
     let appliedDensity: "comfortable" | "compact" | null = null;
 
     if (view.visibleColumnIds?.length) {
-      const validIds = new Set(columns.map((column) => column.id));
-      const nextVisible = view.visibleColumnIds.filter((id) => validIds.has(id));
+      const nextVisible = resolveVisibleColumnIds(columns, view.visibleColumnIds);
 
       if (nextVisible.length > 0) {
         setVisibleColumnIds(new Set(nextVisible));

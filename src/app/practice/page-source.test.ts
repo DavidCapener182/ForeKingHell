@@ -6,6 +6,10 @@ const source = readFileSync(
   join(process.cwd(), "src/app/(app)/practice/practice-workbench-page.tsx"),
   "utf8",
 );
+const companionPageSource = readFileSync(
+  join(process.cwd(), "src/app/(app)/practice/practice-companion-page.tsx"),
+  "utf8",
+);
 const routeSource = readFileSync(join(process.cwd(), "src/app/(app)/practice/page.tsx"), "utf8");
 const companionSource = readFileSync(
   join(process.cwd(), "src/app/practice/practice-companion-client.tsx"),
@@ -100,5 +104,26 @@ describe("practice planner desktop workflow", () => {
     );
     expect(plannerSource).toContain("<Card");
     expect(plannerSource).toContain("text-muted-foreground");
+  });
+
+  it("puts the compact speed decision above companion imagery for speed sessions", () => {
+    expect(companionSource).toContain("function SpeedDevelopmentCompanionReadout");
+    expect(companionSource).toContain("data-speed-development-readout");
+    expect(companionSource).toContain("context.speed.readinessScore");
+    expect(companionSource).toContain("context.speed.projectLabel");
+    expect(companionSource.indexOf("<SpeedDevelopmentCompanionReadout")).toBeLessThan(
+      companionSource.indexOf("/assets/companion/practice-hero.avif"),
+    );
+  });
+
+  it("honours an explicit Speed Centre handoff instead of reopening an unrelated saved plan", () => {
+    expect(source).toContain(
+      'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
+    );
+    expect(source).toContain("const initialSavedPlan = explicitSpeedRequest");
+    expect(companionPageSource).toContain(
+      'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
+    );
+    expect(companionPageSource).toContain("!explicitSpeedRequest &&");
   });
 });

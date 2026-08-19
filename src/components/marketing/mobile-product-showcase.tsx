@@ -9,7 +9,7 @@ export function MobileProductShowcase() {
         <p className={styles.eyebrow}>Built for the range and the course</p>
         <h2 id="mobile-showcase-title">A mobile golf workspace, not a shrunk desktop screen.</h2>
         <p>
-          Home, Sessions, Analyse, Practice and More keep the important routes familiar. Import,
+          Today, Practice, Play, Sessions and More keep the important routes familiar. Import,
           planning and course preparation stay one action away.
         </p>
         <div className={styles.mobileBullets}>
@@ -29,7 +29,7 @@ export function MobileProductShowcase() {
           <span>9:41</span>
           <span>● ● ●</span>
         </div>
-        <p className={styles.phoneEyebrow}>Home · Demo data</p>
+        <p className={styles.phoneEyebrow}>Today · Demo data</p>
         <h3>Driver start line</h3>
         <p>Mixed evidence · 46 clean shots</p>
         <div className={styles.phoneCard}>
@@ -38,10 +38,10 @@ export function MobileProductShowcase() {
           <ArrowRight className="size-4" />
         </div>
         <div className={styles.phoneNav}>
-          <span>Home</span>
-          <span>Sessions</span>
-          <span>Analyse</span>
+          <span>Today</span>
           <span>Practice</span>
+          <span>Play</span>
+          <span>Sessions</span>
           <span>
             <Plus className="size-4" /> More
           </span>

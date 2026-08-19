@@ -9,6 +9,7 @@ import {
   eq,
   gt,
   gte,
+  inArray,
   isNull,
   lte,
   not,
@@ -41,7 +42,7 @@ import {
   type ShotMiniDispersionPoint,
   type ShotTableSort,
 } from "@/app/shots/shots-master-detail-table";
-import { clubs, importRows, sessions, shots } from "@/db/schema";
+import { clubs, importRows, sessions, shotReviewEvents, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
@@ -51,6 +52,12 @@ import {
   recordEligibility,
   type RecordEligibilityReason,
 } from "@/lib/shot-records";
+import {
+  effectiveShotReviewStatus,
+  shotReviewStatusLabel,
+  type ShotReviewSource,
+  type ShotReviewStatus,
+} from "@/lib/shot-review";
 import { reportServerFailure } from "@/lib/server-observability";
 
 export const dynamic = "force-dynamic";
@@ -418,8 +425,26 @@ type SavedShotRow = {
   shotShape: string | null;
   shotCategory: string;
   qualityTag: string | null;
+  reviewStatus: ShotReviewStatus;
+  reviewReason: string | null;
+  reviewConfidence: number | null;
+  reviewSource: ShotReviewSource | null;
+  reviewedAt: Date | null;
   clubDataEstType: string | null;
   sourceRawJson: Record<string, string>;
+  reviewEvents: SavedShotReviewEvent[];
+};
+
+type SavedShotReviewEvent = {
+  id: string;
+  previousStatus: ShotReviewStatus;
+  status: ShotReviewStatus;
+  reason: string;
+  confidence: number;
+  source: ShotReviewSource;
+  previousQualityTag: string | null;
+  resultingQualityTag: string | null;
+  createdAt: Date;
 };
 
 async function getShotDatabase(filters: ShotFilters) {
@@ -506,6 +531,11 @@ async function getLiveShotDatabase(filters: ShotFilters) {
         shotShape: shots.shotShape,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
+        reviewReason: shots.reviewReason,
+        reviewConfidence: shots.reviewConfidence,
+        reviewSource: shots.reviewSource,
+        reviewedAt: shots.reviewedAt,
         clubDataEstType: shots.clubDataEstType,
         sourceRawJson: shots.sourceRawJson,
       })
@@ -523,6 +553,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
         sideCarryYd: shots.sideCarryYd,
         totalYd: shots.totalYd,
         qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
         shotCategory: shots.shotCategory,
         sessionSource: sessions.source,
       })
@@ -533,6 +564,40 @@ async function getLiveShotDatabase(filters: ShotFilters) {
       .limit(90),
   ]);
 
+  const reviewEventRows =
+    savedShots.length > 0
+      ? await db
+          .select({
+            id: shotReviewEvents.id,
+            shotId: shotReviewEvents.shotId,
+            previousStatus: shotReviewEvents.previousStatus,
+            status: shotReviewEvents.status,
+            reason: shotReviewEvents.reason,
+            confidence: shotReviewEvents.confidence,
+            source: shotReviewEvents.source,
+            previousQualityTag: shotReviewEvents.previousQualityTag,
+            resultingQualityTag: shotReviewEvents.resultingQualityTag,
+            createdAt: shotReviewEvents.createdAt,
+          })
+          .from(shotReviewEvents)
+          .where(
+            and(
+              eq(shotReviewEvents.userId, userId),
+              inArray(
+                shotReviewEvents.shotId,
+                savedShots.map((shot) => shot.id),
+              ),
+            ),
+          )
+          .orderBy(desc(shotReviewEvents.createdAt))
+      : [];
+  const reviewEventsByShotId = new Map<string, SavedShotReviewEvent[]>();
+  for (const event of reviewEventRows) {
+    const current = reviewEventsByShotId.get(event.shotId) ?? [];
+    current.push(event);
+    reviewEventsByShotId.set(event.shotId, current);
+  }
+
   return {
     stats: {
       shotCount: shotCount?.value ?? 0,
@@ -541,7 +606,10 @@ async function getLiveShotDatabase(filters: ShotFilters) {
       clubCount: clubRows.filter((club) => isTrackedClubType(club.type)).length,
     },
     sessionSummaries: sessionRows,
-    savedShots,
+    savedShots: savedShots.map((shot) => ({
+      ...shot,
+      reviewEvents: reviewEventsByShotId.get(shot.id) ?? [],
+    })),
     dispersionShots,
     totalFilteredShots: filteredCount?.value ?? 0,
     clubsForFilter: [...new Set(clubRows.map((club) => club.type))].filter(isTrackedClubType),
@@ -701,10 +769,16 @@ function buildShotTableSorts(filters: ShotFilters): ShotTableSort[] {
 }
 
 function serializeShotForMasterDetail(shot: SavedShotRow): ShotMasterDetailRow {
+  const reviewStatus = effectiveShotReviewStatus({
+    reviewStatus: shot.reviewStatus,
+    qualityTag: shot.qualityTag,
+    shotCategory: shot.shotCategory,
+  });
   const eligibility = recordEligibility({
     carryYd: shot.carryYd,
     totalYd: shot.totalYd,
     qualityTag: shot.qualityTag,
+    reviewStatus,
     shotCategory: shot.shotCategory,
     sessionSource: shot.sessionSource,
   });
@@ -743,6 +817,27 @@ function serializeShotForMasterDetail(shot: SavedShotRow): ShotMasterDetailRow {
       ? formatSessionType(shot.shotShape)
       : inferShotShape(shot.sideCarryYd),
     qualityTagLabel: shot.qualityTag ? formatSessionType(shot.qualityTag) : "--",
+    reviewStatus,
+    reviewStatusLabel: shotReviewStatusLabel(reviewStatus),
+    reviewReason: shot.reviewReason,
+    reviewConfidenceLabel: formatConfidence(shot.reviewConfidence),
+    reviewSourceLabel: shot.reviewSource ? formatSessionType(shot.reviewSource) : "--",
+    reviewedAtLabel: shot.reviewedAt ? formatDateTime(shot.reviewedAt) : "--",
+    reviewEvents: shot.reviewEvents.map((event) => ({
+      id: event.id,
+      previousStatusLabel: shotReviewStatusLabel(event.previousStatus),
+      statusLabel: shotReviewStatusLabel(event.status),
+      reason: event.reason,
+      confidenceLabel: formatConfidence(event.confidence),
+      sourceLabel: formatSessionType(event.source),
+      previousQualityTagLabel: event.previousQualityTag
+        ? formatSessionType(event.previousQualityTag)
+        : "None",
+      resultingQualityTagLabel: event.resultingQualityTag
+        ? formatSessionType(event.resultingQualityTag)
+        : "None",
+      createdAtLabel: formatDateTime(event.createdAt),
+    })),
     evidenceStatus: eligibility.trustedEligible ? "trusted" : "untrusted",
     evidenceReasons: eligibility.reasons.map(formatEligibilityReason),
     sideTone: sideCarryTone(shot.sideCarryYd),
@@ -761,6 +856,7 @@ function serializeMiniDispersionPoint(shot: {
   sideCarryYd: number;
   totalYd: number | null;
   qualityTag: string | null;
+  reviewStatus: ShotReviewStatus;
   shotCategory: string;
   sessionSource: string;
 }): ShotMiniDispersionPoint {
@@ -797,6 +893,8 @@ function formatEligibilityReason(reason: RecordEligibilityReason) {
       return "No usable carry or total distance";
     case "non-positive-distance":
       return "Distance is zero or negative";
+    case "review-status":
+      return "Review status excludes this row";
     case "quality-tag":
       return "Quality flag excludes this row";
     case "shot-category":
@@ -825,6 +923,20 @@ function formatDate(value: Date) {
     month: "short",
     year: "numeric",
   }).format(value);
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(value);
+}
+
+function formatConfidence(value: number | null) {
+  return value === null ? "--" : `${Math.round(value * 100)}%`;
 }
 
 function formatMetric(value: number | null) {

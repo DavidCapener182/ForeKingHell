@@ -38,6 +38,10 @@ describe("dashboard desktop source", () => {
     expect(layoutBlock).toContain("<DashboardSummaryHero");
     expect(layoutBlock).toContain("<ConnectedMetricBar");
     expect(layoutBlock).toContain("<DriverStatusPanel");
+    expect(layoutBlock).toContain("<DashboardSpeedDevelopmentCard");
+    expect(layoutBlock.indexOf("<DashboardSpeedDevelopmentCard")).toBeGreaterThan(
+      layoutBlock.indexOf("<DriverStatusPanel"),
+    );
     expect(layoutBlock).toContain("<StatusTimeline");
     expect(layoutBlock).toContain('title="Current work"');
     expect(source).not.toContain("function TodayCommandBrief");
@@ -111,6 +115,17 @@ describe("dashboard desktop source", () => {
     expect(facePathSelectorSource).not.toMatch(
       /#F7FBF8|#111827|#087A3D|#667085|bg-white|text-white|rgba\(/i,
     );
+  });
+
+  it("uses the shared speed-development summary for a compact Project card", () => {
+    expect(source).toContain('import { getSpeedCoachCardData } from "@/lib/speed-training-data"');
+    expect(source).toContain("getSpeedCoachCardData(userId)");
+    expect(source).toContain("data-dashboard-speed-development");
+    expect(source).toContain('label="Project carry"');
+    expect(source).toContain('label="Next physical target"');
+    expect(source).toContain('label="Next performance target"');
+    expect(source).toContain('label="Speed readiness"');
+    expect(source).toContain('href="/speed"');
   });
 });
 

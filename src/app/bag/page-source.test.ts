@@ -269,6 +269,23 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain('id="distance-benchmarks"');
   });
 
+  it("loads one ranked bag-shot set and derives the recent subset in memory", () => {
+    const bagLoader = source.slice(
+      source.indexOf("async function getBag("),
+      source.indexOf("type BagClub"),
+    );
+
+    expect(bagLoader).toContain(
+      "const [personalBestRows, evolutionShotRows, shotCountRows] = await Promise.all",
+    );
+    expect(bagLoader).toContain("for (const rankedShot of evolutionShotRows)");
+    expect(bagLoader).toContain("if (clubRank <= RECENT_SHOTS_PER_CLUB)");
+    expect(bagLoader).toContain(
+      'type BagShotRow = Omit<(typeof evolutionShotRows)[number], "clubRank">',
+    );
+    expect(bagLoader.match(/\.from\(rankedClubShots\)/g)).toHaveLength(1);
+  });
+
   it("keeps the desktop gapping table open, exportable and reachable as the main table", () => {
     const gappingBlock =
       source.match(/function CarryGappingTable[\s\S]*?function GappingRecommendations/)?.[0] ?? "";

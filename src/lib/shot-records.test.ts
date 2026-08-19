@@ -45,6 +45,48 @@ describe("recordEligibility", () => {
       }),
     ).toMatchObject({ rawEligible: false, trustedEligible: false });
   });
+
+  it.each(["user_excluded", "calibration", "warm_up", "launch_monitor_error"] as const)(
+    "treats %s lifecycle state as excluded even without a compatibility tag",
+    (reviewStatus) => {
+      expect(
+        recordEligibility({
+          carryYd: 280,
+          totalYd: 300,
+          reviewStatus,
+          qualityTag: null,
+          shotCategory: "full",
+          sessionSource: "rapsodo",
+        }),
+      ).toEqual({ rawEligible: true, trustedEligible: false, reasons: ["review-status"] });
+    },
+  );
+
+  it("keeps a clean suggested exclusion eligible until the player accepts it", () => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        reviewStatus: "suggested_exclusion",
+        qualityTag: null,
+        shotCategory: "full",
+        sessionSource: "rapsodo",
+      }),
+    ).toEqual({ rawEligible: true, trustedEligible: true, reasons: [] });
+  });
+
+  it("still excludes a legacy suggested mishit through its retained quality tag", () => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        reviewStatus: "suggested_exclusion",
+        qualityTag: "mishit",
+        shotCategory: "full",
+        sessionSource: "rapsodo",
+      }),
+    ).toEqual({ rawEligible: true, trustedEligible: false, reasons: ["quality-tag"] });
+  });
 });
 
 describe("selectAllTimeRecord", () => {

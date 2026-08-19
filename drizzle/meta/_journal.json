@@ -393,6 +393,13 @@
       "when": 1786738756000,
       "tag": "0055_account_course_favourites",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1787175000000,
+      "tag": "0056_shot_review_lifecycle",
+      "breakpoints": true
     }
   ]
 }

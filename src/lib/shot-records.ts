@@ -1,16 +1,22 @@
+import { isExcludingShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-review";
+
 export const excludedRecordQualityTags = [
   "bad-data",
   "bad_data",
+  "calibration",
   "delete",
   "deleted",
   "exclude",
   "excluded",
   "fat",
   "invalid",
+  "launch-monitor-error",
   "mishit",
   "misread",
   "thin",
   "top",
+  "warm-up",
+  "warmup",
 ] as const;
 
 export const excludedRecordShotCategories = [
@@ -32,6 +38,7 @@ export type RecordEvidenceScope = "raw" | "trusted";
 export type RecordEligibilityReason =
   | "missing-distance"
   | "non-positive-distance"
+  | "review-status"
   | "quality-tag"
   | "shot-category"
   | "manual-source";
@@ -39,6 +46,7 @@ export type RecordEligibilityReason =
 export type RecordShot = {
   carryYd: number | null;
   totalYd: number | null;
+  reviewStatus?: ShotReviewStatus | null;
   qualityTag?: string | null;
   shotCategory?: string | null;
   sessionSource?: string | null;
@@ -68,7 +76,9 @@ export function recordEligibility(shot: RecordShot) {
   const shotCategory = normalizedValue(shot.shotCategory);
   const sessionSource = normalizedValue(shot.sessionSource);
 
-  if (qualityTag && excludedQualityTagSet.has(qualityTag)) {
+  if (isExcludingShotReviewStatus(shot.reviewStatus)) {
+    reasons.push("review-status");
+  } else if (qualityTag && excludedQualityTagSet.has(qualityTag)) {
     reasons.push("quality-tag");
   }
 

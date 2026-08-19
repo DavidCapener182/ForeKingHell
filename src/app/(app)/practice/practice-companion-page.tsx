@@ -26,6 +26,7 @@ export default async function PracticeCompanionPage({
   const userId = await requireCurrentUserId();
   const params = await searchParams;
   const options = practiceCompanionOptions(params);
+  const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed";
   const [context, currentPlan] = await Promise.all([
     getPracticePlannerContext(userId, {
       compactTraining: true,
@@ -34,6 +35,7 @@ export default async function PracticeCompanionPage({
     getCurrentPracticePlanSummary(userId),
   ]);
   const resumable =
+    !explicitSpeedRequest &&
     currentPlan &&
     ["planned", "active", "awaiting_import", "match_found"].includes(currentPlan.status)
       ? currentPlan

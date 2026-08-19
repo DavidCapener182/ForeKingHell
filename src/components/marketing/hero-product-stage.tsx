@@ -134,6 +134,14 @@ export function HeroProductStage() {
           <span>Course plan</span>
         </div>
       </ScrollZoomFrame>
+
+      <div className={styles.mobileStickyCtaDock} data-mobile-sticky-cta>
+        <Button asChild className={styles.mobileStickyCtaButton}>
+          <Link href={marketingJoinBetaHref}>
+            Join the beta <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </Button>
+      </div>
     </section>
   );
 }

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Crosshair,
   Database,
+  Gauge,
   LineChart,
   Target,
   Upload,
@@ -60,6 +61,8 @@ import { formatClubType } from "@/lib/club-format";
 import { getCurrentPracticePlanSummary } from "@/lib/practice-planner";
 import { formatHandicapValue } from "@/lib/round-handicap";
 import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
+import { getSpeedCoachCardData } from "@/lib/speed-training-data";
+import type { SpeedDevelopmentSummary } from "@/lib/speed-development";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -106,10 +109,11 @@ export default async function DashboardPage() {
   }
 
   const userId = await requireCurrentUserId();
-  const [data, featureData, currentPracticePlan] = await Promise.all([
+  const [data, featureData, currentPracticePlan, speedCoachData] = await Promise.all([
     getDashboardData(),
     getFeatureIdeasData(),
     getCurrentPracticePlanSummary(userId),
+    getSpeedCoachCardData(userId),
   ]);
   const pinnedDashboardSections = new Set(data.dashboardPins);
   const primaryAction = data.stats.shotCount > 0 ? "/bag" : "/import";
@@ -236,6 +240,8 @@ export default async function DashboardPage() {
 
         <DriverStatusPanel pathTrend={data.pathTrend} />
 
+        <DashboardSpeedDevelopmentCard development={speedCoachData.development} />
+
         <section className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(20rem,0.7fr)]">
           <DashboardPanel
             title="Current work"
@@ -272,6 +278,126 @@ export default async function DashboardPage() {
         {data.stats.shotCount === 0 ? <DashboardFirstRunOnboarding /> : null}
       </DesktopWorkbenchLayout>
     </PageShell>
+  );
+}
+
+function DashboardSpeedDevelopmentCard({ development }: { development: SpeedDevelopmentSummary }) {
+  const nextIngredient =
+    development.project.ingredients.find((ingredient) => ingredient.status === "needs_work") ??
+    development.project.ingredients.find((ingredient) => ingredient.status === "unmeasured") ??
+    null;
+  const nextLevel = development.ladder.nextLevelMph;
+  const speedIngredient = development.project.ingredients.find(
+    (ingredient) => ingredient.key === "speed",
+  );
+  const ballSpeedIngredient = development.project.ingredients.find(
+    (ingredient) => ingredient.key === "ball_speed",
+  );
+  const currentCarry = development.project.currentBestCarryYd;
+  const carryGap = development.project.gapYd;
+  const nextRecommendedDate = development.readiness.nextRecommendedDateIso
+    ? new Date(development.readiness.nextRecommendedDateIso)
+    : null;
+
+  return (
+    <Card className="overflow-hidden" data-dashboard-speed-development>
+      <CardHeader className="flex-row items-start justify-between gap-4 border-b bg-muted/20 px-6 py-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-xl">{development.project.label}</CardTitle>
+            <StatusPill tone={development.readiness.tone}>{development.readiness.label}</StatusPill>
+          </div>
+          <CardDescription className="mt-1 max-w-4xl leading-6">
+            {development.project.coachMessage}
+          </CardDescription>
+        </div>
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          <Link href="/speed" prefetch={false}>
+            Open Speed Centre
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </CardHeader>
+      <CardContent className="grid gap-3 px-6 py-5 sm:grid-cols-2 xl:grid-cols-4">
+        <SpeedDevelopmentReadout
+          icon={<Target className="size-4" aria-hidden />}
+          label="Project carry"
+          value={
+            currentCarry === null ? "Needs evidence" : `${numberFormatter.format(currentCarry)} yd`
+          }
+          detail={
+            currentCarry === null
+              ? `Add measured driver carry to track the ${development.project.targetCarryYd} yd target.`
+              : carryGap !== null && carryGap > 0
+                ? `${numberFormatter.format(carryGap)} yd to ${development.project.targetCarryYd} yd.`
+                : `${development.project.targetCarryYd} yd target reached in the current evidence.`
+          }
+        />
+        <SpeedDevelopmentReadout
+          icon={<Gauge className="size-4" aria-hidden />}
+          label="Next physical target"
+          value={
+            nextLevel !== null
+              ? `${nextLevel} mph`
+              : speedIngredient
+                ? speedIngredient.target
+                : "Maintain gains"
+          }
+          detail={
+            nextLevel !== null
+              ? "Hold the level across three qualifying speed sessions."
+              : speedIngredient
+                ? `Playing speed: ${speedIngredient.current}.`
+                : "Driver speed target needs measured evidence."
+          }
+        />
+        <SpeedDevelopmentReadout
+          icon={<Crosshair className="size-4" aria-hidden />}
+          label="Next performance target"
+          value={ballSpeedIngredient?.target ?? nextIngredient?.target ?? "Maintain gains"}
+          detail={
+            ballSpeedIngredient
+              ? `Ball speed: ${ballSpeedIngredient.current}.`
+              : nextIngredient
+                ? `${nextIngredient.label}: ${nextIngredient.current}.`
+                : "Every currently measured Project ingredient is on track."
+          }
+        />
+        <SpeedDevelopmentReadout
+          icon={<Gauge className="size-4" aria-hidden />}
+          label="Speed readiness"
+          value={`${development.readiness.score}/100`}
+          detail={`${development.readiness.recommendation}${
+            nextRecommendedDate && Number.isFinite(nextRecommendedDate.getTime())
+              ? ` Next recommended ${formatDate(nextRecommendedDate)}.`
+              : ""
+          }`}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function SpeedDevelopmentReadout({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">{value}</p>
+      <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
+    </div>
   );
 }
 

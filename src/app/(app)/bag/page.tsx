@@ -1183,9 +1183,9 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
     sql`, `,
   );
 
-  const personalBestRows =
+  const personalBestQuery =
     includePersonalBest && allClubMemberIds.length > 0
-      ? await db
+      ? db
           .select({
             clubId: shots.clubId,
             carryYd: sql<number | null>`max(${shots.carryYd})`,
@@ -1208,18 +1208,6 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
           )
           .groupBy(shots.clubId)
       : [];
-  const personalBestByClubId = new Map<
-    string,
-    { carryYd: number | null; totalYd: number | null }
-  >();
-
-  for (const row of personalBestRows) {
-    personalBestByClubId.set(row.clubId, {
-      carryYd: row.carryYd,
-      totalYd: row.totalYd,
-    });
-  }
-
   const rankedClubShots = db
     .select({
       ...bagShotSelect,
@@ -1265,25 +1253,23 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
     sessionType: rankedClubShots.sessionType,
     shotCategory: rankedClubShots.shotCategory,
     qualityTag: rankedClubShots.qualityTag,
+    clubRank: rankedClubShots.clubRank,
   };
 
-  const [recentShotRows, evolutionShotRows, shotCountRows] = await Promise.all([
+  const [personalBestRows, evolutionShotRows, shotCountRows] = await Promise.all([
+    personalBestQuery,
     db
       .select({
         ...rankedBagShotSelect,
       })
       .from(rankedClubShots)
-      .where(lte(rankedClubShots.clubRank, RECENT_SHOTS_PER_CLUB))
+      .where(
+        lte(
+          rankedClubShots.clubRank,
+          includeBenchmarkEvidence ? EVOLUTION_SHOTS_PER_CLUB : RECENT_SHOTS_PER_CLUB,
+        ),
+      )
       .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber)),
-    includeBenchmarkEvidence
-      ? db
-          .select({
-            ...rankedBagShotSelect,
-          })
-          .from(rankedClubShots)
-          .where(lte(rankedClubShots.clubRank, EVOLUTION_SHOTS_PER_CLUB))
-          .orderBy(desc(rankedClubShots.shotAt), desc(rankedClubShots.shotNumber))
-      : Promise.resolve([]),
     includeBenchmarkEvidence
       ? db
           .select({
@@ -1296,18 +1282,32 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
       : Promise.resolve([]),
   ]);
 
-  const recentShotsByClubType = new Map<string, typeof recentShotRows>();
-  for (const shot of recentShotRows) {
-    const existing = recentShotsByClubType.get(shot.clubType) ?? [];
-    existing.push(shot);
-    recentShotsByClubType.set(shot.clubType, existing);
+  const personalBestByClubId = new Map<
+    string,
+    { carryYd: number | null; totalYd: number | null }
+  >();
+
+  for (const row of personalBestRows) {
+    personalBestByClubId.set(row.clubId, {
+      carryYd: row.carryYd,
+      totalYd: row.totalYd,
+    });
   }
 
-  const evolutionShotsByClubType = new Map<string, typeof evolutionShotRows>();
-  for (const shot of evolutionShotRows) {
+  type BagShotRow = Omit<(typeof evolutionShotRows)[number], "clubRank">;
+  const recentShotsByClubType = new Map<string, BagShotRow[]>();
+  const evolutionShotsByClubType = new Map<string, BagShotRow[]>();
+  for (const rankedShot of evolutionShotRows) {
+    const { clubRank, ...shot } = rankedShot;
     const existing = evolutionShotsByClubType.get(shot.clubType) ?? [];
     existing.push(shot);
     evolutionShotsByClubType.set(shot.clubType, existing);
+
+    if (clubRank <= RECENT_SHOTS_PER_CLUB) {
+      const recent = recentShotsByClubType.get(shot.clubType) ?? [];
+      recent.push(shot);
+      recentShotsByClubType.set(shot.clubType, recent);
+    }
   }
 
   const shotCountByClubType = new Map(shotCountRows.map((row) => [row.clubType, row.value]));

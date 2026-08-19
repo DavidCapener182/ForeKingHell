@@ -244,22 +244,12 @@ export async function getTodayPracticeData(
       dateKey = sessionDateKey;
       defaultSessionId = filters.sessionId;
     }
+  } else if (!hasExplicitDate) {
+    dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey, filters.club)) ?? dateKey;
   }
 
-  let bounds = dayBounds(dateKey);
-  let allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
-
-  if (!hasExplicitDate && !filters.sessionId && allTodayRows.length === 0) {
-    const latestDateKey =
-      (await findLatestPracticeDateKey(db, userId, filters.club, MIN_TODAY_SHOTS_FOR_VERDICT)) ??
-      (await findLatestPracticeDateKey(db, userId, filters.club, 1));
-
-    if (latestDateKey) {
-      dateKey = latestDateKey;
-      bounds = dayBounds(dateKey);
-      allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
-    }
-  }
+  const bounds = dayBounds(dateKey);
+  const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
 
   const sessionIds = new Set(allTodayRows.map((shot) => shot.sessionId));
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
@@ -397,16 +387,21 @@ async function findSessionDateKey(db: ReturnType<typeof getDb>, userId: string, 
   return session ? localDateKey(session.date) : null;
 }
 
-async function findLatestPracticeDateKey(
+async function findDefaultPracticeDateKey(
   db: ReturnType<typeof getDb>,
   userId: string,
+  currentDateKey: string,
   clubFilter: string | undefined,
-  minimumShotCount: number,
 ) {
   const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId), eq(clubs.userId, userId)];
   const club = clubFilter && isTrackedClubType(clubFilter) ? clubFilter : "";
   const practiceDateKey = sql<string>`to_char(${shots.shotAt} at time zone 'Europe/London', 'YYYY-MM-DD')`;
   const latestShotAt = sql<Date>`max(${shots.shotAt})`;
+  const datePriority = sql<number>`case
+    when ${practiceDateKey} = ${currentDateKey} then 2
+    when count(${shots.id}) >= ${MIN_TODAY_SHOTS_FOR_VERDICT} then 1
+    else 0
+  end`;
 
   if (club) {
     clauses.push(eq(shots.clubType, club));
@@ -416,15 +411,14 @@ async function findLatestPracticeDateKey(
     .select({
       dateKey: practiceDateKey,
       latestShotAt,
-      shotCount: sql<number>`count(${shots.id})::int`,
+      datePriority,
     })
     .from(shots)
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
     .where(and(...clauses))
     .groupBy(practiceDateKey)
-    .having(sql`count(${shots.id}) >= ${minimumShotCount}`)
-    .orderBy(desc(latestShotAt))
+    .orderBy(desc(datePriority), desc(latestShotAt))
     .limit(1);
 
   return practiceDay?.dateKey ?? null;

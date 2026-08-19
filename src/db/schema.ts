@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -14,6 +16,8 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+
+import type { ShotReviewSource, ShotReviewStatus } from "@/lib/shot-review";
 
 export const users = pgTable("fkh_users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1983,6 +1987,15 @@ export const shots = pgTable(
     courseHoleYards: integer("course_hole_yards"),
     distanceRemainingYd: doublePrecision("distance_remaining_yd"),
     qualityTag: varchar("quality_tag", { length: 40 }),
+    reviewStatus: varchar("review_status", { length: 32 })
+      .$type<ShotReviewStatus>()
+      .notNull()
+      .default("included"),
+    reviewReason: varchar("review_reason", { length: 500 }),
+    reviewConfidence: doublePrecision("review_confidence"),
+    reviewSource: varchar("review_source", { length: 24 }).$type<ShotReviewSource>(),
+    reviewPreviousQualityTag: varchar("review_previous_quality_tag", { length: 40 }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     clubDataEstType: varchar("club_data_est_type", { length: 80 }),
     sourceRawJson: jsonb("source_raw_json").$type<Record<string, string>>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1993,6 +2006,7 @@ export const shots = pgTable(
     index("fkh_shots_user_context_club_idx").on(table.userId, table.playContext, table.clubId),
     index("fkh_shots_user_shot_at_idx").on(table.userId, table.shotAt),
     index("fkh_shots_user_category_idx").on(table.userId, table.shotCategory),
+    index("fkh_shots_user_review_status_idx").on(table.userId, table.reviewStatus, table.shotAt),
     index("fkh_shots_user_session_hole_idx").on(
       table.userId,
       table.sessionId,
@@ -2001,6 +2015,59 @@ export const shots = pgTable(
     index("fkh_shots_session_idx").on(table.sessionId),
     index("fkh_shots_club_type_idx").on(table.clubType),
     index("fkh_shots_shot_at_idx").on(table.shotAt),
+    check(
+      "fkh_shots_review_status_check",
+      sql`${table.reviewStatus} in ('included', 'suggested_exclusion', 'user_excluded', 'restored', 'calibration', 'warm_up', 'launch_monitor_error')`,
+    ),
+    check(
+      "fkh_shots_review_confidence_check",
+      sql`${table.reviewConfidence} is null or (${table.reviewConfidence} >= 0 and ${table.reviewConfidence} <= 1)`,
+    ),
+    check(
+      "fkh_shots_review_source_check",
+      sql`${table.reviewSource} is null or ${table.reviewSource} in ('user', 'system', 'import', 'migration')`,
+    ),
+  ],
+);
+
+export const shotReviewEvents = pgTable(
+  "fkh_shot_review_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    shotId: uuid("shot_id")
+      .notNull()
+      .references(() => shots.id, { onDelete: "cascade" }),
+    previousStatus: varchar("previous_status", { length: 32 }).$type<ShotReviewStatus>().notNull(),
+    status: varchar("status", { length: 32 }).$type<ShotReviewStatus>().notNull(),
+    reason: varchar("reason", { length: 500 }).notNull(),
+    confidence: doublePrecision("confidence").notNull(),
+    source: varchar("source", { length: 24 }).$type<ShotReviewSource>().notNull().default("user"),
+    previousQualityTag: varchar("previous_quality_tag", { length: 40 }),
+    resultingQualityTag: varchar("resulting_quality_tag", { length: 40 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_shot_review_events_user_created_idx").on(table.userId, table.createdAt),
+    index("fkh_shot_review_events_shot_created_idx").on(table.shotId, table.createdAt),
+    check(
+      "fkh_shot_review_events_previous_status_check",
+      sql`${table.previousStatus} in ('included', 'suggested_exclusion', 'user_excluded', 'restored', 'calibration', 'warm_up', 'launch_monitor_error')`,
+    ),
+    check(
+      "fkh_shot_review_events_status_check",
+      sql`${table.status} in ('included', 'suggested_exclusion', 'user_excluded', 'restored', 'calibration', 'warm_up', 'launch_monitor_error')`,
+    ),
+    check(
+      "fkh_shot_review_events_confidence_check",
+      sql`${table.confidence} >= 0 and ${table.confidence} <= 1`,
+    ),
+    check(
+      "fkh_shot_review_events_source_check",
+      sql`${table.source} in ('user', 'system', 'import', 'migration')`,
+    ),
   ],
 );
 

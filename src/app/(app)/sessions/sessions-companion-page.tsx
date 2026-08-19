@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarDays } from "lucide-react";
 
 import { SessionsCompanionList } from "@/app/sessions/sessions-companion-list";
@@ -8,10 +9,22 @@ import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getRecentSessionHistory } from "@/lib/session-history";
+import {
+  resolveSessionHistorySearchParams,
+  sessionHistoryHref,
+  type SessionHistorySearchParamsInput,
+} from "@/lib/session-history-search-params";
 
-export default async function SessionsCompanionPage() {
+export default async function SessionsCompanionPage({
+  searchParams,
+}: {
+  searchParams: SessionHistorySearchParamsInput;
+}) {
   const userId = await requireCurrentUserId();
   const sessions = await getRecentSessionHistory(userId, 24, { includeShotPatterns: false });
+  const resolved = resolveSessionHistorySearchParams(searchParams, sessions);
+
+  if (resolved.changed) redirect(sessionHistoryHref(resolved.query));
 
   return (
     <PageShell>

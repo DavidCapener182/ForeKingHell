@@ -173,6 +173,16 @@ export type PracticePlannerContext = {
     targetSpeedMph: number | null;
     recommendation: string;
     priority: string;
+    readinessScore?: number | null;
+    readinessStatus?: "ready" | "build" | "recover";
+    readinessLabel?: string;
+    nextRecommendedDateIso?: string | null;
+    projectLabel?: string;
+    currentCarryYd?: number | null;
+    targetCarryYd?: number | null;
+    carryGapYd?: number | null;
+    limitingFactor?: string;
+    projectCoachMessage?: string;
   };
   scoring: {
     weakestCategory: string | null;
@@ -539,8 +549,22 @@ export async function getPracticePlannerContext(
       currentSpeedMph: speedData?.summary.currentSpeedMph ?? null,
       targetSpeedMph: speedData?.summary.targetSpeedMph ?? null,
       recommendation:
-        speedData?.summary.prescription.recommendation ?? "Build speed baseline first.",
+        speedData?.development.readiness.recommendation ??
+        speedData?.summary.prescription.recommendation ??
+        "Build speed baseline first.",
       priority: speedData?.summary.prescription.priority ?? "Medium",
+      readinessScore: speedData?.development.readiness.score ?? null,
+      readinessStatus: speedData?.development.readiness.status ?? "build",
+      readinessLabel: speedData?.development.readiness.label ?? "BUILD",
+      nextRecommendedDateIso: speedData?.development.readiness.nextRecommendedDateIso ?? null,
+      projectLabel: speedData?.development.project.label ?? "Project 220",
+      currentCarryYd: speedData?.development.project.currentBestCarryYd ?? null,
+      targetCarryYd: speedData?.development.project.targetCarryYd ?? 220,
+      carryGapYd: speedData?.development.project.gapYd ?? null,
+      limitingFactor: speedData?.development.project.limitingFactor ?? "Build evidence",
+      projectCoachMessage:
+        speedData?.development.project.coachMessage ??
+        "Import driver shots to identify the next carry ingredient.",
     },
     scoring,
   };
@@ -618,16 +642,18 @@ export function buildPracticePriorityList(
   });
 
   if (speedIntent) {
+    const readinessBlocked = context.speed.readinessStatus === "recover";
     items.push({
       key: "speed-driver",
       clubType: "driver",
       label: "Driver speed",
       score:
-        context.trainingLoad.highRecentLoad && !options.facility?.overrideTrainingLoad ? 12 : 72,
+        (context.trainingLoad.highRecentLoad || readinessBlocked) &&
+        !options.facility?.overrideTrainingLoad
+          ? 12
+          : 72,
       certainty: context.speed.currentSpeedMph ? "medium" : "low",
-      reason: context.trainingLoad.highRecentLoad
-        ? "Recent load says speed work should wait."
-        : context.speed.recommendation,
+      reason: context.speed.recommendation,
       drill: "Short overspeed set with full rest, then driver transfer swings.",
       category: "speed",
       roadmap: false,
@@ -668,6 +694,11 @@ export function generateRangePracticePlan(
   priorities = buildPracticePriorityList(context, options),
 ): PracticePlan {
   const totalBalls = normalizeBallCount(options.ballCount ?? 80);
+
+  if (options.intent === "speed") {
+    return generateIntegratedSpeedRangePlan(context, options, priorities, totalBalls);
+  }
+
   const allocation = rangeAllocation(totalBalls);
   const main =
     selectPriority(priorities, (item) => item.category !== "speed") ?? fallbackPriority(context);
@@ -752,6 +783,156 @@ export function generateRangePracticePlan(
     focus: compactFocus([main, secondary, wedge, driver]),
     why: planWhy(context, main, secondary),
     blocks: resequence(blocks),
+  });
+}
+
+function generateIntegratedSpeedRangePlan(
+  context: PracticePlannerContext,
+  options: GeneratePracticePlanOptions,
+  priorities: PracticePriorityItem[],
+  totalBalls: number,
+): PracticePlan {
+  const speedBlocked =
+    (context.trainingLoad.highRecentLoad ||
+      context.speed.readinessStatus === "recover" ||
+      options.energy === "tired" ||
+      options.energy === "niggle") &&
+    !options.facility?.overrideTrainingLoad;
+  const maximumSpeedReady = !speedBlocked && context.speed.readinessStatus === "ready";
+  const warmupBalls = Math.max(3, Math.round(totalBalls * 0.125));
+  const driverBalls = Math.max(3, Math.round(totalBalls * 0.125));
+  const technicalBalls = Math.max(4, Math.round(totalBalls * 0.25));
+  const scoringBalls = Math.max(4, Math.round(totalBalls * 0.25));
+  const finishBalls = Math.max(
+    1,
+    totalBalls - warmupBalls - driverBalls - technicalBalls - scoringBalls,
+  );
+  const technical =
+    selectPriority(
+      priorities,
+      (item) => item.category === "long_game" && item.clubType !== "driver",
+    ) ??
+    selectPriority(priorities, (item) => item.category !== "speed" && item.category !== "driver") ??
+    fallbackPriority(context);
+  const wedge =
+    selectPriority(priorities, (item) => item.category === "wedge") ?? wedgeFallback(context);
+  const targetSpeed = Math.round(
+    context.speed.targetSpeedMph ?? (context.speed.currentSpeedMph ?? 85) + 1,
+  );
+  const blocks: PracticeBlock[] = [
+    block("warmup", "Warm-up", ["pw", "8i", "driver"], warmupBalls, 6, {
+      purpose: "Prepare the body and find centre contact before speed intent appears.",
+      drill: "Build from scoring clubs to three smooth drivers. Add speed gradually.",
+      successTarget: `${Math.ceil(warmupBalls * 0.7)} of ${warmupBalls} playable.`,
+      recordPrompt: "Strike, start line, and body feel.",
+      metric: "playable",
+      target: Math.ceil(warmupBalls * 0.7),
+    }),
+    timeBlock(
+      speedBlocked ? "technical" : maximumSpeedReady ? "speed" : "technical",
+      speedBlocked
+        ? "Speed work removed"
+        : maximumSpeedReady
+          ? "R-Speed ceiling block"
+          : "Controlled speed baseline",
+      ["driver"],
+      6,
+      {
+        purpose: speedBlocked
+          ? "Recovery status is unsuitable for maximum-speed work today."
+          : maximumSpeedReady
+            ? "Raise the movement ceiling without spending range balls."
+            : "Build a controlled speed baseline while readiness evidence develops.",
+        drill: speedBlocked
+          ? "Mobility and six driver rehearsals at 70–80%. No maximum swings."
+          : maximumSpeedReady
+            ? "Twelve no-ball swings in two sets of six with 60–90 seconds rest."
+            : "Eight no-ball swings building to 90–95% with full rest. Do not force a maximum.",
+        successTarget: speedBlocked
+          ? "Finish feeling fresher than you started."
+          : maximumSpeedReady
+            ? `One swing at or above ${targetSpeed} mph; stop after two swings 4% below today’s peak.`
+            : "Eight balanced swings with stable speed and body feel.",
+        recordPrompt: speedBlocked
+          ? "Body feel after the rehearsals."
+          : "Peak, set averages, and the first fatigue warning.",
+        metric: maximumSpeedReady ? "speed" : "rpe",
+        target: speedBlocked ? 5 : maximumSpeedReady ? targetSpeed : 8,
+      },
+    ),
+    block(
+      speedBlocked ? "technical" : "test",
+      speedBlocked ? "Technical Driver" : "Driver transfer",
+      ["driver"],
+      driverBalls,
+      8,
+      {
+        purpose: speedBlocked
+          ? "Keep the driver pattern without adding another high-intensity block."
+          : "Turn the new movement speed into playable ball speed.",
+        drill: speedBlocked
+          ? "Stock drivers at 80%. Keep the same target and routine."
+          : "Full target routine. One ball every 45–60 seconds; speed only counts when playable.",
+        successTarget: `${Math.ceil(driverBalls * 0.6)} of ${driverBalls} playable.`,
+        recordPrompt: "Club speed, ball speed, smash, offline result, and playable count.",
+        metric: "playable",
+        target: Math.ceil(driverBalls * 0.6),
+        maxBigMisses: Math.max(1, Math.floor(driverBalls * 0.2)),
+      },
+    ),
+    block(
+      "technical",
+      `${technical.label} technical block`,
+      [technical.clubType ?? "5i"],
+      technicalBalls,
+      10,
+      {
+        purpose: technical.reason,
+        drill: technical.drill,
+        successTarget: `${Math.ceil(technicalBalls * 0.65)} of ${technicalBalls} inside the planned window.`,
+        recordPrompt: "Start line, carry window, and big misses.",
+        metric: "playable",
+        target: Math.ceil(technicalBalls * 0.65),
+      },
+    ),
+    wedgeBlock(context, wedge, scoringBalls),
+    block(
+      "random",
+      "Random course finish",
+      ["driver", technical.clubType ?? "5i", wedge.clubType ?? "sw"],
+      finishBalls,
+      10,
+      {
+        purpose: "Finish on decisions and routines, not another speed chase.",
+        drill: "Change club and target every ball. Include three normal course-speed drivers.",
+        successTarget: `${Math.ceil(finishBalls * 0.65)} of ${finishBalls} playable.`,
+        recordPrompt: "Decision, target, and result for each ball.",
+        metric: "playable",
+        target: Math.ceil(finishBalls * 0.65),
+      },
+    ),
+  ];
+
+  return finalizePlan(context, options, {
+    title: speedBlocked ? `Speed-safe ${totalBalls}-ball plan` : "Speed Development range plan",
+    summary: speedBlocked
+      ? `${totalBalls} balls reallocated to technical work because Speed Readiness is ${context.speed.readinessLabel ?? "RECOVER"}.`
+      : maximumSpeedReady
+        ? `${totalBalls} balls plus 12 no-ball swings, with speed transferred before normal course shots.`
+        : `${totalBalls} balls plus eight controlled no-ball swings while Speed Readiness builds.`,
+    totalBalls,
+    focus: compactFocus([technical, wedge]),
+    why: [
+      context.speed.recommendation,
+      context.speed.projectCoachMessage ??
+        "Carry is the outcome; club speed, ball speed and control are the training ingredients.",
+      speedBlocked
+        ? "Maximum-speed work was removed; all range balls remain allocated."
+        : maximumSpeedReady
+          ? "The 12 no-ball swings are separate from the range-ball total."
+          : "The eight controlled no-ball swings are separate from the range-ball total.",
+    ],
+    blocks: resequence(normalizeBlockBallTotal(blocks, totalBalls)),
   });
 }
 
@@ -2394,9 +2575,11 @@ function generateSpeedPracticePlan(
 ): PracticePlan {
   const blocked =
     (context.trainingLoad.highRecentLoad ||
+      context.speed.readinessStatus === "recover" ||
       options.energy === "tired" ||
       options.energy === "niggle") &&
     !options.facility?.overrideTrainingLoad;
+  const building = !blocked && context.speed.readinessStatus !== "ready";
   const minutes = options.timeMinutes;
   const speed =
     selectPriority(priorities, (item) => item.category === "speed") ??
@@ -2414,7 +2597,7 @@ function generateSpeedPracticePlan(
   const blocks = blocked
     ? [
         timeBlock("warmup", "Mobility and rhythm", ["driver"], minutesPart(minutes, 0.25), {
-          purpose: "Respect the training-load warning and keep the body fresh.",
+          purpose: "Respect Speed Readiness and keep the body fresh.",
           drill: "Mobility, slow driver rehearsals, and easy tempo swings only.",
           successTarget: "No max-effort swings.",
           recordPrompt: "Energy after warm-up.",
@@ -2438,59 +2621,104 @@ function generateSpeedPracticePlan(
           target: 1,
         }),
       ]
-    : [
-        timeBlock("warmup", "Speed warm-up", ["driver"], minutesPart(minutes, 0.2), {
-          purpose: "Prepare to swing fast without cold max-effort reps.",
-          drill: "Mobility, progressive rehearsals, then five controlled driver swings.",
-          successTarget: "Speed rises without strike collapse.",
-          recordPrompt: "First five average and body feel.",
-          metric: "speed_warmup",
-          target: 1,
-        }),
-        timeBlock("speed", "Baseline swings", ["driver"], minutesPart(minutes, 0.18), {
-          purpose: "Set today's speed reference.",
-          drill: "Five measured swings with full rest.",
-          successTarget: `Average within 3 mph of ${formatSpeedValue(context.speed.currentSpeedMph)}.`,
-          recordPrompt: "Best, average, and effort level.",
-          metric: "speed",
-          target: Math.round(context.speed.currentSpeedMph ?? 85),
-        }),
-        timeBlock("speed", "Overspeed set", ["driver"], minutesPart(minutes, 0.24), {
-          purpose: speed.reason,
-          drill: options.facility?.speedSticks
-            ? "Dominant and non-dominant overspeed sets."
-            : "No-ball driver swings, three sets of three.",
-          successTarget: "One swing beats baseline.",
-          recordPrompt: "Best swing and fatigue note.",
-          metric: "speed",
-          target: Math.round((context.speed.currentSpeedMph ?? 85) + 1),
-        }),
-        timeBlock("test", "Driver transfer", ["driver"], minutesPart(minutes, 0.25), {
-          purpose: "Make the speed usable with a ball.",
-          drill:
-            "Ten driver shots with full target routine. No more than one ball every 45 seconds.",
-          successTarget: "6 of 10 playable while holding speed intent.",
-          recordPrompt: "Playable count, best speed, and big misses.",
-          metric: "playable",
-          target: 6,
-        }),
-      ];
+    : building
+      ? [
+          timeBlock("warmup", "Speed warm-up", ["driver"], minutesPart(minutes, 0.25), {
+            purpose: "Prepare to build a measured baseline without forcing maximum effort.",
+            drill: "Mobility, progressive rehearsals, then three smooth Driver swings.",
+            successTarget: "Movement feels fast and balanced.",
+            recordPrompt: "Body feel and smoothest speed.",
+            metric: "rpe",
+            target: 7,
+          }),
+          timeBlock(
+            "technical",
+            "Controlled speed baseline",
+            ["driver"],
+            minutesPart(minutes, 0.25),
+            {
+              purpose: "Establish speed evidence while readiness is still building.",
+              drill: "Five measured no-ball swings at 90–95% with full rest.",
+              successTarget: "Five balanced readings with no forced maximum.",
+              recordPrompt: "Best, average, and body feel.",
+              metric: "speed",
+              target: Math.round(context.speed.currentSpeedMph ?? 85),
+            },
+          ),
+          timeBlock("test", "Driver transfer", ["driver"], minutesPart(minutes, 0.35), {
+            purpose: "Build the playable baseline needed for a future READY decision.",
+            drill: "Ten stock Drivers with full target routine at normal playing intent.",
+            successTarget: "6 of 10 playable with ball speed and lateral result captured.",
+            recordPrompt: "Club speed, ball speed, playable count, and big misses.",
+            metric: "playable",
+            target: 6,
+          }),
+          timeBlock("test", "Normal finish", ["driver"], minutesPart(minutes, 0.15), {
+            purpose: "Finish on the course pattern rather than speed chasing.",
+            drill: "Three normal course swings with full routine.",
+            successTarget: "Three committed, playable decisions.",
+            recordPrompt: "Start line and result.",
+            metric: "playable",
+            target: 2,
+          }),
+        ]
+      : [
+          timeBlock("warmup", "Speed warm-up", ["driver"], minutesPart(minutes, 0.2), {
+            purpose: "Prepare to swing fast without cold max-effort reps.",
+            drill: "Mobility, progressive rehearsals, then five controlled driver swings.",
+            successTarget: "Speed rises without strike collapse.",
+            recordPrompt: "First five average and body feel.",
+            metric: "speed_warmup",
+            target: 1,
+          }),
+          timeBlock("speed", "Speed Block 1", ["driver"], minutesPart(minutes, 0.18), {
+            purpose: "Set today's maximum-speed reference.",
+            drill: "Five measured swings with full rest.",
+            successTarget: `Average within 3 mph of ${formatSpeedValue(context.speed.currentSpeedMph)}.`,
+            recordPrompt: "Best, average, and effort level.",
+            metric: "speed",
+            target: Math.round(context.speed.currentSpeedMph ?? 85),
+          }),
+          timeBlock("speed", "Speed Block 2", ["driver"], minutesPart(minutes, 0.24), {
+            purpose: speed.reason,
+            drill: options.facility?.speedSticks
+              ? "Rest 60–90 seconds, then five measured overspeed swings."
+              : "Rest 60–90 seconds, then five maximum no-ball driver swings.",
+            successTarget: "Beat Block 1 peak; stop after two swings 4% below today's peak.",
+            recordPrompt: "Best swing, threshold crossing, and fatigue note.",
+            metric: "speed",
+            target: Math.round((context.speed.currentSpeedMph ?? 85) + 1),
+          }),
+          timeBlock("test", "Driver transfer", ["driver"], minutesPart(minutes, 0.25), {
+            purpose: "Make the speed usable with a ball.",
+            drill:
+              "Ten driver shots with full target routine. No more than one ball every 45 seconds. Finish with three normal course swings and no speed chasing.",
+            successTarget: "6 of 10 playable while holding speed intent.",
+            recordPrompt: "Playable count, best speed, and big misses.",
+            metric: "playable",
+            target: 6,
+          }),
+        ];
 
   return finalizePlan(context, options, {
-    title: blocked ? "Technical Speed-Safe Plan" : "Speed Practice Plan",
+    title: blocked
+      ? "Technical Speed-Safe Plan"
+      : building
+        ? "Speed transfer baseline"
+        : "Driver Speed Development",
     summary: blocked
-      ? "Training load says avoid max-speed work, so this becomes a technical driver session."
-      : `${minutes}-minute speed session using Speed Centre targets and driver transfer.`,
-    totalBalls: blocked ? 15 : 10,
+      ? "Speed Readiness says avoid max-speed work, so this becomes a technical driver session."
+      : building
+        ? `${minutes}-minute controlled baseline: measured speed, then playable Driver transfer.`
+        : `${minutes}-minute speed session: ceiling first, then playable driver transfer.`,
+    totalBalls: blocked ? 15 : building ? 13 : 10,
     focus: ["Driver"],
     why: blocked
-      ? [
-          "Recent load is high, so the plan avoids overspeed intensity.",
-          context.trainingLoad.advice,
-        ]
+      ? [context.speed.recommendation, context.trainingLoad.advice]
       : [
           context.speed.recommendation,
           `Current speed: ${formatSpeedValue(context.speed.currentSpeedMph)}. Target: ${formatSpeedValue(context.speed.targetSpeedMph)}.`,
+          "Carry is the outcome; speed, strike and control are the session targets.",
         ],
     blocks: resequence(blocks),
   });

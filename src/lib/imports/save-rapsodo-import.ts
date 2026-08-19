@@ -10,6 +10,7 @@ import {
   importFiles,
   importRows,
   sessions,
+  shotReviewEvents,
   shots,
   stockYardages,
   strokesGainedBaselines,
@@ -72,6 +73,7 @@ import {
   utf8ByteLength,
 } from "@/lib/imports/import-limits";
 import { reportServerFailure } from "@/lib/server-observability";
+import { buildImportedShotReviewLifecycle } from "@/lib/shot-review";
 
 export type RapsodoShotOverride = {
   rowNumber: number;
@@ -647,47 +649,92 @@ async function persistImport(
       fileName: input.fileName,
     });
 
-    const insertedShots = await tx
-      .insert(shots)
-      .values(
-        input.shots.map((shot) => ({
+    const importedShotRows = input.shots.map((shot) => {
+      const shotCategory =
+        courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory;
+      const review = buildImportedShotReviewLifecycle({
+        qualityTag: shot.qualityTag,
+        shotCategory,
+      });
+
+      return {
+        userId,
+        sessionId: session.id,
+        clubId: clubIdByKey.get(shot.clubKey) ?? "",
+        playContext,
+        shotAt: sessionDate,
+        clubType: shot.clubType,
+        shotNumber: shot.shotNumber,
+        carryYd: shot.carryYd,
+        totalYd: shot.totalYd,
+        ballSpeedMph: shot.ballSpeedMph,
+        clubSpeedMph: shot.clubSpeedMph,
+        launchAngleDeg: shot.launchAngleDeg,
+        launchDirectionDeg: shot.launchDirectionDeg,
+        apexFt: shot.apexFt,
+        sideCarryYd: shot.sideCarryYd,
+        attackAngleDeg: shot.attackAngleDeg,
+        clubPathDeg: shot.clubPathDeg,
+        faceAngleDeg: shot.faceAngleDeg,
+        descentAngleDeg: shot.descentAngleDeg,
+        smashFactor: shot.smashFactor,
+        spinRate: shot.spinRate,
+        spinAxis: shot.spinAxis,
+        shotShape: shot.shotShape,
+        shotCategory,
+        courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
+        courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
+        courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
+        courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
+        distanceRemainingYd: courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
+        qualityTag: shot.qualityTag,
+        reviewStatus: review.reviewStatus,
+        reviewReason: review.reviewReason,
+        reviewConfidence: review.reviewConfidence,
+        reviewSource: review.reviewSource,
+        reviewPreviousQualityTag: review.reviewPreviousQualityTag,
+        reviewedAt: review.reviewSource ? now : null,
+        clubDataEstType: shot.clubDataEstType,
+        sourceRawJson: shot.sourceRawJson,
+      };
+    });
+
+    const insertedShots = await tx.insert(shots).values(importedShotRows).returning({
+      id: shots.id,
+      qualityTag: shots.qualityTag,
+      reviewStatus: shots.reviewStatus,
+      reviewReason: shots.reviewReason,
+      reviewConfidence: shots.reviewConfidence,
+      reviewSource: shots.reviewSource,
+    });
+
+    const importedReviewEvents = insertedShots.flatMap((shot) => {
+      if (shot.reviewStatus === "included") {
+        return [];
+      }
+      if (!shot.reviewReason || shot.reviewConfidence === null || shot.reviewSource !== "import") {
+        throw new Error("Imported shot classification is missing review provenance.");
+      }
+
+      return [
+        {
           userId,
-          sessionId: session.id,
-          clubId: clubIdByKey.get(shot.clubKey) ?? "",
-          playContext,
-          shotAt: sessionDate,
-          clubType: shot.clubType,
-          shotNumber: shot.shotNumber,
-          carryYd: shot.carryYd,
-          totalYd: shot.totalYd,
-          ballSpeedMph: shot.ballSpeedMph,
-          clubSpeedMph: shot.clubSpeedMph,
-          launchAngleDeg: shot.launchAngleDeg,
-          launchDirectionDeg: shot.launchDirectionDeg,
-          apexFt: shot.apexFt,
-          sideCarryYd: shot.sideCarryYd,
-          attackAngleDeg: shot.attackAngleDeg,
-          clubPathDeg: shot.clubPathDeg,
-          faceAngleDeg: shot.faceAngleDeg,
-          descentAngleDeg: shot.descentAngleDeg,
-          smashFactor: shot.smashFactor,
-          spinRate: shot.spinRate,
-          spinAxis: shot.spinAxis,
-          shotShape: shot.shotShape,
-          shotCategory:
-            courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
-          courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
-          courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
-          courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
-          courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
-          distanceRemainingYd:
-            courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
-          qualityTag: shot.qualityTag,
-          clubDataEstType: shot.clubDataEstType,
-          sourceRawJson: shot.sourceRawJson,
-        })),
-      )
-      .returning({ id: shots.id });
+          shotId: shot.id,
+          previousStatus: "included" as const,
+          status: shot.reviewStatus,
+          reason: shot.reviewReason,
+          confidence: shot.reviewConfidence,
+          source: "import" as const,
+          previousQualityTag: null,
+          resultingQualityTag: shot.qualityTag,
+          createdAt: now,
+        },
+      ];
+    });
+
+    if (importedReviewEvents.length > 0) {
+      await tx.insert(shotReviewEvents).values(importedReviewEvents);
+    }
 
     await tx
       .insert(golfTrainingSessions)

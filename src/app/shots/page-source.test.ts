@@ -70,13 +70,15 @@ describe("Shot Explorer analytics workbench", () => {
     expect(pageSource).toContain('exportTableId="shots"');
   });
 
-  it("keeps row actions inside a menu and exposes the required operations", () => {
-    for (const action of ["Open", "Correct", "Exclude", "View source", "Delete"]) {
+  it("keeps row actions inside a menu and exposes reversible review operations", () => {
+    for (const action of ["Open", "Correct", "Review", "Keep", "Restore", "View source"]) {
       expect(tableSource).toContain(action);
     }
     expect(tableSource).toContain("<DropdownMenu");
-    expect(tableSource).toContain("excludeShotAction");
-    expect(tableSource).toContain("<ShotDeleteButton");
+    expect(tableSource).toContain("<ShotReviewButton");
+    expect(tableSource).toContain("<ShotBulkReviewButton");
+    expect(tableSource).not.toContain("<ShotDeleteButton");
+    expect(tableSource).not.toContain("Delete shot");
   });
 
   it("shows launch, flight, source, evidence and correction detail", () => {
@@ -88,6 +90,10 @@ describe("Shot Explorer analytics workbench", () => {
     expect(tableSource).toContain("Source record");
     expect(tableSource).toContain("Evidence read");
     expect(tableSource).toContain("Correction history");
+    expect(tableSource).toContain("Current review");
+    expect(pageSource).toContain("shotReviewEvents");
+    expect(pageSource).toContain("reviewEventsByShotId");
+    expect(pageSource).toContain("effectiveShotReviewStatus({");
     expect(tableSource).toContain("Open Session Review");
   });
 

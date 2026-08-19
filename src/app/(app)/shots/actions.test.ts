@@ -4,27 +4,58 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/shots/actions.ts"), "utf8");
 
-describe("delete shot action", () => {
-  it("only deletes a valid shot owned by the current player and refreshes derived views", () => {
-    expect(source).toContain("export async function deleteShotAction");
-    expect(source).toContain("uuidPattern.test(shotId)");
-    expect(source).toContain("requireCurrentUserId()");
-    expect(source).toContain(".delete(shots)");
-    expect(source).toContain("eq(shots.id, shotId)");
-    expect(source).toContain("eq(shots.userId, userId)");
-    expect(source).toContain(".returning({ id: shots.id })");
-    expect(source).toContain('revalidatePath("/shots")');
-    expect(source).toContain('revalidatePath("/today")');
-    expect(source).toContain('revalidatePath("/", "layout")');
+describe("reversible shot review actions", () => {
+  it("does not expose the former hard-delete path", () => {
+    expect(source).not.toContain("deleteShotAction");
+    expect(source).not.toContain(".delete(shots)");
   });
 
-  it("excludes only a valid shot owned by the current player and refreshes derived views", () => {
-    expect(source).toContain("export async function excludeShotAction");
-    expect(source).toContain('.set({ qualityTag: "excluded" })');
-    expect(source).toContain("eq(shots.id, shotId)");
+  it("validates and locks a bounded owner-scoped batch before mutation", () => {
+    expect(source).toContain("export async function reviewShotsAction");
+    expect(source).toContain("parseShotReviewActionInput(input)");
+    expect(source).toContain("requireCurrentUserId()");
+    expect(source).toContain("inArray(shots.id, review.shotIds)");
     expect(source).toContain("eq(shots.userId, userId)");
-    expect(source).toContain('revalidatePath("/shots")');
-    expect(source).toContain('revalidatePath("/bag")');
-    expect(source).toContain('revalidatePath("/progress")');
+    expect(source).toContain('.for("update")');
+    expect(source).toContain("ownedShots.length !== review.shotIds.length");
+  });
+
+  it("derives legacy/import lifecycle state from all compatibility fields before mutation", () => {
+    expect(source).toContain("shotCategory: shots.shotCategory");
+    expect(source).toContain("effectiveShotReviewStatus({");
+    expect(source).toContain("reviewStatus: shot.reviewStatus");
+    expect(source).toContain("qualityTag: shot.qualityTag");
+    expect(source).toContain("shotCategory: shot.shotCategory");
+  });
+
+  it("updates compatibility state and appends provenance without touching raw source", () => {
+    expect(source).toContain("buildShotReviewMutation");
+    expect(source).toContain("reviewPreviousQualityTag: mutation.reviewPreviousQualityTag");
+    expect(source).toContain("tx.insert(shotReviewEvents)");
+    expect(source).toContain("previousQualityTag: mutation.previousQualityTag");
+    expect(source).toContain("resultingQualityTag: mutation.qualityTag");
+    expect(source).not.toContain("sourceRawJson:");
+  });
+
+  it("provides a single-row restore and refreshes every derived surface", () => {
+    expect(source).toContain("export async function restoreShotAction");
+    expect(source).toContain('status: "restored"');
+    for (const path of [
+      "/shots",
+      "/today",
+      "/dashboard",
+      "/bag",
+      "/progress",
+      "/sessions",
+      "/analyse",
+      "/strokes-gained",
+      "/stats/training-over-time",
+      "/speed",
+      "/practice",
+    ]) {
+      expect(source).toContain(`"${path}"`);
+    }
+    expect(source).toContain("revalidatePath(`/sessions/${sessionId}`)");
+    expect(source).toContain('revalidatePath("/", "layout")');
   });
 });

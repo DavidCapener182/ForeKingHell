@@ -161,6 +161,12 @@ async function DesktopCoachWorkspace({
                 Reports
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/speed" prefetch={false}>
+                <Gauge className="size-4" />
+                Driver Speed Development
+              </Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>

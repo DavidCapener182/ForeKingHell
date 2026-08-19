@@ -25,4 +25,15 @@ describe("today session data cleaning source", () => {
     expect(source).toContain("rawShots: filteredTodayRows");
     expect(source).toContain("dataCleaning: buildDataCleaningSummary");
   });
+
+  it("resolves the default practice day before loading its shot rows", () => {
+    const loader = source.slice(
+      source.indexOf("export async function getTodayPracticeData"),
+      source.indexOf("async function fetchPracticeRowsForBounds"),
+    );
+
+    expect(loader).toContain("findDefaultPracticeDateKey");
+    expect(loader).not.toContain("allTodayRows.length === 0");
+    expect(loader).not.toContain("findLatestPracticeDateKey");
+  });
 });

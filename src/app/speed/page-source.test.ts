@@ -11,6 +11,7 @@ const futureBagSource = readFileSync(
   join(process.cwd(), "src/app/speed/future-bag-slider.tsx"),
   "utf8",
 );
+const dataSource = readFileSync(join(process.cwd(), "src/lib/speed-training-data.ts"), "utf8");
 
 describe("speed centre desktop evidence ledger", () => {
   it("keeps the wider distance-loss diagnosis out of the speed workbench", () => {
@@ -22,6 +23,27 @@ describe("speed centre desktop evidence ledger", () => {
     expect(source).toContain('variant="speed"');
     expect(source).toContain("visual={<PageArtwork");
     expect(source).toContain("min-h-36");
+  });
+
+  it("expands the existing centre with the shared Driver development programme first", () => {
+    expect(source).toContain(
+      'import { DriverSpeedDevelopment } from "@/components/speed/driver-speed-development"',
+    );
+    expect(source).toContain('title="Driver Speed Development"');
+    expect(source).toContain("<DriverSpeedDevelopment data={data.development} />");
+    expect(source.indexOf("<DriverSpeedDevelopment data={data.development} />")).toBeLessThan(
+      source.indexOf("<CompactReadoutGrid", source.indexOf("export default")),
+    );
+  });
+
+  it("keeps speed coaching on clean measured fields and preserves ordered swing evidence", () => {
+    expect(dataSource).toContain("qualityTag: shots.qualityTag");
+    expect(dataSource).toContain("clubDataEstType: shots.clubDataEstType");
+    expect(dataSource.match(/\.limit\(200\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(dataSource.match(/\.limit\(80\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(dataSource).toContain("getCompanionTrainingLoad(userId)");
+    expect(dataSource).toContain('session.handedness === "dominant"');
+    expect(dataSource).toContain('session.implementKind === "club"');
   });
 
   it("keeps recent speed evidence in an exportable desktop workbench table", () => {

@@ -1170,6 +1170,8 @@ function MainScoringLeak({
                 src={artwork.src}
                 alt=""
                 fill
+                loading="eager"
+                fetchPriority="high"
                 sizes="(min-width: 1024px) 24vw, (min-width: 640px) 42vw, 100vw"
                 className={cn("object-cover", artwork.className)}
               />

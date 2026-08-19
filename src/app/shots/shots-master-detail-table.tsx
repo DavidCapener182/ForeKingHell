@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useMemo, useRef, useState, useTransition, type KeyboardEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Fragment, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -17,11 +16,10 @@ import {
   PencilLine,
   ShieldAlert,
   ShieldCheck,
-  Trash2,
+  RotateCcw,
 } from "lucide-react";
 
-import { excludeShotAction } from "@/app/(app)/shots/actions";
-import { ShotDeleteButton } from "@/app/shots/shot-delete-button";
+import { ShotBulkReviewButton, ShotReviewButton } from "@/app/shots/shot-review-controls";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isRestorableShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-review";
 import { cn } from "@/lib/utils";
 
 export type ShotMasterDetailRow = {
@@ -77,6 +76,23 @@ export type ShotMasterDetailRow = {
   estimateLabel: string;
   shotShapeLabel: string;
   qualityTagLabel: string;
+  reviewStatus: ShotReviewStatus;
+  reviewStatusLabel: string;
+  reviewReason: string | null;
+  reviewConfidenceLabel: string;
+  reviewSourceLabel: string;
+  reviewedAtLabel: string;
+  reviewEvents: Array<{
+    id: string;
+    previousStatusLabel: string;
+    statusLabel: string;
+    reason: string;
+    confidenceLabel: string;
+    sourceLabel: string;
+    previousQualityTagLabel: string;
+    resultingQualityTagLabel: string;
+    createdAtLabel: string;
+  }>;
   evidenceStatus: "trusted" | "untrusted";
   evidenceReasons: string[];
   sideTone: "green" | "amber" | "red" | "slate";
@@ -116,13 +132,10 @@ export function ShotsMasterDetailTable({
   dispersionClubLabel?: string;
   dispersionShots?: ShotMiniDispersionPoint[];
 }) {
-  const router = useRouter();
   const [selectedId, setSelectedId] = useState(shots[0]?.id ?? "");
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [detailOpen, setDetailOpen] = useState(true);
   const [detailTab, setDetailTab] = useState<DetailTab>("overview");
-  const [actionError, setActionError] = useState("");
-  const [isExcluding, startExcludeTransition] = useTransition();
   const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
   const selectedShot = useMemo(
     () => shots.find((shot) => shot.id === selectedId) ?? shots[0] ?? null,
@@ -169,19 +182,6 @@ export function ShotsMasterDetailTable({
     }
   }
 
-  function excludeShot(shot: ShotMasterDetailRow) {
-    openDetail(shot, "history");
-    setActionError("");
-    startExcludeTransition(async () => {
-      try {
-        await excludeShotAction(shot.id);
-        router.refresh();
-      } catch (cause) {
-        setActionError(cause instanceof Error ? cause.message : "Could not exclude this shot.");
-      }
-    });
-  }
-
   return (
     <div className="hidden min-w-0 gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="grid min-w-0 content-start gap-3">
@@ -191,6 +191,7 @@ export function ShotsMasterDetailTable({
 
         {selectedRows.length > 0 ? (
           <ShotBulkToolbar
+            shotIds={selectedRows}
             selectedCount={selectedRows.length}
             onInspect={() => {
               const shot = shots.find((item) => item.id === selectedRows[0]);
@@ -377,30 +378,33 @@ export function ShotsMasterDetailTable({
                                 <PencilLine className="size-4" />
                                 Correct
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                disabled={isExcluding || shot.qualityTagLabel === "Excluded"}
-                                onSelect={() => excludeShot(shot)}
-                              >
-                                <Ban className="size-4" />
-                                {shot.qualityTagLabel === "Excluded" ? "Excluded" : "Exclude"}
-                              </DropdownMenuItem>
+                              <ShotReviewButton
+                                shotId={shot.id}
+                                reviewStatus={shot.reviewStatus}
+                                trigger={
+                                  <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                                    {isRestorableShotReviewStatus(shot.reviewStatus) ? (
+                                      <RotateCcw className="size-4" />
+                                    ) : (
+                                      <Ban className="size-4" />
+                                    )}
+                                    {shot.reviewStatus === "suggested_exclusion"
+                                      ? "Keep"
+                                      : isRestorableShotReviewStatus(shot.reviewStatus)
+                                        ? "Restore"
+                                        : "Review"}
+                                  </DropdownMenuItem>
+                                }
+                              />
                               <DropdownMenuItem onSelect={() => openDetail(shot, "source")}>
                                 <FileJson className="size-4" />
                                 View source
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <ShotDeleteButton
-                                shotId={shot.id}
-                                trigger={
-                                  <DropdownMenuItem
-                                    variant="destructive"
-                                    onSelect={(event) => event.preventDefault()}
-                                  >
-                                    <Trash2 className="size-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                }
-                              />
+                              <DropdownMenuItem onSelect={() => openDetail(shot, "history")}>
+                                <History className="size-4" />
+                                Review history
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -432,15 +436,6 @@ export function ShotsMasterDetailTable({
             </Table>
           </div>
         </div>
-
-        <p className="sr-only" aria-live="polite">
-          {isExcluding ? "Excluding shot." : actionError}
-        </p>
-        {actionError ? (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {actionError}
-          </p>
-        ) : null}
       </div>
 
       <ResponsiveDetailPanel
@@ -467,10 +462,12 @@ export function ShotsMasterDetailTable({
 }
 
 export function ShotBulkToolbar({
+  shotIds,
   selectedCount,
   onClear,
   onInspect,
 }: {
+  shotIds: string[];
   selectedCount: number;
   onClear: () => void;
   onInspect: () => void;
@@ -491,6 +488,7 @@ export function ShotBulkToolbar({
         <Button type="button" size="sm" variant="outline" onClick={onInspect}>
           Inspect first
         </Button>
+        <ShotBulkReviewButton shotIds={shotIds} onComplete={onClear} />
         <Button type="button" size="sm" variant="ghost" onClick={onClear}>
           Clear
         </Button>
@@ -777,20 +775,39 @@ export function SelectedShotDetail({
         <TabsContent value="history" className="grid gap-4 p-4">
           <DetailSection title="Correction history" icon={History}>
             <div className="grid gap-3">
+              <div className="rounded-lg border bg-muted/25 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">Current review</p>
+                  <Badge variant="secondary">{shot.reviewStatusLabel}</Badge>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-3">
+                  <DetailPair label="Reason" value={shot.reviewReason ?? "No review reason"} wide />
+                  <DetailPair label="Confidence" value={shot.reviewConfidenceLabel} wide />
+                  <DetailPair label="Source" value={shot.reviewSourceLabel} wide />
+                  <DetailPair label="Reviewed" value={shot.reviewedAtLabel} wide />
+                  <DetailPair label="Compatibility flag" value={shot.qualityTagLabel} wide />
+                </dl>
+              </div>
               <HistoryRow
                 title="Source imported"
                 detail="Original provider fields remain available in Source."
               />
-              {shot.qualityTagLabel !== "--" ? (
-                <HistoryRow title="Current quality flag" detail={shot.qualityTagLabel} />
-              ) : (
+              {shot.reviewEvents.map((event) => (
+                <HistoryRow
+                  key={event.id}
+                  title={`${event.statusLabel} · ${event.createdAtLabel}`}
+                  detail={`${event.reason} · ${event.confidenceLabel} confidence · ${event.sourceLabel} · quality flag ${event.previousQualityTagLabel} → ${event.resultingQualityTagLabel}`}
+                />
+              ))}
+              {shot.reviewEvents.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No later correction event is recorded for this shot.
                 </p>
-              )}
+              ) : null}
             </div>
           </DetailSection>
           <div className="grid gap-2">
+            <ShotReviewButton shotId={shot.id} reviewStatus={shot.reviewStatus} />
             <Button asChild variant="outline" className="justify-between">
               <Link href={`/sessions/${shot.sessionId}`} prefetch={false}>
                 Open Session Review

@@ -290,6 +290,20 @@ describe("desktop workbench chrome source", () => {
     expect(source).toContain("window.removeEventListener(desktopSavedViewsUpdatedEvent");
   });
 
+  it("defers workspace command data until a command surface is opened", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
+      "utf8",
+    );
+
+    expect(source).toContain(
+      "const shouldLoadWorkspaceCommands = commandOpen || workspaceLinksOpen",
+    );
+    expect(source).toContain("if (!shouldLoadWorkspaceCommands || workspaceCommandsLoaded)");
+    expect(source).toContain("setWorkspaceCommandsLoaded(true)");
+    expect(source).toContain("[shouldLoadWorkspaceCommands, workspaceCommandsLoaded]");
+  });
+
   it("keeps the desktop workspace switcher role-aware", () => {
     const chromeSource = readFileSync(
       join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),

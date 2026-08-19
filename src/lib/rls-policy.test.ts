@@ -64,8 +64,33 @@ const integrityLockdownMigration = readFileSync(
   join(process.cwd(), "drizzle/0040_security_integrity_lockdown.sql"),
   "utf8",
 );
+const shotReviewMigration = readFileSync(
+  join(process.cwd(), "drizzle/0056_shot_review_lifecycle.sql"),
+  "utf8",
+);
 
 describe("RLS migration", () => {
+  it("keeps shot review events append-only and scoped to an owned shot", () => {
+    expect(shotReviewMigration).toContain(
+      "ALTER TABLE public.fkh_shot_review_events ENABLE ROW LEVEL SECURITY",
+    );
+    expect(shotReviewMigration).toContain(
+      "ALTER TABLE public.fkh_shot_review_events FORCE ROW LEVEL SECURITY",
+    );
+    expect(shotReviewMigration).toContain("fkh_shot_review_events_owner_select");
+    expect(shotReviewMigration).toContain("fkh_shot_review_events_owner_insert");
+    expect(shotReviewMigration).toContain("user_id = (SELECT auth.uid())");
+    expect(shotReviewMigration).toContain("shot_row.user_id = (SELECT auth.uid())");
+    expect(shotReviewMigration).toContain(
+      "REVOKE ALL ON TABLE public.fkh_shot_review_events FROM PUBLIC, anon, authenticated",
+    );
+    expect(shotReviewMigration).toContain(
+      "GRANT SELECT, INSERT ON TABLE public.fkh_shot_review_events TO authenticated",
+    );
+    expect(shotReviewMigration).not.toContain("fkh_shot_review_events_owner_update");
+    expect(shotReviewMigration).not.toContain("fkh_shot_review_events_owner_delete");
+  });
+
   it("enables RLS on user-owned roadmap tables", () => {
     for (const table of [
       "fkh_users",

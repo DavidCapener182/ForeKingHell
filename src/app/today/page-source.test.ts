@@ -152,6 +152,31 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("<Progress");
   });
 
+  it("keeps the Today decision hero inside a phone-width workbench", () => {
+    const hero = source.slice(
+      source.indexOf("function TodayDecisionHero"),
+      source.indexOf("function HeroEvidenceRow"),
+    );
+
+    expect(hero).toContain("grid w-full grid-cols-2");
+    expect(hero).toContain("col-span-2");
+    expect(hero).toContain("text-4xl");
+    expect(hero).not.toContain('ButtonGroup className="mt-7 w-fit"');
+    expect(source).toContain("grid w-dvw min-w-0 max-w-full grid-cols-[minmax(0,1fr)]");
+    expect(source).toContain("overflow-x-clip");
+  });
+
+  it("keeps the decision-status chip legible against the dark hero", () => {
+    const hero = source.slice(
+      source.indexOf("function TodayDecisionHero"),
+      source.indexOf("function HeroEvidenceRow"),
+    );
+
+    expect(hero).toMatch(/<Badge\s+variant="outline"/);
+    expect(hero).toContain("border-white/30 bg-black/30 text-white");
+    expect(hero).not.toContain("bg-white/12 text-white");
+  });
+
   it("keeps the focused practice workflow available inside its desktop tab", () => {
     expect(source).toContain("today-practice-grid-has-prescription");
     expect(source).toContain('"prescription mode"');
