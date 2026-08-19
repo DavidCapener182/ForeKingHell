@@ -105,6 +105,7 @@ export type SaveRapsodoImportInput = {
     gir?: boolean | null;
     strokeIndex?: number | null;
   }>;
+  excludedShotRowNumbers?: number[];
   shotOverrides?: RapsodoShotOverride[];
   notes?: string;
   practicePlanId?: string;
@@ -213,7 +214,14 @@ export async function saveLaunchMonitorImport(
     const importedShots = applyRapsodoShotOverridesForImport(
       parsed.shots,
       validatedInput.shotOverrides,
+      validatedInput.excludedShotRowNumbers,
     );
+    if (importedShots.length === 0) {
+      return {
+        ok: false,
+        message: "Keep at least one shot in the session before importing.",
+      };
+    }
     const coursePlan = buildCoursePlan(validatedInput, importedShots);
     const courseName =
       canonicalKnownCourseNameForSession(validatedInput.courseName) ?? validatedInput.courseName;
@@ -939,6 +947,7 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     courseScorecardText: input.courseScorecardText?.slice(0, 12000),
     courseHoleShotCounts: sanitizeHoleShotCounts(input.courseHoleShotCounts),
     courseHoleScoring: sanitizeHoleScoring(input.courseHoleScoring),
+    excludedShotRowNumbers: sanitizeShotRowNumbers(input.excludedShotRowNumbers),
     shotOverrides: sanitizeShotOverrides(input.shotOverrides),
     notes: input.notes?.slice(0, 2000),
     practicePlanId: sanitizeUuid(input.practicePlanId),
@@ -1143,6 +1152,16 @@ function sanitizeShotOverrides(input: SaveRapsodoImportInput["shotOverrides"]) {
   return overrides;
 }
 
+function sanitizeShotRowNumbers(input: SaveRapsodoImportInput["excludedShotRowNumbers"]) {
+  if (!input) {
+    return undefined;
+  }
+
+  return [...new Set(input.map(sanitizeNonNegativeInteger))]
+    .filter((rowNumber): rowNumber is number => rowNumber !== null && rowNumber > 0)
+    .slice(0, MAX_PARSED_SHOTS_PER_FILE);
+}
+
 function sanitizeShotCategory(value: ShotCategory | undefined) {
   return value && ["full", "pitch", "chip", "recovery", "tee", "approach"].includes(value)
     ? value
@@ -1190,14 +1209,18 @@ function isFiniteNumber(value: number | null | undefined): value is number {
 export function applyRapsodoShotOverridesForImport(
   shotsToImport: ParsedRapsodoShot[],
   overrides: RapsodoShotOverride[] | undefined,
+  excludedShotRowNumbers: number[] | undefined = undefined,
 ) {
+  const excludedRows = new Set(excludedShotRowNumbers ?? []);
+  const includedShots = shotsToImport.filter((shot) => !excludedRows.has(shot.rowNumber));
+
   if (!overrides || overrides.length === 0) {
-    return shotsToImport.map(withInferredImportedQualityTag);
+    return includedShots.map(withInferredImportedQualityTag);
   }
 
   const overrideByRowNumber = new Map(overrides.map((override) => [override.rowNumber, override]));
 
-  return shotsToImport.map((shot) => {
+  return includedShots.map((shot) => {
     const override = overrideByRowNumber.get(shot.rowNumber);
 
     if (!override) {

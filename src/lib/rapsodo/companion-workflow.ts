@@ -7,10 +7,16 @@ export function companionRapsodoInbox(sessions: RapsodoSessionListItem[]) {
     .sort((left, right) => dateTime(right.dateIso) - dateTime(left.dateIso));
 }
 
-export function uncertainCompanionRapsodoShots(preview: RapsodoSessionPreview | null) {
+export function uncertainCompanionRapsodoShots(
+  preview: RapsodoSessionPreview | null,
+  excludedShotRowNumbers: readonly number[] = [],
+) {
+  const excludedRows = new Set(excludedShotRowNumbers);
   return (
     preview?.shots.filter(
-      (shot) => shot.suggestion.confidence === "low" || shot.suggestion.confidence === "medium",
+      (shot) =>
+        !excludedRows.has(shot.rowNumber) &&
+        (shot.suggestion.confidence === "low" || shot.suggestion.confidence === "medium"),
     ) ?? []
   );
 }
@@ -18,19 +24,23 @@ export function uncertainCompanionRapsodoShots(preview: RapsodoSessionPreview | 
 export function buildCompanionRapsodoShotOverrides(
   preview: RapsodoSessionPreview,
   selectedByRow: Record<number, string>,
+  excludedShotRowNumbers: readonly number[] = [],
 ): RapsodoShotOverride[] {
   const choices = new Map(preview.clubChoices.map((choice) => [choice.clubKey, choice]));
+  const excludedRows = new Set(excludedShotRowNumbers);
 
-  return preview.shots.map((shot) => {
-    const selectedKey = selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey;
-    const choice = choices.get(selectedKey) ?? shot.suggestion.choice;
-    return {
-      rowNumber: shot.rowNumber,
-      clubType: choice.clubType,
-      clubBrand: choice.clubBrand,
-      clubModel: choice.clubModel,
-    };
-  });
+  return preview.shots
+    .filter((shot) => !excludedRows.has(shot.rowNumber))
+    .map((shot) => {
+      const selectedKey = selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey;
+      const choice = choices.get(selectedKey) ?? shot.suggestion.choice;
+      return {
+        rowNumber: shot.rowNumber,
+        clubType: choice.clubType,
+        clubBrand: choice.clubBrand,
+        clubModel: choice.clubModel,
+      };
+    });
 }
 
 export function companionRapsodoResultHref(sessionId: string) {

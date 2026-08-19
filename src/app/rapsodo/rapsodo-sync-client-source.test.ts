@@ -39,7 +39,7 @@ describe("rapsodo desktop provider console", () => {
     expect(companion).toContain("companionRapsodoInbox");
     expect(companionWorkflow).toContain("!session.importedSessionId");
     expect(companionPreview).toContain("Session preview");
-    expect(companionPreview).toContain("Confirm uncertain clubs");
+    expect(companionPreview).toContain("Review shots");
     expect(companionPreview).toContain("practicePlanId");
     expect(companionPreview).toContain("companionRapsodoResultHref");
     expect(companion).toContain("<ScrollArea");
@@ -50,11 +50,17 @@ describe("rapsodo desktop provider console", () => {
     expect(companion).toContain("onClick={() => openPreview(session)}");
     expect(companion).not.toMatch(/<button\b/);
     expect(companionPreview).toContain("<Drawer");
-    expect(companionPreview).toContain("<Table");
+    expect(companionPreview).toContain("<Item");
+    expect(companionPreview).not.toContain("<Table");
     expect(companionPreview).toContain("<Field");
     expect(companionPreview).toContain("<OperationStepper");
     expect(companionPreview).toContain("<ConnectedMetricBar");
     expect(companionPreview).toContain("data-rapsodo-preview-summary");
+    expect(companionPreview).toContain("data-rapsodo-shot-review");
+    expect(companionPreview).toContain("Review every shot");
+    expect(companionPreview).toContain("excludedShotRowNumbers");
+    expect(companionPreview).toContain('"Restore" : "Remove"');
+    expect(companionPreview).toContain("Restore");
     expect(companion).toContain("<DropdownMenu");
     expect(companion).toContain("<AlertDialog");
     expect(companion).toContain("Use a CSV instead");

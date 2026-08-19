@@ -332,4 +332,29 @@ describe("Rapsodo import shot overrides", () => {
     expect(overridden[0].sourceRawJson["Club Type"]).toBe("Other");
     expect(overridden[1]).toBe(parsed.shots[1]);
   });
+
+  it("excludes reviewed CSV rows before applying shot overrides", () => {
+    const parsed = parseRapsodoCsv(
+      [
+        "Shot Number,Club Type,Carry Distance (yd)",
+        "1,Driver,238",
+        "2,7 Iron,151",
+        "3,PW,103",
+      ].join("\n"),
+    );
+
+    const prepared = applyRapsodoShotOverridesForImport(
+      parsed.shots,
+      [
+        {
+          rowNumber: parsed.shots[2].rowNumber,
+          clubType: "9 Iron",
+        },
+      ],
+      [parsed.shots[1].rowNumber],
+    );
+
+    expect(prepared.map((shot) => shot.shotNumber)).toEqual([1, 3]);
+    expect(prepared[1]).toMatchObject({ clubType: "9i" });
+  });
 });
