@@ -337,6 +337,54 @@ describe("driver speed development", () => {
     expect(summary.funnel.find((stage) => stage.key === "course")?.valueMph).toBeNull();
     expect(summary.project.carrySource).toBe("Best clean measured Driver carry");
   });
+
+  it.each([
+    "suggested_exclusion",
+    "user_excluded",
+    "calibration",
+    "warm_up",
+    "launch_monitor_error",
+  ] as const)("ignores %s shots across every speed-development output", (reviewStatus) => {
+    const summary = buildSpeedDevelopment(
+      input({
+        driverShots: [
+          ...driverSession("reviewed", "2026-08-19", {
+            reviewStatus,
+            clubSpeedMph: 120,
+            ballSpeedMph: 180,
+            smashFactor: 1.5,
+            carryYd: 350,
+            sideCarryYd: 5,
+          }),
+          ...driverSession("restored", "2026-08-18", {
+            reviewStatus: "restored",
+            clubSpeedMph: 90,
+            ballSpeedMph: 130,
+            smashFactor: 1.44,
+            carryYd: 210,
+            sideCarryYd: 10,
+          }),
+        ],
+      }),
+    );
+
+    expect(summary.funnel.find((stage) => stage.key === "transfer")).toMatchObject({
+      valueMph: 90,
+      sampleSize: 5,
+    });
+    expect(summary.funnel.find((stage) => stage.key === "playing")).toMatchObject({
+      valueMph: 90,
+      sampleSize: 5,
+    });
+    expect(summary.project).toMatchObject({
+      currentBestCarryYd: 210,
+      carrySampleSize: 5,
+    });
+    expect(summary.chaos.status).toBe("need_evidence");
+    expect(
+      summary.readiness.reasons.find((reason) => reason.label === "Driver control"),
+    ).toMatchObject({ state: "missing" });
+  });
 });
 
 function input(overrides: Partial<BuildSpeedDevelopmentInput> = {}): BuildSpeedDevelopmentInput {
@@ -388,6 +436,7 @@ function driverSession(
     carryYd: 210,
     launchAngleDeg: 14,
     sideCarryYd: 10,
+    reviewStatus: "included",
     ...overrides,
   }));
 }

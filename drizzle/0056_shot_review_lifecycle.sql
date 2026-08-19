@@ -75,7 +75,7 @@ SET
       THEN 'user_excluded'
     WHEN lower(coalesce(quality_tag, '')) = 'calibration'
       THEN 'calibration'
-    WHEN lower(coalesce(quality_tag, '')) IN ('warm-up', 'warmup')
+    WHEN lower(coalesce(quality_tag, '')) IN ('warm-up', 'warmup', 'warm_up')
       THEN 'warm_up'
     WHEN lower(coalesce(quality_tag, '')) IN (
       'bad-data',
@@ -101,6 +101,7 @@ WHERE lower(coalesce(quality_tag, '')) IN (
   'calibration',
   'warm-up',
   'warmup',
+  'warm_up',
   'bad-data',
   'bad_data',
   'invalid',
@@ -150,21 +151,9 @@ CREATE POLICY fkh_shot_review_events_owner_select
 
 DROP POLICY IF EXISTS fkh_shot_review_events_owner_insert
   ON public.fkh_shot_review_events;
-CREATE POLICY fkh_shot_review_events_owner_insert
-  ON public.fkh_shot_review_events
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    user_id = (SELECT auth.uid())
-    AND EXISTS (
-      SELECT 1
-      FROM public.fkh_shots shot_row
-      WHERE shot_row.id = shot_id
-        AND shot_row.user_id = (SELECT auth.uid())
-    )
-  );
 
 REVOKE ALL ON TABLE public.fkh_shot_review_events FROM PUBLIC, anon, authenticated;
-GRANT SELECT, INSERT ON TABLE public.fkh_shot_review_events TO authenticated;
+GRANT SELECT ON TABLE public.fkh_shot_review_events TO authenticated;
 
 COMMENT ON TABLE public.fkh_shot_review_events IS
   'Append-only, owner-scoped audit history for reversible shot review decisions.';

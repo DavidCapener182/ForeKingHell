@@ -400,6 +400,13 @@
       "when": 1787175000000,
       "tag": "0056_shot_review_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1787179266000,
+      "tag": "0057_shot_review_warm_up_security_repair",
+      "breakpoints": true
     }
   ]
 }

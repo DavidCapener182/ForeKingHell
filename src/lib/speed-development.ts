@@ -1,4 +1,5 @@
 import { normalizePlayContext, playContextLabel } from "@/lib/play-context";
+import { isRestorableShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-review";
 
 export const SPEED_LADDER_LEVELS = [90, 92, 95, 97, 100] as const;
 
@@ -36,6 +37,7 @@ export type SpeedDevelopmentDriverShotInput = {
   sessionId: string;
   shotAtIso: string;
   playContext: string;
+  reviewStatus: ShotReviewStatus;
   clubSpeedMph: number | null;
   ballSpeedMph: number | null;
   smashFactor: number | null;
@@ -1313,7 +1315,11 @@ function sanitizeDriverEvidence(
 
 function isUsableDriverEvidence(shot: SpeedDevelopmentDriverShotInput) {
   const qualityTag = shot.qualityTag?.trim().toLowerCase() ?? "";
-  return !EXCLUDED_EVIDENCE_TAGS.has(qualityTag) && !qualityTag.startsWith("exclude");
+  return (
+    !isRestorableShotReviewStatus(shot.reviewStatus) &&
+    !EXCLUDED_EVIDENCE_TAGS.has(qualityTag) &&
+    !qualityTag.startsWith("exclude")
+  );
 }
 
 function isEstimatedClubData(value: string | null | undefined) {

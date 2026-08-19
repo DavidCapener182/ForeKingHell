@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -30,6 +30,7 @@ import { clearStoredRapsodoToken, getStoredRapsodoToken } from "@/lib/rapsodo/to
 import { getClubSpeedBenchmarkTarget, type ClubSpeedBenchmarkTarget } from "@/lib/club-benchmarks";
 import { getCompanionTrainingLoad } from "@/lib/companion-training-load";
 import { buildSpeedDevelopment, type SpeedDevelopmentSummary } from "@/lib/speed-development";
+import type { ShotReviewStatus } from "@/lib/shot-review";
 
 export type SpeedClubOption = {
   id: string;
@@ -254,6 +255,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_YARDS_PER_MPH = 2.4;
 const FORECAST_HORIZON_DAYS = 90;
 const MIN_FORECAST_SESSIONS = 3;
+const SPEED_EVIDENCE_REVIEW_STATUSES: ShotReviewStatus[] = ["included", "restored"];
 
 export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentrePageData> {
   const db = getDb();
@@ -331,6 +333,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         sessionId: shots.sessionId,
         shotAt: shots.shotAt,
         playContext: shots.playContext,
+        reviewStatus: shots.reviewStatus,
         clubSpeedMph: shots.clubSpeedMph,
         ballSpeedMph: shots.ballSpeedMph,
         smashFactor: shots.smashFactor,
@@ -341,7 +344,13 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         clubDataEstType: shots.clubDataEstType,
       })
       .from(shots)
-      .where(and(eq(shots.userId, userId), eq(shots.clubType, "driver")))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          eq(shots.clubType, "driver"),
+          inArray(shots.reviewStatus, SPEED_EVIDENCE_REVIEW_STATUSES),
+        ),
+      )
       .orderBy(desc(shots.shotAt))
       .limit(80),
     db
@@ -366,6 +375,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
           eq(shots.userId, userId),
           eq(practiceSessions.userId, userId),
           eq(clubs.active, true),
+          inArray(shots.reviewStatus, SPEED_EVIDENCE_REVIEW_STATUSES),
           isNotNull(shots.clubSpeedMph),
         ),
       )
@@ -538,6 +548,7 @@ export async function getSpeedCoachCardData(userId: string) {
         sessionId: shots.sessionId,
         shotAt: shots.shotAt,
         playContext: shots.playContext,
+        reviewStatus: shots.reviewStatus,
         clubSpeedMph: shots.clubSpeedMph,
         ballSpeedMph: shots.ballSpeedMph,
         smashFactor: shots.smashFactor,
@@ -548,7 +559,13 @@ export async function getSpeedCoachCardData(userId: string) {
         clubDataEstType: shots.clubDataEstType,
       })
       .from(shots)
-      .where(and(eq(shots.userId, userId), eq(shots.clubType, "driver")))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          eq(shots.clubType, "driver"),
+          inArray(shots.reviewStatus, SPEED_EVIDENCE_REVIEW_STATUSES),
+        ),
+      )
       .orderBy(desc(shots.shotAt))
       .limit(80),
     db
@@ -813,6 +830,7 @@ function buildDriverSpeedDevelopmentSummary(input: {
     sessionId: string;
     shotAt: Date;
     playContext: string;
+    reviewStatus: ShotReviewStatus;
     clubSpeedMph: number | null;
     ballSpeedMph: number | null;
     smashFactor: number | null;
@@ -849,6 +867,7 @@ function buildDriverSpeedDevelopmentSummary(input: {
       sessionId: shot.sessionId,
       shotAtIso: shot.shotAt.toISOString(),
       playContext: shot.playContext,
+      reviewStatus: shot.reviewStatus,
       clubSpeedMph: shot.clubSpeedMph,
       ballSpeedMph: shot.ballSpeedMph,
       smashFactor: shot.smashFactor,
