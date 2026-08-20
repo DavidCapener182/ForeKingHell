@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { LoaderCircle, ShieldCheck } from "lucide-react";
+import { LoaderCircle, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 
 import { importRapsodoSessionAction } from "@/app/rapsodo/actions";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
@@ -26,14 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import type { RapsodoSessionPreview } from "@/lib/rapsodo/sync-types";
 import {
   buildCompanionRapsodoShotOverrides,
@@ -57,15 +50,21 @@ export function RapsodoCompanionPreview({
   onClose: () => void;
 }) {
   const [selectedByRow, setSelectedByRow] = useState<Record<number, string>>({});
+  const [excludedShotRowNumbers, setExcludedShotRowNumbers] = useState<number[]>([]);
   const [loading, setLoading] = useState<"import" | null>(null);
   const [pending, startTransition] = useTransition();
-  const uncertain = useMemo(() => uncertainCompanionRapsodoShots(preview), [preview]);
+  const excludedRows = useMemo(() => new Set(excludedShotRowNumbers), [excludedShotRowNumbers]);
+  const uncertain = useMemo(
+    () => uncertainCompanionRapsodoShots(preview, excludedShotRowNumbers),
+    [excludedShotRowNumbers, preview],
+  );
+  const includedShotCount = preview.shots.length - excludedRows.size;
   const uncertainComplete = uncertain.every((shot) =>
     Boolean(selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey),
   );
 
   function savePreview() {
-    if (!uncertainComplete || pending) return;
+    if (!uncertainComplete || includedShotCount === 0 || pending) return;
     if (preview.sessionType !== "range") {
       onMessageChange(
         "Scored course sessions need scorecard confirmation in the Full Site workbench.",
@@ -74,7 +73,11 @@ export function RapsodoCompanionPreview({
     }
     setLoading("import");
     onMessageChange(null);
-    const shotOverrides = buildCompanionRapsodoShotOverrides(preview, selectedByRow);
+    const shotOverrides = buildCompanionRapsodoShotOverrides(
+      preview,
+      selectedByRow,
+      excludedShotRowNumbers,
+    );
     startTransition(async () => {
       const result = await importRapsodoSessionAction({
         session: preview.session,
@@ -86,6 +89,7 @@ export function RapsodoCompanionPreview({
           sessionType: preview.sessionType,
           sessionDate: preview.sessionDate,
           distanceUnit: preview.distanceUnit,
+          excludedShotRowNumbers,
           shotOverrides,
           practicePlanId: practicePlanId ?? undefined,
         },
@@ -120,7 +124,7 @@ export function RapsodoCompanionPreview({
         <DrawerHeader className="text-left">
           <DrawerTitle>Session preview</DrawerTitle>
           <DrawerDescription>
-            Check the R-Cloud session and confirm only the uncertain club matches.
+            Review every shot, remove any you do not want, then confirm uncertain club matches.
           </DrawerDescription>
         </DrawerHeader>
         <div
@@ -153,7 +157,9 @@ export function RapsodoCompanionPreview({
                 </p>
                 <h1 className="mt-1 truncate text-xl font-bold">{preview.session.title}</h1>
               </div>
-              <Badge>{preview.shotCount} shots</Badge>
+              <Badge>
+                {includedShotCount} of {preview.shotCount} shots
+              </Badge>
             </div>
             <ConnectedMetricBar
               label="R-Cloud session summary"
@@ -165,92 +171,120 @@ export function RapsodoCompanionPreview({
                   value: preview.sessionType === "range" ? "Range practice" : "Scored course",
                 },
                 {
-                  label: "Detected clubs",
-                  value: String(
-                    new Set(preview.shots.map((shot) => shot.suggestion.choice.clubType)).size,
-                  ),
+                  label: "Included",
+                  value: String(includedShotCount),
                 },
-                { label: "Needs confirmation", value: String(uncertain.length) },
+                { label: "Removed", value: String(excludedRows.size) },
               ]}
             />
           </section>
-          {uncertain.length > 0 ? (
-            <Card size="sm" data-uncertain-club-mappings>
-              <CardHeader>
-                <div>
-                  <CardTitle>Confirm uncertain clubs</CardTitle>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Trusted matches are already accepted.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table aria-label="Uncertain R-Cloud club mappings">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Shot</TableHead>
-                      <TableHead>Suggested club</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {uncertain.map((shot) => (
-                      <TableRow key={shot.rowNumber}>
-                        <TableCell className="whitespace-normal">
-                          <span className="font-medium">
-                            Shot {shot.shotNumber ?? shot.rowNumber} ·{" "}
-                            {Math.round(shot.carryYd ?? 0)} yd
-                          </span>
-                          <span className="mt-1 block text-xs text-muted-foreground">
-                            {shot.suggestion.reason}
-                          </span>
-                        </TableCell>
-                        <TableCell className="min-w-44">
-                          <Field>
-                            <FieldLabel
-                              htmlFor={`rapsodo-club-${shot.rowNumber}`}
-                              className="sr-only"
+          <Card size="sm" data-rapsodo-shot-review>
+            <CardHeader>
+              <div>
+                <CardTitle>Review shots</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Removed shots stay in R-Cloud but will not be imported.
+                </p>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-2">
+              {preview.shots.map((shot) => {
+                const excluded = excludedRows.has(shot.rowNumber);
+                const needsConfirmation =
+                  shot.suggestion.confidence === "low" || shot.suggestion.confidence === "medium";
+
+                return (
+                  <Item
+                    key={shot.rowNumber}
+                    variant="muted"
+                    className={excluded ? "opacity-60" : undefined}
+                    data-rapsodo-shot-row={shot.rowNumber}
+                    data-shot-excluded={excluded ? "true" : "false"}
+                  >
+                    <ItemContent className="gap-2">
+                      <div>
+                        <ItemTitle>
+                          Shot {shot.shotNumber ?? shot.rowNumber} · {shot.reportedClubLabel}
+                        </ItemTitle>
+                        <ItemDescription>
+                          Carry {formatMetric(shot.carryYd, "yd")} · Total{" "}
+                          {formatMetric(shot.totalYd, "yd")}
+                        </ItemDescription>
+                      </div>
+                      <dl className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
+                        <ShotMetric label="Ball" value={formatMetric(shot.ballSpeedMph, "mph")} />
+                        <ShotMetric label="Launch" value={formatMetric(shot.launchAngleDeg, "°")} />
+                        <ShotMetric label="Side" value={formatMetric(shot.sideCarryYd, "yd")} />
+                      </dl>
+                      {!excluded && needsConfirmation ? (
+                        <Field>
+                          <FieldLabel htmlFor={`rapsodo-club-${shot.rowNumber}`}>
+                            Confirm club
+                          </FieldLabel>
+                          <Select
+                            value={selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey}
+                            onValueChange={(value) =>
+                              setSelectedByRow((current) => ({
+                                ...current,
+                                [shot.rowNumber]: value,
+                              }))
+                            }
+                          >
+                            <SelectTrigger
+                              id={`rapsodo-club-${shot.rowNumber}`}
+                              className="min-h-11 w-full"
                             >
-                              Club for shot {shot.shotNumber ?? shot.rowNumber}
-                            </FieldLabel>
-                            <Select
-                              value={
-                                selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey
-                              }
-                              onValueChange={(value) =>
-                                setSelectedByRow((current) => ({
-                                  ...current,
-                                  [shot.rowNumber]: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger
-                                id={`rapsodo-club-${shot.rowNumber}`}
-                                className="min-h-11 w-full"
-                              >
-                                <SelectValue placeholder="Choose a club" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {preview.clubChoices.map((choice) => (
-                                  <SelectItem key={choice.clubKey} value={choice.clubKey}>
-                                    {choice.clubLabel}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ) : (
+                              <SelectValue placeholder="Choose a club" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {preview.clubChoices.map((choice) => (
+                                <SelectItem key={choice.clubKey} value={choice.clubKey}>
+                                  {choice.clubLabel}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">{shot.suggestion.reason}</p>
+                        </Field>
+                      ) : null}
+                    </ItemContent>
+                    <ItemActions>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={excluded ? "outline" : "ghost"}
+                        className="min-h-10"
+                        onClick={() =>
+                          setExcludedShotRowNumbers((current) =>
+                            excluded
+                              ? current.filter((rowNumber) => rowNumber !== shot.rowNumber)
+                              : [...current, shot.rowNumber],
+                          )
+                        }
+                        disabled={pending}
+                        aria-label={`${excluded ? "Restore" : "Remove"} shot ${shot.shotNumber ?? shot.rowNumber}`}
+                      >
+                        {excluded ? <RotateCcw aria-hidden /> : <Trash2 aria-hidden />}
+                        {excluded ? "Restore" : "Remove"}
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                );
+              })}
+            </CardContent>
+          </Card>
+          {uncertain.length === 0 && includedShotCount > 0 ? (
             <Alert>
               <ShieldCheck aria-hidden />
-              <AlertTitle>All club matches are high confidence</AlertTitle>
+              <AlertTitle>All included club matches are high confidence</AlertTitle>
             </Alert>
-          )}
+          ) : null}
+          {includedShotCount === 0 ? (
+            <Alert variant="destructive">
+              <AlertTitle>Keep at least one shot</AlertTitle>
+              <AlertDescription>Restore a shot before importing this session.</AlertDescription>
+            </Alert>
+          ) : null}
           {preview.sessionType !== "range" ? (
             <Alert>
               <AlertTitle>Scorecard confirmation required</AlertTitle>
@@ -277,12 +311,18 @@ export function RapsodoCompanionPreview({
             type="button"
             className="min-h-12 rounded-xl"
             onClick={savePreview}
-            disabled={!hydrated || pending || !uncertainComplete || preview.sessionType !== "range"}
+            disabled={
+              !hydrated ||
+              pending ||
+              !uncertainComplete ||
+              includedShotCount === 0 ||
+              preview.sessionType !== "range"
+            }
           >
             {loading === "import" ? (
               <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
             ) : null}
-            Import and review
+            Import {includedShotCount} shot{includedShotCount === 1 ? "" : "s"} and review
           </Button>
           <Button
             type="button"
@@ -297,6 +337,21 @@ export function RapsodoCompanionPreview({
       </DrawerContent>
     </Drawer>
   );
+}
+
+function ShotMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+function formatMetric(value: number | null, unit: string) {
+  return value === null
+    ? "—"
+    : `${new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 }).format(value)} ${unit}`;
 }
 
 function formatDate(value: string | null) {

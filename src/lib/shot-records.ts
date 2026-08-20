@@ -1,16 +1,23 @@
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
+
 export const excludedRecordQualityTags = [
   "bad-data",
   "bad_data",
+  "calibration",
   "delete",
   "deleted",
   "exclude",
   "excluded",
   "fat",
   "invalid",
+  "launch-monitor-error",
   "mishit",
   "misread",
   "thin",
   "top",
+  "warm-up",
+  "warmup",
+  "warm_up",
 ] as const;
 
 export const excludedRecordShotCategories = [
@@ -21,6 +28,7 @@ export const excludedRecordShotCategories = [
   "recovery",
   "warm-up",
   "warmup",
+  "warm_up",
 ] as const;
 
 const excludedQualityTagSet = new Set<string>(excludedRecordQualityTags);
@@ -32,6 +40,7 @@ export type RecordEvidenceScope = "raw" | "trusted";
 export type RecordEligibilityReason =
   | "missing-distance"
   | "non-positive-distance"
+  | "review-status"
   | "quality-tag"
   | "shot-category"
   | "manual-source";
@@ -39,6 +48,7 @@ export type RecordEligibilityReason =
 export type RecordShot = {
   carryYd: number | null;
   totalYd: number | null;
+  reviewStatus?: ShotReviewStatus | null;
   qualityTag?: string | null;
   shotCategory?: string | null;
   sessionSource?: string | null;
@@ -68,11 +78,24 @@ export function recordEligibility(shot: RecordShot) {
   const shotCategory = normalizedValue(shot.shotCategory);
   const sessionSource = normalizedValue(shot.sessionSource);
 
-  if (qualityTag && excludedQualityTagSet.has(qualityTag)) {
-    reasons.push("quality-tag");
+  if (!isShotEvidenceEligible(shot)) {
+    if (shot.reviewStatus && shot.reviewStatus !== "included") {
+      reasons.push("review-status");
+    } else if (
+      qualityTag &&
+      (excludedQualityTagSet.has(qualityTag) || qualityTag.startsWith("exclude"))
+    ) {
+      reasons.push("quality-tag");
+    } else if (!shotCategory || !excludedShotCategorySet.has(shotCategory)) {
+      reasons.push("review-status");
+    }
   }
 
-  if (shotCategory && excludedShotCategorySet.has(shotCategory)) {
+  if (
+    shotCategory &&
+    excludedShotCategorySet.has(shotCategory) &&
+    !(shot.reviewStatus === "restored" && isLegacyWarmUpCategory(shotCategory))
+  ) {
     reasons.push("shot-category");
   }
 
@@ -115,4 +138,8 @@ export function recordDistance(
 
 function normalizedValue(value: string | null | undefined) {
   return value?.trim().toLowerCase() || null;
+}
+
+function isLegacyWarmUpCategory(category: string) {
+  return category === "warm-up" || category === "warmup" || category === "warm_up";
 }

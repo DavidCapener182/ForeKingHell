@@ -95,6 +95,14 @@ describe("strokes gained desktop workbench", () => {
     expect(roundBlock).toContain("const displayedRounds = rounds.slice(0, 6)");
   });
 
+  it("eager-loads the above-the-fold scoring leak artwork", () => {
+    const leakBlock =
+      source.match(/function MainScoringLeak[\s\S]*?function scoringLeakArtwork/)?.[0] ?? "";
+
+    expect(leakBlock).toContain('loading="eager"');
+    expect(leakBlock).toContain('fetchPriority="high"');
+  });
+
   it("keeps gains and losses content-sized without filler space", () => {
     const highlightBlock =
       source.match(/function ShotHighlights[\s\S]*?function RoundTrendPanel/)?.[0] ?? "";

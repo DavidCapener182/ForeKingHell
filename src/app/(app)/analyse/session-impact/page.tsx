@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarDays } from "lucide-react";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { SessionImpactClient } from "@/app/analyse/session-impact/session-impact-client";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export default async function SessionImpactPage({ searchParams }: { searchParams
             ? [
                 { label: "Session", value: data.session.label, detail: data.session.dateLabel },
                 {
-                  label: "Raw shots",
+                  label: "Evidence shots",
                   value: data.shots.length,
                   detail: data.session.sourceLabel,
                 },
@@ -88,11 +88,14 @@ async function getSessionImpactData(requestedId?: string) {
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
       sideYd: shots.sideCarryYd,
+      reviewStatus: shots.reviewStatus,
       qualityTag: shots.qualityTag,
       shotCategory: shots.shotCategory,
     })
     .from(shots)
-    .where(and(eq(shots.userId, userId), eq(shots.sessionId, session.id)))
+    .where(
+      and(eq(shots.userId, userId), eq(shots.sessionId, session.id), shotEvidenceSqlPredicate()),
+    )
     .orderBy(asc(shots.shotNumber))
     .limit(5_000);
 
@@ -113,6 +116,21 @@ async function getSessionImpactData(requestedId?: string) {
       sessionSource: session.source,
     })),
   };
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }
 
 function formatLabel(value: string) {

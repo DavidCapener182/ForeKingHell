@@ -17,18 +17,22 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SessionHistoryFilterSheet } from "@/app/sessions/session-history-filter-sheet";
+import {
+  deriveSessionHistoryView,
+  pruneSessionComparisonSelection,
+} from "@/app/sessions/session-history-view";
+import { useSessionHistoryUrlState } from "@/app/sessions/use-session-history-url-state";
 import { formatClubType } from "@/lib/club-format";
+import {
+  DEFAULT_SESSION_HISTORY_FILTERS,
+  type SessionDateFilter,
+  type SessionHistoryFilterPatch,
+  type SessionHistoryFilters,
+  type SessionTypeFilter,
+} from "@/lib/session-history-search-params";
 import type { ShotPatternPoint } from "@/lib/shot-pattern-chart-data";
 import { cn } from "@/lib/utils";
 
@@ -68,22 +72,38 @@ export type SessionTimelineItem = {
   importantMetrics: { label: string; value: string }[];
 };
 
-type TimelineFilter = "all" | "practice" | "round";
-type DateFilter = "all" | "Today" | "This week" | "Earlier";
+type SessionTimelineProps = {
+  sessions: SessionTimelineItem[];
+  accountId?: string;
+  filters?: SessionHistoryFilters;
+  onFiltersChange?: (patch: SessionHistoryFilterPatch) => void;
+  onClearFilters?: () => void;
+};
+
+export function UrlBackedSessionTimeline({
+  sessions,
+  accountId,
+}: Pick<SessionTimelineProps, "sessions" | "accountId">) {
+  const { filters, updateFilters, clearFilters } = useSessionHistoryUrlState(sessions);
+
+  return (
+    <SessionTimeline
+      sessions={sessions}
+      accountId={accountId}
+      filters={filters}
+      onFiltersChange={updateFilters}
+      onClearFilters={clearFilters}
+    />
+  );
+}
 
 export function SessionTimeline({
   sessions,
   accountId,
-}: {
-  sessions: SessionTimelineItem[];
-  accountId?: string;
-}) {
-  const [selected, setSelected] = useState<string[]>([]);
-  const [filter, setFilter] = useState<TimelineFilter>("all");
-  const [source, setSource] = useState("all");
-  const [club, setClub] = useState("all");
-  const [date, setDate] = useState<DateFilter>("all");
-  const [activeSessionId, setActiveSessionId] = useState(sessions[0]?.id ?? null);
+  filters = DEFAULT_SESSION_HISTORY_FILTERS,
+  onFiltersChange = noop,
+  onClearFilters = noop,
+}: SessionTimelineProps) {
   const sourceOptions = useMemo(
     () => uniqueOptions(sessions.map((session) => session.sourceLabel)),
     [sessions],
@@ -96,30 +116,36 @@ export function SessionTimeline({
       })),
     [sessions],
   );
-  const visible = useMemo(
-    () =>
-      sessions.filter((session) => {
-        if (filter === "round" && !session.isRound) return false;
-        if (filter === "practice" && session.isRound) return false;
-        if (source !== "all" && session.sourceLabel !== source) return false;
-        if (club !== "all" && !session.clubs.includes(club)) return false;
-        return date === "all" || session.dateGroup === date;
-      }),
-    [club, date, filter, sessions, source],
+  const { visible, focused: activeSession } = useMemo(
+    () => deriveSessionHistoryView(sessions, filters),
+    [filters, sessions],
   );
   const grouped = useMemo(() => groupSessions(visible), [visible]);
-  const activeSession =
-    visible.find((session) => session.id === activeSessionId) ?? visible[0] ?? null;
-  const selectedSessions = selected.flatMap((id) => {
-    const session = sessions.find((item) => item.id === id);
+  const visibleSessionIds = useMemo(() => visible.map((session) => session.id), [visible]);
+  const visibilityKey = JSON.stringify(visibleSessionIds);
+  const [comparisonState, setComparisonState] = useState(() => ({
+    visibilityKey,
+    selected: [] as string[],
+  }));
+  let visibleSelected = comparisonState.selected;
+  if (comparisonState.visibilityKey !== visibilityKey) {
+    visibleSelected = pruneSessionComparisonSelection(visibleSelected, visibleSessionIds);
+    setComparisonState({ visibilityKey, selected: visibleSelected });
+  }
+  const selectedSessions = visibleSelected.flatMap((id) => {
+    const session = visible.find((item) => item.id === id);
     return session ? [session] : [];
   });
   const compareHref =
-    selected.length === 2
-      ? `/analyse/compare?sessionId=${encodeURIComponent(selected[0])}&baselineSessionId=${encodeURIComponent(selected[1])}`
+    visibleSelected.length === 2
+      ? `/analyse/compare?sessionId=${encodeURIComponent(visibleSelected[0])}&baselineSessionId=${encodeURIComponent(visibleSelected[1])}`
       : null;
-  const activeFilterCount =
-    Number(source !== "all") + Number(club !== "all") + Number(date !== "all");
+  const activeControlCount =
+    Number(filters.type !== "all") +
+    Number(filters.source !== "all") +
+    Number(filters.club !== "all") +
+    Number(filters.date !== "all") +
+    Number(filters.sessionId !== null);
 
   useEffect(() => {
     if (!accountId) return;
@@ -141,17 +167,16 @@ export function SessionTimeline({
   }, [accountId, sessions]);
 
   function toggle(id: string) {
-    setSelected((current) => {
-      if (current.includes(id)) return current.filter((item) => item !== id);
-      return current.length >= 2 ? [current[1], id] : [...current, id];
-    });
-  }
+    setComparisonState((current) => {
+      const currentVisible = pruneSessionComparisonSelection(current.selected, visibleSessionIds);
+      const selected = currentVisible.includes(id)
+        ? currentVisible.filter((item) => item !== id)
+        : currentVisible.length >= 2
+          ? [currentVisible[1], id]
+          : [...currentVisible, id];
 
-  function clearFilters() {
-    setFilter("all");
-    setSource("all");
-    setClub("all");
-    setDate("all");
+      return { visibilityKey, selected };
+    });
   }
 
   return (
@@ -161,7 +186,10 @@ export function SessionTimeline({
         aria-label="Filter session history"
         data-session-toolbar
       >
-        <Tabs value={filter} onValueChange={(value) => setFilter(value as TimelineFilter)}>
+        <Tabs
+          value={filters.type}
+          onValueChange={(value) => onFiltersChange({ type: value as SessionTypeFilter })}
+        >
           <TabsList aria-label="Session type" className="grid grid-cols-3">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="practice">Practice</TabsTrigger>
@@ -169,34 +197,34 @@ export function SessionTimeline({
           </TabsList>
         </Tabs>
         <div className="h-6 w-px bg-border" aria-hidden />
-        <FilterSheet
+        <SessionHistoryFilterSheet
           label="Source"
-          value={source}
+          value={filters.source}
           options={[{ value: "all", label: "All sources" }, ...sourceOptions.map(asOption)]}
-          onChange={setSource}
+          onChange={(source) => onFiltersChange({ source })}
         />
-        <FilterSheet
+        <SessionHistoryFilterSheet
           label="Club"
-          value={club}
+          value={filters.club}
           options={[{ value: "all", label: "All clubs" }, ...clubOptions]}
-          onChange={setClub}
+          onChange={(club) => onFiltersChange({ club })}
         />
-        <FilterSheet
+        <SessionHistoryFilterSheet
           label="Date"
-          value={date}
+          value={filters.date}
           options={[
             { value: "all", label: "Any date" },
-            { value: "Today", label: "Today" },
-            { value: "This week", label: "This week" },
-            { value: "Earlier", label: "Earlier" },
+            { value: "today", label: "Today" },
+            { value: "week", label: "This week" },
+            { value: "earlier", label: "Earlier" },
           ]}
-          onChange={(value) => setDate(value as DateFilter)}
+          onChange={(date) => onFiltersChange({ date: date as SessionDateFilter })}
         />
         <span className="ml-auto text-xs text-muted-foreground">
           {visible.length} of {sessions.length}
         </span>
-        {activeFilterCount > 0 || filter !== "all" ? (
-          <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+        {activeControlCount > 0 ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
             <X className="size-3.5" aria-hidden />
             Clear
           </Button>
@@ -230,8 +258,8 @@ export function SessionTimeline({
                         key={session.id}
                         session={session}
                         active={session.id === activeSession?.id}
-                        checked={selected.includes(session.id)}
-                        onInspect={() => setActiveSessionId(session.id)}
+                        checked={visibleSelected.includes(session.id)}
+                        onInspect={() => onFiltersChange({ sessionId: session.id })}
                         onToggle={() => toggle(session.id)}
                       />
                     ))}
@@ -251,7 +279,7 @@ export function SessionTimeline({
                     variant="outline"
                     size="sm"
                     className="mt-4"
-                    onClick={clearFilters}
+                    onClick={onClearFilters}
                   >
                     Show all sessions
                   </Button>
@@ -263,12 +291,12 @@ export function SessionTimeline({
 
         <SessionPreview
           session={activeSession}
-          selected={Boolean(activeSession && selected.includes(activeSession.id))}
+          selected={Boolean(activeSession && visibleSelected.includes(activeSession.id))}
           onToggle={toggle}
         />
       </div>
 
-      {selected.length > 0 ? (
+      {visibleSelected.length > 0 ? (
         <div
           aria-live="polite"
           className="sticky bottom-4 z-20 mx-auto flex w-[min(44rem,calc(100%-1rem))] items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-xl backdrop-blur"
@@ -276,14 +304,19 @@ export function SessionTimeline({
         >
           <div className="min-w-0">
             <p className="font-semibold">
-              {selected.length === 2 ? "Ready to compare" : "Select one more session"}
+              {visibleSelected.length === 2 ? "Ready to compare" : "Select one more session"}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {selectedSessions.map((session) => session.title).join(" versus ")}
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSelected([])}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setComparisonState({ visibilityKey, selected: [] })}
+            >
               Clear
             </Button>
             <Button asChild={Boolean(compareHref)} size="sm" disabled={!compareHref}>
@@ -318,52 +351,52 @@ function DesktopSessionRow({
 }) {
   return (
     <Item
-      role="button"
-      tabIndex={0}
       variant={active ? "muted" : "default"}
       className={cn(
-        "relative cursor-pointer rounded-none border-0 px-4 py-3 pl-5 focus-visible:ring-2 focus-visible:ring-ring",
+        "relative rounded-none border-0 px-4 py-3 pl-5",
         active && "bg-primary/[0.055]",
       )}
-      aria-current={active ? "true" : undefined}
-      onClick={onInspect}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onInspect();
-        }
-      }}
     >
       <ItemMedia className="relative z-[1] grid size-6 place-items-center rounded-full bg-card">
         <Checkbox
           checked={checked}
           onCheckedChange={onToggle}
-          onClick={(event) => event.stopPropagation()}
           aria-label={`Select ${session.title} for comparison`}
         />
       </ItemMedia>
-      <ItemContent className="space-y-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <ItemTitle className="max-w-full">{session.title}</ItemTitle>
-          <Badge variant="outline" className="font-normal">
-            {session.typeLabel}
-          </Badge>
-        </div>
-        <ItemDescription className="overflow-visible whitespace-normal text-clip">
-          {session.dateLabel} · {session.timeLabel}
-          {session.contextLabel !== session.title ? ` · ${session.contextLabel}` : ""}
-        </ItemDescription>
-        <p className="truncate text-sm font-medium text-foreground">{session.verdict}</p>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span>{session.sourceLabel}</span>
-          <span>{session.evidenceConfidence} confidence</span>
-          {session.planLinked ? (
-            <span className="inline-flex items-center gap-1 text-primary">
-              <Target className="size-3" aria-hidden /> Plan linked
-            </span>
-          ) : null}
-        </div>
-      </ItemContent>
+      <button
+        type="button"
+        className="focus-aaa min-w-0 flex-1 rounded-lg text-left"
+        aria-pressed={active}
+        aria-label={`Preview ${session.title}`}
+        onClick={onInspect}
+        data-session-inspect
+      >
+        <span className="block space-y-1">
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="max-w-full truncate font-medium leading-5">{session.title}</span>
+            <Badge variant="outline" className="font-normal">
+              {session.typeLabel}
+            </Badge>
+          </span>
+          <span className="block overflow-visible whitespace-normal text-clip text-xs leading-5 text-muted-foreground">
+            {session.dateLabel} · {session.timeLabel}
+            {session.contextLabel !== session.title ? ` · ${session.contextLabel}` : ""}
+          </span>
+          <span className="block truncate text-sm font-medium text-foreground">
+            {session.verdict}
+          </span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>{session.sourceLabel}</span>
+            <span>{session.evidenceConfidence} confidence</span>
+            {session.planLinked ? (
+              <span className="inline-flex items-center gap-1 text-primary">
+                <Target className="size-3" aria-hidden /> Plan linked
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </button>
       <ItemActions>
         <Badge variant={session.isRound ? "secondary" : "outline"}>{session.resultLabel}</Badge>
       </ItemActions>
@@ -462,7 +495,12 @@ function SessionPreview({
           <Button asChild className="flex-1">
             <Link href={href}>Open full review</Link>
           </Button>
-          <Button type="button" variant="outline" onClick={() => onToggle(session.id)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onToggle(session.id)}
+            aria-pressed={selected}
+          >
             <span
               className={cn(
                 "grid size-4 place-items-center rounded border",
@@ -514,60 +552,6 @@ function PatternThumbnail({
   );
 }
 
-function FilterSheet({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  const selectedLabel = options.find((option) => option.value === value)?.label;
-
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          {label}
-          {value !== "all" ? (
-            <Badge variant="secondary" className="max-w-24 truncate">
-              {selectedLabel}
-            </Badge>
-          ) : null}
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="right" className="w-[min(24rem,92vw)] sm:max-w-96">
-        <SheetHeader className="border-b pr-12">
-          <SheetTitle>Filter by {label.toLowerCase()}</SheetTitle>
-          <SheetDescription>
-            Keep the history focused without changing the underlying session record.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="grid gap-2 overflow-y-auto px-4 pb-4">
-          {options.map((option) => (
-            <SheetClose asChild key={option.value}>
-              <Button
-                type="button"
-                variant={option.value === value ? "secondary" : "ghost"}
-                className="min-h-11 justify-start"
-                onClick={() => onChange(option.value)}
-              >
-                <span className="grid size-4 place-items-center" aria-hidden>
-                  {option.value === value ? <Check className="size-4" /> : null}
-                </span>
-                {option.label}
-              </Button>
-            </SheetClose>
-          ))}
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 function groupSessions(sessions: SessionTimelineItem[]) {
   const order: SessionTimelineItem["dateGroup"][] = ["Today", "This week", "Earlier"];
   return order.flatMap((group) => {
@@ -587,3 +571,5 @@ function asOption(value: string) {
 function slug(value: string) {
   return value.toLowerCase().replace(/\s+/g, "-");
 }
+
+function noop() {}

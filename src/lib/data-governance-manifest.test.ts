@@ -48,6 +48,22 @@ describe("data governance manifest", () => {
     ]);
   });
 
+  it("exports append-only shot review history with the owning account", () => {
+    const entry = dataGovernanceManifest.find(
+      (candidate) => candidate.dataset === "shotReviewEvents",
+    );
+
+    expect(entry).toMatchObject({
+      table: "fkh_shot_review_events",
+      category: "golf",
+      ownerFields: ["userId"],
+      export: true,
+      deletion: "cascade",
+      retention: "user-controlled",
+      containsSensitiveData: true,
+    });
+  });
+
   it("retains course-twin reference and admin operations without user export", () => {
     const entries = Object.fromEntries(
       dataGovernanceManifest

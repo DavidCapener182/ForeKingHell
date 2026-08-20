@@ -64,7 +64,24 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
             rows between unbounded preceding and 1 preceding
           ) as prior_best
         from ${shots}
-        where ${shots.userId} = ${userId} and ${shots.carryYd} is not null
+        where ${shots.userId} = ${userId}
+          and ${shots.carryYd} is not null
+          and ${shots.reviewStatus} in ('included', 'restored')
+          and (
+            ${shots.reviewStatus} = 'restored'
+            or (
+              ${shots.reviewStatus} = 'included'
+              and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+              and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+                'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+                'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+                'fat', 'mishit', 'thin', 'top'
+              )
+              and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+                'warm-up', 'warmup', 'warm_up'
+              )
+            )
+          )
       ) ranked
       where shot_at >= ${sinceIso}::timestamptz
         and (prior_best is null or carry_yd > prior_best)

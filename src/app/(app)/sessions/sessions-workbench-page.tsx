@@ -1,18 +1,31 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarDays, Upload } from "lucide-react";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button } from "@/components/ui/button";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { SessionTimeline } from "@/app/sessions/session-timeline";
+import { UrlBackedSessionTimeline } from "@/app/sessions/session-timeline";
 import { getRecentSessionHistory } from "@/lib/session-history";
+import {
+  resolveSessionHistorySearchParams,
+  sessionHistoryHref,
+  type SessionHistorySearchParamsInput,
+} from "@/lib/session-history-search-params";
 
 export const dynamic = "force-dynamic";
 
-export default async function SessionsPage() {
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: SessionHistorySearchParamsInput;
+}) {
   const userId = await requireCurrentUserId();
   const rows = await getRecentSessionHistory(userId);
+  const resolved = resolveSessionHistorySearchParams(searchParams, rows);
+
+  if (resolved.changed) redirect(sessionHistoryHref(resolved.query));
 
   return (
     <PageShell>
@@ -31,7 +44,7 @@ export default async function SessionsPage() {
       />
 
       {rows.length > 0 ? (
-        <SessionTimeline sessions={rows} accountId={userId} />
+        <UrlBackedSessionTimeline sessions={rows} accountId={userId} />
       ) : (
         <AppEmptyState
           icon={<CalendarDays className="size-6" aria-hidden />}

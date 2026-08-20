@@ -9,7 +9,16 @@ describe("shots runtime Card composition", () => {
     const markup = renderToStaticMarkup(
       <Card>
         <CardContent>
-          <ShotBulkToolbar selectedCount={3} onInspect={vi.fn()} onClear={vi.fn()} />
+          <ShotBulkToolbar
+            shotIds={[
+              "00000000-0000-4000-8000-000000000001",
+              "00000000-0000-4000-8000-000000000002",
+              "00000000-0000-4000-8000-000000000003",
+            ]}
+            selectedCount={3}
+            onInspect={vi.fn()}
+            onClear={vi.fn()}
+          />
         </CardContent>
       </Card>,
     );

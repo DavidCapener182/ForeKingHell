@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { sessions, shots, speedTrainingSessions } from "@/db/schema";
 import { buildDistanceLossDiagnosis } from "@/lib/distance-loss-diagnosis";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -25,6 +26,7 @@ export async function getDistanceLossDiagnosisData(userId: string) {
         launchAngleDeg: shots.launchAngleDeg,
         smashFactor: shots.smashFactor,
         spinRate: shots.spinRate,
+        reviewStatus: shots.reviewStatus,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
         clubDataEstType: shots.clubDataEstType,
@@ -37,6 +39,7 @@ export async function getDistanceLossDiagnosisData(userId: string) {
           eq(sessions.userId, userId),
           eq(shots.clubType, "driver"),
           gte(shots.shotAt, distanceLookback),
+          shotEvidenceSqlPredicate(),
         ),
       )
       .orderBy(asc(shots.shotAt)),
@@ -64,7 +67,7 @@ export async function getDistanceLossDiagnosisData(userId: string) {
   ]);
 
   return buildDistanceLossDiagnosis({
-    shots: distanceLossRows,
+    shots: distanceLossRows.filter(isShotEvidenceEligible),
     exposure: [
       ...exposureSessionRows.map((session) => ({
         id: `session:${session.id}`,
@@ -77,4 +80,19 @@ export async function getDistanceLossDiagnosisData(userId: string) {
     ],
     now,
   });
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }

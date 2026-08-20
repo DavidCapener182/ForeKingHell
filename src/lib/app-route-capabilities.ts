@@ -61,7 +61,7 @@ export const mobileCapabilities = {
   "quick-range": { mobileExperience: "companion" },
   speed: desktopOnly(
     "Build recommended practice",
-    "/practice?intent=speed",
+    "/practice?session=speed&intent=speed&time=20",
     "Full speed history and programming are available in the workbench.",
   ),
   "training-load": desktopOnly(

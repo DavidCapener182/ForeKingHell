@@ -12,6 +12,7 @@ export type ImportedTrainingSessionInput = {
   sessionDate: Date;
   fileName: string;
   courseName?: string | null;
+  /** Raw committed swings: review exclusions change analytical evidence, not physical workload. */
   shotCount: number;
   scorecardHoleCount?: number | null;
 };

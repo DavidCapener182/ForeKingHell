@@ -42,6 +42,7 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
+import { DriverSpeedDevelopment } from "@/components/speed/driver-speed-development";
 import {
   CompactReadoutGrid,
   DataPair,
@@ -174,8 +175,8 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
       <DesktopWorkbenchLayout scope="speed">
         <PageHeader
           eyebrow={<StatusPill tone="sky">Speed Centre</StatusPill>}
-          title="Athletic speed tracking"
-          description="Uploaded range shots feed with-ball speed, PBs, and projections. No-ball speed sessions stay separate so speed work does not distort bag numbers."
+          title="Driver Speed Development"
+          description="Build your speed ceiling, transfer it to the ball, and keep it playable. No-ball training stays separate from driver performance so faster only counts when control survives."
           visual={<PageArtwork variant="speed" alt="" className="h-full min-h-36" priority />}
           metrics={[
             {
@@ -221,6 +222,8 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
             {speedSavedMessage(speedSaved)}
           </div>
         ) : null}
+
+        <DriverSpeedDevelopment data={data.development} />
 
         <CompactReadoutGrid
           columnsClassName="sm:grid-cols-2 xl:grid-cols-7"

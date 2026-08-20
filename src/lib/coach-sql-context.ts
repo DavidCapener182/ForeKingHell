@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import {
   clubs,
@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { summarizeStrokesGainedByCategory } from "@/lib/strokes-gained";
 
 export type CoachSqlCitation = {
@@ -81,12 +82,14 @@ export async function buildCoachSqlContext(
         clubSpeedMph: shots.clubSpeedMph,
         ballSpeedMph: shots.ballSpeedMph,
         shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
         fileName: sessions.fileName,
         courseName: sessions.courseName,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(and(eq(shots.userId, userId), eq(sessions.userId, userId)))
+      .where(and(eq(shots.userId, userId), eq(sessions.userId, userId), shotEvidenceSqlPredicate()))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
       .limit(40),
     db
@@ -113,7 +116,13 @@ export async function buildCoachSqlContext(
         strokesGained: strokesGainedShotEvents.strokesGained,
       })
       .from(strokesGainedShotEvents)
-      .where(eq(strokesGainedShotEvents.userId, userId))
+      .leftJoin(shots, and(eq(shots.id, strokesGainedShotEvents.shotId), eq(shots.userId, userId)))
+      .where(
+        and(
+          eq(strokesGainedShotEvents.userId, userId),
+          or(isNull(strokesGainedShotEvents.shotId), shotEvidenceSqlPredicate()),
+        ),
+      )
       .orderBy(desc(strokesGainedShotEvents.createdAt))
       .limit(80),
     db
@@ -135,10 +144,18 @@ export async function buildCoachSqlContext(
       .select({
         shotAt: shots.shotAt,
         clubSpeedMph: shots.clubSpeedMph,
+        shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
       })
       .from(shots)
       .where(
-        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), isNotNull(shots.clubSpeedMph)),
+        and(
+          eq(shots.userId, userId),
+          eq(shots.clubType, "driver"),
+          isNotNull(shots.clubSpeedMph),
+          shotEvidenceSqlPredicate(),
+        ),
       )
       .orderBy(desc(shots.shotAt))
       .limit(200),
@@ -150,6 +167,8 @@ export async function buildCoachSqlContext(
     ]),
   );
   const citations: CoachSqlCitation[] = [];
+  const evidenceRecentShotRows = recentShotRows.filter(isShotEvidenceEligible);
+  const evidenceDriverSpeedRows = driverSpeedRows.filter(isShotEvidenceEligible);
   const stockLines = stockRows.slice(0, 12).map((row, index) => {
     const label = clubLabelById.get(row.clubId) ?? "Unknown club";
     citations.push({
@@ -160,7 +179,7 @@ export async function buildCoachSqlContext(
     });
     return `${index + 1}. ${label}: play ${formatNumber(row.recommendedPlayNumberYd)} yd, median carry ${formatNumber(row.carryMedianYd)} yd, left/right dispersion ${formatNumber(row.dispersionLeftYd)}/${formatNumber(row.dispersionRightYd)} yd, confidence ${formatNumber(row.confidenceScore)}%.`;
   });
-  const shotLines = recentShotRows.slice(0, 20).map((shot, index) => {
+  const shotLines = evidenceRecentShotRows.slice(0, 20).map((shot, index) => {
     citations.push({
       id: `shot-${shot.id}`,
       label: `${formatClubType(shot.clubType)} shot ${shot.shotNumber ?? index + 1}`,
@@ -202,7 +221,7 @@ export async function buildCoachSqlContext(
     });
     return `${index + 1}. ${label}: ${formatNumber(row.avgSpeedMph)} mph average, ${formatNumber(row.maxSpeedMph)} mph max, ${row.swingCount} swings, target ${formatNumber(row.targetSpeedMph)} mph.`;
   });
-  const driverSpeeds = driverSpeedRows
+  const driverSpeeds = evidenceDriverSpeedRows
     .map((row) => row.clubSpeedMph)
     .filter((value): value is number => value !== null);
   const driverLast20AvgMph = average(driverSpeeds.slice(0, 20));
@@ -283,4 +302,19 @@ function labelForSpeedImplement(kind: string) {
     default:
       return "Speed implement";
   }
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }

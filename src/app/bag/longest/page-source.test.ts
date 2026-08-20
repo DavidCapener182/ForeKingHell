@@ -48,4 +48,16 @@ describe("longest shot desktop PB board", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
+
+  it("keeps the raw maximum separate while lifecycle-gating trusted PB evidence", () => {
+    const loader =
+      source.match(/async function getLongestShots[\s\S]*?type LongestShotRow/)?.[0] ?? "";
+
+    expect(loader).toContain("rawRecordRows");
+    expect(loader).toContain("trustedRecordRows");
+    expect(loader).toContain('eq(shots.reviewStatus, "restored")');
+    expect(loader).toContain('eq(shots.reviewStatus, "included")');
+    expect(loader).toContain("trustedLifecycleEvidence");
+    expect(loader).toContain('"warm_up"');
+  });
 });

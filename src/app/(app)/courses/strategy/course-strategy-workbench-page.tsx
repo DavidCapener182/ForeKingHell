@@ -10,7 +10,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
-import { and, asc, desc, eq, lt } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 
 import { DataWarning, RecommendedAction } from "@/components/app/evidence-status";
 import { PageHeader, PageShell, StatusPill, type Tone } from "@/components/premium";
@@ -36,6 +36,7 @@ import { courseStrategyMapFromManifest } from "@/lib/course-strategy-map";
 import { getCourseTwinManifest } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildPostRoundReview, readStoredPostRoundReview } from "@/lib/post-round-review";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 export const dynamic = "force-dynamic";
 
@@ -503,9 +504,18 @@ async function getPostRoundReviewData(requestedRoundId?: string) {
         clubType: shots.clubType,
         carryYd: shots.carryYd,
         sideYd: shots.sideCarryYd,
+        reviewStatus: shots.reviewStatus,
+        shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
       })
       .from(shots)
-      .where(and(eq(shots.userId, userId), eq(shots.sessionId, selectedRound.id)))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          eq(shots.sessionId, selectedRound.id),
+          shotEvidenceSqlPredicate(),
+        ),
+      )
       .orderBy(asc(shots.shotAt)),
     db
       .select({
@@ -513,10 +523,19 @@ async function getPostRoundReviewData(requestedRoundId?: string) {
         clubType: shots.clubType,
         carryYd: shots.carryYd,
         sideYd: shots.sideCarryYd,
+        reviewStatus: shots.reviewStatus,
+        shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
       })
       .from(shots)
       .innerJoin(sessions, and(eq(sessions.id, shots.sessionId), eq(sessions.userId, userId)))
-      .where(and(eq(shots.userId, userId), lt(sessions.date, selectedRound.date)))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          lt(sessions.date, selectedRound.date),
+          shotEvidenceSqlPredicate(),
+        ),
+      )
       .orderBy(desc(shots.shotAt))
       .limit(2_000),
   ]);
@@ -525,9 +544,27 @@ async function getPostRoundReviewData(requestedRoundId?: string) {
     rounds,
     selectedRound,
     answers: readStoredPostRoundReview(selectedRound.notes),
-    review: buildPostRoundReview({ currentShots, baselineShots }),
+    review: buildPostRoundReview({
+      currentShots: currentShots.filter(isShotEvidenceEligible),
+      baselineShots: baselineShots.filter(isShotEvidenceEligible),
+    }),
     scoreLabel: roundScoreLabel(selectedRound.scorecard),
   };
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }
 
 function roundScoreLabel(scorecard: Array<{ score?: number | null; par: number }> | null) {

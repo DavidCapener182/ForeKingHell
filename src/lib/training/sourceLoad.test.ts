@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildImportedTrainingSessionRow } from "@/lib/training/sourceLoad";
 
 describe("imported source training load", () => {
-  it("turns a launch-monitor range import into a same-day workload row", () => {
+  it("counts committed physical swings independently of later analytical review", () => {
     const row = buildImportedTrainingSessionRow({
       userId: "user-1",
       sourceId: "session-1",

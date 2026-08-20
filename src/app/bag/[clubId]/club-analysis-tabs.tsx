@@ -34,6 +34,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { clubAccent } from "@/lib/club-format";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ export type AnalysisShot = {
   smashFactor: number | null;
   spinRate: number | null;
   spinAxis: number | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotCategory: string | null;
   qualityTag: string | null;
   courseHoleNumber: number | null;
@@ -130,6 +132,7 @@ export function ClubAnalysisTabs({
       ),
     [shots],
   );
+  const evidenceShots = useMemo(() => sortedShots.filter(isShotEvidenceEligible), [sortedShots]);
   const shotDateGroups = useMemo(() => groupShotsByDate(shots), [shots]);
   const activeOpenDateKeys = useMemo(() => {
     const validDateKeys = new Set(shotDateGroups.map((group) => group.dateKey));
@@ -206,7 +209,7 @@ export function ClubAnalysisTabs({
         </div>
         <DispersionPanel
           clubType={clubType}
-          shots={sortedShots}
+          shots={evidenceShots}
           selectedShotId={selectedShot?.id ?? ""}
           onSelect={selectShot}
           distanceView={distanceView}
@@ -234,7 +237,7 @@ export function ClubAnalysisTabs({
               accent={accent}
             />
             <TrajectoryPanel
-              shots={sortedShots}
+              shots={evidenceShots}
               selectedShotId={selectedShot?.id ?? ""}
               accent={accent}
             />
@@ -481,7 +484,7 @@ function ShotHistory({
   onSelect: (id: string) => void;
 }) {
   const allShots = groups.flatMap((group) => group.shots);
-  const carryValues = allShots.map((shot) => shot.carryYd);
+  const carryValues = allShots.filter(isShotEvidenceEligible).map((shot) => shot.carryYd);
   const bestCarryYd = maxMetric(carryValues);
   const medianCarryYd = medianMetric(carryValues);
   const worstCarryYd = minMetric(carryValues);

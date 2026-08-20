@@ -158,6 +158,35 @@ describe("bag intelligence", () => {
     expect(trend.points[0]).toMatchObject({ pathDeg: 5, sampleSize: 3 });
   });
 
+  it.each([
+    "suggested_exclusion",
+    "user_excluded",
+    "calibration",
+    "warm_up",
+    "launch_monitor_error",
+  ] as const)(
+    "keeps %s shots out of bag intelligence while retaining restored evidence",
+    (reviewStatus) => {
+      const included = pathShot("2026-03-01", 4, 5, 5);
+      const restored = {
+        ...pathShot("2026-03-02", 6, 7, 7),
+        reviewStatus: "restored" as const,
+        qualityTag: "bad_data",
+      };
+      const excluded = {
+        ...pathShot("2026-03-03", 40, 40, 40),
+        reviewStatus,
+      };
+      const trend = buildPathTrendTracking([
+        club("driver", 220, {
+          shots: [included, restored, excluded],
+        }),
+      ]);
+
+      expect(trend.points[0]).toMatchObject({ pathDeg: 5, sampleSize: 2 });
+    },
+  );
+
   it("builds confidence heat maps around the recommended course number", () => {
     const heatMaps = buildConfidenceHeatMaps([
       club("7i", 155, {

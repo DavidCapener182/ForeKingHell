@@ -16,4 +16,10 @@ describe("club profile page source", () => {
     expect(source).not.toContain("rail={");
     expect(source).not.toContain('<PageShell size="');
   });
+
+  it("projects lifecycle state into derived club calculations without hiding raw shots", () => {
+    expect(source).toContain("reviewStatus: shots.reviewStatus");
+    expect(source).toContain("reviewStatus: shot.reviewStatus");
+    expect(source).not.toContain('inArray(shots.reviewStatus, ["included", "restored"])');
+  });
 });

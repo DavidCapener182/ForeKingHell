@@ -127,6 +127,20 @@ describe("simulator lab analytics", () => {
       ...before,
       ...afterBeforeNextChange,
       ...afterNextChange,
+      labShot({
+        id: "excluded-before",
+        clubId: "driver",
+        clubType: "driver",
+        shotAt: new Date("2026-05-12T08:00:00.000Z"),
+        reviewStatus: "calibration",
+      }),
+      labShot({
+        id: "excluded-after",
+        clubId: "driver",
+        clubType: "driver",
+        shotAt: new Date("2026-05-16T08:00:00.000Z"),
+        reviewStatus: "user_excluded",
+      }),
     ]);
     const firstImpact = impacts.find((impact) => impact.id === "history-1");
 
@@ -151,6 +165,7 @@ describe("simulator lab analytics", () => {
           clubType: "driver",
           sideCarryYd: 46,
           smashFactor: 1.18,
+          reviewStatus: "restored",
           qualityTag: "top",
         }),
         labShot({ id: "low-smash-7i", clubType: "7i", sideCarryYd: -12, smashFactor: 1.21 }),
@@ -174,6 +189,93 @@ describe("simulator lab analytics", () => {
           label: "Tagged horrors",
           value: "1 flagged",
         }),
+      ]),
+    );
+  });
+
+  it("uses included and restored shots only across simulator-derived evidence", () => {
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const eligible = [
+      ...Array.from({ length: 5 }, (_, index) =>
+        labShot({
+          id: `included-${index}`,
+          clubId: "7i",
+          clubType: "7i",
+          carryYd: 150,
+          shotAt: new Date(`2026-05-${10 + index}T12:00:00.000Z`),
+        }),
+      ),
+      labShot({
+        id: "restored-legacy-mishit",
+        clubId: "7i",
+        clubType: "7i",
+        carryYd: 150,
+        reviewStatus: "restored",
+        qualityTag: "mishit",
+      }),
+    ];
+    const excluded = [
+      ...excludedStatuses.map((reviewStatus, index) =>
+        labShot({
+          id: `excluded-${reviewStatus}`,
+          clubId: "7i",
+          clubType: "7i",
+          carryYd: 300 + index,
+          reviewStatus,
+        }),
+      ),
+      labShot({
+        id: "legacy-suggested",
+        clubId: "7i",
+        clubType: "7i",
+        carryYd: 320,
+        reviewStatus: "included",
+        qualityTag: "mishit",
+      }),
+    ];
+
+    const gapping = buildGappingMatrixRows({
+      clubs: [club("7i", "7i")],
+      shots: [...eligible, ...excluded],
+    });
+    expect(gapping[0]).toMatchObject({ sampleSize: 6, bestStockCarryYd: 150 });
+
+    const deltas = buildSessionDeltaRows(
+      [...eligible.slice(0, 3).map((shot) => ({ ...shot, carryYd: 160 })), ...excluded],
+      eligible.slice(0, 5),
+    );
+    expect(deltas[0]).toMatchObject({
+      latestShotCount: 3,
+      baselineShotCount: 5,
+      carryDeltaYd: 10,
+    });
+
+    const facts = buildSessionRoastFacts(
+      session(),
+      [
+        labShot({ id: "included", sideCarryYd: 2, smashFactor: 1.3 }),
+        labShot({
+          id: "restored",
+          sideCarryYd: 30,
+          smashFactor: 1.2,
+          reviewStatus: "restored",
+          qualityTag: "top",
+        }),
+        ...excluded.map((shot) => ({ ...shot, sideCarryYd: 90, smashFactor: 1.1 })),
+      ],
+      [],
+    );
+    expect(facts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "Wildest miss", value: "7i +30 yd" }),
+        expect.objectContaining({ label: "Low-smash strikes", value: "1/2" }),
+        expect.objectContaining({ label: "Tagged horrors", value: "1 flagged" }),
       ]),
     );
   });
@@ -248,6 +350,7 @@ function labShot(overrides: Partial<SimulatorLabShot> = {}): SimulatorLabShot {
     clubSpeedMph: 90,
     launchAngleDeg: 15,
     smashFactor: 1.33,
+    reviewStatus: "included",
     shotCategory: "full",
     qualityTag: null,
     sessionType: "simulator",

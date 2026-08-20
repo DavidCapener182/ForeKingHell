@@ -22,6 +22,7 @@ import {
   isTrackedClubType,
 } from "@/lib/club-format";
 import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import {
   ACHIEVEMENT_REGISTRY_VERSION,
   ACHIEVEMENTS,
@@ -1080,10 +1081,11 @@ async function loadAchievementContext(userId: string) {
           smashFactor: shots.smashFactor,
           shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
+          reviewStatus: shots.reviewStatus,
         })
         .from(shots)
         .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-        .where(eq(shots.userId, userId))
+        .where(and(eq(shots.userId, userId), inArray(shots.reviewStatus, ["included", "restored"])))
         .orderBy(shots.shotAt),
       db
         .select({
@@ -1150,7 +1152,9 @@ async function loadAchievementContext(userId: string) {
 
   return {
     sessions: sessionRows satisfies AchievementSession[],
-    shots: shotRows.filter((shot) => isTrackedClubType(shot.clubType)) satisfies AchievementShot[],
+    shots: shotRows.filter(
+      (shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot),
+    ) satisfies AchievementShot[],
     clubs: clubRows.filter((club) => isTrackedClubType(club.type)) satisfies AchievementClub[],
     stockYardages: stockRows.filter(
       (stock) => isTrackedClubType(stock.clubType) && !isShortGameTouchClubType(stock.clubType),
@@ -1181,7 +1185,10 @@ async function awardActionXpForContext(
   }
 
   const rapsodoSessions = context.sessions
-    .filter((session) => session.source === "rapsodo")
+    .filter(
+      (session) =>
+        session.source === "rapsodo" && (shotsBySessionId.get(session.id)?.length ?? 0) > 0,
+    )
     .sort((left, right) => left.date.getTime() - right.date.getTime());
 
   for (const [index, session] of rapsodoSessions.entries()) {

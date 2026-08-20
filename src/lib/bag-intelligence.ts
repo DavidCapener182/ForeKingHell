@@ -2,6 +2,7 @@ import { clubSortValue, formatClubType } from "@/lib/club-format";
 import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import { isMissingYardageWindowGap, isScoringEndGap } from "@/lib/gapping-windows";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import type { StockShotRoleSummary } from "@/lib/stock-yardage";
 
 export type IntelligenceTone = "green" | "sky" | "amber" | "pink" | "slate";
@@ -19,6 +20,7 @@ export type BagIntelligenceShot = {
   clubDataEstType?: string | null;
   shotCategory?: string | null;
   qualityTag?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
   sessionType?: string | null;
 };
 
@@ -220,7 +222,6 @@ export type AiCaddieCard = {
 };
 
 const WEDGE_TYPES = new Set(["pw", "gw", "aw", "sw", "lw"]);
-const BAD_QUALITY_TAGS = new Set(["mishit", "top", "thin", "fat", "bad_data", "bad-data"]);
 const WEDGE_TARGET_FACTORS: Record<Exclude<WedgeMatrixShotKey, "full">, number> = {
   threeQuarter: 0.85,
   half: 0.7,
@@ -1079,11 +1080,7 @@ function buildPathTrendShot(shot: BagIntelligenceShot, index: number): PathTrend
 }
 
 function usableShots(shots: BagIntelligenceShot[]) {
-  return shots.filter((shot) => !hasBadQualityTag(shot));
-}
-
-function hasBadQualityTag(shot: Pick<BagIntelligenceShot, "qualityTag">) {
-  return Boolean(shot.qualityTag && BAD_QUALITY_TAGS.has(shot.qualityTag.toLowerCase()));
+  return shots.filter(isShotEvidenceEligible);
 }
 
 function gapWindowInput(row: BagIntelligenceGappingRow) {

@@ -123,8 +123,8 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
           <div>
             <h2 className="text-xl font-semibold">Reversible filter</h2>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Nothing is deleted. Every comparison keeps the raw session and shows which shots are
-              temporarily excluded.
+              Nothing is deleted. The source session stays intact while every comparison shows which
+              eligible evidence shots are temporarily excluded.
             </p>
           </div>
           <StatusPill tone={impact.excludedShotIds.length ? "amber" : "green"}>
@@ -216,7 +216,7 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
             Before and after
           </h2>
           <p className="mt-1 text-sm text-muted-foreground" aria-live="polite">
-            {impact.before.shotCount} raw shots compared with {impact.after.shotCount} included
+            {impact.before.shotCount} evidence shots compared with {impact.after.shotCount} included
             shots.
           </p>
         </div>

@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { SessionTimeline, type SessionTimelineItem } from "@/app/sessions/session-timeline";
+import { SessionsCompanionHistory } from "@/app/sessions/sessions-companion-list";
+import { resolveSessionHistorySearchParams } from "@/lib/session-history-search-params";
 
 const reviewSource = readFileSync(
   join(process.cwd(), "src/app/(app)/sessions/[sessionId]/page.tsx"),
@@ -94,7 +96,7 @@ describe("SessionTimeline golf history", () => {
     expect(timelineSource).toContain("Main improvement");
     expect(timelineSource).toContain("Main issue");
     expect(timelineSource).toContain("Important metrics");
-    expect(timelineSource).toContain("<Sheet");
+    expect(timelineSource).toContain("<SessionHistoryFilterSheet");
     expect(timelineSource).toContain("<Item");
     expect(timelineSource).toContain("<Skeleton");
     expect(timelineSource.indexOf("data-session-master-detail")).toBeLessThan(
@@ -104,7 +106,7 @@ describe("SessionTimeline golf history", () => {
     expect(timelineSource).not.toContain("ResponsiveDetailPanel");
   });
 
-  it("uses local All, Practice and Rounds controls on both surfaces", () => {
+  it("keeps URL-backed All, Practice and Rounds controls on both surfaces", () => {
     expect(companionListSource).toContain("Your golf history");
     expect(timelineSource).toContain("<Tabs");
     expect(timelineSource).toContain("<TabsList");
@@ -116,8 +118,92 @@ describe("SessionTimeline golf history", () => {
     expect(companionListSource).toContain('{ value: "practice", label: "Practice" }');
     expect(companionListSource).toContain('{ value: "round", label: "Rounds" }');
     expect(companionListSource).toContain("<StatusTimeline");
-    expect(companionListSource).toContain("featured: index === 0");
-    expect(companionListSource).not.toContain("Compare");
+    expect(timelineSource).toContain("useSessionHistoryUrlState");
+    expect(companionListSource).toContain("useSessionHistoryUrlState");
+    expect(companionListSource).toContain("filters.sessionId");
+    expect(companionListSource).toContain('label="Focus"');
+    expect(companionListSource).not.toContain("data-session-compare-tray");
+  });
+
+  it("renders controlled bookmark filters and keeps preview and compare controls separate", () => {
+    const markup = renderToStaticMarkup(
+      <SessionTimeline
+        sessions={Array.from({ length: 13 }, (_, index) => session(index))}
+        filters={{
+          type: "round",
+          source: "all",
+          club: "all",
+          date: "all",
+          sessionId: "session-3",
+        }}
+      />,
+    );
+
+    expect(markup).toContain("5 of 13");
+    expect(markup).toContain('data-session-inspect="true"');
+    expect(markup).toContain('aria-label="Preview A deliberately long session name 3');
+    expect(markup).toContain('aria-label="Select A deliberately long session name 3');
+    expect(timelineSource).not.toContain('role="button"');
+    expect(timelineSource).not.toContain("onKeyDown=");
+  });
+
+  it("treats the same session query as focus on both surfaces without collapsing history", () => {
+    const sessions = Array.from({ length: 13 }, (_, index) => session(index));
+    const { filters } = resolveSessionHistorySearchParams(
+      "type=practice&session=session-1",
+      sessions,
+    );
+    const workbenchMarkup = renderToStaticMarkup(
+      <SessionTimeline sessions={sessions} filters={filters} />,
+    );
+    const companionMarkup = renderToStaticMarkup(
+      <SessionsCompanionHistory
+        sessions={sessions}
+        accountId="test-account"
+        filters={filters}
+        onFiltersChange={() => undefined}
+        onClearFilters={() => undefined}
+      />,
+    );
+
+    for (const markup of [workbenchMarkup, companionMarkup]) {
+      expect(markup).toContain("8 of 13");
+      expect(markup).toContain("A deliberately long session name 1");
+      expect(markup).toContain("A deliberately long session name 2");
+      expect(markup).not.toContain("A deliberately long session name 0");
+    }
+
+    expect(workbenchMarkup).toContain('aria-label="Preview A deliberately long session name 1');
+    expect(workbenchMarkup).toContain('aria-pressed="true"');
+    expect(companionMarkup).toContain("Focused · 21 shots");
+    expect(
+      companionMarkup.match(
+        /<article[^>]*data-timeline-featured="true"[^>]*>[\s\S]*?<\/article>/,
+      )?.[0],
+    ).toContain("A deliberately long session name 1");
+  });
+
+  it("offers Clear for a focus-only bookmark without reducing either surface's history count", () => {
+    const sessions = Array.from({ length: 13 }, (_, index) => session(index));
+    const { filters } = resolveSessionHistorySearchParams("session=session-1", sessions);
+    const workbenchMarkup = renderToStaticMarkup(
+      <SessionTimeline sessions={sessions} filters={filters} />,
+    );
+    const companionMarkup = renderToStaticMarkup(
+      <SessionsCompanionHistory
+        sessions={sessions}
+        accountId="test-account"
+        filters={filters}
+        onFiltersChange={() => undefined}
+        onClearFilters={() => undefined}
+      />,
+    );
+
+    for (const markup of [workbenchMarkup, companionMarkup]) {
+      expect(markup).toContain("13 of 13");
+      expect(markup).toContain("Clear</button>");
+      expect(markup).toContain("A deliberately long session name 12");
+    }
   });
 
   it("keeps score and import evidence honest and upgrades the companion review composition", () => {

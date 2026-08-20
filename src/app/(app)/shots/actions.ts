@@ -1,58 +1,153 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { getDb } from "@/db/client";
-import { shots } from "@/db/schema";
+import { shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
+import {
+  buildShotReviewMutation,
+  effectiveShotReviewStatus,
+  parseShotReviewActionInput,
+  type ShotReviewActionInput,
+} from "@/lib/shot-review";
+import { refreshStockYardagesForClubs } from "@/lib/stock-yardage-refresh";
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-export async function deleteShotAction(shotId: string) {
-  const userId = await requireCurrentUserId();
-
-  if (!uuidPattern.test(shotId)) {
-    throw new Error("Invalid shot.");
-  }
-
-  const [deletedShot] = await getDb()
-    .delete(shots)
-    .where(and(eq(shots.id, shotId), eq(shots.userId, userId)))
-    .returning({ id: shots.id });
-
-  if (!deletedShot) {
-    throw new Error("That shot was not found. Refresh and try again.");
-  }
-
-  revalidatePath("/shots");
-  revalidatePath("/today");
-  revalidatePath("/", "layout");
-
-  return { deletedShotId: deletedShot.id };
+export async function reviewShotsAction(input: ShotReviewActionInput) {
+  return applyOwnedShotReview(input);
 }
 
-export async function excludeShotAction(shotId: string) {
+export async function excludeShotAction(
+  shotId: string,
+  details: { reason: string; confidence: number },
+) {
+  return applyOwnedShotReview({
+    shotIds: [shotId],
+    status: "user_excluded",
+    reason: details.reason,
+    confidence: details.confidence,
+  });
+}
+
+export async function restoreShotAction(shotId: string, reason: string) {
+  return applyOwnedShotReview({
+    shotIds: [shotId],
+    status: "restored",
+    reason,
+    confidence: 1,
+  });
+}
+
+async function applyOwnedShotReview(input: unknown) {
   const userId = await requireCurrentUserId();
+  const review = parseShotReviewActionInput(input);
+  const reviewed = await getDb().transaction(async (tx) => {
+    const ownedShots = await tx
+      .select({
+        id: shots.id,
+        sessionId: shots.sessionId,
+        clubId: shots.clubId,
+        playContext: shots.playContext,
+        reviewStatus: shots.reviewStatus,
+        qualityTag: shots.qualityTag,
+        reviewPreviousQualityTag: shots.reviewPreviousQualityTag,
+        shotCategory: shots.shotCategory,
+      })
+      .from(shots)
+      .where(and(eq(shots.userId, userId), inArray(shots.id, review.shotIds)))
+      .for("update");
 
-  if (!uuidPattern.test(shotId)) {
-    throw new Error("Invalid shot.");
+    if (ownedShots.length !== review.shotIds.length) {
+      throw new Error("One or more shots were not found. Refresh and try again.");
+    }
+
+    const reviewedAt = new Date();
+    for (const shot of ownedShots) {
+      const mutation = buildShotReviewMutation(
+        {
+          reviewStatus: effectiveShotReviewStatus({
+            reviewStatus: shot.reviewStatus,
+            qualityTag: shot.qualityTag,
+            shotCategory: shot.shotCategory,
+          }),
+          qualityTag: shot.qualityTag,
+          reviewPreviousQualityTag: shot.reviewPreviousQualityTag,
+        },
+        review.status,
+      );
+
+      const [updatedShot] = await tx
+        .update(shots)
+        .set({
+          qualityTag: mutation.qualityTag,
+          reviewStatus: mutation.reviewStatus,
+          reviewReason: review.reason,
+          reviewConfidence: review.confidence,
+          reviewSource: "user",
+          reviewPreviousQualityTag: mutation.reviewPreviousQualityTag,
+          reviewedAt,
+        })
+        .where(and(eq(shots.id, shot.id), eq(shots.userId, userId)))
+        .returning({ id: shots.id });
+
+      if (!updatedShot) {
+        throw new Error("A shot changed during review. Refresh and try again.");
+      }
+
+      await tx.insert(shotReviewEvents).values({
+        userId,
+        shotId: shot.id,
+        previousStatus: mutation.previousStatus,
+        status: mutation.reviewStatus,
+        reason: review.reason,
+        confidence: review.confidence,
+        source: "user",
+        previousQualityTag: mutation.previousQualityTag,
+        resultingQualityTag: mutation.qualityTag,
+        createdAt: reviewedAt,
+      });
+    }
+
+    await refreshStockYardagesForClubs(tx, {
+      userId,
+      clubContexts: ownedShots.map((shot) => ({
+        clubId: shot.clubId,
+        playContext: shot.playContext,
+      })),
+      calculatedAt: reviewedAt,
+    });
+
+    return {
+      shotIds: ownedShots.map((shot) => shot.id),
+      sessionIds: [...new Set(ownedShots.map((shot) => shot.sessionId))],
+      status: review.status,
+    };
+  });
+
+  revalidateShotDerivedRoutes(reviewed.sessionIds);
+  return { reviewedShotIds: reviewed.shotIds, status: reviewed.status };
+}
+
+function revalidateShotDerivedRoutes(sessionIds: string[]) {
+  for (const path of [
+    "/shots",
+    "/today",
+    "/dashboard",
+    "/bag",
+    "/progress",
+    "/sessions",
+    "/analyse",
+    "/strokes-gained",
+    "/stats/training-over-time",
+    "/speed",
+    "/practice",
+  ]) {
+    revalidatePath(path);
   }
 
-  const [excludedShot] = await getDb()
-    .update(shots)
-    .set({ qualityTag: "excluded" })
-    .where(and(eq(shots.id, shotId), eq(shots.userId, userId)))
-    .returning({ id: shots.id });
-
-  if (!excludedShot) {
-    throw new Error("That shot was not found. Refresh and try again.");
+  for (const sessionId of sessionIds) {
+    revalidatePath(`/sessions/${sessionId}`);
   }
-
-  revalidatePath("/shots");
-  revalidatePath("/today");
-  revalidatePath("/bag");
-  revalidatePath("/progress");
-
-  return { excludedShotId: excludedShot.id };
+  revalidatePath("/", "layout");
 }

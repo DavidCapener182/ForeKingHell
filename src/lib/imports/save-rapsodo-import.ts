@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
   clubs,
@@ -10,6 +10,7 @@ import {
   importFiles,
   importRows,
   sessions,
+  shotReviewEvents,
   shots,
   stockYardages,
   strokesGainedBaselines,
@@ -72,6 +73,11 @@ import {
   utf8ByteLength,
 } from "@/lib/imports/import-limits";
 import { reportServerFailure } from "@/lib/server-observability";
+import {
+  buildImportedShotReviewLifecycle,
+  isShotEvidenceEligible,
+  type ShotReviewStatus,
+} from "@/lib/shot-review";
 
 export type RapsodoShotOverride = {
   rowNumber: number;
@@ -105,6 +111,7 @@ export type SaveRapsodoImportInput = {
     gir?: boolean | null;
     strokeIndex?: number | null;
   }>;
+  excludedShotRowNumbers?: number[];
   shotOverrides?: RapsodoShotOverride[];
   notes?: string;
   practicePlanId?: string;
@@ -213,7 +220,14 @@ export async function saveLaunchMonitorImport(
     const importedShots = applyRapsodoShotOverridesForImport(
       parsed.shots,
       validatedInput.shotOverrides,
+      validatedInput.excludedShotRowNumbers,
     );
+    if (importedShots.length === 0) {
+      return {
+        ok: false,
+        message: "Keep at least one shot in the session before importing.",
+      };
+    }
     const coursePlan = buildCoursePlan(validatedInput, importedShots);
     const courseName =
       canonicalKnownCourseNameForSession(validatedInput.courseName) ?? validatedInput.courseName;
@@ -618,68 +632,141 @@ async function persistImport(
       clubIdByKey.set(clubKey, club.id);
     }
 
-    const previousLongestByClubId = new Map<string, number | null>();
+    const preparedShots = input.shots.map((shot) => {
+      const shotCategory =
+        courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory;
+      const review = buildImportedShotReviewLifecycle({
+        qualityTag: shot.qualityTag,
+        shotCategory,
+      });
 
-    for (const clubId of clubIdByKey.values()) {
-      const [previousLongest] = await tx
-        .select({
-          distanceYd: sql<number | null>`max(coalesce(${shots.totalYd}, ${shots.carryYd}))`,
-        })
-        .from(shots)
-        .where(and(eq(shots.userId, userId), eq(shots.clubId, clubId)));
-
-      previousLongestByClubId.set(clubId, previousLongest?.distanceYd ?? null);
+      return { shot, shotCategory, review };
+    });
+    const clubIds = [...clubIdByKey.values()];
+    const previousShotRows =
+      clubIds.length === 0
+        ? []
+        : await tx
+            .select({
+              clubId: shots.clubId,
+              carryYd: shots.carryYd,
+              totalYd: shots.totalYd,
+              reviewStatus: shots.reviewStatus,
+              qualityTag: shots.qualityTag,
+              shotCategory: shots.shotCategory,
+            })
+            .from(shots)
+            .where(
+              and(
+                eq(shots.userId, userId),
+                inArray(shots.clubId, clubIds),
+                inArray(shots.reviewStatus, ["included", "restored"]),
+              ),
+            );
+    const previousShotsByClubId = new Map<string, typeof previousShotRows>();
+    for (const previousShot of previousShotRows) {
+      const clubShots = previousShotsByClubId.get(previousShot.clubId) ?? [];
+      clubShots.push(previousShot);
+      previousShotsByClubId.set(previousShot.clubId, clubShots);
     }
+    const previousLongestByClubId = new Map(
+      clubIds.map((clubId) => [
+        clubId,
+        maxEligibleShotDistance(previousShotsByClubId.get(clubId) ?? []),
+      ]),
+    );
 
     const longestShotNotifications = buildLongestShotNotifications({
-      importedShots: input.shots,
+      importedShots: preparedShots.map(({ shot, shotCategory, review }) => ({
+        ...shot,
+        shotCategory,
+        reviewStatus: review.reviewStatus,
+      })),
       clubIdByKey,
       previousLongestByClubId,
       sessionId: session.id,
       fileName: input.fileName,
     });
 
-    const insertedShots = await tx
-      .insert(shots)
-      .values(
-        input.shots.map((shot) => ({
+    const importedShotRows = preparedShots.map(({ shot, shotCategory, review }) => {
+      return {
+        userId,
+        sessionId: session.id,
+        clubId: clubIdByKey.get(shot.clubKey) ?? "",
+        playContext,
+        shotAt: sessionDate,
+        clubType: shot.clubType,
+        shotNumber: shot.shotNumber,
+        carryYd: shot.carryYd,
+        totalYd: shot.totalYd,
+        ballSpeedMph: shot.ballSpeedMph,
+        clubSpeedMph: shot.clubSpeedMph,
+        launchAngleDeg: shot.launchAngleDeg,
+        launchDirectionDeg: shot.launchDirectionDeg,
+        apexFt: shot.apexFt,
+        sideCarryYd: shot.sideCarryYd,
+        attackAngleDeg: shot.attackAngleDeg,
+        clubPathDeg: shot.clubPathDeg,
+        faceAngleDeg: shot.faceAngleDeg,
+        descentAngleDeg: shot.descentAngleDeg,
+        smashFactor: shot.smashFactor,
+        spinRate: shot.spinRate,
+        spinAxis: shot.spinAxis,
+        shotShape: shot.shotShape,
+        shotCategory,
+        courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
+        courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
+        courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
+        courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
+        distanceRemainingYd: courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
+        qualityTag: shot.qualityTag,
+        reviewStatus: review.reviewStatus,
+        reviewReason: review.reviewReason,
+        reviewConfidence: review.reviewConfidence,
+        reviewSource: review.reviewSource,
+        reviewPreviousQualityTag: review.reviewPreviousQualityTag,
+        reviewedAt: review.reviewSource ? now : null,
+        clubDataEstType: shot.clubDataEstType,
+        sourceRawJson: shot.sourceRawJson,
+      };
+    });
+
+    const insertedShots = await tx.insert(shots).values(importedShotRows).returning({
+      id: shots.id,
+      qualityTag: shots.qualityTag,
+      reviewStatus: shots.reviewStatus,
+      reviewReason: shots.reviewReason,
+      reviewConfidence: shots.reviewConfidence,
+      reviewSource: shots.reviewSource,
+    });
+
+    const importedReviewEvents = insertedShots.flatMap((shot) => {
+      if (shot.reviewStatus === "included") {
+        return [];
+      }
+      if (!shot.reviewReason || shot.reviewConfidence === null || shot.reviewSource !== "import") {
+        throw new Error("Imported shot classification is missing review provenance.");
+      }
+
+      return [
+        {
           userId,
-          sessionId: session.id,
-          clubId: clubIdByKey.get(shot.clubKey) ?? "",
-          playContext,
-          shotAt: sessionDate,
-          clubType: shot.clubType,
-          shotNumber: shot.shotNumber,
-          carryYd: shot.carryYd,
-          totalYd: shot.totalYd,
-          ballSpeedMph: shot.ballSpeedMph,
-          clubSpeedMph: shot.clubSpeedMph,
-          launchAngleDeg: shot.launchAngleDeg,
-          launchDirectionDeg: shot.launchDirectionDeg,
-          apexFt: shot.apexFt,
-          sideCarryYd: shot.sideCarryYd,
-          attackAngleDeg: shot.attackAngleDeg,
-          clubPathDeg: shot.clubPathDeg,
-          faceAngleDeg: shot.faceAngleDeg,
-          descentAngleDeg: shot.descentAngleDeg,
-          smashFactor: shot.smashFactor,
-          spinRate: shot.spinRate,
-          spinAxis: shot.spinAxis,
-          shotShape: shot.shotShape,
-          shotCategory:
-            courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
-          courseHoleNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeNumber ?? null,
-          courseHoleShotNumber: courseShotByRowNumber.get(shot.rowNumber)?.holeShotNumber ?? null,
-          courseHolePar: courseShotByRowNumber.get(shot.rowNumber)?.holePar ?? null,
-          courseHoleYards: courseShotByRowNumber.get(shot.rowNumber)?.holeYards ?? null,
-          distanceRemainingYd:
-            courseShotByRowNumber.get(shot.rowNumber)?.distanceRemainingYd ?? null,
-          qualityTag: shot.qualityTag,
-          clubDataEstType: shot.clubDataEstType,
-          sourceRawJson: shot.sourceRawJson,
-        })),
-      )
-      .returning({ id: shots.id });
+          shotId: shot.id,
+          previousStatus: "included" as const,
+          status: shot.reviewStatus,
+          reason: shot.reviewReason,
+          confidence: shot.reviewConfidence,
+          source: "import" as const,
+          previousQualityTag: null,
+          resultingQualityTag: shot.qualityTag,
+          createdAt: now,
+        },
+      ];
+    });
+
+    if (importedReviewEvents.length > 0) {
+      await tx.insert(shotReviewEvents).values(importedReviewEvents);
+    }
 
     await tx
       .insert(golfTrainingSessions)
@@ -754,13 +841,20 @@ async function persistImport(
           courseHoleNumber: shots.courseHoleNumber,
           playContext: shots.playContext,
           sessionType: sessions.type,
+          reviewStatus: shots.reviewStatus,
           shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
           shotAt: shots.shotAt,
         })
         .from(shots)
         .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-        .where(and(eq(shots.userId, userId), eq(shots.clubId, clubId)))
+        .where(
+          and(
+            eq(shots.userId, userId),
+            eq(shots.clubId, clubId),
+            eq(shots.playContext, playContext),
+          ),
+        )
         .orderBy(desc(shots.shotAt));
       const stock = calculateStockYardage(clubShots, 50, { clubType: firstShotForClub?.clubType });
 
@@ -803,7 +897,7 @@ export function buildLongestShotNotifications({
   sessionId,
   fileName,
 }: {
-  importedShots: ParsedRapsodoShot[];
+  importedShots: Array<ParsedRapsodoShot & { reviewStatus?: ShotReviewStatus | null }>;
   clubIdByKey: Map<string, string>;
   previousLongestByClubId: Map<string, number | null>;
   sessionId: string;
@@ -812,7 +906,11 @@ export function buildLongestShotNotifications({
   const bestShotByClubKey = new Map<string, ParsedRapsodoShot>();
 
   for (const shot of importedShots) {
-    if (!isTrackedClubType(shot.clubType) || isShortGameTouchClubType(shot.clubType)) {
+    if (
+      !isShotEvidenceEligible(shot) ||
+      !isTrackedClubType(shot.clubType) ||
+      isShortGameTouchClubType(shot.clubType)
+    ) {
       continue;
     }
 
@@ -867,6 +965,31 @@ export function buildLongestShotNotifications({
     })
     .filter((notification): notification is LongestShotNotification => notification !== null)
     .sort((left, right) => right.shotDistanceYd - left.shotDistanceYd);
+}
+
+export function maxEligibleShotDistance(
+  rows: ReadonlyArray<{
+    carryYd: number | null;
+    totalYd: number | null;
+    reviewStatus?: ShotReviewStatus | null;
+    qualityTag?: string | null;
+    shotCategory?: string | null;
+  }>,
+) {
+  let maximum: number | null = null;
+
+  for (const row of rows) {
+    if (!isShotEvidenceEligible(row)) {
+      continue;
+    }
+
+    const distance = shotDistanceYd(row);
+    if (distance !== null && (maximum === null || distance > maximum)) {
+      maximum = distance;
+    }
+  }
+
+  return maximum;
 }
 
 function hashRawCsv(rawCsvText: string) {
@@ -939,6 +1062,7 @@ function validateInput(input: SaveRapsodoImportInput): SaveRapsodoImportInput {
     courseScorecardText: input.courseScorecardText?.slice(0, 12000),
     courseHoleShotCounts: sanitizeHoleShotCounts(input.courseHoleShotCounts),
     courseHoleScoring: sanitizeHoleScoring(input.courseHoleScoring),
+    excludedShotRowNumbers: sanitizeShotRowNumbers(input.excludedShotRowNumbers),
     shotOverrides: sanitizeShotOverrides(input.shotOverrides),
     notes: input.notes?.slice(0, 2000),
     practicePlanId: sanitizeUuid(input.practicePlanId),
@@ -1143,6 +1267,16 @@ function sanitizeShotOverrides(input: SaveRapsodoImportInput["shotOverrides"]) {
   return overrides;
 }
 
+function sanitizeShotRowNumbers(input: SaveRapsodoImportInput["excludedShotRowNumbers"]) {
+  if (!input) {
+    return undefined;
+  }
+
+  return [...new Set(input.map(sanitizeNonNegativeInteger))]
+    .filter((rowNumber): rowNumber is number => rowNumber !== null && rowNumber > 0)
+    .slice(0, MAX_PARSED_SHOTS_PER_FILE);
+}
+
 function sanitizeShotCategory(value: ShotCategory | undefined) {
   return value && ["full", "pitch", "chip", "recovery", "tee", "approach"].includes(value)
     ? value
@@ -1190,14 +1324,18 @@ function isFiniteNumber(value: number | null | undefined): value is number {
 export function applyRapsodoShotOverridesForImport(
   shotsToImport: ParsedRapsodoShot[],
   overrides: RapsodoShotOverride[] | undefined,
+  excludedShotRowNumbers: number[] | undefined = undefined,
 ) {
+  const excludedRows = new Set(excludedShotRowNumbers ?? []);
+  const includedShots = shotsToImport.filter((shot) => !excludedRows.has(shot.rowNumber));
+
   if (!overrides || overrides.length === 0) {
-    return shotsToImport.map(withInferredImportedQualityTag);
+    return includedShots.map(withInferredImportedQualityTag);
   }
 
   const overrideByRowNumber = new Map(overrides.map((override) => [override.rowNumber, override]));
 
-  return shotsToImport.map((shot) => {
+  return includedShots.map((shot) => {
     const override = overrideByRowNumber.get(shot.rowNumber);
 
     if (!override) {

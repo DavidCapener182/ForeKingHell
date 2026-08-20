@@ -78,6 +78,8 @@ describe("app shell account data", () => {
     expect(source).toContain('<Link href="/import" prefetch={false}>');
     expect(source).toContain("<AppSurfaceLink");
     expect(source).toContain("max-md:inline-flex");
+    expect(source).toContain("mx-4 mt-3");
+    expect(source).not.toContain("fixed inset-x-4 bottom-");
     expect(source).toContain('event.key !== "ArrowDown"');
     expect(source).toContain('event.key !== "ArrowUp"');
     expect(source).toContain('event.key !== "Home"');

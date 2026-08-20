@@ -26,6 +26,20 @@ describe("speed session desktop swing log", () => {
     expect(source).toContain("tabIndex={0}");
   });
 
+  it("adds the fatigue evidence before the existing swing ledger", () => {
+    expect(source).toContain(
+      'import { SpeedFatigueChart } from "@/components/speed/speed-fatigue-chart"',
+    );
+    expect(source).toContain("readings={data.swings.map");
+    expect(source).toContain("swingNumber: swing.swingNumber");
+    expect(source).toContain("clubSpeedMph: swing.clubSpeedMph");
+
+    const chartIndex = source.indexOf("<SpeedFatigueChart");
+    const ledgerIndex = source.indexOf("<SwingLogWorkbench data={data} />");
+    expect(chartIndex).toBeGreaterThan(-1);
+    expect(ledgerIndex).toBeGreaterThan(chartIndex);
+  });
+
   it("keeps the speed session detail page focused on data and editing", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");

@@ -3,20 +3,27 @@ import { describe, expect, it } from "vitest";
 import { recordEligibility, selectAllTimeRecord } from "@/lib/shot-records";
 
 describe("recordEligibility", () => {
-  it.each(["bad_data", "bad-data", "misread", "delete", "deleted", "invalid", "excluded"])(
-    "excludes %s quality tags from trusted records",
-    (qualityTag) => {
-      expect(
-        recordEligibility({
-          carryYd: 280,
-          totalYd: 300,
-          qualityTag,
-          shotCategory: "full",
-          sessionSource: "rapsodo",
-        }),
-      ).toMatchObject({ rawEligible: true, trustedEligible: false });
-    },
-  );
+  it.each([
+    "bad_data",
+    "bad-data",
+    "misread",
+    "delete",
+    "deleted",
+    "invalid",
+    "excluded",
+    "exclude:mishit",
+    "warm_up",
+  ])("excludes %s quality tags from trusted records", (qualityTag) => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        qualityTag,
+        shotCategory: "full",
+        sessionSource: "rapsodo",
+      }),
+    ).toMatchObject({ rawEligible: true, trustedEligible: false });
+  });
 
   it("distinguishes raw manual maxima from trusted launch-monitor records", () => {
     expect(
@@ -44,6 +51,74 @@ describe("recordEligibility", () => {
         sessionSource: "rapsodo",
       }),
     ).toMatchObject({ rawEligible: false, trustedEligible: false });
+  });
+
+  it.each(["user_excluded", "calibration", "warm_up", "launch_monitor_error"] as const)(
+    "treats %s lifecycle state as excluded even without a compatibility tag",
+    (reviewStatus) => {
+      expect(
+        recordEligibility({
+          carryYd: 280,
+          totalYd: 300,
+          reviewStatus,
+          qualityTag: null,
+          shotCategory: "full",
+          sessionSource: "rapsodo",
+        }),
+      ).toEqual({ rawEligible: true, trustedEligible: false, reasons: ["review-status"] });
+    },
+  );
+
+  it("keeps a clean suggested exclusion out of trusted evidence until the player restores it", () => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        reviewStatus: "suggested_exclusion",
+        qualityTag: null,
+        shotCategory: "full",
+        sessionSource: "rapsodo",
+      }),
+    ).toEqual({ rawEligible: true, trustedEligible: false, reasons: ["review-status"] });
+  });
+
+  it("still excludes a legacy suggested mishit through its retained quality tag", () => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        reviewStatus: "suggested_exclusion",
+        qualityTag: "mishit",
+        shotCategory: "full",
+        sessionSource: "rapsodo",
+      }),
+    ).toEqual({ rawEligible: true, trustedEligible: false, reasons: ["review-status"] });
+  });
+
+  it("lets an explicit restoration override the retained legacy quality classification", () => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        reviewStatus: "restored",
+        qualityTag: "mishit",
+        shotCategory: "full",
+        sessionSource: "rapsodo",
+      }),
+    ).toEqual({ rawEligible: true, trustedEligible: true, reasons: [] });
+  });
+
+  it("lets restoration override a legacy warm-up category used only for lifecycle fallback", () => {
+    expect(
+      recordEligibility({
+        carryYd: 280,
+        totalYd: 300,
+        reviewStatus: "restored",
+        qualityTag: null,
+        shotCategory: "warm_up",
+        sessionSource: "rapsodo",
+      }),
+    ).toEqual({ rawEligible: true, trustedEligible: true, reasons: [] });
   });
 });
 

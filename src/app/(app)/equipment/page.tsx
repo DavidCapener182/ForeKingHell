@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import {
   Archive,
   ArrowLeft,
@@ -66,6 +66,7 @@ import { getDb } from "@/db/client";
 import { clubSortValue, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import {
   calculateStockCarryTrend,
   calculateStockYardage,
@@ -924,7 +925,7 @@ async function getEquipmentData() {
           lastShotAt: sql<Date | null>`max(${shots.shotAt})`,
         })
         .from(shots)
-        .where(eq(shots.userId, userId))
+        .where(and(eq(shots.userId, userId), shotEvidenceSqlPredicate()))
         .groupBy(shots.clubId),
       db
         .select({
@@ -938,9 +939,10 @@ async function getEquipmentData() {
           launchAngleDeg: shots.launchAngleDeg,
           shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
+          reviewStatus: shots.reviewStatus,
         })
         .from(shots)
-        .where(eq(shots.userId, userId))
+        .where(and(eq(shots.userId, userId), shotEvidenceSqlPredicate()))
         .orderBy(desc(shots.shotAt))
         .limit(1600),
       db
@@ -951,6 +953,7 @@ async function getEquipmentData() {
         .limit(6),
     ]);
 
+  const evidenceShotRows = recentShotRows.filter(isShotEvidenceEligible);
   const shotStatsByClubId = new Map(
     shotCountRows.map((row) => [
       row.clubId,
@@ -983,7 +986,7 @@ async function getEquipmentData() {
       ...snapshot,
       items: parseEquipmentSnapshotItems(snapshot.snapshotJson),
     })),
-    recentShotRows,
+    recentShotRows: evidenceShotRows,
     shotStatsByClubId,
   };
 }
@@ -1452,7 +1455,9 @@ function buildEquipmentImpact({
     return null;
   }
 
-  const sameTypeShots = allShots.filter((shot) => shot.clubType === club.type);
+  const sameTypeShots = allShots.filter(
+    (shot) => shot.clubType === club.type && isShotEvidenceEligible(shot),
+  );
   const after = sameTypeShots.filter((shot) => {
     const shotTime = dateValue(shot.shotAt);
     return shotTime !== null && shotTime >= addedDate.getTime();
@@ -1547,8 +1552,27 @@ function toStockShot(row: EquipmentShotRow): StockShot {
     launchAngleDeg: row.launchAngleDeg,
     shotCategory: row.shotCategory,
     qualityTag: row.qualityTag,
+    reviewStatus: row.reviewStatus,
     shotAt: row.shotAt,
   };
+}
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
 }
 
 function trustStatus(confidence: number): { label: string; tone: Tone } {

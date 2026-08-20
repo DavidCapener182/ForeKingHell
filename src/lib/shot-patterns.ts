@@ -1,11 +1,12 @@
 import "server-only";
 
-import { and, desc, eq, gte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { forwardDistanceYd } from "@/lib/geo/yard-projection";
 import { formatClubType } from "@/lib/rapsodo/parser";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 export type ShotPatternMode = "carry" | "total";
 export type ShotPatternOutlierMode = "all" | "best90" | "best80";
@@ -28,6 +29,7 @@ export type ShotPatternRawShot = {
   totalYd: number | null;
   sideCarryYd: number | null;
   shotAt: Date | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotCategory: string | null;
   qualityTag: string | null;
   sessionType: string | null;
@@ -93,15 +95,21 @@ type ShotPatternClubOptionClubRow = {
 type ShotPatternClubOptionShotRow = {
   clubId: string | null;
   clubType: string;
+  reviewStatus?: ShotReviewStatus | null;
+  shotCategory?: string | null;
+  qualityTag?: string | null;
 };
 
 const EXCLUDED_SHOT_CATEGORIES = new Set(["chip", "pitch", "putt", "recovery", "bunker"]);
-const BAD_QUALITY_TAGS = new Set(["bad-data", "bad_data", "misread", "delete", "deleted"]);
 
 export async function getShotPattern(request: ShotPatternRequest): Promise<ShotPatternResult> {
   const limit = clampLimit(request.limit);
   const db = getDb();
-  const clauses = [eq(shots.userId, request.userId), eq(clubs.active, true)];
+  const clauses = [
+    eq(shots.userId, request.userId),
+    eq(clubs.active, true),
+    shotEvidenceSqlPredicate()!,
+  ];
 
   if (request.clubId) {
     clauses.push(eq(shots.clubId, request.clubId));
@@ -123,6 +131,7 @@ export async function getShotPattern(request: ShotPatternRequest): Promise<ShotP
       totalYd: shots.totalYd,
       sideCarryYd: shots.sideCarryYd,
       shotAt: shots.shotAt,
+      reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
       sessionType: sessions.type,
@@ -146,6 +155,7 @@ export async function getShotPattern(request: ShotPatternRequest): Promise<ShotP
       totalYd: row.totalYd,
       sideCarryYd: row.sideCarryYd,
       shotAt: row.shotAt,
+      reviewStatus: row.reviewStatus,
       shotCategory: row.shotCategory,
       qualityTag: row.qualityTag,
       sessionType: row.sessionType,
@@ -186,12 +196,23 @@ export async function getShotPatternClubOptions(userId: string): Promise<ShotPat
     .select({
       clubId: shots.clubId,
       clubType: shots.clubType,
+      reviewStatus: shots.reviewStatus,
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
     })
     .from(shots)
     .where(
       and(
         eq(shots.userId, userId),
-        or(eq(shots.shotCategory, "full"), eq(shots.shotCategory, "stock")),
+        or(
+          eq(shots.shotCategory, "full"),
+          eq(shots.shotCategory, "stock"),
+          and(
+            eq(shots.reviewStatus, "restored"),
+            sql`lower(trim(coalesce(${shots.shotCategory}, ''))) in ('warm-up', 'warmup', 'warm_up')`,
+          ),
+        ),
+        shotEvidenceSqlPredicate(),
       ),
     );
 
@@ -207,6 +228,10 @@ export function buildShotPatternClubOptions(
   const clubCounts = new Map<string, number>();
 
   for (const shot of shotRows) {
+    if (!isShotEvidenceEligible(shot)) {
+      continue;
+    }
+
     if (shot.clubId && activeClubIds.has(shot.clubId)) {
       clubCounts.set(shot.clubId, (clubCounts.get(shot.clubId) ?? 0) + 1);
     }
@@ -278,6 +303,10 @@ export function filterShotPatternRawShots(
   },
 ) {
   return rawShots.filter((shot) => {
+    if (!isShotEvidenceEligible(shot)) {
+      return false;
+    }
+
     if (clubId && shot.clubId !== clubId) {
       return false;
     }
@@ -287,10 +316,6 @@ export function filterShotPatternRawShots(
     }
 
     if (shot.shotCategory && EXCLUDED_SHOT_CATEGORIES.has(shot.shotCategory.toLowerCase())) {
-      return false;
-    }
-
-    if (shot.qualityTag && BAD_QUALITY_TAGS.has(shot.qualityTag.toLowerCase())) {
       return false;
     }
 
@@ -305,6 +330,21 @@ export function filterShotPatternRawShots(
       Math.abs(sideYd) <= 180
     );
   });
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }
 
 function rankPatternPoints(rawShots: ShotPatternRawShot[], mode: ShotPatternMode) {

@@ -8,12 +8,14 @@ import {
 } from "@/lib/analysis-statistics";
 import { calculateRepeatabilityScore } from "@/lib/repeatability-score";
 import { recordEligibility } from "@/lib/shot-records";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 export type SessionImpactShot = {
   id: string;
   carryYd: number | null;
   totalYd: number | null;
   sideYd: number | null;
+  reviewStatus?: ShotReviewStatus | null;
   qualityTag?: string | null;
   shotCategory?: string | null;
   sessionSource?: string | null;
@@ -36,14 +38,15 @@ export function calculateSessionImpact<T extends SessionImpactShot>(
   filter: SessionImpactFilter,
   metric: SessionImpactMetric = "carry",
 ) {
-  const excludedIds = excludedShotIds(shots, filter, metric);
-  const included = shots.filter((shot) => !excludedIds.has(shot.id));
+  const evidenceShots = shots.filter(isShotEvidenceEligible);
+  const excludedIds = excludedShotIds(evidenceShots, filter, metric);
+  const included = evidenceShots.filter((shot) => !excludedIds.has(shot.id));
 
   return {
-    originalShots: shots,
+    originalShots: evidenceShots,
     includedShots: included,
     excludedShotIds: [...excludedIds],
-    before: summarizeSession(shots, metric),
+    before: summarizeSession(evidenceShots, metric),
     after: summarizeSession(included, metric),
   };
 }

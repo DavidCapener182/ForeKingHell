@@ -1,3 +1,5 @@
+import type { ShotReviewStatus } from "@/lib/shot-review";
+
 export type AchievementTier = "bronze" | "silver" | "gold" | "platinum" | "diamond" | "hidden";
 
 export type AchievementCategory =
@@ -91,6 +93,7 @@ export type AchievementShot = {
   smashFactor: number | null;
   shotCategory?: string | null;
   qualityTag?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
 };
 
 export type AchievementSession = {

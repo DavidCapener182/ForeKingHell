@@ -315,6 +315,9 @@ export function PracticeCompanionClient({
           hasEvidence: Boolean(measuredResult),
         })}
       />
+      {options.intent === "speed" || options.sessionType === "speed" ? (
+        <SpeedDevelopmentCompanionReadout context={context} />
+      ) : null}
       {finished ? <FinishedActions message={message} /> : null}
       {paused ? (
         <Button
@@ -513,6 +516,53 @@ export function PracticeCompanionClient({
         ]}
       />
     </div>
+  );
+}
+
+function SpeedDevelopmentCompanionReadout({ context }: { context: PracticePlannerContext }) {
+  const score = context.speed.readinessScore;
+  const currentCarry = context.speed.currentCarryYd;
+  const targetCarry = context.speed.targetCarryYd ?? 220;
+
+  return (
+    <Card size="sm" data-speed-development-readout aria-live="polite">
+      <CardHeader>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">
+            {context.speed.projectLabel ?? `Project ${targetCarry}`}
+          </p>
+          <CardTitle className="mt-1">
+            {currentCarry === null || currentCarry === undefined
+              ? `Build the ${targetCarry}-yard baseline`
+              : `${currentCarry.toFixed(1)} / ${targetCarry} yd`}
+          </CardTitle>
+        </div>
+        <CardAction>
+          <Badge variant={context.speed.readinessStatus === "recover" ? "outline" : "secondary"}>
+            {score === null || score === undefined
+              ? "Readiness building"
+              : `${score} · ${context.speed.readinessLabel ?? "BUILD"}`}
+          </Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {score !== null && score !== undefined ? (
+          <Progress value={score} aria-label={`Speed readiness: ${score} out of 100`} />
+        ) : null}
+        <IOSGroupedList label="Speed development decision" className="bg-card">
+          <IOSListRow
+            label="Today"
+            value={context.speed.readinessLabel ?? "BUILD"}
+            detail={context.speed.recommendation}
+          />
+          <IOSListRow
+            label="Next ingredient"
+            value={context.speed.limitingFactor ?? "Build evidence"}
+            detail={context.speed.projectCoachMessage}
+          />
+        </IOSGroupedList>
+      </CardContent>
+    </Card>
   );
 }
 

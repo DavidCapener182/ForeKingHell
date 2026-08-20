@@ -1,11 +1,12 @@
 import "server-only";
 
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { clubs, sessions, shots } from "@/db/schema";
 import { formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { buildShotPatternResult, type ShotPatternRawShot } from "@/lib/shot-patterns";
 
 export type RealityHandicapConfidence = "high" | "medium" | "low" | "building";
@@ -27,6 +28,7 @@ export type RealityHandicapShot = {
   launchAngleDeg?: number | null;
   launchDirectionDeg?: number | null;
   spinAxis?: number | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotCategory?: string | null;
   qualityTag?: string | null;
 };
@@ -172,6 +174,7 @@ export async function getRangeRealityHandicapData(
       launchAngleDeg: shots.launchAngleDeg,
       launchDirectionDeg: shots.launchDirectionDeg,
       spinAxis: shots.spinAxis,
+      reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
       clubActive: clubs.active,
@@ -185,6 +188,7 @@ export async function getRangeRealityHandicapData(
         eq(sessions.userId, userId),
         eq(clubs.active, true),
         inArray(sessions.type, [...RANGE_SESSION_TYPES]),
+        shotEvidenceSqlPredicate(),
       ),
     )
     .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
@@ -196,8 +200,9 @@ export async function getRangeRealityHandicapData(
 export function buildRangeRealityHandicapData(
   inputShots: RealityHandicapShot[],
 ): RangeRealityHandicapData {
-  const usableShots = sortNewestFirst(inputShots.filter(isUsableRangeRealityShot));
-  const estimate = buildRangeRealityEstimate(usableShots, inputShots);
+  const evidenceShots = inputShots.filter(isShotEvidenceEligible);
+  const usableShots = sortNewestFirst(evidenceShots.filter(isUsableRangeRealityShot));
+  const estimate = buildRangeRealityEstimate(usableShots, evidenceShots);
   const costlyShots = buildCostlyShotItems(usableShots);
 
   return {
@@ -212,17 +217,29 @@ export function buildRangeRealityHandicapData(
 }
 
 export function isUsableRangeRealityShot(shot: RealityHandicapShot) {
+  if (!isShotEvidenceEligible(shot)) return false;
   if (!isTrackedClubType(shot.clubType)) return false;
   if (!isRangeRealitySession(shot)) return false;
   if (shot.shotCategory && EXCLUDED_SHOT_CATEGORIES.has(shot.shotCategory.toLowerCase())) {
     return false;
   }
-  if (shot.qualityTag && BAD_QUALITY_TAGS.has(shot.qualityTag.toLowerCase())) {
-    return false;
-  }
-
   const distance = shot.carryYd ?? shot.totalYd;
   return isFiniteNumber(distance) && distance >= 20 && distance <= 430;
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }
 
 function isRangeRealitySession(shot: RealityHandicapShot) {

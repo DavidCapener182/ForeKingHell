@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, Upload } from "lucide-react";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 
 import {
   DesktopWorkbenchLayout,
@@ -299,12 +299,21 @@ async function getLongestShots() {
   const userId = await requireCurrentUserId();
   const distanceExpression = sql<number>`coalesce(${shots.totalYd}, ${shots.carryYd})`;
   const excludedQualityValues = sql.join(
-    excludedRecordQualityTags.map((tag) => sql`${tag}`),
+    [...excludedRecordQualityTags, "warm_up"].map((tag) => sql`${tag}`),
     sql`, `,
   );
   const excludedCategoryValues = sql.join(
-    excludedRecordShotCategories.map((category) => sql`${category}`),
+    [...excludedRecordShotCategories, "warm_up"].map((category) => sql`${category}`),
     sql`, `,
+  );
+  const trustedLifecycleEvidence = or(
+    eq(shots.reviewStatus, "restored"),
+    and(
+      eq(shots.reviewStatus, "included"),
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in (${excludedQualityValues})`,
+      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in (${excludedCategoryValues})`,
+    ),
   );
   const shotSelection = {
     id: shots.id,
@@ -356,8 +365,7 @@ async function getLongestShots() {
           eq(shots.userId, userId),
           eq(sessions.userId, userId),
           sql`${distanceExpression} > 0`,
-          sql`lower(coalesce(${shots.qualityTag}, '')) not in (${excludedQualityValues})`,
-          sql`lower(coalesce(${shots.shotCategory}, '')) not in (${excludedCategoryValues})`,
+          trustedLifecycleEvidence,
           sql`lower(${sessions.source}) not in ('manual', 'manual_edit')`,
         ),
       )

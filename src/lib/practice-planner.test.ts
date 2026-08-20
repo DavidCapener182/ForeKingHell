@@ -87,6 +87,69 @@ describe("practice planner", () => {
     expect(plan.blocks.some((block) => block.type === "random")).toBe(true);
   });
 
+  it("adds a separate no-ball speed block without losing any of an 80-ball range plan", () => {
+    const plannerContext = context();
+    plannerContext.speed.readinessStatus = "ready";
+    plannerContext.speed.readinessLabel = "READY";
+    plannerContext.speed.projectCoachMessage =
+      "Ball speed is the next ingredient; carry remains the outcome.";
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "speed",
+    });
+
+    expect(totalBalls(plan)).toBe(80);
+    expect(plan.summary).toContain("12 no-ball swings");
+    expect(
+      plan.blocks.find((block) => block.title === "R-Speed ceiling block")?.ballCount,
+    ).toBeNull();
+    expect(plan.blocks.some((block) => block.title === "Driver transfer")).toBe(true);
+    expect(plan.blocks.at(-1)?.title).toBe("Random course finish");
+  });
+
+  it("removes maximum-speed work when Speed Readiness says recover", () => {
+    const plannerContext = context();
+    plannerContext.speed.readinessStatus = "recover";
+    plannerContext.speed.readinessLabel = "RECOVER";
+    plannerContext.speed.recommendation = "Technical Driver only — no maximum-speed work today.";
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "speed",
+    });
+
+    expect(totalBalls(plan)).toBe(80);
+    expect(plan.blocks.some((block) => block.title === "Speed work removed")).toBe(true);
+    expect(plan.blocks.some((block) => block.title === "R-Speed ceiling block")).toBe(false);
+    expect(plan.blocks.some((block) => block.title === "Technical Driver")).toBe(true);
+  });
+
+  it("uses a controlled baseline rather than maximum blocks while readiness is building", () => {
+    const plannerContext = context();
+    plannerContext.speed.readinessStatus = "build";
+    plannerContext.speed.readinessLabel = "BUILD";
+    plannerContext.speed.recommendation =
+      "Build the baseline with one controlled speed block and transfer shots.";
+    const plan = generatePracticePlan(plannerContext, {
+      sessionType: "speed",
+      ballCount: null,
+      timeMinutes: 20,
+      energy: "normal",
+      intent: "speed",
+    });
+
+    expect(plan.title).toBe("Speed transfer baseline");
+    expect(plan.blocks.some((block) => block.title === "Controlled speed baseline")).toBe(true);
+    expect(plan.blocks.map((block) => `${block.title} ${block.drill}`).join(" ")).not.toContain(
+      "maximum",
+    );
+  });
+
   it("keeps high recent load away from overspeed work", () => {
     const plan = generatePracticePlan(context({ highRecentLoad: true }), {
       sessionType: "speed",
@@ -497,6 +560,57 @@ describe("practice planner", () => {
     expect(fiveWoodDecision?.actualBalls).toBe(18);
     expect(fiveWoodDecision?.matchedPlannedVolume).toBe(false);
     expect(fiveWoodDecision?.actual).toContain("18/20 matching shots");
+  });
+
+  it("uses only included and restored shots as practice-plan evidence", () => {
+    const plan = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "latest_weakness",
+    });
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const rows = [
+      ...shotRows("5w", 1, 1, { offlineYd: 8, launchDirectionDeg: 2 }).map((row) => ({
+        ...row,
+        reviewStatus: "included" as const,
+      })),
+      ...shotRows("5w", 2, 1, { offlineYd: 8, launchDirectionDeg: 2 }).map((row) => ({
+        ...row,
+        reviewStatus: "restored" as const,
+        qualityTag: "bad_data",
+      })),
+      ...excludedStatuses.flatMap((reviewStatus, index) =>
+        shotRows("5w", index + 3, 1, { offlineYd: 2, launchDirectionDeg: 0 }).map((row) => ({
+          ...row,
+          reviewStatus,
+        })),
+      ),
+    ];
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5w"],
+        shotRows: rows,
+      },
+      80,
+      { scoringMode: "aggregate" },
+    );
+    const fiveWoodDecision = comparison.decisions.find((decision) => decision.title.includes("5W"));
+
+    expect(comparison.planVsActual.actualShots).toBe(2);
+    expect(fiveWoodDecision?.actualBalls).toBe(2);
   });
 
   it("scores a short latest-session upload against the planned club and pulls the score down", () => {

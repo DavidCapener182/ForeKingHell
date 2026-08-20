@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -28,6 +28,9 @@ import {
 } from "@/lib/rapsodo/cloud-client";
 import { clearStoredRapsodoToken, getStoredRapsodoToken } from "@/lib/rapsodo/token-cookie";
 import { getClubSpeedBenchmarkTarget, type ClubSpeedBenchmarkTarget } from "@/lib/club-benchmarks";
+import { getCompanionTrainingLoad } from "@/lib/companion-training-load";
+import { buildSpeedDevelopment, type SpeedDevelopmentSummary } from "@/lib/speed-development";
+import type { ShotReviewStatus } from "@/lib/shot-review";
 
 export type SpeedClubOption = {
   id: string;
@@ -232,6 +235,7 @@ export type SpeedCentrePageData = {
   rolling: SpeedRollingSummary;
   futureBag: FutureBagProjectionRow[];
   summary: SpeedCentreSummary;
+  development: SpeedDevelopmentSummary;
   rapsodo: RapsodoSpeedInbox;
 };
 
@@ -263,6 +267,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     allClubShotRows,
     stockRows,
     rapsodo,
+    trainingLoad,
   ] = await Promise.all([
     db
       .select({
@@ -310,6 +315,8 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       .limit(60),
     db
       .select({
+        sessionId: speedTrainingSwings.speedSessionId,
+        swingNumber: speedTrainingSwings.swingNumber,
         clubSpeedMph: speedTrainingSwings.clubSpeedMph,
       })
       .from(speedTrainingSwings)
@@ -319,19 +326,28 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       )
       .where(eq(speedTrainingSwings.userId, userId))
       .orderBy(desc(speedTrainingSessions.sessionDate), desc(speedTrainingSwings.swingNumber))
-      .limit(20),
+      .limit(200),
     db
       .select({
+        sessionId: shots.sessionId,
         shotAt: shots.shotAt,
+        playContext: shots.playContext,
+        reviewStatus: shots.reviewStatus,
         clubSpeedMph: shots.clubSpeedMph,
+        ballSpeedMph: shots.ballSpeedMph,
         smashFactor: shots.smashFactor,
         carryYd: shots.carryYd,
+        launchAngleDeg: shots.launchAngleDeg,
+        sideCarryYd: shots.sideCarryYd,
+        qualityTag: shots.qualityTag,
+        clubDataEstType: shots.clubDataEstType,
       })
       .from(shots)
       .where(
-        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), isNotNull(shots.clubSpeedMph)),
+        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), shotEvidenceSqlPredicate()),
       )
-      .orderBy(desc(shots.shotAt)),
+      .orderBy(desc(shots.shotAt))
+      .limit(80),
     db
       .select({
         sessionId: shots.sessionId,
@@ -354,6 +370,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
           eq(shots.userId, userId),
           eq(practiceSessions.userId, userId),
           eq(clubs.active, true),
+          shotEvidenceSqlPredicate(),
           isNotNull(shots.clubSpeedMph),
         ),
       )
@@ -376,6 +393,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       .orderBy(desc(stockYardages.calculatedAt))
       .limit(120),
     getRapsodoSpeedInbox(),
+    getCompanionTrainingLoad(userId).catch(() => null),
   ]);
 
   const trackedClubRows = clubRows.filter((club) => isTrackedClubType(club.type));
@@ -427,6 +445,16 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     driverClubId,
     driverCarryBasis,
   });
+  const development = buildDriverSpeedDevelopmentSummary({
+    sessions,
+    swings: recentSwingRows,
+    driverShots: recentDriverShots,
+    driverClubId,
+    targetSpeedMph: summary.targetSpeedMph,
+    currentCarryYd: summary.carryProjection.currentCarryYd,
+    currentCarrySource: summary.carryProjection.basis,
+    trainingLoad,
+  });
 
   return {
     clubOptions,
@@ -438,99 +466,115 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     rolling: buildRollingSummary(sessions),
     futureBag: buildFutureBagRows(trackedStockRows, trackedAllClubShotRows),
     summary,
+    development,
     rapsodo,
   };
 }
 
 export async function getSpeedCoachCardData(userId: string) {
   const db = getDb();
-  const [clubRows, goalRows, sessionRows, recentSwingRows, recentDriverShots, stockRows] =
-    await Promise.all([
-      db
-        .select({
-          id: clubs.id,
-          type: clubs.type,
-        })
-        .from(clubs)
-        .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
-        .orderBy(asc(clubs.type)),
-      db
-        .select({
-          id: speedTrainingGoals.id,
-          goalKey: speedTrainingGoals.goalKey,
-          clubId: speedTrainingGoals.clubId,
-          targetSpeedMph: speedTrainingGoals.targetSpeedMph,
-          targetDate: speedTrainingGoals.targetDate,
-          notes: speedTrainingGoals.notes,
-        })
-        .from(speedTrainingGoals)
-        .where(eq(speedTrainingGoals.userId, userId))
-        .orderBy(asc(speedTrainingGoals.goalKey)),
-      db
-        .select({
-          id: speedTrainingSessions.id,
-          source: speedTrainingSessions.source,
-          sessionDate: speedTrainingSessions.sessionDate,
-          title: speedTrainingSessions.title,
-          clubId: speedTrainingSessions.clubId,
-          implementKind: speedTrainingSessions.implementKind,
-          implementLabel: speedTrainingSessions.implementLabel,
-          speedSystem: speedTrainingSessions.speedSystem,
-          handedness: speedTrainingSessions.handedness,
-          swingCount: speedTrainingSessions.swingCount,
-          minSpeedMph: speedTrainingSessions.minSpeedMph,
-          avgSpeedMph: speedTrainingSessions.avgSpeedMph,
-          maxSpeedMph: speedTrainingSessions.maxSpeedMph,
-          targetSpeedMph: speedTrainingSessions.targetSpeedMph,
-          notes: speedTrainingSessions.notes,
-        })
-        .from(speedTrainingSessions)
-        .where(eq(speedTrainingSessions.userId, userId))
-        .orderBy(desc(speedTrainingSessions.sessionDate))
-        .limit(60),
-      db
-        .select({
-          clubSpeedMph: speedTrainingSwings.clubSpeedMph,
-        })
-        .from(speedTrainingSwings)
-        .innerJoin(
-          speedTrainingSessions,
-          eq(speedTrainingSwings.speedSessionId, speedTrainingSessions.id),
-        )
-        .where(eq(speedTrainingSwings.userId, userId))
-        .orderBy(desc(speedTrainingSessions.sessionDate), desc(speedTrainingSwings.swingNumber))
-        .limit(20),
-      db
-        .select({
-          shotAt: shots.shotAt,
-          clubSpeedMph: shots.clubSpeedMph,
-          smashFactor: shots.smashFactor,
-          carryYd: shots.carryYd,
-        })
-        .from(shots)
-        .where(
-          and(
-            eq(shots.userId, userId),
-            eq(shots.clubType, "driver"),
-            isNotNull(shots.clubSpeedMph),
-          ),
-        )
-        .orderBy(desc(shots.shotAt)),
-      db
-        .select({
-          clubType: clubs.type,
-          sampleSize: stockYardages.sampleSize,
-          carryMedianYd: stockYardages.carryMedianYd,
-          recommendedPlayNumberYd: stockYardages.recommendedPlayNumberYd,
-          confidenceScore: stockYardages.confidenceScore,
-          calculatedAt: stockYardages.calculatedAt,
-        })
-        .from(stockYardages)
-        .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
-        .where(and(eq(stockYardages.userId, userId), eq(clubs.active, true)))
-        .orderBy(desc(stockYardages.calculatedAt))
-        .limit(120),
-    ]);
+  const [
+    clubRows,
+    goalRows,
+    sessionRows,
+    recentSwingRows,
+    recentDriverShots,
+    stockRows,
+    trainingLoad,
+  ] = await Promise.all([
+    db
+      .select({
+        id: clubs.id,
+        type: clubs.type,
+      })
+      .from(clubs)
+      .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
+      .orderBy(asc(clubs.type)),
+    db
+      .select({
+        id: speedTrainingGoals.id,
+        goalKey: speedTrainingGoals.goalKey,
+        clubId: speedTrainingGoals.clubId,
+        targetSpeedMph: speedTrainingGoals.targetSpeedMph,
+        targetDate: speedTrainingGoals.targetDate,
+        notes: speedTrainingGoals.notes,
+      })
+      .from(speedTrainingGoals)
+      .where(eq(speedTrainingGoals.userId, userId))
+      .orderBy(asc(speedTrainingGoals.goalKey)),
+    db
+      .select({
+        id: speedTrainingSessions.id,
+        source: speedTrainingSessions.source,
+        sessionDate: speedTrainingSessions.sessionDate,
+        title: speedTrainingSessions.title,
+        clubId: speedTrainingSessions.clubId,
+        implementKind: speedTrainingSessions.implementKind,
+        implementLabel: speedTrainingSessions.implementLabel,
+        speedSystem: speedTrainingSessions.speedSystem,
+        handedness: speedTrainingSessions.handedness,
+        swingCount: speedTrainingSessions.swingCount,
+        minSpeedMph: speedTrainingSessions.minSpeedMph,
+        avgSpeedMph: speedTrainingSessions.avgSpeedMph,
+        maxSpeedMph: speedTrainingSessions.maxSpeedMph,
+        targetSpeedMph: speedTrainingSessions.targetSpeedMph,
+        notes: speedTrainingSessions.notes,
+      })
+      .from(speedTrainingSessions)
+      .where(eq(speedTrainingSessions.userId, userId))
+      .orderBy(desc(speedTrainingSessions.sessionDate))
+      .limit(60),
+    db
+      .select({
+        sessionId: speedTrainingSwings.speedSessionId,
+        swingNumber: speedTrainingSwings.swingNumber,
+        clubSpeedMph: speedTrainingSwings.clubSpeedMph,
+      })
+      .from(speedTrainingSwings)
+      .innerJoin(
+        speedTrainingSessions,
+        eq(speedTrainingSwings.speedSessionId, speedTrainingSessions.id),
+      )
+      .where(eq(speedTrainingSwings.userId, userId))
+      .orderBy(desc(speedTrainingSessions.sessionDate), desc(speedTrainingSwings.swingNumber))
+      .limit(200),
+    db
+      .select({
+        sessionId: shots.sessionId,
+        shotAt: shots.shotAt,
+        playContext: shots.playContext,
+        reviewStatus: shots.reviewStatus,
+        clubSpeedMph: shots.clubSpeedMph,
+        ballSpeedMph: shots.ballSpeedMph,
+        smashFactor: shots.smashFactor,
+        carryYd: shots.carryYd,
+        launchAngleDeg: shots.launchAngleDeg,
+        sideCarryYd: shots.sideCarryYd,
+        qualityTag: shots.qualityTag,
+        clubDataEstType: shots.clubDataEstType,
+      })
+      .from(shots)
+      .where(
+        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), shotEvidenceSqlPredicate()),
+      )
+      .orderBy(desc(shots.shotAt))
+      .limit(80),
+    db
+      .select({
+        clubType: clubs.type,
+        sampleSize: stockYardages.sampleSize,
+        carryMedianYd: stockYardages.carryMedianYd,
+        recommendedPlayNumberYd: stockYardages.recommendedPlayNumberYd,
+        confidenceScore: stockYardages.confidenceScore,
+        calculatedAt: stockYardages.calculatedAt,
+      })
+      .from(stockYardages)
+      .innerJoin(clubs, eq(stockYardages.clubId, clubs.id))
+      .where(and(eq(stockYardages.userId, userId), eq(clubs.active, true)))
+      .orderBy(desc(stockYardages.calculatedAt))
+      .limit(120),
+    getCompanionTrainingLoad(userId).catch(() => null),
+  ]);
   const sessions = sessionRows.map((session) => ({
     id: session.id,
     source: session.source,
@@ -549,28 +593,35 @@ export async function getSpeedCoachCardData(userId: string) {
     notes: session.notes,
   }));
 
-  return {
-    summary: buildSpeedCentreSummary(
-      sessions,
-      recentSwingRows,
-      recentDriverShots,
-      goalRows.map((goal) => ({
-        id: goal.id,
-        goalKey: goal.goalKey,
-        clubId: goal.clubId,
-        targetSpeedMph: goal.targetSpeedMph,
-        targetDateIso: goal.targetDate ? String(goal.targetDate).slice(0, 10) : null,
-        notes: goal.notes,
-      })),
-      {
-        driverClubId:
-          clubRows.find((club) => isTrackedClubType(club.type) && club.type === "driver")?.id ??
-          null,
-        driverCarryBasis: buildDriverCarryBasis(
-          stockRows.filter((row) => isTrackedClubType(row.clubType)),
-        ),
-      },
+  const goals = goalRows.map((goal) => ({
+    id: goal.id,
+    goalKey: goal.goalKey,
+    clubId: goal.clubId,
+    targetSpeedMph: goal.targetSpeedMph,
+    targetDateIso: goal.targetDate ? String(goal.targetDate).slice(0, 10) : null,
+    notes: goal.notes,
+  }));
+  const driverClubId =
+    clubRows.find((club) => isTrackedClubType(club.type) && club.type === "driver")?.id ?? null;
+  const summary = buildSpeedCentreSummary(sessions, recentSwingRows, recentDriverShots, goals, {
+    driverClubId,
+    driverCarryBasis: buildDriverCarryBasis(
+      stockRows.filter((row) => isTrackedClubType(row.clubType)),
     ),
+  });
+
+  return {
+    summary,
+    development: buildDriverSpeedDevelopmentSummary({
+      sessions,
+      swings: recentSwingRows,
+      driverShots: recentDriverShots,
+      driverClubId,
+      targetSpeedMph: summary.targetSpeedMph,
+      currentCarryYd: summary.carryProjection.currentCarryYd,
+      currentCarrySource: summary.carryProjection.basis,
+      trainingLoad,
+    }),
   };
 }
 
@@ -757,6 +808,79 @@ async function getRapsodoSpeedInbox(): Promise<RapsodoSpeedInbox> {
       items: [],
     };
   }
+}
+
+function buildDriverSpeedDevelopmentSummary(input: {
+  sessions: SpeedCentreSession[];
+  swings: Array<{
+    sessionId: string;
+    swingNumber: number;
+    clubSpeedMph: number;
+  }>;
+  driverShots: Array<{
+    sessionId: string;
+    shotAt: Date;
+    playContext: string;
+    reviewStatus: ShotReviewStatus;
+    clubSpeedMph: number | null;
+    ballSpeedMph: number | null;
+    smashFactor: number | null;
+    carryYd: number | null;
+    launchAngleDeg: number | null;
+    sideCarryYd: number | null;
+    qualityTag: string | null;
+    clubDataEstType: string | null;
+  }>;
+  driverClubId: string | null;
+  targetSpeedMph: number | null;
+  currentCarryYd: number | null;
+  currentCarrySource: string;
+  trainingLoad: Awaited<ReturnType<typeof getCompanionTrainingLoad>> | null;
+}) {
+  return buildSpeedDevelopment({
+    sessions: input.sessions.map((session) => ({
+      id: session.id,
+      sessionDateIso: session.sessionDateIso,
+      avgSpeedMph: session.avgSpeedMph,
+      maxSpeedMph: session.maxSpeedMph,
+      swingCount: session.swingCount,
+      comparableToDriver:
+        session.handedness === "dominant" &&
+        session.implementKind === "club" &&
+        (input.driverClubId
+          ? session.clubId === input.driverClubId ||
+            (session.clubId === null &&
+              /driver/i.test(`${session.title ?? ""} ${session.implementLabel}`))
+          : /driver/i.test(`${session.title ?? ""} ${session.implementLabel}`)),
+    })),
+    swings: input.swings,
+    driverShots: input.driverShots.map((shot) => ({
+      sessionId: shot.sessionId,
+      shotAtIso: shot.shotAt.toISOString(),
+      playContext: shot.playContext,
+      reviewStatus: shot.reviewStatus,
+      clubSpeedMph: shot.clubSpeedMph,
+      ballSpeedMph: shot.ballSpeedMph,
+      smashFactor: shot.smashFactor,
+      carryYd: shot.carryYd,
+      launchAngleDeg: shot.launchAngleDeg,
+      sideCarryYd: shot.sideCarryYd,
+      qualityTag: shot.qualityTag,
+      clubDataEstType: shot.clubDataEstType,
+    })),
+    targetSpeedMph: input.targetSpeedMph,
+    currentCarryYd: input.currentCarryYd,
+    currentCarrySource: input.currentCarrySource,
+    trainingLoad: input.trainingLoad
+      ? {
+          fitness: input.trainingLoad.latest?.fitness ?? null,
+          fatigue: input.trainingLoad.latest?.fatigue ?? null,
+          form: input.trainingLoad.latest?.form ?? null,
+          statusKey: input.trainingLoad.status.key,
+          trendKey: input.trainingLoad.trend.key,
+        }
+      : null,
+  });
 }
 
 function buildSpeedCentreSummary(
@@ -1602,4 +1726,19 @@ function labelForImplementKind(kind: string) {
     default:
       return "Other implement";
   }
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }

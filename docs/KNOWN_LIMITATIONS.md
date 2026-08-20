@@ -18,3 +18,13 @@ These are launch constraints, not hidden failures.
 - The live rollback-only RLS matrix verifies owner, coach, viewer, editor, friend, stranger, blocked,
   group-moderator, administrator and anonymous boundaries. It does not replace deployed-preview
   browser verification or explicit user scoping for privileged application-server queries.
+- Shot review immediately removes excluded rows from live analytical evidence and rebuilds the
+  affected current stock-yardage context. Historical achievements, XP entries, social feed claims,
+  accepted practice results and course-record attempts are not silently rewritten: older rows do
+  not consistently retain an unambiguous source-shot ID. Safe retroactive reconciliation requires
+  an active/revoked state, deterministic evidence links, compensating XP entries and idempotent
+  reactivation keys. Until that provenance contract is migrated, these records remain
+  point-in-time history rather than claims about current trusted evidence.
+- Imported training load deliberately counts committed physical swings, including shots later
+  excluded from analysis. Review status changes evidence quality, not the work the golfer already
+  performed.

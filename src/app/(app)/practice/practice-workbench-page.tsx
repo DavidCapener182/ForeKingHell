@@ -31,10 +31,10 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
   const data = await getPracticePlannerPageData(userId);
   const requestedOptions = practiceOptionsFromSearchParams(params);
   const generatedPlan = generatePracticePlan(data.context, requestedOptions);
-  const initialSavedPlan = selectPracticePlannerInitialSavedPlan(
-    data.savedPlans,
-    data.importOptions[0]?.id ?? null,
-  );
+  const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed";
+  const initialSavedPlan = explicitSpeedRequest
+    ? null
+    : selectPracticePlannerInitialSavedPlan(data.savedPlans, data.importOptions[0]?.id ?? null);
   const initialSavedPracticePlan = initialSavedPlan
     ? savedPracticePlanToPracticePlan(initialSavedPlan, data.context)
     : null;

@@ -1,4 +1,5 @@
 import { isShortGameTouchClubType } from "@/lib/club-format";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { classifyStockShotRole } from "@/lib/stock-yardage";
 
 export type ShortGameTouchShot = {
@@ -7,7 +8,9 @@ export type ShortGameTouchShot = {
   totalYd?: number | null;
   courseHoleNumber?: number | null;
   sessionType?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotCategory?: string | null;
+  qualityTag?: string | null;
 };
 
 export type ShortGameTouchSummary = {
@@ -55,7 +58,7 @@ export function calculateShortGameTouchSummary(
 }
 
 function isLikelyShortGameTouch(shot: ShortGameTouchShot, options: { clubType?: string | null }) {
-  if (!isNumber(shot.carryYd)) {
+  if (!isNumber(shot.carryYd) || !isShotEvidenceEligible(shot)) {
     return false;
   }
 

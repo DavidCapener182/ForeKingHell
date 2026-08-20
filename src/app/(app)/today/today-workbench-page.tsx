@@ -398,7 +398,10 @@ function TodayDesktopDashboard({
   const hasShots = data.shots.length > 0;
 
   return (
-    <div className="grid min-w-0 gap-10 pb-4" data-desktop-today-workspace>
+    <div
+      className="grid w-dvw min-w-0 max-w-full grid-cols-[minmax(0,1fr)] gap-10 overflow-x-clip pb-4"
+      data-desktop-today-workspace
+    >
       <TodayHomeUtilityBar shotDatabaseHref={shotDatabaseHref} />
       <TodayDecisionHero state={primaryState} recommendation={recommendation} data={data} />
 
@@ -661,24 +664,30 @@ function TodayDecisionHero({
       <CardContent className="grid min-w-0 gap-8 px-7 py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:px-10 lg:py-10">
         <div className="flex min-w-0 flex-col justify-end">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge className="border-white/20 bg-white/12 text-white hover:bg-white/12">
+            <Badge
+              variant="outline"
+              className="border-white/30 bg-black/30 text-white shadow-sm backdrop-blur-sm hover:bg-black/30 hover:text-white"
+            >
               {state.status}
             </Badge>
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
               {state.eyebrow}
             </span>
           </div>
-          <h1 className="mt-5 max-w-5xl text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.045em] text-white xl:text-7xl">
+          <h1 className="mt-5 max-w-5xl text-balance text-4xl font-semibold leading-[0.98] tracking-[-0.045em] text-white sm:text-5xl xl:text-7xl">
             {state.title}
           </h1>
           <p className="mt-5 max-w-3xl text-pretty text-base font-medium leading-7 text-white/78 lg:text-lg">
             {state.reason}
           </p>
-          <ButtonGroup className="mt-7 w-fit" aria-label="Primary Today actions">
+          <ButtonGroup
+            className="mt-7 grid w-full grid-cols-2 sm:inline-flex sm:w-fit"
+            aria-label="Primary Today actions"
+          >
             <Button
               asChild
               size="lg"
-              className="min-h-12 bg-white px-6 !text-[#073527] hover:bg-white/90 hover:!text-[#073527]"
+              className="col-span-2 min-h-12 w-full bg-white px-6 !text-[#073527] hover:bg-white/90 hover:!text-[#073527] sm:col-span-1"
             >
               <Link href={state.href} prefetch={false}>
                 {state.action} <ArrowRight className="size-4" />
@@ -688,7 +697,7 @@ function TodayDecisionHero({
               asChild
               size="lg"
               variant="outline"
-              className="min-h-12 border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
+              className="min-h-12 w-full border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
             >
               <Link href="/sessions" prefetch={false}>
                 Sessions
@@ -698,7 +707,7 @@ function TodayDecisionHero({
               asChild
               size="lg"
               variant="outline"
-              className="min-h-12 border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
+              className="min-h-12 w-full border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
             >
               <Link href="/import" prefetch={false}>
                 Import

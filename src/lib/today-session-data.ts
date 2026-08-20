@@ -8,6 +8,7 @@ import {
   detectShotDataIntegrityIssue,
   type ShotDataIntegrityIssue,
 } from "@/lib/shot-data-integrity";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
 
 const APP_TIME_ZONE = "Europe/London";
@@ -50,6 +51,7 @@ export type TodayPracticeShot = {
   clubPathDeg: number | null;
   faceAngleDeg: number | null;
   clubDataEstType: string | null;
+  reviewStatus: ShotReviewStatus;
   qualityTag: string | null;
   dataIntegrityIssue: ShotDataIntegrityIssue | null;
 };
@@ -224,6 +226,7 @@ const practiceShotSelect = {
   clubPathDeg: shots.clubPathDeg,
   faceAngleDeg: shots.faceAngleDeg,
   clubDataEstType: shots.clubDataEstType,
+  reviewStatus: shots.reviewStatus,
   qualityTag: shots.qualityTag,
 };
 
@@ -244,22 +247,12 @@ export async function getTodayPracticeData(
       dateKey = sessionDateKey;
       defaultSessionId = filters.sessionId;
     }
+  } else if (!hasExplicitDate) {
+    dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey, filters.club)) ?? dateKey;
   }
 
-  let bounds = dayBounds(dateKey);
-  let allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
-
-  if (!hasExplicitDate && !filters.sessionId && allTodayRows.length === 0) {
-    const latestDateKey =
-      (await findLatestPracticeDateKey(db, userId, filters.club, MIN_TODAY_SHOTS_FOR_VERDICT)) ??
-      (await findLatestPracticeDateKey(db, userId, filters.club, 1));
-
-    if (latestDateKey) {
-      dateKey = latestDateKey;
-      bounds = dayBounds(dateKey);
-      allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
-    }
-  }
+  const bounds = dayBounds(dateKey);
+  const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
 
   const sessionIds = new Set(allTodayRows.map((shot) => shot.sessionId));
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
@@ -347,6 +340,7 @@ async function fetchPreviousPracticeRows(
         eq(clubs.userId, userId),
         lt(shots.shotAt, before),
         inArray(shots.clubType, clubTypes),
+        shotEvidenceSqlPredicate(),
       ),
     )
     .as("ranked_previous_shots");
@@ -380,6 +374,7 @@ async function fetchPreviousPracticeRows(
       clubPathDeg: rankedPreviousShots.clubPathDeg,
       faceAngleDeg: rankedPreviousShots.faceAngleDeg,
       clubDataEstType: rankedPreviousShots.clubDataEstType,
+      reviewStatus: rankedPreviousShots.reviewStatus,
       qualityTag: rankedPreviousShots.qualityTag,
     })
     .from(rankedPreviousShots)
@@ -397,34 +392,39 @@ async function findSessionDateKey(db: ReturnType<typeof getDb>, userId: string, 
   return session ? localDateKey(session.date) : null;
 }
 
-async function findLatestPracticeDateKey(
+async function findDefaultPracticeDateKey(
   db: ReturnType<typeof getDb>,
   userId: string,
+  currentDateKey: string,
   clubFilter: string | undefined,
-  minimumShotCount: number,
 ) {
   const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId), eq(clubs.userId, userId)];
   const club = clubFilter && isTrackedClubType(clubFilter) ? clubFilter : "";
   const practiceDateKey = sql<string>`to_char(${shots.shotAt} at time zone 'Europe/London', 'YYYY-MM-DD')`;
   const latestShotAt = sql<Date>`max(${shots.shotAt})`;
+  const datePriority = sql<number>`case
+    when ${practiceDateKey} = ${currentDateKey} then 2
+    when count(${shots.id}) >= ${MIN_TODAY_SHOTS_FOR_VERDICT} then 1
+    else 0
+  end`;
 
   if (club) {
     clauses.push(eq(shots.clubType, club));
   }
+  clauses.push(shotEvidenceSqlPredicate());
 
   const [practiceDay] = await db
     .select({
       dateKey: practiceDateKey,
       latestShotAt,
-      shotCount: sql<number>`count(${shots.id})::int`,
+      datePriority,
     })
     .from(shots)
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
     .where(and(...clauses))
     .groupBy(practiceDateKey)
-    .having(sql`count(${shots.id}) >= ${minimumShotCount}`)
-    .orderBy(desc(latestShotAt))
+    .orderBy(desc(datePriority), desc(latestShotAt))
     .limit(1);
 
   return practiceDay?.dateKey ?? null;
@@ -861,13 +861,40 @@ function isRawComparisonShot(shot: TodayPracticeShot) {
   return isNumber(shot.carryYd) || isNumber(shot.sideCarryYd) || isNumber(shot.ballSpeedMph);
 }
 
-function isCleanPracticeShot(shot: Pick<TodayPracticeShot, "qualityTag" | "dataIntegrityIssue">) {
-  return !isExcludedPracticeQualityTag(shot.qualityTag) && shot.dataIntegrityIssue === null;
+function isCleanPracticeShot(
+  shot: Pick<
+    TodayPracticeShot,
+    "reviewStatus" | "qualityTag" | "shotCategory" | "dataIntegrityIssue"
+  >,
+) {
+  if (!isShotEvidenceEligible(shot)) {
+    return false;
+  }
+
+  return shot.reviewStatus === "restored" || shot.dataIntegrityIssue === null;
 }
 
 export function isExcludedPracticeQualityTag(qualityTag: string | null | undefined) {
   const normalized = qualityTag?.trim().toLowerCase();
   return Boolean(normalized && EXCLUDED_PRACTICE_QUALITY_TAGS.has(normalized));
+}
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
 }
 
 function buildDataCleaningSummary(

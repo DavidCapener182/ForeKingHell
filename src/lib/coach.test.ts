@@ -74,26 +74,7 @@ describe("buildCoachSummary", () => {
   });
 
   it("marks a launch drill complete and won from uploaded shots", () => {
-    const challenge = {
-      id: "coach-drill-2026-05-11-6i-launch",
-      dateKey: "2026-05-11",
-      clubId: "six-iron-id",
-      clubType: "6i",
-      clubName: "6i",
-      issue: "launch",
-      issueLabel: "Launch window",
-      title: "6i launch ladder",
-      detail: "Hit 12 stock shots and count launch.",
-      target: "12 balls.",
-      winCondition: "Win it with 8 or more launch-window shots.",
-      completionTarget: 12,
-      winRule: { kind: "launch-window", target: 8, low: 16, high: 24 },
-      completeAchievementId: "coach_complete_2026-05-11-6i-launch",
-      winAchievementId: "coach_win_2026-05-11-6i-launch",
-      completeXp: 60,
-      winXp: 160,
-      tone: "amber",
-    } satisfies CoachDrillChallenge;
+    const challenge = coachDrillChallenge();
     const shots = Array.from({ length: 12 }, (_, index) => ({
       clubType: "6i",
       shotCategory: "full",
@@ -114,7 +95,77 @@ describe("buildCoachSummary", () => {
     expect(progress.winCount).toBe(8);
     expect(progress.won).toBe(true);
   });
+
+  it("excludes classified and legacy-bad rows from coach drill XP evidence", () => {
+    const challenge = {
+      ...coachDrillChallenge(),
+      completionTarget: 2,
+      winRule: { kind: "clean-shots", target: 2 },
+    } satisfies CoachDrillChallenge;
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const shots = [
+      coachDrillShot({ reviewStatus: "included" }),
+      coachDrillShot({ reviewStatus: "restored", qualityTag: "bad_data" }),
+      ...excludedStatuses.map((reviewStatus) => coachDrillShot({ reviewStatus, carryYd: 400 })),
+      coachDrillShot({ reviewStatus: "included", qualityTag: "bad_data", carryYd: 400 }),
+      coachDrillShot({ reviewStatus: "included", shotCategory: "warm_up", carryYd: 400 }),
+    ];
+
+    const progress = evaluateCoachDrillProgress(challenge, shots);
+
+    expect(progress.uploadedShotCount).toBe(2);
+    expect(progress.completed).toBe(true);
+    expect(progress.winCount).toBe(2);
+    expect(progress.won).toBe(true);
+  });
 });
+
+function coachDrillChallenge(): CoachDrillChallenge {
+  return {
+    id: "coach-drill-2026-05-11-6i-launch",
+    dateKey: "2026-05-11",
+    clubId: "six-iron-id",
+    clubType: "6i",
+    clubName: "6i",
+    issue: "launch",
+    issueLabel: "Launch window",
+    title: "6i launch ladder",
+    detail: "Hit 12 stock shots and count launch.",
+    target: "12 balls.",
+    winCondition: "Win it with 8 or more launch-window shots.",
+    completionTarget: 12,
+    winRule: { kind: "launch-window", target: 8, low: 16, high: 24 },
+    completeAchievementId: "coach_complete_2026-05-11-6i-launch",
+    winAchievementId: "coach_win_2026-05-11-6i-launch",
+    completeXp: 60,
+    winXp: 160,
+    tone: "amber",
+  };
+}
+
+function coachDrillShot(
+  overrides: Partial<Parameters<typeof evaluateCoachDrillProgress>[1][number]> = {},
+): Parameters<typeof evaluateCoachDrillProgress>[1][number] {
+  return {
+    clubType: "6i",
+    shotCategory: "full",
+    carryYd: 150,
+    sideCarryYd: 8,
+    launchAngleDeg: 19,
+    launchDirectionDeg: 2,
+    ballSpeedMph: 110,
+    clubSpeedMph: 80,
+    smashFactor: 1.37,
+    clubPathDeg: 1,
+    ...overrides,
+  };
+}
 
 function shot(overrides: Partial<ClubAnalyticsShot> = {}): ClubAnalyticsShot {
   return {

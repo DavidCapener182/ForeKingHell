@@ -70,7 +70,7 @@ export async function saveAnalysisSnapshotAction(formData: FormData) {
   const from = parseDate(formData.get("from"));
   const to = parseDate(formData.get("to"), true);
   if (from && to && to < from) throw new Error("Snapshot end date cannot precede start date.");
-  const clauses = [eq(shots.userId, userId)];
+  const clauses = [eq(shots.userId, userId), shotEvidenceSqlPredicate()];
   if (club) clauses.push(eq(shots.clubType, club));
   if (from) clauses.push(gte(shots.shotAt, from));
   if (to) clauses.push(lte(shots.shotAt, to));
@@ -157,4 +157,22 @@ function dateInputValue(value: Date | null) {
 
 function numberOrNull(value: number | null | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
 }

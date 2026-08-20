@@ -12,6 +12,7 @@ describe("training load page source", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
     expect(source).toContain('scope="training-load"');
     expect(source).toContain("TrainingLoadRangeView");
+    expect(source).toContain("SpeedReadinessPanel");
     expect(source).toContain("A golf-specific view of fitness, freshness");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("max-w-6xl");
@@ -30,6 +31,15 @@ describe("training load page source", () => {
     expect(source).not.toContain("TrainingPracticePlannerPanel");
     expect(source).not.toContain("getPracticePlannerProgressSummary");
     expect(source).not.toContain("data-training-load-warning");
+  });
+
+  it("explains Speed Readiness from the shared development summary", () => {
+    expect(source).toContain('import { getSpeedCoachCardData } from "@/lib/speed-training-data"');
+    expect(source).toContain("getSpeedCoachCardData(userId)");
+    expect(source).toContain('id="speed-readiness"');
+    expect(source).toContain("readiness.reasons.map");
+    expect(source).toContain("readiness.recommendation");
+    expect(source).toContain('href="/speed"');
   });
 
   it("puts one chart and recommendation ahead of desktop-only supporting evidence", () => {

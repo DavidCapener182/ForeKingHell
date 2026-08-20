@@ -17,6 +17,7 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
+import { SpeedFatigueChart } from "@/components/speed/speed-fatigue-chart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -190,7 +191,15 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
                   description="This session only has summary numbers. Paste the swing readings below to rebuild detail."
                 />
               ) : (
-                <SwingLogWorkbench data={data} />
+                <>
+                  <SpeedFatigueChart
+                    readings={data.swings.map((swing) => ({
+                      swingNumber: swing.swingNumber,
+                      clubSpeedMph: swing.clubSpeedMph,
+                    }))}
+                  />
+                  <SwingLogWorkbench data={data} />
+                </>
               )}
             </div>
           </DataPanel>

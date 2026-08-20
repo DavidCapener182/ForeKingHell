@@ -1,6 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
-import { and, asc, desc, eq, gt, gte, isNull, lt, lte, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import {
   AlertTriangle,
   BarChart3,
@@ -60,7 +74,7 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
-import { sessions, strokesGainedShotEvents } from "@/db/schema";
+import { sessions, shots, strokesGainedShotEvents } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
@@ -437,11 +451,29 @@ async function getStrokesGainedData(filters: StrokesGainedFilters) {
     })
     .from(strokesGainedShotEvents)
     .innerJoin(sessions, eq(sessions.id, strokesGainedShotEvents.sessionId))
-    .where(and(...conditions))
+    .leftJoin(shots, and(eq(shots.id, strokesGainedShotEvents.shotId), eq(shots.userId, userId)))
+    .where(
+      and(...conditions, or(isNull(strokesGainedShotEvents.shotId), shotEvidenceSqlPredicate())),
+    )
     .orderBy(...orderBy)
     .limit(ANALYSIS_LIMIT);
 
   return { events };
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }
 
 function buildStrokesGainedAnalysis(events: StrokesGainedEvent[]) {
@@ -1170,6 +1202,8 @@ function MainScoringLeak({
                 src={artwork.src}
                 alt=""
                 fill
+                loading="eager"
+                fetchPriority="high"
                 sizes="(min-width: 1024px) 24vw, (min-width: 640px) 42vw, 100vw"
                 className={cn("object-cover", artwork.className)}
               />

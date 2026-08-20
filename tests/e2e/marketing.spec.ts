@@ -119,6 +119,176 @@ test.describe("public product landing", () => {
     await expect(page.getByRole("heading", { name: /A mobile golf workspace/i })).toBeVisible();
   });
 
+  test("keeps compact carousel keyboard and direct-scroll state stable", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The compact carousel interaction contract runs once in base Chromium.",
+    );
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.goto("/");
+
+    const tour = page.locator("#sample-tour");
+    const rail = tour.getByRole("region", { name: "Sample tour chapters" });
+    const status = tour.getByRole("status");
+    await rail.scrollIntoViewIfNeeded();
+    await expect(rail).toBeVisible();
+    await status.evaluate((element) => {
+      const observedWindow = window as Window & { __tourStepChanges?: string[] };
+      observedWindow.__tourStepChanges = [];
+      new MutationObserver(() => {
+        observedWindow.__tourStepChanges?.push(element.textContent?.trim() ?? "");
+      }).observe(element, { childList: true, characterData: true, subtree: true });
+    });
+
+    await rail.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(status).toHaveText("2 / 5");
+    await expect(rail.getByRole("group", { name: "2 of 5: Dispersion" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges ?? [],
+        ),
+      )
+      .toEqual(["2 / 5"]);
+
+    await page.evaluate(() => {
+      (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges = [];
+    });
+    await page.keyboard.press("End");
+    await expect(status).toHaveText("5 / 5");
+    await expect(rail.getByRole("group", { name: "5 of 5: Course plan" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges ?? [],
+        ),
+      )
+      .toEqual(["5 / 5"]);
+
+    await page.evaluate(() => {
+      (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges = [];
+    });
+    await rail.evaluate((element) => {
+      const cards = Array.from(element.querySelectorAll<HTMLElement>("[data-tour-swipe-card]"));
+      element.scrollTo({
+        left: cards[2].offsetLeft - cards[0].offsetLeft,
+        behavior: "auto",
+      });
+    });
+    await expect(status).toHaveText("3 / 5");
+    await expect(rail.getByRole("group", { name: "3 of 5: Club trust" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges ?? [],
+        ),
+      )
+      .toEqual(["3 / 5"]);
+  });
+
+  test("uses immediate compact carousel navigation with reduced motion", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The reduced-motion carousel contract runs once in base Chromium.",
+    );
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+
+    const tour = page.locator("#sample-tour");
+    const rail = tour.getByRole("region", { name: "Sample tour chapters" });
+    const status = tour.getByRole("status");
+    await rail.scrollIntoViewIfNeeded();
+    await rail.evaluate((element) => {
+      const observedWindow = window as Window & { __tourScrollBehaviors?: ScrollBehavior[] };
+      const originalScrollTo = element.scrollTo.bind(element);
+      observedWindow.__tourScrollBehaviors = [];
+      Object.defineProperty(element, "scrollTo", {
+        configurable: true,
+        value(options: ScrollToOptions) {
+          observedWindow.__tourScrollBehaviors?.push(options.behavior ?? "auto");
+          originalScrollTo(options);
+        },
+      });
+    });
+
+    await rail.focus();
+    await page.keyboard.press("End");
+    await expect(status).toHaveText("5 / 5");
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window as Window & { __tourScrollBehaviors?: ScrollBehavior[] })
+              .__tourScrollBehaviors ?? [],
+        ),
+      )
+      .toEqual(["auto"]);
+    await expect(rail).toHaveCSS("scroll-behavior", "auto");
+  });
+
+  test("keeps the compact CTA clear of the footer at the exact breakpoint", async ({
+    browserName,
+    page,
+  }, testInfo) => {
+    test.skip(
+      browserName !== "chromium" || testInfo.project.name !== "chromium",
+      "The compact CTA geometry contract runs once in base Chromium.",
+    );
+
+    await page.setViewportSize({ width: 767, height: 900 });
+    await page.goto("/");
+    const dock = page.locator("[data-mobile-sticky-cta]");
+    await expect(dock).toBeVisible();
+
+    const initialDock = await dock.evaluate((element) => element.getBoundingClientRect().toJSON());
+    expect(Math.abs(initialDock.bottom - 900)).toBeLessThanOrEqual(1);
+
+    const footer = page.locator("footer");
+    await footer.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const bottomGeometry = await page.evaluate(() => {
+      const dockElement = document.querySelector<HTMLElement>("[data-mobile-sticky-cta]");
+      const footerElement = document.querySelector<HTMLElement>("footer");
+      const lastFooterChild = footerElement?.lastElementChild;
+      if (!dockElement || !(lastFooterChild instanceof HTMLElement)) return null;
+      return {
+        dockTop: dockElement.getBoundingClientRect().top,
+        dockBottom: dockElement.getBoundingClientRect().bottom,
+        footerContentBottom: lastFooterChild.getBoundingClientRect().bottom,
+      };
+    });
+    expect(bottomGeometry).not.toBeNull();
+    expect(bottomGeometry!.dockBottom).toBeCloseTo(900, 0);
+    expect(bottomGeometry!.footerContentBottom).toBeLessThanOrEqual(bottomGeometry!.dockTop);
+
+    const mobileTour = page.getByRole("region", { name: "Sample tour chapters" });
+    await expect(mobileTour).toBeVisible();
+    await page.setViewportSize({ width: 768, height: 900 });
+    await expect(dock).toBeHidden();
+    await expect(mobileTour).toBeHidden();
+    await expect(page.getByRole("tablist", { name: "Sample tour chapters" })).toBeVisible();
+  });
+
   test("uses composited scroll zoom without changing the document scroll model", async ({
     page,
   }) => {

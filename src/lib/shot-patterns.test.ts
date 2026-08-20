@@ -8,6 +8,15 @@ import {
   filterShotPatternRawShots,
   type ShotPatternRawShot,
 } from "./shot-patterns";
+import type { ShotReviewStatus } from "./shot-review";
+
+const excludedReviewStatuses = [
+  "suggested_exclusion",
+  "user_excluded",
+  "calibration",
+  "warm_up",
+  "launch_monitor_error",
+] as const satisfies readonly ShotReviewStatus[];
 
 describe("shot patterns", () => {
   it("best90 removes the worst 10 percent", () => {
@@ -78,6 +87,33 @@ describe("shot patterns", () => {
     ).toEqual(["driver"]);
   });
 
+  it("uses only included and restored lifecycle evidence", () => {
+    const rawShots = [
+      shot({ id: "included", reviewStatus: "included" }),
+      shot({
+        id: "restored",
+        reviewStatus: "restored",
+        qualityTag: "bad_data",
+        shotCategory: "warm_up",
+      }),
+      ...excludedReviewStatuses.map((reviewStatus) =>
+        shot({ id: `excluded-${reviewStatus}`, reviewStatus }),
+      ),
+    ];
+
+    expect(
+      filterShotPatternRawShots(rawShots, { clubType: "driver", mode: "total" }).map(
+        (item) => item.id,
+      ),
+    ).toEqual(["included", "restored"]);
+    expect(
+      filterShotPatternRawShots(
+        [shot({ id: "restored-chip", reviewStatus: "restored", shotCategory: "chip" })],
+        { clubType: "driver", mode: "total" },
+      ),
+    ).toEqual([]);
+  });
+
   it("returns low-sample warning", () => {
     const pattern = buildShotPatternResult({
       rawShots: [shot({ id: "a" }), shot({ id: "b" }), shot({ id: "c" })],
@@ -132,6 +168,18 @@ describe("shot patterns", () => {
       [
         { clubId: "current-driver", clubType: "driver" },
         { clubId: "current-driver", clubType: "driver" },
+        {
+          clubId: "current-driver",
+          clubType: "driver",
+          reviewStatus: "restored",
+          qualityTag: "bad_data",
+          shotCategory: "warm_up",
+        },
+        ...excludedReviewStatuses.map((reviewStatus) => ({
+          clubId: "current-driver",
+          clubType: "driver",
+          reviewStatus,
+        })),
         { clubId: "retired-driver", clubType: "driver" },
         { clubId: "retired-driver", clubType: "driver" },
         { clubId: "retired-driver", clubType: "driver" },
@@ -145,7 +193,7 @@ describe("shot patterns", () => {
         clubType: option.clubType,
         sampleSize: option.sampleSize,
       })),
-    ).toEqual([{ clubId: "current-driver", clubType: "driver", sampleSize: 2 }]);
+    ).toEqual([{ clubId: "current-driver", clubType: "driver", sampleSize: 3 }]);
   });
 });
 
@@ -158,6 +206,7 @@ function shot(overrides: Partial<ShotPatternRawShot>): ShotPatternRawShot {
     totalYd: overrides.totalYd ?? 265,
     sideCarryYd: overrides.sideCarryYd ?? 0,
     shotAt: overrides.shotAt ?? new Date("2026-01-01T00:00:00.000Z"),
+    reviewStatus: overrides.reviewStatus ?? "included",
     shotCategory: overrides.shotCategory ?? "full",
     qualityTag: overrides.qualityTag ?? null,
     sessionType: overrides.sessionType ?? "practice",

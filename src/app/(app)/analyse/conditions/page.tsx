@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { ArrowLeft, ArrowRight, CloudSun, Database, ShieldAlert } from "lucide-react";
 
 import { AnalysisPageTemplate } from "@/components/app/analysis-page-template";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/conditions-analysis";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 export const dynamic = "force-dynamic";
 
@@ -241,7 +242,10 @@ async function getConditionsData(requestedClubId?: string) {
       shotCount: count(shots.id),
     })
     .from(clubs)
-    .innerJoin(shots, and(eq(shots.clubId, clubs.id), eq(shots.userId, userId)))
+    .innerJoin(
+      shots,
+      and(eq(shots.clubId, clubs.id), eq(shots.userId, userId), shotEvidenceSqlPredicate()),
+    )
     .where(eq(clubs.userId, userId))
     .groupBy(clubs.id, clubs.type, clubs.brand, clubs.model)
     .orderBy(desc(count(shots.id)));
@@ -266,13 +270,18 @@ async function getConditionsData(requestedClubId?: string) {
       location: sessions.location,
       weather: sessions.weatherJson,
       sourceRaw: shots.sourceRawJson,
+      reviewStatus: shots.reviewStatus,
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
     })
     .from(shots)
     .innerJoin(sessions, and(eq(shots.sessionId, sessions.id), eq(sessions.userId, userId)))
-    .where(and(eq(shots.userId, userId), eq(shots.clubId, selectedClub.id)))
+    .where(
+      and(eq(shots.userId, userId), eq(shots.clubId, selectedClub.id), shotEvidenceSqlPredicate()),
+    )
     .orderBy(desc(shots.shotAt))
     .limit(5000);
-  const evidence = rows satisfies ConditionShot[];
+  const evidence = rows.filter(isShotEvidenceEligible) satisfies ConditionShot[];
 
   return {
     clubOptions,
@@ -281,6 +290,21 @@ async function getConditionsData(requestedClubId?: string) {
     sessionCount: new Set(evidence.map((shot) => shot.sessionId)).size,
     breakdowns: buildConditionsAnalysis(evidence),
   };
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }
 
 function EvidenceMetric({ label, value }: { label: string; value: string }) {

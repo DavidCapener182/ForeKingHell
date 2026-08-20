@@ -312,6 +312,7 @@ export function DesktopWorkbenchChrome({
   const [savedInsightLinks, setSavedInsightLinks] = useState<WorkbenchLink[]>([]);
   const [savedViewCommands, setSavedViewCommands] = useState<SavedViewCommandItem[]>([]);
   const [workspaceCommands, setWorkspaceCommands] = useState<WorkspaceCommandItem[]>([]);
+  const [workspaceCommandsLoaded, setWorkspaceCommandsLoaded] = useState(false);
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const commandInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +340,7 @@ export function DesktopWorkbenchChrome({
     () => savedInsightLinks.some((link) => link.href === pathname),
     [pathname, savedInsightLinks],
   );
+  const shouldLoadWorkspaceCommands = commandOpen || workspaceLinksOpen;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
@@ -423,6 +425,10 @@ export function DesktopWorkbenchChrome({
   }, []);
 
   useEffect(() => {
+    if (!shouldLoadWorkspaceCommands || workspaceCommandsLoaded) {
+      return;
+    }
+
     const controller = new AbortController();
 
     async function loadWorkspaceCommands() {
@@ -433,16 +439,19 @@ export function DesktopWorkbenchChrome({
         });
 
         if (!response.ok) {
+          setWorkspaceCommandsLoaded(true);
           return;
         }
 
         const payload: unknown = await response.json();
         if (!controller.signal.aborted) {
           setWorkspaceCommands(normalizeWorkspaceCommands(payload));
+          setWorkspaceCommandsLoaded(true);
         }
       } catch {
         if (!controller.signal.aborted) {
           setWorkspaceCommands([]);
+          setWorkspaceCommandsLoaded(true);
         }
       }
     }
@@ -450,7 +459,7 @@ export function DesktopWorkbenchChrome({
     void loadWorkspaceCommands();
 
     return () => controller.abort();
-  }, []);
+  }, [shouldLoadWorkspaceCommands, workspaceCommandsLoaded]);
 
   useEffect(() => {
     const current =

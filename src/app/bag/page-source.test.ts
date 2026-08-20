@@ -66,6 +66,43 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain("includeBenchmarkEvidence\n      ? db");
   });
 
+  it("uses only lifecycle-eligible evidence for personal bests and peer benchmarks", () => {
+    const bagLoader = source.match(/async function getBag[\s\S]*?type BagClub/)?.[0] ?? "";
+    const peerLoader =
+      source.match(/async function getPeerBenchmarkSummary[\s\S]*?function canUseProfile/)?.[0] ??
+      "";
+
+    expect(bagLoader).toContain('eq(shots.reviewStatus, "restored")');
+    expect(bagLoader).toContain('eq(shots.reviewStatus, "included")');
+    expect(bagLoader).toContain("trustedPersonalBestEvidence");
+    expect(bagLoader).toContain('"warm_up"');
+    expect(peerLoader).toContain("reviewStatus: shots.reviewStatus");
+    expect(peerLoader).toContain("const peerLifecycleEvidence = or(");
+    expect(peerLoader).toContain('eq(shots.reviewStatus, "restored")');
+    expect(peerLoader).toContain('eq(shots.reviewStatus, "included")');
+    expect(peerLoader).toContain("not like 'exclude%'");
+    expect(peerLoader).toContain("'bad-data', 'bad_data'");
+    expect(peerLoader).toContain("'warm-up', 'warmup', 'warm_up'");
+    expect(peerLoader).toContain("isShotEvidenceEligible(shot)");
+
+    const peerQuery = peerLoader.indexOf("const peerShots = await db");
+    const predicate = peerLoader.indexOf("peerLifecycleEvidence", peerQuery);
+    const limit = peerLoader.indexOf(".limit(PEER_SHOT_QUERY_LIMIT)", peerQuery);
+
+    expect(predicate).toBeGreaterThan(peerQuery);
+    expect(predicate).toBeLessThan(limit);
+  });
+
+  it("filters lifecycle evidence before ranking recent shots per club", () => {
+    const bagLoader = source.match(/async function getBag[\s\S]*?type BagClub/)?.[0] ?? "";
+
+    expect(bagLoader).toContain("lifecycleEvidence");
+    expect(bagLoader).toContain("in ('warm-up', 'warmup', 'warm_up')");
+    expect(bagLoader).toContain(
+      "inArray(shots.clubId, allClubMemberIds),\n        lifecycleEvidence",
+    );
+  });
+
   it("derives mobile Bag selection from the URL and keeps the summary compact", () => {
     const summary =
       source.match(/function MobileBagSummary[\s\S]*?function BagSupportingEvidence/)?.[0] ?? "";
@@ -267,6 +304,23 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain('rawValue === "yes"');
     expect(source).toContain("peerBenchmarksLoaded={peerBenchmarksLoaded}");
     expect(source).toContain('id="distance-benchmarks"');
+  });
+
+  it("loads one ranked bag-shot set and derives the recent subset in memory", () => {
+    const bagLoader = source.slice(
+      source.indexOf("async function getBag("),
+      source.indexOf("type BagClub"),
+    );
+
+    expect(bagLoader).toContain(
+      "const [personalBestRows, evolutionShotRows, shotCountRows] = await Promise.all",
+    );
+    expect(bagLoader).toContain("for (const rankedShot of evolutionShotRows)");
+    expect(bagLoader).toContain("if (clubRank <= RECENT_SHOTS_PER_CLUB)");
+    expect(bagLoader).toContain(
+      'type BagShotRow = Omit<(typeof evolutionShotRows)[number], "clubRank">',
+    );
+    expect(bagLoader.match(/\.from\(rankedClubShots\)/g)).toHaveLength(1);
   });
 
   it("keeps the desktop gapping table open, exportable and reachable as the main table", () => {

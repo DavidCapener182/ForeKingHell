@@ -575,9 +575,20 @@ export function PracticePlannerClient({
           updateFacility={updateFacility}
           generatePlan={generatePlan}
           isPending={isPending}
-          trainingBlocked={context.trainingLoad.highRecentLoad}
-          trainingGuidance={context.trainingLoad.recommendation}
-          trainingStatus={context.trainingLoad.statusLabel}
+          trainingBlocked={
+            context.trainingLoad.highRecentLoad ||
+            (options.intent === "speed" && context.speed.readinessStatus === "recover")
+          }
+          trainingGuidance={
+            options.intent === "speed"
+              ? context.speed.recommendation
+              : context.trainingLoad.recommendation
+          }
+          trainingStatus={
+            options.intent === "speed"
+              ? `Speed ${context.speed.readinessLabel ?? "BUILD"}`
+              : context.trainingLoad.statusLabel
+          }
         />
 
         <PracticeAgenda

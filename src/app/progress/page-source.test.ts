@@ -100,4 +100,17 @@ describe("progress direction story source", () => {
     expect(source).not.toContain('if (surface === "companion")');
     expect(source).not.toContain("IOSDisclosureGroup");
   });
+
+  it("fits all four story tabs within a phone viewport", () => {
+    const tabs = source.slice(
+      source.indexOf('aria-label="Progress story"'),
+      source.indexOf("</TabsList>"),
+    );
+
+    expect(tabs).toMatch(/className="[^"]*grid[^"]*w-full[^"]*min-w-0[^"]*grid-cols-4/);
+    expect(tabs).toContain("min-w-0");
+    expect(tabs).not.toContain("min-w-max");
+    expect(tabs).not.toMatch(/min-w-(?:20|24|28)/);
+    expect(tabs).toContain("sm:w-fit");
+  });
 });

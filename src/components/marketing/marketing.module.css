@@ -90,6 +90,7 @@
   border-radius: 999px;
   padding-inline: 1rem;
   background: var(--marketing-green);
+  color: #fff;
   font-size: 0.8rem;
 }
 .menuTrigger {
@@ -195,6 +196,7 @@
 }
 .heroPrimary {
   background: var(--marketing-green);
+  color: #fff;
 }
 .heroSecondary {
   background: color-mix(in srgb, var(--marketing-paper) 64%, white);
@@ -499,6 +501,9 @@
   transform: rotate(-22deg);
 }
 .mobileStageRail {
+  display: none;
+}
+.mobileStickyCtaDock {
   display: none;
 }
 .trustStrip {
@@ -869,6 +874,9 @@
   border-radius: 1rem;
   background: #fbfaf4;
   box-shadow: 0 20px 45px rgba(10, 51, 36, 0.1);
+}
+.tourMobileExperience {
+  display: none;
 }
 .tourTopline {
   display: flex;
@@ -2051,6 +2059,7 @@
     font-family: var(--font-mobile-apple);
     font-size: 17px;
     line-height: 1.52;
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
     -webkit-font-smoothing: antialiased;
   }
 
@@ -2316,8 +2325,36 @@
     color: var(--mobile-secondary-label);
   }
 
+  .mobileStickyCtaDock {
+    position: fixed;
+    z-index: 44;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid var(--mobile-separator);
+    background: var(--mobile-grouped);
+    padding: 0.55rem max(var(--mobile-gutter), env(safe-area-inset-right))
+      max(0.55rem, env(safe-area-inset-bottom)) max(var(--mobile-gutter), env(safe-area-inset-left));
+    pointer-events: none;
+  }
+
+  .mobileStickyCtaButton {
+    width: min(100%, 38rem);
+    min-height: 3.125rem;
+    justify-content: center;
+    border-radius: 0.8rem;
+    background: var(--marketing-green);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    pointer-events: auto;
+    box-shadow: 0 8px 22px rgba(6, 62, 43, 0.2);
+  }
+
   .productStage {
-    min-height: clamp(33rem, 140vw, 38rem);
+    min-height: clamp(26rem, 118vw, 30rem);
     border-radius: 1.25rem;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
   }
@@ -2380,7 +2417,7 @@
   }
 
   .sparkBars {
-    height: 2.8rem;
+    height: 2.2rem;
     margin-block: 0.75rem 0.5rem;
   }
 
@@ -2401,7 +2438,7 @@
   }
 
   .dispersionField {
-    height: clamp(7.5rem, 34vw, 9.5rem);
+    height: clamp(6.5rem, 29vw, 8rem);
     margin-top: 0.6rem;
   }
 
@@ -2774,6 +2811,92 @@
     border-radius: 0.875rem;
     background: var(--mobile-surface);
     box-shadow: none;
+  }
+
+  .tourDesktopExperience {
+    display: none;
+  }
+
+  .tourMobileExperience {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    border-bottom: 1px solid var(--mobile-separator);
+  }
+
+  .tourSwipeHint {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.65rem 1rem 0;
+    color: var(--mobile-secondary-label);
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .tourSwipeHint svg {
+    flex: 0 0 auto;
+    color: var(--marketing-green);
+  }
+
+  .tourSwipeRail {
+    display: flex;
+    gap: 0.75rem;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 0.75rem 1rem 1rem;
+    scroll-padding-inline: 1rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tourSwipeRail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tourSwipeRail:focus-visible {
+    border-radius: 0.75rem;
+    outline: 3px solid #17824f;
+    outline-offset: -3px;
+  }
+
+  .tourSwipeCard {
+    min-width: 0;
+    flex: 0 0 calc(100% - 2.75rem);
+    overflow: hidden;
+    border: 1px solid var(--mobile-separator);
+    border-radius: 0.9rem;
+    background: var(--mobile-surface);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  .tourSwipeCardHeader {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--mobile-separator);
+    padding: 0.65rem 0.85rem;
+  }
+
+  .tourSwipeCardHeader span {
+    color: var(--mobile-secondary-label);
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+
+  .tourSwipeCardHeader strong {
+    color: var(--marketing-green);
+    font-size: 0.86rem;
   }
 
   .tourTopline {
@@ -3322,5 +3445,9 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  .tourSwipeRail {
+    scroll-behavior: auto;
   }
 }

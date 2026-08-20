@@ -11,6 +11,7 @@ import {
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getProgressData } from "@/lib/progress-data";
 import type { AchievementTier, AchievementUnlockNotification } from "@/lib/achievements/types";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 const APP_TIME_ZONE = "Europe/London";
 
@@ -41,6 +42,8 @@ export type CoachDrillShot = {
   clubSpeedMph: number | null;
   smashFactor: number | null;
   clubPathDeg: number | null;
+  qualityTag?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
 };
 
 export async function evaluateCoachDrillAchievementsForDefaultUser() {
@@ -184,6 +187,8 @@ async function loadCoachDrillShots(challenges: CoachDrillChallenge[], userId: st
           clubType: shots.clubType,
           shotAt: shots.shotAt,
           shotCategory: shots.shotCategory,
+          qualityTag: shots.qualityTag,
+          reviewStatus: shots.reviewStatus,
           carryYd: shots.carryYd,
           sideCarryYd: shots.sideCarryYd,
           launchAngleDeg: shots.launchAngleDeg,
@@ -200,6 +205,7 @@ async function loadCoachDrillShots(challenges: CoachDrillChallenge[], userId: st
             gte(shots.shotAt, bounds.start),
             lt(shots.shotAt, bounds.end),
             inArray(shots.clubType, clubTypes),
+            inArray(shots.reviewStatus, ["included", "restored"]),
           ),
         )
         .orderBy(asc(shots.shotAt), asc(shots.shotNumber))),
@@ -382,7 +388,9 @@ function emptyProgress(challenge: CoachDrillChallenge): CoachDrillProgress {
 }
 
 function isCleanFullShot(shot: CoachDrillShot) {
-  return shot.shotCategory !== "chip" && shot.shotCategory !== "recovery";
+  return (
+    isShotEvidenceEligible(shot) && shot.shotCategory !== "chip" && shot.shotCategory !== "recovery"
+  );
 }
 
 function isPlayableShot(shot: CoachDrillShot, clubType: string) {

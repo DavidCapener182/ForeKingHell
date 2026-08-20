@@ -5,6 +5,15 @@ import {
   type DistanceLossExposure,
   type DistanceLossShot,
 } from "@/lib/distance-loss-diagnosis";
+import type { ShotReviewStatus } from "@/lib/shot-review";
+
+const excludedReviewStatuses = [
+  "suggested_exclusion",
+  "user_excluded",
+  "calibration",
+  "warm_up",
+  "launch_monitor_error",
+] as const satisfies readonly ShotReviewStatus[];
 
 describe("distance loss diagnosis", () => {
   it("separates measured speed, exposure, launch, efficiency and missing spin", () => {
@@ -128,6 +137,56 @@ describe("distance loss diagnosis", () => {
 
     expect(diagnosis.status).toBe("insufficient");
     expect(diagnosis.carryChangeYd).toBeNull();
+  });
+
+  it("uses only included and restored lifecycle evidence in monthly samples", () => {
+    const baseline = monthShots("2026-06-15", 8, { reviewStatus: "included" });
+    const current = monthShots("2026-08-05", 8, { reviewStatus: "included" });
+    const excluded = excludedReviewStatuses.flatMap((reviewStatus, index) => [
+      makeShot("2026-06-16", {
+        sessionId: `excluded-june-${reviewStatus}`,
+        carryYd: 300 + index,
+        reviewStatus,
+      }),
+      makeShot("2026-08-06", {
+        sessionId: `excluded-august-${reviewStatus}`,
+        carryYd: 310 + index,
+        reviewStatus,
+      }),
+    ]);
+    const restored = [
+      makeShot("2026-06-17", {
+        sessionId: "restored-june",
+        reviewStatus: "restored",
+        qualityTag: "top",
+        shotCategory: "warm_up",
+      }),
+      makeShot("2026-08-07", {
+        sessionId: "restored-august",
+        reviewStatus: "restored",
+        qualityTag: "top",
+        shotCategory: "warm_up",
+      }),
+      makeShot("2026-06-18", {
+        sessionId: "restored-chip-june",
+        reviewStatus: "restored",
+        shotCategory: "chip",
+      }),
+      makeShot("2026-08-08", {
+        sessionId: "restored-chip-august",
+        reviewStatus: "restored",
+        shotCategory: "chip",
+      }),
+    ];
+
+    const diagnosis = buildDistanceLossDiagnosis({
+      shots: [...baseline, ...current, ...excluded, ...restored],
+      exposure: [],
+      now: new Date("2026-08-08T12:00:00Z"),
+    });
+
+    expect(diagnosis.monthly.find((month) => month.label === "Jun")?.shotCount).toBe(9);
+    expect(diagnosis.monthly.find((month) => month.label === "Aug")?.shotCount).toBe(9);
   });
 });
 

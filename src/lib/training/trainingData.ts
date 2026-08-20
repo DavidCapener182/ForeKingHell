@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -31,6 +31,7 @@ import {
   type SessionFormSnapshot,
 } from "@/lib/training/sessionForm";
 import { isRoundHistorySession } from "@/lib/round-sessions";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 export {
   normalizeTrainingRange,
   trainingRangeDays,
@@ -571,7 +572,13 @@ async function getShotCountsForSessions(userId: string, sessionIds: string[]) {
       shotCount: count(shots.id),
     })
     .from(shots)
-    .where(and(eq(shots.userId, userId), inArray(shots.sessionId, sessionIds)))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        inArray(shots.sessionId, sessionIds),
+        shotEvidenceSqlPredicate(),
+      ),
+    )
     .groupBy(shots.sessionId);
 
   return new Map(rows.map((row) => [row.sessionId, row.shotCount]));
@@ -968,18 +975,28 @@ async function buildShotFormSnapshot(userId: string, session: TrainingSessionLis
       ballSpeedMph: shots.ballSpeedMph,
       sideCarryYd: shots.sideCarryYd,
       launchDirectionDeg: shots.launchDirectionDeg,
+      reviewStatus: shots.reviewStatus,
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
     })
     .from(shots)
-    .where(and(eq(shots.userId, userId), eq(shots.sessionId, session.sourceId)));
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(shots.sessionId, session.sourceId),
+        shotEvidenceSqlPredicate(),
+      ),
+    );
+  const evidenceRows = rows.filter(isShotEvidenceEligible);
 
-  if (rows.length < 5) {
+  if (evidenceRows.length < 5) {
     return null;
   }
 
-  const carryValues = numbers(rows.map((row) => row.carryYd));
-  const ballSpeedValues = numbers(rows.map((row) => row.ballSpeedMph));
-  const offlineValues = numbers(rows.map((row) => row.sideCarryYd)).map(Math.abs);
-  const directionalRows = rows.filter(
+  const carryValues = numbers(evidenceRows.map((row) => row.carryYd));
+  const ballSpeedValues = numbers(evidenceRows.map((row) => row.ballSpeedMph));
+  const offlineValues = numbers(evidenceRows.map((row) => row.sideCarryYd)).map(Math.abs);
+  const directionalRows = evidenceRows.filter(
     (row) => typeof row.sideCarryYd === "number" || typeof row.launchDirectionDeg === "number",
   );
   const playableRows = directionalRows.filter((row) => {
@@ -993,7 +1010,7 @@ async function buildShotFormSnapshot(userId: string, session: TrainingSessionLis
   return {
     kind: "shots",
     title: session.title,
-    sampleSize: rows.length,
+    sampleSize: evidenceRows.length,
     averageOfflineYd: mean(offlineValues),
     playableRate:
       directionalRows.length > 0 ? (playableRows.length / directionalRows.length) * 100 : null,
@@ -1003,6 +1020,21 @@ async function buildShotFormSnapshot(userId: string, session: TrainingSessionLis
     sessionLoad: session.sessionLoad,
     rpe: session.rpe,
   } satisfies SessionFormSnapshot;
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }
 
 async function buildSpeedFormSnapshot(userId: string, session: TrainingSessionListItem) {

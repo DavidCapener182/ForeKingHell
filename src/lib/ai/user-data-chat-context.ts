@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import {
   achievementProgress,
@@ -29,6 +29,7 @@ import {
 import { getDb } from "@/db/client";
 import { selectDataChatScopes } from "@/lib/ai/data-chat-scope";
 import { formatClubType } from "@/lib/club-format";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { summarizeStrokesGainedByCategory } from "@/lib/strokes-gained";
 
 export type UserDataChatCitation = {
@@ -141,6 +142,7 @@ export async function buildUserDataChatContext(
             shotShape: shots.shotShape,
             shotCategory: shots.shotCategory,
             qualityTag: shots.qualityTag,
+            reviewStatus: shots.reviewStatus,
             courseHoleNumber: shots.courseHoleNumber,
             courseHoleYards: shots.courseHoleYards,
             distanceRemainingYd: shots.distanceRemainingYd,
@@ -150,7 +152,9 @@ export async function buildUserDataChatContext(
           })
           .from(shots)
           .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-          .where(and(eq(shots.userId, userId), eq(sessions.userId, userId)))
+          .where(
+            and(eq(shots.userId, userId), eq(sessions.userId, userId), shotEvidenceSqlPredicate()),
+          )
           .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
           .limit(120)
       : Promise.resolve([]),
@@ -187,7 +191,16 @@ export async function buildUserDataChatContext(
             strokesGained: strokesGainedShotEvents.strokesGained,
           })
           .from(strokesGainedShotEvents)
-          .where(eq(strokesGainedShotEvents.userId, userId))
+          .leftJoin(
+            shots,
+            and(eq(shots.id, strokesGainedShotEvents.shotId), eq(shots.userId, userId)),
+          )
+          .where(
+            and(
+              eq(strokesGainedShotEvents.userId, userId),
+              or(isNull(strokesGainedShotEvents.shotId), shotEvidenceSqlPredicate()),
+            ),
+          )
           .orderBy(desc(strokesGainedShotEvents.createdAt))
           .limit(120)
       : Promise.resolve([]),
@@ -412,6 +425,7 @@ export async function buildUserDataChatContext(
   ]);
 
   const citations: UserDataChatCitation[] = [];
+  const evidenceRecentShotRows = recentShotRows.filter(isShotEvidenceEligible);
   const clubLabelById = new Map(
     clubRows.map((club) => [
       club.id,
@@ -440,8 +454,8 @@ export async function buildUserDataChatContext(
 
     return `${index + 1}. ${label}: play ${formatNumber(row.recommendedPlayNumberYd)} yd, carry median ${formatNumber(row.carryMedianYd)} yd, carry range p25-p75 ${formatNumber(row.carryP25Yd)}-${formatNumber(row.carryP75Yd)} yd, dispersion L/R ${formatNumber(row.dispersionLeftYd)}/${formatNumber(row.dispersionRightYd)} yd, confidence ${formatNumber(row.confidenceScore)}%, sample ${row.sampleSize}.`;
   });
-  const shotPatternLines = buildShotPatternLines(recentShotRows, citations);
-  const recentShotLines = recentShotRows.slice(0, 24).map((shot, index) => {
+  const shotPatternLines = buildShotPatternLines(evidenceRecentShotRows, citations);
+  const recentShotLines = evidenceRecentShotRows.slice(0, 24).map((shot, index) => {
     citations.push({
       id: `shot-${shot.id}`,
       label: `${formatClubType(shot.clubType)} shot ${shot.shotNumber ?? index + 1}`,
@@ -810,4 +824,19 @@ function labelForSpeedImplement(kind: string) {
     default:
       return "Speed implement";
   }
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }

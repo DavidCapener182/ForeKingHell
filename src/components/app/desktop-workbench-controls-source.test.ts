@@ -81,4 +81,8 @@ describe("desktop workbench controls source", () => {
     expect(source).toContain('window.localStorage.setItem(densityStorageKey, "comfortable")');
     expect(source).toContain("window.localStorage.setItem(visibleColumnsKey");
   });
+
+  it("restores locked columns from persisted layouts and saved views", () => {
+    expect(source.match(/resolveVisibleColumnIds\(/g)).toHaveLength(2);
+  });
 });

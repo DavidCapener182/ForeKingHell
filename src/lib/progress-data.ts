@@ -11,6 +11,7 @@ import {
 import { requireCurrentUserId } from "@/lib/current-user";
 import { isComparableScoredRound } from "@/lib/progress-readiness";
 import type { ProgressClub } from "@/lib/progress-summary";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { observeServerOperation } from "@/lib/server-observability";
 
@@ -74,18 +75,26 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
           spinAxis: shots.spinAxis,
           shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
+          reviewStatus: shots.reviewStatus,
           clubDataEstType: shots.clubDataEstType,
           courseHoleNumber: shots.courseHoleNumber,
           sessionType: sessions.type,
         })
         .from(shots)
         .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-        .where(and(eq(shots.userId, userId), inArray(shots.clubId, clubIds)))
+        .where(
+          and(
+            eq(shots.userId, userId),
+            inArray(shots.clubId, clubIds),
+            inArray(shots.reviewStatus, ["included", "restored"]),
+          ),
+        )
         .orderBy(desc(shots.shotAt), desc(shots.shotNumber));
+      const evidenceShotRows = shotRows.filter(isShotEvidenceEligible);
       const trackedClubs = clubRows.filter((club) => isTrackedClubType(club.type));
-      const shotsByClubId = new Map<string, typeof shotRows>();
+      const shotsByClubId = new Map<string, typeof evidenceShotRows>();
 
-      for (const shot of shotRows) {
+      for (const shot of evidenceShotRows) {
         const group = shotsByClubId.get(shot.clubId) ?? [];
         group.push(shot);
         shotsByClubId.set(shot.clubId, group);
@@ -124,7 +133,7 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
           };
         })
         .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
-      telemetry.setRowCount(clubRows.length + shotRows.length);
+      telemetry.setRowCount(clubRows.length + evidenceShotRows.length);
       return { clubs: progressClubs };
     },
   );
@@ -176,6 +185,7 @@ type ProgressShotRow = {
   spinAxis: number | null;
   shotCategory: string | null;
   qualityTag: string | null;
+  reviewStatus: ShotReviewStatus;
   clubDataEstType: string | null;
   courseHoleNumber: number | null;
   sessionType: string | null;

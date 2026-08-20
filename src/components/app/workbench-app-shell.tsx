@@ -394,7 +394,7 @@ export function WorkbenchAppShell({
           <AppSurfaceLink
             href="/surface/companion?next=%2Ftoday"
             data-phone-companion-return
-            className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 hidden min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#071a11]/92 px-4 text-sm font-semibold text-white shadow-2xl backdrop-blur-xl max-md:inline-flex"
+            className="mx-4 mt-3 hidden min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#071a11] px-4 text-sm font-semibold text-white shadow-lg max-md:inline-flex"
           >
             <PanelLeftIcon className="size-4" aria-hidden />
             Return to companion

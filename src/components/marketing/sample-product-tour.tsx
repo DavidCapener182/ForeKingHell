@@ -2,7 +2,15 @@
 
 import { ChevronRight, CircleCheck, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type UIEvent,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +22,7 @@ import { marketingJoinBetaHref } from "@/lib/marketing-links";
 import styles from "./marketing.module.css";
 
 const tourSteps = ["Session", "Dispersion", "Club trust", "Practice", "Course plan"] as const;
+const mobileRailSettleDelayMs = 140;
 
 export function SampleProductTour() {
   const [clubKey, setClubKey] = useState<MarketingDemoClub["key"]>("driver");
@@ -21,6 +30,9 @@ export function SampleProductTour() {
   const [minutes, setMinutes] = useState(30);
   const [step, setStep] = useState(0);
   const [started, setStarted] = useState(false);
+  const mobileRailRef = useRef<HTMLDivElement>(null);
+  const controlledMobileScrollTargetRef = useRef<number | null>(null);
+  const mobileRailSettleTimerRef = useRef<number | null>(null);
   const club =
     marketingDemoClubs.find((candidate) => candidate.key === clubKey) ?? marketingDemoClubs[0];
   const completed = step === tourSteps.length - 1;
@@ -37,19 +49,128 @@ export function SampleProductTour() {
     [club, minutes, planBalls, trusted],
   );
 
+  useEffect(
+    () => () => {
+      if (mobileRailSettleTimerRef.current !== null) {
+        window.clearTimeout(mobileRailSettleTimerRef.current);
+      }
+    },
+    [],
+  );
+
   function advance() {
-    markStarted();
     if (completed) {
+      markStarted();
       trackPlausibleEvent("Public Sample Tour Completed");
       return;
     }
-    setStep((current) => current + 1);
+    selectStep(step + 1, true);
   }
 
   function markStarted() {
     if (started) return;
     setStarted(true);
     trackPlausibleEvent("Public Sample Tour Started");
+  }
+
+  function selectStep(nextStep: number, scrollMobile = false) {
+    const boundedStep = Math.max(0, Math.min(tourSteps.length - 1, nextStep));
+    markStarted();
+
+    if (
+      !scrollMobile ||
+      typeof window === "undefined" ||
+      !window.matchMedia("(max-width: 767px)").matches
+    ) {
+      clearMobileRailSettleTimer();
+      controlledMobileScrollTargetRef.current = null;
+      setStep(boundedStep);
+      return;
+    }
+
+    controlledMobileScrollTargetRef.current = boundedStep;
+
+    window.requestAnimationFrame(() => {
+      const rail = mobileRailRef.current;
+      const card = rail?.querySelector<HTMLElement>(`[data-tour-swipe-card="${boundedStep}"]`);
+      const firstCard = rail?.querySelector<HTMLElement>("[data-tour-swipe-card]");
+      if (!rail || !card || !firstCard) {
+        controlledMobileScrollTargetRef.current = null;
+        setStep(boundedStep);
+        return;
+      }
+
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth";
+
+      rail.scrollTo({
+        left: card.offsetLeft - firstCard.offsetLeft,
+        behavior,
+      });
+
+      if (behavior === "auto") {
+        clearMobileRailSettleTimer();
+        controlledMobileScrollTargetRef.current = null;
+        setStep((currentStep) => (currentStep === boundedStep ? currentStep : boundedStep));
+      }
+    });
+  }
+
+  function clearMobileRailSettleTimer() {
+    if (mobileRailSettleTimerRef.current === null || typeof window === "undefined") return;
+    window.clearTimeout(mobileRailSettleTimerRef.current);
+    mobileRailSettleTimerRef.current = null;
+  }
+
+  function commitStepFromMobileRail(rail: HTMLDivElement) {
+    clearMobileRailSettleTimer();
+    const nextStep = nearestMobileRailStep(rail);
+    if (nextStep === null) return;
+    if (
+      controlledMobileScrollTargetRef.current !== null &&
+      nextStep !== controlledMobileScrollTargetRef.current
+    ) {
+      scheduleMobileRailCommit(rail);
+      return;
+    }
+    controlledMobileScrollTargetRef.current = null;
+    setStep((currentStep) => (currentStep === nextStep ? currentStep : nextStep));
+  }
+
+  function scheduleMobileRailCommit(rail: HTMLDivElement) {
+    clearMobileRailSettleTimer();
+    mobileRailSettleTimerRef.current = window.setTimeout(
+      () => commitStepFromMobileRail(rail),
+      mobileRailSettleDelayMs,
+    );
+  }
+
+  function syncStepFromMobileRail(event: UIEvent<HTMLDivElement>) {
+    scheduleMobileRailCommit(event.currentTarget);
+  }
+
+  function beginManualMobileRailInteraction() {
+    controlledMobileScrollTargetRef.current = null;
+    clearMobileRailSettleTimer();
+    markStarted();
+  }
+
+  function handleMobileRailKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const nextStep =
+      event.key === "ArrowRight"
+        ? step + 1
+        : event.key === "ArrowLeft"
+          ? step - 1
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? tourSteps.length - 1
+              : null;
+
+    if (nextStep === null) return;
+    event.preventDefault();
+    selectStep(nextStep, true);
   }
 
   return (
@@ -124,30 +245,69 @@ export function SampleProductTour() {
         <div className={styles.tourStage}>
           <div className={styles.tourTopline}>
             <span>Demo data · no sign-in required</span>
-            <span>
+            <span role="status" aria-live="polite" data-tour-step-status>
               {step + 1} / {tourSteps.length}
             </span>
           </div>
-          <Tabs
-            value={tourSteps[step]}
-            onValueChange={(value) => {
-              markStarted();
-              setStep(tourSteps.indexOf(value as (typeof tourSteps)[number]));
-            }}
-          >
-            <TabsList className={styles.tourTabs} aria-label="Sample tour chapters">
+          <div className={styles.tourDesktopExperience}>
+            <Tabs
+              value={tourSteps[step]}
+              onValueChange={(value) => {
+                selectStep(tourSteps.indexOf(value as (typeof tourSteps)[number]));
+              }}
+            >
+              <TabsList className={styles.tourTabs} aria-label="Sample tour chapters">
+                {tourSteps.map((label) => (
+                  <TabsTrigger key={label} value={label}>
+                    {label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
               {tourSteps.map((label) => (
-                <TabsTrigger key={label} value={label}>
-                  {label}
-                </TabsTrigger>
+                <TabsContent key={label} value={label} className={styles.tourView}>
+                  {view[label]}
+                </TabsContent>
               ))}
-            </TabsList>
-            {tourSteps.map((label) => (
-              <TabsContent key={label} value={label} className={styles.tourView}>
-                {view[label]}
-              </TabsContent>
-            ))}
-          </Tabs>
+            </Tabs>
+          </div>
+          <div className={styles.tourMobileExperience}>
+            <p id="sample-tour-swipe-hint" className={styles.tourSwipeHint}>
+              Swipe or use arrow keys to explore each chapter
+              <ChevronRight className="size-4" aria-hidden />
+            </p>
+            <div
+              ref={mobileRailRef}
+              className={styles.tourSwipeRail}
+              role="region"
+              aria-roledescription="carousel"
+              aria-label="Sample tour chapters"
+              aria-describedby="sample-tour-swipe-hint"
+              tabIndex={0}
+              onPointerDown={beginManualMobileRailInteraction}
+              onWheel={beginManualMobileRailInteraction}
+              onKeyDown={handleMobileRailKeyDown}
+              onScroll={syncStepFromMobileRail}
+              onScrollEnd={(event) => commitStepFromMobileRail(event.currentTarget)}
+            >
+              {tourSteps.map((label, index) => (
+                <article
+                  key={label}
+                  className={styles.tourSwipeCard}
+                  data-tour-swipe-card={index}
+                  role="group"
+                  aria-roledescription="slide"
+                  aria-label={`${index + 1} of ${tourSteps.length}: ${label}`}
+                  aria-current={step === index ? "step" : undefined}
+                >
+                  <header className={styles.tourSwipeCardHeader}>
+                    <span>Chapter {index + 1}</span>
+                    <strong>{label}</strong>
+                  </header>
+                  <div className={styles.tourView}>{view[label]}</div>
+                </article>
+              ))}
+            </div>
+          </div>
           <div className={styles.tourNext}>
             {completed ? (
               <div>
@@ -183,6 +343,19 @@ export function SampleProductTour() {
       </div>
     </section>
   );
+}
+
+function nearestMobileRailStep(rail: HTMLDivElement) {
+  const cards = Array.from(rail.querySelectorAll<HTMLElement>("[data-tour-swipe-card]"));
+  if (cards.length === 0) return null;
+  const firstCardOffset = cards[0].offsetLeft;
+  const nearestCard = cards.reduce((nearest, card) => {
+    const nearestDistance = Math.abs(nearest.offsetLeft - firstCardOffset - rail.scrollLeft);
+    const cardDistance = Math.abs(card.offsetLeft - firstCardOffset - rail.scrollLeft);
+    return cardDistance < nearestDistance ? card : nearest;
+  });
+  const nextStep = Number(nearestCard.dataset.tourSwipeCard);
+  return Number.isInteger(nextStep) ? nextStep : null;
 }
 
 function SessionView({ club, trusted }: { club: MarketingDemoClub; trusted: boolean }) {

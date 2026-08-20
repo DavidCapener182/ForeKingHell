@@ -365,6 +365,66 @@ describe("buildProgressCompareData", () => {
     expect(data.monthlyPeriods[0]?.label).toBe("Jun 2026");
     expect(data.monthlyPeriods[1]?.key).toBe("2026-05-01");
   });
+
+  it("excludes every non-evidence lifecycle state while allowing restored legacy rows", () => {
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const data = buildProgressCompareData({
+      clubs,
+      shots: [
+        shot({
+          id: "included",
+          sessionId: "trusted-session",
+          clubId: "driver-club",
+          clubType: "driver",
+          sessionDate: "2026-06-02",
+          carryYd: 210,
+          reviewStatus: "included",
+        }),
+        shot({
+          id: "restored",
+          sessionId: "trusted-session",
+          clubId: "driver-club",
+          clubType: "driver",
+          sessionDate: "2026-06-02",
+          carryYd: 220,
+          reviewStatus: "restored",
+          qualityTag: "bad_data",
+        }),
+        shot({
+          id: "legacy-bad",
+          sessionId: "excluded-session",
+          clubId: "driver-club",
+          clubType: "driver",
+          sessionDate: "2026-06-03",
+          carryYd: 400,
+          reviewStatus: "included",
+          qualityTag: "mishit",
+        }),
+        ...excludedStatuses.map((reviewStatus, index) =>
+          shot({
+            id: `excluded-${reviewStatus}`,
+            sessionId: "excluded-session",
+            clubId: "driver-club",
+            clubType: "driver",
+            sessionDate: "2026-06-03",
+            carryYd: 300 + index,
+            reviewStatus,
+          }),
+        ),
+      ],
+    });
+
+    expect(data.latestSession?.id).toBe("trusted-session");
+    expect(data.latestSession?.shotCount).toBe(2);
+    expect(data.previousWeek.focus.rawShots).toBe(2);
+    expect(data.previousWeek.focus.carryMedianYd).toBe(215);
+  });
 });
 
 type ShotInput = {
@@ -377,6 +437,9 @@ type ShotInput = {
   carryYd?: number;
   totalYd?: number;
   sideCarryYd?: number;
+  reviewStatus?: CompareShot["reviewStatus"];
+  qualityTag?: string | null;
+  shotCategory?: string | null;
 };
 
 function shot(input: ShotInput): CompareShot {
@@ -408,8 +471,9 @@ function shot(input: ShotInput): CompareShot {
     smashFactor: null,
     spinRate: null,
     spinAxis: null,
-    shotCategory: "full",
-    qualityTag: null,
+    shotCategory: input.shotCategory ?? "full",
+    qualityTag: input.qualityTag ?? null,
+    reviewStatus: input.reviewStatus ?? "included",
     clubDataEstType: null,
     courseHoleNumber: null,
   };

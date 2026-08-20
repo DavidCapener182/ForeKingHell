@@ -63,6 +63,7 @@ const compactDateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   year: "numeric",
 });
+const progressStoryTabClass = "h-10 min-w-0 rounded-full px-1.5 sm:px-4";
 
 type BagSnapshot = {
   id: string;
@@ -147,22 +148,22 @@ export default async function ProgressPage() {
           <ProgressEmptyState />
         ) : (
           <Tabs defaultValue="performance" className="min-w-0 gap-5 lg:gap-7">
-            <div className="sticky top-[calc(var(--app-header-height,0px)+0.5rem)] z-20 -mx-1 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="sticky top-[calc(var(--app-header-height,0px)+0.5rem)] z-20 -mx-1 px-1 py-1">
               <TabsList
                 variant="line"
                 aria-label="Progress story"
-                className="h-12 min-w-max gap-1 rounded-full border border-border/80 bg-background/95 px-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80"
+                className="grid h-12 w-full min-w-0 grid-cols-4 gap-1 rounded-full border border-border/80 bg-background/95 px-1 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:w-fit sm:grid-cols-[repeat(4,minmax(6rem,auto))] sm:px-2"
               >
-                <TabsTrigger value="performance" className="h-10 min-w-28 rounded-full px-4">
+                <TabsTrigger value="performance" className={progressStoryTabClass}>
                   Performance
                 </TabsTrigger>
-                <TabsTrigger value="goals" className="h-10 min-w-24 rounded-full px-4">
+                <TabsTrigger value="goals" className={progressStoryTabClass}>
                   Goals
                 </TabsTrigger>
-                <TabsTrigger value="load" className="h-10 min-w-20 rounded-full px-4">
+                <TabsTrigger value="load" className={progressStoryTabClass}>
                   Load
                 </TabsTrigger>
-                <TabsTrigger value="timeline" className="h-10 min-w-24 rounded-full px-4">
+                <TabsTrigger value="timeline" className={progressStoryTabClass}>
                   Timeline
                 </TabsTrigger>
               </TabsList>
