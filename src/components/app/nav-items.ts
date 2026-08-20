@@ -116,31 +116,20 @@ export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
 }
 
 const mobilePrimaryDefinitions = [
-  { id: "today", label: "Today", routes: ["today", "dashboard"] },
-  { id: "practice", label: "Practice", routes: ["practice", "coach", "speed", "goals"] },
-  {
-    id: "course-strategy",
-    label: "Strategy",
-    routes: ["course-strategy", "course-twins", "courses", "play-companion"],
-  },
-  {
-    id: "sessions",
-    label: "Review",
-    routes: ["sessions", "shots", "compare", "analyse", "session-impact"],
-  },
-  { id: "bag", label: "Bag", routes: ["bag", "quick-bag", "equipment"] },
+  { id: "today", label: "Today", group: "today" },
+  { id: "practice", label: "Practice", group: "practice" },
+  { id: "course-strategy", label: "Strategy", group: "strategy" },
+  { id: "sessions", label: "Review", group: "review" },
+  { id: "bag", label: "Bag", group: "bag" },
 ] as const;
 
 export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(
-  ({ id, label, routes }) => {
+  ({ id, label, group }) => {
     const item = itemFor(id);
     return {
       ...item,
       label,
-      isActive: (pathname: string) => {
-        const routeId = findRouteMetadata(pathname)?.id;
-        return routeId ? routes.some((candidate) => candidate === routeId) : false;
-      },
+      isActive: (pathname: string) => findRouteMetadata(pathname)?.mobilePrimaryGroup === group,
     };
   },
 );

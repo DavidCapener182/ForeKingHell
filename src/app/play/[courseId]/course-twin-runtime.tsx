@@ -12,6 +12,8 @@ import {
 } from "@/lib/course-twin-performance";
 import { Button } from "@/components/ui/button";
 
+import mobileStyles from "./course-twin-mobile.module.css";
+
 const CourseTwinScene = dynamic(
   () => import("./course-twin-scene").then((module) => module.CourseTwinScene),
   {
@@ -102,7 +104,7 @@ function CourseTwinLowPowerFallback({
     <section
       data-course-twin-low-power-fallback
       aria-labelledby="course-twin-fallback-title"
-      className="grid min-h-[calc(100dvh-5rem)] content-start gap-5 bg-[#07150e] p-4 text-white lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-6"
+      className={`${mobileStyles.fallback} grid content-start gap-5 bg-[#07150e] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white lg:h-auto lg:min-h-[calc(100dvh-5rem)] lg:grid-cols-[minmax(0,1fr)_22rem] lg:p-6`}
     >
       <div className="overflow-hidden rounded-2xl border border-white/15 bg-[#10271a]">
         <div className="border-b border-white/10 p-4">

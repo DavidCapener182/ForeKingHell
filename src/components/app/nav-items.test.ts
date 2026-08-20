@@ -21,9 +21,17 @@ describe("application navigation hierarchy", () => {
       true,
     );
     expect(
+      mobilePrimaryItems
+        .find((item) => item.label === "Practice")
+        ?.isActive("/practice/quick-range"),
+    ).toBe(true);
+    expect(
       mobilePrimaryItems.find((item) => item.label === "Strategy")?.isActive("/play/bootle"),
     ).toBe(true);
     expect(mobilePrimaryItems.find((item) => item.label === "Review")?.isActive("/shots")).toBe(
+      true,
+    );
+    expect(mobilePrimaryItems.find((item) => item.label === "Review")?.isActive("/progress")).toBe(
       true,
     );
     expect(mobilePrimaryItems.find((item) => item.label === "Bag")?.isActive("/quick-bag")).toBe(
