@@ -19,8 +19,12 @@ test.describe("clean-database companion smoke", () => {
 
     for (const destination of [
       { navigationLabel: "Practice", routeLabel: "Practice Planner", path: /\/practice(?:\?|$)/ },
-      { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
-      { navigationLabel: "Sessions", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
+      {
+        navigationLabel: "Strategy",
+        routeLabel: "Course Strategy",
+        path: /\/courses\/strategy(?:\?|$)/,
+      },
+      { navigationLabel: "Review", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
     ]) {
       await primaryNavigation
         .getByRole("link", { name: destination.navigationLabel, exact: true })
