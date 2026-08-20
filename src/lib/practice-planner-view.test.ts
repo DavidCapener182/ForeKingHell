@@ -174,6 +174,23 @@ describe("practice planner view helpers", () => {
     expect(source).toContain("completePracticePlanFromSelectedImport");
     expect(source).toContain("recordPracticePlanMatch(userId, saved, sessionSummary, match, true)");
   });
+
+  it("selects the latest session with eligible lifecycle evidence before applying the limit", () => {
+    const source = readFileSync(join(process.cwd(), "src/lib/practice-planner.ts"), "utf8");
+    const selector =
+      source.match(
+        /async function getLatestImportedPracticeSessionSummary[\s\S]*?function generateShortGamePracticePlan/,
+      )?.[0] ?? "";
+
+    expect(source).toContain("shotCategory: shots.shotCategory");
+    expect(source).toContain("shotCategory: row.shotCategory");
+    expect(selector).toContain("shotEvidenceSqlPredicate()");
+    expect(selector).toContain(".innerJoin(");
+    expect(selector.indexOf("shotEvidenceSqlPredicate()")).toBeLessThan(
+      selector.indexOf(".limit(1)"),
+    );
+    expect(source).toContain("not like 'exclude%'");
+  });
 });
 
 const blocks: PracticeBlockViewLike[] = [

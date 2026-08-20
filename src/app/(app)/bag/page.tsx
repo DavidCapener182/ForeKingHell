@@ -17,7 +17,7 @@ import {
   TrendingUp,
   Wrench,
 } from "lucide-react";
-import { and, asc, count, desc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 
 import {
   ChartAccessibleFallback,
@@ -125,6 +125,7 @@ import { getSpeedCoachCardData, type SpeedCentreSummary } from "@/lib/speed-trai
 import { formatSpeed } from "@/lib/speed-training";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
 import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import {
   SAND_WEDGE_STOCK_MIN_CARRY_YD,
   calculateStockCarryTrend,
@@ -294,6 +295,7 @@ const bagShotSelect = {
   spinAxis: shots.spinAxis,
   courseHoleNumber: shots.courseHoleNumber,
   sessionType: sessions.type,
+  reviewStatus: shots.reviewStatus,
   shotCategory: shots.shotCategory,
   qualityTag: shots.qualityTag,
 };
@@ -1175,12 +1177,30 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
   }
 
   const excludedRecordQualityValues = sql.join(
-    excludedRecordQualityTags.map((tag) => sql`${tag}`),
+    [...excludedRecordQualityTags, "warm_up"].map((tag) => sql`${tag}`),
     sql`, `,
   );
   const excludedRecordCategoryValues = sql.join(
-    excludedRecordShotCategories.map((category) => sql`${category}`),
+    [...excludedRecordShotCategories, "warm_up"].map((category) => sql`${category}`),
     sql`, `,
+  );
+  const trustedPersonalBestEvidence = or(
+    eq(shots.reviewStatus, "restored"),
+    and(
+      eq(shots.reviewStatus, "included"),
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in (${excludedRecordQualityValues})`,
+      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in (${excludedRecordCategoryValues})`,
+    ),
+  );
+  const lifecycleEvidence = or(
+    eq(shots.reviewStatus, "restored"),
+    and(
+      eq(shots.reviewStatus, "included"),
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in (${excludedRecordQualityValues})`,
+      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+    ),
   );
 
   const personalBestQuery =
@@ -1199,8 +1219,7 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
               eq(sessions.userId, userId),
               inArray(shots.clubId, allClubMemberIds),
               isNotNull(shots.carryYd),
-              sql`lower(coalesce(${shots.qualityTag}, '')) not in (${excludedRecordQualityValues})`,
-              sql`lower(coalesce(${shots.shotCategory}, '')) not in (${excludedRecordCategoryValues})`,
+              trustedPersonalBestEvidence,
               sql`lower(${sessions.source}) not in ('manual', 'manual_edit')`,
               sql`(lower(${shots.clubType}) not in ('sw', 'lw', 'wedge') or ${shots.carryYd} >= ${SAND_WEDGE_STOCK_MIN_CARRY_YD})`,
               sql`(lower(${shots.clubType}) not in ('pw', 'gw', 'aw') or ${shots.carryYd} > 30)`,
@@ -1223,6 +1242,7 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
         eq(shots.userId, userId),
         eq(sessions.userId, userId),
         inArray(shots.clubId, allClubMemberIds),
+        lifecycleEvidence,
       ),
     )
     .as("ranked_club_shots");
@@ -1251,6 +1271,7 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
     spinAxis: rankedClubShots.spinAxis,
     courseHoleNumber: rankedClubShots.courseHoleNumber,
     sessionType: rankedClubShots.sessionType,
+    reviewStatus: rankedClubShots.reviewStatus,
     shotCategory: rankedClubShots.shotCategory,
     qualityTag: rankedClubShots.qualityTag,
     clubRank: rankedClubShots.clubRank,
@@ -2879,6 +2900,16 @@ async function getPeerBenchmarkSummary(
     }
   }
 
+  const peerLifecycleEvidence = or(
+    eq(shots.reviewStatus, "restored"),
+    and(
+      eq(shots.reviewStatus, "included"),
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+    ),
+  );
+
   const peerShots = await db
     .select({
       id: shots.id,
@@ -2897,6 +2928,7 @@ async function getPeerBenchmarkSummary(
       smashFactor: shots.smashFactor,
       courseHoleNumber: shots.courseHoleNumber,
       sessionType: sessions.type,
+      reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
     })
@@ -2907,14 +2939,16 @@ async function getPeerBenchmarkSummary(
       and(
         inArray(shots.userId, eligibleUserIds),
         inArray(shots.clubType, Array.from(peerClubTypes)),
+        peerLifecycleEvidence,
         eq(clubs.active, true),
       ),
     )
     .orderBy(desc(shots.shotAt))
     .limit(PEER_SHOT_QUERY_LIMIT);
 
-  const targetedPeerShots = peerShots.filter((shot) =>
-    targetClubTypes.has(peerBenchmarkClubTypeFor(shot.clubType)),
+  const targetedPeerShots = peerShots.filter(
+    (shot) =>
+      isShotEvidenceEligible(shot) && targetClubTypes.has(peerBenchmarkClubTypeFor(shot.clubType)),
   );
   const peerMetricValues = buildPeerMetricValues(targetedPeerShots, targetClubTypes);
   const contributingUserIds = new Set<string>();

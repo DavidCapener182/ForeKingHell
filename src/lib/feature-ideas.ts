@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -42,6 +42,7 @@ import { formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { isMissingYardageWindowGap, isScoringEndGap } from "@/lib/gapping-windows";
 import { roundSessionTypes } from "@/lib/round-sessions";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import {
   areFriends,
   createFeedItem,
@@ -59,6 +60,9 @@ type ShotRow = Pick<
   | "sideCarryYd"
   | "ballSpeedMph"
   | "launchAngleDeg"
+  | "shotCategory"
+  | "qualityTag"
+  | "reviewStatus"
 >;
 type ClubRow = Pick<typeof clubs.$inferSelect, "id" | "type" | "brand" | "model" | "active">;
 type StockRow = Pick<
@@ -150,7 +154,7 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     profileRows,
     preferenceRows,
     clubRows,
-    shotRows,
+    loadedShotRows,
     stockRows,
     sessionRows,
     importFileRows,
@@ -192,9 +196,12 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
         sideCarryYd: shots.sideCarryYd,
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
+        shotCategory: shots.shotCategory,
+        qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
       })
       .from(shots)
-      .where(eq(shots.userId, userId))
+      .where(and(eq(shots.userId, userId), shotEvidenceSqlPredicate()))
       .orderBy(desc(shots.shotAt))
       .limit(FEATURE_SHOT_SAMPLE_LIMIT),
     db
@@ -348,6 +355,7 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
     ),
   ]);
 
+  const shotRows = loadedShotRows.filter(isShotEvidenceEligible);
   const followedCourseIds = courseFollowRows.map((follow) => follow.courseId);
   const recordIds = recordGoalRows.map((goal) => goal.recordId);
   const recordTargetUserIds = recordGoalRows
@@ -2400,6 +2408,21 @@ function bestClubThisWeek(shotRows: ShotRow[]) {
   }
   const [clubType] = [...counts.entries()].sort((left, right) => right[1] - left[1])[0] ?? ["", 0];
   return clubType ? formatClubType(clubType) : "Mixed bag";
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }
 
 function currentWeekWindow(now: Date) {

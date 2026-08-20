@@ -161,7 +161,10 @@ export function effectiveShotReviewStatus(input: {
 
   const qualityTag = normalizedReviewValue(input.qualityTag);
   const shotCategory = normalizedReviewValue(input.shotCategory);
-  if (["exclude", "excluded", "delete", "deleted"].includes(qualityTag ?? "")) {
+  if (
+    ["exclude", "excluded", "delete", "deleted"].includes(qualityTag ?? "") ||
+    qualityTag?.startsWith("exclude")
+  ) {
     return "user_excluded";
   }
   if (qualityTag === "calibration") {
@@ -253,6 +256,21 @@ export function isExcludingShotReviewStatus(status: ShotReviewStatus | null | un
 
 export function isRestorableShotReviewStatus(status: ShotReviewStatus | null | undefined) {
   return status === "suggested_exclusion" || isExcludingShotReviewStatus(status);
+}
+
+export function isShotEvidenceEligible(input: {
+  reviewStatus?: ShotReviewStatus | null;
+  qualityTag?: string | null;
+  shotCategory?: string | null;
+}) {
+  const reviewStatus = input.reviewStatus ?? "included";
+  const effectiveStatus = effectiveShotReviewStatus({
+    reviewStatus,
+    qualityTag: input.qualityTag,
+    shotCategory: input.shotCategory,
+  });
+
+  return effectiveStatus === "included" || effectiveStatus === "restored";
 }
 
 export function shotReviewStatusLabel(status: ShotReviewStatus) {

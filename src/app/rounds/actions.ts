@@ -17,6 +17,7 @@ import {
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildClubKey, normalizeClubType, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { recordRoundCompletedFeedItem } from "@/lib/social";
 
 type StoredScorecardHole = NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>[number];
@@ -469,14 +470,18 @@ export async function resplitRoundAction(formData: FormData) {
     throw new Error("Round scorecard not found.");
   }
 
-  const sessionShots = await db
+  const loadedSessionShots = await db
     .select({
       id: shots.id,
       shotNumber: shots.shotNumber,
+      reviewStatus: shots.reviewStatus,
+      qualityTag: shots.qualityTag,
+      shotCategory: shots.shotCategory,
     })
     .from(shots)
     .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
+  const sessionShots = loadedSessionShots.filter(isShotEvidenceEligible);
   let cursor = 0;
 
   for (const hole of session.scorecardJson.sort(
@@ -536,7 +541,7 @@ async function recalculateRoundAssignments(sessionId: string) {
     return;
   }
 
-  const sessionShots = await db
+  const loadedSessionShots = await db
     .select({
       id: shots.id,
       shotNumber: shots.shotNumber,
@@ -545,10 +550,14 @@ async function recalculateRoundAssignments(sessionId: string) {
       sideCarryYd: shots.sideCarryYd,
       clubType: shots.clubType,
       courseHoleNumber: shots.courseHoleNumber,
+      reviewStatus: shots.reviewStatus,
+      qualityTag: shots.qualityTag,
+      shotCategory: shots.shotCategory,
     })
     .from(shots)
     .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
+  const sessionShots = loadedSessionShots.filter(isShotEvidenceEligible);
   const sortedScorecard = session.scorecardJson
     .slice()
     .sort((left, right) => left.holeNumber - right.holeNumber);

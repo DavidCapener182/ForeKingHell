@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -30,16 +30,13 @@ import {
   type ProgressSummary,
 } from "@/lib/progress-summary";
 import { getSpeedCoachCardData } from "@/lib/speed-training-data";
-import {
-  getTodayPracticeData,
-  isExcludedPracticeQualityTag,
-  type ClubDayComparison,
-} from "@/lib/today-session-data";
+import { getTodayPracticeData, type ClubDayComparison } from "@/lib/today-session-data";
 import { getTrainingOverTimeData } from "@/lib/training/trainingData";
 import type { TrainingStatusKey } from "@/lib/training/trainingStatus";
 import { normalizeClubType } from "@/lib/rapsodo/parser";
 import { getAchievement } from "@/lib/achievements/registry";
 import { xpForAchievement } from "@/lib/achievements/xp";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 export type PracticeSessionType =
   | "range"
@@ -446,6 +443,8 @@ export type ImportedPracticeShotRow = {
   faceAngleDeg: number | null;
   ballSpeedMph: number | null;
   clubSpeedMph: number | null;
+  reviewStatus?: ShotReviewStatus | null;
+  shotCategory?: string | null;
   qualityTag: string | null;
 };
 
@@ -1106,7 +1105,25 @@ function canUseOrderedBlockScoring(plan: PracticePlan, rows: ImportedPracticeSho
 }
 
 function isCleanImportedPracticeShotRow(row: ImportedPracticeShotRow) {
-  return !isExcludedPracticeQualityTag(row.qualityTag);
+  return isShotEvidenceEligible(row);
+}
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
 }
 
 function evaluateOrderedPracticeBlocks(
@@ -2397,6 +2414,8 @@ async function getImportedPracticeSessionSummary(
       faceAngleDeg: shots.faceAngleDeg,
       ballSpeedMph: shots.ballSpeedMph,
       clubSpeedMph: shots.clubSpeedMph,
+      reviewStatus: shots.reviewStatus,
+      shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
     })
     .from(shots)
@@ -2416,6 +2435,8 @@ async function getImportedPracticeSessionSummary(
     faceAngleDeg: row.faceAngleDeg === null ? null : roundOne(Number(row.faceAngleDeg)),
     ballSpeedMph: row.ballSpeedMph === null ? null : roundOne(Number(row.ballSpeedMph)),
     clubSpeedMph: row.clubSpeedMph === null ? null : roundOne(Number(row.clubSpeedMph)),
+    reviewStatus: row.reviewStatus,
+    shotCategory: row.shotCategory,
     qualityTag: row.qualityTag,
   }));
   const cleanShotRows = normalizedShotRows.filter(isCleanImportedPracticeShotRow);
@@ -2483,7 +2504,10 @@ async function getLatestImportedPracticeSessionSummary(
       id: sessions.id,
     })
     .from(sessions)
-    .innerJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
+    .innerJoin(
+      shots,
+      and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId), shotEvidenceSqlPredicate()),
+    )
     .where(eq(sessions.userId, userId))
     .orderBy(desc(sessions.date), desc(sessions.createdAt))
     .limit(1);
@@ -3271,7 +3295,13 @@ async function getScoringContext(userId: string) {
       sampleSize: sql<number>`count(*)::int`,
     })
     .from(strokesGainedShotEvents)
-    .where(eq(strokesGainedShotEvents.userId, userId))
+    .leftJoin(shots, and(eq(shots.id, strokesGainedShotEvents.shotId), eq(shots.userId, userId)))
+    .where(
+      and(
+        eq(strokesGainedShotEvents.userId, userId),
+        or(isNull(strokesGainedShotEvents.shotId), shotEvidenceSqlPredicate()),
+      ),
+    )
     .groupBy(strokesGainedShotEvents.category);
   const weakest = [...rows]
     .filter((row) => Number(row.sampleSize) >= 3 && row.total !== null)

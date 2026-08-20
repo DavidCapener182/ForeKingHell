@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -255,7 +255,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_YARDS_PER_MPH = 2.4;
 const FORECAST_HORIZON_DAYS = 90;
 const MIN_FORECAST_SESSIONS = 3;
-const SPEED_EVIDENCE_REVIEW_STATUSES: ShotReviewStatus[] = ["included", "restored"];
 
 export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentrePageData> {
   const db = getDb();
@@ -345,11 +344,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       })
       .from(shots)
       .where(
-        and(
-          eq(shots.userId, userId),
-          eq(shots.clubType, "driver"),
-          inArray(shots.reviewStatus, SPEED_EVIDENCE_REVIEW_STATUSES),
-        ),
+        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), shotEvidenceSqlPredicate()),
       )
       .orderBy(desc(shots.shotAt))
       .limit(80),
@@ -375,7 +370,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
           eq(shots.userId, userId),
           eq(practiceSessions.userId, userId),
           eq(clubs.active, true),
-          inArray(shots.reviewStatus, SPEED_EVIDENCE_REVIEW_STATUSES),
+          shotEvidenceSqlPredicate(),
           isNotNull(shots.clubSpeedMph),
         ),
       )
@@ -560,11 +555,7 @@ export async function getSpeedCoachCardData(userId: string) {
       })
       .from(shots)
       .where(
-        and(
-          eq(shots.userId, userId),
-          eq(shots.clubType, "driver"),
-          inArray(shots.reviewStatus, SPEED_EVIDENCE_REVIEW_STATUSES),
-        ),
+        and(eq(shots.userId, userId), eq(shots.clubType, "driver"), shotEvidenceSqlPredicate()),
       )
       .orderBy(desc(shots.shotAt))
       .limit(80),
@@ -1735,4 +1726,19 @@ function labelForImplementKind(kind: string) {
     default:
       return "Other implement";
   }
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }

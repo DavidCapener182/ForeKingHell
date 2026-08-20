@@ -8,6 +8,7 @@ import {
   detectShotDataIntegrityIssue,
   type ShotDataIntegrityIssue,
 } from "@/lib/shot-data-integrity";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
 
 const APP_TIME_ZONE = "Europe/London";
@@ -50,6 +51,7 @@ export type TodayPracticeShot = {
   clubPathDeg: number | null;
   faceAngleDeg: number | null;
   clubDataEstType: string | null;
+  reviewStatus: ShotReviewStatus;
   qualityTag: string | null;
   dataIntegrityIssue: ShotDataIntegrityIssue | null;
 };
@@ -224,6 +226,7 @@ const practiceShotSelect = {
   clubPathDeg: shots.clubPathDeg,
   faceAngleDeg: shots.faceAngleDeg,
   clubDataEstType: shots.clubDataEstType,
+  reviewStatus: shots.reviewStatus,
   qualityTag: shots.qualityTag,
 };
 
@@ -337,6 +340,7 @@ async function fetchPreviousPracticeRows(
         eq(clubs.userId, userId),
         lt(shots.shotAt, before),
         inArray(shots.clubType, clubTypes),
+        shotEvidenceSqlPredicate(),
       ),
     )
     .as("ranked_previous_shots");
@@ -370,6 +374,7 @@ async function fetchPreviousPracticeRows(
       clubPathDeg: rankedPreviousShots.clubPathDeg,
       faceAngleDeg: rankedPreviousShots.faceAngleDeg,
       clubDataEstType: rankedPreviousShots.clubDataEstType,
+      reviewStatus: rankedPreviousShots.reviewStatus,
       qualityTag: rankedPreviousShots.qualityTag,
     })
     .from(rankedPreviousShots)
@@ -406,6 +411,7 @@ async function findDefaultPracticeDateKey(
   if (club) {
     clauses.push(eq(shots.clubType, club));
   }
+  clauses.push(shotEvidenceSqlPredicate());
 
   const [practiceDay] = await db
     .select({
@@ -855,13 +861,40 @@ function isRawComparisonShot(shot: TodayPracticeShot) {
   return isNumber(shot.carryYd) || isNumber(shot.sideCarryYd) || isNumber(shot.ballSpeedMph);
 }
 
-function isCleanPracticeShot(shot: Pick<TodayPracticeShot, "qualityTag" | "dataIntegrityIssue">) {
-  return !isExcludedPracticeQualityTag(shot.qualityTag) && shot.dataIntegrityIssue === null;
+function isCleanPracticeShot(
+  shot: Pick<
+    TodayPracticeShot,
+    "reviewStatus" | "qualityTag" | "shotCategory" | "dataIntegrityIssue"
+  >,
+) {
+  if (!isShotEvidenceEligible(shot)) {
+    return false;
+  }
+
+  return shot.reviewStatus === "restored" || shot.dataIntegrityIssue === null;
 }
 
 export function isExcludedPracticeQualityTag(qualityTag: string | null | undefined) {
   const normalized = qualityTag?.trim().toLowerCase();
   return Boolean(normalized && EXCLUDED_PRACTICE_QUALITY_TAGS.has(normalized));
+}
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
 }
 
 function buildDataCleaningSummary(

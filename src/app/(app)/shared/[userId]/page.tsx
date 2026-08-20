@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { ArrowLeft, Database, Flag, Target, Trophy } from "lucide-react";
 
 import {
@@ -40,6 +40,7 @@ import { clubs, sessions, shots, users } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireReadableAccountUserId } from "@/lib/account-access";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 export const dynamic = "force-dynamic";
 
@@ -375,7 +376,7 @@ async function getSharedAccountData(targetUserId: string) {
   const access = await requireReadableAccountUserId(targetUserId);
   const db = getDb();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const [profileRows, sessionRows, shotRows, recentShotRows, clubRows] = await Promise.all([
+  const [profileRows, sessionRows, shotRows, clubRows] = await Promise.all([
     db.select().from(users).where(eq(users.id, targetUserId)).limit(1),
     db
       .select()
@@ -386,13 +387,15 @@ async function getSharedAccountData(targetUserId: string) {
       .select({
         clubType: shots.clubType,
         totalYd: shots.totalYd,
+        shotAt: shots.shotAt,
+        reviewStatus: shots.reviewStatus,
+        qualityTag: shots.qualityTag,
+        shotCategory: shots.shotCategory,
       })
       .from(shots)
-      .where(eq(shots.userId, targetUserId)),
-    db
-      .select({ id: shots.id })
-      .from(shots)
-      .where(and(eq(shots.userId, targetUserId), gte(shots.shotAt, thirtyDaysAgo))),
+      .where(
+        and(eq(shots.userId, targetUserId), inArray(shots.reviewStatus, ["included", "restored"])),
+      ),
     db.select().from(clubs).where(eq(clubs.userId, targetUserId)),
   ]);
   const profile = profileRows[0];
@@ -401,13 +404,14 @@ async function getSharedAccountData(targetUserId: string) {
     return null;
   }
 
-  const clubCounts = countBy(shotRows.map((shot) => shot.clubType));
+  const eligibleShotRows = shotRows.filter(isShotEvidenceEligible);
+  const clubCounts = countBy(eligibleShotRows.map((shot) => shot.clubType));
   const topClub =
     [...clubCounts.entries()]
       .map(([clubType, count]) => ({ clubType, count }))
       .sort((a, b) => b.count - a.count)[0] ?? null;
   const longestDriveYd =
-    shotRows
+    eligibleShotRows
       .filter((shot) => shot.clubType === "driver" && typeof shot.totalYd === "number")
       .reduce<number | null>((best, shot) => Math.max(best ?? 0, shot.totalYd ?? 0), null) ?? null;
 
@@ -415,8 +419,8 @@ async function getSharedAccountData(targetUserId: string) {
     profile,
     accessRole: access.role,
     sessionCount: sessionRows.length,
-    shotCount: shotRows.length,
-    recentShotCount: recentShotRows.length,
+    shotCount: eligibleShotRows.length,
+    recentShotCount: eligibleShotRows.filter((shot) => shot.shotAt >= thirtyDaysAgo).length,
     activeClubCount: clubRows.filter((club) => club.active).length,
     topClub,
     longestDriveYd,

@@ -47,6 +47,86 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).not.toContain("club_driver_ball_speed_140");
   });
 
+  it("uses only included or restored shot evidence for irreversible unlocks", () => {
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const shots = [
+      makeShot({
+        id: "included",
+        reviewStatus: "included",
+        carryYd: 205,
+        totalYd: 220,
+      }),
+      makeShot({
+        id: "restored",
+        reviewStatus: "restored",
+        qualityTag: "bad_data",
+        carryYd: 210,
+        totalYd: 225,
+      }),
+      ...excludedStatuses.map((reviewStatus, index) =>
+        makeShot({
+          id: `excluded-${reviewStatus}`,
+          shotNumber: index + 3,
+          reviewStatus,
+          carryYd: 390,
+          totalYd: 410,
+          ballSpeedMph: 190,
+        }),
+      ),
+      makeShot({
+        id: "legacy-bad-data",
+        shotNumber: 8,
+        reviewStatus: "included",
+        qualityTag: "bad_data",
+        carryYd: 400,
+        totalYd: 420,
+      }),
+      makeShot({
+        id: "legacy-warm-up",
+        shotNumber: 9,
+        reviewStatus: "included",
+        shotCategory: "warm_up",
+        carryYd: 400,
+        totalYd: 420,
+      }),
+    ];
+
+    const result = evaluateRapsodoSessionAchievements(makeSession(), shots);
+    const ids = achievementIds(result.unlocks);
+
+    expect(ids).toContain("driver_total_220");
+    expect(ids).toContain("club_driver_volume_1");
+    expect(ids).not.toContain("driver_total_250");
+    expect(ids).not.toContain("club_driver_volume_5");
+  });
+
+  it("does not treat an import containing only excluded evidence as a rewarded import", () => {
+    const result = evaluateAllAchievementCandidates({
+      sessions: [makeSession()],
+      shots: [
+        makeShot({
+          id: "excluded-only",
+          reviewStatus: "suggested_exclusion",
+          totalYd: 400,
+        }),
+      ],
+      clubs: [],
+      stockYardages: [],
+    });
+
+    expect(achievementIds(result.unlocks)).not.toContain("first_import");
+    expect(
+      result.progress.find((candidate) => candidate.achievementId === "first_import")
+        ?.progressValue,
+    ).toBe(0);
+  });
+
   it("registers club distance ladders without unrealistic wedge speed or distance targets", () => {
     const ids = ACHIEVEMENTS.map((achievement) => achievement.id);
 
@@ -650,6 +730,7 @@ function makeShot(overrides: Partial<AchievementShot>): AchievementShot {
     smashFactor: null,
     shotCategory: "full",
     qualityTag: null,
+    reviewStatus: "included",
     ...overrides,
   };
 }

@@ -66,6 +66,43 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain("includeBenchmarkEvidence\n      ? db");
   });
 
+  it("uses only lifecycle-eligible evidence for personal bests and peer benchmarks", () => {
+    const bagLoader = source.match(/async function getBag[\s\S]*?type BagClub/)?.[0] ?? "";
+    const peerLoader =
+      source.match(/async function getPeerBenchmarkSummary[\s\S]*?function canUseProfile/)?.[0] ??
+      "";
+
+    expect(bagLoader).toContain('eq(shots.reviewStatus, "restored")');
+    expect(bagLoader).toContain('eq(shots.reviewStatus, "included")');
+    expect(bagLoader).toContain("trustedPersonalBestEvidence");
+    expect(bagLoader).toContain('"warm_up"');
+    expect(peerLoader).toContain("reviewStatus: shots.reviewStatus");
+    expect(peerLoader).toContain("const peerLifecycleEvidence = or(");
+    expect(peerLoader).toContain('eq(shots.reviewStatus, "restored")');
+    expect(peerLoader).toContain('eq(shots.reviewStatus, "included")');
+    expect(peerLoader).toContain("not like 'exclude%'");
+    expect(peerLoader).toContain("'bad-data', 'bad_data'");
+    expect(peerLoader).toContain("'warm-up', 'warmup', 'warm_up'");
+    expect(peerLoader).toContain("isShotEvidenceEligible(shot)");
+
+    const peerQuery = peerLoader.indexOf("const peerShots = await db");
+    const predicate = peerLoader.indexOf("peerLifecycleEvidence", peerQuery);
+    const limit = peerLoader.indexOf(".limit(PEER_SHOT_QUERY_LIMIT)", peerQuery);
+
+    expect(predicate).toBeGreaterThan(peerQuery);
+    expect(predicate).toBeLessThan(limit);
+  });
+
+  it("filters lifecycle evidence before ranking recent shots per club", () => {
+    const bagLoader = source.match(/async function getBag[\s\S]*?type BagClub/)?.[0] ?? "";
+
+    expect(bagLoader).toContain("lifecycleEvidence");
+    expect(bagLoader).toContain("in ('warm-up', 'warmup', 'warm_up')");
+    expect(bagLoader).toContain(
+      "inArray(shots.clubId, allClubMemberIds),\n        lifecycleEvidence",
+    );
+  });
+
   it("derives mobile Bag selection from the URL and keeps the summary compact", () => {
     const summary =
       source.match(/function MobileBagSummary[\s\S]*?function BagSupportingEvidence/)?.[0] ?? "";

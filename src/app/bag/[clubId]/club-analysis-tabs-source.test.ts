@@ -40,6 +40,15 @@ describe("club profile desktop shot evidence table", () => {
     expect(source).toContain("onClick={() => onSelect(shot.id)}");
   });
 
+  it("carries review status into stock calculations while preserving the evidence table", () => {
+    expect(source).toContain("reviewStatus?: ShotReviewStatus | null");
+    expect(source).toContain("sortedShots.filter(isShotEvidenceEligible)");
+    expect(source.match(/shots=\{evidenceShots\}/g)).toHaveLength(2);
+    expect(source).toContain("selectStockYardageShots(shots");
+    expect(source).toContain("{shots.map((shot) => {");
+    expect(source).toContain("groups.flatMap((group) => group.shots)");
+  });
+
   it("keeps the club profile focused on data rather than a full AI slab", () => {
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("WorkbenchPrompts");

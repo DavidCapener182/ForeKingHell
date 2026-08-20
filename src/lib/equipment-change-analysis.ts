@@ -2,6 +2,7 @@ import { analysisConfidence } from "@/lib/analysis-confidence";
 import { finiteNumbers, interquartileRange, median } from "@/lib/analysis-statistics";
 import { calculateRepeatabilityScore } from "@/lib/repeatability-score";
 import { recordEligibility } from "@/lib/shot-records";
+import type { ShotReviewStatus } from "@/lib/shot-review";
 
 export type EquipmentChangeShot = {
   sessionId: string;
@@ -16,6 +17,7 @@ export type EquipmentChangeShot = {
   smashFactor: number | null;
   qualityTag?: string | null;
   shotCategory?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
   sessionSource?: string | null;
   sessionType?: string | null;
 };
@@ -38,6 +40,7 @@ export function analyseEquipmentChange(input: {
         totalYd: shot.totalYd,
         qualityTag: shot.qualityTag,
         shotCategory: shot.shotCategory,
+        reviewStatus: shot.reviewStatus,
         sessionSource: shot.sessionSource,
       }).trustedEligible,
   );

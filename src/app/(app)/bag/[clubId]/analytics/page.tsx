@@ -65,6 +65,7 @@ import {
   type ClubAnalyticsShot,
 } from "@/lib/club-analytics";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 
 export const dynamic = "force-dynamic";
@@ -136,7 +137,8 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
   const accent = clubAccent(club.type);
   const clubName = formatClubType(club.type);
   const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
-  const latestShots = [...clubShots]
+  const evidenceClubShots = clubShots.filter(isShotEvidenceEligible);
+  const latestShots = [...evidenceClubShots]
     .sort((left, right) => new Date(right.shotAt).getTime() - new Date(left.shotAt).getTime())
     .slice(0, 5);
 
@@ -373,7 +375,7 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
                 action={<StatusPill tone="green">Yards</StatusPill>}
               />
               <CardContent>
-                <ShotCloud shots={clubShots} analytics={analytics} accent={accent} />
+                <ShotCloud shots={evidenceClubShots} analytics={analytics} accent={accent} />
               </CardContent>
             </DataPanel>
 
@@ -757,6 +759,7 @@ async function getClubAnalyticsData(clubId: string) {
         sideCarryYd: shots.sideCarryYd,
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
+        reviewStatus: shots.reviewStatus,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
         courseHoleNumber: shots.courseHoleNumber,
@@ -796,7 +799,7 @@ async function getClubAnalyticsData(clubId: string) {
   const analyticsShots = clubShotRows.map((shot) => toAnalyticsShot(shot, club.type));
   const analytics = calculateClubAnalytics({
     clubType: club.type,
-    shots: analyticsShots,
+    shots: analyticsShots.filter(isShotEvidenceEligible),
     bagContext,
   });
 
@@ -829,6 +832,7 @@ function analyticsShotSelection() {
     spinRate: shots.spinRate,
     spinAxis: shots.spinAxis,
     clubDataEstType: shots.clubDataEstType,
+    reviewStatus: shots.reviewStatus,
     shotCategory: shots.shotCategory,
     qualityTag: shots.qualityTag,
     courseHoleNumber: shots.courseHoleNumber,
@@ -857,13 +861,17 @@ type AnalyticsShotRow = {
   spinRate: number | null;
   spinAxis: number | null;
   clubDataEstType: string | null;
+  reviewStatus: ShotReviewStatus;
   shotCategory: string | null;
   qualityTag: string | null;
   courseHoleNumber: number | null;
   sessionType: string | null;
 };
 
-function toAnalyticsShot(shot: AnalyticsShotRow, clubType: string): ClubAnalyticsShot {
+function toAnalyticsShot(
+  shot: AnalyticsShotRow,
+  clubType: string,
+): ClubAnalyticsShot & { reviewStatus: ShotReviewStatus } {
   return {
     ...shot,
     clubType,

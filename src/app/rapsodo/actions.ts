@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { clubs, rapsodoSyncSessions, sessions, shots, stockYardages, users } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -30,6 +30,7 @@ import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash
 import { formatClubType } from "@/lib/club-format";
 import { parseRapsodoCsv, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 import { inferRapsodoImportSessionType } from "@/lib/round-sessions";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { buildRapsodoSyncSessionKey, hashRapsodoExportCsv } from "@/lib/rapsodo/sync-identity";
 import {
   rapsodoE2eFixtureEnabled,
@@ -751,7 +752,7 @@ async function getRapsodoClubChoices(
         lastShotAt: sql<Date | null>`max(${shots.shotAt})`,
       })
       .from(shots)
-      .where(eq(shots.userId, userId))
+      .where(and(eq(shots.userId, userId), shotEvidenceSqlPredicate()))
       .groupBy(shots.clubId),
     client.listBagClubs(token).catch(() => []),
   ]);
@@ -764,7 +765,7 @@ async function getRapsodoClubChoices(
     }
   }
 
-  const recentShotRows = await db
+  const loadedRecentShotRows = await db
     .select({
       clubId: shots.clubId,
       clubType: shots.clubType,
@@ -777,13 +778,15 @@ async function getRapsodoClubChoices(
       sessionType: sessions.type,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
+      reviewStatus: shots.reviewStatus,
       shotAt: shots.shotAt,
     })
     .from(shots)
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-    .where(and(eq(shots.userId, userId), eq(sessions.userId, userId)))
+    .where(and(eq(shots.userId, userId), eq(sessions.userId, userId), shotEvidenceSqlPredicate()))
     .orderBy(desc(shots.shotAt))
     .limit(RAPSODO_BAG_SHOT_SAMPLE_LIMIT);
+  const recentShotRows = loadedRecentShotRows.filter(isShotEvidenceEligible);
   const recentShotsByClubId = groupBy(recentShotRows, (shot) => shot.clubId);
 
   const rapsodoClubByExactKey = new Map(rapsodoBagClubs.map((club) => [club.clubKey, club]));
@@ -1010,6 +1013,21 @@ function buildRapsodoFileName(session: RapsodoSessionListItem) {
     .slice(0, 80);
 
   return `rapsodo-cloud-${title || session.providerSessionId}-${date}.csv`;
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }
 
 function byteLength(value: string) {

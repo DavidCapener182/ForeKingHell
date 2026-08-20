@@ -26,4 +26,33 @@ describe("calculateShortGameTouchSummary", () => {
     expect(result.longestCarryYd).toBe(42);
     expect(result.under30YdCount).toBe(1);
   });
+
+  it("uses only included or restored lifecycle evidence for touch summaries", () => {
+    const result = calculateShortGameTouchSummary(
+      [
+        { carryYd: 20, shotCategory: "chip", reviewStatus: "included" },
+        {
+          carryYd: 30,
+          shotCategory: "chip",
+          reviewStatus: "restored",
+          qualityTag: "mishit",
+        },
+        { carryYd: 80, shotCategory: "pitch", reviewStatus: "suggested_exclusion" },
+        { carryYd: 81, shotCategory: "pitch", reviewStatus: "user_excluded" },
+        { carryYd: 82, shotCategory: "pitch", reviewStatus: "calibration" },
+        { carryYd: 83, shotCategory: "pitch", reviewStatus: "warm_up" },
+        { carryYd: 84, shotCategory: "pitch", reviewStatus: "launch_monitor_error" },
+        { carryYd: 85, shotCategory: "pitch", reviewStatus: "included", qualityTag: "mishit" },
+      ],
+      80,
+      { clubType: "sw" },
+    );
+
+    expect(result).toMatchObject({
+      sampleSize: 2,
+      carryMedianYd: 25,
+      longestCarryYd: 30,
+      under30YdCount: 2,
+    });
+  });
 });

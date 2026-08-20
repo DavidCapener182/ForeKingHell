@@ -10,7 +10,6 @@ import {
   gt,
   gte,
   inArray,
-  isNull,
   lte,
   not,
   notInArray,
@@ -651,11 +650,29 @@ function buildShotWhere(filters: ShotFilters, userId: string) {
 }
 
 function trustedShotWhere() {
+  const normalizedQualityTag = sql<string>`lower(trim(coalesce(${shots.qualityTag}, '')))`;
+  const normalizedShotCategory = sql<string>`lower(trim(coalesce(${shots.shotCategory}, '')))`;
+  const normalizedSessionSource = sql<string>`lower(trim(coalesce(${sessions.source}, '')))`;
+
   return and(
     gt(sql<number>`coalesce(${shots.totalYd}, ${shots.carryYd}, 0)`, 0),
-    or(isNull(shots.qualityTag), notInArray(shots.qualityTag, [...excludedRecordQualityTags])),
-    notInArray(shots.shotCategory, [...excludedRecordShotCategories]),
-    notInArray(sessions.source, ["manual", "manual_edit"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`${normalizedQualityTag} not like 'exclude%'`,
+        notInArray(normalizedQualityTag, [...excludedRecordQualityTags]),
+        notInArray(normalizedShotCategory, ["warm-up", "warmup", "warm_up"]),
+      ),
+    ),
+    or(
+      notInArray(normalizedShotCategory, [...excludedRecordShotCategories]),
+      and(
+        eq(shots.reviewStatus, "restored"),
+        inArray(normalizedShotCategory, ["warm-up", "warmup", "warm_up"]),
+      ),
+    ),
+    notInArray(normalizedSessionSource, ["", "manual", "manual_edit"]),
   )!;
 }
 

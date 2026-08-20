@@ -1,4 +1,5 @@
-import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
+import { excludedRecordShotCategories } from "@/lib/shot-records";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 export type DistanceLossShot = {
   sessionId: string;
@@ -10,6 +11,7 @@ export type DistanceLossShot = {
   launchAngleDeg: number | null;
   smashFactor: number | null;
   spinRate: number | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotCategory: string | null;
   qualityTag: string | null;
   clubDataEstType: string | null;
@@ -71,7 +73,6 @@ const MONTH_COUNT = 4;
 const MIN_MONTH_SHOTS = 8;
 const LONDON_TIME_ZONE = "Europe/London";
 const excludedCategories = new Set<string>(excludedRecordShotCategories);
-const excludedQualityTags = new Set<string>(excludedRecordQualityTags);
 const monthLabelFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   timeZone: "UTC",
@@ -355,17 +356,25 @@ function buildSummary({
 }
 
 function isEligibleDriverShot(shot: DistanceLossShot) {
+  if (!isShotEvidenceEligible(shot)) {
+    return false;
+  }
+
   const source = shot.source.trim().toLowerCase();
   const category = shot.shotCategory?.trim().toLowerCase() ?? null;
-  const qualityTag = shot.qualityTag?.trim().toLowerCase() ?? null;
 
   return (
     source === "rapsodo" &&
     isNumber(shot.carryYd) &&
     shot.carryYd > 0 &&
-    (!category || !excludedCategories.has(category)) &&
-    (!qualityTag || !excludedQualityTags.has(qualityTag))
+    (!category ||
+      !excludedCategories.has(category) ||
+      (shot.reviewStatus === "restored" && isLegacyWarmUpCategory(category)))
   );
+}
+
+function isLegacyWarmUpCategory(category: string) {
+  return category === "warm-up" || category === "warmup" || category === "warm_up";
 }
 
 function isMeasuredClubData(value: string | null) {

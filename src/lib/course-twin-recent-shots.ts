@@ -1,3 +1,5 @@
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
+
 export const COURSE_TWIN_SHAPE_LOOKBACK_DAYS = 30;
 export const COURSE_TWIN_SHAPE_SHOTS_PER_CLUB = 50;
 
@@ -6,6 +8,7 @@ const DAY_MS = 24 * 60 * 60 * 1_000;
 type CourseTwinRecentShot = {
   clubId: string | null;
   qualityTag: string | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotAt: Date;
   shotCategory: string | null;
 };
@@ -28,7 +31,13 @@ export function selectCourseTwinRecentShots<T extends CourseTwinRecentShot>(
     .sort((left, right) => right.shotAt.getTime() - left.shotAt.getTime())
     .filter((shot) => {
       if (!shot.clubId || shot.shotCategory?.toLowerCase() !== "full") return false;
-      if (shot.qualityTag?.toLowerCase().includes("exclude")) return false;
+      if (!isShotEvidenceEligible(shot)) return false;
+      if (
+        shot.reviewStatus !== "restored" &&
+        shot.qualityTag?.trim().toLowerCase().startsWith("exclude")
+      ) {
+        return false;
+      }
       const shotAt = shot.shotAt.getTime();
       if (!Number.isFinite(shotAt) || shotAt < cutoff || shotAt > now.getTime()) return false;
       const count = counts.get(shot.clubId) ?? 0;

@@ -37,7 +37,7 @@ describe("reversible shot review actions", () => {
     expect(source).not.toContain("sourceRawJson:");
   });
 
-  it("provides a single-row restore and refreshes every derived surface", () => {
+  it("provides a single-row restore and invalidates every live derived surface", () => {
     expect(source).toContain("export async function restoreShotAction");
     expect(source).toContain('status: "restored"');
     for (const path of [
@@ -57,5 +57,12 @@ describe("reversible shot review actions", () => {
     }
     expect(source).toContain("revalidatePath(`/sessions/${sessionId}`)");
     expect(source).toContain('revalidatePath("/", "layout")');
+  });
+
+  it("refreshes persisted stock snapshots for every affected club inside the review transaction", () => {
+    expect(source).toContain("clubId: shots.clubId");
+    expect(source).toContain("playContext: shots.playContext");
+    expect(source).toContain("refreshStockYardagesForClubs(tx");
+    expect(source).toContain("clubContexts: ownedShots.map");
   });
 });

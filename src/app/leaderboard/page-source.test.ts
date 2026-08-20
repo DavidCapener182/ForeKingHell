@@ -101,6 +101,20 @@ describe("leaderboard desktop workspace source", () => {
     expect(source).not.toContain("monthlyMovementShortLabel");
   });
 
+  it("lifecycle-gates public shot counts and longest-drive evidence", () => {
+    const loader =
+      source.match(
+        /async function getLeaderboardData[\s\S]*?function getCourseChampionBoards/,
+      )?.[0] ?? "";
+
+    expect(loader).toContain('eq(shots.reviewStatus, "restored")');
+    expect(loader).toContain('eq(shots.reviewStatus, "included")');
+    expect(loader).toContain("trustedShotEvidence");
+    expect(loader).toContain('"warm_up"');
+    expect(loader).toContain("monthlyShotsByUser");
+    expect(loader).toContain("longestDriveRowsByUser(shotRows)");
+  });
+
   it("keeps challenge leaderboards exportable for desktop users", () => {
     const challengeTableBlock =
       source.match(

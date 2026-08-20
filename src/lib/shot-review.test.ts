@@ -5,6 +5,7 @@ import {
   buildShotReviewMutation,
   effectiveShotReviewStatus,
   isExcludingShotReviewStatus,
+  isShotEvidenceEligible,
   isRestorableShotReviewStatus,
   MAX_SHOT_REVIEW_BATCH_SIZE,
   parseShotReviewActionInput,
@@ -201,6 +202,31 @@ describe("shot review lifecycle", () => {
         qualityTag: "mishit",
       }),
     ).toBe("restored");
+  });
+
+  it("uses only included and restored shots as derived evidence", () => {
+    expect(isShotEvidenceEligible({ reviewStatus: "included" })).toBe(true);
+    expect(isShotEvidenceEligible({ reviewStatus: "restored", qualityTag: "mishit" })).toBe(true);
+
+    for (const reviewStatus of [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const) {
+      expect(isShotEvidenceEligible({ reviewStatus })).toBe(false);
+    }
+  });
+
+  it("keeps the legacy quality and category fallback for rows without a lifecycle decision", () => {
+    expect(isShotEvidenceEligible({ reviewStatus: "included", qualityTag: "mishit" })).toBe(false);
+    expect(isShotEvidenceEligible({ reviewStatus: "included", qualityTag: "exclude:mishit" })).toBe(
+      false,
+    );
+    expect(isShotEvidenceEligible({ reviewStatus: null, qualityTag: "bad_data" })).toBe(false);
+    expect(isShotEvidenceEligible({ shotCategory: "warm_up" })).toBe(false);
+    expect(isShotEvidenceEligible({ reviewStatus: null, qualityTag: "manual-note" })).toBe(true);
   });
 
   it.each([

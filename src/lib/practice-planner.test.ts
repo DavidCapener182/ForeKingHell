@@ -562,6 +562,57 @@ describe("practice planner", () => {
     expect(fiveWoodDecision?.actual).toContain("18/20 matching shots");
   });
 
+  it("uses only included and restored shots as practice-plan evidence", () => {
+    const plan = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 80,
+      timeMinutes: 45,
+      energy: "normal",
+      intent: "latest_weakness",
+    });
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const rows = [
+      ...shotRows("5w", 1, 1, { offlineYd: 8, launchDirectionDeg: 2 }).map((row) => ({
+        ...row,
+        reviewStatus: "included" as const,
+      })),
+      ...shotRows("5w", 2, 1, { offlineYd: 8, launchDirectionDeg: 2 }).map((row) => ({
+        ...row,
+        reviewStatus: "restored" as const,
+        qualityTag: "bad_data",
+      })),
+      ...excludedStatuses.flatMap((reviewStatus, index) =>
+        shotRows("5w", index + 3, 1, { offlineYd: 2, launchDirectionDeg: 0 }).map((row) => ({
+          ...row,
+          reviewStatus,
+        })),
+      ),
+    ];
+    const comparison = comparePlanWithShotRows(
+      plan,
+      "session-1",
+      {
+        shotCount: rows.length,
+        sessionType: "range",
+        dateLabel: "2026-07-01",
+        clubTypes: ["5w"],
+        shotRows: rows,
+      },
+      80,
+      { scoringMode: "aggregate" },
+    );
+    const fiveWoodDecision = comparison.decisions.find((decision) => decision.title.includes("5W"));
+
+    expect(comparison.planVsActual.actualShots).toBe(2);
+    expect(fiveWoodDecision?.actualBalls).toBe(2);
+  });
+
   it("scores a short latest-session upload against the planned club and pulls the score down", () => {
     const plannerContext = context();
     plannerContext.progress.priorities = [

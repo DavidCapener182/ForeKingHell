@@ -1,5 +1,6 @@
 import { compareClubCarryToBenchmark } from "@/lib/club-benchmarks";
 import { formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 import {
   ACHIEVEMENTS,
@@ -60,7 +61,9 @@ export function evaluateAllAchievementCandidates(
   context: AchievementEvaluationContext,
 ): AchievementEvaluationResult {
   const collector = createCollector();
-  const trackedShots = context.shots.filter((shot) => isTrackedClubType(shot.clubType));
+  const trackedShots = context.shots.filter(
+    (shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot),
+  );
   const trackedStocks = context.stockYardages.filter((stock) => isTrackedClubType(stock.clubType));
   const shotsBySessionId = groupBy(trackedShots, (shot) => shot.sessionId);
   const shotCountByClubId = groupBy(trackedShots, (shot) => shot.clubId ?? shot.clubType);
@@ -115,19 +118,20 @@ export function evaluateRapsodoSessionAchievements(
   sessionShots: AchievementShot[],
 ): AchievementEvaluationResult {
   const collector = createCollector();
+  const eligibleSessionShots = sessionShots.filter(isShotEvidenceEligible);
 
-  for (const shot of sortShots(sessionShots)) {
+  for (const shot of sortShots(eligibleSessionShots)) {
     evaluateSingleShot(collector, shot, { maxBallSpeed: null, maxApex: null });
   }
 
-  evaluateSession(collector, session, sortShots(sessionShots));
+  evaluateSession(collector, session, sortShots(eligibleSessionShots));
   evaluateGeneratedClubVolumeSamples(
     collector,
-    groupBy(sessionShots, (shot) => shot.clubType),
+    groupBy(eligibleSessionShots, (shot) => shot.clubType),
   );
   evaluateGeneratedClubMileageSamples(
     collector,
-    groupBy(sessionShots, (shot) => shot.clubType),
+    groupBy(eligibleSessionShots, (shot) => shot.clubType),
   );
 
   return {
@@ -159,7 +163,10 @@ function addDataProgress(
   sessions: AchievementSession[],
   shotsBySessionId: Map<string, AchievementShot[]>,
 ) {
-  const importedSessions = sessions.filter((session) => session.source === "rapsodo");
+  const importedSessions = sessions.filter(
+    (session) =>
+      session.source === "rapsodo" && (shotsBySessionId.get(session.id)?.length ?? 0) > 0,
+  );
   const maxSessionShots = Math.max(
     0,
     ...importedSessions.map((session) => shotsBySessionId.get(session.id)?.length ?? 0),

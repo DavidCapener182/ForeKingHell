@@ -615,31 +615,43 @@ async function getAnalyseOverview() {
   const userId = await requireCurrentUserId();
   const db = getDb();
   const excludedQualityValues = sql.join(
-    excludedRecordQualityTags.map((tag) => sql`${tag}`),
+    [...excludedRecordQualityTags, "warm_up"].map((tag) => sql`${tag}`),
     sql`, `,
   );
   const excludedCategoryValues = sql.join(
-    excludedRecordShotCategories.map((category) => sql`${category}`),
+    [...excludedRecordShotCategories, "warm_up"].map((category) => sql`${category}`),
     sql`, `,
   );
-  const trustedWhere = and(
-    eq(shots.userId, userId),
-    eq(sessions.userId, userId),
-    sql`lower(coalesce(${shots.qualityTag}, '')) not in (${excludedQualityValues})`,
-    sql`lower(coalesce(${shots.shotCategory}, '')) not in (${excludedCategoryValues})`,
-    sql`lower(${sessions.source}) not in ('manual', 'manual_edit')`,
+  const restoredExcludedCategoryValues = sql.join(
+    excludedRecordShotCategories
+      .filter((category) => category !== "warm-up" && category !== "warmup")
+      .map((category) => sql`${category}`),
+    sql`, `,
   );
+  const trustedEvidence = sql<boolean>`(
+    (
+      ${shots.reviewStatus} = 'restored'
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (${restoredExcludedCategoryValues})
+    )
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (${excludedQualityValues})
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (${excludedCategoryValues})
+    )
+  ) and lower(${sessions.source}) not in ('manual', 'manual_edit')`;
+  const trustedWhere = and(eq(shots.userId, userId), eq(sessions.userId, userId), trustedEvidence);
 
   const [shotCounts, sessionCounts, clubCounts, latestSessions, clubPatterns] = await Promise.all([
     db
       .select({
         total: count(shots.id),
-        trusted: sql<number>`count(*) filter (where lower(coalesce(${shots.qualityTag}, '')) not in (${excludedQualityValues}) and lower(coalesce(${shots.shotCategory}, '')) not in (${excludedCategoryValues}) and lower(${sessions.source}) not in ('manual', 'manual_edit'))::int`,
-        usefulSessions: sql<number>`count(distinct ${shots.sessionId}) filter (where lower(coalesce(${shots.qualityTag}, '')) not in (${excludedQualityValues}) and lower(coalesce(${shots.shotCategory}, '')) not in (${excludedCategoryValues}) and lower(${sessions.source}) not in ('manual', 'manual_edit'))::int`,
-        complete: sql<number>`count(*) filter (where ${shots.carryYd} is not null and ${shots.sideCarryYd} is not null)::int`,
+        trusted: sql<number>`count(*) filter (where ${trustedEvidence})::int`,
+        usefulSessions: sql<number>`count(distinct ${shots.sessionId}) filter (where ${trustedEvidence})::int`,
+        complete: sql<number>`count(*) filter (where ${trustedEvidence} and ${shots.carryYd} is not null and ${shots.sideCarryYd} is not null)::int`,
         carryCv: sql<
           number | null
-        >`(stddev_samp(${shots.carryYd}) / nullif(abs(avg(${shots.carryYd})), 0))::float`,
+        >`((stddev_samp(${shots.carryYd}) filter (where ${trustedEvidence})) / nullif(abs(avg(${shots.carryYd}) filter (where ${trustedEvidence})), 0))::float`,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
@@ -653,14 +665,15 @@ async function getAnalyseOverview() {
       .from(clubs)
       .where(and(eq(clubs.userId, userId), eq(clubs.active, true))),
     db
-      .select({
+      .selectDistinct({
         id: sessions.id,
         date: sessions.date,
         playContext: sessions.playContext,
         weather: sessions.weatherJson,
       })
       .from(sessions)
-      .where(eq(sessions.userId, userId))
+      .innerJoin(shots, eq(shots.sessionId, sessions.id))
+      .where(trustedWhere)
       .orderBy(desc(sessions.date))
       .limit(8),
     db
@@ -694,7 +707,7 @@ async function getAnalyseOverview() {
       ? Math.max(0, (Date.now() - latestSessionDate.getTime()) / 86_400_000)
       : null,
     outlierRate: totalShots ? Math.max(0, totalShots - trustedShots) / totalShots : 1,
-    metricCompleteness: totalShots ? Number(shotCounts[0]?.complete ?? 0) / totalShots : 0,
+    metricCompleteness: trustedShots ? Number(shotCounts[0]?.complete ?? 0) / trustedShots : 0,
     coefficientOfVariation:
       shotCounts[0]?.carryCv == null ? null : Math.abs(Number(shotCounts[0].carryCv)),
     crossSessionConsistency: null,

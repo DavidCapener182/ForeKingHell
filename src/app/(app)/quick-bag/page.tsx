@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { clubs, shots, stockYardages } from "@/db/schema";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { buildShotPatternPoints, summarizeShotPattern } from "@/lib/shot-pattern-chart-data";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,8 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
             sideCarryYd: shots.sideCarryYd,
             apexFt: shots.apexFt,
             shotAt: shots.shotAt,
+            reviewStatus: shots.reviewStatus,
+            shotCategory: shots.shotCategory,
             qualityTag: shots.qualityTag,
           })
           .from(shots)
@@ -90,6 +93,7 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
                 shots.clubId,
                 latestRows.map((row) => row.id),
               ),
+              shotEvidenceSqlPredicate(),
             ),
           )
           .orderBy(desc(shots.shotAt))
@@ -97,8 +101,16 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
       : [];
 
   return latestRows.flatMap((row) => {
-    const recentShots = shotRows.filter((shot) => shot.clubId === row.id).slice(0, 60);
-    const trustedPattern = buildShotPatternPoints(recentShots).filter((shot) => shot.trusted);
+    const recentShots = shotRows
+      .filter((shot) => shot.clubId === row.id)
+      .filter(isShotEvidenceEligible)
+      .slice(0, 60);
+    const trustedPattern = buildShotPatternPoints(
+      recentShots.map((shot) => ({
+        ...shot,
+        qualityTag: shot.reviewStatus === "restored" ? null : shot.qualityTag,
+      })),
+    ).filter((shot) => shot.trusted);
     const summary = summarizeShotPattern(trustedPattern);
     const latestEvidenceDate =
       trustedPattern.find((shot) => shot.shotAt)?.shotAt ?? row.calculatedAt?.toISOString() ?? null;
@@ -124,4 +136,19 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
       },
     ];
   });
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  );
 }

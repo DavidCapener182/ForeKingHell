@@ -61,4 +61,15 @@ describe("shared account desktop workspace source", () => {
     expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
     expect(source).not.toMatch(/#[0-9a-f]{6}/i);
   });
+
+  it("excludes reviewed and legacy-bad shots from shared counts and maxima", () => {
+    const loader =
+      source.match(/async function getSharedAccountData[\s\S]*?function countBy/)?.[0] ?? "";
+
+    expect(loader).toContain('inArray(shots.reviewStatus, ["included", "restored"])');
+    expect(loader).toContain("shotRows.filter(isShotEvidenceEligible)");
+    expect(loader).toContain("shotCount: eligibleShotRows.length");
+    expect(loader).toContain("recentShotCount: eligibleShotRows.filter");
+    expect(loader).toContain("eligibleShotRows\n      .filter");
+  });
 });

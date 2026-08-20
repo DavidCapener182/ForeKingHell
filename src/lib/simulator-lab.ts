@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, inArray, lt, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { clubEquipmentHistory, clubs, sessions, shots } from "@/db/schema";
@@ -11,6 +11,7 @@ import {
   isMissingYardageWindowGap,
   isScoringEndGap,
 } from "@/lib/gapping-windows";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { calculateStockYardage, type StockShot } from "@/lib/stock-yardage";
 import { getRangeRealityHandicapData, type RangeRealityHandicapData } from "@/lib/reality-handicap";
 
@@ -299,7 +300,7 @@ export function buildGappingMatrixRows({
   clubs: SimulatorLabClub[];
   shots: SimulatorLabShot[];
 }): GappingMatrixRow[] {
-  const shotsByClubId = groupBy(inputShots, (shot) => shot.clubId);
+  const shotsByClubId = groupBy(inputShots.filter(isShotEvidenceEligible), (shot) => shot.clubId);
   const baseRows = inputClubs
     .filter((club) => isTrackedClubType(club.type))
     .sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type))
@@ -356,13 +357,17 @@ export function buildSessionDeltaRows(
   baselineShots: SimulatorLabShot[],
 ): SessionDeltaRow[] {
   const baselineByClubType = groupBy(
-    baselineShots.filter((shot) => isTrackedClubType(shot.clubType)),
+    baselineShots.filter(
+      (shot) => isShotEvidenceEligible(shot) && isTrackedClubType(shot.clubType),
+    ),
     (shot) => shot.clubType,
   );
 
   return [
     ...groupBy(
-      latestShots.filter((shot) => isTrackedClubType(shot.clubType)),
+      latestShots.filter(
+        (shot) => isShotEvidenceEligible(shot) && isTrackedClubType(shot.clubType),
+      ),
       (shot) => shot.clubType,
     ),
   ]
@@ -409,7 +414,7 @@ export function buildEquipmentChangeImpacts(
   historyRows: EquipmentHistoryRow[],
   inputShots: SimulatorLabShot[],
 ): EquipmentChangeImpact[] {
-  const shotsByClubId = groupBy(inputShots, (shot) => shot.clubId);
+  const shotsByClubId = groupBy(inputShots.filter(isShotEvidenceEligible), (shot) => shot.clubId);
   const historyByClubId = groupBy(
     [...historyRows].sort(
       (left, right) => left.effectiveFrom.getTime() - right.effectiveFrom.getTime(),
@@ -490,14 +495,15 @@ export function buildSessionRoastFacts(
   latestShots: SimulatorLabShot[],
   deltas: SessionDeltaRow[],
 ): SessionRoastFact[] {
+  const evidenceShots = latestShots.filter(isShotEvidenceEligible);
   const facts: SessionRoastFact[] = [];
-  const offlineShot = [...latestShots]
+  const offlineShot = [...evidenceShots]
     .filter((shot) => isNumber(shot.sideCarryYd))
     .sort((left, right) => Math.abs(right.sideCarryYd ?? 0) - Math.abs(left.sideCarryYd ?? 0))[0];
-  const lowSmashCount = latestShots.filter(
+  const lowSmashCount = evidenceShots.filter(
     (shot) => isNumber(shot.smashFactor) && (shot.smashFactor ?? 0) < 1.25,
   ).length;
-  const badTagCount = latestShots.filter((shot) =>
+  const badTagCount = evidenceShots.filter((shot) =>
     ["mishit", "top", "thin", "fat", "bad_data", "bad-data"].includes(
       shot.qualityTag?.toLowerCase() ?? "",
     ),
@@ -518,7 +524,7 @@ export function buildSessionRoastFacts(
   if (lowSmashCount > 0) {
     facts.push({
       label: "Low-smash strikes",
-      value: `${lowSmashCount}/${latestShots.length}`,
+      value: `${lowSmashCount}/${evidenceShots.length}`,
       detail: "Shots under 1.25 smash factor from the saved launch-monitor data.",
       severity: lowSmashCount >= 3 ? "spicy" : "medium",
     });
@@ -542,10 +548,10 @@ export function buildSessionRoastFacts(
     });
   }
 
-  if (facts.length === 0 && latestShots.length > 0) {
+  if (facts.length === 0 && evidenceShots.length > 0) {
     facts.push({
       label: "Not enough chaos",
-      value: `${latestShots.length} shots`,
+      value: `${evidenceShots.length} shots`,
       detail: `${session.fileName ?? "Latest simulator session"} did not expose a roast-worthy outlier yet.`,
       severity: "mild",
     });
@@ -566,7 +572,11 @@ async function fetchLabShots(
     limit?: number;
   },
 ): Promise<SimulatorLabShot[]> {
-  const predicates = [eq(shots.userId, userId), eq(sessions.userId, userId)];
+  const predicates = [
+    eq(shots.userId, userId),
+    eq(sessions.userId, userId),
+    shotEvidenceSqlPredicate(),
+  ];
 
   if (clubIds && clubIds.length > 0) {
     predicates.push(inArray(shots.clubId, clubIds));
@@ -603,6 +613,7 @@ async function fetchLabShots(
       clubSpeedMph: shots.clubSpeedMph,
       launchAngleDeg: shots.launchAngleDeg,
       smashFactor: shots.smashFactor,
+      reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
       sessionType: sessions.type,
@@ -614,7 +625,22 @@ async function fetchLabShots(
     .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
     .limit(options.limit ?? 600);
 
-  return rows;
+  return rows.filter(isShotEvidenceEligible);
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }
 
 function emptySimulatorLabData(latestSession: SimulatorLabSession | null): SimulatorLabData {

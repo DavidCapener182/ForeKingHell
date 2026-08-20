@@ -12,6 +12,7 @@ import {
   parseShotReviewActionInput,
   type ShotReviewActionInput,
 } from "@/lib/shot-review";
+import { refreshStockYardagesForClubs } from "@/lib/stock-yardage-refresh";
 
 export async function reviewShotsAction(input: ShotReviewActionInput) {
   return applyOwnedShotReview(input);
@@ -46,6 +47,8 @@ async function applyOwnedShotReview(input: unknown) {
       .select({
         id: shots.id,
         sessionId: shots.sessionId,
+        clubId: shots.clubId,
+        playContext: shots.playContext,
         reviewStatus: shots.reviewStatus,
         qualityTag: shots.qualityTag,
         reviewPreviousQualityTag: shots.reviewPreviousQualityTag,
@@ -105,6 +108,15 @@ async function applyOwnedShotReview(input: unknown) {
         createdAt: reviewedAt,
       });
     }
+
+    await refreshStockYardagesForClubs(tx, {
+      userId,
+      clubContexts: ownedShots.map((shot) => ({
+        clubId: shot.clubId,
+        playContext: shot.playContext,
+      })),
+      calculatedAt: reviewedAt,
+    });
 
     return {
       shotIds: ownedShots.map((shot) => shot.id),

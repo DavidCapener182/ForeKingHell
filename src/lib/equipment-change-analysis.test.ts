@@ -28,6 +28,51 @@ describe("equipment change analysis", () => {
     expect(result.comparable).toBe(false);
     expect(result.confidence.label).toBe("early");
   });
+
+  it("uses only included or restored lifecycle evidence", () => {
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const shots: EquipmentChangeShot[] = [
+      ...makeShots("included-before", "2026-04-10T00:00:00Z", [140]),
+      ...makeShots("included-after", "2026-05-10T00:00:00Z", [150]),
+      ...makeShots("restored-before", "2026-04-11T00:00:00Z", [142]).map((shot) => ({
+        ...shot,
+        reviewStatus: "restored" as const,
+        qualityTag: "bad_data",
+      })),
+      ...makeShots("restored-after", "2026-05-11T00:00:00Z", [152]).map((shot) => ({
+        ...shot,
+        reviewStatus: "restored" as const,
+        qualityTag: "mishit",
+      })),
+      ...excludedStatuses.flatMap((reviewStatus, index) =>
+        makeShots(`excluded-${reviewStatus}`, "2026-05-12T00:00:00Z", [300 + index]).map(
+          (shot) => ({ ...shot, reviewStatus }),
+        ),
+      ),
+      ...makeShots("legacy-bad", "2026-05-13T00:00:00Z", [400]).map((shot) => ({
+        ...shot,
+        reviewStatus: "included" as const,
+        qualityTag: "launch-monitor-error",
+      })),
+    ];
+
+    const result = analyseEquipmentChange({
+      clubId: "7i",
+      changeAt: new Date("2026-05-01T00:00:00Z"),
+      shots,
+    });
+
+    expect(result.before.sampleSize).toBe(2);
+    expect(result.after.sampleSize).toBe(2);
+    expect(result.before.carryMedianYd).toBe(141);
+    expect(result.after.carryMedianYd).toBe(151);
+  });
 });
 
 function makeShots(sessionId: string, date: string, carries: number[]): EquipmentChangeShot[] {
@@ -44,6 +89,7 @@ function makeShots(sessionId: string, date: string, carries: number[]): Equipmen
     smashFactor: 1.35,
     qualityTag: null,
     shotCategory: "full",
+    reviewStatus: "included",
     sessionSource: "rapsodo",
     sessionType: "range",
   }));

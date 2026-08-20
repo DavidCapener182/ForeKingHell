@@ -18,6 +18,7 @@ import {
 import { getDb } from "@/db/client";
 import { getActivePlanKeyForUser, planAllowsPrivateChallenges } from "@/lib/billing";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import {
   areFriends,
   createFeedItem,
@@ -795,6 +796,7 @@ async function calculateImportedChallengeAttemptState(
     inArray(shots.userId, userIds),
     ne(sessions.source, "manual"),
     gte(shots.shotAt, challenge.startsAt),
+    inArray(shots.reviewStatus, ["included", "restored"]),
   ];
 
   if (challenge.endsAt) {
@@ -812,6 +814,9 @@ async function calculateImportedChallengeAttemptState(
       totalYd: shots.totalYd,
       sideCarryYd: shots.sideCarryYd,
       launchDirectionDeg: shots.launchDirectionDeg,
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
+      reviewStatus: shots.reviewStatus,
       source: sessions.source,
       sessionDate: sessions.date,
     })
@@ -820,8 +825,9 @@ async function calculateImportedChallengeAttemptState(
     .where(and(...clauses))
     .orderBy(asc(shots.shotAt));
 
-  const rowsByUserId = new Map<string, typeof shotRows>();
-  for (const row of shotRows) {
+  const eligibleShotRows = filterImportedChallengeEvidenceRows(shotRows);
+  const rowsByUserId = new Map<string, typeof eligibleShotRows>();
+  for (const row of eligibleShotRows) {
     const rows = rowsByUserId.get(row.userId) ?? [];
     rows.push(row);
     rowsByUserId.set(row.userId, rows);
@@ -875,6 +881,16 @@ async function calculateImportedChallengeAttemptState(
   }
 
   return { attempts, evidenceCounts };
+}
+
+export function filterImportedChallengeEvidenceRows<
+  T extends {
+    reviewStatus?: ShotReviewStatus | null;
+    qualityTag?: string | null;
+    shotCategory?: string | null;
+  },
+>(rows: readonly T[]): T[] {
+  return rows.filter(isShotEvidenceEligible);
 }
 
 function rankImportedChallengeAttempts(

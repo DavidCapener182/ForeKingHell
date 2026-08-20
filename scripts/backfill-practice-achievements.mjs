@@ -100,6 +100,19 @@ try {
           )
           from fkh_shots s
           where s.user_id = pp.user_id and s.session_id = pr.source_session_id
+            and (
+              coalesce(s.review_status, 'included') = 'restored'
+              or (
+                coalesce(s.review_status, 'included') = 'included'
+                and lower(trim(coalesce(s.quality_tag, ''))) not like 'exclude%'
+                and lower(trim(coalesce(s.quality_tag, ''))) not in (
+                  'exclude', 'excluded', 'delete', 'deleted', 'calibration',
+                  'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data',
+                  'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top'
+                )
+                and lower(trim(coalesce(s.shot_category, ''))) not in ('warm-up', 'warmup', 'warm_up')
+              )
+            )
         ),
         '[]'::jsonb
       ) as shot_rows,

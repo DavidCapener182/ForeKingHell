@@ -603,7 +603,10 @@ async function getAnalysisWorkspaceData() {
         samples: sql<number>`count(${shots.id}) filter (where ${shots.carryYd} > 0)::int`,
       })
       .from(clubs)
-      .leftJoin(shots, and(eq(shots.clubId, clubs.id), eq(shots.userId, userId)))
+      .leftJoin(
+        shots,
+        and(eq(shots.clubId, clubs.id), eq(shots.userId, userId), shotEvidenceSqlPredicate()),
+      )
       .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
       .groupBy(clubs.id),
     db
@@ -665,12 +668,13 @@ async function getAnalysisWorkspaceData() {
           smashFactor: shots.smashFactor,
           qualityTag: shots.qualityTag,
           shotCategory: shots.shotCategory,
+          reviewStatus: shots.reviewStatus,
           sessionSource: sessions.source,
           sessionType: sessions.type,
         })
         .from(shots)
         .innerJoin(sessions, and(eq(sessions.id, shots.sessionId), eq(sessions.userId, userId)))
-        .where(eq(shots.userId, userId))
+        .where(and(eq(shots.userId, userId), shotEvidenceSqlPredicate()))
         .orderBy(desc(shots.shotAt))
         .limit(2_000)
     : [];
@@ -782,6 +786,24 @@ function completeScorecard(scorecard: Array<{ score?: number | null }> | null) {
 function isUndefinedTableError(error: unknown) {
   const candidate = error as { code?: string; cause?: { code?: string } };
   return candidate?.code === "42P01" || candidate?.cause?.code === "42P01";
+}
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
 }
 
 function FormLabel({ label, children }: { label: string; children: React.ReactNode }) {

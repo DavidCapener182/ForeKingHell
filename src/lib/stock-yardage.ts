@@ -1,5 +1,6 @@
 import { isShortGameTouchClubType } from "@/lib/club-format";
 import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 export type StockShot = {
   clubType?: string | null;
@@ -11,6 +12,7 @@ export type StockShot = {
   courseHoleNumber?: number | null;
   playContext?: string | null;
   sessionType?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
   shotCategory?: string | null;
   qualityTag?: string | null;
   shotAt?: Date | string | null;
@@ -20,6 +22,7 @@ export type StockShotRole = "full" | "pitch" | "chip-touch";
 
 export type StockExclusionReasonKey =
   | "missing-carry"
+  | "review-status"
   | "quality-tag"
   | "shot-category"
   | "shot-role"
@@ -106,6 +109,7 @@ const MAX_PREVIOUS_TREND_SHOTS = 15;
 const STOCK_TREND_THRESHOLD_YD = 2;
 const STOCK_EXCLUSION_LABELS: Record<StockExclusionReasonKey, string> = {
   "missing-carry": "Missing carry",
+  "review-status": "Review status",
   "quality-tag": "Quality tag",
   "shot-category": "Chip/pitch/recovery",
   "shot-role": "Derived wedge role",
@@ -378,27 +382,27 @@ export function summarizeStockShotRoles<T extends StockShot>(
   options: StockYardageOptions = {},
 ): StockShotRoleSummary[] {
   const grouped = new Map<StockShotRole, number[]>();
+  const roleShots = shots
+    .flatMap((shot) => {
+      const carryYd = shot.carryYd;
 
-  for (const shot of [...shots]
-    .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
-    .slice(0, maxShots)) {
-    if (!isNumber(shot.carryYd) || hasExcludedQualityTag(shot)) {
-      continue;
-    }
+      if (!isNumber(carryYd) || !isShotEvidenceEligible(shot)) {
+        return [];
+      }
 
-    const category = shot.shotCategory?.toLowerCase();
+      const category = shot.shotCategory?.toLowerCase();
+      if (category === "recovery" || category === "bunker") {
+        return [];
+      }
 
-    if (category === "recovery" || category === "bunker") {
-      continue;
-    }
+      const role = classifyStockShotRole(shot, options);
+      return role ? [{ shot, role, carryYd }] : [];
+    })
+    .sort((left, right) => dateValue(right.shot.shotAt) - dateValue(left.shot.shotAt))
+    .slice(0, maxShots);
 
-    const role = classifyStockShotRole(shot, options);
-
-    if (!role) {
-      continue;
-    }
-
-    grouped.set(role, [...(grouped.get(role) ?? []), shot.carryYd]);
+  for (const { role, carryYd } of roleShots) {
+    grouped.set(role, [...(grouped.get(role) ?? []), carryYd]);
   }
 
   return (["full", "pitch", "chip-touch"] as const)
@@ -542,11 +546,23 @@ function directStockExclusionReason(
     return "missing-carry";
   }
 
-  if (hasExcludedQualityTag(shot)) {
-    return "quality-tag";
+  if (!isShotEvidenceEligible(shot)) {
+    if (shot.reviewStatus && shot.reviewStatus !== "included") {
+      return "review-status";
+    }
+
+    if (hasExcludedQualityTag(shot)) {
+      return "quality-tag";
+    }
+
+    return category && EXCLUDED_STOCK_CATEGORIES.has(category) ? "shot-category" : "review-status";
   }
 
-  if (category && EXCLUDED_STOCK_CATEGORIES.has(category)) {
+  if (
+    category &&
+    EXCLUDED_STOCK_CATEGORIES.has(category) &&
+    !(shot.reviewStatus === "restored" && isLegacyWarmUpCategory(category))
+  ) {
     return "shot-category";
   }
 
@@ -555,6 +571,10 @@ function directStockExclusionReason(
 
 function hasExcludedQualityTag(shot: Pick<StockShot, "qualityTag">) {
   return Boolean(shot.qualityTag && EXCLUDED_QUALITY_TAGS.has(shot.qualityTag.toLowerCase()));
+}
+
+function isLegacyWarmUpCategory(category: string) {
+  return category === "warm-up" || category === "warmup" || category === "warm_up";
 }
 
 function incrementReason(

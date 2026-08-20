@@ -71,7 +71,8 @@ CREATE INDEX fkh_shot_review_events_shot_created_idx
 UPDATE public.fkh_shots
 SET
   review_status = CASE
-    WHEN lower(coalesce(quality_tag, '')) IN ('exclude', 'excluded', 'delete', 'deleted')
+    WHEN lower(coalesce(quality_tag, '')) LIKE 'exclude%'
+      OR lower(coalesce(quality_tag, '')) IN ('delete', 'deleted')
       THEN 'user_excluded'
     WHEN lower(coalesce(quality_tag, '')) = 'calibration'
       THEN 'calibration'
@@ -93,25 +94,24 @@ SET
   review_confidence = 1,
   review_source = 'migration',
   reviewed_at = now()
-WHERE lower(coalesce(quality_tag, '')) IN (
-  'exclude',
-  'excluded',
-  'delete',
-  'deleted',
-  'calibration',
-  'warm-up',
-  'warmup',
-  'warm_up',
-  'bad-data',
-  'bad_data',
-  'invalid',
-  'launch-monitor-error',
-  'misread',
-  'fat',
-  'mishit',
-  'thin',
-  'top'
-);
+WHERE lower(coalesce(quality_tag, '')) LIKE 'exclude%'
+  OR lower(coalesce(quality_tag, '')) IN (
+    'delete',
+    'deleted',
+    'calibration',
+    'warm-up',
+    'warmup',
+    'warm_up',
+    'bad-data',
+    'bad_data',
+    'invalid',
+    'launch-monitor-error',
+    'misread',
+    'fat',
+    'mishit',
+    'thin',
+    'top'
+  );
 
 INSERT INTO public.fkh_shot_review_events (
   user_id,
@@ -159,3 +159,27 @@ COMMENT ON TABLE public.fkh_shot_review_events IS
   'Append-only, owner-scoped audit history for reversible shot review decisions.';
 COMMENT ON COLUMN public.fkh_shots.review_previous_quality_tag IS
   'Quality tag retained before an exclusion-class review so restore can recover it exactly.';
+
+-- Shot lifecycle and source provenance are server-maintained. Browser/Data API
+-- clients retain owner/editor-scoped reads, while all shot writes run through
+-- authenticated server actions using the trusted DATABASE_URL connection.
+DROP POLICY IF EXISTS fkh_shots_select_accessible ON public.fkh_shots;
+CREATE POLICY fkh_shots_select_accessible
+  ON public.fkh_shots
+  FOR SELECT TO authenticated
+  USING (public.fkh_can_access_user(user_id, ARRAY['coach', 'viewer', 'editor']));
+
+DROP POLICY IF EXISTS fkh_shots_insert_owner ON public.fkh_shots;
+DROP POLICY IF EXISTS fkh_shots_update_owner_or_editor ON public.fkh_shots;
+DROP POLICY IF EXISTS fkh_shots_delete_owner ON public.fkh_shots;
+
+REVOKE ALL PRIVILEGES ON TABLE public.fkh_shots
+  FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.fkh_shots TO authenticated;
+
+-- A direct session delete would otherwise cascade through shots and erase the
+-- corresponding append-only review events. Intended account deletion and golf
+-- data reset continue through the trusted server database connection.
+DROP POLICY IF EXISTS fkh_sessions_delete_owner ON public.fkh_sessions;
+REVOKE DELETE, TRUNCATE ON TABLE public.fkh_sessions
+  FROM PUBLIC, anon, authenticated;

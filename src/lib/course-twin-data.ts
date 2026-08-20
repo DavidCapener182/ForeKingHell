@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import {
   clubs,
@@ -31,6 +31,7 @@ import {
 } from "@/lib/course-twin-recent-shots";
 import type { CourseTwinBagProfile } from "@/lib/course-twin-strategy";
 import { loadActiveCourseTwinManifest } from "@/lib/course-twin-package-store";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import bootleTerrainPackage from "@/generated/course-twins/bootle-v3.json";
 import {
   loadLocalCourseTwinManifest,
@@ -353,13 +354,16 @@ export async function getCourseTwinReplay({
       fileName: sessions.fileName,
     })
     .from(sessions)
-    .innerJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
+    .innerJoin(
+      shots,
+      and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId), shotEvidenceSqlPredicate()),
+    )
     .where(and(...predicates))
     .orderBy(desc(sessions.date))
     .limit(1);
   if (!session) return null;
 
-  const shotRows: CourseTwinReplaySourceShot[] = await db
+  const loadedShotRows = await db
     .select({
       id: shots.id,
       courseHoleNumber: shots.courseHoleNumber,
@@ -376,10 +380,16 @@ export async function getCourseTwinReplay({
       spinAxis: shots.spinAxis,
       distanceRemainingYd: shots.distanceRemainingYd,
       courseHoleYards: shots.courseHoleYards,
+      reviewStatus: shots.reviewStatus,
+      qualityTag: shots.qualityTag,
+      shotCategory: shots.shotCategory,
     })
     .from(shots)
-    .where(and(eq(shots.userId, userId), eq(shots.sessionId, session.id)))
+    .where(
+      and(eq(shots.userId, userId), eq(shots.sessionId, session.id), shotEvidenceSqlPredicate()),
+    )
     .orderBy(asc(shots.courseHoleNumber), asc(shots.courseHoleShotNumber), asc(shots.shotNumber));
+  const shotRows: CourseTwinReplaySourceShot[] = loadedShotRows.filter(isShotEvidenceEligible);
   if (shotRows.length === 0) return null;
 
   return buildCourseTwinReplay({
@@ -431,9 +441,16 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
         spinAxis: shots.spinAxis,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
       })
       .from(shots)
-      .where(and(eq(shots.userId, userId), gte(shots.shotAt, recentShotCutoff)))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          gte(shots.shotAt, recentShotCutoff),
+          shotEvidenceSqlPredicate(),
+        ),
+      )
       .orderBy(desc(shots.shotAt))
       .limit(2_000),
   ]);
@@ -500,6 +517,21 @@ function standardDeviation(values: number[]) {
   const variance =
     values.reduce((total, value) => total + (value - average) ** 2, 0) / (values.length - 1);
   return Math.sqrt(variance);
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
+  )!;
 }
 
 function featureToManifest(

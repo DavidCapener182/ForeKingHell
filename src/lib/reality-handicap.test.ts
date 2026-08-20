@@ -5,6 +5,15 @@ import {
   isUsableRangeRealityShot,
   type RealityHandicapShot,
 } from "@/lib/reality-handicap";
+import type { ShotReviewStatus } from "@/lib/shot-review";
+
+const excludedReviewStatuses = [
+  "suggested_exclusion",
+  "user_excluded",
+  "calibration",
+  "warm_up",
+  "launch_monitor_error",
+] as const satisfies readonly ShotReviewStatus[];
 
 describe("range reality handicap", () => {
   it("returns a numeric estimate for a broad range sample", () => {
@@ -110,6 +119,30 @@ describe("range reality handicap", () => {
     expect(
       isUsableRangeRealityShot(shot({ sessionType: "simulated_course", playContext: "simulator" })),
     ).toBe(false);
+  });
+
+  it("uses only included and restored lifecycle evidence", () => {
+    for (const reviewStatus of excludedReviewStatuses) {
+      expect(isUsableRangeRealityShot(shot({ reviewStatus }))).toBe(false);
+    }
+
+    expect(
+      isUsableRangeRealityShot(
+        shot({
+          reviewStatus: "restored",
+          qualityTag: "bad_data",
+          shotCategory: "warm_up",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isUsableRangeRealityShot(
+        shot({ reviewStatus: "included", qualityTag: "bad_data", shotCategory: "full" }),
+      ),
+    ).toBe(false);
+    expect(isUsableRangeRealityShot(shot({ reviewStatus: "restored", shotCategory: "chip" }))).toBe(
+      false,
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { and, count, eq, gte, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { AlertTriangle, ArrowRight, CalendarDays, Flag, Target } from "lucide-react";
 
 import { saveSeasonPlanAction } from "@/app/goals/actions";
@@ -54,7 +54,14 @@ export default async function GoalsPage({
       .select({ total: count(shots.id) })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(and(eq(shots.userId, userId), eq(sessions.userId, userId), gte(sessions.date, since))),
+      .where(
+        and(
+          eq(shots.userId, userId),
+          eq(sessions.userId, userId),
+          gte(sessions.date, since),
+          shotEvidenceSqlPredicate(),
+        ),
+      ),
   ]);
   const plan = preferences.seasonPlan;
   const weeklySessions = Number(sessionRows[0]?.total ?? 0);
@@ -370,6 +377,21 @@ export default async function GoalsPage({
         actionLabel="Open Quick Range"
       />
     </PageShell>
+  );
+}
+
+function shotEvidenceSqlPredicate() {
+  return and(
+    inArray(shots.reviewStatus, ["included", "restored"]),
+    or(
+      eq(shots.reviewStatus, "restored"),
+      and(
+        eq(shots.reviewStatus, "included"),
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+      ),
+    ),
   );
 }
 

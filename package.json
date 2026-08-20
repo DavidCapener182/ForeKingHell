@@ -35,6 +35,7 @@
     "test:lighthouse": "node scripts/lighthouse-audit.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "stock:rebuild": "tsx scripts/rebuild-current-stock-yardages.ts",
     "security:rls-live": "node scripts/live-rls-persona-check.mjs",
     "training:backfill": "node scripts/backfill-training-over-time.mjs",
     "tour:seed-social": "node scripts/seed-tour-social.mjs",

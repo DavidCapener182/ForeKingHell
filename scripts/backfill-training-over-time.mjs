@@ -185,6 +185,18 @@ const SOURCE_SESSION_CANDIDATES_SQL = `
   with shot_counts as (
     select "session_id", count(*)::int as "shot_count"
     from "fkh_shots"
+    where
+      coalesce("review_status", 'included') = 'restored'
+      or (
+        coalesce("review_status", 'included') = 'included'
+        and lower(trim(coalesce("quality_tag", ''))) not like 'exclude%'
+        and lower(trim(coalesce("quality_tag", ''))) not in (
+          'exclude', 'excluded', 'delete', 'deleted', 'calibration',
+          'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data',
+          'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top'
+        )
+        and lower(trim(coalesce("shot_category", ''))) not in ('warm-up', 'warmup', 'warm_up')
+      )
     group by "session_id"
   ),
   candidates as (

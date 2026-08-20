@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
   clubs,
@@ -73,7 +73,11 @@ import {
   utf8ByteLength,
 } from "@/lib/imports/import-limits";
 import { reportServerFailure } from "@/lib/server-observability";
-import { buildImportedShotReviewLifecycle } from "@/lib/shot-review";
+import {
+  buildImportedShotReviewLifecycle,
+  isShotEvidenceEligible,
+  type ShotReviewStatus,
+} from "@/lib/shot-review";
 
 export type RapsodoShotOverride = {
   rowNumber: number;
@@ -628,28 +632,7 @@ async function persistImport(
       clubIdByKey.set(clubKey, club.id);
     }
 
-    const previousLongestByClubId = new Map<string, number | null>();
-
-    for (const clubId of clubIdByKey.values()) {
-      const [previousLongest] = await tx
-        .select({
-          distanceYd: sql<number | null>`max(coalesce(${shots.totalYd}, ${shots.carryYd}))`,
-        })
-        .from(shots)
-        .where(and(eq(shots.userId, userId), eq(shots.clubId, clubId)));
-
-      previousLongestByClubId.set(clubId, previousLongest?.distanceYd ?? null);
-    }
-
-    const longestShotNotifications = buildLongestShotNotifications({
-      importedShots: input.shots,
-      clubIdByKey,
-      previousLongestByClubId,
-      sessionId: session.id,
-      fileName: input.fileName,
-    });
-
-    const importedShotRows = input.shots.map((shot) => {
+    const preparedShots = input.shots.map((shot) => {
       const shotCategory =
         courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory;
       const review = buildImportedShotReviewLifecycle({
@@ -657,6 +640,55 @@ async function persistImport(
         shotCategory,
       });
 
+      return { shot, shotCategory, review };
+    });
+    const clubIds = [...clubIdByKey.values()];
+    const previousShotRows =
+      clubIds.length === 0
+        ? []
+        : await tx
+            .select({
+              clubId: shots.clubId,
+              carryYd: shots.carryYd,
+              totalYd: shots.totalYd,
+              reviewStatus: shots.reviewStatus,
+              qualityTag: shots.qualityTag,
+              shotCategory: shots.shotCategory,
+            })
+            .from(shots)
+            .where(
+              and(
+                eq(shots.userId, userId),
+                inArray(shots.clubId, clubIds),
+                inArray(shots.reviewStatus, ["included", "restored"]),
+              ),
+            );
+    const previousShotsByClubId = new Map<string, typeof previousShotRows>();
+    for (const previousShot of previousShotRows) {
+      const clubShots = previousShotsByClubId.get(previousShot.clubId) ?? [];
+      clubShots.push(previousShot);
+      previousShotsByClubId.set(previousShot.clubId, clubShots);
+    }
+    const previousLongestByClubId = new Map(
+      clubIds.map((clubId) => [
+        clubId,
+        maxEligibleShotDistance(previousShotsByClubId.get(clubId) ?? []),
+      ]),
+    );
+
+    const longestShotNotifications = buildLongestShotNotifications({
+      importedShots: preparedShots.map(({ shot, shotCategory, review }) => ({
+        ...shot,
+        shotCategory,
+        reviewStatus: review.reviewStatus,
+      })),
+      clubIdByKey,
+      previousLongestByClubId,
+      sessionId: session.id,
+      fileName: input.fileName,
+    });
+
+    const importedShotRows = preparedShots.map(({ shot, shotCategory, review }) => {
       return {
         userId,
         sessionId: session.id,
@@ -809,13 +841,20 @@ async function persistImport(
           courseHoleNumber: shots.courseHoleNumber,
           playContext: shots.playContext,
           sessionType: sessions.type,
+          reviewStatus: shots.reviewStatus,
           shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
           shotAt: shots.shotAt,
         })
         .from(shots)
         .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-        .where(and(eq(shots.userId, userId), eq(shots.clubId, clubId)))
+        .where(
+          and(
+            eq(shots.userId, userId),
+            eq(shots.clubId, clubId),
+            eq(shots.playContext, playContext),
+          ),
+        )
         .orderBy(desc(shots.shotAt));
       const stock = calculateStockYardage(clubShots, 50, { clubType: firstShotForClub?.clubType });
 
@@ -858,7 +897,7 @@ export function buildLongestShotNotifications({
   sessionId,
   fileName,
 }: {
-  importedShots: ParsedRapsodoShot[];
+  importedShots: Array<ParsedRapsodoShot & { reviewStatus?: ShotReviewStatus | null }>;
   clubIdByKey: Map<string, string>;
   previousLongestByClubId: Map<string, number | null>;
   sessionId: string;
@@ -867,7 +906,11 @@ export function buildLongestShotNotifications({
   const bestShotByClubKey = new Map<string, ParsedRapsodoShot>();
 
   for (const shot of importedShots) {
-    if (!isTrackedClubType(shot.clubType) || isShortGameTouchClubType(shot.clubType)) {
+    if (
+      !isShotEvidenceEligible(shot) ||
+      !isTrackedClubType(shot.clubType) ||
+      isShortGameTouchClubType(shot.clubType)
+    ) {
       continue;
     }
 
@@ -922,6 +965,31 @@ export function buildLongestShotNotifications({
     })
     .filter((notification): notification is LongestShotNotification => notification !== null)
     .sort((left, right) => right.shotDistanceYd - left.shotDistanceYd);
+}
+
+export function maxEligibleShotDistance(
+  rows: ReadonlyArray<{
+    carryYd: number | null;
+    totalYd: number | null;
+    reviewStatus?: ShotReviewStatus | null;
+    qualityTag?: string | null;
+    shotCategory?: string | null;
+  }>,
+) {
+  let maximum: number | null = null;
+
+  for (const row of rows) {
+    if (!isShotEvidenceEligible(row)) {
+      continue;
+    }
+
+    const distance = shotDistanceYd(row);
+    if (distance !== null && (maximum === null || distance > maximum)) {
+      maximum = distance;
+    }
+  }
+
+  return maximum;
 }
 
 function hashRawCsv(rawCsvText: string) {

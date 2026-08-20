@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -34,7 +34,7 @@ export async function getActivationJourney(userId: string): Promise<ActivationJo
   if (!process.env.DATABASE_URL?.trim()) return unavailableJourney();
 
   const db = getDb();
-  const [account, profile, providerCount, sessionCount, shotCount, clubCount, practiceCount] =
+  const [account, profile, providerCount, sessionCount, shotCounts, clubCount, practiceCount] =
     await Promise.all([
       db
         .select({ onboardingCompletedAt: users.onboardingCompletedAt })
@@ -51,7 +51,13 @@ export async function getActivationJourney(userId: string): Promise<ActivationJo
         .from(providerAccounts)
         .where(eq(providerAccounts.userId, userId)),
       db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
-      db.select({ value: count() }).from(shots).where(eq(shots.userId, userId)),
+      db
+        .select({
+          raw: count(),
+          eligible: sql<number>`count(*) filter (where ${shotEvidenceSqlPredicate()})::int`,
+        })
+        .from(shots)
+        .where(eq(shots.userId, userId)),
       db
         .select({ value: count() })
         .from(clubs)
@@ -60,13 +66,14 @@ export async function getActivationJourney(userId: string): Promise<ActivationJo
     ]);
   const providers = Number(providerCount[0]?.value ?? 0);
   const sessionTotal = Number(sessionCount[0]?.value ?? 0);
-  const shotTotal = Number(shotCount[0]?.value ?? 0);
+  const rawShotTotal = Number(shotCounts[0]?.raw ?? 0);
+  const eligibleShotTotal = Number(shotCounts[0]?.eligible ?? 0);
   const clubTotal = Number(clubCount[0]?.value ?? 0);
   const planTotal = Number(practiceCount[0]?.value ?? 0);
   const hasSource = Boolean(profile[0]?.primaryLaunchMonitor?.trim()) || providers > 0;
-  const hasImport = sessionTotal > 0 && shotTotal > 0;
+  const hasImport = sessionTotal > 0 && rawShotTotal > 0;
   const hasClubs = clubTotal > 0;
-  const hasTrust = hasClubs && shotTotal >= 12;
+  const hasTrust = hasClubs && eligibleShotTotal >= 12;
   const steps: ActivationStep[] = [
     {
       id: "source",
@@ -122,9 +129,21 @@ export async function getActivationJourney(userId: string): Promise<ActivationJo
     steps,
     completedCount,
     firstTrustedResult: hasTrust
-      ? `${shotTotal} measured shots across ${clubTotal} active clubs are ready to review.`
+      ? `${eligibleShotTotal} usable measured shots across ${clubTotal} active clubs are ready to review.`
       : null,
   };
+}
+
+function shotEvidenceSqlPredicate() {
+  return or(
+    eq(shots.reviewStatus, "restored"),
+    and(
+      eq(shots.reviewStatus, "included"),
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
+      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
+    ),
+  );
 }
 
 function unavailableJourney(): ActivationJourney {

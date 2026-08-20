@@ -10,6 +10,10 @@ const repairMigration = readFileSync(
   join(process.cwd(), "drizzle/0057_shot_review_warm_up_security_repair.sql"),
   "utf8",
 );
+const mutationBoundaryMigration = readFileSync(
+  join(process.cwd(), "drizzle/0058_shot_mutation_security_boundary.sql"),
+  "utf8",
+);
 const schema = readFileSync(join(process.cwd(), "src/db/schema.ts"), "utf8");
 
 describe("shot review lifecycle migration", () => {
@@ -62,7 +66,8 @@ describe("shot review lifecycle migration", () => {
     expect(migration).toContain("IN ('fat', 'mishit', 'thin', 'top')");
     expect(migration).toContain("THEN 'suggested_exclusion'");
     expect(migration).toContain("IN ('warm-up', 'warmup', 'warm_up')");
-    expect(migration).toContain("  'warm_up',\n  'bad-data',");
+    expect(migration).toMatch(/'warm_up',\s*'bad-data',/);
+    expect(migration).toContain("LIKE 'exclude%'");
   });
 
   it("repairs untouched live warm_up rows exactly once without overwriting review decisions", () => {
@@ -95,6 +100,44 @@ describe("shot review lifecycle migration", () => {
     );
     expect(repairMigration).not.toContain("CREATE POLICY fkh_shot_review_events_owner_insert");
     expect(repairMigration).not.toMatch(/GRANT\s+[^;]*INSERT[^;]*fkh_shot_review_events/i);
+  });
+
+  it("makes direct shot writes and cascading session deletion server-only", () => {
+    for (const migrationSource of [migration, mutationBoundaryMigration]) {
+      expect(migrationSource).toContain(
+        "DROP POLICY IF EXISTS fkh_shots_insert_owner ON public.fkh_shots",
+      );
+      expect(migrationSource).toContain(
+        "DROP POLICY IF EXISTS fkh_shots_update_owner_or_editor ON public.fkh_shots",
+      );
+      expect(migrationSource).toContain(
+        "DROP POLICY IF EXISTS fkh_shots_delete_owner ON public.fkh_shots",
+      );
+      expect(migrationSource).toContain("REVOKE ALL PRIVILEGES ON TABLE public.fkh_shots");
+      expect(migrationSource).toContain("FROM PUBLIC, anon, authenticated");
+      expect(migrationSource).toContain("GRANT SELECT ON TABLE public.fkh_shots TO authenticated");
+      expect(migrationSource).toContain(
+        "DROP POLICY IF EXISTS fkh_sessions_delete_owner ON public.fkh_sessions",
+      );
+      expect(migrationSource).toContain("REVOKE DELETE, TRUNCATE ON TABLE public.fkh_sessions");
+      expect(migrationSource).not.toMatch(
+        /GRANT\s+[^;]*(INSERT|UPDATE|DELETE|TRUNCATE)[^;]*public\.fkh_shots/i,
+      );
+    }
+
+    for (const provenanceField of [
+      "quality_tag",
+      "shot_category",
+      "source_raw_json",
+      "review_status",
+      "review_reason",
+      "review_confidence",
+      "review_source",
+      "review_previous_quality_tag",
+      "reviewed_at",
+    ]) {
+      expect(mutationBoundaryMigration).toContain(provenanceField);
+    }
   });
 
   it("keeps schema and migration review source constraints in parity", () => {

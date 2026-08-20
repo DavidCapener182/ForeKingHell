@@ -11,6 +11,7 @@ import {
   summarizeShotPattern,
   type ShotPatternPoint,
 } from "@/lib/shot-pattern-chart-data";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "2-digit",
@@ -79,6 +80,8 @@ export async function getRecentSessionHistory(
           ballSpeedMph: shots.ballSpeedMph,
           shotNumber: shots.shotNumber,
           shotAt: shots.shotAt,
+          reviewStatus: shots.reviewStatus,
+          shotCategory: shots.shotCategory,
           qualityTag: shots.qualityTag,
         })
         .from(shots)
@@ -86,7 +89,7 @@ export async function getRecentSessionHistory(
     : [];
   const pointsBySession = new Map<string, ShotPatternPoint[]>();
 
-  for (const shot of shotRows) {
+  for (const shot of shotRows.filter(isShotEvidenceEligible)) {
     const point = buildShotPatternPoints([shot])[0];
     if (!point) continue;
     pointsBySession.set(shot.sessionId, [...(pointsBySession.get(shot.sessionId) ?? []), point]);

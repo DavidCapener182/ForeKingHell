@@ -47,6 +47,9 @@ describe("Shot Explorer analytics workbench", () => {
     expect(pageSource).toContain("function trustedShotWhere()");
     expect(pageSource).toContain("excludedRecordQualityTags");
     expect(pageSource).toContain("excludedRecordShotCategories");
+    expect(pageSource).toContain('eq(shots.reviewStatus, "restored")');
+    expect(pageSource).toContain('eq(shots.reviewStatus, "included")');
+    expect(pageSource).toContain("not like 'exclude%'");
     expect(pageSource).toContain('filters.trust === "trusted"');
     expect(pageSource).toContain('filters.trust === "untrusted"');
     expect(pageSource).toContain("recordEligibility({");

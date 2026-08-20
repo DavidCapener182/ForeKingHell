@@ -1,4 +1,4 @@
-import { isExcludingShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-review";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 export const excludedRecordQualityTags = [
   "bad-data",
@@ -17,6 +17,7 @@ export const excludedRecordQualityTags = [
   "top",
   "warm-up",
   "warmup",
+  "warm_up",
 ] as const;
 
 export const excludedRecordShotCategories = [
@@ -27,6 +28,7 @@ export const excludedRecordShotCategories = [
   "recovery",
   "warm-up",
   "warmup",
+  "warm_up",
 ] as const;
 
 const excludedQualityTagSet = new Set<string>(excludedRecordQualityTags);
@@ -76,13 +78,24 @@ export function recordEligibility(shot: RecordShot) {
   const shotCategory = normalizedValue(shot.shotCategory);
   const sessionSource = normalizedValue(shot.sessionSource);
 
-  if (isExcludingShotReviewStatus(shot.reviewStatus)) {
-    reasons.push("review-status");
-  } else if (qualityTag && excludedQualityTagSet.has(qualityTag)) {
-    reasons.push("quality-tag");
+  if (!isShotEvidenceEligible(shot)) {
+    if (shot.reviewStatus && shot.reviewStatus !== "included") {
+      reasons.push("review-status");
+    } else if (
+      qualityTag &&
+      (excludedQualityTagSet.has(qualityTag) || qualityTag.startsWith("exclude"))
+    ) {
+      reasons.push("quality-tag");
+    } else if (!shotCategory || !excludedShotCategorySet.has(shotCategory)) {
+      reasons.push("review-status");
+    }
   }
 
-  if (shotCategory && excludedShotCategorySet.has(shotCategory)) {
+  if (
+    shotCategory &&
+    excludedShotCategorySet.has(shotCategory) &&
+    !(shot.reviewStatus === "restored" && isLegacyWarmUpCategory(shotCategory))
+  ) {
     reasons.push("shot-category");
   }
 
@@ -125,4 +138,8 @@ export function recordDistance(
 
 function normalizedValue(value: string | null | undefined) {
   return value?.trim().toLowerCase() || null;
+}
+
+function isLegacyWarmUpCategory(category: string) {
+  return category === "warm-up" || category === "warmup" || category === "warm_up";
 }

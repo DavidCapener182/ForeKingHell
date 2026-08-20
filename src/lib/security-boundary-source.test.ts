@@ -95,6 +95,27 @@ describe("security boundary source guards", () => {
     expect(billing).not.toContain(".select()\n    .from(subscriptions)");
   });
 
+  it("routes shot imports, reviews, and destructive cleanup through the server database", () => {
+    const databaseClient = source("src/db/client.ts");
+    const reviewActions = source("src/app/(app)/shots/actions.ts");
+    const importStore = source("src/lib/imports/save-rapsodo-import.ts");
+    const settingsActions = source("src/app/settings/actions.ts");
+
+    expect(databaseClient).toContain('import "server-only"');
+    expect(databaseClient).toContain("process.env.DATABASE_URL");
+    expect(reviewActions).toContain('import { getDb } from "@/db/client"');
+    expect(reviewActions).toContain("getDb().transaction(async (tx) =>");
+    expect(reviewActions).toContain(".update(shots)");
+    expect(reviewActions).toContain("tx.insert(shotReviewEvents)");
+    expect(importStore).toContain('import { getDb } from "@/db/client"');
+    expect(importStore).toContain("db.transaction(async (tx) =>");
+    expect(importStore).toContain("tx.insert(shots)");
+    expect(importStore).toContain("tx.insert(shotReviewEvents)");
+    expect(settingsActions).toContain('import { getDb } from "@/db/client"');
+    expect(settingsActions).toContain("await tx.delete(shots)");
+    expect(settingsActions).toContain("await tx.delete(sessions)");
+  });
+
   it("builds external links only from a configured trusted origin", () => {
     const origin = source("src/lib/site-origin.ts");
     const login = source("src/app/login/actions.ts");

@@ -72,6 +72,17 @@ describe("club analytics desktop evidence ledger", () => {
     }
   });
 
+  it("keeps the raw ledger while limiting derived club analytics to lifecycle evidence", () => {
+    expect(source.match(/reviewStatus: shots\.reviewStatus/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(source).toContain("shots: analyticsShots.filter(isShotEvidenceEligible)");
+    expect(source).toContain("const evidenceClubShots = clubShots.filter(isShotEvidenceEligible)");
+    expect(source).toContain("const latestShots = [...evidenceClubShots]");
+    expect(source).toContain("<ShotCloud shots={evidenceClubShots}");
+    expect(source).toContain("shots: analyticsShots,");
+    expect(source).toContain("<ClubShotEvidenceLedger");
+    expect(source).toContain("shots={clubShots}");
+  });
+
   it("keeps the contextual AI rail as shared wide-monitor support", () => {
     expect(source).toContain("DesktopInsightRail");
     expect(source).toContain('title="AI club rail"');

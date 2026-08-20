@@ -196,6 +196,32 @@ describe("course record shot metrics", () => {
       ]),
     ).toBe(270.3);
   });
+
+  it("uses only included or restored lifecycle evidence for longest-drive records", () => {
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+
+    expect(
+      longestDriveYardsFromShots([
+        courseShot({ totalYd: 280, reviewStatus: "included" }),
+        courseShot({ totalYd: 290, reviewStatus: "restored", qualityTag: "bad_data" }),
+        ...excludedStatuses.map((reviewStatus, index) =>
+          courseShot({ totalYd: 400 + index, reviewStatus }),
+        ),
+        courseShot({ totalYd: 410, reviewStatus: "included", qualityTag: "bad_data" }),
+        courseShot({
+          totalYd: 420,
+          reviewStatus: "included",
+          shotCategory: "warm_up",
+        }),
+      ]),
+    ).toBe(290);
+  });
 });
 
 function attempt(
@@ -217,20 +243,30 @@ function attempt(
 }
 
 function courseShot(input: {
-  clubType: string;
+  clubType?: string;
   carryYd?: number | null;
   totalYd?: number | null;
   courseHoleNumber?: number | null;
   courseHoleShotNumber?: number | null;
   qualityTag?: string | null;
+  shotCategory?: string | null;
+  reviewStatus?:
+    | "included"
+    | "suggested_exclusion"
+    | "user_excluded"
+    | "restored"
+    | "calibration"
+    | "warm_up"
+    | "launch_monitor_error";
 }) {
   return {
-    clubType: input.clubType,
+    clubType: input.clubType ?? "driver",
     carryYd: input.carryYd ?? null,
     totalYd: input.totalYd ?? null,
-    shotCategory: null,
-    courseHoleNumber: input.courseHoleNumber ?? null,
-    courseHoleShotNumber: input.courseHoleShotNumber ?? null,
+    shotCategory: input.shotCategory ?? null,
+    courseHoleNumber: input.courseHoleNumber === undefined ? 1 : input.courseHoleNumber,
+    courseHoleShotNumber: input.courseHoleShotNumber === undefined ? 1 : input.courseHoleShotNumber,
     qualityTag: input.qualityTag ?? null,
+    reviewStatus: input.reviewStatus ?? "included",
   };
 }

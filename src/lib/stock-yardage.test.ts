@@ -56,6 +56,65 @@ describe("calculateStockYardage", () => {
     expect(result.stockExclusionCount).toBe(5);
   });
 
+  it("excludes every non-evidence lifecycle state while restored overrides compatibility tags", () => {
+    const rows = [
+      { ...shot(140, 148, 0), id: "included", reviewStatus: "included" as const },
+      {
+        ...shot(141, 149, 0),
+        id: "restored",
+        reviewStatus: "restored" as const,
+        qualityTag: "mishit",
+      },
+      {
+        ...shot(230, 240, 0),
+        id: "suggested",
+        reviewStatus: "suggested_exclusion" as const,
+      },
+      {
+        ...shot(231, 241, 0),
+        id: "excluded",
+        reviewStatus: "user_excluded" as const,
+        qualityTag: null,
+      },
+      {
+        ...shot(232, 242, 0),
+        id: "legacy-quality",
+        reviewStatus: "included" as const,
+        qualityTag: "mishit",
+      },
+    ];
+
+    expect(selectStockYardageShots(rows).filteredShots.map((row) => row.id)).toEqual([
+      "restored",
+      "included",
+    ]);
+    expect(calculateStockYardage(rows).stockExclusionReasons).toEqual(
+      expect.arrayContaining([
+        { key: "review-status", label: "Review status", count: 2 },
+        { key: "quality-tag", label: "Quality tag", count: 1 },
+      ]),
+    );
+  });
+
+  it("lets restoration override a legacy warm-up classification but not a real chip role", () => {
+    const restoredWarmUp = {
+      ...shot(135, 142, 0),
+      id: "restored-warm-up",
+      reviewStatus: "restored" as const,
+      shotCategory: "warm_up",
+    };
+    const restoredChip = {
+      ...shot(30, 34, 0),
+      id: "restored-chip",
+      reviewStatus: "restored" as const,
+      shotCategory: "chip",
+    };
+
+    expect(selectStockYardageShots([restoredWarmUp, restoredChip]).filteredShots).toEqual([
+      restoredWarmUp,
+    ]);
+  });
+
   it("keeps sand wedge chips and pitches out of full-stock yardage", () => {
     const result = calculateStockYardage(
       [
@@ -299,6 +358,52 @@ describe("calculateStockYardage", () => {
         carryP25Yd: 22,
         carryP75Yd: 22,
         longestCarryYd: 22,
+      },
+    ]);
+  });
+
+  it("filters lifecycle and domain exclusions before applying the role-summary window", () => {
+    const excludedStatuses = [
+      "suggested_exclusion",
+      "user_excluded",
+      "calibration",
+      "warm_up",
+      "launch_monitor_error",
+    ] as const;
+    const excludedRows = excludedStatuses.map((reviewStatus, index) => ({
+      ...shot(220 + index, 230 + index, 0, dateForDay(20 + index)),
+      clubType: "sw",
+      reviewStatus,
+    }));
+    const roleSummaries = summarizeStockShotRoles(
+      [
+        { ...shot(90, 96, 0, dateForDay(1)), clubType: "sw", reviewStatus: "included" },
+        {
+          ...shot(92, 98, 0, dateForDay(2)),
+          clubType: "sw",
+          reviewStatus: "restored",
+          qualityTag: "mishit",
+        },
+        {
+          ...shot(240, 250, 0, dateForDay(30)),
+          clubType: "sw",
+          reviewStatus: "included",
+          shotCategory: "recovery",
+        },
+        ...excludedRows,
+      ],
+      2,
+      { clubType: "sw" },
+    );
+
+    expect(roleSummaries).toEqual([
+      {
+        role: "full",
+        sampleSize: 2,
+        carryMedianYd: 91,
+        carryP25Yd: 90.5,
+        carryP75Yd: 91.5,
+        longestCarryYd: 92,
       },
     ]);
   });

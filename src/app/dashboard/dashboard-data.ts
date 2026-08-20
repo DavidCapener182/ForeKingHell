@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import {
   clubs,
@@ -33,6 +33,7 @@ import { calculatePlaysLikeYards, parsePlaysLikeConditions } from "@/lib/plays-l
 import { calculateHandicapSummary, calculateRoundDifferential } from "@/lib/round-handicap";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { calculateShortGameTouchSummary } from "@/lib/short-game";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { calculateStockYardage } from "@/lib/stock-yardage";
 import { dashboardPinOptions, type DashboardPin } from "@/lib/user-settings";
 import { playContextEvidenceLabel, playContextLabel, type PlayContext } from "@/lib/play-context";
@@ -117,7 +118,13 @@ export async function getDashboardData() {
         count: count(),
       })
       .from(shots)
-      .where(eq(shots.userId, userId))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          inArray(shots.reviewStatus, ["included", "restored"]),
+          shotEvidenceSqlPredicate(),
+        ),
+      )
       .groupBy(shots.clubId),
     db
       .select({
@@ -125,7 +132,13 @@ export async function getDashboardData() {
         count: count(),
       })
       .from(shots)
-      .where(eq(shots.userId, userId))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          inArray(shots.reviewStatus, ["included", "restored"]),
+          shotEvidenceSqlPredicate(),
+        ),
+      )
       .groupBy(shots.playContext),
     db
       .select({
@@ -152,12 +165,19 @@ export async function getDashboardData() {
         clubDataEstType: shots.clubDataEstType,
         courseHoleNumber: shots.courseHoleNumber,
         sessionType: sessions.type,
+        reviewStatus: shots.reviewStatus,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
+      .where(
+        and(
+          eq(shots.userId, userId),
+          inArray(shots.reviewStatus, ["included", "restored"]),
+          shotEvidenceSqlPredicate(),
+        ),
+      )
       .orderBy(desc(shots.shotAt))
       .limit(500),
     db
@@ -183,6 +203,7 @@ export async function getDashboardData() {
       .limit(5),
   ]);
   const clubRows = allClubRows.filter((club) => isTrackedClubType(club.type));
+  const evidenceStockShots = recentStockShots.filter(isShotEvidenceEligible);
 
   const recentSessionIds = recentSessionRows.map((session) => session.id);
   const [shotCountsBySession, rawCountsBySession] =
@@ -214,9 +235,9 @@ export async function getDashboardData() {
   );
   const rawCountBySessionId = new Map(rawCountsBySession.map((row) => [row.sessionId, row.count]));
   const shotCountByClubId = new Map(shotCountsByClub.map((row) => [row.clubId, row.count]));
-  const stockShotsByClubId = new Map<string, typeof recentStockShots>();
+  const stockShotsByClubId = new Map<string, typeof evidenceStockShots>();
 
-  for (const shot of recentStockShots) {
+  for (const shot of evidenceStockShots) {
     const clubShots = stockShotsByClubId.get(shot.clubId) ?? [];
     clubShots.push(shot);
     stockShotsByClubId.set(shot.clubId, clubShots);
@@ -309,7 +330,7 @@ export async function getDashboardData() {
   );
   const whatChanged = buildWhatChangedInsights({
     clubRows,
-    stockShots: recentStockShots,
+    stockShots: evidenceStockShots,
     bagPreview,
     latestRound,
   });
@@ -384,6 +405,24 @@ export async function getDashboardData() {
 
 export type DashboardData = Awaited<ReturnType<typeof getDashboardData>>;
 export type DashboardInsight = ReturnType<typeof buildWhatChangedInsights>[number];
+
+function shotEvidenceSqlPredicate() {
+  return sql<boolean>`(
+    ${shots.reviewStatus} = 'restored'
+    or (
+      ${shots.reviewStatus} = 'included'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
+      and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
+        'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
+        'fat', 'mishit', 'thin', 'top'
+      )
+      and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
+        'warm-up', 'warmup', 'warm_up'
+      )
+    )
+  )`;
+}
 
 function normalizeDashboardPins(value: string[] | null | undefined): DashboardPin[] {
   const allowedPins = new Set<string>(dashboardPinOptions);

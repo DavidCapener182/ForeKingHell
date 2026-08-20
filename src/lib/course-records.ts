@@ -26,6 +26,7 @@ import { dedupeCoursesByName } from "@/lib/course-dedupe";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateRoundDifferential } from "@/lib/round-handicap";
 import { consumeScorecardProofToken } from "@/lib/scorecard-proof-token";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import {
   areFriends,
   createFeedItem,
@@ -119,6 +120,7 @@ type CourseRecordShotRow = Pick<
   | "courseHoleNumber"
   | "courseHoleShotNumber"
   | "qualityTag"
+  | "reviewStatus"
 >;
 
 type RoundRecordSummary = {
@@ -141,8 +143,6 @@ type RoundRecordMetrics = RoundRecordSummary & {
 
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 const integerFormatter = new Intl.NumberFormat("en-GB");
-const excludedShotQualityTags = new Set(["mishit", "top", "thin", "fat", "bad_data"]);
-
 const defaultCategories: Array<{
   slug: string;
   name: string;
@@ -775,9 +775,16 @@ async function getCourseRecordShotRowsBySession(userId: string, sessionIds: stri
       courseHoleNumber: shots.courseHoleNumber,
       courseHoleShotNumber: shots.courseHoleShotNumber,
       qualityTag: shots.qualityTag,
+      reviewStatus: shots.reviewStatus,
     })
     .from(shots)
-    .where(and(eq(shots.userId, userId), inArray(shots.sessionId, uniqueSessionIds)))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        inArray(shots.sessionId, uniqueSessionIds),
+        inArray(shots.reviewStatus, ["included", "restored"]),
+      ),
+    )
     .orderBy(
       asc(shots.sessionId),
       asc(shots.courseHoleNumber),
@@ -1925,6 +1932,7 @@ export function longestDriveYardsFromShots(
     courseHoleNumber?: number | null;
     courseHoleShotNumber?: number | null;
     qualityTag?: string | null;
+    reviewStatus?: ShotReviewStatus | null;
   }>,
 ) {
   const distances = shotRows
@@ -1973,12 +1981,13 @@ function isEligibleCourseDriveShot(shot: {
   courseHoleNumber?: number | null;
   courseHoleShotNumber?: number | null;
   qualityTag?: string | null;
+  reviewStatus?: ShotReviewStatus | null;
 }) {
   if (normalizeClubKey(shot.clubType) !== "driver") {
     return false;
   }
 
-  if (shot.qualityTag && excludedShotQualityTags.has(shot.qualityTag.toLowerCase())) {
+  if (!isShotEvidenceEligible(shot)) {
     return false;
   }
 

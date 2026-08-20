@@ -38,6 +38,7 @@ import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
+import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
 import { LeaderboardPlayerControls } from "@/app/leaderboard/leaderboard-controls";
 import { MobileLeaderboard } from "@/app/leaderboard/mobile-leaderboard";
 import { AppEmptyState } from "@/components/app/app-empty-state";
@@ -385,6 +386,23 @@ async function getLeaderboardData(
   const tourPlayerIds = new Set(
     visibleProfiles.filter(isTourPlayerProfile).map((profile) => profile.id),
   );
+  const excludedQualityValues = sql.join(
+    [...excludedRecordQualityTags, "warm_up"].map((tag) => sql`${tag}`),
+    sql`, `,
+  );
+  const excludedCategoryValues = sql.join(
+    [...excludedRecordShotCategories, "warm_up"].map((category) => sql`${category}`),
+    sql`, `,
+  );
+  const trustedShotEvidence = or(
+    eq(shots.reviewStatus, "restored"),
+    and(
+      eq(shots.reviewStatus, "included"),
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
+      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in (${excludedQualityValues})`,
+      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in (${excludedCategoryValues})`,
+    ),
+  );
   const [xpRows, monthlyXpRows, rawShotRows, roundRows] =
     visibleIds.length > 0
       ? await Promise.all([
@@ -413,7 +431,13 @@ async function getLeaderboardData(
             })
             .from(shots)
             .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-            .where(and(inArray(shots.userId, visibleIds), gte(shots.shotAt, monthStart))),
+            .where(
+              and(
+                inArray(shots.userId, visibleIds),
+                gte(shots.shotAt, monthStart),
+                trustedShotEvidence,
+              ),
+            ),
           db
             .select({
               userId: sessions.userId,

@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import {
   clubs,
@@ -20,6 +20,7 @@ import {
   handicapBandFromValue,
   normaliseHandicapRoundInput,
 } from "@/lib/round-handicap";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { selectStockYardageShots } from "@/lib/stock-yardage";
 import { getBlockedUserIds, getFriendIds } from "@/lib/social";
 
@@ -97,6 +98,7 @@ export type CompareShot = {
   spinAxis: number | null;
   shotCategory: string | null;
   qualityTag: string | null;
+  reviewStatus?: ShotReviewStatus | null;
   clubDataEstType: string | null;
   courseHoleNumber: number | null;
 };
@@ -405,12 +407,13 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
         spinAxis: shots.spinAxis,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
         clubDataEstType: shots.clubDataEstType,
         courseHoleNumber: shots.courseHoleNumber,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
+      .where(and(eq(shots.userId, userId), inArray(shots.reviewStatus, ["included", "restored"])))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
   ]);
 
@@ -424,7 +427,7 @@ export async function getCompareData(filters: CompareFilters): Promise<CompareDa
     ]),
   );
   const allShots: CompareShot[] = shotRows
-    .filter((shot) => isTrackedClubType(shot.clubType))
+    .filter((shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot))
     .map((shot) => ({
       ...shot,
       sessionLabel:
@@ -530,17 +533,18 @@ export async function getClubCompareData(filters: ClubCompareFilters): Promise<C
         spinAxis: shots.spinAxis,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
         clubDataEstType: shots.clubDataEstType,
         courseHoleNumber: shots.courseHoleNumber,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(eq(shots.userId, userId))
+      .where(and(eq(shots.userId, userId), inArray(shots.reviewStatus, ["included", "restored"])))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
   ]);
 
   const allShots: CompareShot[] = shotRows
-    .filter((shot) => isTrackedClubType(shot.clubType))
+    .filter((shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot))
     .map((shot) => ({
       ...shot,
       sessionLabel:
@@ -705,12 +709,18 @@ export async function getPlayerCompareData(
         spinAxis: shots.spinAxis,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
+        reviewStatus: shots.reviewStatus,
         clubDataEstType: shots.clubDataEstType,
         courseHoleNumber: shots.courseHoleNumber,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(inArray(shots.userId, playerIds))
+      .where(
+        and(
+          inArray(shots.userId, playerIds),
+          inArray(shots.reviewStatus, ["included", "restored"]),
+        ),
+      )
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
     db
       .select({
@@ -772,7 +782,7 @@ export async function getPlayerCompareData(
 
   const shotRowsByUser = groupBy(
     shotRows
-      .filter((shot) => isTrackedClubType(shot.clubType))
+      .filter((shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot))
       .map((shot) => ({
         ...shot,
         sessionLabel:
@@ -1134,9 +1144,10 @@ function resolveBaselineSelection(
 }
 
 function summarizeSelection(selection: Selection): CompareSampleSummary {
-  const stockShots = selectComparableShots(selection.shots);
-  const sessionIds = new Set(selection.shots.map((shot) => shot.sessionId));
-  const clubIds = new Set(selection.shots.map((shot) => shot.clubId));
+  const evidenceShots = selection.shots.filter(isShotEvidenceEligible);
+  const stockShots = selectComparableShots(evidenceShots);
+  const sessionIds = new Set(evidenceShots.map((shot) => shot.sessionId));
+  const clubIds = new Set(evidenceShots.map((shot) => shot.clubId));
   const carryValues = stockShots.map((shot) => shot.carryYd).filter(isNumber);
   const totalValues = stockShots.map((shot) => shot.totalYd).filter(isNumber);
   const sideValues = stockShots.map((shot) => shot.sideCarryYd).filter(isNumber);
@@ -1147,7 +1158,7 @@ function summarizeSelection(selection: Selection): CompareSampleSummary {
   return {
     label: selection.label,
     detail: selection.detail,
-    rawShots: selection.shots.length,
+    rawShots: evidenceShots.length,
     stockShots: stockShots.length,
     sessions: sessionIds.size,
     clubs: clubIds.size,
@@ -1190,7 +1201,7 @@ function summarizeSelection(selection: Selection): CompareSampleSummary {
         sideCarryYd: shot.sideCarryYd,
         label: `${formatClubType(shot.clubType)} ${formatDate(shot.shotAt)}`,
       })),
-    sessionBreakdown: sessionBreakdown(selection.shots),
+    sessionBreakdown: sessionBreakdown(evidenceShots),
   };
 }
 
@@ -1309,7 +1320,9 @@ export function buildProgressCompareData({
   clubs: CompareClubOption[];
   shots: CompareShot[];
 }): ProgressCompareData {
-  const trackedShots = shots.filter((shot) => isTrackedClubType(shot.clubType));
+  const trackedShots = shots.filter(
+    (shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot),
+  );
   const latestSessionShots = latestImportedSessionShots(trackedShots);
   const latestShot = latestSessionShots[0];
   const latestSession = latestShot
