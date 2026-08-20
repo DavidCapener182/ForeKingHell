@@ -16,7 +16,7 @@ export const mobileCapabilities = {
   import: companionMore(),
   courses: companionMore(),
   "course-twins": { mobileExperience: "companion" },
-  "course-strategy": { mobileExperience: "companion" },
+  "course-strategy": companionPrimary(),
   "play-companion": companionPrimary(),
   analyse: desktopOnly(
     "Review latest session",
@@ -33,7 +33,7 @@ export const mobileCapabilities = {
     "/sessions",
     "Raw shot exploration is available in the full workbench.",
   ),
-  bag: companionMore(),
+  bag: companionPrimary(),
   compare: desktopOnly(
     "Review sessions",
     "/sessions",
@@ -57,7 +57,7 @@ export const mobileCapabilities = {
     mobileFallbackLabel: "Build recommended practice",
   },
   practice: companionPrimary(),
-  "quick-bag": companionMore(),
+  "quick-bag": companionPrimary(),
   "quick-range": { mobileExperience: "companion" },
   speed: desktopOnly(
     "Build recommended practice",

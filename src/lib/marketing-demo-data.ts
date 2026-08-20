@@ -121,7 +121,7 @@ export const marketingFaqs = [
   {
     question: "Can I use it on mobile?",
     answer:
-      "Yes. The authenticated app has a mobile-first navigation structure for Home, Sessions, Analyse, Practice and More, with import and planning actions kept within reach.",
+      "Yes. The authenticated companion keeps Today, Practice, Strategy, Review and Bag one tap away, with import, account and settings actions behind focused profile controls.",
   },
   {
     question: "What is Course Twin?",

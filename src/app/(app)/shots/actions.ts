@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getDb } from "@/db/client";
 import { shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { recordProductWorkflowEvent } from "@/lib/product-events";
 import {
   buildShotReviewMutation,
   effectiveShotReviewStatus,
@@ -126,6 +127,10 @@ async function applyOwnedShotReview(input: unknown) {
   });
 
   revalidateShotDerivedRoutes(reviewed.sessionIds);
+  recordProductWorkflowEvent("shot_review_completed", {
+    action: reviewed.status,
+    count: reviewed.shotIds.length,
+  });
   return { reviewedShotIds: reviewed.shotIds, status: reviewed.status };
 }
 

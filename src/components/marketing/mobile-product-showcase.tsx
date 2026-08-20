@@ -1,4 +1,4 @@
-import { ArrowRight, Download, ListChecks, Plus, Search } from "lucide-react";
+import { ArrowRight, Download, ListChecks, Search } from "lucide-react";
 
 import styles from "./marketing.module.css";
 
@@ -9,8 +9,8 @@ export function MobileProductShowcase() {
         <p className={styles.eyebrow}>Built for the range and the course</p>
         <h2 id="mobile-showcase-title">A mobile golf workspace, not a shrunk desktop screen.</h2>
         <p>
-          Today, Practice, Play, Sessions and More keep the important routes familiar. Import,
-          planning and course preparation stay one action away.
+          Today, Practice, Strategy, Review and Bag keep the important decisions one tap away.
+          Imports and account tools stay available without crowding the companion workflow.
         </p>
         <div className={styles.mobileBullets}>
           <span>
@@ -40,11 +40,9 @@ export function MobileProductShowcase() {
         <div className={styles.phoneNav}>
           <span>Today</span>
           <span>Practice</span>
-          <span>Play</span>
-          <span>Sessions</span>
-          <span>
-            <Plus className="size-4" /> More
-          </span>
+          <span>Strategy</span>
+          <span>Review</span>
+          <span>Bag</span>
         </div>
       </div>
     </section>

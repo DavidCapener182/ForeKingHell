@@ -74,6 +74,7 @@ or override with `LIGHTHOUSE_ROUTES=/login,/dashboard` when auditing a smaller r
 - [Changelog](CHANGELOG.md)
 - [Production readiness gate](docs/PRODUCTION_READINESS.md)
 - [v0.2.0 public beta release](docs/PUBLIC_BETA_V0.2_RELEASE.md)
+- [Integrated master-plan completion (20 August 2026)](docs/MASTER_PLAN_COMPLETION_2026-08-20.md)
 - [Database security authority](docs/DATABASE_SECURITY_AUTHORITY.md)
 - [Live database baseline](docs/LIVE_DATABASE_BASELINE.md)
 - [Route security matrix](docs/ROUTE_SECURITY_MATRIX.md)
@@ -102,7 +103,7 @@ or override with `LIGHTHOUSE_ROUTES=/login,/dashboard` when auditing a smaller r
 
 The public Join beta path preserves `/welcome` as the post-signup destination. `/welcome` derives each activation step from real account state (source selection, import, club matching, usable confidence, session review and practice plan), can be skipped and resumed, and never inserts sample shots. Today shows the compact setup-progress card only while that real activation loop is incomplete.
 
-Authenticated routes share `src/components/app/route-metadata.ts` for page identity, desktop navigation, the mobile shell, More-sheet grouping and the global command centre. Open the command centre with `Command+K`, `Control+K` or `/` outside editable fields; it also has shell entry points for touch users. It filters administrative destinations by role and only sends navigation/action names to the browser.
+Authenticated routes share `src/components/app/route-metadata.ts` for page identity, desktop navigation, the mobile shell, profile-drawer grouping and the global command centre. Open the command centre with `Command+K`, `Control+K` or `/` outside editable fields; it also has shell entry points for touch users. It filters administrative destinations by role and only sends navigation/action names to the browser.
 
 Public indexing is deliberately narrow: the sitemap includes `/` and `/privacy`, while robots disallow account, admin, API and bearer-token routes. Public intent analytics are optional Plausible events—Join beta clicked, Sign in clicked, Sample tour started/completed, Course Twin demo opened and FAQ item opened—and contain no golf values, account identifiers, names or emails.
 

@@ -8,6 +8,7 @@ import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { mergeStoredPostRoundReview } from "@/lib/post-round-review";
+import { recordProductWorkflowEvent } from "@/lib/product-events";
 
 export async function savePostRoundReviewAction(formData: FormData) {
   const userId = await requireCurrentUserId();
@@ -35,6 +36,10 @@ export async function savePostRoundReviewAction(formData: FormData) {
 
   revalidatePath("/courses/strategy");
   revalidatePath(`/rounds/${sessionId}`);
+  recordProductWorkflowEvent("post_round_review_saved", {
+    source: "course_strategy",
+    status: "saved",
+  });
   redirect(`/courses/strategy?mode=post&roundId=${encodeURIComponent(sessionId)}&saved=1`);
 }
 

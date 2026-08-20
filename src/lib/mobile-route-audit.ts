@@ -74,7 +74,7 @@ export const mobileRouteAudit = [
     route: "/play",
     classification: 1,
     resolution: "preserve",
-    note: "Companion Play hub leads with selected-course readiness, strategy and Course Twin.",
+    note: "Companion Strategy hub leads with selected-course readiness, saved plans and Course Twin.",
   },
   {
     file: "src/app/(app)/quick-bag/page.tsx",

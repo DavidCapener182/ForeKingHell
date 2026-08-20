@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { dataGovernanceManifest, exportRulesForGovernance } from "@/lib/data-governance-manifest";
 import { createPersonalDataExport } from "@/lib/personal-data-export";
+import { recordProductWorkflowEvent } from "@/lib/product-events";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,12 @@ export async function GET(request?: Request) {
       ...Object.fromEntries(queriedDatasets),
       shots: shotRows,
     },
+  });
+
+  recordProductWorkflowEvent("personal_export_completed", {
+    datasets: queriedDatasets.length + 2,
+    count: shotRows.length,
+    hasMore: hasMoreShots,
   });
 
   return Response.json(

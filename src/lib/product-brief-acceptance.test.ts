@@ -2,8 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { mobilePrimaryItems } from "@/components/app/nav-items";
-import { appRouteMetadata } from "@/components/app/route-metadata";
+import { buildDesktopNavGroups, mobilePrimaryItems } from "@/components/app/nav-items";
 
 function source(path: string) {
   return readFileSync(join(process.cwd(), path), "utf8");
@@ -11,15 +10,24 @@ function source(path: string) {
 
 describe("product brief acceptance", () => {
   it("keeps the consolidated desktop and five-destination mobile navigation", () => {
-    expect(new Set(appRouteMetadata.map((route) => route.navigationGroup))).toEqual(
-      new Set(["Home", "Play", "Analyse", "Improve", "Compete", "Account", "Admin"]),
-    );
+    expect(buildDesktopNavGroups(true).map((group) => group.label)).toEqual([
+      "Home",
+      "Practice",
+      "Sessions",
+      "Rounds",
+      "Strategy / Course Twin",
+      "Bag",
+      "Insights",
+      "Data",
+      "Settings",
+      "Admin",
+    ]);
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
       "Practice",
-      "Play",
-      "Sessions",
-      "More",
+      "Strategy",
+      "Review",
+      "Bag",
     ]);
   });
 

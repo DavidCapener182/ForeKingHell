@@ -1,4 +1,4 @@
-import { Menu, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 import {
   appRouteMetadata,
@@ -40,57 +40,115 @@ function itemFor(id: string) {
   return toNavItem(item);
 }
 
-const legacyDesktopGroupOrder = [
-  "Home",
-  "Play",
-  "Analyse",
-  "Improve",
-  "Compete",
-  "Account",
-  "Admin",
+const desktopAreaDefinitions = [
+  { label: "Home", ids: ["today", "dashboard"] },
+  {
+    label: "Practice",
+    ids: ["practice", "quick-range", "coach", "speed", "goals", "training-load"],
+  },
+  { label: "Sessions", ids: ["sessions", "shots", "compare", "simulator-lab"] },
+  {
+    label: "Rounds",
+    ids: [
+      "rounds",
+      "handicap",
+      "challenges",
+      "tournaments",
+      "leaderboard",
+      "course-records",
+      "achievements",
+    ],
+  },
+  {
+    label: "Strategy / Course Twin",
+    ids: ["play-companion", "course-strategy", "course-twins", "courses"],
+  },
+  { label: "Bag", ids: ["bag", "quick-bag", "equipment"] },
+  {
+    label: "Insights",
+    ids: ["analyse", "session-impact", "progress", "strokes-gained", "data-chat"],
+  },
+  { label: "Data", ids: ["import", "rapsodo", "providers"] },
+  {
+    label: "Settings",
+    ids: [
+      "settings",
+      "notifications",
+      "profile",
+      "billing",
+      "friends",
+      "feed",
+      "social-intelligence",
+      "groups",
+    ],
+  },
+] as const;
+
+const adminIds = [
+  "admin",
+  "partners",
+  "admin-system",
+  "admin-users",
+  "admin-moderation",
+  "admin-billing",
+  "admin-challenges",
 ] as const;
 
 export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
-  const available = routesAvailableTo(isAdmin);
-  return legacyDesktopGroupOrder
-    .filter((label) => isAdmin || label !== "Admin")
-    .map((label) => ({
+  const availableIds = new Set(routesAvailableTo(isAdmin).map((route) => route.id));
+  const definitions = [
+    ...desktopAreaDefinitions,
+    ...(isAdmin ? [{ label: "Admin", ids: adminIds }] : []),
+  ];
+
+  return definitions
+    .map(({ label, ids }) => ({
       label,
-      items: available
-        .filter((route) => route.navigationGroup === label && route.desktopVisible !== false)
-        .map(toNavItem),
+      items: ids
+        .filter((id) => availableIds.has(id))
+        .map((id) => itemFor(id))
+        .filter(
+          (item) =>
+            appRouteMetadata.find((route) => route.route === item.href)?.desktopVisible !== false,
+        ),
     }))
     .filter((group) => group.items.length > 0);
 }
 
 const mobilePrimaryDefinitions = [
-  { id: "today", label: "Today", group: "home" },
-  { id: "practice", label: "Practice", group: "practice" },
-  { id: "play-companion", label: "Play", group: "play" },
-  { id: "sessions", label: "Sessions", group: "sessions" },
+  { id: "today", label: "Today", routes: ["today", "dashboard"] },
+  { id: "practice", label: "Practice", routes: ["practice", "coach", "speed", "goals"] },
+  {
+    id: "course-strategy",
+    label: "Strategy",
+    routes: ["course-strategy", "course-twins", "courses", "play-companion"],
+  },
+  {
+    id: "sessions",
+    label: "Review",
+    routes: ["sessions", "shots", "compare", "analyse", "session-impact"],
+  },
+  { id: "bag", label: "Bag", routes: ["bag", "quick-bag", "equipment"] },
 ] as const;
 
-export const mobilePrimaryItems: AppNavItem[] = [
-  ...mobilePrimaryDefinitions.map(({ id, label, group }) => {
+export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(
+  ({ id, label, routes }) => {
     const item = itemFor(id);
     return {
       ...item,
       label,
-      isActive: (pathname: string) => findRouteMetadata(pathname)?.mobilePrimaryGroup === group,
+      isActive: (pathname: string) => {
+        const routeId = findRouteMetadata(pathname)?.id;
+        return routeId ? routes.some((candidate) => candidate === routeId) : false;
+      },
     };
-  }),
-  {
-    href: "#more",
-    label: "More",
-    icon: Menu,
-    isActive: (pathname) => findRouteMetadata(pathname)?.mobileNav === "more",
   },
-];
+);
 
 const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
 
 const mobileMoreIds = {
-  Golf: ["bag", "quick-bag", "import", "handicap", "goals"],
+  Golf: ["import", "handicap", "goals"],
   Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
   Account: ["profile", "notifications", "settings"],
 } as const;

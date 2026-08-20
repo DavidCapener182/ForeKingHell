@@ -1,6 +1,6 @@
 # Product route map
 
-The desktop workbench retains the full **investigate -> compare -> configure -> manage** product. The phone companion concentrates on **Today -> Practice -> Play -> Sessions**, with an explicitly approved More sheet. Desktop-only routes receive a companion handoff instead of loading hidden workbench code. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and surface capability.
+The desktop workbench retains the full **investigate -> compare -> configure -> manage** product. The phone companion concentrates on **Today -> Practice -> Strategy -> Review -> Bag**. Account, settings and secondary tools sit behind the profile affordance rather than occupying a primary tab. Desktop-only routes receive a companion handoff instead of loading hidden workbench code. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and surface capability.
 
 ## Primary personal analysis
 
@@ -30,13 +30,13 @@ The desktop workbench retains the full **investigate -> compare -> configure -> 
 
 ## Courses, records and equipment
 
-| Feature            | Routes                                                                                                                                                                                | Where users find it                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Courses            | `/play`, `/courses`, `/courses/[courseId]`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Companion Play hub, course profiles, Course Twin catalogue and pre-round preparation. |
-| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`                                                              | Courses and records group.                                                            |
-| Course competition | `/courses/[courseId]/tournaments`                                                                                                                                                     | Compete navigation.                                                                   |
-| Equipment          | `/equipment`, `/equipment/experiments`                                                                                                                                                | Bag and Manage navigation.                                                            |
-| Achievements       | `/achievements`                                                                                                                                                                       | Profile and Compete navigation.                                                       |
+| Feature            | Routes                                                                                                                                                                                | Where users find it                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Courses            | `/play`, `/courses`, `/courses/[courseId]`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Companion Strategy hub, course profiles, Course Twin catalogue and pre-round preparation. |
+| Course records     | `/course-records`, `/course-records/[recordId]`, `/courses/[courseId]/records`, `/courses/[courseId]/records/[recordId]`                                                              | Courses and records group.                                                                |
+| Course competition | `/courses/[courseId]/tournaments`                                                                                                                                                     | Compete navigation.                                                                       |
+| Equipment          | `/equipment`, `/equipment/experiments`                                                                                                                                                | Bag and Manage navigation.                                                                |
+| Achievements       | `/achievements`                                                                                                                                                                       | Profile and Compete navigation.                                                           |
 
 ## Social and competition
 
@@ -55,8 +55,8 @@ The desktop workbench retains the full **investigate -> compare -> configure -> 
 
 | Feature                  | Routes                                                                                                                                                                     | Where users find it                                                                          |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Profile                  | `/profile`                                                                                                                                                                 | Mobile More and desktop Account.                                                             |
-| Settings and invitations | `/settings`, `/settings/notifications`, `/settings/invitations/[token]`                                                                                                    | Profile / More.                                                                              |
+| Profile                  | `/profile`                                                                                                                                                                 | Mobile profile affordance and desktop Account.                                               |
+| Settings and invitations | `/settings`, `/settings/notifications`, `/settings/invitations/[token]`                                                                                                    | Profile drawer / desktop Settings.                                                           |
 | Privacy and offline      | `/privacy`, `/offline`                                                                                                                                                     | Public/support and Profile settings.                                                         |
 | Billing                  | `/billing`                                                                                                                                                                 | Manage.                                                                                      |
 | Partners                 | `/partners`                                                                                                                                                                | Manage for authorised users.                                                                 |
@@ -65,7 +65,7 @@ The desktop workbench retains the full **investigate -> compare -> configure -> 
 
 ## Command centre
 
-The global command centre is available in the authenticated shell through `Command+K`, `Control+K`, `/` outside editable fields and a mobile More-sheet entry. It searches routes plus golf aliases such as driver, yardages, practice load and course plan, then exposes import, session, practice, round, Data Chat, Course Strategy and goals actions. Role-restricted destinations are filtered before display.
+The global command centre is available in the authenticated shell through `Command+K`, `Control+K`, `/` outside editable fields and the mobile profile drawer. It searches routes plus golf aliases such as driver, yardages, practice load and course plan, then exposes import, session, practice, round, Data Chat, Course Strategy and goals actions. Role-restricted destinations are filtered before display.
 
 ## Administration
 

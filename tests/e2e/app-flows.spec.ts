@@ -33,7 +33,7 @@ test.describe("authenticated app flows", () => {
     skipWhenNoAuth();
 
     await gotoAppRoute(page, "/import?source=csv#csv-import");
-    await expectPageReady(page, /Import launch monitor shots/i);
+    await expectPageReady(page, /CSV import workspace/i);
     const importSurface = responsiveImportSurface(page);
     await expect(importSurface.locator('[data-import-ready="true"]')).toBeVisible();
 
@@ -74,7 +74,7 @@ test.describe("authenticated app flows", () => {
     });
 
     await gotoAppRoute(page, "/import?source=csv#csv-import");
-    await expectPageReady(page, /Import launch monitor shots/i);
+    await expectPageReady(page, /CSV import workspace/i);
     const importSurface = responsiveImportSurface(page);
     await expect(importSurface.locator('[data-import-ready="true"]')).toBeVisible();
 
@@ -112,14 +112,43 @@ test.describe("authenticated app flows", () => {
     ).toBeVisible();
   });
 
+  test("recovers the primary companion decision on a slow document request", async ({ page }) => {
+    skipWhenNoAuth();
+    let delayed = false;
+
+    await page.route("**/surface/companion?next=%2Ftoday", async (route) => {
+      if (!delayed && route.request().resourceType() === "document") {
+        delayed = true;
+        await new Promise((resolve) => setTimeout(resolve, 1_250));
+      }
+      await route.continue();
+    });
+
+    await page.goto(`/surface/companion?next=${encodeURIComponent("/today")}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 60_000,
+    });
+    await expectPageReady(page, /Today/i);
+    expect(delayed).toBe(true);
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
+  });
+
   test("shot explorer keeps a mobile-friendly review surface", async ({ page }) => {
     skipWhenNoAuth();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await gotoAppRoute(page, "/shots");
+    await gotoAppRoute(page, `/surface/companion?next=${encodeURIComponent("/shots")}`);
 
     await expectPageReady(page, /Shot explorer/i);
-    await expect(page.getByRole("link", { name: /import/i }).first()).toBeVisible();
+    const navigation = page.getByRole("navigation", { name: "Mobile primary" });
+    await expect(navigation).toBeVisible();
+    await expect(navigation.getByRole("link", { name: "Review" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    await expect(page.getByRole("button", { name: /Open profile and navigation/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Full Site" })).toBeVisible();
   });
 
   test("coach chat UI is ready without generating a paid response", async ({ page }) => {
@@ -130,13 +159,21 @@ test.describe("authenticated app flows", () => {
     skipWhenNoAuth();
 
     await gotoAppRoute(page, "/coach");
-    await expectPageReady(page, /AI coach tools|Ask from your shot data/i);
-    await page.getByText("AI coach tools", { exact: true }).filter({ visible: true }).click();
-    const chatCard = page.locator('[data-coach-chat-ready="true"]').filter({ visible: true });
-    await expect(chatCard).toBeVisible();
-    const coachQuestion = chatCard.getByLabel("Ask from your shot data");
-    await coachQuestion.fill("How can I improve my 7 iron dispersion?");
-    await expect(chatCard.getByRole("button", { name: /ask coach/i })).toBeEnabled();
+    await expectPageReady(page, /Coach tools/i);
+    await page.getByRole("tab", { name: "Ask", exact: true }).click();
+    const chatCard = page.getByRole("region", { name: "Ask your data" });
+    const unavailableNotice = page.getByRole("heading", {
+      name: "Data Chat is included with Pro AI access",
+    });
+
+    await expect(chatCard.or(unavailableNotice)).toBeVisible();
+    if (await chatCard.isVisible()) {
+      const coachQuestion = chatCard.getByRole("textbox", { name: "Ask about your golf data" });
+      await coachQuestion.fill("How can I improve my 7 iron dispersion?");
+      await expect(chatCard.getByRole("button", { name: /ask analyst/i })).toBeEnabled();
+    } else {
+      await expect(page.getByRole("link", { name: "View plans" })).toBeVisible();
+    }
   });
 });
 

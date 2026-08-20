@@ -37,6 +37,7 @@
     "db:migrate": "drizzle-kit migrate",
     "stock:rebuild": "tsx scripts/rebuild-current-stock-yardages.ts",
     "security:rls-live": "node scripts/live-rls-persona-check.mjs",
+    "security:shot-review-live": "node scripts/live-shot-review-persona-check.mjs",
     "training:backfill": "node scripts/backfill-training-over-time.mjs",
     "tour:seed-social": "node scripts/seed-tour-social.mjs",
     "tour:reset-social": "node scripts/seed-tour-social.mjs --reset",

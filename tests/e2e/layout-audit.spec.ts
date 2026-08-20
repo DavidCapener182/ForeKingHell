@@ -2,15 +2,18 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
-import { authStorageState, hasAuthenticatedE2e } from "./helpers";
+import { authStorageState, hasAuthenticatedE2e, hasLocalAuthBypass } from "./helpers";
 
 const allViewports = [
-  { name: "mobile-small", width: 320, height: 568 },
-  { name: "mobile-375", width: 375, height: 667 },
-  { name: "mobile", width: 390, height: 844 },
-  { name: "mobile-393", width: 393, height: 852 },
-  { name: "mobile-large", width: 430, height: 932 },
-  { name: "desktop", width: 1728, height: 1117 },
+  { name: "width-320", width: 320, height: 568 },
+  { name: "width-375", width: 375, height: 667 },
+  { name: "width-390", width: 390, height: 844 },
+  { name: "width-430", width: 430, height: 932 },
+  { name: "width-768", width: 768, height: 1024 },
+  { name: "width-1024", width: 1024, height: 768 },
+  { name: "width-1280", width: 1280, height: 800 },
+  { name: "width-1440", width: 1440, height: 900 },
+  { name: "width-1920", width: 1920, height: 1080 },
 ] as const;
 
 const publicRoutes = ["/login", "/privacy"];
@@ -22,11 +25,17 @@ const viewports = requestedViewport
   ? allViewports.filter(({ name }) => name === requestedViewport)
   : allViewports;
 
+const requestedRoutes = new Set(
+  (process.env.PLAYWRIGHT_LAYOUT_ROUTE ?? "")
+    .split(",")
+    .map((route) => route.trim())
+    .filter(Boolean),
+);
 const authenticatedStaticRoutes = discoverStaticAppRoutes().filter(
   (route) =>
     route !== "/" &&
     !publicRoutes.includes(route) &&
-    (!process.env.PLAYWRIGHT_LAYOUT_ROUTE || route === process.env.PLAYWRIGHT_LAYOUT_ROUTE),
+    (requestedRoutes.size === 0 || requestedRoutes.has(route)),
 );
 
 test.describe("layout audit", () => {
@@ -52,7 +61,7 @@ test.describe("layout audit", () => {
 
     test("static app routes stay within their intended canvas", async ({ context, page }) => {
       test.skip(
-        !authStorageState || !existsSync(authStorageState),
+        !hasLocalAuthBypass && (!authStorageState || !existsSync(authStorageState)),
         "Set PLAYWRIGHT_AUTH_STATE to run authenticated layout audit.",
       );
 

@@ -90,16 +90,16 @@ describe("public homepage mobile design source contract", () => {
     expect(mobileMarketingCss).toContain("min-height: clamp(26rem, 118vw, 30rem);");
     expect(mobileMarketingCss).not.toContain("min-height: clamp(33rem, 140vw, 38rem);");
     expect(heroSource).toContain("Turn every measured shot into a better golf game.");
-    expect(mobileShowcaseSource).toContain("Today, Practice, Play, Sessions and More");
+    expect(mobileShowcaseSource).toContain("Today, Practice, Strategy, Review and Bag");
     expect(mobileShowcaseSource).toContain("Today · Demo data");
     expect(mobileShowcaseSource).not.toContain("Home, Sessions, Analyse, Practice and More");
 
     const destinationMarkup = [
       "<span>Today</span>",
       "<span>Practice</span>",
-      "<span>Play</span>",
-      "<span>Sessions</span>",
-      "/> More",
+      "<span>Strategy</span>",
+      "<span>Review</span>",
+      "<span>Bag</span>",
     ];
     const destinationPositions = destinationMarkup.map((markup) =>
       mobileShowcaseSource.indexOf(markup),

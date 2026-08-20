@@ -30,7 +30,7 @@ practice action, review the result and optionally share a selected report.
 - Public, authenticated and admin layouts are split without changing public URLs.
 - The PostgreSQL connection is explicitly server-only, and dependency-boundary tests prevent direct
   database imports in UI/client components and React imports in pure domain modules.
-- Desktop navigation uses six areas; mobile uses Home, Sessions, Analyse, Practice and More.
+- Desktop navigation uses Home, Practice, Sessions, Rounds, Strategy/Course Twin, Bag, Insights, Data and Settings, with Admin role-gated separately. Mobile uses Today, Practice, Strategy, Review and Bag; account and settings live behind the profile affordance.
 - A typed product-route registry supplies command search metadata and admin visibility.
 - Import follows Source, Preview, Club mapping and First insight; sample data is explicitly preview
   only until a user chooses to save real evidence.

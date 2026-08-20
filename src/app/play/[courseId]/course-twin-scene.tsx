@@ -1,7 +1,13 @@
 "use client";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Line, OrbitControls, useTexture } from "@react-three/drei";
+import {
+  AdaptiveDpr,
+  Line,
+  OrbitControls,
+  PerformanceMonitor,
+  useTexture,
+} from "@react-three/drei";
 import {
   Suspense,
   useCallback,
@@ -136,6 +142,7 @@ import {
   type CourseTwinVirtualShotKind,
 } from "@/lib/course-twin-virtual-round";
 import { cn } from "@/lib/utils";
+import type { CourseTwinRenderQuality } from "@/lib/course-twin-performance";
 
 type RuntimeMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
 type ExploreTransport = "walk" | "cart";
@@ -326,6 +333,29 @@ function roundShotEvidence(
   };
 }
 
+function CourseTwinAdaptiveQuality({
+  renderQuality,
+}: {
+  renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
+}) {
+  const setDpr = useThree((state) => state.setDpr);
+  const minDpr = renderQuality === "high" ? 1 : 0.75;
+  const maxDpr = renderQuality === "high" ? 1.75 : 1.25;
+
+  return (
+    <PerformanceMonitor
+      factor={renderQuality === "high" ? 0.72 : 0.5}
+      flipflops={3}
+      onChange={({ factor }) =>
+        setDpr(THREE.MathUtils.lerp(minDpr, maxDpr, THREE.MathUtils.clamp(factor, 0, 1)))
+      }
+      onFallback={() => setDpr(minDpr)}
+    >
+      <AdaptiveDpr pixelated />
+    </PerformanceMonitor>
+  );
+}
+
 export function CourseTwinScene({
   manifest,
   replay,
@@ -334,6 +364,7 @@ export function CourseTwinScene({
   tournamentRoundNumber,
   initialMode,
   initialHoleNumber,
+  renderQuality,
 }: {
   manifest: CourseTwinManifest;
   replay: CourseTwinReplayDocument | null;
@@ -342,6 +373,7 @@ export function CourseTwinScene({
   tournamentRoundNumber?: number | null;
   initialMode?: RuntimeMode;
   initialHoleNumber?: number;
+  renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
   const initialCompactViewport =
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
@@ -2300,6 +2332,7 @@ export function CourseTwinScene({
     <div
       data-mobile-preserve-dark
       data-course-twin-stage
+      data-course-twin-render-quality={renderQuality}
       className={cn(
         mobileStyles.stage,
         "relative grid min-h-[calc(100dvh-5rem)] bg-[#07150e] text-white xl:h-full xl:min-h-0 xl:overflow-hidden",
@@ -3085,15 +3118,15 @@ export function CourseTwinScene({
         )}
       >
         <Canvas
-          shadows="percentage"
-          dpr={[1, 1.75]}
+          shadows={renderQuality === "high" ? "percentage" : "basic"}
+          dpr={renderQuality === "high" ? [1, 1.75] : [0.75, 1.25]}
           style={{
             cursor: mode === "play" && !virtualShot && !virtualPuttReplay ? "crosshair" : "default",
           }}
           camera={{ position: [0, 180, 240], fov: 48, near: 0.5, far: 6000 }}
           gl={{
-            antialias: true,
-            powerPreference: "high-performance",
+            antialias: renderQuality === "high",
+            powerPreference: renderQuality === "high" ? "high-performance" : "low-power",
             toneMapping: THREE.ACESFilmicToneMapping,
             toneMappingExposure: 1.14,
           }}
@@ -3103,6 +3136,7 @@ export function CourseTwinScene({
             </div>
           }
         >
+          <CourseTwinAdaptiveQuality renderQuality={renderQuality} />
           <color attach="background" args={[cameraView === "aerial" ? "#666b49" : "#75aecd"]} />
           <fog
             attach="fog"
@@ -3115,8 +3149,8 @@ export function CourseTwinScene({
             color="#fff2d2"
             position={[-260, 285, 170]}
             intensity={1.7}
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
+            shadow-mapSize-width={renderQuality === "high" ? 2048 : 1024}
+            shadow-mapSize-height={renderQuality === "high" ? 2048 : 1024}
             shadow-bias={-0.00012}
           />
           <directionalLight color="#9fd5ff" position={[340, 170, -280]} intensity={0.12} />
@@ -3212,6 +3246,7 @@ export function CourseTwinScene({
                   cameraView={cameraView}
                   cameraCommand={cameraCommand}
                   exploreTransport={mode === "explore" ? exploreTransport : null}
+                  renderQuality={renderQuality}
                 />
               </Suspense>
             </>
@@ -4938,6 +4973,7 @@ function CourseWorld({
   cameraView,
   cameraCommand,
   exploreTransport,
+  renderQuality,
 }: {
   manifest: CourseTwinManifest;
   terrainSamples: Float32Array;
@@ -4962,6 +4998,7 @@ function CourseWorld({
   cameraView: CameraView;
   cameraCommand: CameraCommand;
   exploreTransport: ExploreTransport | null;
+  renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
   const holeLength = Math.max(
     1,
@@ -5012,6 +5049,7 @@ function CourseWorld({
           holes={manifest.holes}
           terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
           sampleTerrain={sampleTerrain}
+          renderQuality={renderQuality}
         />
       ) : null}
       {manifest.holes
@@ -6035,19 +6073,29 @@ function InstancedVegetation({
   holes,
   terrainBounds,
   sampleTerrain,
+  renderQuality,
 }: {
   features: CourseTwinFeature[];
   holes: CourseTwinHole[];
   terrainBounds: CourseTwinManifest["bounds"];
   sampleTerrain: CourseTwinTerrainSampler;
+  renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
   const trees = useMemo(
-    () => buildTreeInstances(features, holes, terrainBounds, sampleTerrain),
-    [features, holes, sampleTerrain, terrainBounds],
+    () =>
+      buildTreeInstances(features, holes, terrainBounds, sampleTerrain).slice(
+        0,
+        renderQuality === "high" ? 650 : 280,
+      ),
+    [features, holes, renderQuality, sampleTerrain, terrainBounds],
   );
   const bushes = useMemo(
-    () => buildBushInstances(features, holes, terrainBounds, sampleTerrain),
-    [features, holes, sampleTerrain, terrainBounds],
+    () =>
+      buildBushInstances(features, holes, terrainBounds, sampleTerrain).slice(
+        0,
+        renderQuality === "high" ? 1_200 : 480,
+      ),
+    [features, holes, renderQuality, sampleTerrain, terrainBounds],
   );
   const textures = useTexture([
     ...treeBillboards.map(({ url }) => url),

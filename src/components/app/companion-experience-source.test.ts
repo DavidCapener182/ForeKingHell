@@ -33,7 +33,7 @@ describe("companion identity and navigation feedback", () => {
   it("prefetches companion tabs and shared mobile links", () => {
     const shell = read("src/components/app/companion-app-shell.tsx");
     expect(shell).toContain("router.prefetch(href)");
-    expect(shell).toContain('"/today", "/practice", "/play", "/sessions", "/import"');
+    expect(shell).toContain('"/today", "/practice", "/courses/strategy", "/sessions", "/bag"');
     expect(read("src/components/app/ios-mobile.tsx")).toContain(
       "<Link href={href} prefetch aria-label={ariaLabel}",
     );

@@ -43,7 +43,7 @@ export type AppRouteMetadata = {
   pageTitle: string;
   shortTitle: string;
   navigationGroup: "Home" | "Play" | "Analyse" | "Improve" | "Compete" | "Account" | "Admin";
-  mobilePrimaryGroup: "home" | "practice" | "play" | "sessions" | "analyse" | "more";
+  mobilePrimaryGroup: "today" | "practice" | "strategy" | "review" | "bag" | "more";
   mobilePrimaryDestination?: boolean;
   mobileMoreGroup?: "Play" | "Compete" | "Social" | "Account" | "Admin";
   mobileExperience: MobileExperience;
@@ -68,12 +68,12 @@ const baseAppRouteMetadata = [
     "Today",
     "Today",
     "Home",
-    "home",
+    "today",
     CalendarDays,
     ["home", "latest session", "action centre"],
     { mobilePrimaryDestination: true },
   ),
-  meta("dashboard", "/dashboard", "Dashboard", "Dashboard", "Home", "home", Gauge, [
+  meta("dashboard", "/dashboard", "Dashboard", "Dashboard", "Home", "today", Gauge, [
     "command centre",
     "overview",
     "data health",
@@ -84,7 +84,7 @@ const baseAppRouteMetadata = [
     "Sessions",
     "Sessions",
     "Play",
-    "sessions",
+    "review",
     Database,
     ["session history", "range sessions"],
     { mobilePrimaryDestination: true },
@@ -95,7 +95,7 @@ const baseAppRouteMetadata = [
     "Rounds",
     "Rounds",
     "Play",
-    "sessions",
+    "more",
     Flag,
     ["scorecard", "log round", "review round"],
     { mobileMoreGroup: "Play" },
@@ -106,7 +106,7 @@ const baseAppRouteMetadata = [
     "Import data",
     "Import",
     "Play",
-    "sessions",
+    "more",
     Upload,
     ["csv", "rapsodo", "upload", "launch monitor"],
     { mobileMoreGroup: "Play" },
@@ -117,7 +117,7 @@ const baseAppRouteMetadata = [
     "Courses",
     "Courses",
     "Play",
-    "sessions",
+    "strategy",
     MapPinned,
     ["course", "hole", "golf course"],
     { mobileMoreGroup: "Play" },
@@ -128,7 +128,7 @@ const baseAppRouteMetadata = [
     "Course Twins",
     "Course Twin",
     "Play",
-    "sessions",
+    "strategy",
     Cuboid,
     ["course twin", "course simulator", "play a course", "virtual round"],
     { mobileMoreGroup: "Play" },
@@ -139,12 +139,12 @@ const baseAppRouteMetadata = [
     "Course Strategy",
     "Strategy",
     "Play",
-    "sessions",
+    "strategy",
     MapPinned,
     ["course plan", "safe target", "yardage plan"],
     { mobileMoreGroup: "Play" },
   ),
-  meta("play-companion", "/play", "Play", "Play", "Play", "play", Flag, [
+  meta("play-companion", "/play", "Play", "Play", "Play", "strategy", Flag, [
     "round preparation",
     "course strategy",
     "course twin",
@@ -155,7 +155,7 @@ const baseAppRouteMetadata = [
     "Analyse",
     "Analyse",
     "Analyse",
-    "analyse",
+    "review",
     Radar,
     ["analysis", "shot analysis", "evidence"],
     { mobilePrimaryDestination: true },
@@ -166,29 +166,29 @@ const baseAppRouteMetadata = [
     "Session impact",
     "Session impact",
     "Analyse",
-    "analyse",
+    "review",
     GitCompareArrows,
     ["impact", "session change"],
     { desktopVisible: false },
   ),
-  meta("shots", "/shots", "Shot explorer", "Shots", "Analyse", "analyse", Database, [
+  meta("shots", "/shots", "Shot explorer", "Shots", "Analyse", "review", Database, [
     "driver",
     "shot data",
     "raw shots",
     "dispersion",
   ]),
-  meta("bag", "/bag", "Bag map", "Bag", "Analyse", "analyse", Target, [
+  meta("bag", "/bag", "Bag map", "Bag", "Analyse", "bag", Target, [
     "yardages",
     "club carry",
     "gapping",
     "stock yardages",
   ]),
-  meta("compare", "/compare", "Compare", "Compare", "Analyse", "analyse", GitCompareArrows, [
+  meta("compare", "/compare", "Compare", "Compare", "Analyse", "review", GitCompareArrows, [
     "comparison",
     "session compare",
     "change",
   ]),
-  meta("progress", "/progress", "Progress", "Progress", "Analyse", "analyse", LineChart, [
+  meta("progress", "/progress", "Progress", "Progress", "Analyse", "review", LineChart, [
     "improvement",
     "trends",
   ]),
@@ -198,7 +198,7 @@ const baseAppRouteMetadata = [
     "Strokes gained",
     "Strokes gained",
     "Analyse",
-    "analyse",
+    "review",
     LineChart,
     ["strokes", "scoring", "gained"],
     { tabKey: "strokes" },
@@ -209,11 +209,11 @@ const baseAppRouteMetadata = [
     "Simulator Performance Lab",
     "Performance Lab",
     "Analyse",
-    "analyse",
+    "review",
     Radar,
     ["performance lab", "simulator", "launch monitor"],
   ),
-  meta("handicap", "/handicap", "Handicap", "Handicap", "Analyse", "analyse", Calculator, [
+  meta("handicap", "/handicap", "Handicap", "Handicap", "Analyse", "more", Calculator, [
     "handicap index",
     "scores",
   ]),
@@ -238,7 +238,7 @@ const baseAppRouteMetadata = [
     ClipboardCheck,
     ["practice plan", "practice session", "range plan", "drill"],
   ),
-  meta("quick-bag", "/quick-bag", "Quick Bag", "Quick Bag", "Improve", "more", Target, [
+  meta("quick-bag", "/quick-bag", "Quick Bag", "Quick Bag", "Improve", "bag", Target, [
     "trusted carry",
     "club number",
     "target distance",
@@ -263,13 +263,13 @@ const baseAppRouteMetadata = [
     "Training Load",
     "Training load",
     "Improve",
-    "analyse",
+    "review",
     LineChart,
     ["practice load", "training"],
     { tabKey: "training" },
   ),
   meta("goals", "/goals", "Goals", "Goals", "Improve", "practice", Target, ["goal", "season plan"]),
-  meta("data-chat", "/data-chat", "Data Chat", "Data Chat", "Improve", "analyse", MessageCircle, [
+  meta("data-chat", "/data-chat", "Data Chat", "Data Chat", "Improve", "review", MessageCircle, [
     "ask data",
     "ai",
     "improve",
@@ -383,7 +383,7 @@ const baseAppRouteMetadata = [
     "Equipment",
     "Equipment",
     "Account",
-    "analyse",
+    "bag",
     Wrench,
     ["clubs", "equipment"],
     { mobileMoreGroup: "Account" },
@@ -394,7 +394,7 @@ const baseAppRouteMetadata = [
     "Rapsodo",
     "Rapsodo",
     "Account",
-    "sessions",
+    "more",
     Upload,
     ["rapsodo cloud", "provider"],
     { mobileMoreGroup: "Play", badge: "Beta", desktopVisible: false },
@@ -554,7 +554,7 @@ export function findRouteMetadata(pathname: string) {
       ? {
           ...courseTwin,
           mobileExperience: "immersive" as const,
-          mobilePrimaryGroup: "play" as const,
+          mobilePrimaryGroup: "strategy" as const,
         }
       : undefined;
   }
