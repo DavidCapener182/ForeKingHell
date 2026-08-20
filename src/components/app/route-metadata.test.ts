@@ -13,9 +13,9 @@ describe("central route metadata", () => {
     expect(findRouteMetadata("/practice")?.pageTitle).toBe("Practice Planner");
     expect(findRouteMetadata("/practice")?.mobilePrimaryGroup).toBe("practice");
     expect(findRouteMetadata("/data-chat")?.pageTitle).toBe("Data Chat");
-    expect(findRouteMetadata("/data-chat")?.mobilePrimaryGroup).toBe("analyse");
+    expect(findRouteMetadata("/data-chat")?.mobilePrimaryGroup).toBe("review");
     expect(findRouteMetadata("/play/bootle")?.pageTitle).toBe("Course Twins");
-    expect(findRouteMetadata("/play/bootle")?.mobilePrimaryGroup).toBe("play");
+    expect(findRouteMetadata("/play/bootle")?.mobilePrimaryGroup).toBe("strategy");
     expect(findRouteMetadata("/play/bootle")?.mobileExperience).toBe("immersive");
   });
 
@@ -23,7 +23,8 @@ describe("central route metadata", () => {
     expect(appRouteMetadata.every((route) => Boolean(route.mobileExperience))).toBe(true);
     expect(findRouteMetadata("/today")?.mobileNav).toBe("primary");
     expect(findRouteMetadata("/practice")?.mobileNav).toBe("primary");
-    expect(findRouteMetadata("/play")?.mobileNav).toBe("primary");
+    expect(findRouteMetadata("/courses/strategy")?.mobileNav).toBe("primary");
+    expect(findRouteMetadata("/bag")?.mobileNav).toBe("primary");
     expect(findRouteMetadata("/analyse")?.mobileExperience).toBe("desktop-only");
     expect(findRouteMetadata("/admin")?.mobileNav).toBe(false);
   });

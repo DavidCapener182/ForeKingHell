@@ -12,18 +12,29 @@ describe("application navigation hierarchy", () => {
     expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
       ["Today", "/today"],
       ["Practice", "/practice"],
-      ["Play", "/play"],
-      ["Sessions", "/sessions"],
-      ["More", "#more"],
+      ["Strategy", "/courses/strategy"],
+      ["Review", "/sessions"],
+      ["Bag", "/bag"],
     ]);
 
     expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/coach")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Play")?.isActive("/play/bootle")).toBe(
+    expect(
+      mobilePrimaryItems
+        .find((item) => item.label === "Practice")
+        ?.isActive("/practice/quick-range"),
+    ).toBe(true);
+    expect(
+      mobilePrimaryItems.find((item) => item.label === "Strategy")?.isActive("/play/bootle"),
+    ).toBe(true);
+    expect(mobilePrimaryItems.find((item) => item.label === "Review")?.isActive("/shots")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "More")?.isActive("/quick-bag")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Review")?.isActive("/progress")).toBe(
+      true,
+    );
+    expect(mobilePrimaryItems.find((item) => item.label === "Bag")?.isActive("/quick-bag")).toBe(
       true,
     );
   });
@@ -36,8 +47,6 @@ describe("application navigation hierarchy", () => {
     );
     expect(mobileMoreRoutes).toEqual(
       expect.arrayContaining([
-        "/bag",
-        "/quick-bag",
         "/import",
         "/handicap",
         "/goals",
@@ -52,6 +61,8 @@ describe("application navigation hierarchy", () => {
       ]),
     );
     expect(mobileMoreRoutes).not.toContain("/rapsodo");
+    expect(mobileMoreRoutes).not.toContain("/bag");
+    expect(mobileMoreRoutes).not.toContain("/quick-bag");
     expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.label))).toContain(
       "Import & Sync",
     );
@@ -74,19 +85,25 @@ describe("application navigation hierarchy", () => {
 
     expect(playerGroups.map((group) => group.label)).toEqual([
       "Home",
-      "Play",
-      "Analyse",
-      "Improve",
-      "Compete",
-      "Account",
+      "Practice",
+      "Sessions",
+      "Rounds",
+      "Strategy / Course Twin",
+      "Bag",
+      "Insights",
+      "Data",
+      "Settings",
     ]);
     expect(adminGroups.map((group) => group.label)).toEqual([
       "Home",
-      "Play",
-      "Analyse",
-      "Improve",
-      "Compete",
-      "Account",
+      "Practice",
+      "Sessions",
+      "Rounds",
+      "Strategy / Course Twin",
+      "Bag",
+      "Insights",
+      "Data",
+      "Settings",
       "Admin",
     ]);
 

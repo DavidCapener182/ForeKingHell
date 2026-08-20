@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, Menu, MoreHorizontal, Search, Upload, X } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Search, Upload, UserRound, X } from "lucide-react";
 
 import { CompanionBrandLockup } from "@/components/app/companion-brand";
 import {
@@ -181,9 +181,9 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                   variant="ghost"
                   size="icon"
                   className="ios-nav-button focus-aaa relative z-10 size-11"
-                  aria-label="Open navigation"
+                  aria-label={`Open profile and navigation for ${profileLabel}`}
                 >
-                  <Menu className="size-5" />
+                  <UserRound className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
             )}
@@ -199,7 +199,9 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
               <span className="ios-sheet-handle" aria-hidden />
               <SheetHeader className="ios-sheet-header border-b px-4 pb-3 pt-2 text-left">
                 <div className="min-w-0 pr-10">
-                  <SheetTitle className="text-[1.375rem] font-bold tracking-tight">More</SheetTitle>
+                  <SheetTitle className="text-[1.375rem] font-bold tracking-tight">
+                    Profile &amp; tools
+                  </SheetTitle>
                   <SheetDescription className="mt-0.5 truncate">
                     {profileLabel} · Level {level} · {xpFormatter.format(totalXp)} XP
                   </SheetDescription>
@@ -350,27 +352,6 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.isActive(pathname);
-
-            if (item.label === "More") {
-              return (
-                <button
-                  key={`${item.label}-${item.href}`}
-                  type="button"
-                  onClick={() => setMoreOpen(true)}
-                  aria-current={active ? "page" : undefined}
-                  aria-label="Open more navigation"
-                  className={cn(
-                    "ios-tab-item focus-aaa flex min-h-14 touch-manipulation flex-col items-center justify-center gap-0.5 px-1 outline-none transition-[color,transform] duration-100 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100",
-                    active ? "font-semibold" : "",
-                  )}
-                >
-                  <span className="ios-tab-icon grid place-items-center">
-                    <Icon className="size-5" aria-hidden />
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            }
 
             return (
               <Link

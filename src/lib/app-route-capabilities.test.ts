@@ -10,8 +10,9 @@ describe("companion route capabilities", () => {
   it("keeps primary companion routes explicit", () => {
     expect(mobileCapabilities.today.mobileNav).toBe("primary");
     expect(mobileCapabilities.practice.mobileNav).toBe("primary");
-    expect(mobileCapabilities["play-companion"].mobileNav).toBe("primary");
+    expect(mobileCapabilities["course-strategy"].mobileNav).toBe("primary");
     expect(mobileCapabilities.sessions.mobileNav).toBe("primary");
+    expect(mobileCapabilities.bag.mobileNav).toBe("primary");
   });
 
   it("hands desktop workbenches off before their route loaders run", () => {
@@ -34,7 +35,7 @@ describe("companion route capabilities", () => {
     expect(isDesktopOnlyCompanionPath("/quick-bag")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/bag")).toBe(false);
     expect(mobileCapabilities.bag.mobileExperience).toBe("companion");
-    expect(mobileCapabilities.bag.mobileNav).toBe("more");
+    expect(mobileCapabilities.bag.mobileNav).toBe("primary");
     expect(mobileCapabilities.challenges.mobileExperience).toBe("companion");
     expect(mobileCapabilities.challenges.mobileNav).toBe("more");
     expect(isSummaryOnlyCompanionPath("/challenges")).toBe(false);

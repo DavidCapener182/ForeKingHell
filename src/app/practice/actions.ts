@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireCurrentUserId } from "@/lib/current-user";
+import { recordProductWorkflowEvent } from "@/lib/product-events";
 import {
   completePracticePlanForUser,
   completePracticePlanFromSelectedImport,
@@ -28,6 +29,10 @@ export async function savePracticePlanAction(plan: PracticePlan) {
   const planId = await savePracticePlanForUser(userId, plan);
 
   revalidatePracticePlannerSurfaces();
+  recordProductWorkflowEvent("practice_plan_saved", {
+    durationMinutes: plan.estimatedTimeMinutes,
+    source: plan.sessionType,
+  });
 
   return { planId, latestSessionReview: null };
 }
@@ -38,6 +43,10 @@ export async function saveAndStartPracticePlanAction(plan: PracticePlan) {
 
   await updatePracticePlanStatusForUser(userId, planId, "awaiting_import");
   revalidatePracticePlannerSurfaces({ includePractice: false });
+  recordProductWorkflowEvent("practice_plan_started", {
+    durationMinutes: plan.estimatedTimeMinutes,
+    source: plan.sessionType,
+  });
 
   return { planId, status: "awaiting_import" as const };
 }
@@ -47,6 +56,7 @@ export async function startPracticePlanAction(planId: string) {
 
   await updatePracticePlanStatusForUser(userId, planId, "awaiting_import");
   revalidatePracticePlannerSurfaces();
+  recordProductWorkflowEvent("practice_plan_started", { source: "saved_plan" });
 
   return { status: "awaiting_import" as const };
 }
@@ -56,6 +66,10 @@ export async function completePracticeActivityAction(planId: string) {
 
   await updatePracticePlanStatusForUser(userId, planId, "completed");
   revalidatePracticePlannerSurfaces();
+  recordProductWorkflowEvent("practice_plan_completed", {
+    source: "activity",
+    status: "completed",
+  });
 
   return { status: "completed" as const, measuredSuccess: false as const };
 }
@@ -99,6 +113,10 @@ export async function completePracticePlanAction(planId: string, input: Practice
   const result = await completePracticePlanForUser(userId, planId, input);
 
   revalidatePracticePlannerSurfaces();
+  recordProductWorkflowEvent("practice_plan_completed", {
+    source: "measured_import",
+    status: input.completionStatus,
+  });
 
   return result;
 }

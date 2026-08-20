@@ -287,9 +287,9 @@ describe("production readiness gate", () => {
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
       "Practice",
-      "Play",
-      "Sessions",
-      "More",
+      "Strategy",
+      "Review",
+      "Bag",
     ]);
     expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
     expect(mobileNavSource).toContain("Search companion actions");
@@ -299,6 +299,19 @@ describe("production readiness gate", () => {
     );
     expect(mobileNavSource).not.toContain('className="ios-drawer-group grid grid-cols-3');
     expect(mobileNavSource).toContain("focus-aaa");
+  });
+
+  it("keeps the release layout audit aligned to the required viewport and zoom matrix", () => {
+    const layoutAuditSource = readFileSync(join(root, "tests/e2e/layout-audit.spec.ts"), "utf8");
+    const accessibilitySource = readFileSync(
+      join(root, "tests/e2e/a11y-interactions.spec.ts"),
+      "utf8",
+    );
+
+    for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
+      expect(layoutAuditSource).toContain(`width: ${width}`);
+    }
+    expect(accessibilitySource).toContain("200% browser zoom");
   });
 
   it("keeps the mobile artwork catalogue ready for all AAA launch surfaces", () => {

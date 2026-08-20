@@ -19,6 +19,9 @@ test.describe("accessible mobile interactions", () => {
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     const destinations = navigation.locator(".ios-tab-item");
     await expect(destinations).toHaveCount(5);
+    await expect
+      .poll(() => destinations.allTextContents())
+      .toEqual(["Today", "Practice", "Strategy", "Review", "Bag"]);
     await expect(navigation.getByRole("link", { name: "Today" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -65,6 +68,23 @@ test.describe("accessible mobile interactions", () => {
     expect(transitionDurations.every((duration) => Number.parseFloat(duration) <= 0.001)).toBe(
       true,
     );
+  });
+
+  test("200% browser zoom keeps the primary decision and navigation available without horizontal overflow", async ({
+    page,
+  }) => {
+    // At 200% browser zoom a 1280px display exposes roughly a 640 CSS-pixel layout viewport.
+    await page.setViewportSize({ width: 640, height: 720 });
+    await openCompanionRoute(page, "/today", /Today/i);
+
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
+    const layout = await page.evaluate(() => ({
+      scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+      viewportWidth: window.innerWidth,
+    }));
+
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewportWidth + 2);
   });
 
   test("flight paths expose a labelled visual and plain-language non-chart summary", async ({

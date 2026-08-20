@@ -3,6 +3,11 @@
 These are launch constraints, not hidden failures.
 
 - Authenticated Playwright coverage requires `PLAYWRIGHT_AUTH_STATE`; without it the public/login tests run but the app is not fully production-verified. Use `npm run test:e2e:capture-auth` to capture `.playwright/auth/forekinghell-state.json` before running the production gate.
+- The currently stored production auth state belongs to a populated non-test account and its refresh
+  token is no longer reusable. It was not used for mutating verification. A separate two-account
+  browser proof requires two fresh disposable Supabase users/states plus an exact cleanup identity;
+  production owner isolation and review mutation boundaries are currently proven by rollback-only
+  JWT-role SQL matrices instead.
 - Local authenticated E2E uses a local Playwright auth guard to avoid Supabase Auth request-rate limits during dense route sweeps. The guard is disabled in production; deployed preview verification still depends on the target deployment's real Supabase Auth and RLS behavior.
 - Rapsodo CSV import is live. Rapsodo cloud sync depends on `RAPSODO_TOKEN_SECRET` and `RAPSODO_API_BASE_URL` being configured and tested against real accounts.
 - Square and TrackMan are beta/coming-soon provider tiles unless their adapters are enabled for the tester cohort.
@@ -11,10 +16,10 @@ These are launch constraints, not hidden failures.
 - OpenAI coach and scorecard routes require `OPENAI_API_KEY`; rules-based fallbacks should remain understandable when the key is absent.
 - Stripe billing should not be shown to testers unless price IDs and webhook verification are configured in the target environment.
 - Course rating/slope and scorecard proof can still be incomplete for manual or imported rounds; Data Health should call this out.
-- `npm audit --audit-level=high` currently reports 38 transitive advisories (11 high and 27
-  moderate) in Next/PostCSS, Lighthouse/Sentry/OpenTelemetry, Drizzle tooling and the shadcn CLI.
-  npm's proposed remediations require breaking downgrades or major-version changes, so they are
-  tracked for upstream-compatible releases rather than force-applied to the beta branch.
+- `npm audit --audit-level=high` exits successfully. The full registry audit currently reports 10
+  moderate transitive advisories in OpenTelemetry/Vercel observability and esbuild under Drizzle
+  tooling. npm's proposed remediations require breaking OpenTelemetry or Drizzle changes, so they
+  are tracked for upstream-compatible releases rather than force-applied to production.
 - The live rollback-only RLS matrix verifies owner, coach, viewer, editor, friend, stranger, blocked,
   group-moderator, administrator and anonymous boundaries. It does not replace deployed-preview
   browser verification or explicit user scoping for privileged application-server queries.

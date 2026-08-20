@@ -203,12 +203,13 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("min-width: 2.75rem;");
   });
 
-  it("builds More from semantic items, badges and separated account actions", () => {
+  it("builds the profile and tools drawer from semantic items and separated account actions", () => {
     expect(mobileNavSource).toContain("<Item");
     expect(mobileNavSource).toContain("<Badge");
     expect(mobileNavSource).toContain("<Separator");
     expect(mobileNavSource).toContain("<AlertDialog");
     expect(mobileNavSource).toContain("Open full desktop site");
+    expect(mobileNavSource).toContain("Profile &amp; tools");
   });
 
   it("gives portalled controls and data surfaces the same mobile material contract", () => {

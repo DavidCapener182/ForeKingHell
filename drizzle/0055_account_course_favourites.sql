@@ -35,7 +35,7 @@ CREATE POLICY fkh_course_favourites_owner_delete
   FOR DELETE TO authenticated
   USING (user_id = (SELECT auth.uid()));
 
-REVOKE ALL ON TABLE public.fkh_course_favourites FROM PUBLIC, anon;
+REVOKE ALL ON TABLE public.fkh_course_favourites FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, DELETE ON TABLE public.fkh_course_favourites TO authenticated;
 
 COMMENT ON TABLE public.fkh_course_favourites IS

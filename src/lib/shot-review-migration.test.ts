@@ -44,7 +44,7 @@ describe("shot review lifecycle migration", () => {
   });
 
   it("creates a server-write-only event model with compatibility-tag provenance", () => {
-    expect(migration).toContain("CREATE TABLE public.fkh_shot_review_events");
+    expect(migration).toContain("CREATE TABLE IF NOT EXISTS public.fkh_shot_review_events");
     expect(migration).toContain("previous_status varchar(32) NOT NULL");
     expect(migration).toContain("previous_quality_tag varchar(40)");
     expect(migration).toContain("resulting_quality_tag varchar(40)");
@@ -62,7 +62,11 @@ describe("shot review lifecycle migration", () => {
       "Legacy quality flag classified during review lifecycle migration.",
     );
     expect(migration).toContain("INSERT INTO public.fkh_shot_review_events");
-    expect(migration).toContain("WHERE review_source = 'migration'");
+    expect(migration).toContain("WHERE shot.review_source = 'migration'");
+    expect(migration).toContain("ADD COLUMN IF NOT EXISTS review_status");
+    expect(migration).toContain("CREATE INDEX IF NOT EXISTS fkh_shots_user_review_status_idx");
+    expect(migration).toContain("AND NOT EXISTS (");
+    expect(migration).toContain("existing_event.shot_id = shot.id");
     expect(migration).toContain("IN ('fat', 'mishit', 'thin', 'top')");
     expect(migration).toContain("THEN 'suggested_exclusion'");
     expect(migration).toContain("IN ('warm-up', 'warmup', 'warm_up')");

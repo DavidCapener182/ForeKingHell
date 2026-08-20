@@ -1,31 +1,57 @@
 ALTER TABLE public.fkh_shots
-  ADD COLUMN review_status varchar(32) NOT NULL DEFAULT 'included',
-  ADD COLUMN review_reason varchar(500),
-  ADD COLUMN review_confidence double precision,
-  ADD COLUMN review_source varchar(24),
-  ADD COLUMN review_previous_quality_tag varchar(40),
-  ADD COLUMN reviewed_at timestamptz;
+  ADD COLUMN IF NOT EXISTS review_status varchar(32) NOT NULL DEFAULT 'included',
+  ADD COLUMN IF NOT EXISTS review_reason varchar(500),
+  ADD COLUMN IF NOT EXISTS review_confidence double precision,
+  ADD COLUMN IF NOT EXISTS review_source varchar(24),
+  ADD COLUMN IF NOT EXISTS review_previous_quality_tag varchar(40),
+  ADD COLUMN IF NOT EXISTS reviewed_at timestamptz;
 
-ALTER TABLE public.fkh_shots
-  ADD CONSTRAINT fkh_shots_review_status_check
-    CHECK (review_status IN (
-      'included',
-      'suggested_exclusion',
-      'user_excluded',
-      'restored',
-      'calibration',
-      'warm_up',
-      'launch_monitor_error'
-    )),
-  ADD CONSTRAINT fkh_shots_review_confidence_check
-    CHECK (review_confidence IS NULL OR review_confidence BETWEEN 0 AND 1),
-  ADD CONSTRAINT fkh_shots_review_source_check
-    CHECK (review_source IS NULL OR review_source IN ('user', 'system', 'import', 'migration'));
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.fkh_shots'::regclass
+      AND conname = 'fkh_shots_review_status_check'
+  ) THEN
+    ALTER TABLE public.fkh_shots
+      ADD CONSTRAINT fkh_shots_review_status_check
+      CHECK (review_status IN (
+        'included',
+        'suggested_exclusion',
+        'user_excluded',
+        'restored',
+        'calibration',
+        'warm_up',
+        'launch_monitor_error'
+      ));
+  END IF;
 
-CREATE INDEX fkh_shots_user_review_status_idx
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.fkh_shots'::regclass
+      AND conname = 'fkh_shots_review_confidence_check'
+  ) THEN
+    ALTER TABLE public.fkh_shots
+      ADD CONSTRAINT fkh_shots_review_confidence_check
+      CHECK (review_confidence IS NULL OR review_confidence BETWEEN 0 AND 1);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'public.fkh_shots'::regclass
+      AND conname = 'fkh_shots_review_source_check'
+  ) THEN
+    ALTER TABLE public.fkh_shots
+      ADD CONSTRAINT fkh_shots_review_source_check
+      CHECK (review_source IS NULL OR review_source IN ('user', 'system', 'import', 'migration'));
+  END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS fkh_shots_user_review_status_idx
   ON public.fkh_shots (user_id, review_status, shot_at);
 
-CREATE TABLE public.fkh_shot_review_events (
+CREATE TABLE IF NOT EXISTS public.fkh_shot_review_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.fkh_users(id) ON DELETE CASCADE,
   shot_id uuid NOT NULL REFERENCES public.fkh_shots(id) ON DELETE CASCADE,
@@ -63,9 +89,9 @@ CREATE TABLE public.fkh_shot_review_events (
     CHECK (source IN ('user', 'system', 'import', 'migration'))
 );
 
-CREATE INDEX fkh_shot_review_events_user_created_idx
+CREATE INDEX IF NOT EXISTS fkh_shot_review_events_user_created_idx
   ON public.fkh_shot_review_events (user_id, created_at);
-CREATE INDEX fkh_shot_review_events_shot_created_idx
+CREATE INDEX IF NOT EXISTS fkh_shot_review_events_shot_created_idx
   ON public.fkh_shot_review_events (shot_id, created_at);
 
 UPDATE public.fkh_shots
@@ -94,23 +120,31 @@ SET
   review_confidence = 1,
   review_source = 'migration',
   reviewed_at = now()
-WHERE lower(coalesce(quality_tag, '')) LIKE 'exclude%'
-  OR lower(coalesce(quality_tag, '')) IN (
-    'delete',
-    'deleted',
-    'calibration',
-    'warm-up',
-    'warmup',
-    'warm_up',
-    'bad-data',
-    'bad_data',
-    'invalid',
-    'launch-monitor-error',
-    'misread',
-    'fat',
-    'mishit',
-    'thin',
-    'top'
+WHERE review_status = 'included'
+  AND review_reason IS NULL
+  AND review_confidence IS NULL
+  AND review_source IS NULL
+  AND review_previous_quality_tag IS NULL
+  AND reviewed_at IS NULL
+  AND (
+    lower(coalesce(quality_tag, '')) LIKE 'exclude%'
+    OR lower(coalesce(quality_tag, '')) IN (
+      'delete',
+      'deleted',
+      'calibration',
+      'warm-up',
+      'warmup',
+      'warm_up',
+      'bad-data',
+      'bad_data',
+      'invalid',
+      'launch-monitor-error',
+      'misread',
+      'fat',
+      'mishit',
+      'thin',
+      'top'
+    )
   );
 
 INSERT INTO public.fkh_shot_review_events (
@@ -136,8 +170,15 @@ SELECT
   NULL,
   quality_tag,
   reviewed_at
-FROM public.fkh_shots
-WHERE review_source = 'migration';
+FROM public.fkh_shots AS shot
+WHERE shot.review_source = 'migration'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.fkh_shot_review_events AS existing_event
+    WHERE existing_event.shot_id = shot.id
+      AND existing_event.source = 'migration'
+      AND existing_event.status = shot.review_status
+  );
 
 ALTER TABLE public.fkh_shot_review_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fkh_shot_review_events FORCE ROW LEVEL SECURITY;

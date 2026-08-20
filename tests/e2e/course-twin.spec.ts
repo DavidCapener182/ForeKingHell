@@ -343,6 +343,54 @@ test.describe("Course Twin", () => {
     await expect(page.locator("canvas")).toBeVisible();
   });
 
+  test("keeps a readable low-power 2D fallback without loading WebGL", async ({ page }) => {
+    test.setTimeout(120_000);
+    skipWhenNoAuth();
+    const aintreeCourseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
+    await page.setViewportSize({ width: 320, height: 568 });
+
+    await page.goto(
+      `/surface/companion?next=${encodeURIComponent(`/play/${aintreeCourseId}?quality=2d`)}`,
+      {
+        waitUntil: "domcontentloaded",
+        timeout: 90_000,
+      },
+    );
+    await expectPageReady(page, /Aintree Golf Centre/i);
+
+    const fallback = page.locator("[data-course-twin-low-power-fallback]");
+    await expect(fallback).toBeVisible();
+    await expect(page.getByText("2D Course Twin · low-power mode", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /Overhead course plan showing 9 mapped holes/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("list", { name: "Course holes" }).getByRole("listitem"),
+    ).toHaveCount(9);
+    await expect(page.getByRole("link", { name: "Open Strategy map" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Try balanced 3D" })).toBeVisible();
+    const fallbackScroll = await fallback.evaluate((element) => ({
+      bodyMode: document.body.dataset.mobileImmersive ?? null,
+      clientHeight: element.clientHeight,
+      mainViewport: element.closest("main")?.dataset.courseTwinViewport ?? null,
+      mobileMedia: window.matchMedia("(max-width: 1023px)").matches,
+      overflowY: getComputedStyle(element).overflowY,
+    }));
+    expect(fallbackScroll).toMatchObject({
+      bodyMode: "course-twin",
+      mainViewport: "true",
+      mobileMedia: true,
+      overflowY: "auto",
+    });
+    expect(fallbackScroll.clientHeight).toBeLessThanOrEqual(568);
+    const finalHole = page.getByRole("list", { name: "Course holes" }).getByRole("listitem").last();
+    await finalHole.scrollIntoViewIfNeeded();
+    await expect(finalHole).toBeInViewport();
+    await page.getByRole("button", { name: "Try balanced 3D" }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole("button", { name: "Try balanced 3D" })).toBeInViewport();
+    await expect(page.locator("canvas")).toHaveCount(0);
+  });
+
   test("keeps Course Twin full-screen with every mobile control inside the viewport", async ({
     page,
   }, testInfo) => {

@@ -17,6 +17,7 @@ import {
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildClubKey, normalizeClubType, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
+import { recordProductWorkflowEvent } from "@/lib/product-events";
 import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { recordRoundCompletedFeedItem } from "@/lib/social";
 
@@ -117,6 +118,11 @@ export async function createManualRoundAction(formData: FormData) {
     courseName: teeSet.courseName,
     score: scorecardTotal(scorecardJson),
     source: "manual",
+  });
+  recordProductWorkflowEvent("round_created", {
+    source: "manual",
+    roundStatus,
+    holeCount,
   });
   revalidateRound(session.id);
   redirect(`/rounds/${session.id}`);
