@@ -12,7 +12,6 @@ import {
   type CourseTwinFallbackMode,
 } from "./course-twin/course-twin-static-fallback";
 import { useInViewOnce } from "./reveal";
-import { ScrollZoomFrame } from "./scroll-zoom-frame";
 import styles from "./marketing.module.css";
 
 type RuntimeCapability = {
@@ -102,12 +101,17 @@ export function CourseTwinShowcase() {
           </span>
         </div>
       </div>
-      <ScrollZoomFrame
+      <div
         className={styles.courseTwinDemo}
         onClick={() => trackPlausibleEvent("Public Course Twin Demo Opened")}
       >
-        {Runtime ? <Runtime /> : <CourseTwinDemoState mode={fallbackMode} />}
-      </ScrollZoomFrame>
+        <div className={`t-skel ${styles.courseTwinSwap} ${Runtime ? "is-revealed" : ""}`}>
+          <div className="t-skel-skeleton" aria-hidden={Runtime ? true : undefined}>
+            <CourseTwinDemoState mode={fallbackMode} />
+          </div>
+          <div className="t-skel-content">{Runtime ? <Runtime /> : null}</div>
+        </div>
+      </div>
     </section>
   );
 }

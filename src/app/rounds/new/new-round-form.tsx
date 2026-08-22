@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -84,9 +84,17 @@ export function NewRoundForm({
   );
   const [selectedTeeSetId, setSelectedTeeSetId] = useState(allTeeSets[0]?.id ?? "");
   const [mobileStep, setMobileStep] = useState<MobileRoundStep>("setup");
+  const [mobileStepDirection, setMobileStepDirection] = useState<"forward" | "back" | null>(null);
   const [activeHoleIndex, setActiveHoleIndex] = useState(0);
   const [roundStatus, setRoundStatus] = useState("complete");
   const [scoreValues, setScoreValues] = useState<Record<number, string>>({});
+  const mobileStepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const mobileStepPanelRefs = useRef<Record<MobileRoundStep, HTMLDivElement | null>>({
+    setup: null,
+    score: null,
+    stats: null,
+    review: null,
+  });
   const selectedTeeSet =
     allTeeSets.find((teeSet) => teeSet.id === selectedTeeSetId) ?? allTeeSets[0] ?? null;
   const holes = useMemo(() => buildRoundHoles(selectedTeeSet), [selectedTeeSet]);
@@ -96,6 +104,41 @@ export function NewRoundForm({
   const completeRoundNeedsScores = roundStatus === "complete" && missingScoreCount > 0;
   const scorecardGridId = `${instanceId}-scorecard-entry-grid`;
   const reviewCompletenessId = `${instanceId}-review-completeness`;
+
+  const changeMobileStep = (nextStep: MobileRoundStep) => {
+    const nextStepIndex = mobileRoundSteps.findIndex((step) => step.id === nextStep);
+    if (nextStepIndex === activeStepIndex) return;
+    setMobileStepDirection(nextStepIndex > activeStepIndex ? "forward" : "back");
+    setMobileStep(nextStep);
+  };
+
+  useLayoutEffect(() => {
+    if (!mobileStepDirection) return;
+    const panel = mobileStepPanelRefs.current[mobileStep];
+    const shouldAnimate =
+      typeof window.matchMedia === "function" && window.matchMedia("(max-width: 639px)").matches;
+
+    if (panel) {
+      panel.dataset.direction = mobileStepDirection;
+    }
+    if (panel && shouldAnimate) {
+      panel.classList.remove("t-route-step");
+      void panel.offsetWidth;
+      panel.classList.add("t-route-step");
+    }
+
+    const frame = window.requestAnimationFrame(() =>
+      mobileStepHeadingRef.current?.focus({ preventScroll: true }),
+    );
+    const removeMotionClass = () => panel?.classList.remove("t-route-step");
+    panel?.addEventListener("animationend", removeMotionClass, { once: true });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      panel?.removeEventListener("animationend", removeMotionClass);
+      removeMotionClass();
+    };
+  }, [mobileStep, mobileStepDirection]);
 
   if (!selectedTeeSet) {
     return (
@@ -116,7 +159,10 @@ export function NewRoundForm({
     >
       <input type="hidden" name="holeCount" value={holes.length} />
 
-      <MobileRoundStepper step={mobileStep} onStepChange={setMobileStep} />
+      <MobileRoundStepper step={mobileStep} onStepChange={changeMobileStep} />
+      <h2 ref={mobileStepHeadingRef} tabIndex={-1} className="sr-only">
+        Round step: {mobileRoundSteps[activeStepIndex]?.label ?? "Setup"}
+      </h2>
 
       <div
         className={cn(
@@ -124,131 +170,154 @@ export function NewRoundForm({
           mobileStep === "setup" || mobileStep === "stats" ? "grid" : "hidden sm:grid",
         )}
       >
-        <label
-          className={cn(
-            "grid gap-2 text-sm font-medium",
-            mobileStep === "stats" ? "hidden sm:grid" : "",
-          )}
-        >
-          <span>Course / tee</span>
-          <Select
-            name="teeSetId"
-            value={selectedTeeSet.id}
-            onValueChange={(value) => {
-              setSelectedTeeSetId(value);
-              setActiveHoleIndex(0);
-              setScoreValues({});
-            }}
-          >
-            <SelectTrigger className="h-11 w-full min-w-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {courses.map((course) => (
-                <SelectGroup key={course.id}>
-                  <SelectLabel>{course.name}</SelectLabel>
-                  {course.teeSets.map((teeSet) => (
-                    <SelectItem key={teeSet.id} value={teeSet.id}>
-                      {course.name} - {teeSet.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
-        <label
-          className={cn(
-            "grid gap-2 text-sm font-medium",
-            mobileStep === "stats" ? "hidden sm:grid" : "",
-          )}
-        >
-          <span>Date</span>
-          <Input
-            name="date"
-            type="date"
-            defaultValue={todayIso}
-            className="h-11 min-w-0 rounded-xl bg-background"
-            required
-          />
-        </label>
-        <label
-          className={cn(
-            "grid gap-2 text-sm font-medium",
-            mobileStep === "stats" ? "hidden sm:grid" : "",
-          )}
-        >
-          <span>Status</span>
-          <Select name="roundStatus" value={roundStatus} onValueChange={setRoundStatus}>
-            <SelectTrigger className="h-11 w-full min-w-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="complete">Complete</SelectItem>
-              <SelectItem value="in_progress">In progress</SelectItem>
-            </SelectContent>
-          </Select>
-        </label>
-        <label
-          className={cn(
-            "grid gap-2 text-sm font-medium lg:col-span-2",
-            mobileStep === "stats" ? "hidden sm:grid" : "",
-          )}
-        >
-          <span>Notes</span>
-          <Input
-            name="notes"
-            placeholder="Weather, tees, match notes…"
-            className="h-11 min-w-0 rounded-xl bg-background"
-          />
-        </label>
         <div
+          ref={(node) => {
+            mobileStepPanelRefs.current.setup = node;
+          }}
           className={cn(
-            "grid gap-3 lg:col-span-2 sm:grid-cols-3",
-            mobileStep === "setup" ? "hidden sm:grid" : "",
+            "grid gap-4 sm:contents",
+            mobileStep === "setup" ? "" : "hidden sm:contents",
           )}
         >
-          <label className="grid gap-2 text-sm font-medium">
-            <span>Conditions</span>
+          <label
+            className={cn(
+              "grid gap-2 text-sm font-medium",
+              mobileStep === "stats" ? "hidden sm:grid" : "",
+            )}
+          >
+            <span>Course / tee</span>
+            <Select
+              name="teeSetId"
+              value={selectedTeeSet.id}
+              onValueChange={(value) => {
+                setSelectedTeeSetId(value);
+                setActiveHoleIndex(0);
+                setScoreValues({});
+              }}
+            >
+              <SelectTrigger className="h-11 w-full min-w-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {courses.map((course) => (
+                  <SelectGroup key={course.id}>
+                    <SelectLabel>{course.name}</SelectLabel>
+                    {course.teeSets.map((teeSet) => (
+                      <SelectItem key={teeSet.id} value={teeSet.id}>
+                        {course.name} - {teeSet.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <label
+            className={cn(
+              "grid gap-2 text-sm font-medium",
+              mobileStep === "stats" ? "hidden sm:grid" : "",
+            )}
+          >
+            <span>Date</span>
             <Input
-              name="weatherConditions"
-              placeholder="Dry, soft, rain…"
+              name="date"
+              type="date"
+              defaultValue={todayIso}
               className="h-11 min-w-0 rounded-xl bg-background"
+              required
             />
           </label>
-          <label className="grid gap-2 text-sm font-medium">
-            <span>Wind</span>
-            <Input
-              name="wind"
-              placeholder="10 mph into / cross"
-              className="h-11 min-w-0 rounded-xl bg-background"
-            />
+          <label
+            className={cn(
+              "grid gap-2 text-sm font-medium",
+              mobileStep === "stats" ? "hidden sm:grid" : "",
+            )}
+          >
+            <span>Status</span>
+            <Select name="roundStatus" value={roundStatus} onValueChange={setRoundStatus}>
+              <SelectTrigger className="h-11 w-full min-w-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="complete">Complete</SelectItem>
+                <SelectItem value="in_progress">In progress</SelectItem>
+              </SelectContent>
+            </Select>
           </label>
-          <label className="grid gap-2 text-sm font-medium">
-            <span>Temperature</span>
+          <label
+            className={cn(
+              "grid gap-2 text-sm font-medium lg:col-span-2",
+              mobileStep === "stats" ? "hidden sm:grid" : "",
+            )}
+          >
+            <span>Notes</span>
             <Input
-              name="temperature"
-              placeholder="14C"
+              name="notes"
+              placeholder="Weather, tees, match notes…"
               className="h-11 min-w-0 rounded-xl bg-background"
             />
           </label>
         </div>
-        <label
+        <div
+          ref={(node) => {
+            mobileStepPanelRefs.current.stats = node;
+          }}
           className={cn(
-            "grid gap-2 text-sm font-medium lg:col-span-2",
-            mobileStep === "setup" ? "hidden sm:grid" : "",
+            "grid gap-4 sm:contents",
+            mobileStep === "stats" ? "" : "hidden sm:contents",
           )}
         >
-          <span>Equipment notes</span>
-          <Input
-            name="equipmentNotes"
-            placeholder="Ball, shaft setting, new club, grip changes…"
-            className="h-11 min-w-0 rounded-xl bg-background"
-          />
-        </label>
+          <div
+            className={cn(
+              "grid gap-3 lg:col-span-2 sm:grid-cols-3",
+              mobileStep === "setup" ? "hidden sm:grid" : "",
+            )}
+          >
+            <label className="grid gap-2 text-sm font-medium">
+              <span>Conditions</span>
+              <Input
+                name="weatherConditions"
+                placeholder="Dry, soft, rain…"
+                className="h-11 min-w-0 rounded-xl bg-background"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              <span>Wind</span>
+              <Input
+                name="wind"
+                placeholder="10 mph into / cross"
+                className="h-11 min-w-0 rounded-xl bg-background"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              <span>Temperature</span>
+              <Input
+                name="temperature"
+                placeholder="14C"
+                className="h-11 min-w-0 rounded-xl bg-background"
+              />
+            </label>
+          </div>
+          <label
+            className={cn(
+              "grid gap-2 text-sm font-medium lg:col-span-2",
+              mobileStep === "setup" ? "hidden sm:grid" : "",
+            )}
+          >
+            <span>Equipment notes</span>
+            <Input
+              name="equipmentNotes"
+              placeholder="Ball, shaft setting, new club, grip changes…"
+              className="h-11 min-w-0 rounded-xl bg-background"
+            />
+          </label>
+        </div>
       </div>
 
       <div
+        ref={(node) => {
+          mobileStepPanelRefs.current.score = node;
+        }}
         className={cn(
           "rounded-2xl border bg-card p-4",
           mobileStep === "score" ? "block" : "hidden sm:block",
@@ -363,7 +432,13 @@ export function NewRoundForm({
         </div>
       </div>
 
-      <Card className={cn("gap-0 py-0 sm:hidden", mobileStep === "review" ? "flex" : "hidden")}>
+      <Card
+        ref={(node) => {
+          mobileStepPanelRefs.current.review = node;
+        }}
+        hidden={mobileStep !== "review"}
+        className="gap-0 py-0 sm:hidden"
+      >
         <CardContent className="grid gap-3 p-4">
           <div>
             <p className="text-lg font-semibold tracking-normal">
@@ -427,7 +502,7 @@ export function NewRoundForm({
             variant="outline"
             className="min-h-11 rounded-xl"
             disabled={activeStepIndex <= 0}
-            onClick={() => setMobileStep(mobileRoundSteps[Math.max(0, activeStepIndex - 1)].id)}
+            onClick={() => changeMobileStep(mobileRoundSteps[Math.max(0, activeStepIndex - 1)].id)}
           >
             <ChevronLeft className="size-4" />
             Back
@@ -447,7 +522,7 @@ export function NewRoundForm({
               type="button"
               className="min-h-11 rounded-xl"
               onClick={() =>
-                setMobileStep(
+                changeMobileStep(
                   mobileRoundSteps[Math.min(mobileRoundSteps.length - 1, activeStepIndex + 1)].id,
                 )
               }

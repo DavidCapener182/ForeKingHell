@@ -420,8 +420,17 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
       <div className="flex flex-wrap items-center gap-1">
         <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
           <input type="hidden" name="feedItemId" value={item.id} />
-          <Button type="submit" variant={item.viewerReacted ? "secondary" : "ghost"} size="xs">
-            <ThumbsUp className="size-3.5" />
+          <Button
+            type="submit"
+            variant={item.viewerReacted ? "secondary" : "ghost"}
+            size="xs"
+            className="t-like [--like-color:currentColor]"
+            data-liked={item.viewerReacted ? "true" : "false"}
+            aria-pressed={item.viewerReacted}
+          >
+            <span className="t-like-icon inline-flex" aria-hidden="true">
+              <ThumbsUp className="t-like-heart size-3.5" />
+            </span>
             Kudos{item.reactionCount > 0 ? ` ${item.reactionCount}` : ""}
           </Button>
         </form>
@@ -435,7 +444,10 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
               <MessageCircle className="size-3.5" />
               Comments{item.commentCount > 0 ? ` ${item.commentCount}` : ""}
             </CollapsibleTrigger>
-            <CollapsibleContent className="order-last mt-2 w-full rounded-lg border bg-muted/25 p-2.5">
+            <CollapsibleContent
+              outerClassName="order-last w-full"
+              className="mt-2 rounded-lg border bg-muted/25 p-2.5"
+            >
               {item.comments.length > 0 ? (
                 <div className="mb-2 grid gap-2">
                   {item.comments.map((comment) => (
@@ -502,8 +514,17 @@ function CommentRow({ comment }: { comment: FeedItemView["comments"][number] }) 
             }
           >
             <input type="hidden" name="commentId" value={comment.id} />
-            <Button type="submit" variant={comment.viewerLiked ? "secondary" : "ghost"} size="xs">
-              <ThumbsUp className="size-3" />
+            <Button
+              type="submit"
+              variant={comment.viewerLiked ? "secondary" : "ghost"}
+              size="xs"
+              className="t-like [--like-color:currentColor]"
+              data-liked={comment.viewerLiked ? "true" : "false"}
+              aria-pressed={comment.viewerLiked}
+            >
+              <span className="t-like-icon inline-flex" aria-hidden="true">
+                <ThumbsUp className="t-like-heart size-3" />
+              </span>
               {comment.likeCount > 0 ? comment.likeCount : "Like"}
             </Button>
           </form>

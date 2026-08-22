@@ -174,6 +174,7 @@ function ShotSimulator({
     <div className="apple-panel-strong grid overflow-hidden lg:grid-cols-[minmax(320px,560px)_minmax(320px,1fr)]">
       <div className="grid h-[58vh] min-h-[420px] max-h-[600px] place-items-center bg-[#143321] p-3">
         <svg
+          key={shot.id}
           viewBox="0 0 644 1024"
           preserveAspectRatio="xMidYMid meet"
           className="h-full w-full"
@@ -194,11 +195,11 @@ function ShotSimulator({
               .longest-shot-tracer {
                 stroke-dasharray: 720;
                 stroke-dashoffset: 720;
-                animation: longestShotTrace 2.6s ease-out infinite;
+                animation: longestShotTrace 900ms cubic-bezier(0.23, 1, 0.32, 1) both;
               }
               .longest-shot-pulse {
                 transform-origin: center;
-                animation: longestShotPulse 2.6s ease-out infinite;
+                animation: longestShotPulse 600ms cubic-bezier(0.23, 1, 0.32, 1) 500ms both;
               }
               @keyframes longestShotTrace {
                 0% { stroke-dashoffset: 720; opacity: 0.2; }
@@ -206,9 +207,9 @@ function ShotSimulator({
                 100% { stroke-dashoffset: 0; opacity: 0.7; }
               }
               @keyframes longestShotPulse {
-                0%, 54% { transform: scale(0.75); opacity: 0; }
-                72% { transform: scale(1.35); opacity: 0.55; }
-                100% { transform: scale(1.7); opacity: 0; }
+                0% { transform: scale(0.9); opacity: 0; }
+                45% { transform: scale(1.2); opacity: 0.55; }
+                100% { transform: scale(1.5); opacity: 0; }
               }
               @media (prefers-reduced-motion: reduce) {
                 .longest-shot-tracer,

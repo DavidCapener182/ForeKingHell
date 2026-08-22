@@ -126,19 +126,32 @@ export function SessionTimeline({
   const [comparisonState, setComparisonState] = useState(() => ({
     visibilityKey,
     selected: [] as string[],
+    exitSnapshot: [] as string[],
   }));
   let visibleSelected = comparisonState.selected;
+  let visibleExitSnapshot = comparisonState.exitSnapshot;
   if (comparisonState.visibilityKey !== visibilityKey) {
+    const previousVisibleSelected = visibleSelected;
     visibleSelected = pruneSessionComparisonSelection(visibleSelected, visibleSessionIds);
-    setComparisonState({ visibilityKey, selected: visibleSelected });
+    visibleExitSnapshot =
+      visibleSelected.length === 0 && previousVisibleSelected.length > 0
+        ? previousVisibleSelected
+        : [];
+    setComparisonState({
+      visibilityKey,
+      selected: visibleSelected,
+      exitSnapshot: visibleExitSnapshot,
+    });
   }
-  const selectedSessions = visibleSelected.flatMap((id) => {
-    const session = visible.find((item) => item.id === id);
+  const comparisonTrayOpen = visibleSelected.length > 0;
+  const comparisonTrayIds = comparisonTrayOpen ? visibleSelected : visibleExitSnapshot;
+  const selectedSessions = comparisonTrayIds.flatMap((id) => {
+    const session = sessions.find((item) => item.id === id);
     return session ? [session] : [];
   });
-  const compareHref =
-    visibleSelected.length === 2
-      ? `/analyse/compare?sessionId=${encodeURIComponent(visibleSelected[0])}&baselineSessionId=${encodeURIComponent(visibleSelected[1])}`
+  const comparisonTrayHref =
+    comparisonTrayIds.length === 2
+      ? `/analyse/compare?sessionId=${encodeURIComponent(comparisonTrayIds[0])}&baselineSessionId=${encodeURIComponent(comparisonTrayIds[1])}`
       : null;
   const activeControlCount =
     Number(filters.type !== "all") +
@@ -175,7 +188,22 @@ export function SessionTimeline({
           ? [currentVisible[1], id]
           : [...currentVisible, id];
 
-      return { visibilityKey, selected };
+      return {
+        visibilityKey,
+        selected,
+        exitSnapshot: selected.length === 0 ? currentVisible : [],
+      };
+    });
+  }
+
+  function clearComparison() {
+    setComparisonState((current) => {
+      const currentVisible = pruneSessionComparisonSelection(current.selected, visibleSessionIds);
+      return {
+        visibilityKey,
+        selected: [],
+        exitSnapshot: currentVisible,
+      };
     });
   }
 
@@ -290,38 +318,49 @@ export function SessionTimeline({
         </Card>
 
         <SessionPreview
+          key={activeSession?.id ?? "empty-session-preview"}
           session={activeSession}
           selected={Boolean(activeSession && visibleSelected.includes(activeSession.id))}
           onToggle={toggle}
         />
       </div>
 
-      {visibleSelected.length > 0 ? (
+      {comparisonTrayIds.length > 0 ? (
         <div
-          aria-live="polite"
-          className="sticky bottom-4 z-20 mx-auto flex w-[min(44rem,calc(100%-1rem))] items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-xl backdrop-blur"
+          aria-live={comparisonTrayOpen ? "polite" : "off"}
+          aria-hidden={!comparisonTrayOpen}
+          inert={!comparisonTrayOpen}
+          className="t-panel-slide sticky bottom-4 z-20 mx-auto flex w-[min(44rem,calc(100%-1rem))] items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-xl backdrop-blur"
+          data-open={comparisonTrayOpen ? "true" : "false"}
           data-session-compare-tray
+          onTransitionEnd={(event) => {
+            if (
+              event.target !== event.currentTarget ||
+              event.propertyName !== "opacity" ||
+              comparisonTrayOpen
+            ) {
+              return;
+            }
+            setComparisonState((current) =>
+              current.selected.length > 0 ? current : { ...current, exitSnapshot: [] },
+            );
+          }}
         >
           <div className="min-w-0">
             <p className="font-semibold">
-              {visibleSelected.length === 2 ? "Ready to compare" : "Select one more session"}
+              {comparisonTrayIds.length === 2 ? "Ready to compare" : "Select one more session"}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               {selectedSessions.map((session) => session.title).join(" versus ")}
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setComparisonState({ visibilityKey, selected: [] })}
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={clearComparison}>
               Clear
             </Button>
-            <Button asChild={Boolean(compareHref)} size="sm" disabled={!compareHref}>
-              {compareHref ? (
-                <Link href={compareHref}>
+            <Button asChild={Boolean(comparisonTrayHref)} size="sm" disabled={!comparisonTrayHref}>
+              {comparisonTrayHref ? (
+                <Link href={comparisonTrayHref}>
                   <GitCompareArrows className="size-4" aria-hidden />
                   Compare
                 </Link>
@@ -415,7 +454,7 @@ function SessionPreview({
 }) {
   if (!session) {
     return (
-      <Card className="grid min-h-[32rem] place-items-center">
+      <Card className="t-route-step grid min-h-[32rem] place-items-center" data-direction="back">
         <p className="text-sm text-muted-foreground">Choose a session to preview its review.</p>
       </Card>
     );
@@ -425,7 +464,8 @@ function SessionPreview({
 
   return (
     <Card
-      className="min-w-0 self-start overflow-hidden shadow-sm lg:sticky lg:top-3"
+      className="t-route-step min-w-0 self-start overflow-hidden shadow-sm lg:sticky lg:top-3"
+      data-direction="forward"
       aria-label={`Preview ${session.title}`}
       data-selected-session-preview
     >

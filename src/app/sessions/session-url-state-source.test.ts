@@ -76,6 +76,7 @@ describe("Sessions URL state boundaries", () => {
     expect(timelineSource).toContain(
       "visibleSelected = pruneSessionComparisonSelection(visibleSelected, visibleSessionIds)",
     );
-    expect(timelineSource).toContain("visibleSelected.length === 2");
+    expect(timelineSource).toContain("visibleExitSnapshot");
+    expect(timelineSource).toContain("comparisonTrayIds.length === 2");
   });
 });

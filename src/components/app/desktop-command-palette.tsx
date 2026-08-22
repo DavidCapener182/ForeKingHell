@@ -118,7 +118,7 @@ export function DesktopCommandPalette({
               </Fragment>
             ))}
           </CommandList>
-          <aside className="hidden min-h-0 border-l border-border bg-muted/25 p-3 md:grid md:content-start md:gap-4">
+          <aside className="hidden min-h-0 overflow-y-auto border-l border-border bg-muted/25 p-3 md:grid md:content-start md:gap-4">
             <QuickLinkSection
               title="Pinned workspace"
               icon={Pin}
@@ -246,8 +246,16 @@ function CommandLink({
           pinned ? "text-primary" : "text-muted-foreground",
         )}
         aria-label={pinned ? `Unpin ${command.title}` : `Pin ${command.title}`}
+        aria-pressed={pinned}
       >
-        {pinned ? <Check className="size-4" aria-hidden /> : <Pin className="size-4" aria-hidden />}
+        <span className="t-icon-swap" data-state={pinned ? "b" : "a"} aria-hidden="true">
+          <span className="t-icon" data-icon="a">
+            <Pin className="size-4" />
+          </span>
+          <span className="t-icon" data-icon="b">
+            <Check className="size-4" />
+          </span>
+        </span>
       </button>
     </CommandMenuItem>
   );

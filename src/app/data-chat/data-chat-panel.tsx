@@ -384,11 +384,23 @@ export function DataChatPanel({
                       className="rounded-lg px-4"
                       disabled={!isReady || isPending || !question.trim()}
                     >
-                      {isPending ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Send className="size-4" />
-                      )}
+                      <span
+                        className="t-icon-swap"
+                        data-state={isPending ? "b" : "a"}
+                        aria-hidden="true"
+                      >
+                        <span className="t-icon" data-icon="a">
+                          <Send className="size-4" />
+                        </span>
+                        <span className="t-icon" data-icon="b">
+                          <Loader2
+                            className={cn(
+                              "size-4 motion-reduce:animate-none",
+                              isPending && "animate-spin",
+                            )}
+                          />
+                        </span>
+                      </span>
                       Ask analyst
                     </Button>
                   </InputGroupAddon>
@@ -534,10 +546,16 @@ function UserTurn({ content }: { content: string }) {
 
 function AnalystThinking() {
   return (
-    <div className="grid max-w-[46rem] gap-3" aria-label="Analyst is reviewing your evidence">
+    <div
+      className="grid max-w-[46rem] gap-3"
+      role="status"
+      aria-label="Analyst is reviewing your evidence"
+    >
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Loader2 className="size-3.5 animate-spin text-primary" aria-hidden />
-        Reviewing your evidence
+        <span className="t-shimmer" data-text="Reviewing your evidence">
+          Reviewing your evidence
+        </span>
       </div>
       <Skeleton className="h-4 w-11/12" />
       <Skeleton className="h-4 w-4/5" />
@@ -585,8 +603,21 @@ function AssistantTurn({
           disabled={disabled && !saved}
           onClick={() => onSave(turn, sourceQuestion)}
         >
-          {saved ? <Check className="size-3.5" /> : <BookmarkPlus className="size-3.5" />}
-          {saved ? "Saved" : "Save"}
+          <span className="t-icon-swap" data-state={saved ? "b" : "a"} aria-hidden="true">
+            <span className="t-icon" data-icon="a">
+              <BookmarkPlus className="size-3.5" />
+            </span>
+            <span className="t-icon" data-icon="b">
+              <Check className="size-3.5" />
+            </span>
+          </span>
+          <span
+            key={saved ? "saved" : "save"}
+            className="t-text-state"
+            data-motion-ready={saved ? "true" : "false"}
+          >
+            {saved ? "Saved" : "Save"}
+          </span>
         </Button>
       </div>
 

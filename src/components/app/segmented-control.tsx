@@ -22,6 +22,12 @@ export function SegmentedControl({
   onChange: (value: string) => void;
   className?: string;
 }) {
+  const optionCount = Math.max(options.length, 1);
+  const activeIndex = Math.max(
+    options.findIndex((option) => option.value === value),
+    0,
+  );
+
   return (
     <div className={cn("grid gap-2", className)}>
       <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -35,17 +41,25 @@ export function SegmentedControl({
         }}
         variant="outline"
         spacing={0}
-        className="grid w-full rounded-xl bg-secondary p-1"
+        className="relative isolate grid w-full rounded-xl bg-secondary p-1"
         style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
         aria-label={label}
       >
+        <span
+          className="t-tabs-pill absolute inset-y-1 left-1 z-0 rounded-lg bg-card shadow-sm"
+          style={{
+            width: `calc((100% - 0.5rem) / ${optionCount})`,
+            transform: `translateX(${activeIndex * 100}%)`,
+          }}
+          aria-hidden="true"
+        />
         {options.map((option) => (
           <ToggleGroupItem
             key={option.value}
             value={option.value}
             disabled={option.disabled}
             className={cn(
-              "focus-aaa min-h-11 min-w-0 justify-center rounded-lg border-0 px-3 text-sm font-semibold text-muted-foreground transition-[background-color,color,box-shadow] motion-reduce:transition-none data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-sm",
+              "t-tabs-trigger focus-aaa relative z-10 min-h-11 min-w-0 justify-center rounded-lg border-0 bg-transparent px-3 text-sm font-semibold text-muted-foreground data-[state=on]:bg-transparent data-[state=on]:text-foreground data-[state=on]:shadow-none",
               option.disabled && "cursor-not-allowed text-muted-foreground/50",
             )}
           >

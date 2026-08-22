@@ -1911,17 +1911,20 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
 
   return (
     <style>{`
-      .today-review-page [data-dispersion-club] {
-        transition: opacity 140ms ease, filter 140ms ease;
-      }
-      .today-review-page:has([data-club-hover]:hover) [data-dispersion-club] {
-        opacity: 0.18;
-      }
-      .today-review-page [data-club-hover]:hover {
-        background: color-mix(in srgb, var(--muted) 92%, transparent);
-      }
-      .today-review-page [data-club-hover]:hover td:first-child {
-        color: var(--foreground);
+      @media (hover: hover) and (pointer: fine) {
+        .today-review-page [data-dispersion-club] {
+          transition: opacity 140ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .today-review-page:has([data-club-hover]:hover) [data-dispersion-club] {
+          opacity: 0.18;
+        }
+        .today-review-page [data-club-hover]:hover {
+          background: color-mix(in srgb, var(--muted) 92%, transparent);
+        }
+        .today-review-page [data-club-hover]:hover td:first-child {
+          color: var(--foreground);
+        }
+        ${selectors}
       }
       .today-practice-grid-has-prescription {
         grid-template-areas:
@@ -1994,7 +1997,6 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
           grid-template-columns: repeat(4, minmax(0, 1fr));
         }
       }
-      ${selectors}
     `}</style>
   );
 }

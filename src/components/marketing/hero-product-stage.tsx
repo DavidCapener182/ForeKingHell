@@ -12,17 +12,19 @@ import { ScrollZoomFrame } from "./scroll-zoom-frame";
 export function HeroProductStage() {
   return (
     <section className={styles.hero} aria-labelledby="hero-title">
-      <div className={styles.heroCopy}>
+      <div className={`${styles.heroCopy} t-stagger is-shown`}>
         <p className={styles.eyebrow}>Launch-monitor golf, turned into decisions</p>
-        <h1 id="hero-title">Turn every measured shot into a better golf game.</h1>
-        <p className={styles.heroLead}>
+        <h1 id="hero-title" className="t-stagger-line t-stagger-line--1">
+          Turn every measured shot into a better golf game.
+        </h1>
+        <p className={`${styles.heroLead} t-stagger-line t-stagger-line--2`}>
           Import your sessions, trust your club numbers, understand what changed, practise the right
           thing and take a data-backed plan to the course.
         </p>
         <div className={styles.heroActions}>
           <Button asChild className={styles.heroPrimary}>
-            <Link href={marketingJoinBetaHref}>
-              Join the beta <ArrowRight className="size-4" aria-hidden />
+            <Link href={marketingJoinBetaHref} className="t-learn">
+              Join the beta <ArrowRight className="t-learn-chevron size-4" aria-hidden />
             </Link>
           </Button>
           <Button asChild variant="outline" className={styles.heroSecondary}>
@@ -49,6 +51,10 @@ export function HeroProductStage() {
           fill
           preload
           sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 850px) 100vw, 56vw"
+          data-scroll-zoom-target
+          data-scroll-zoom-native="true"
+          data-scroll-zoom-min="1.04"
+          data-scroll-zoom-range="0.14"
         />
         <div className={styles.stageRangeShade} aria-hidden />
         <div className={styles.stageBackdrop} aria-hidden />
@@ -137,8 +143,8 @@ export function HeroProductStage() {
 
       <div className={styles.mobileStickyCtaDock} data-mobile-sticky-cta>
         <Button asChild className={styles.mobileStickyCtaButton}>
-          <Link href={marketingJoinBetaHref}>
-            Join the beta <ArrowRight className="size-4" aria-hidden />
+          <Link href={marketingJoinBetaHref} className="t-learn">
+            Join the beta <ArrowRight className="t-learn-chevron size-4" aria-hidden />
           </Link>
         </Button>
       </div>

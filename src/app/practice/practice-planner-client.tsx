@@ -1510,7 +1510,7 @@ function PracticeAgenda({
 
                   <Card
                     className={cn(
-                      "relative gap-0 overflow-visible py-0 shadow-sm transition-all",
+                      "relative gap-0 overflow-visible py-0 shadow-sm transition-[box-shadow] duration-[var(--duration-quick)] ease-[var(--ease-smooth-out)] motion-reduce:transition-none",
                       selected && "ring-primary/35 shadow-lg",
                     )}
                     data-practice-programme-block

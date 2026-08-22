@@ -876,7 +876,7 @@ export function TopThreeDisclosure({
               aria-hidden
             />
           </CollapsibleTrigger>
-          <CollapsibleContent className="contents">
+          <CollapsibleContent className="contents" outerClassName="contents">
             {hiddenItems.map((item, index) => render(item, index + initialCount))}
           </CollapsibleContent>
         </Collapsible>

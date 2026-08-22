@@ -88,12 +88,21 @@ export function DesktopSaveInsightButton({
         className,
       )}
     >
-      {saved ? (
-        <Check className="size-4 text-primary" aria-hidden />
-      ) : (
-        <Pin className="size-4 text-primary" aria-hidden />
-      )}
-      <span>{saved ? "Insight saved" : "Save this insight"}</span>
+      <span className="t-icon-swap text-primary" data-state={saved ? "b" : "a"} aria-hidden="true">
+        <span className="t-icon" data-icon="a">
+          <Pin className="size-4" />
+        </span>
+        <span className="t-icon" data-icon="b">
+          <Check className="size-4" />
+        </span>
+      </span>
+      <span
+        key={saved ? "saved" : "save"}
+        className="t-text-state"
+        data-motion-ready={saved ? "true" : "false"}
+      >
+        {saved ? "Insight saved" : "Save this insight"}
+      </span>
     </Button>
   );
 }

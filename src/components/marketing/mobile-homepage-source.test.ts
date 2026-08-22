@@ -109,11 +109,14 @@ describe("public homepage mobile design source contract", () => {
   });
 
   it("removes compact scroll choreography and supplies motion and material fallbacks", () => {
-    for (const source of [storySource, zoomSource]) {
-      expect(source).toContain('matchMedia("(max-width: 767px)")');
-      expect(source).toContain("usesCompactLayout");
-      expect(source).toMatch(/prefersReducedMotion \|\| usesCompactLayout/);
-    }
+    expect(storySource).toContain('matchMedia("(max-width: 767px)")');
+    expect(storySource).toContain("usesCompactLayout");
+    expect(storySource).toMatch(/prefersReducedMotion \|\| usesCompactLayout/);
+
+    expect(zoomSource).toContain('matchMedia("(max-width: 767px)")');
+    expect(zoomSource).toContain("compactLayoutQuery.matches");
+    expect(zoomSource).toContain('compactLayoutQuery.addEventListener("change", syncMotion)');
+    expect(zoomSource).toContain('target.style.removeProperty("transform")');
 
     expect(marketingCssSource).toContain(
       "@media (max-width: 767px) and (prefers-reduced-transparency: reduce)",

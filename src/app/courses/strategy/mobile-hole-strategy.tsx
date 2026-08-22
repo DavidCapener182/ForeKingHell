@@ -89,9 +89,10 @@ export function MobileHoleStrategy({
   const selectHole = (nextIndex: number) => {
     setIndex(nextIndex);
     setModeId("normal");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     document
       .querySelector("[data-mobile-one-hole-strategy]")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
   };
 
   return (

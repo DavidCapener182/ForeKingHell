@@ -49,8 +49,8 @@ export function BetaAccessSection() {
         </CardContent>
         <CardFooter className={styles.betaActions}>
           <Button asChild>
-            <Link href={marketingJoinBetaHref}>
-              Join the beta <ArrowRight className="size-4" />
+            <Link href={marketingJoinBetaHref} className="t-learn">
+              Join the beta <ArrowRight className="t-learn-chevron size-4" />
             </Link>
           </Button>
           <Button asChild variant="outline">

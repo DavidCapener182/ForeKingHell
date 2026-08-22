@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
 import { unlockCoachReportAction } from "@/app/share/report/[token]/actions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -6,14 +10,22 @@ import { Input } from "@/components/ui/input";
 export function SharedCoachReportPasswordForm({
   token,
   invalid,
+  invalidAttempt,
   headingLevel,
 }: {
   token: string;
   invalid: boolean;
+  invalidAttempt: string | null;
   headingLevel: "h1" | "h2";
 }) {
   const action = unlockCoachReportAction.bind(null, token);
   const Heading = headingLevel;
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!invalid) return;
+    return replayErrorShake(passwordInputRef.current);
+  }, [invalid, invalidAttempt]);
 
   return (
     <>
@@ -30,13 +42,15 @@ export function SharedCoachReportPasswordForm({
         <label className="grid gap-2 text-sm font-semibold">
           Password
           <Input
+            ref={passwordInputRef}
             name="password"
             type="password"
             autoComplete="current-password"
             minLength={8}
             maxLength={128}
             autoFocus
-            className="min-h-11"
+            aria-invalid={invalid}
+            className={`t-input min-h-11 ${invalid ? "is-error is-shaking" : ""}`}
             required
           />
         </label>
@@ -53,4 +67,16 @@ export function SharedCoachReportPasswordForm({
       </form>
     </>
   );
+}
+
+function replayErrorShake(element: HTMLElement | null) {
+  if (!element) return;
+  element.classList.remove("is-shaking");
+  void element.offsetWidth;
+  element.classList.add("is-shaking");
+  const timer = window.setTimeout(() => element.classList.remove("is-shaking"), 300);
+  return () => {
+    window.clearTimeout(timer);
+    element.classList.remove("is-shaking");
+  };
 }

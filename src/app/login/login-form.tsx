@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { KeyRound, Mail } from "lucide-react";
 
 import {
@@ -19,6 +19,8 @@ const initialState: LoginActionState = {
 };
 
 export function LoginForm({ error, next }: { error?: string | null; next?: string | null }) {
+  const passwordInputRef = useRef<HTMLInputElement>(null);
+  const magicEmailInputRef = useRef<HTMLInputElement>(null);
   const [passwordState, passwordAction, passwordPending] = useActionState(
     signInWithPasswordAction,
     initialState,
@@ -31,6 +33,16 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
     passwordState.status === "idle" ? Boolean(error) : passwordState.status === "error";
   const magicMessage = magicState.message;
   const magicIsError = magicState.status === "error";
+
+  useEffect(() => {
+    if (!passwordIsError) return;
+    return replayErrorShake(passwordInputRef.current);
+  }, [error, passwordIsError, passwordState]);
+
+  useEffect(() => {
+    if (!magicIsError) return;
+    return replayErrorShake(magicEmailInputRef.current);
+  }, [magicIsError, magicState]);
 
   return (
     <div className="grid gap-6 lg:gap-5">
@@ -62,12 +74,14 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         >
           Password
           <Input
+            ref={passwordInputRef}
             id="password"
             name="password"
             type="password"
             autoComplete="current-password"
             placeholder="Your password"
-            className="h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
+            aria-invalid={passwordIsError}
+            className={`t-input h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50 ${passwordIsError ? "is-error is-shaking" : ""}`}
           />
         </label>
         <Button
@@ -133,13 +147,15 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           >
             <span className="sr-only">Magic link address</span>
             <Input
+              ref={magicEmailInputRef}
               id="magic-email"
               name="email"
               type="email"
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
-              className="h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-grouped-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50"
+              aria-invalid={magicIsError}
+              className={`t-input h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-grouped-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50 ${magicIsError ? "is-error is-shaking" : ""}`}
             />
           </label>
           <Button
@@ -170,6 +186,18 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
       </div>
     </div>
   );
+}
+
+function replayErrorShake(element: HTMLElement | null) {
+  if (!element) return;
+  element.classList.remove("is-shaking");
+  void element.offsetWidth;
+  element.classList.add("is-shaking");
+  const timer = window.setTimeout(() => element.classList.remove("is-shaking"), 300);
+  return () => {
+    window.clearTimeout(timer);
+    element.classList.remove("is-shaking");
+  };
 }
 
 function OAuthButton({

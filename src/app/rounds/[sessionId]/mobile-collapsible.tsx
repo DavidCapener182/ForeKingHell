@@ -60,7 +60,9 @@ export function MobileCollapsible({
           />
         </span>
       </CollapsibleTrigger>
-      <CollapsibleContent className="pt-2 lg:contents">{children}</CollapsibleContent>
+      <CollapsibleContent outerClassName="lg:contents" className="pt-2 lg:contents">
+        {children}
+      </CollapsibleContent>
     </Collapsible>
   );
 }

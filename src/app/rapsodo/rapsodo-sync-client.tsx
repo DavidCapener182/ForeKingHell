@@ -501,18 +501,6 @@ export function RapsodoSyncClient({
     return () => window.clearInterval(intervalId);
   }, [loadSessions, status.connected]);
 
-  useEffect(() => {
-    if (!saveConfirmation) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setSaveConfirmation((current) => (current?.id === saveConfirmation.id ? null : current));
-    }, SAVE_CONFIRMATION_DISMISS_MS);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [saveConfirmation]);
-
   function login() {
     setNotice({ kind: "idle" });
     setLoadingLabel("Signing in");
@@ -594,7 +582,12 @@ export function RapsodoSyncClient({
       setUpdateRapsodoClubs(false);
       setSelectedClubByRow(selectionByMode(result.data, "recommendations"));
       requestAnimationFrame(() => {
-        previewSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        previewSectionRef.current?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+          block: "start",
+        });
       });
       setSessions((current) =>
         current.map((currentSession) =>
@@ -1631,6 +1624,7 @@ export function RapsodoSyncClient({
 
           {saveConfirmation ? (
             <SaveConfirmationToast
+              key={saveConfirmation.id}
               confirmation={saveConfirmation}
               onDismiss={() => setSaveConfirmation(null)}
             />
@@ -1656,30 +1650,58 @@ export function RapsodoSyncClient({
 
     if (options.scroll) {
       requestAnimationFrame(() => {
-        noticeRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        noticeRef.current?.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+          block: "center",
+        });
       });
     }
   }
 }
 
 function SaveStatusPanel({ status }: { status: SaveStatus }) {
+  const working = status.kind === "saving";
+  const success = status.kind === "success";
+
   return (
     <Alert
       variant={status.kind === "error" ? "destructive" : "default"}
       role={status.kind === "error" ? "alert" : "status"}
       aria-live="polite"
       aria-atomic="true"
-      className={status.kind === "success" ? "border-primary/30 bg-primary/5" : undefined}
-    >
-      {status.kind === "saving" ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : status.kind === "error" ? (
-        <AlertCircle className="size-4" />
-      ) : (
-        <CheckCircle2 className="size-4" />
+      className={cn(
+        "grid-cols-[auto_1fr] gap-x-2 [&>.t-icon-swap]:row-span-2 [&>.t-icon-swap]:translate-y-0.5 [&>.t-icon-swap]:text-current",
+        success && "border-primary/30 bg-primary/5",
       )}
-      <AlertTitle>{status.title}</AlertTitle>
-      <AlertDescription className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    >
+      <span className="t-icon-swap" data-state={working ? "a" : "b"} aria-hidden="true">
+        <span className="t-icon" data-icon="a">
+          <Loader2 className={cn("size-4 motion-reduce:animate-none", working && "animate-spin")} />
+        </span>
+        <span
+          className={cn("t-icon", success && "t-success-check")}
+          data-icon="b"
+          data-state={success ? "in" : "out"}
+        >
+          {status.kind === "error" ? (
+            <AlertCircle className="size-4" />
+          ) : (
+            <CheckCircle2 className="size-4" />
+          )}
+        </span>
+      </span>
+      <AlertTitle className="col-start-2">
+        <span
+          key={`${status.kind}:${status.title}`}
+          className="t-text-state"
+          data-motion-ready="true"
+        >
+          {status.title}
+        </span>
+      </AlertTitle>
+      <AlertDescription className="col-start-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
         <span>{status.message}</span>
         {status.kind === "success" && status.sessionId ? (
           <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
@@ -1701,13 +1723,56 @@ function SaveConfirmationToast({
   confirmation: SaveConfirmation;
   onDismiss: () => void;
 }) {
+  const [open, setOpen] = useState(true);
+  const onDismissRef = useRef(onDismiss);
+  const dismissTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  const beginDismiss = useCallback(() => {
+    setOpen(false);
+
+    if (dismissTimerRef.current !== null) {
+      return;
+    }
+
+    dismissTimerRef.current = window.setTimeout(
+      () => {
+        onDismissRef.current();
+      },
+      readMotionDuration("--toast-close", 180),
+    );
+  }, []);
+
+  useEffect(() => {
+    const autoDismissTimer = window.setTimeout(beginDismiss, SAVE_CONFIRMATION_DISMISS_MS);
+    return () => window.clearTimeout(autoDismissTimer);
+  }, [beginDismiss]);
+
+  useEffect(
+    () => () => {
+      if (dismissTimerRef.current !== null) {
+        window.clearTimeout(dismissTimerRef.current);
+      }
+    },
+    [],
+  );
+
   return (
     <div
       aria-live="polite"
       aria-atomic="true"
       className="fixed inset-x-3 top-[calc(5rem+env(safe-area-inset-top))] z-[70] mx-auto max-w-md sm:inset-x-auto sm:right-4 sm:top-24"
     >
-      <div className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-2xl">
+      <div
+        className={cn(
+          "t-toast overflow-hidden rounded-lg border bg-card text-card-foreground shadow-2xl",
+          open && "is-open",
+        )}
+        data-open={open ? "true" : "false"}
+      >
         <div className="flex items-start gap-3 px-4 py-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]">
             <CheckCircle2 className="size-5" />
@@ -1721,7 +1786,7 @@ function SaveConfirmationToast({
             variant="ghost"
             size="icon-sm"
             className="shrink-0"
-            onClick={onDismiss}
+            onClick={beginDismiss}
             aria-label="Dismiss save confirmation"
           >
             <X className="size-4" />
@@ -1956,4 +2021,15 @@ function notifyNewRapsodoSessions(count: number) {
   new Notification("New Rapsodo sessions available", {
     body: `${count} new R-Cloud session${count === 1 ? "" : "s"} ready to review in LM World Tour.`,
   });
+}
+
+function readMotionDuration(property: string, fallbackMs: number) {
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(property).trim();
+  const parsed = Number.parseFloat(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallbackMs;
+  }
+
+  return value.endsWith("ms") ? parsed : value.endsWith("s") ? parsed * 1000 : fallbackMs;
 }

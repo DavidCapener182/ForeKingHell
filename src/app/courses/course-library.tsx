@@ -673,7 +673,7 @@ export function CoursePreview({
           unoptimized
           priority={priority}
           sizes="(min-width: 1536px) 24vw, (min-width: 1280px) 32vw, (min-width: 768px) 48vw, 100vw"
-          className="object-cover saturate-[0.92] contrast-[1.04] transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+          className="object-cover saturate-[0.92] contrast-[1.04]"
           onError={() => setAerialFailed(true)}
         />
       ) : hasMap ? (
@@ -684,7 +684,7 @@ export function CoursePreview({
           unoptimized
           priority={priority}
           sizes="(min-width: 1536px) 24vw, (min-width: 1280px) 32vw, (min-width: 768px) 48vw, 100vw"
-          className="object-cover saturate-[0.88] transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
+          className="object-cover saturate-[0.88]"
           onError={() => setMapFailed(true)}
         />
       ) : (

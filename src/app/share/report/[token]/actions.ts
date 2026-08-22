@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
@@ -42,7 +44,8 @@ export async function unlockCoachReportAction(token: string, formData: FormData)
   const access = parseCoachReportAccessConfig(row.config);
   const password = String(formData.get("password") ?? "");
   if (!access.passwordHash || !verifyReportPassword(password, access.passwordHash)) {
-    redirect(`/share/report/${encodeURIComponent(token)}?error=password`);
+    const query = new URLSearchParams({ error: "password", attempt: randomUUID() });
+    redirect(`/share/report/${encodeURIComponent(token)}?${query.toString()}`);
   }
   const store = await cookies();
   store.set(

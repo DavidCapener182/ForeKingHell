@@ -531,12 +531,29 @@ export function DesktopWorkbenchControls({
             data-export-current-view
             data-export-table-id={exportTableId}
           >
-            <Download className="size-4" />
-            {exportStatus === "done"
-              ? "Exported"
-              : exportStatus === "missing"
-                ? "No table"
-                : "Export"}
+            <span
+              className="t-icon-swap"
+              data-state={exportStatus === "done" ? "b" : "a"}
+              aria-hidden="true"
+            >
+              <span className="t-icon" data-icon="a">
+                <Download className="size-4" />
+              </span>
+              <span className="t-icon" data-icon="b">
+                <Check className="size-4" />
+              </span>
+            </span>
+            <span
+              key={exportStatus}
+              className="t-text-state"
+              data-motion-ready={exportStatus !== "idle" ? "true" : "false"}
+            >
+              {exportStatus === "done"
+                ? "Exported"
+                : exportStatus === "missing"
+                  ? "No table"
+                  : "Export"}
+            </span>
           </Button>
           <Button
             type="button"
@@ -546,12 +563,29 @@ export function DesktopWorkbenchControls({
             disabled={!hydrated}
             data-copy-current-view
           >
-            <Copy className="size-4" />
-            {copyStatus === "done"
-              ? "Copied"
-              : copyStatus === "failed"
-                ? "Copy failed"
-                : "Copy link"}
+            <span
+              className="t-icon-swap"
+              data-state={copyStatus === "done" ? "b" : "a"}
+              aria-hidden="true"
+            >
+              <span className="t-icon" data-icon="a">
+                <Copy className="size-4" />
+              </span>
+              <span className="t-icon" data-icon="b">
+                <Check className="size-4" />
+              </span>
+            </span>
+            <span
+              key={copyStatus}
+              className="t-text-state"
+              data-motion-ready={copyStatus !== "idle" ? "true" : "false"}
+            >
+              {copyStatus === "done"
+                ? "Copied"
+                : copyStatus === "failed"
+                  ? "Copy failed"
+                  : "Copy link"}
+            </span>
           </Button>
           <span
             className="sr-only"
