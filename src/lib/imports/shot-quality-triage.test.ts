@@ -349,4 +349,39 @@ describe("triageImportedShotQuality", () => {
       ).classification,
     ).toBe("likely_mishit");
   });
+
+  it("falls back to the conservative carry ratio when an import profile has zero spread", () => {
+    const rows = [100, 100, 100, 100, 20].map((carryYd) => ({
+      carryYd,
+      ballSpeedMph: null,
+      smashFactor: null,
+    }));
+    const sessionProfile = buildEstablishedClubProfile("5w", rows, {
+      scope: "import_session",
+    });
+
+    expect(sessionProfile).toMatchObject({
+      carryYd: {
+        median: 100,
+        medianAbsoluteDeviation: 0,
+        p25: 100,
+        p75: 100,
+      },
+    });
+
+    const result = triageImportedShotQuality(
+      shot({
+        club: { type: "5w", rawLabel: "5 Wood", provenance: "source" },
+        carryYd: 20,
+        totalYd: 20,
+        ballSpeedMph: null,
+        clubSpeedMph: null,
+        smashFactor: null,
+      }),
+      sessionProfile,
+    );
+
+    expect(result.classification).toBe("likely_mishit");
+    expect(result.evidence).toEqual([expect.objectContaining({ code: "carry_far_below_profile" })]);
+  });
 });

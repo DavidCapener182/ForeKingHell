@@ -438,11 +438,11 @@ function highConfidenceCarrySignal(value: number | null, distribution: RobustMet
   }
 
   const robustScale = distributionScale(distribution);
-  if (robustScale === null) {
-    return null;
-  }
-
-  const threshold = Math.min(distribution.median * 0.75, distribution.median - robustScale * 3);
+  const ratioBoundary = distribution.median * 0.75;
+  const threshold =
+    robustScale === null
+      ? ratioBoundary
+      : Math.min(ratioBoundary, distribution.median - robustScale * 3);
   return value <= threshold ? { threshold } : null;
 }
 
