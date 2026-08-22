@@ -36,6 +36,13 @@ describe("surface-specific import result", () => {
     expect(companion).toContain("data-plan-versus-actual");
     expect(companion).toContain('eyebrow="Import complete"');
     expect(companion).toContain("result.reviewHref");
+    expect(companion).toContain("result.suggestionReviewHref");
+    expect(companion).toContain("Confirm flagged shots");
+    expect(companion).toContain("result.triage.stockQualityCount");
+    expect(companion).toContain("result.triage.likelyMishitCount");
+    expect(companion).toContain("result.triage.partialShotCount");
+    expect(companion).toContain("Unknown raw rows");
+    expect(companion).not.toContain("Questionable rows");
     expect(companion).toContain("MobileShotPatternCharts");
     expect(companion).toContain("What improved");
     expect(companion).toContain("What still needs work");
@@ -63,6 +70,12 @@ describe("surface-specific import result", () => {
     expect(workbench).toContain("data-import-trust-checks");
     expect(workbench).toContain("data-import-practice-review");
     expect(workbench).toContain("data-import-practice-prescription");
+    expect(workbench).toContain("Confirm flagged shots");
+    expect(workbench).toContain("result.suggestionReviewHref");
+    expect(workbench).toContain("Stock-quality");
+    expect(workbench).toContain("Likely mishits");
+    expect(workbench).toContain("Partial shots");
+    expect(workbench).not.toContain("Questionable rows");
     expect(workbench).toContain("<Item");
     expect(workbench).not.toContain("MobileImportResult");
     expect(workbench).not.toContain("MobileAppShell");

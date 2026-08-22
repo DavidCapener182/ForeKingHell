@@ -89,17 +89,6 @@ export function resolveTodayPrimaryState({
       action: "Continue practice",
     };
   }
-  if (currentPlan?.status === "awaiting_import") {
-    return {
-      eyebrow: "Practice finished",
-      title: "Add the measured session",
-      reason: "Choose R-Cloud or a CSV to replace activity tracking with measured evidence.",
-      status: "Evidence needed",
-      tone: "attention",
-      href: `/import?practicePlanId=${encodeURIComponent(currentPlan.id)}`,
-      action: "Import session",
-    };
-  }
   if (
     latestData?.sessions[0]?.id &&
     latestData.shots.length > 0 &&
@@ -113,6 +102,17 @@ export function resolveTodayPrimaryState({
       tone: "positive",
       href: `/sessions/${latestData.sessions[0].id}`,
       action: "Review session",
+    };
+  }
+  if (currentPlan?.status === "awaiting_import") {
+    return {
+      eyebrow: "Practice finished",
+      title: "Add the measured session",
+      reason: "Choose R-Cloud or a CSV to replace activity tracking with measured evidence.",
+      status: "Evidence needed",
+      tone: "attention",
+      href: `/import?practicePlanId=${encodeURIComponent(currentPlan.id)}`,
+      action: "Import session",
     };
   }
   if (activeRound) {
@@ -154,6 +154,34 @@ export function todayConfidencePercent(confidence: string) {
   return 38;
 }
 
+export function todayHeroEvidence({
+  state,
+  recommendation,
+  latestData,
+}: {
+  state: TodayPrimaryState;
+  recommendation: TodayRecommendation;
+  latestData: LatestPracticeReview;
+}) {
+  if (state.status === "Review ready" && latestData) {
+    return {
+      heading: "Review status",
+      confidence: "Ready",
+      evidenceLabel: measuredShotLabel(latestData.shots.length),
+      contextLabel: "Sessions",
+      contextValue: countLabel(latestData.sessions.length, "session"),
+    };
+  }
+
+  return {
+    heading: "Decision confidence",
+    confidence: recommendation.confidence,
+    evidenceLabel: recommendation.evidenceLabel,
+    contextLabel: "Main club",
+    contextValue: recommendation.clubLabel,
+  };
+}
+
 function isReviewReadyDate(dateLabel: string | null) {
   if (dateLabel === null) return true;
   const date = new Date(dateLabel);
@@ -170,4 +198,12 @@ function formatDirectionEvidence(club: PracticePlannerContext["latestPractice"][
     return `${Math.round(club.offlineAverageYd)} yd average offline dispersion`;
   }
   return "an incomplete control sample";
+}
+
+function measuredShotLabel(count: number) {
+  return `${count} measured shot${count === 1 ? "" : "s"}`;
+}
+
+function countLabel(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

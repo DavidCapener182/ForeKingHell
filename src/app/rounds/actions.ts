@@ -3,9 +3,22 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, ne } from "drizzle-orm";
 
-import { clubs, courses, holes, sessions, shareLinks, shots, teeSets, users } from "@/db/schema";
+import {
+  clubs,
+  courses,
+  holes,
+  rapsodoSyncSessions,
+  sessions,
+  shareLinks,
+  shotReviewEvents,
+  shots,
+  strokesGainedBaselines,
+  strokesGainedShotEvents,
+  teeSets,
+  users,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { evaluateRoundAchievementsForSession } from "@/lib/achievements/service";
@@ -15,13 +28,28 @@ import {
   type CourseScorecardHole,
 } from "@/lib/course-scorecard";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
 import { buildClubKey, normalizeClubType, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
+import {
+  applyRoundShotDeletionToScorecard,
+  isRoundCorrectionDeletionAllowed,
+  parseRoundShotDeleteActionInput,
+  physicalRoundShotsForAccounting,
+  type RoundShotDeleteActionInput,
+} from "@/lib/round-shot-deletion";
 import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
-import { isShotEvidenceEligible } from "@/lib/shot-review";
+import { reportServerFailure } from "@/lib/server-observability";
 import { recordRoundCompletedFeedItem } from "@/lib/social";
+import { refreshStockYardagesForClubs } from "@/lib/stock-yardage-refresh";
+import {
+  DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
+  buildStrokesGainedEventsFromRoundAssignments,
+} from "@/lib/strokes-gained";
 
 type StoredScorecardHole = NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>[number];
+type RoundActionTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+type RoundAssignmentDatabase = Pick<RoundActionTransaction, "select" | "update">;
 
 export async function createManualRoundAction(formData: FormData) {
   const db = getDb();
@@ -283,7 +311,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
     })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
 
-  await recalculateRoundAssignments(sessionId);
+  await recalculateRoundAssignments(sessionId, userId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
@@ -320,6 +348,170 @@ export async function updateShotClubAction(formData: FormData) {
 
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
+}
+
+export async function deleteRoundShotAction(input: RoundShotDeleteActionInput) {
+  const userId = await requireCurrentUserId();
+  const deletion = parseRoundShotDeleteActionInput(input);
+  const deletedAt = new Date();
+  const deleted = await getDb().transaction(async (tx) => {
+    const [round] = await tx
+      .select({
+        id: sessions.id,
+        type: sessions.type,
+        playContext: sessions.playContext,
+        courseId: sessions.courseId,
+        scorecardJson: sessions.scorecardJson,
+      })
+      .from(sessions)
+      .where(and(eq(sessions.id, deletion.sessionId), eq(sessions.userId, userId)))
+      .limit(1)
+      .for("update");
+
+    if (!round?.scorecardJson) {
+      throw new Error("Round not found. Refresh and try again.");
+    }
+
+    const [providerSession] = await tx
+      .select({
+        providerKind: rapsodoSyncSessions.providerKind,
+        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
+      })
+      .from(rapsodoSyncSessions)
+      .where(
+        and(
+          eq(rapsodoSyncSessions.userId, userId),
+          eq(rapsodoSyncSessions.importedSessionId, round.id),
+        ),
+      )
+      .orderBy(desc(rapsodoSyncSessions.updatedAt))
+      .limit(1);
+
+    const [ownedShot] = await tx
+      .select({
+        id: shots.id,
+        sessionId: shots.sessionId,
+        clubId: shots.clubId,
+        playContext: shots.playContext,
+        courseHoleNumber: shots.courseHoleNumber,
+      })
+      .from(shots)
+      .where(and(eq(shots.id, deletion.shotId), eq(shots.userId, userId)))
+      .limit(1)
+      .for("update");
+
+    if (!ownedShot) {
+      return {
+        shotId: deletion.shotId,
+        sessionId: round.id,
+        affectedHoleNumber: null,
+        scoreChanged: false,
+        alreadyDeleted: true,
+      };
+    }
+
+    if (ownedShot.sessionId !== round.id) {
+      throw new Error("Shot not found in this round. Refresh and try again.");
+    }
+
+    if (ownedShot.courseHoleNumber === null || ownedShot.courseHoleNumber < 1) {
+      throw new Error(
+        "Assign this shot to a scorecard hole before permanently deleting it from the round.",
+      );
+    }
+
+    if (
+      !isRoundCorrectionDeletionAllowed({
+        scorecardJson: round.scorecardJson,
+        sessionType: round.type,
+        sessionPlayContext: round.playContext,
+        sessionCourseId: round.courseId,
+        courseHoleNumber: ownedShot.courseHoleNumber,
+        providerKind: providerSession?.providerKind,
+        providerSessionMode: providerSession?.providerSessionMode,
+      })
+    ) {
+      throw new Error(
+        "Permanent course-shot deletion is available only inside a course-managed round correction.",
+      );
+    }
+
+    const scorecardImpact = applyRoundShotDeletionToScorecard(
+      round.scorecardJson,
+      ownedShot.courseHoleNumber,
+    );
+
+    await tx
+      .update(sessions)
+      .set({ scorecardJson: scorecardImpact.scorecard, updatedAt: deletedAt })
+      .where(and(eq(sessions.id, round.id), eq(sessions.userId, userId)));
+    await tx
+      .delete(shotReviewEvents)
+      .where(and(eq(shotReviewEvents.shotId, ownedShot.id), eq(shotReviewEvents.userId, userId)));
+    await tx
+      .delete(strokesGainedShotEvents)
+      .where(
+        and(
+          eq(strokesGainedShotEvents.userId, userId),
+          eq(strokesGainedShotEvents.sessionId, round.id),
+          isNotNull(strokesGainedShotEvents.shotId),
+        ),
+      );
+    const [deletedShot] = await tx
+      .delete(shots)
+      .where(
+        and(eq(shots.id, ownedShot.id), eq(shots.sessionId, round.id), eq(shots.userId, userId)),
+      )
+      .returning({ id: shots.id });
+
+    if (!deletedShot) {
+      throw new Error("The shot changed during deletion. Refresh and try again.");
+    }
+
+    const recalculatedScorecard = await recalculateRoundAssignments(round.id, userId, tx);
+    await rebuildRoundStrokesGainedEvents(
+      round.id,
+      userId,
+      recalculatedScorecard ?? scorecardImpact.scorecard,
+      tx,
+    );
+    await refreshStockYardagesForClubs(tx, {
+      userId,
+      clubContexts: [{ clubId: ownedShot.clubId, playContext: ownedShot.playContext }],
+      calculatedAt: deletedAt,
+    });
+
+    return {
+      shotId: deletedShot.id,
+      sessionId: round.id,
+      affectedHoleNumber: scorecardImpact.affectedHoleNumber,
+      scoreChanged: scorecardImpact.scoreChanged,
+      alreadyDeleted: false,
+    };
+  });
+
+  if (!deleted.alreadyDeleted) {
+    try {
+      await refreshPracticeEvidenceForReviewedSessions(userId, [deleted.sessionId]);
+    } catch (error) {
+      reportServerFailure("round_shot_delete_practice_refresh_failed", error, {
+        "app.session_id": deleted.sessionId,
+        "app.shot_count": 1,
+      });
+    }
+
+    try {
+      await evaluateRoundAchievementsForSessionWithFlash(deleted.sessionId, userId);
+    } catch (error) {
+      reportServerFailure("round_shot_delete_achievement_refresh_failed", error, {
+        "app.session_id": deleted.sessionId,
+        "app.shot_count": 1,
+      });
+    }
+  }
+
+  revalidateRound(deleted.sessionId);
+  return deleted;
 }
 
 export async function updateClubAction(formData: FormData) {
@@ -457,7 +649,7 @@ export async function updateRoundHoleAction(formData: FormData) {
     .update(sessions)
     .set({ scorecardJson: holes })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
-  await recalculateRoundAssignments(sessionId);
+  await recalculateRoundAssignments(sessionId, userId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
@@ -480,14 +672,11 @@ export async function resplitRoundAction(formData: FormData) {
     .select({
       id: shots.id,
       shotNumber: shots.shotNumber,
-      reviewStatus: shots.reviewStatus,
-      qualityTag: shots.qualityTag,
-      shotCategory: shots.shotCategory,
     })
     .from(shots)
     .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
-  const sessionShots = loadedSessionShots.filter(isShotEvidenceEligible);
+  const sessionShots = physicalRoundShotsForAccounting(loadedSessionShots);
   let cursor = 0;
 
   for (const hole of session.scorecardJson.sort(
@@ -521,7 +710,7 @@ export async function resplitRoundAction(formData: FormData) {
       .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
   }
 
-  await recalculateRoundAssignments(sessionId);
+  await recalculateRoundAssignments(sessionId, userId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
@@ -535,12 +724,15 @@ async function evaluateRoundAchievementsForSessionWithFlash(
   return result;
 }
 
-async function recalculateRoundAssignments(sessionId: string) {
-  const db = getDb();
+async function recalculateRoundAssignments(
+  sessionId: string,
+  actorUserId: string,
+  db: RoundAssignmentDatabase = getDb(),
+) {
   const [session] = await db
     .select({ scorecardJson: sessions.scorecardJson, userId: sessions.userId })
     .from(sessions)
-    .where(eq(sessions.id, sessionId))
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, actorUserId)))
     .limit(1);
 
   if (!session?.scorecardJson) {
@@ -556,14 +748,11 @@ async function recalculateRoundAssignments(sessionId: string) {
       sideCarryYd: shots.sideCarryYd,
       clubType: shots.clubType,
       courseHoleNumber: shots.courseHoleNumber,
-      reviewStatus: shots.reviewStatus,
-      qualityTag: shots.qualityTag,
-      shotCategory: shots.shotCategory,
     })
     .from(shots)
     .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)))
     .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
-  const sessionShots = loadedSessionShots.filter(isShotEvidenceEligible);
+  const sessionShots = physicalRoundShotsForAccounting(loadedSessionShots);
   const sortedScorecard = session.scorecardJson
     .slice()
     .sort((left, right) => left.holeNumber - right.holeNumber);
@@ -635,8 +824,62 @@ async function recalculateRoundAssignments(sessionId: string) {
 
   await db
     .update(sessions)
-    .set({ scorecardJson: nextScorecard })
+    .set({ scorecardJson: nextScorecard, updatedAt: new Date() })
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+
+  return nextScorecard;
+}
+
+async function rebuildRoundStrokesGainedEvents(
+  sessionId: string,
+  actorUserId: string,
+  scorecard: StoredScorecardHole[],
+  tx: RoundActionTransaction,
+) {
+  const remainingShots = await tx
+    .select({
+      id: shots.id,
+      shotNumber: shots.shotNumber,
+      clubType: shots.clubType,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      sideCarryYd: shots.sideCarryYd,
+      courseHoleNumber: shots.courseHoleNumber,
+      courseHoleShotNumber: shots.courseHoleShotNumber,
+      courseHolePar: shots.courseHolePar,
+      courseHoleYards: shots.courseHoleYards,
+      distanceRemainingYd: shots.distanceRemainingYd,
+      shotCategory: shots.shotCategory,
+    })
+    .from(shots)
+    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, actorUserId)))
+    .orderBy(
+      asc(shots.courseHoleNumber),
+      asc(shots.courseHoleShotNumber),
+      asc(shots.shotNumber),
+      asc(shots.createdAt),
+    );
+  const baselineRows = await tx
+    .select({
+      category: strokesGainedBaselines.category,
+      lie: strokesGainedBaselines.lie,
+      distanceStartYd: strokesGainedBaselines.distanceStartYd,
+      distanceEndYd: strokesGainedBaselines.distanceEndYd,
+      expectedStrokes: strokesGainedBaselines.expectedStrokes,
+    })
+    .from(strokesGainedBaselines);
+  const rebuiltEvents = buildStrokesGainedEventsFromRoundAssignments({
+    userId: actorUserId,
+    sessionId,
+    shots: remainingShots,
+    holeScoring: scorecard,
+    baselineBuckets:
+      baselineRows.length > 0 ? baselineRows : DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
+  });
+
+  if (rebuiltEvents.length > 0) {
+    await tx.insert(strokesGainedShotEvents).values(rebuiltEvents);
+  }
 }
 
 function inferUnmappedShotHoles(
@@ -836,14 +1079,24 @@ function scorecardTotal(scorecard: StoredScorecardHole[]) {
 
 function revalidateRound(sessionId: string) {
   revalidatePath("/dashboard");
+  revalidatePath("/today");
   revalidatePath("/bag");
   revalidatePath("/shots");
   revalidatePath("/rounds");
+  revalidatePath("/sessions");
+  revalidatePath(`/sessions/${sessionId}`);
   revalidatePath("/handicap");
   revalidatePath("/progress");
+  revalidatePath("/analyse");
+  revalidatePath("/strokes-gained");
+  revalidatePath("/stats/training-over-time");
+  revalidatePath("/speed");
+  revalidatePath("/practice");
   revalidatePath("/courses");
+  revalidatePath("/play");
   revalidatePath(`/rounds/${sessionId}`);
   revalidatePath("/achievements");
+  revalidatePath("/", "layout");
 }
 
 function forwardDistanceYd(distanceYd: number | null, sideYd: number | null) {

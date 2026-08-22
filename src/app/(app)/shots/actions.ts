@@ -1,17 +1,23 @@
 "use server";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { getDb } from "@/db/client";
-import { shotReviewEvents, shots } from "@/db/schema";
+import { rapsodoSyncSessions, sessions, shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
 import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
 import { reportServerFailure } from "@/lib/server-observability";
 import {
+  isPermanentShotDeletionRestricted,
+  parseShotDeleteActionInput,
+  type ShotDeleteActionInput,
+} from "@/lib/shot-deletion";
+import {
   buildShotReviewMutation,
   effectiveShotReviewStatus,
+  isPersistedShotReviewNoOp,
   parseShotReviewActionInput,
   type ShotReviewActionInput,
 } from "@/lib/shot-review";
@@ -42,6 +48,118 @@ export async function restoreShotAction(shotId: string, reason: string) {
   });
 }
 
+export async function deleteShotAction(shotId: string) {
+  return deleteShotsAction({ shotIds: [shotId] });
+}
+
+export async function deleteShotsAction(input: ShotDeleteActionInput) {
+  const userId = await requireCurrentUserId();
+  const deletion = parseShotDeleteActionInput(input);
+  const deletedAt = new Date();
+  const deleted = await getDb().transaction(async (tx) => {
+    const ownedShots = await tx
+      .select({
+        id: shots.id,
+        sessionId: shots.sessionId,
+        clubId: shots.clubId,
+        playContext: shots.playContext,
+        courseHoleNumber: shots.courseHoleNumber,
+        sessionType: sessions.type,
+        sessionPlayContext: sessions.playContext,
+        sessionCourseId: sessions.courseId,
+      })
+      .from(shots)
+      .innerJoin(sessions, and(eq(sessions.id, shots.sessionId), eq(sessions.userId, userId)))
+      .where(and(eq(shots.userId, userId), inArray(shots.id, deletion.shotIds)))
+      .for("update");
+
+    if (ownedShots.length !== deletion.shotIds.length) {
+      throw new Error("One or more shots were not found. Refresh and try again.");
+    }
+
+    const providerSessionRows = await tx
+      .select({
+        sessionId: rapsodoSyncSessions.importedSessionId,
+        providerKind: rapsodoSyncSessions.providerKind,
+        providerSessionMode: rapsodoSyncSessions.providerSessionMode,
+      })
+      .from(rapsodoSyncSessions)
+      .where(
+        and(
+          eq(rapsodoSyncSessions.userId, userId),
+          inArray(rapsodoSyncSessions.importedSessionId, [
+            ...new Set(ownedShots.map((shot) => shot.sessionId)),
+          ]),
+        ),
+      )
+      .orderBy(desc(rapsodoSyncSessions.updatedAt));
+    const providerMetadataBySessionId = new Map<
+      string,
+      { providerKind: string; providerSessionMode: string | null }
+    >();
+    for (const providerSession of providerSessionRows) {
+      if (
+        providerSession.sessionId &&
+        !providerMetadataBySessionId.has(providerSession.sessionId)
+      ) {
+        providerMetadataBySessionId.set(providerSession.sessionId, {
+          providerKind: providerSession.providerKind,
+          providerSessionMode: providerSession.providerSessionMode,
+        });
+      }
+    }
+
+    const restrictedShots = ownedShots.filter((shot) => {
+      const providerMetadata = providerMetadataBySessionId.get(shot.sessionId);
+      return isPermanentShotDeletionRestricted({
+        ...shot,
+        providerKind: providerMetadata?.providerKind,
+        providerSessionMode: providerMetadata?.providerSessionMode,
+      });
+    });
+    if (restrictedShots.length > 0) {
+      throw new Error(
+        `${restrictedShots.length} course-managed ${restrictedShots.length === 1 ? "shot" : "shots"} cannot be permanently deleted from Shot Explorer. Exclude from stats here, or manage the shot inside its round or course workflow.`,
+      );
+    }
+
+    const deletedShots = await tx
+      .delete(shots)
+      .where(and(eq(shots.userId, userId), inArray(shots.id, deletion.shotIds)))
+      .returning({ id: shots.id });
+
+    if (deletedShots.length !== deletion.shotIds.length) {
+      throw new Error("One or more shots changed during deletion. Refresh and try again.");
+    }
+
+    await refreshStockYardagesForClubs(tx, {
+      userId,
+      clubContexts: ownedShots.map((shot) => ({
+        clubId: shot.clubId,
+        playContext: shot.playContext,
+      })),
+      calculatedAt: deletedAt,
+    });
+
+    return {
+      shotIds: deletedShots.map((shot) => shot.id),
+      sessionIds: [...new Set(ownedShots.map((shot) => shot.sessionId))],
+    };
+  });
+
+  try {
+    await refreshPracticeEvidenceForReviewedSessions(userId, deleted.sessionIds);
+  } catch (error) {
+    reportServerFailure("shot_delete_practice_refresh_failed", error, {
+      "app.session_count": deleted.sessionIds.length,
+      "app.shot_count": deleted.shotIds.length,
+    });
+  }
+
+  revalidateShotDerivedRoutes(deleted.sessionIds);
+  return { deletedShotIds: deleted.shotIds };
+}
+
 async function applyOwnedShotReview(input: unknown) {
   const userId = await requireCurrentUserId();
   const review = parseShotReviewActionInput(input);
@@ -66,7 +184,12 @@ async function applyOwnedShotReview(input: unknown) {
     }
 
     const reviewedAt = new Date();
+    const changedShots: typeof ownedShots = [];
     for (const shot of ownedShots) {
+      if (isPersistedShotReviewNoOp(shot, review.status)) {
+        continue;
+      }
+
       const mutation = buildShotReviewMutation(
         {
           reviewStatus: effectiveShotReviewStatus({
@@ -110,23 +233,30 @@ async function applyOwnedShotReview(input: unknown) {
         resultingQualityTag: mutation.qualityTag,
         createdAt: reviewedAt,
       });
+      changedShots.push(shot);
     }
 
-    await refreshStockYardagesForClubs(tx, {
-      userId,
-      clubContexts: ownedShots.map((shot) => ({
-        clubId: shot.clubId,
-        playContext: shot.playContext,
-      })),
-      calculatedAt: reviewedAt,
-    });
+    if (changedShots.length > 0) {
+      await refreshStockYardagesForClubs(tx, {
+        userId,
+        clubContexts: changedShots.map((shot) => ({
+          clubId: shot.clubId,
+          playContext: shot.playContext,
+        })),
+        calculatedAt: reviewedAt,
+      });
+    }
 
     return {
-      shotIds: ownedShots.map((shot) => shot.id),
-      sessionIds: [...new Set(ownedShots.map((shot) => shot.sessionId))],
+      shotIds: changedShots.map((shot) => shot.id),
+      sessionIds: [...new Set(changedShots.map((shot) => shot.sessionId))],
       status: review.status,
     };
   });
+
+  if (reviewed.shotIds.length === 0) {
+    return { reviewedShotIds: [], status: reviewed.status };
+  }
 
   try {
     await refreshPracticeEvidenceForReviewedSessions(userId, reviewed.sessionIds);

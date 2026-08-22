@@ -1,11 +1,17 @@
 import "server-only";
 
-import { and, count, eq } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
-import { importFiles, importRows, sessions } from "@/db/schema";
+import { importFiles, importRows, sessions, shots } from "@/db/schema";
 import { formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
+import {
+  formatImportTriagePath,
+  importFieldIssueCount,
+  importSuggestionReviewHref,
+  summarizePersistedImportShots,
+} from "@/lib/import-result-triage";
 import { getPracticePlanReviewForSourceSession } from "@/lib/practice-planner";
 import { buildShotPatternPoints, shotPatternConfidence } from "@/lib/shot-pattern-chart-data";
 import { companionReviewRoute } from "@/lib/session-review-route";
@@ -27,21 +33,45 @@ export async function getCompanionImportResult(sessionId: string) {
     .limit(1);
   if (!session) return null;
 
-  const [data, practiceReview, rawCountRows, importFileRows] = await Promise.all([
-    getTodayPracticeData({ sessionId }),
-    getPracticePlanReviewForSourceSession(userId, sessionId),
-    getDb()
-      .select({ value: count() })
-      .from(importRows)
-      .where(and(eq(importRows.userId, userId), eq(importRows.sessionId, sessionId))),
-    getDb()
-      .select({ status: importFiles.status, parseVersion: importFiles.parseVersion })
-      .from(importFiles)
-      .where(and(eq(importFiles.userId, userId), eq(importFiles.sessionId, sessionId)))
-      .limit(1),
-  ]);
+  const [data, practiceReview, rawCountRows, importFileRows, persistedShotRows] = await Promise.all(
+    [
+      getTodayPracticeData({ sessionId }),
+      getPracticePlanReviewForSourceSession(userId, sessionId),
+      getDb()
+        .select({
+          value: count(),
+          unknownValue: sql<number>`count(*) filter (where ${importRows.rowType} = 'unknown')::int`,
+        })
+        .from(importRows)
+        .where(and(eq(importRows.userId, userId), eq(importRows.sessionId, sessionId))),
+      getDb()
+        .select({
+          status: importFiles.status,
+          parseVersion: importFiles.parseVersion,
+          metadataJson: importFiles.metadataJson,
+        })
+        .from(importFiles)
+        .where(
+          and(
+            eq(importFiles.userId, userId),
+            eq(importFiles.sessionId, sessionId),
+            eq(importFiles.status, "saved"),
+          ),
+        )
+        .orderBy(desc(importFiles.createdAt))
+        .limit(1),
+      getDb()
+        .select({
+          reviewStatus: shots.reviewStatus,
+          qualityTag: shots.qualityTag,
+          shotCategory: shots.shotCategory,
+        })
+        .from(shots)
+        .where(and(eq(shots.userId, userId), eq(shots.sessionId, sessionId))),
+    ],
+  );
   const sessionShots = data.rawShots.filter((shot) => shot.sessionId === sessionId);
-  const cleanShots = data.shots.filter((shot) => shot.sessionId === sessionId);
+  const triage = summarizePersistedImportShots(persistedShotRows);
   const patternPoints = buildShotPatternPoints(sessionShots);
   const comparisons = data.clubComparisons;
   const improved =
@@ -71,10 +101,14 @@ export async function getCompanionImportResult(sessionId: string) {
     session,
     reviewHref: companionReviewRoute(session),
     isRound: companionReviewRoute(session).startsWith("/rounds/"),
-    shotCount: sessionShots.length,
+    shotCount: triage.totalShotCount,
     clubCount: new Set(sessionShots.map((shot) => shot.clubType)).size,
     rawRowCount: Number(rawCountRows[0]?.value ?? 0),
-    questionableRowCount: Math.max(0, sessionShots.length - cleanShots.length),
+    rawUnknownRowCount: Number(rawCountRows[0]?.unknownValue ?? 0),
+    triage,
+    triagePath: formatImportTriagePath(triage),
+    fieldIssueCount: importFieldIssueCount(importFileRows[0]?.metadataJson),
+    suggestionReviewHref: importSuggestionReviewHref(session.id),
     clubs: [...new Set(sessionShots.map((shot) => formatClubType(shot.clubType)))],
     sourceStatus: importFileRows[0]?.status ?? "saved",
     parseVersion: importFileRows[0]?.parseVersion ?? `${session.source}-v1`,

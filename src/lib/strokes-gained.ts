@@ -1,5 +1,6 @@
 import type { NewStrokesGainedShotEvent } from "@/db/schema";
 import type { InferredCourseShot } from "@/lib/course-scorecard";
+import type { ParsedRapsodoShot, ShotCategory } from "@/lib/rapsodo/parser";
 
 export type StrokesGainedBaselineBucket = {
   category: string;
@@ -342,6 +343,164 @@ export function buildStrokesGainedEventsFromCourseShots({
       },
     };
   });
+}
+
+export type RoundAssignmentStrokesGainedShot = {
+  id: string;
+  shotNumber: number | null;
+  clubType: string;
+  carryYd: number | null;
+  totalYd: number | null;
+  sideCarryYd: number | null;
+  courseHoleNumber: number | null;
+  courseHoleShotNumber: number | null;
+  courseHolePar: number | null;
+  courseHoleYards: number | null;
+  distanceRemainingYd: number | null;
+  shotCategory: string | null;
+};
+
+export function buildStrokesGainedEventsFromRoundAssignments({
+  userId,
+  sessionId,
+  shots,
+  holeScoring = [],
+  baselineBuckets = DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
+}: {
+  userId: string;
+  sessionId: string;
+  shots: RoundAssignmentStrokesGainedShot[];
+  holeScoring?: StrokesGainedHoleScoringInput[];
+  baselineBuckets?: StrokesGainedBaselineBucket[];
+}) {
+  const orderedShots = shots
+    .filter(isMappedRoundAssignmentShot)
+    .sort(
+      (left, right) =>
+        left.courseHoleNumber - right.courseHoleNumber ||
+        left.courseHoleShotNumber - right.courseHoleShotNumber ||
+        (left.shotNumber ?? Number.MAX_SAFE_INTEGER) -
+          (right.shotNumber ?? Number.MAX_SAFE_INTEGER) ||
+        left.id.localeCompare(right.id),
+    );
+  const previousRemainingByHole = new Map<number, number>();
+  const shotIdByRowNumber = new Map<number, string>();
+  const courseShots = orderedShots.map<InferredCourseShot>((shot, index) => {
+    const rowNumber = index + 1;
+    const holeNumber = shot.courseHoleNumber;
+    const holeShotNumber = shot.courseHoleShotNumber;
+    const holeYards = shot.courseHoleYards;
+    const distanceRemainingYd = roundOne(Math.max(0, shot.distanceRemainingYd));
+    const progressBeforeYd = roundOne(
+      Math.max(0, holeYards - (previousRemainingByHole.get(holeNumber) ?? holeYards)),
+    );
+    const progressAfterYd = roundOne(Math.max(0, holeYards - distanceRemainingYd));
+    const sourceShot = roundAssignmentSourceShot(shot, rowNumber);
+
+    previousRemainingByHole.set(holeNumber, distanceRemainingYd);
+    shotIdByRowNumber.set(rowNumber, shot.id);
+
+    return {
+      sourceShot,
+      absoluteShotNumber: index + 1,
+      holeNumber,
+      holeShotNumber,
+      holePar: shot.courseHolePar ?? 4,
+      holeYards,
+      holeName: null,
+      shotDistanceYd: shot.totalYd ?? shot.carryYd,
+      forwardDistanceYd: roundOne(Math.max(0, progressAfterYd - progressBeforeYd)),
+      progressBeforeYd,
+      progressAfterYd,
+      distanceRemainingYd,
+      displaySideYd: shot.sideCarryYd ?? 0,
+      shotCategory: roundAssignmentShotCategory(shot),
+    };
+  });
+
+  return buildStrokesGainedEventsFromCourseShots({
+    userId,
+    sessionId,
+    courseShots,
+    holeScoring,
+    shotIdByRowNumber,
+    baselineBuckets,
+  });
+}
+
+function isMappedRoundAssignmentShot(
+  shot: RoundAssignmentStrokesGainedShot,
+): shot is RoundAssignmentStrokesGainedShot & {
+  courseHoleNumber: number;
+  courseHoleShotNumber: number;
+  courseHoleYards: number;
+  distanceRemainingYd: number;
+} {
+  return (
+    Number.isInteger(shot.courseHoleNumber) &&
+    (shot.courseHoleNumber ?? 0) > 0 &&
+    Number.isInteger(shot.courseHoleShotNumber) &&
+    (shot.courseHoleShotNumber ?? 0) > 0 &&
+    isFiniteNumber(shot.courseHoleYards) &&
+    shot.courseHoleYards > 0 &&
+    isFiniteNumber(shot.distanceRemainingYd) &&
+    shot.distanceRemainingYd >= 0
+  );
+}
+
+function roundAssignmentSourceShot(
+  shot: RoundAssignmentStrokesGainedShot,
+  rowNumber: number,
+): ParsedRapsodoShot {
+  return {
+    rowNumber,
+    shotNumber: shot.shotNumber,
+    clubTypeRaw: shot.clubType,
+    clubType: shot.clubType,
+    clubLabel: shot.clubType,
+    clubBrand: null,
+    clubModel: null,
+    clubKey: shot.clubType,
+    carryYd: shot.carryYd,
+    totalYd: shot.totalYd,
+    ballSpeedMph: null,
+    clubSpeedMph: null,
+    launchAngleDeg: null,
+    launchDirectionDeg: null,
+    apexFt: null,
+    sideCarryYd: shot.sideCarryYd,
+    attackAngleDeg: null,
+    clubPathDeg: null,
+    faceAngleDeg: null,
+    descentAngleDeg: null,
+    smashFactor: null,
+    spinRate: null,
+    spinAxis: null,
+    shotShape: null,
+    shotCategory: roundAssignmentShotCategory(shot),
+    qualityTag: null,
+    clubDataEstType: null,
+    sourceRawJson: {},
+    warnings: [],
+  };
+}
+
+function roundAssignmentShotCategory(shot: RoundAssignmentStrokesGainedShot): ShotCategory {
+  if (isShotCategory(shot.shotCategory)) {
+    return shot.shotCategory;
+  }
+
+  if (shot.courseHoleShotNumber === 1) return "tee";
+  const distance = shot.totalYd ?? shot.carryYd ?? 0;
+  if (distance <= 35) return "chip";
+  if (distance <= 95 && ["pw", "gw", "aw", "sw", "lw", "wedge"].includes(shot.clubType)) {
+    return "pitch";
+  }
+  return "approach";
+}
+
+function isShotCategory(value: string | null): value is ShotCategory {
+  return Boolean(value && ["full", "pitch", "chip", "recovery", "tee", "approach"].includes(value));
 }
 
 function isFiniteNumber(value: unknown): value is number {

@@ -74,7 +74,10 @@ import {
   inferCourseShotsFromHoleShotCounts,
   parseScorecardText,
 } from "@/lib/course-scorecard";
-import type { RapsodoShotOverride } from "@/lib/imports/save-rapsodo-import";
+import type {
+  RapsodoClubSelectionOrigin,
+  RapsodoShotOverride,
+} from "@/lib/imports/save-rapsodo-import";
 import type { RapsodoClubChoice } from "@/lib/rapsodo/club-inference";
 import {
   buildCourseHoleScoringRows,
@@ -209,6 +212,9 @@ export function RapsodoSyncClient({
   const [preview, setPreview] = useState<RapsodoSessionPreview | null>(null);
   const [disconnectConfirmationOpen, setDisconnectConfirmationOpen] = useState(false);
   const [selectedClubByRow, setSelectedClubByRow] = useState<Record<number, string>>({});
+  const [clubSelectionOriginByRow, setClubSelectionOriginByRow] = useState<
+    Record<number, RapsodoClubSelectionOrigin>
+  >({});
   const [clubSelectionMode, setClubSelectionMode] = useState<ClubSelectionMode>("recommendations");
   const [updateRapsodoClubs, setUpdateRapsodoClubs] = useState(false);
   const [courseImportMode, setCourseImportMode] = useState<CourseImportMode>("shot_only");
@@ -581,6 +587,7 @@ export function RapsodoSyncClient({
       setClubSelectionMode("recommendations");
       setUpdateRapsodoClubs(false);
       setSelectedClubByRow(selectionByMode(result.data, "recommendations"));
+      setClubSelectionOriginByRow(selectionOriginsByMode(result.data, "recommendations"));
       requestAnimationFrame(() => {
         previewSectionRef.current?.scrollIntoView({
           behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -607,6 +614,7 @@ export function RapsodoSyncClient({
 
     setClubSelectionMode(mode);
     setSelectedClubByRow(selectionByMode(preview, mode));
+    setClubSelectionOriginByRow(selectionOriginsByMode(preview, mode));
   }
 
   function savePreview() {
@@ -631,6 +639,7 @@ export function RapsodoSyncClient({
         clubType: choice.clubType,
         clubBrand: choice.clubBrand,
         clubModel: choice.clubModel,
+        clubSelectionOrigin: clubSelectionOriginByRow[shot.rowNumber] ?? "recommendation",
       };
     });
 
@@ -1401,6 +1410,10 @@ export function RapsodoSyncClient({
                                       ...current,
                                       [shot.rowNumber]: value,
                                     }));
+                                    setClubSelectionOriginByRow((current) => ({
+                                      ...current,
+                                      [shot.rowNumber]: "user",
+                                    }));
                                   }}
                                 >
                                   <SelectTrigger
@@ -2002,6 +2015,20 @@ function selectionByMode(
 
       return [shot.rowNumber, choice.clubKey];
     }),
+  );
+}
+
+function selectionOriginsByMode(
+  preview: RapsodoSessionPreview,
+  mode: ClubSelectionMode,
+): Record<number, RapsodoClubSelectionOrigin> {
+  return Object.fromEntries(
+    preview.shots.map((shot) => [
+      shot.rowNumber,
+      mode === "rapsodo" && isUsableChoice(shot.reportedChoice)
+        ? ("reported" as const)
+        : ("recommendation" as const),
+    ]),
   );
 }
 

@@ -17,9 +17,15 @@ import {
   ShieldAlert,
   ShieldCheck,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 
-import { ShotBulkReviewButton, ShotReviewButton } from "@/app/shots/shot-review-controls";
+import {
+  ShotBulkDeleteButton,
+  ShotBulkReviewButton,
+  ShotDeleteButton,
+  ShotReviewButton,
+} from "@/app/shots/shot-review-controls";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Badge } from "@/components/ui/badge";
@@ -100,6 +106,7 @@ export type ShotMasterDetailRow = {
   sideCarryYd: number | null;
   apexFt: number | null;
   sourceEntries: Array<{ key: string; value: string }>;
+  canDeletePermanently: boolean;
 };
 
 export type ShotTableSort = {
@@ -142,6 +149,9 @@ export function ShotsMasterDetailTable({
     [selectedId, shots],
   );
   const allVisibleSelected = shots.length > 0 && selectedRows.length === shots.length;
+  const restrictedDeleteCount = shots.filter(
+    (shot) => selectedRows.includes(shot.id) && !shot.canDeletePermanently,
+  ).length;
 
   function toggleSelected(id: string) {
     setSelectedRows((current) =>
@@ -193,6 +203,7 @@ export function ShotsMasterDetailTable({
           <ShotBulkToolbar
             shotIds={selectedRows}
             selectedCount={selectedRows.length}
+            restrictedDeleteCount={restrictedDeleteCount}
             onInspect={() => {
               const shot = shots.find((item) => item.id === selectedRows[0]);
               if (shot) openDetail(shot);
@@ -388,11 +399,7 @@ export function ShotsMasterDetailTable({
                                     ) : (
                                       <Ban className="size-4" />
                                     )}
-                                    {shot.reviewStatus === "suggested_exclusion"
-                                      ? "Keep"
-                                      : isRestorableShotReviewStatus(shot.reviewStatus)
-                                        ? "Restore"
-                                        : "Review"}
+                                    {shotReviewMenuLabel(shot)}
                                   </DropdownMenuItem>
                                 }
                               />
@@ -405,6 +412,28 @@ export function ShotsMasterDetailTable({
                                 <History className="size-4" />
                                 Review history
                               </DropdownMenuItem>
+                              {shot.canDeletePermanently ? (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <ShotDeleteButton
+                                    shotId={shot.id}
+                                    trigger={
+                                      <DropdownMenuItem
+                                        variant="destructive"
+                                        onSelect={(event) => event.preventDefault()}
+                                      >
+                                        <Trash2 className="size-4" />
+                                        Delete permanently
+                                      </DropdownMenuItem>
+                                    }
+                                    onComplete={() => {
+                                      setSelectedRows((current) =>
+                                        current.filter((id) => id !== shot.id),
+                                      );
+                                    }}
+                                  />
+                                </>
+                              ) : null}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -455,7 +484,14 @@ export function ShotsMasterDetailTable({
         className="lg:sticky lg:top-[9.5rem] lg:max-h-[calc(100dvh-11rem)] lg:self-start lg:overflow-hidden"
         contentClassName="p-0 lg:overflow-y-auto"
       >
-        <SelectedShotDetail shot={selectedShot} tab={detailTab} onTabChange={setDetailTab} />
+        <SelectedShotDetail
+          shot={selectedShot}
+          tab={detailTab}
+          onTabChange={setDetailTab}
+          onDeleteComplete={(shotId) => {
+            setSelectedRows((current) => current.filter((id) => id !== shotId));
+          }}
+        />
       </ResponsiveDetailPanel>
     </div>
   );
@@ -464,11 +500,13 @@ export function ShotsMasterDetailTable({
 export function ShotBulkToolbar({
   shotIds,
   selectedCount,
+  restrictedDeleteCount = 0,
   onClear,
   onInspect,
 }: {
   shotIds: string[];
   selectedCount: number;
+  restrictedDeleteCount?: number;
   onClear: () => void;
   onInspect: () => void;
 }) {
@@ -484,15 +522,29 @@ export function ShotBulkToolbar({
         <span className="font-semibold">Selected shots</span>
         <Badge variant="secondary">{selectedCount}</Badge>
       </div>
-      <ButtonGroup aria-label="Selected shot actions">
-        <Button type="button" size="sm" variant="outline" onClick={onInspect}>
-          Inspect first
-        </Button>
-        <ShotBulkReviewButton shotIds={shotIds} onComplete={onClear} />
-        <Button type="button" size="sm" variant="ghost" onClick={onClear}>
-          Clear
-        </Button>
-      </ButtonGroup>
+      <div className="grid justify-items-end gap-1.5">
+        <ButtonGroup aria-label="Selected shot actions">
+          <Button type="button" size="sm" variant="outline" onClick={onInspect}>
+            Inspect first
+          </Button>
+          <ShotBulkReviewButton shotIds={shotIds} onComplete={onClear} />
+          <ShotBulkDeleteButton
+            shotIds={shotIds}
+            restrictedDeleteCount={restrictedDeleteCount}
+            onComplete={onClear}
+          />
+          <Button type="button" size="sm" variant="ghost" onClick={onClear}>
+            Clear
+          </Button>
+        </ButtonGroup>
+        {restrictedDeleteCount > 0 ? (
+          <p className="max-w-xl text-right text-xs text-muted-foreground" role="status">
+            {restrictedDeleteCount} course-managed {restrictedDeleteCount === 1 ? "shot" : "shots"}{" "}
+            cannot be permanently deleted here. Use Exclude selected, or manage them in the round or
+            course workflow.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -659,11 +711,15 @@ export function SelectedShotDetail({
   tab = "overview",
   onTabChange,
   compact = false,
+  onDeleteComplete,
+  showActions = true,
 }: {
   shot: ShotMasterDetailRow | null;
   tab?: DetailTab;
   onTabChange?: (tab: DetailTab) => void;
   compact?: boolean;
+  onDeleteComplete?: (shotId: string) => void;
+  showActions?: boolean;
 }) {
   if (!shot) {
     return (
@@ -679,6 +735,38 @@ export function SelectedShotDetail({
       aria-label="Selected shot detail"
       className={cn("min-w-0", compact && "text-sm")}
     >
+      {showActions ? (
+        <div
+          className="sticky top-0 z-20 grid gap-2 border-b bg-background/95 p-3 backdrop-blur"
+          data-shot-action-bar
+        >
+          <div className={cn("grid gap-2", shot.canDeletePermanently && "grid-cols-2")}>
+            <ShotReviewButton
+              shotId={shot.id}
+              reviewStatus={shot.reviewStatus}
+              trigger={
+                <Button type="button" variant="outline" className="justify-between">
+                  {shotReviewDetailLabel(shot)}
+                  {isRestorableShotReviewStatus(shot.reviewStatus) ? (
+                    <RotateCcw className="size-4" />
+                  ) : (
+                    <Ban className="size-4" />
+                  )}
+                </Button>
+              }
+            />
+            {shot.canDeletePermanently ? (
+              <ShotDeleteButton shotId={shot.id} onComplete={() => onDeleteComplete?.(shot.id)} />
+            ) : null}
+          </div>
+          {!shot.canDeletePermanently ? (
+            <p className="text-xs leading-5 text-muted-foreground">
+              Course-managed shots can be excluded from stats here. Permanent deletion stays in the
+              round or course workflow so score and hole evidence remain consistent.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <Tabs value={tab} onValueChange={(value) => onTabChange?.(value as DetailTab)}>
         <TabsList variant="line" className="mx-4 mt-3 grid w-auto grid-cols-3">
           <TabsTrigger value="overview">Flight</TabsTrigger>
@@ -806,22 +894,35 @@ export function SelectedShotDetail({
               ) : null}
             </div>
           </DetailSection>
-          <div className="grid gap-2">
-            <ShotReviewButton shotId={shot.id} reviewStatus={shot.reviewStatus} />
-            <Button asChild variant="outline" className="justify-between">
-              <Link href={`/sessions/${shot.sessionId}`} prefetch={false}>
-                Open Session Review
-                <ExternalLink className="size-4" />
-              </Link>
-            </Button>
-            <p className="text-xs leading-5 text-muted-foreground">
-              Use Session Review for full context before changing club mapping or launch data.
-            </p>
-          </div>
+          {showActions ? (
+            <div className="grid gap-2">
+              <Button asChild variant="outline" className="justify-between">
+                <Link href={`/sessions/${shot.sessionId}`} prefetch={false}>
+                  Open Session Review
+                  <ExternalLink className="size-4" />
+                </Link>
+              </Button>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Use Session Review for full context before changing club mapping or launch data.
+              </p>
+            </div>
+          ) : null}
         </TabsContent>
       </Tabs>
     </section>
   );
+}
+
+function shotReviewMenuLabel(shot: ShotMasterDetailRow) {
+  if (shot.reviewStatus === "suggested_exclusion") return "Keep";
+  if (isRestorableShotReviewStatus(shot.reviewStatus)) return "Restore";
+  return "Exclude from stats";
+}
+
+function shotReviewDetailLabel(shot: ShotMasterDetailRow) {
+  if (shot.reviewStatus === "suggested_exclusion") return "Keep shot";
+  if (isRestorableShotReviewStatus(shot.reviewStatus)) return "Restore shot";
+  return "Exclude from stats";
 }
 
 function BallFlightVisual({ shot }: { shot: ShotMasterDetailRow }) {

@@ -26,15 +26,42 @@ describe("suggestRapsodoClub", () => {
     expect(suggestion.reason).toContain("closest match");
   });
 
-  it("overrides a tracked club when another bag club is materially closer", () => {
+  it("keeps a tracked source club when another bag club is materially closer", () => {
     const suggestion = suggestRapsodoClub(shot("Driver", 152, 162, 113), [
       club("driver", "Driver", 240, 265, 151, 24),
       club("7i", "7 Iron", 150, 160, 112, 24),
     ]);
 
-    expect(suggestion.choice.clubType).toBe("7i");
-    expect(suggestion.reason).toContain("materially closer");
+    expect(suggestion.choice.clubType).toBe("driver");
+    expect(suggestion.confidence).toBe("trusted");
+    expect(suggestion.reason).toContain("reported a tracked club");
     expect(suggestion.alternatives[0]).toMatchObject({ clubLabel: "7 Iron" });
+  });
+
+  it("preserves a recognized branded source club instead of replacing it from distance alone", () => {
+    const parsedShot = parseRapsodoCsv(
+      [
+        "Club Type,Club Brand,Club Model,Carry Distance (yd),Total Distance (yd),Ball Speed",
+        "5W,TaylorMade,Qi4D Max,102.8,117.1,84",
+      ].join("\n"),
+    ).shots[0];
+
+    const suggestion = suggestRapsodoClub(parsedShot, [
+      club("gw", "GW", 104, 116, 85, 24),
+      club("5w", "5W", 195, 210, 139, 24, {
+        clubKey: "5w:taylormade:stealth",
+        clubBrand: "TaylorMade",
+        clubModel: "Stealth",
+      }),
+    ]);
+
+    expect(suggestion.choice).toMatchObject({
+      clubKey: "5w:taylormade:qi4dmax",
+      clubType: "5w",
+      clubBrand: "TaylorMade",
+      clubModel: "Qi4D Max",
+    });
+    expect(suggestion.alternatives[0]).toMatchObject({ clubLabel: "GW" });
   });
 
   it("uses the closest active club when the session-date history points at a retired club", () => {

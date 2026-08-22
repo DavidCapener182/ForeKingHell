@@ -107,6 +107,16 @@ export function buildShotReviewMutation(
   const previousQualityTag = current.qualityTag;
 
   if (status === "restored") {
+    if (current.reviewStatus === "restored") {
+      return {
+        previousStatus,
+        previousQualityTag,
+        reviewStatus: "restored",
+        qualityTag: current.reviewPreviousQualityTag,
+        reviewPreviousQualityTag: current.reviewPreviousQualityTag,
+      };
+    }
+
     if (!isRestorableShotReviewStatus(current.reviewStatus)) {
       throw new Error("Only an excluded or classified shot can be restored.");
     }
@@ -140,6 +150,18 @@ export function buildShotReviewMutation(
       ? current.reviewPreviousQualityTag
       : current.qualityTag,
   };
+}
+
+export function isPersistedShotReviewNoOp(
+  current: Pick<ShotReviewState, "reviewStatus" | "qualityTag" | "reviewPreviousQualityTag">,
+  status: UserShotReviewStatus,
+) {
+  if (current.reviewStatus !== status) return false;
+  if (status === "restored") {
+    return current.qualityTag === current.reviewPreviousQualityTag;
+  }
+  const compatibilityTag = compatibilityQualityTags[status];
+  return compatibilityTag ? current.qualityTag === compatibilityTag : true;
 }
 
 export function isShotReviewStatus(value: unknown): value is ShotReviewStatus {
@@ -183,7 +205,7 @@ export function effectiveShotReviewStatus(input: {
   ) {
     return "launch_monitor_error";
   }
-  if (["fat", "mishit", "thin", "top"].includes(qualityTag ?? "")) {
+  if (["fat", "mishit", "thin", "top", "needs_review"].includes(qualityTag ?? "")) {
     return "suggested_exclusion";
   }
 

@@ -182,4 +182,14 @@ describe("rapsodo desktop provider console", () => {
     expect(source).not.toContain("Confirmed club");
     expect(source).not.toContain("confirmed shots");
   });
+
+  it("carries a factual per-row club selection origin into the import payload", () => {
+    expect(source).toContain("clubSelectionOriginByRow");
+    expect(source).toContain("selectionOriginsByMode");
+    expect(source).toContain(
+      'clubSelectionOrigin: clubSelectionOriginByRow[shot.rowNumber] ?? "recommendation"',
+    );
+    expect(source).toContain('[shot.rowNumber]: "user"');
+    expect(source).toContain('? ("reported" as const)');
+  });
 });

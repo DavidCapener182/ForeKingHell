@@ -1,4 +1,8 @@
 import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
+import {
+  quarantineIncompatibleTotalDistance,
+  type ShotMetricIntegrityIssue,
+} from "@/lib/imports/shot-metric-integrity";
 
 export type DistanceUnit = "meters" | "yards";
 export type DetectedDistanceUnit = DistanceUnit | "unknown";
@@ -58,7 +62,9 @@ export type ParsedRapsodoShot = {
   qualityTag: string | null;
   clubDataEstType: string | null;
   sourceRawJson: Record<string, string>;
+  clubIdentityProvenance?: "source" | "mapped_source" | "inferred" | "unknown";
   warnings: string[];
+  integrityIssues?: ShotMetricIntegrityIssue[];
 };
 
 export type ParsedRapsodoRawRow = {
@@ -266,6 +272,7 @@ export function parseRapsodoCsv(
       columnMapping,
     ),
   );
+  warnings.push(...shots.flatMap((shot) => shot.warnings));
 
   return {
     source: "rapsodo",
@@ -456,9 +463,23 @@ function parseShotRow(
     clubPathDeg,
   });
   const warnings: string[] = [];
+  const carryYd = parseDistanceYd(valueForField(raw, "carryDistance", columnMapping), distanceUnit);
+  const parsedTotalYd = parseDistanceYd(
+    valueForField(raw, "totalDistance", columnMapping),
+    distanceUnit,
+  );
+  const totalDistance = quarantineIncompatibleTotalDistance({
+    carryYd,
+    totalYd: parsedTotalYd,
+    rowNumber,
+  });
 
   if (clubType === "unknown") {
     warnings.push("Club type was missing or could not be normalised.");
+  }
+
+  if (totalDistance.warning) {
+    warnings.push(totalDistance.warning);
   }
 
   return {
@@ -470,8 +491,8 @@ function parseShotRow(
     clubBrand,
     clubModel,
     clubKey: buildClubKey(clubType, clubBrand, clubModel),
-    carryYd: parseDistanceYd(valueForField(raw, "carryDistance", columnMapping), distanceUnit),
-    totalYd: parseDistanceYd(valueForField(raw, "totalDistance", columnMapping), distanceUnit),
+    carryYd,
+    totalYd: totalDistance.totalYd,
     ballSpeedMph: parseNumber(valueForField(raw, "ballSpeed", columnMapping)),
     clubSpeedMph: parseNumber(valueForField(raw, "clubSpeed", columnMapping)),
     launchAngleDeg: parseNumber(valueForField(raw, "launchAngle", columnMapping)),
@@ -491,6 +512,7 @@ function parseShotRow(
     clubDataEstType: nullableText(valueForField(raw, "clubDataEstType", columnMapping)),
     sourceRawJson: raw,
     warnings,
+    integrityIssues: totalDistance.issue ? [totalDistance.issue] : [],
   };
 }
 

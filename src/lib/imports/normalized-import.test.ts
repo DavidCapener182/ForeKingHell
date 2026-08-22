@@ -46,4 +46,29 @@ describe("parseLaunchMonitorImportCsv", () => {
       spinRate: 2310,
     });
   });
+
+  it("applies the same field-level total-distance quarantine to normalized providers", async () => {
+    const parsed = await parseLaunchMonitorImportCsv({
+      source: "trackman",
+      fileName: "trackman-export.csv",
+      rawCsvText: "Club,Carry,Total\n7 Iron,136.8,8.8",
+      fallbackDistanceUnit: "yards",
+    });
+
+    expect(parsed.shots[0]).toMatchObject({
+      carryYd: 136.8,
+      totalYd: null,
+      qualityTag: null,
+      integrityIssues: [
+        expect.objectContaining({ code: "total_below_carry", field: "totalYd", value: 8.8 }),
+      ],
+    });
+    expect(parsed.shots[0].sourceRawJson.Total).toBe("8.8");
+    expect(parsed.shots[0].warnings).toContain(
+      "Row 2: total distance 8.8 yd is incompatible with carry distance 136.8 yd; only the total-distance field was quarantined.",
+    );
+    expect(parsed.warnings).toContain(
+      "Row 2: total distance 8.8 yd is incompatible with carry distance 136.8 yd; only the total-distance field was quarantined.",
+    );
+  });
 });
