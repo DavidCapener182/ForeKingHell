@@ -187,7 +187,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
             {
               label: "PB",
               value: formatSpeed(summary.personalBestMph),
-              detail: "Fastest no-ball or with-ball",
+              detail: "Repeated no-ball or verified shot",
             },
             {
               label: "No-ball last 20",
@@ -255,7 +255,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
             {
               label: "Personal best",
               value: formatSpeed(summary.personalBestMph),
-              detail: "Max logged speed",
+              detail: "Repeat-supported measured speed",
               tone: "amber",
             },
             {
@@ -543,7 +543,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                             Avg {formatSpeedCompact(point.avgSpeedMph)}
                           </span>
                           <span className="tabular-nums text-muted-foreground">
-                            PB {formatSpeedCompact(point.pbSpeedMph)}
+                            Peak {formatSpeedCompact(point.pbSpeedMph)}
                           </span>
                         </div>
                       ))}
@@ -879,6 +879,18 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
                   name="implementLabel"
                   placeholder="Only needed if no club is selected: speed stick, Stack 195g, etc."
                 />
+              </Field>
+
+              <Field label="Warm-up swings (optional)">
+                <Textarea
+                  name="warmupReadings"
+                  rows={2}
+                  placeholder="Progressive warm-up speeds, for example: 74 78 81"
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  These stay separate from the maximum-speed block and do not become the session
+                  peak.
+                </p>
               </Field>
 
               <SpeedReadingsField />
@@ -1231,7 +1243,7 @@ function RangeShotSpeedCard({
         <DataPair label="Previous sessions" value={String(sessionCount)} />
         <DataPair label="Shot L20" value={formatSpeed(readout.last20AvgMph)} />
         <DataPair label="30-day shot avg" value={formatSpeed(readout.thirtyDayAvgMph)} />
-        <DataPair label="Shot PB" value={formatSpeed(readout.personalBestMph)} />
+        <DataPair label="Verified shot PB" value={formatSpeed(readout.personalBestMph)} />
         <DataPair label="Latest shot" value={formatLatestShotDate(readout.latestShotAtIso)} />
       </div>
     </div>
@@ -1313,7 +1325,7 @@ function SpeedReadingsField() {
   const examples = ["73", "81", "76", "79", "77", "79", "81", "84", "82", "86", "87"];
 
   return (
-    <Field label="Swing speeds">
+    <Field label="Maximum-speed swings">
       <Textarea
         name="speedReadings"
         rows={3}
@@ -1330,7 +1342,8 @@ function SpeedReadingsField() {
         ))}
       </div>
       <p className="text-xs leading-5 text-muted-foreground">
-        Spaces, commas, or new lines all work. The summary fields below are optional.
+        Spaces, commas, or new lines all work. These are kept as the maximum-speed phase; the
+        summary fields below are optional.
       </p>
     </Field>
   );
@@ -1572,9 +1585,9 @@ function ClubSpeedRowCard({ row }: { row: ClubSpeedRow }) {
       <MetricCell label="No-ball PB" value={formatSpeedCompact(row.trainingPbMph)} />
       <MetricCell label="Shot L20" value={formatSpeedCompact(row.shotLast20AvgMph)} />
       <MetricCell label="Latest avg" value={formatSpeedCompact(row.latestShotSessionAvgMph)} />
-      <MetricCell label="Vs shot PB" value={formatShotPbGap(row.latestShotSessionGapToPbMph)} />
+      <MetricCell label="Vs verified PB" value={formatShotPbGap(row.latestShotSessionGapToPbMph)} />
       <MetricCell label="No-ball gap" value={formatClubTransferGap(row)} />
-      <MetricCell label="Shot PB" value={formatSpeedCompact(row.shotPbMph)} />
+      <MetricCell label="Verified PB" value={formatSpeedCompact(row.shotPbMph)} />
       <MetricCell
         label={systemTargetLabel(row)}
         value={formatSpeedCompact(row.benchmarkTarget?.targetSpeedMph)}
@@ -1873,7 +1886,9 @@ function systemTargetPlaceholder(target: ClubSpeedRow["benchmarkTarget"]) {
 }
 
 function systemTargetLabel(row: ClubSpeedRow) {
-  return row.benchmarkTarget ? `${row.benchmarkTarget.targetLevelLabel} target` : "System target";
+  return row.benchmarkTarget
+    ? `${row.benchmarkTarget.targetLevelLabel} benchmark target`
+    : "System target";
 }
 
 function systemTargetCopy(rows: ClubSpeedRow[], clubId: string) {
@@ -1883,7 +1898,7 @@ function systemTargetCopy(rows: ClubSpeedRow[], clubId: string) {
     return "Manual override available";
   }
 
-  return `Recommended goal: ${target.targetLevelLabel} ${formatSpeedCompact(target.targetSpeedMph)}`;
+  return `Recommended goal: ${target.targetLevelLabel} benchmark ${formatSpeedCompact(target.targetSpeedMph)}`;
 }
 
 type SelectedClubTarget = {

@@ -45,6 +45,31 @@ describe("speed session desktop swing log", () => {
     expect(source).not.toContain("WorkbenchPrompts");
     expect(source).not.toContain("rail={");
   });
+
+  it("shows separate session metrics and preserves all three training phases", () => {
+    for (const label of ["Median", "Top 3 average", "Top 5 average", "Session best"]) {
+      expect(source).toContain(`label: "${label}"`);
+    }
+
+    expect(source).toContain('title="Warm-up"');
+    expect(source).toContain('title="Maximum speed"');
+    expect(source).toContain('title="Transfer"');
+    expect(source).toContain('name="warmupReadings"');
+    expect(source).toContain('name="speedReadings"');
+    expect(source).toContain("const peakSummary = data.peakSwingSummary");
+    expect(source).toContain('label="Warm-up median"');
+  });
+
+  it("links an explicit five-shot Driver transfer test with a concrete 4-of-5 rule", () => {
+    expect(source).toContain("saveSpeedTransferTestAction");
+    expect(source).toContain("at least 4 of 5 finish inside your personal corridor");
+    expect(source).toContain('name="shotId"');
+    expect(source).toContain("Choose the exact five normal Driver shots");
+    expect(source).toContain("Shot {shot.shotNumber ?? index + 1}");
+    expect(source).toContain("Link selected five");
+    expect(source).toContain("speed_error?: string | string[]");
+    expect(source).toContain('? "Failed"');
+  });
 });
 
 describe("speed session desktop-only bundle", () => {

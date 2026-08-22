@@ -52,13 +52,18 @@ describe("course, coaching and import lifecycle evidence boundaries", () => {
     const coach = source("src/lib/coach-sql-context.ts");
 
     expectPredicateBeforeLimit(coach, "id: shots.id", ".limit(40)");
-    expectPredicateBeforeLimit(
-      coach,
+    const driverStart = coach.indexOf(
       "shotAt: shots.shotAt,\n        clubSpeedMph: shots.clubSpeedMph",
-      ".limit(200)",
     );
+    const driverPredicate = coach.indexOf("shotEvidenceSqlPredicate()", driverStart);
+    expect(driverStart).toBeGreaterThanOrEqual(0);
+    expect(driverPredicate).toBeGreaterThan(driverStart);
     expect(coach).toContain("recentShotRows.filter(isShotEvidenceEligible)");
     expect(coach).toContain("driverSpeedRows.filter(isShotEvidenceEligible)");
+    expect(coach).toContain('eq(speedTrainingSessions.handedness, "dominant")');
+    expect(coach).toContain('eq(speedTrainingSessions.implementKind, "club")');
+    expect(coach).toContain('eq(clubs.type, "driver")');
+    expect(coach).toContain("latestDriverSpeedRows[0]?.avgSpeedMph");
   });
 
   it("filters AI, feature-idea and Rapsodo inference samples before limits", () => {

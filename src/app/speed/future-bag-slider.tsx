@@ -301,7 +301,7 @@ function shortClubLabel(row: FutureBagProjectionRow) {
 }
 
 function speedLevelLabel(benchmark: ClubSpeedBenchmarkTarget) {
-  return `${benchmark.currentLevelLabel} speed`;
+  return `${benchmark.currentLevelLabel} benchmark`;
 }
 
 function speedLevelDetail(benchmark: ClubSpeedBenchmarkTarget) {

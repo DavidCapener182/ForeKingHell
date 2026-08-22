@@ -137,7 +137,7 @@ export function ClubSpeedFocus({
               tone="green"
             />
             <FocusMetric
-              label="PB speed"
+              label="Verified PB"
               value={formatSpeed(bestClubSpeed(selectedRow))}
               detail={bestSpeedDetail(selectedRow)}
               tone="amber"
@@ -181,7 +181,7 @@ export function ClubSpeedFocus({
           </div>
           <div className="grid gap-2">
             <MiniPair label="No-ball PB" value={formatSpeedCompact(selectedRow.trainingPbMph)} />
-            <MiniPair label="Shot PB" value={formatSpeedCompact(selectedRow.shotPbMph)} />
+            <MiniPair label="Verified shot PB" value={formatSpeedCompact(selectedRow.shotPbMph)} />
             <MiniPair
               label="30-day shot avg"
               value={formatSpeedCompact(selectedRow.shotThirtyDayAvgMph)}
@@ -306,8 +306,8 @@ function selectedClubTarget(
   if (row.benchmarkTarget) {
     return {
       value: row.benchmarkTarget.targetSpeedMph,
-      label: `${row.benchmarkTarget.targetLevelLabel} target`,
-      detail: `${row.benchmarkTarget.currentLevelLabel} now · recent-average basis`,
+      label: `${row.benchmarkTarget.targetLevelLabel} benchmark target`,
+      detail: `${row.benchmarkTarget.currentLevelLabel} benchmark now · recent-average basis`,
       source: "system",
     };
   }
@@ -367,10 +367,10 @@ function bestSpeedDetail(row: ClubSpeedRow) {
   }
 
   if ((noBallPb ?? 0) >= (shotPb ?? 0)) {
-    return "No-ball PB · single swing";
+    return `Repeated no-ball PB · ${row.trainingPbEvidence.trustedEvidenceCount} supporting swings`;
   }
 
-  return "With-ball PB · single swing";
+  return `Verified with-ball PB · ${row.shotPbEvidence.trustedEvidenceCount} corroborating readings`;
 }
 
 function carryProjection(

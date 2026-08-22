@@ -485,7 +485,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
           />
           <CardContent className="grid gap-4 p-4 sm:p-5" data-speed-verdict>
             <CompactReadoutGrid
-              columnsClassName="sm:grid-cols-2 xl:grid-cols-5"
+              columnsClassName="sm:grid-cols-2 xl:grid-cols-6"
               items={[
                 {
                   label: "Peak speed",
@@ -496,7 +496,9 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
                 {
                   label: "Playing speed",
                   value: formatNumber(summary.verdict.playingSpeedMph, "mph"),
-                  detail: "Playable Driver swings",
+                  detail: summary.verdict.transferSessionId
+                    ? "Explicitly linked five-shot test"
+                    : "Playable Driver swings",
                   tone: summary.verdict.tone,
                 },
                 {
@@ -515,6 +517,19 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
                   label: "Dispersion change",
                   value: formatSignedNumber(summary.verdict.dispersionChangeYd, "yd"),
                   detail: "Positive means wider",
+                  tone: summary.verdict.tone,
+                },
+                {
+                  label: "Transfer playability",
+                  value:
+                    summary.verdict.inCorridorCount === null
+                      ? "Not linked"
+                      : `${summary.verdict.inCorridorCount}/5`,
+                  detail:
+                    summary.verdict.corridorMinSideYd === null ||
+                    summary.verdict.corridorMaxSideYd === null
+                      ? "Pass requires 4 of 5"
+                      : `${formatSignedNumber(summary.verdict.corridorMinSideYd, "yd")} to ${formatSignedNumber(summary.verdict.corridorMaxSideYd, "yd")} · pass 4/5`,
                   tone: summary.verdict.tone,
                 },
               ]}

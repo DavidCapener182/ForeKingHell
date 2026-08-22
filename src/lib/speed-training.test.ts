@@ -4,6 +4,8 @@ import {
   buildSpeedPrescription,
   calculateSpeedIndex,
   parseSpeedReadings,
+  selectTrainingPeakReadings,
+  summarizePhasedReadingsForPersistence,
   summarizeSessionSwings,
   summarizeSpeedReadings,
 } from "@/lib/speed-training";
@@ -28,6 +30,47 @@ describe("speed training helpers", () => {
       avgSpeedMph: 79.2,
       maxSpeedMph: 87,
     });
+  });
+
+  it("keeps warm-up workload out of the persisted speed headline", () => {
+    expect(
+      summarizePhasedReadingsForPersistence([
+        { phase: "warm_up", clubSpeedMph: 101 },
+        { phase: "warm_up", clubSpeedMph: 99 },
+        { phase: "max_speed", clubSpeedMph: 94 },
+        { phase: "max_speed", clubSpeedMph: 96 },
+      ]),
+    ).toEqual({
+      count: 4,
+      minSpeedMph: 94,
+      avgSpeedMph: 95,
+      maxSpeedMph: 96,
+    });
+    expect(
+      summarizePhasedReadingsForPersistence([
+        { phase: "warm_up", clubSpeedMph: 101 },
+        { phase: "warm_up", clubSpeedMph: 99 },
+      ]),
+    ).toBeNull();
+  });
+
+  it("keeps warm-up swings out of PB evidence while retaining legacy and summary-only data", () => {
+    expect(
+      selectTrainingPeakReadings(
+        [
+          { id: "phased", maxSpeedMph: 110 },
+          { id: "legacy", maxSpeedMph: 98 },
+          { id: "summary-only", maxSpeedMph: 97 },
+          { id: "warmup-summary", maxSpeedMph: 94 },
+        ],
+        [
+          { sessionId: "phased", phase: "warm_up", clubSpeedMph: 110 },
+          { sessionId: "phased", phase: "max_speed", clubSpeedMph: 95 },
+          { sessionId: "legacy", phase: null, clubSpeedMph: 96 },
+          { sessionId: "warmup-summary", phase: "warm_up", clubSpeedMph: 105 },
+        ],
+      ),
+    ).toEqual([95, 96, 97, 94]);
   });
 
   it("classifies speed index against the target", () => {
@@ -61,6 +104,8 @@ describe("speed training helpers", () => {
       swingCount: 8,
       bestSwingMph: 87,
       bestThreeAvgMph: 85.7,
+      bestFiveAvgMph: 83.4,
+      medianSpeedMph: 80,
       firstFiveAvgMph: 77.2,
       lastFiveAvgMph: 82.6,
       warmupGainMph: 5.4,

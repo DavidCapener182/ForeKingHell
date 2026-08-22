@@ -1,12 +1,13 @@
 import { normalizePlayContext, playContextLabel } from "@/lib/play-context";
 import { isRestorableShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-review";
+import { evaluateFiveShotTransferPlayability } from "@/lib/speed-training";
+import { buildPersonalDriverCorridor, type SpeedTransferCorridor } from "@/lib/speed-transfer-test";
 
 export const SPEED_LADDER_LEVELS = [90, 92, 95, 97, 100] as const;
 
 const HOUR_MS = 60 * 60 * 1000;
 const PLAYABLE_OFFLINE_YD = 30;
 const FATIGUE_DROP_FRACTION = 0.04;
-const TRANSFER_WINDOW_MS = 7 * 24 * HOUR_MS;
 const EXCLUDED_EVIDENCE_TAGS = new Set([
   "bad-data",
   "bad_data",
@@ -25,6 +26,8 @@ export type SpeedDevelopmentSessionInput = {
   maxSpeedMph: number | null;
   swingCount: number;
   comparableToDriver?: boolean;
+  transferShotIds?: readonly string[];
+  transferCorridor?: SpeedTransferCorridor;
 };
 
 export type SpeedDevelopmentSwingInput = {
@@ -34,6 +37,7 @@ export type SpeedDevelopmentSwingInput = {
 };
 
 export type SpeedDevelopmentDriverShotInput = {
+  id?: string;
   sessionId: string;
   shotAtIso: string;
   playContext: string;
@@ -61,6 +65,7 @@ export type BuildSpeedDevelopmentInput = {
   sessions: SpeedDevelopmentSessionInput[];
   swings: SpeedDevelopmentSwingInput[];
   driverShots: SpeedDevelopmentDriverShotInput[];
+  transferDriverShots?: SpeedDevelopmentDriverShotInput[];
   targetSpeedMph: number | null;
   currentCarryYd?: number | null;
   currentCarrySource?: string | null;
@@ -164,13 +169,20 @@ export type SpeedDevelopmentSummary = {
     sessionId: string;
     grade: string;
     label: string;
-    tone: "green" | "amber" | "slate";
+    tone: "green" | "pink" | "amber" | "slate";
     peakSpeedMph: number | null;
     peakDeltaMph: number | null;
     playingSpeedMph: number | null;
     ballSpeedMph: number | null;
     transferEfficiencyPct: number | null;
     dispersionChangeYd: number | null;
+    transferSessionId: string | null;
+    transferShotCount: number;
+    inCorridorCount: number | null;
+    requiredInCorridorCount: 4;
+    corridorMinSideYd: number | null;
+    corridorMaxSideYd: number | null;
+    playabilityPassed: boolean | null;
     nextAction: string;
   };
   metrics: SpeedDevelopmentMetric[];
@@ -197,6 +209,12 @@ type ShotWindowSummary = {
   ballSpeedMph: number | null;
   offlineYd: number | null;
   playableRate: number | null;
+  explicitLink: boolean;
+  inCorridorCount: number | null;
+  requiredInCorridorCount: 4;
+  corridorMinSideYd: number | null;
+  corridorMaxSideYd: number | null;
+  playabilityPassed: boolean | null;
 };
 
 export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedDevelopmentSummary {
@@ -212,10 +230,13 @@ export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedD
     .filter(isUsableDriverEvidence)
     .filter((shot) => validDate(shot.shotAtIso))
     .map(sanitizeDriverEvidence);
+  const cleanTransferDriverShots = (input.transferDriverShots ?? input.driverShots)
+    .filter(isUsableDriverEvidence)
+    .filter((shot) => validDate(shot.shotAtIso))
+    .map(sanitizeDriverEvidence);
   const shots = [...cleanDriverShots]
     .filter(
-      (shot) =>
-        !isEstimatedClubData(shot.clubDataEstType) && validMetric(shot.clubSpeedMph, 40, 150),
+      (shot) => isMeasuredClubData(shot.clubDataEstType) && validMetric(shot.clubSpeedMph, 40, 150),
     )
     .sort((left, right) => Date.parse(right.shotAtIso) - Date.parse(left.shotAtIso));
   const eligiblePracticeShots = shots.filter((shot) => isPracticeContext(shot.playContext));
@@ -336,6 +357,9 @@ export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedD
     carrySource,
     carrySampleSize: measuredCarries.length,
   });
+  const explicitTransferWindow = latestSession
+    ? buildExplicitTransferWindow(cleanTransferDriverShots, latestSession)
+    : null;
 
   return {
     generatedAtIso,
@@ -350,10 +374,7 @@ export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedD
       previousSession: driverComparableSessions[1] ?? null,
       chaos,
       targetSpeedMph,
-      transferWindow: latestSession
-        ? (practiceWindows.find((window) => isTransferWindowForSession(window, latestSession)) ??
-          null)
-        : null,
+      transferWindow: explicitTransferWindow,
     }),
     metrics,
   };
@@ -1099,8 +1120,15 @@ function buildLatestVerdict(input: {
       ballSpeedMph: null,
       transferEfficiencyPct: null,
       dispersionChangeYd: null,
+      transferSessionId: null,
+      transferShotCount: 0,
+      inCorridorCount: null,
+      requiredInCorridorCount: 4,
+      corridorMinSideYd: null,
+      corridorMaxSideYd: null,
+      playabilityPassed: null,
       nextAction:
-        "Complete or import a Driver transfer block within seven days of this speed session.",
+        "Complete or import five Driver shots, then explicitly link that transfer test to this speed session.",
     };
   }
   const transferEfficiencyPct =
@@ -1109,8 +1137,18 @@ function buildLatestVerdict(input: {
     input.latestSession.maxSpeedMph > 0
       ? roundOne((input.transferWindow.clubSpeedMph / input.latestSession.maxSpeedMph) * 100)
       : null;
-  const grade =
-    input.chaos.status === "successful"
+  const explicitPlayability = input.transferWindow.explicitLink
+    ? input.transferWindow.playabilityPassed
+    : null;
+  const grade = input.transferWindow.explicitLink
+    ? explicitPlayability === null
+      ? "Pending"
+      : explicitPlayability
+        ? (peakDeltaMph ?? 0) > 0.5
+          ? "A-"
+          : "B+"
+        : "Failed"
+    : input.chaos.status === "successful"
       ? (peakDeltaMph ?? 0) > 0.5
         ? "A-"
         : "B+"
@@ -1119,23 +1157,46 @@ function buildLatestVerdict(input: {
         : input.chaos.status === "need_evidence"
           ? "Pending"
           : "B";
+  const tone = input.transferWindow.explicitLink
+    ? explicitPlayability === null
+      ? "slate"
+      : explicitPlayability
+        ? "green"
+        : "pink"
+    : input.chaos.tone;
+  const label = input.transferWindow.explicitLink
+    ? explicitPlayability === null
+      ? "Linked transfer test needs all five measured Driver shots"
+      : explicitPlayability
+        ? `${input.transferWindow.inCorridorCount} of 5 inside your personal corridor — transfer passed`
+        : `${input.transferWindow.inCorridorCount} of 5 inside your personal corridor — transfer failed`
+    : input.chaos.status === "need_evidence"
+      ? "Transfer verdict awaiting another driver session"
+      : input.chaos.label;
 
   return {
     sessionId: input.latestSession.id,
     grade,
-    label:
-      input.chaos.status === "need_evidence"
-        ? "Transfer verdict awaiting another driver session"
-        : input.chaos.label,
-    tone: input.chaos.tone,
+    label,
+    tone,
     peakSpeedMph: input.latestSession.maxSpeedMph,
     peakDeltaMph,
     playingSpeedMph: input.transferWindow.clubSpeedMph,
     ballSpeedMph: input.transferWindow.ballSpeedMph,
     transferEfficiencyPct,
     dispersionChangeYd: input.chaos.offlineChangeYd,
-    nextAction:
-      input.chaos.status === "successful"
+    transferSessionId: input.transferWindow.sessionId || null,
+    transferShotCount: input.transferWindow.shotCount,
+    inCorridorCount: input.transferWindow.inCorridorCount,
+    requiredInCorridorCount: 4,
+    corridorMinSideYd: input.transferWindow.corridorMinSideYd,
+    corridorMaxSideYd: input.transferWindow.corridorMaxSideYd,
+    playabilityPassed: input.transferWindow.playabilityPassed,
+    nextAction: input.transferWindow.explicitLink
+      ? explicitPlayability
+        ? `Next session: attempt ${roundOne(input.targetSpeedMph)} mph and repeat the five-shot 4-of-5 corridor test.`
+        : "Keep the speed session saved, rebuild normal Driver control, then link a new five-shot transfer test."
+      : input.chaos.status === "successful"
         ? `Next session: attempt ${roundOne(input.targetSpeedMph)} mph while keeping the Driver playable.`
         : input.chaos.nextAction,
   };
@@ -1172,19 +1233,87 @@ function buildShotSessionWindows(shots: SpeedDevelopmentDriverShotInput[]): Shot
           lateralShots.length > 0
             ? roundOne((playableShots.length / lateralShots.length) * 100)
             : null,
+        explicitLink: false,
+        inCorridorCount: null,
+        requiredInCorridorCount: 4 as const,
+        corridorMinSideYd: null,
+        corridorMaxSideYd: null,
+        playabilityPassed: null,
       };
     })
     .sort((left, right) => Date.parse(right.latestShotAtIso) - Date.parse(left.latestShotAtIso));
 }
 
-function isTransferWindowForSession(
-  window: ShotWindowSummary,
+function buildExplicitTransferWindow(
+  shots: SpeedDevelopmentDriverShotInput[],
   session: SpeedDevelopmentSessionInput,
-) {
-  const transferAt = Date.parse(window.latestShotAtIso);
-  const speedAt = Date.parse(session.sessionDateIso);
-  const elapsed = transferAt - speedAt;
-  return Number.isFinite(elapsed) && elapsed >= 0 && elapsed <= TRANSFER_WINDOW_MS;
+): ShotWindowSummary | null {
+  const transferShotIds = session.transferShotIds ?? [];
+
+  if (transferShotIds.length !== 5 || new Set(transferShotIds).size !== 5) {
+    return null;
+  }
+
+  const transferIdSet = new Set(transferShotIds);
+  const linkedById = new Map(
+    shots
+      .filter((shot) => shot.id && transferIdSet.has(shot.id))
+      .map((shot) => [shot.id as string, shot]),
+  );
+  const linkedShots = transferShotIds.flatMap((shotId) => {
+    const shot = linkedById.get(shotId);
+    return shot ? [shot] : [];
+  });
+  const latestShot = [...linkedShots].sort(
+    (left, right) => Date.parse(right.shotAtIso) - Date.parse(left.shotAtIso),
+  )[0];
+  const earliestLinkedShotAt = linkedShots.reduce<number | null>((earliest, shot) => {
+    const shotTime = Date.parse(shot.shotAtIso);
+    return earliest === null || shotTime < earliest ? shotTime : earliest;
+  }, null);
+  const corridor =
+    session.transferCorridor ??
+    buildPersonalDriverCorridor(
+      shots
+        .filter(
+          (shot) =>
+            (!shot.id || !transferIdSet.has(shot.id)) &&
+            earliestLinkedShotAt !== null &&
+            Date.parse(shot.shotAtIso) < earliestLinkedShotAt,
+        )
+        .map((shot) => shot.sideCarryYd),
+    );
+  const playability = evaluateFiveShotTransferPlayability({
+    speedSessionId: session.id,
+    transferSessionId: latestShot?.sessionId ?? "unavailable",
+    personalCorridor: corridor,
+    shots: linkedShots.map((shot) => ({
+      shotId: shot.id ?? "unavailable",
+      phase: "transfer",
+      sideCarryYd: shot.sideCarryYd,
+      clubSpeedMph: shot.clubSpeedMph,
+    })),
+  });
+  const lateralShots = linkedShots.filter((shot) => isNumber(shot.sideCarryYd));
+
+  return {
+    sessionId: latestShot?.sessionId ?? "",
+    latestShotAtIso: latestShot?.shotAtIso ?? "",
+    playContext: latestShot ? normalizePlayContext(latestShot.playContext) : "unknown",
+    shotCount: linkedShots.length,
+    ballSpeedSamples: linkedShots.filter((shot) => isNumber(shot.ballSpeedMph)).length,
+    lateralSamples: lateralShots.length,
+    clubSpeedMph: mean(linkedShots.map((shot) => shot.clubSpeedMph).filter(isNumber)),
+    ballSpeedMph: mean(linkedShots.map((shot) => shot.ballSpeedMph).filter(isNumber)),
+    offlineYd: mean(lateralShots.map((shot) => absoluteOrNull(shot.sideCarryYd)).filter(isNumber)),
+    playableRate: playability.playabilityPercent,
+    explicitLink: true,
+    inCorridorCount: playability.inCorridorCount,
+    requiredInCorridorCount: 4,
+    corridorMinSideYd: corridor.minSideCarryYd,
+    corridorMaxSideYd: corridor.maxSideCarryYd,
+    playabilityPassed: playability.isPlayable,
+  };
 }
 
 function chooseLimitingIngredient(input: {
@@ -1322,9 +1451,9 @@ function isUsableDriverEvidence(shot: SpeedDevelopmentDriverShotInput) {
   );
 }
 
-function isEstimatedClubData(value: string | null | undefined) {
+function isMeasuredClubData(value: string | null | undefined) {
   const normalized = value?.trim().toLowerCase() ?? "";
-  return normalized === "1" || normalized === "true" || normalized.includes("est");
+  return /^0(?:\.0+)?$/.test(normalized) || ["false", "measured", "direct"].includes(normalized);
 }
 
 function metricOrNull(value: number | null, minValue: number, maxValue: number) {
