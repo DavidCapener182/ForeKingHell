@@ -58,7 +58,7 @@ describe("parseRapsodoCsv", () => {
     const result = parseRapsodoCsv(csv, { fallbackDistanceUnit: "yards" });
 
     expect(result.sessionTitle).toBe("Rapsodo MLM2PRO: David Capener - 04/24/2026 1:19 PM");
-    expect(result.exportedAtIso).toBe("2026-04-24T13:19:00.000Z");
+    expect(result.exportedAtIso).toBe("2026-04-24T12:19:00.000Z");
     expect(result.rowCount).toBe(5);
     expect(result.shotCount).toBe(1);
     expect(result.rawRows.map((row) => row.rowType)).toEqual([
@@ -243,7 +243,75 @@ describe("Rapsodo parser edge cases", () => {
     const result = parseRapsodoCsv(csv);
 
     expect(result.sessionTitle).toBe("MLM2 Pro export: Player - 24/04/2026 1:19 PM");
-    expect(result.exportedAtIso).toBe("2026-04-24T13:19:00.000Z");
+    expect(result.exportedAtIso).toBe("2026-04-24T12:19:00.000Z");
+  });
+
+  it("interprets Rapsodo wall-clock timestamps across BST and GMT", () => {
+    const summerCsv = [
+      '"Rapsodo MLM2PRO: Player - 08/22/2026 11:30 PM"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+    const winterCsv = [
+      '"Rapsodo MLM2PRO: Player - 12/24/2026 11:30 PM"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    expect(parseRapsodoCsv(summerCsv).exportedAtIso).toBe("2026-08-22T22:30:00.000Z");
+    expect(parseRapsodoCsv(winterCsv).exportedAtIso).toBe("2026-12-24T23:30:00.000Z");
+  });
+
+  it("preserves the London calendar day when a BST wall clock crosses UTC midnight", () => {
+    const csv = [
+      '"Rapsodo MLM2PRO: Player - 08/22/2026 12:30 AM"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    expect(parseRapsodoCsv(csv).exportedAtIso).toBe("2026-08-21T23:30:00.000Z");
+  });
+
+  it("preserves an explicit timezone on a Rapsodo wall-clock timestamp", () => {
+    const utcCsv = [
+      '"Rapsodo MLM2PRO: Player - 04/24/2026 1:19 PM UTC"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+    const offsetCsv = [
+      '"Rapsodo MLM2PRO: Player - 04/24/2026 1:19 PM +02:00"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    expect(parseRapsodoCsv(utcCsv).exportedAtIso).toBe("2026-04-24T13:19:00.000Z");
+    expect(parseRapsodoCsv(offsetCsv).exportedAtIso).toBe("2026-04-24T11:19:00.000Z");
+  });
+
+  it("rejects an invalid explicit timezone offset instead of treating it as London time", () => {
+    const csv = [
+      '"Rapsodo MLM2PRO: Player - 04/24/2026 1:19 PM +25:00"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    expect(parseRapsodoCsv(csv).exportedAtIso).toBeNull();
+  });
+
+  it("rejects invalid calendar and 12-hour values instead of normalising them", () => {
+    const invalidDateCsv = [
+      '"Rapsodo MLM2PRO: Player - 02/31/2026 1:19 PM UTC"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+    const invalidHourCsv = [
+      '"Rapsodo MLM2PRO: Player - 04/24/2026 13:19 PM UTC"',
+      "Club Type,Carry Distance",
+      "PW,100",
+    ].join("\n");
+
+    expect(parseRapsodoCsv(invalidDateCsv).exportedAtIso).toBeNull();
+    expect(parseRapsodoCsv(invalidHourCsv).exportedAtIso).toBeNull();
   });
 
   it("keeps club-only rows as unknown raw rows instead of parsed shots", () => {

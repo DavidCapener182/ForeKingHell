@@ -42,6 +42,28 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain("<AlertDialog");
     expect(companionSource).toContain("Finish without evidence");
     expect(companionSource).toContain("data-plan-versus-actual");
+    expect(companionSource).toContain("data-practice-result={outcome.status}");
+    expect(companionSource).toContain("Practice result");
+    expect(companionSource).toContain("summarizePracticeOutcome");
+    expect(companionSource).toContain("practiceDecisionResultLabel");
+    expect(companionSource).toContain("practiceDecisionResultTone");
+    expect(companionSource).toContain(
+      "<MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />",
+    );
+    expect(companionSource).toContain("practiceScoredBlockIds(blocks)");
+    expect(companionSource).toContain(
+      "summarizePracticeOutcome(comparison, result.practiceScore, scoredBlockIds)",
+    );
+    expect(companionSource).toContain("scoredBlockIds.has(decision.blockId)");
+    expect(companionSource).toContain(
+      ".filter((decision) => scoredBlockIds.has(decision.blockId))",
+    );
+    expect(companionSource).toContain("value={`${decision.actualBalls}");
+    expect(companionSource).toContain("detail={decision.actual}");
+    expect(companionSource).toContain("<IOSInlineStatus");
+    expect(companionSource).toContain("Every eligible launch-monitor shot from the practice day");
+    expect(companionSource).toContain("Today's uploads");
+    expect(companionSource).toContain("Build next practice");
     expect(companionSource).toContain("data-practice-finished");
     expect(companionSource).toContain("<FieldGroup");
     expect(companionSource).toContain("<FieldSet");
@@ -94,7 +116,12 @@ describe("practice planner desktop workflow", () => {
     expect(plannerSource).toMatch(
       /Only imported launch-monitor rows can pass,\s+partially pass, or\s+fail a block\./,
     );
-    expect(plannerSource).toContain("Every result is calculated from its launch-monitor rows.");
+    expect(plannerSource).toContain("Match the practice day");
+    expect(plannerSource).toContain("including range and simulated-course sessions");
+    expect(plannerSource).toContain(
+      "Choose any upload from the practice day to score it with every eligible shot from that day.",
+    );
+    expect(plannerSource).toContain("practiceDayEvidenceLabel");
     expect(plannerSource).toContain("linkPracticePlanSessionAction");
   });
 
@@ -125,5 +152,16 @@ describe("practice planner desktop workflow", () => {
       'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
     );
     expect(companionPageSource).toContain("!explicitSpeedRequest &&");
+  });
+
+  it("keeps a measured companion result attached to the saved plan it evaluated", () => {
+    expect(companionPageSource).toContain(
+      "selectPracticePlannerInitialSavedPlan([currentPlan], null)",
+    );
+    expect(companionPageSource).toContain("savedPracticePlanToPracticePlan(selectedPlan, context)");
+    expect(companionPageSource).toContain("measuredResult={selectedPlan?.result ?? null}");
+    expect(companionSource).toContain('plan.id === initialPlan.id && plan.status === "analysed"');
+    expect(companionSource).toContain("hasEvidence: Boolean(activeMeasuredResult)");
+    expect(companionSource).not.toContain("hasEvidence: Boolean(measuredResult)");
   });
 });

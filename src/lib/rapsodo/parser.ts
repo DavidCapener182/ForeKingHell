@@ -187,7 +187,18 @@ const DISTANCE_FIELDS = new Set<string>([
 ]);
 const RAPSODO_SESSION_TITLE_PATTERN =
   /\b(?:rapsodo|r-cloud|mlm\s*2\s*pro|mlm2pro|mlm\s*pro|mlm)\b/i;
-const SLASH_DATE_PATTERN = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM))?/i;
+const RAPSODO_WALL_CLOCK_TIME_ZONE = "Europe/London";
+const SLASH_DATE_PATTERN =
+  /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})\s*(AM|PM)(?:\s*(?:\(\s*)?(GMT[+-]\d{1,2}(?::?\d{2})?|[+-]\d{2}:?\d{2}|Europe\/London|Z|UTC|GMT|BST)(?:\s*\))?)?)?/i;
+const LONDON_WALL_CLOCK_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: RAPSODO_WALL_CLOCK_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
 
 export function parseRapsodoCsv(
   csvText: string,
@@ -650,7 +661,7 @@ function parseExportedAtIso(title: string | null) {
     return null;
   }
 
-  const [, firstText, secondText, yearText, hourText, minuteText, meridiem] = match;
+  const [, firstText, secondText, yearText, hourText, minuteText, meridiem, timezoneText] = match;
   const first = Number(firstText);
   const second = Number(secondText);
   const year = Number(yearText);
@@ -666,6 +677,15 @@ function parseExportedAtIso(title: string | null) {
   let hour = hourText ? Number(hourText) : 12;
   const minute = minuteText ? Number(minuteText) : 0;
 
+  if (
+    !isValidCalendarDate(year, month, day) ||
+    (hourText && (hour < 1 || hour > 12)) ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return null;
+  }
+
   if (meridiem?.toUpperCase() === "PM" && hour < 12) {
     hour += 12;
   }
@@ -673,13 +693,124 @@ function parseExportedAtIso(title: string | null) {
     hour = 0;
   }
 
-  const parsed = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const wallClock = { year, month, day, hour, minute };
+  const usesLondonTimeZone = !timezoneText || timezoneText.trim().toUpperCase() === "EUROPE/LONDON";
+  const explicitOffset = usesLondonTimeZone
+    ? null
+    : explicitTimezoneOffsetMinutes(timezoneText ?? "");
 
-  if (Number.isNaN(parsed.getTime())) {
+  if (!usesLondonTimeZone && explicitOffset === null) {
+    return null;
+  }
+
+  const parsed =
+    explicitOffset === null
+      ? londonWallClockToDate(wallClock)
+      : new Date(Date.UTC(year, month - 1, day, hour, minute) - explicitOffset * 60_000);
+
+  if (!parsed || Number.isNaN(parsed.getTime())) {
     return null;
   }
 
   return parsed.toISOString();
+}
+
+type RapsodoWallClock = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+};
+
+function isValidCalendarDate(year: number, month: number, day: number) {
+  if (year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1) {
+    return false;
+  }
+
+  return day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function explicitTimezoneOffsetMinutes(value: string) {
+  const normalized = value.trim().toUpperCase();
+
+  if (normalized === "Z" || normalized === "UTC" || normalized === "GMT") {
+    return 0;
+  }
+
+  if (normalized === "BST") {
+    return 60;
+  }
+
+  if (normalized === "EUROPE/LONDON") {
+    return null;
+  }
+
+  const match = normalized.match(/^(?:GMT)?([+-])(\d{1,2})(?::?(\d{2}))?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const hours = Number(match[2]);
+  const minutes = Number(match[3] ?? 0);
+
+  if (hours > 23 || minutes > 59) {
+    return null;
+  }
+
+  const total = hours * 60 + minutes;
+  return match[1] === "-" ? -total : total;
+}
+
+function londonWallClockToDate(wallClock: RapsodoWallClock) {
+  const wallClockUtc = Date.UTC(
+    wallClock.year,
+    wallClock.month - 1,
+    wallClock.day,
+    wallClock.hour,
+    wallClock.minute,
+  );
+  const offsetSamples = [-36, 0, 36].map((hours) =>
+    londonOffsetMinutesAt(new Date(wallClockUtc + hours * 60 * 60 * 1000)),
+  );
+  const candidates = [...new Set(offsetSamples)]
+    .map((offsetMinutes) => new Date(wallClockUtc - offsetMinutes * 60_000))
+    .filter((candidate) => wallClockMatches(candidate, wallClock))
+    .sort((left, right) => left.getTime() - right.getTime());
+
+  return candidates[0] ?? null;
+}
+
+function londonOffsetMinutesAt(date: Date) {
+  const parts = londonWallClockParts(date);
+  const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+  return Math.round((asUtc - date.getTime()) / 60_000);
+}
+
+function wallClockMatches(date: Date, expected: RapsodoWallClock) {
+  const actual = londonWallClockParts(date);
+  return (
+    actual.year === expected.year &&
+    actual.month === expected.month &&
+    actual.day === expected.day &&
+    actual.hour === expected.hour &&
+    actual.minute === expected.minute
+  );
+}
+
+function londonWallClockParts(date: Date): RapsodoWallClock {
+  const values = new Map(
+    LONDON_WALL_CLOCK_FORMATTER.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+
+  return {
+    year: Number(values.get("year")),
+    month: Number(values.get("month")),
+    day: Number(values.get("day")),
+    hour: Number(values.get("hour")),
+    minute: Number(values.get("minute")),
+  };
 }
 
 function toRawRow(headers: string[], row: string[]) {

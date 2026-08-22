@@ -122,6 +122,7 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("setComparison(null)");
     expect(source).toContain("setPracticeScore(null)");
     expect(source).toContain("Practice drill swapped. Save the edited plan before upload.");
+    expect(source).toContain('suggestion.type === "speed" ? "manual" : "launch_monitor"');
     expect(source).toContain("<ResponsiveDetailPanel");
     expect(source).toContain("blockSheetOpen");
     expect(source).toContain("Edit block");
@@ -135,6 +136,10 @@ describe("practice planner desktop ledger", () => {
     expect(selectedBlockPanel).not.toContain("<Card");
     const planVsActual =
       source.match(/function PlanVsActual[\s\S]*?function PracticeLibrary/)?.[0] ?? "";
+    expect(planVsActual).toContain("data-practice-result={outcome.status}");
+    expect(planVsActual).toContain("Practice result");
+    expect(planVsActual).toContain("summarizePracticeOutcome");
+    expect(planVsActual).toContain("practiceDecisionResultLabel");
     expect(planVsActual).toContain("<Card");
     expect(planVsActual).toContain("Planned target");
     expect(planVsActual).toContain("Measured actual");
@@ -178,13 +183,21 @@ describe("practice planner desktop ledger", () => {
     const result = source.match(/function PlanVsActual[\s\S]*?function PracticeLibrary/)?.[0] ?? "";
 
     expect(agenda).toContain("hasEvidence");
-    expect(agenda).toContain("<PlanVsActual comparison={comparison} blocks={blocks} />");
+    expect(agenda).toContain(
+      "<PlanVsActual comparison={comparison} blocks={blocks} score={score} />",
+    );
     expect(result).toContain("data-plan-vs-actual");
     expect(result).toContain("decision.target");
     expect(result).toContain("decision.actual");
-    expect(source).toContain('return "Pass"');
-    expect(source).toContain('return "Partial"');
-    expect(source).toContain('return "Fail"');
+    expect(result).toContain("practiceScoredBlockIds(blocks)");
+    expect(result).toContain(
+      "summarizePracticeOutcome(comparison, score?.score ?? null, scoredBlockIds)",
+    );
+    expect(result).toContain("scoredDecisions.map");
+    expect(result).toContain("block?.order ?? index + 1");
+    expect(result).toContain("practiceDecisionResultLabel(decision)");
+    expect(result).toContain("practiceComparisonCardTone(decision.result)");
+    expect(result).toContain('decision.result === "failed"');
   });
 
   it("keeps validation failures and successful outcomes distinct inside the Today card", () => {

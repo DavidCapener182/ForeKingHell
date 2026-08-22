@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, Pause, Play, Save, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
+  Save,
+  Upload,
+} from "lucide-react";
 
 import {
   completePracticeActivityAction,
@@ -14,6 +23,7 @@ import {
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
+  IOSInlineStatus,
   IOSListRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
@@ -73,6 +83,12 @@ import type {
   SavedPracticePlan,
 } from "@/lib/practice-planner";
 import { formatClubType } from "@/lib/club-format";
+import {
+  practiceDecisionResultLabel,
+  practiceDecisionResultTone,
+  practiceScoredBlockIds,
+  summarizePracticeOutcome,
+} from "@/lib/practice-planner-view";
 import { cn } from "@/lib/utils";
 
 type MeasuredResult = SavedPracticePlan["result"];
@@ -134,6 +150,8 @@ export function PracticeCompanionClient({
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const selectedBlock = plan.blocks[selectedIndex] ?? plan.blocks[0] ?? null;
   const activeCachedPlan = useMemo(() => readActivePractice(accountId), [accountId]);
+  const activeMeasuredResult =
+    plan.id && plan.id === initialPlan.id && plan.status === "analysed" ? measuredResult : null;
 
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
@@ -141,6 +159,10 @@ export function PracticeCompanionClient({
   }, []);
 
   useEffect(() => {
+    if (plan.status === "analysed") {
+      if (savedPlanId) clearActivePractice(accountId);
+      return;
+    }
     if (!activeCachedPlan || activeCachedPlan.planId !== savedPlanId) return;
     const timer = window.setTimeout(() => {
       setCompletedBlockIds(activeCachedPlan.completedBlockIds);
@@ -149,7 +171,7 @@ export function PracticeCompanionClient({
       setRangeMode(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [activeCachedPlan, plan.blocks.length, savedPlanId]);
+  }, [accountId, activeCachedPlan, plan.blocks.length, plan.status, savedPlanId]);
 
   useEffect(() => {
     if (!blockCarouselApi) return;
@@ -337,9 +359,12 @@ export function PracticeCompanionClient({
           rangeMode: false,
           saved: Boolean(savedPlanId),
           finished,
-          hasEvidence: Boolean(measuredResult),
+          hasEvidence: Boolean(activeMeasuredResult),
         })}
       />
+      {activeMeasuredResult ? (
+        <MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />
+      ) : null}
       {options.intent === "speed" || options.sessionType === "speed" ? (
         <SpeedDevelopmentCompanionReadout context={context} />
       ) : null}
@@ -368,7 +393,7 @@ export function PracticeCompanionClient({
         <CardHeader>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              Recommended session
+              {activeMeasuredResult ? "Completed practice" : "Recommended session"}
             </p>
             <CardTitle className="mt-1 text-xl font-bold leading-6 tracking-tight">
               {plan.title}
@@ -378,7 +403,9 @@ export function PracticeCompanionClient({
             </p>
           </div>
           <CardAction>
-            <Badge variant="secondary">{plan.confidenceLabel}</Badge>
+            <Badge variant="secondary">
+              {activeMeasuredResult ? "Measured" : plan.confidenceLabel}
+            </Badge>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -401,15 +428,27 @@ export function PracticeCompanionClient({
           </CardContent>
         ) : null}
         <CardFooter className="bg-background/70 p-3">
-          <Button
-            type="button"
-            className="min-h-12 w-full rounded-xl text-base"
-            onClick={savedPlanId ? resume : saveAndStart}
-            disabled={isPending || !hydrated}
-          >
-            <Save className="size-4" aria-hidden />
-            {savedPlanId ? "Start Practice" : "Save & Start Practice"}
-          </Button>
+          {activeMeasuredResult ? (
+            <Button
+              type="button"
+              className="min-h-12 w-full rounded-xl text-base"
+              onClick={() => regenerate(options)}
+              disabled={isPending || !hydrated}
+            >
+              Build next practice
+              <ChevronRight className="size-4" aria-hidden />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              className="min-h-12 w-full rounded-xl text-base"
+              onClick={savedPlanId ? resume : saveAndStart}
+              disabled={isPending || !hydrated}
+            >
+              <Save className="size-4" aria-hidden />
+              {savedPlanId ? "Start Practice" : "Save & Start Practice"}
+            </Button>
+          )}
         </CardFooter>
       </Card>
 
@@ -508,39 +547,98 @@ export function PracticeCompanionClient({
               </IOSGroupedList>
             ),
           },
-          ...(measuredResult
-            ? [
-                {
-                  value: "result",
-                  title: "Plan versus actual",
-                  summary: `${measuredResult.practiceScore}/100`,
-                  description: measuredResult.verdict,
-                  content: (
-                    <Card size="sm" data-plan-versus-actual>
-                      <CardHeader>
-                        <CardTitle>Measured plan result</CardTitle>
-                        <CardAction>
-                          <Badge variant="secondary">{measuredResult.practiceScore}/100</Badge>
-                        </CardAction>
-                      </CardHeader>
-                      <CardContent className="grid gap-3">
-                        <Progress
-                          value={measuredResult.practiceScore}
-                          aria-label={`Practice plan score: ${measuredResult.practiceScore} out of 100`}
-                        />
-                        <IOSGroupedList label="Measured plan result" className="bg-card">
-                          <IOSListRow label="Verdict" detail={measuredResult.verdict} />
-                          <IOSListRow label="Next action" detail={measuredResult.nextAction} />
-                        </IOSGroupedList>
-                      </CardContent>
-                    </Card>
-                  ),
-                },
-              ]
-            : []),
         ]}
       />
     </div>
+  );
+}
+
+function MeasuredPracticeResultCard({
+  result,
+  blocks,
+}: {
+  result: NonNullable<MeasuredResult>;
+  blocks: PracticePlan["blocks"];
+}) {
+  const comparison = result.comparison;
+  const importedSession = comparison?.importedSession;
+  const actualShots = comparison?.planVsActual.actualShots ?? 0;
+  const plannedShots = comparison?.planVsActual.plannedBalls ?? null;
+  const sessionCount = importedSession?.sessionCount ?? (actualShots > 0 ? 1 : 0);
+  const rawShotCount = importedSession?.rawShotCount ?? actualShots;
+  const excludedShotCount = importedSession?.excludedShotCount ?? 0;
+  const scoredBlockIds = practiceScoredBlockIds(blocks);
+  const outcome = summarizePracticeOutcome(comparison, result.practiceScore, scoredBlockIds);
+  const OutcomeIcon = outcome.status === "passed" ? CheckCircle2 : AlertCircle;
+
+  return (
+    <Card
+      size="sm"
+      data-plan-versus-actual
+      data-practice-result={outcome.status}
+      aria-live="polite"
+      className={cn(
+        "border-2",
+        outcome.status === "passed" && "border-[var(--status-success-border)]",
+        outcome.status === "not_passed" && "border-[var(--status-warning-border)]",
+      )}
+    >
+      <CardHeader>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            Practice result
+          </p>
+          <CardTitle className="mt-1 flex items-center gap-2 text-2xl" role="status">
+            <OutcomeIcon className="size-5 shrink-0" aria-hidden />
+            {outcome.label}
+          </CardTitle>
+          <p className="mt-1 text-sm font-medium leading-5">{outcome.detail}</p>
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">{result.verdict}</p>
+        </div>
+        <CardAction>
+          <Badge variant="secondary">{result.practiceScore}/100</Badge>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <Progress
+          value={result.practiceScore}
+          aria-label={`Practice result: ${outcome.label}. Score ${result.practiceScore} out of 100`}
+        />
+        <IOSGroupedList label="Measured practice result" className="bg-card">
+          <IOSListRow
+            label="Measured shots"
+            value={plannedShots === null ? actualShots : `${actualShots}/${plannedShots}`}
+            detail="Every eligible launch-monitor shot from the practice day"
+          />
+          {sessionCount > 0 ? (
+            <IOSListRow
+              label="Today's uploads"
+              value={sessionCount}
+              detail={`${rawShotCount} raw shots${
+                excludedShotCount > 0 ? ` · ${excludedShotCount} excluded` : ""
+              }`}
+            />
+          ) : null}
+          {comparison?.decisions
+            .filter((decision) => scoredBlockIds.has(decision.blockId))
+            .map((decision) => (
+              <IOSListRow
+                key={decision.blockId}
+                label={decision.title}
+                value={`${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`}
+                detail={decision.actual}
+                status={
+                  <IOSInlineStatus
+                    label={practiceDecisionResultLabel(decision)}
+                    tone={practiceDecisionResultTone(decision)}
+                  />
+                }
+              />
+            ))}
+          <IOSListRow label="Next action" detail={result.nextAction} />
+        </IOSGroupedList>
+      </CardContent>
+    </Card>
   );
 }
 

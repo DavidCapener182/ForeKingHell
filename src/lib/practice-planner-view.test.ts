@@ -7,8 +7,12 @@ import {
   compactPracticeBlockRow,
   defaultSelectedPracticeBlockId,
   hasPlanVsActualData,
+  practiceDecisionResultLabel,
+  practiceDecisionResultTone,
+  practiceScoredBlockIds,
   scoredFromLabel,
   summarizePracticeImportControl,
+  summarizePracticeOutcome,
   type PracticeBlockViewLike,
   type PracticeComparisonViewLike,
 } from "@/lib/practice-planner-view";
@@ -104,6 +108,99 @@ describe("practice planner view helpers", () => {
     expect(hasPlanVsActualData(comparison)).toBe(true);
   });
 
+  it("states the overall practice result before the supporting score", () => {
+    const review = {
+      decisions: [
+        practiceDecision("passed"),
+        practiceDecision("mixed"),
+        practiceDecision("failed"),
+        practiceDecision("insufficient_data"),
+      ],
+    } satisfies NonNullable<PracticeComparisonViewLike>;
+
+    expect(summarizePracticeOutcome(review, 79)).toMatchObject({
+      status: "not_passed",
+      label: "Not passed yet",
+      detail: "1 of 4 scored blocks passed. 3 still need work.",
+      passedBlocks: 1,
+      failedBlocks: 1,
+      partialBlocks: 1,
+      insufficientBlocks: 1,
+    });
+    expect(summarizePracticeOutcome(review, 80).label).toBe("Passed");
+  });
+
+  it("keeps pass, fail, partial and low-evidence block outcomes distinct", () => {
+    expect(practiceDecisionResultLabel(practiceDecision("passed"))).toBe("Passed");
+    expect(practiceDecisionResultLabel(practiceDecision("mixed"))).toBe("Partial — repeat");
+    expect(practiceDecisionResultLabel(practiceDecision("failed"))).toBe("Failed");
+    expect(practiceDecisionResultLabel(practiceDecision("insufficient_data"))).toBe(
+      "Not enough shots",
+    );
+    expect(practiceDecisionResultTone(practiceDecision("passed"))).toBe("positive");
+    expect(practiceDecisionResultTone(practiceDecision("mixed"))).toBe("attention");
+    expect(practiceDecisionResultTone(practiceDecision("failed"))).toBe("critical");
+    expect(practiceDecisionResultTone(practiceDecision("insufficient_data"))).toBe("neutral");
+  });
+
+  it("excludes intentional no-ball work from scored totals and labels it as unscored", () => {
+    const review = {
+      decisions: [practiceDecision("passed"), practiceDecision("insufficient_data")],
+    } satisfies NonNullable<PracticeComparisonViewLike>;
+    const scoredBlockIds = practiceScoredBlockIds([
+      { id: "passed", drill: "Hit playable drivers" },
+      {
+        id: "insufficient_data",
+        drill: "No-ball speed ladder",
+        scoringRules: { evidenceMode: "manual" },
+      },
+    ]);
+
+    expect(summarizePracticeOutcome(review, 80, scoredBlockIds)).toMatchObject({
+      status: "passed",
+      detail: "The scored block passed.",
+      passedBlocks: 1,
+      insufficientBlocks: 0,
+      totalBlocks: 1,
+    });
+    expect(scoredBlockIds).not.toContain("insufficient_data");
+  });
+
+  it("keeps manual speed work out of upload scoring without relying on its wording", () => {
+    const manualBlock = {
+      id: "speed-reference",
+      order: 1,
+      type: "speed",
+      title: "Speed reference",
+      clubs: ["driver"],
+      ballCount: null,
+      timeMinutes: 8,
+      successTarget: "Record five balanced readings.",
+      drill: "Five measured swings with full rest.",
+      scoringRules: { evidenceMode: "manual" as const },
+    };
+    const row = compactPracticeBlockRow(manualBlock, {
+      decisions: [practiceDecision("insufficient_data", "speed-reference")],
+    });
+
+    expect(practiceScoredBlockIds([manualBlock])).not.toContain("speed-reference");
+    expect(row).toMatchObject({
+      importStatus: "not_scored",
+      statusLabel: "Not scored from shots",
+      resultNote: "Record manually; launch-monitor shots are not used.",
+      importedEvidence: "Manual drill",
+    });
+    expect(scoredFromLabel(manualBlock)).toBe(
+      "Record manually; launch-monitor shots are not used.",
+    );
+    expect(
+      summarizePracticeImportControl(
+        { totalBalls: null, blocks: [manualBlock, blocks[0]] },
+        comparison,
+      ),
+    ).toMatchObject({ totalBlocks: 1, progressPercent: 100 });
+  });
+
   it("selects the main priority block by default", () => {
     expect(defaultSelectedPracticeBlockId(eightyBallBlocks)).toBe("main");
   });
@@ -145,7 +242,8 @@ describe("practice planner view helpers", () => {
     expect(source).not.toContain("Adapt next");
     expect(source).not.toMatch(/<Input[\\s\\S]{0,240}(score|Score)/);
     expect(source).toContain("PracticeSessionImportBar");
-    expect(source).toContain("Every result is calculated from its launch-monitor rows.");
+    expect(source).toContain("practiceDayEvidenceLabel");
+    expect(source).toContain("eligible shot");
     expect(source).toContain("Only imported launch-monitor rows can pass");
     expect(source).toContain("PlanVsActual");
     expect(source).toContain("Next Practice");
@@ -172,7 +270,12 @@ describe("practice planner view helpers", () => {
 
     expect(source).toContain("getPracticeImportOptions(userId)");
     expect(source).toContain("completePracticePlanFromSelectedImport");
-    expect(source).toContain("recordPracticePlanMatch(userId, saved, sessionSummary, match, true)");
+    expect(source).toContain("db.transaction(async (tx) =>");
+    expect(source).toContain("practicePlanMatchValues(userId, saved, session, sessionMatch, true)");
+    expect(source).toContain("sourceSessionIds");
+    expect(source).toContain("coalesce(${practicePlans.startedAt}, ${now})");
+    expect(source).toContain("const effectiveStartIso = effectiveStart.toISOString()");
+    expect(source).toContain("${effectiveStartIso}::timestamptz");
   });
 
   it("selects the latest session with eligible lifecycle evidence before applying the limit", () => {
@@ -190,6 +293,31 @@ describe("practice planner view helpers", () => {
       selector.indexOf(".limit(1)"),
     );
     expect(source).toContain("not like 'exclude%'");
+  });
+
+  it("refreshes only an already-associated plan when an import resolves as a duplicate", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/lib/imports/save-rapsodo-import.ts"),
+      "utf8",
+    );
+    const plannerSource = readFileSync(join(process.cwd(), "src/lib/practice-planner.ts"), "utf8");
+    const duplicateRefresh =
+      plannerSource.match(
+        /export async function completeAssociatedPracticePlanFromDuplicateImport[\s\S]*?export async function completeOwnedPracticePlanFromImport/,
+      )?.[0] ?? "";
+
+    expect(source).toContain(
+      "? await completeAssociatedPracticePlanFromDuplicateImport(userId, result.sessionId)",
+    );
+    expect(source).toContain(
+      ": await completeMatchingPracticePlanFromImport(userId, result.sessionId)",
+    );
+    expect(duplicateRefresh).toContain("eq(practicePlans.sourceSessionId, sourceSessionId)");
+    expect(duplicateRefresh).toContain("eq(practiceResults.sourceSessionId, sourceSessionId)");
+    expect(duplicateRefresh).toContain("eq(practicePlanMatches.sessionId, sourceSessionId)");
+    expect(duplicateRefresh).toContain("eq(practicePlanMatches.accepted, true)");
+    expect(duplicateRefresh).toContain("practiceResultComparisonIncludesSourceSession");
+    expect(duplicateRefresh).not.toContain("getSavedPracticePlans");
   });
 });
 
@@ -314,3 +442,23 @@ const comparison: PracticeComparisonViewLike = {
     },
   ],
 };
+
+function practiceDecision(
+  result: NonNullable<PracticeComparisonViewLike>["decisions"][number]["result"],
+  blockId = result ?? "unknown",
+) {
+  return {
+    blockId,
+    actual: "Measured result",
+    actualBalls: result === "insufficient_data" ? 2 : 10,
+    plannedBalls: 10,
+    matchedPlannedVolume: result !== "insufficient_data",
+    result,
+    decision:
+      result === "passed"
+        ? ("maintain" as const)
+        : result === "mixed"
+          ? ("repeat_once" as const)
+          : ("keep_priority" as const),
+  };
+}

@@ -29,6 +29,7 @@ import {
   type PracticePriority,
   type ProgressSummary,
 } from "@/lib/progress-summary";
+import { practiceBlockUsesLaunchMonitorEvidence } from "@/lib/practice-planner-view";
 import { getSpeedCoachCardData } from "@/lib/speed-training-data";
 import { getTodayPracticeData, type ClubDayComparison } from "@/lib/today-session-data";
 import { getTrainingOverTimeData } from "@/lib/training/trainingData";
@@ -216,6 +217,7 @@ export type PracticeBlock = {
     target: number;
     maxBigMisses?: number;
     unit?: string;
+    evidenceMode?: "launch_monitor" | "manual";
   };
 };
 
@@ -272,6 +274,10 @@ export type PracticeComparison = {
     sessionType: string;
     dateLabel: string;
     clubTypes: string[];
+    sourceSessionIds?: string[];
+    sessionCount?: number;
+    rawShotCount?: number;
+    excludedShotCount?: number;
   } | null;
   planVsActual: {
     plannedBalls: number | null;
@@ -376,6 +382,7 @@ export type SavedPracticePlan = {
   timeMinutes: number;
   focusClubs: string[];
   plannedAt: string;
+  startedAt?: string | null;
   completedAt: string | null;
   score: number | null;
   matchConfidence: number | null;
@@ -414,6 +421,7 @@ export type ImportedPracticeSessionSummary = {
   id: string;
   sourceType: string;
   sessionType: string;
+  playContext: string;
   sessionDate: Date;
   uploadedAt: Date;
   shotCount: number;
@@ -449,6 +457,7 @@ export type ImportedPracticeShotRow = {
 };
 
 const RANGE_BALL_OPTIONS = [30, 50, 80, 100, 120];
+const PRACTICE_EVIDENCE_TIME_ZONE = "Europe/London";
 const WEDGE_TYPES = new Set(["pw", "gw", "aw", "sw", "lw"]);
 const DRIVER_TYPES = new Set(["driver"]);
 const LONG_GAME_TYPES = new Set(["driver", "3w", "5w", "7w", "3h", "4h", "4i", "5i"]);
@@ -1038,22 +1047,26 @@ function buildPracticeComparison(
   } | null,
   decisions: PracticeComparison["decisions"],
 ): PracticeComparison {
-  const passed = decisions.filter(
+  const scoredBlockIds = new Set(
+    plan.blocks.filter(isLaunchMonitorScoredBlock).map((blockItem) => blockItem.id),
+  );
+  const scoredDecisions = decisions.filter((item) => scoredBlockIds.has(item.blockId));
+  const passed = scoredDecisions.filter(
     (item) =>
       item.result === "passed" || item.decision === "maintain" || item.decision === "move_down",
   );
-  const whatWorked = decisions
+  const whatWorked = scoredDecisions
     .filter((item) => item.result === "passed")
     .slice(0, 3)
     .map((item) => `${item.title}: ${item.summary}`);
-  const needsWork = decisions
+  const needsWork = scoredDecisions
     .filter(
       (item) =>
         item.result === "mixed" || item.result === "failed" || item.result === "insufficient_data",
     )
     .slice(0, 3)
     .map((item) => `${item.title}: ${item.summary}`);
-  const nextBlock = decisions.find((item) => item.result !== "passed");
+  const nextBlock = scoredDecisions.find((item) => item.result !== "passed");
   const plannedClubs = uniqueClubs(plan.blocks.flatMap((block) => block.clubs));
   const actualClubs = importedSession?.clubTypes ?? [];
 
@@ -1081,9 +1094,9 @@ function buildPracticeComparison(
       ? `Repeat ${nextBlock.title.toLowerCase()} before moving it down the roadmap.`
       : "Move the next practice toward transfer scoring and maintenance.",
     summary:
-      decisions.length === 0
+      scoredDecisions.length === 0
         ? "No comparable plan blocks found."
-        : `${passed.length}/${decisions.length} blocks met, maintained or moved on using ${scoringMode} scoring.`,
+        : `${passed.length}/${scoredDecisions.length} blocks met, maintained or moved on using ${scoringMode} scoring.`,
     decisions,
   };
 }
@@ -1151,13 +1164,44 @@ function evaluateAggregatePracticeBlocks(
   plan: PracticePlan,
   rows: ImportedPracticeShotRow[],
 ): PracticeComparison["decisions"] {
-  return plan.blocks.map((blockItem) => {
-    const blockClubs = new Set(uniqueClubs(blockItem.clubs));
-    const blockRows =
-      blockItem.clubs.length > 0 ? rows.filter((row) => blockClubs.has(row.clubType)) : rows;
+  const uniqueRows = [...new Map(rows.map((row) => [row.id, row] as const)).values()].sort(
+    (left, right) =>
+      left.shotAt.getTime() - right.shotAt.getTime() ||
+      (left.shotNumber ?? Number.MAX_SAFE_INTEGER) -
+        (right.shotNumber ?? Number.MAX_SAFE_INTEGER) ||
+      left.id.localeCompare(right.id),
+  );
+  const normalizedBlockClubs = plan.blocks.map(
+    (blockItem) => new Set(uniqueClubs(blockItem.clubs)),
+  );
+
+  return plan.blocks.map((blockItem, index) => {
+    const blockRows = isLaunchMonitorScoredBlock(blockItem)
+      ? uniqueRows.filter(
+          (row) => blockItem.clubs.length === 0 || normalizedBlockClubs[index]?.has(row.clubType),
+        )
+      : [];
 
     return evaluatePracticeBlockFromShots(blockItem, blockRows, "aggregate");
   });
+}
+
+function isLaunchMonitorScoredBlock(blockItem: PracticeBlock) {
+  return practiceBlockUsesLaunchMonitorEvidence(blockItem);
+}
+
+function inferPracticeBlockEvidenceMode(
+  type: PracticeBlockType | string,
+  drill: string,
+  metric: string,
+): "launch_monitor" | "manual" {
+  return type === "speed" ||
+    metric === "rpe" ||
+    metric === "speed" ||
+    metric === "speed_warmup" ||
+    /(?:no[- ]ball|overspeed)/i.test(drill)
+    ? "manual"
+    : "launch_monitor";
 }
 
 function evaluatePracticeBlockFromShots(
@@ -1409,7 +1453,7 @@ export async function comparePracticePlanToImport(
   return comparePlanWithShotRows(plan, sourceSessionId, {
     shotCount: sessionSummary.shotCount,
     sessionType: sessionSummary.sessionType,
-    dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+    dateLabel: londonDateKey(sessionSummary.sessionDate),
     clubTypes: sessionSummary.clubTypes,
     shotRows: sessionSummary.shotRows,
   });
@@ -1427,7 +1471,7 @@ export function evaluatePracticePlanAgainstImportedSession(
     {
       shotCount: sessionSummary.shotCount,
       sessionType: sessionSummary.sessionType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+      dateLabel: londonDateKey(sessionSummary.sessionDate),
       clubTypes: sessionSummary.clubTypes,
       shotRows: sessionSummary.shotRows,
     },
@@ -1446,7 +1490,7 @@ export async function getLatestPracticeSessionReview(
 ): Promise<PracticeLatestSessionReview | null> {
   const sessionSummary = await getLatestImportedPracticeSessionSummary(userId);
 
-  if (!sessionSummary || sessionSummary.shotCount <= 0) {
+  if (!sessionSummary) {
     return null;
   }
 
@@ -1481,7 +1525,7 @@ export async function getLatestPracticeSessionReview(
       shotCount: sessionSummary.shotCount,
       sessionType: sessionSummary.sessionType,
       sourceType: sessionSummary.sourceType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+      dateLabel: londonDateKey(sessionSummary.sessionDate),
       clubTypes: sessionSummary.clubTypes,
     },
   };
@@ -1501,22 +1545,27 @@ export function scoreCompletedPractice(
   const actualBalls =
     result.actualBalls ??
     result.blockResults.reduce((total, item) => total + (item.actualBalls ?? 0), 0);
-  const completedBlocks = result.blockResults.filter(
+  const scoredBlockIds = new Set(
+    plan.blocks.filter(isLaunchMonitorScoredBlock).map((blockItem) => blockItem.id),
+  );
+  const scoredBlockResults = result.blockResults.filter((item) => scoredBlockIds.has(item.blockId));
+  const scoredDecisions = comparison.decisions.filter((item) => scoredBlockIds.has(item.blockId));
+  const completedBlocks = scoredBlockResults.filter(
     (item) => item.completionStatus === "complete",
   ).length;
-  const blockCompletion = plan.blocks.length > 0 ? completedBlocks / plan.blocks.length : 0;
+  const blockCompletion = scoredBlockIds.size > 0 ? completedBlocks / scoredBlockIds.size : 0;
   const ballCompletion =
     plannedBalls > 0 ? Math.min(1, actualBalls / plannedBalls) : blockCompletion;
   const passedRate =
-    result.blockResults.length > 0
-      ? result.blockResults.filter((item) => item.passed || (item.score ?? 0) >= 70).length /
-        result.blockResults.length
+    scoredBlockResults.length > 0
+      ? scoredBlockResults.filter((item) => item.passed || (item.score ?? 0) >= 70).length /
+        scoredBlockResults.length
       : 0;
   const comparisonRate =
-    comparison.decisions.length > 0
-      ? comparison.decisions.filter(
+    scoredDecisions.length > 0
+      ? scoredDecisions.filter(
           (item) => item.decision === "maintain" || item.decision === "move_down",
-        ).length / comparison.decisions.length
+        ).length / scoredDecisions.length
       : passedRate;
   const completionPercent = Math.round(((blockCompletion + ballCompletion) / 2) * 100);
   const score = clamp(
@@ -1525,7 +1574,7 @@ export function scoreCompletedPractice(
     100,
   );
   const mainPriority =
-    comparison.decisions[0]?.decision === "maintain" || passedRate >= 0.75
+    scoredDecisions[0]?.decision === "maintain" || passedRate >= 0.75
       ? "improved"
       : score >= 55
         ? "mixed"
@@ -1650,7 +1699,10 @@ export async function updatePracticePlanStatusForUser(
     .update(practicePlans)
     .set({
       status,
-      startedAt: status === "awaiting_import" ? now : undefined,
+      startedAt:
+        status === "awaiting_import"
+          ? sql`coalesce(${practicePlans.startedAt}, ${now})`
+          : undefined,
       completedAt: status === "completed" || status === "abandoned" ? now : undefined,
       updatedAt: now,
     })
@@ -1721,38 +1773,51 @@ export async function completeMatchingPracticePlanFromImport(
       (plan.status === "planned" ||
         plan.status === "awaiting_import" ||
         plan.status === "match_found" ||
-        plan.status === "active") &&
-      !plan.sourceSessionId &&
-      plan.blocks.length > 0 &&
-      canImportedSessionReviewPracticePlan(plan, sessionSummary),
+        plan.status === "active" ||
+        (plan.status === "completed" && plan.result === null) ||
+        (plan.status === "analysed" && plan.result !== null)) &&
+      plan.blocks.length > 0,
   );
 
   if (candidates.length === 0) {
     return null;
   }
 
-  const matched = candidates
-    .map((candidate) => ({
-      plan: candidate,
-      match: scorePracticePlanSessionMatch(candidate, sessionSummary),
-    }))
+  const matched = (
+    await Promise.all(
+      candidates.map(async (candidate) => {
+        const evidence = await getPracticeEvidenceRollupForPlan(userId, candidate, sessionSummary);
+
+        if (!evidence) {
+          return null;
+        }
+
+        const match = scorePracticePlanSessionMatch(candidate, evidence.summary);
+        return {
+          plan: candidate,
+          evidence,
+          match,
+          partialPracticeEvidence: hasPartialPracticeEvidence(candidate, evidence.summary),
+        };
+      }),
+    )
+  )
+    .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate))
+    .filter((candidate) => candidate.match.score >= 60 || candidate.partialPracticeEvidence)
     .sort(
       (left, right) =>
+        Number(right.plan.status !== "analysed") - Number(left.plan.status !== "analysed") ||
         right.match.score - left.match.score ||
         Date.parse(right.plan.plannedAt) - Date.parse(left.plan.plannedAt),
     )[0];
 
-  const partialPracticeEvidence = matched
-    ? hasPartialPracticeEvidence(matched.plan, sessionSummary)
-    : false;
-
-  if (!matched || (matched.match.score < 60 && !partialPracticeEvidence)) {
+  if (!matched) {
     return null;
   }
 
   await recordPracticePlanMatch(userId, matched.plan, sessionSummary, matched.match, false);
 
-  if (!shouldAutoLinkPracticePlanMatch(matched.match.score, partialPracticeEvidence)) {
+  if (!shouldAutoLinkPracticePlanMatch(matched.match.score, matched.partialPracticeEvidence)) {
     await getDb()
       .update(practicePlans)
       .set({
@@ -1766,52 +1831,92 @@ export async function completeMatchingPracticePlanFromImport(
     return null;
   }
 
-  const plan = savedPlanToPracticePlan(matched.plan);
-  const comparison = comparePlanWithShotRows(
-    plan,
-    sourceSessionId,
-    {
-      shotCount: sessionSummary.shotCount,
-      sessionType: sessionSummary.sessionType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
-      clubTypes: sessionSummary.clubTypes,
-      shotRows: sessionSummary.shotRows,
-    },
-    matched.match.score,
-  );
-  const input = buildPracticeResultFromImport(plan, sessionSummary, comparison);
-  const { score } = await persistCompletedPracticePlan(
+  const completed = await evaluateAndPersistPracticeEvidenceRollup(
     userId,
     matched.plan,
-    plan,
-    input,
-    comparison,
-    matched.match,
+    sessionSummary,
+    {
+      evidence: matched.evidence,
+      match: matched.match,
+    },
   );
-  await recordPracticePlanMatch(userId, matched.plan, sessionSummary, matched.match, true);
+
+  if (!completed) {
+    return null;
+  }
 
   return {
     planId: matched.plan.id,
     title: matched.plan.title,
-    score,
-    comparison,
-    matchScore: matched.match.score,
+    score: completed.score,
+    comparison: completed.comparison,
+    matchScore: completed.match.score,
     matchConfidence:
-      matched.match.score >= 75 ? "high" : matched.match.score >= 60 ? "medium" : "low",
-    matchReason: matched.match.reason,
-    matchBreakdown: matched.match.breakdown,
+      completed.match.score >= 75 ? "high" : completed.match.score >= 60 ? "medium" : "low",
+    matchReason: completed.match.reason,
+    matchBreakdown: completed.match.breakdown,
     importedSession: {
-      shotCount: sessionSummary.shotCount,
-      sessionType: sessionSummary.sessionType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+      shotCount: completed.evidence.summary.shotCount,
+      sessionType: completed.evidence.summary.sessionType,
+      dateLabel: londonDateKey(completed.evidence.summary.sessionDate),
     },
   };
+}
+
+export async function completeAssociatedPracticePlanFromDuplicateImport(
+  userId: string,
+  sourceSessionId: string,
+): Promise<PracticePlanImportMatch | null> {
+  const [associated] = await getDb()
+    .select({ planId: practicePlans.id })
+    .from(practicePlans)
+    .leftJoin(
+      practiceResults,
+      and(eq(practiceResults.practicePlanId, practicePlans.id), eq(practiceResults.userId, userId)),
+    )
+    .leftJoin(
+      practicePlanMatches,
+      and(
+        eq(practicePlanMatches.practicePlanId, practicePlans.id),
+        eq(practicePlanMatches.userId, userId),
+        eq(practicePlanMatches.accepted, true),
+      ),
+    )
+    .where(
+      and(
+        eq(practicePlans.userId, userId),
+        or(
+          eq(practicePlans.sourceSessionId, sourceSessionId),
+          eq(practiceResults.sourceSessionId, sourceSessionId),
+          eq(practicePlanMatches.sessionId, sourceSessionId),
+          practiceResultComparisonIncludesSourceSession(sourceSessionId),
+        ),
+      ),
+    )
+    .orderBy(
+      sql`${practicePlanMatches.accepted} desc nulls last`,
+      desc(practicePlans.completedAt),
+      desc(practicePlans.updatedAt),
+    )
+    .limit(1);
+
+  if (!associated) {
+    return null;
+  }
+
+  return completeOwnedPracticePlanFromImport(userId, associated.planId, sourceSessionId, {
+    matchReasonPrefix: "Existing duplicate import association",
+  });
 }
 
 export async function completeOwnedPracticePlanFromImport(
   userId: string,
   planId: string,
   sourceSessionId: string,
+  options: {
+    minimumMatchScore?: number;
+    matchReasonPrefix?: string;
+  } = {},
 ): Promise<PracticePlanImportMatch | null> {
   const [saved, sessionSummary] = await Promise.all([
     getSavedPracticePlan(userId, planId),
@@ -1821,59 +1926,35 @@ export async function completeOwnedPracticePlanFromImport(
   if (
     !saved ||
     !sessionSummary ||
-    sessionSummary.shotCount <= 0 ||
-    !["planned", "active", "awaiting_import", "match_found"].includes(saved.status) ||
-    (saved.sourceSessionId && saved.sourceSessionId !== sourceSessionId) ||
-    !canImportedSessionReviewPracticePlan(saved, sessionSummary)
+    !["planned", "active", "awaiting_import", "match_found", "completed", "analysed"].includes(
+      saved.status,
+    )
   ) {
     return null;
   }
 
-  const match = scorePracticePlanSessionMatch(saved, sessionSummary);
-  const plan = savedPlanToPracticePlan(saved);
-  const comparison = comparePlanWithShotRows(
-    plan,
-    sourceSessionId,
-    {
-      shotCount: sessionSummary.shotCount,
-      sessionType: sessionSummary.sessionType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
-      clubTypes: sessionSummary.clubTypes,
-      shotRows: sessionSummary.shotRows,
-    },
-    Math.max(90, match.score),
-  );
-  const input = buildPracticeResultFromImport(plan, sessionSummary, comparison);
-  const { score } = await persistCompletedPracticePlan(userId, saved, plan, input, comparison, {
-    ...match,
-    score: Math.max(90, match.score),
-    reason: `Owned plan selected at import · ${match.reason}`,
+  const completed = await evaluateAndPersistPracticeEvidenceRollup(userId, saved, sessionSummary, {
+    minimumMatchScore: options.minimumMatchScore ?? 90,
+    matchReasonPrefix: options.matchReasonPrefix ?? "Owned plan selected at import",
   });
-  await recordPracticePlanMatch(
-    userId,
-    saved,
-    sessionSummary,
-    {
-      ...match,
-      score: Math.max(90, match.score),
-      reason: `Owned plan selected at import · ${match.reason}`,
-    },
-    true,
-  );
+
+  if (!completed) {
+    return null;
+  }
 
   return {
     planId: saved.id,
     title: saved.title,
-    score,
-    comparison,
-    matchScore: Math.max(90, match.score),
+    score: completed.score,
+    comparison: completed.comparison,
+    matchScore: completed.match.score,
     matchConfidence: "high",
-    matchReason: `Owned plan selected at import · ${match.reason}`,
-    matchBreakdown: match.breakdown,
+    matchReason: completed.match.reason,
+    matchBreakdown: completed.match.breakdown,
     importedSession: {
-      shotCount: sessionSummary.shotCount,
-      sessionType: sessionSummary.sessionType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
+      shotCount: completed.evidence.summary.shotCount,
+      sessionType: completed.evidence.summary.sessionType,
+      dateLabel: londonDateKey(completed.evidence.summary.sessionDate),
     },
   };
 }
@@ -1888,38 +1969,193 @@ export async function completePracticePlanFromSelectedImport(
     getImportedPracticeSessionSummary(userId, sourceSessionId),
   ]);
 
-  if (!saved || !sessionSummary || sessionSummary.shotCount <= 0) {
+  if (!saved || !sessionSummary) {
     return null;
   }
 
-  const match = scorePracticePlanSessionMatch(saved, sessionSummary);
-  const partialEvidence = hasPartialPracticeEvidence(saved, sessionSummary);
+  const completed = await evaluateAndPersistPracticeEvidenceRollup(userId, saved, sessionSummary);
+
+  if (!completed) {
+    return null;
+  }
+
+  const partialEvidence = hasPartialPracticeEvidence(saved, completed.evidence.summary);
+
+  return {
+    sourceSessionId: completed.evidence.summary.id,
+    comparison: completed.comparison,
+    score: completed.score,
+    matchScore: completed.match.score,
+    matchReason: completed.match.reason,
+    partialEvidence,
+    importedSession: {
+      shotCount: completed.evidence.summary.shotCount,
+      sessionType: completed.evidence.summary.sessionType,
+      sourceType: completed.evidence.summary.sourceType,
+      dateLabel: londonDateKey(completed.evidence.summary.sessionDate),
+      clubTypes: completed.evidence.summary.clubTypes,
+    },
+  };
+}
+
+export async function refreshPracticeEvidenceForReviewedSessions(
+  userId: string,
+  sourceSessionIds: string[],
+) {
+  const refreshTargets = new Map<string, string>();
+
+  for (const sourceSessionId of [...new Set(sourceSessionIds)]) {
+    const rows = await getDb()
+      .select({ planId: practicePlans.id })
+      .from(practicePlans)
+      .leftJoin(
+        practiceResults,
+        and(
+          eq(practiceResults.practicePlanId, practicePlans.id),
+          eq(practiceResults.userId, userId),
+        ),
+      )
+      .leftJoin(
+        practicePlanMatches,
+        and(
+          eq(practicePlanMatches.practicePlanId, practicePlans.id),
+          eq(practicePlanMatches.userId, userId),
+          eq(practicePlanMatches.accepted, true),
+        ),
+      )
+      .where(
+        and(
+          eq(practicePlans.userId, userId),
+          eq(practicePlans.status, "analysed"),
+          or(
+            eq(practicePlans.sourceSessionId, sourceSessionId),
+            eq(practiceResults.sourceSessionId, sourceSessionId),
+            eq(practicePlanMatches.sessionId, sourceSessionId),
+            practiceResultComparisonIncludesSourceSession(sourceSessionId),
+          ),
+        ),
+      );
+
+    for (const row of rows) {
+      if (!refreshTargets.has(row.planId)) {
+        refreshTargets.set(row.planId, sourceSessionId);
+      }
+    }
+  }
+
+  for (const [planId, sourceSessionId] of refreshTargets) {
+    await completePracticePlanFromSelectedImport(userId, planId, sourceSessionId);
+  }
+
+  return refreshTargets.size;
+}
+
+type PracticeEvidenceRollup = NonNullable<ReturnType<typeof buildPracticeEvidenceRollup>>;
+
+async function getPracticeEvidenceRollupForPlan(
+  userId: string,
+  saved: SavedPracticePlan,
+  representative: ImportedPracticeSessionSummary,
+): Promise<PracticeEvidenceRollup | null> {
+  if (!isCompatiblePracticeEvidenceSession(saved, representative)) {
+    return null;
+  }
+
+  const effectiveStart = new Date(saved.startedAt ?? saved.plannedAt);
+
+  if (!Number.isFinite(effectiveStart.getTime())) {
+    return null;
+  }
+
+  const effectiveStartIso = effectiveStart.toISOString();
+
+  const sessionRows = await getDb()
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        sql<boolean>`
+          (${sessions.date} at time zone ${PRACTICE_EVIDENCE_TIME_ZONE})::date =
+          (${effectiveStartIso}::timestamptz at time zone ${PRACTICE_EVIDENCE_TIME_ZONE})::date
+        `,
+      ),
+    )
+    .orderBy(asc(sessions.date), asc(sessions.createdAt));
+  const candidateSessionIds = new Set([
+    representative.id,
+    ...sessionRows.map((session) => session.id),
+  ]);
+  const summaries = (
+    await Promise.all(
+      [...candidateSessionIds].map((sessionId) =>
+        sessionId === representative.id
+          ? Promise.resolve(representative)
+          : getImportedPracticeSessionSummary(userId, sessionId),
+      ),
+    )
+  ).filter((session): session is ImportedPracticeSessionSummary => session !== null);
+
+  return buildPracticeEvidenceRollup(saved, summaries, representative.id);
+}
+
+async function evaluateAndPersistPracticeEvidenceRollup(
+  userId: string,
+  saved: SavedPracticePlan,
+  representative: ImportedPracticeSessionSummary,
+  options: {
+    evidence?: PracticeEvidenceRollup;
+    match?: PracticePlanMatchScore;
+    minimumMatchScore?: number;
+    matchReasonPrefix?: string;
+  } = {},
+) {
+  const evidence =
+    options.evidence ?? (await getPracticeEvidenceRollupForPlan(userId, saved, representative));
+
+  if (!evidence) {
+    return null;
+  }
+
+  const baseMatch = options.match ?? scorePracticePlanSessionMatch(saved, evidence.summary);
+  const match = {
+    ...baseMatch,
+    score: Math.max(options.minimumMatchScore ?? 0, baseMatch.score),
+    reason: options.matchReasonPrefix
+      ? `${options.matchReasonPrefix} · ${baseMatch.reason}`
+      : baseMatch.reason,
+  };
   const plan = savedPlanToPracticePlan(saved);
-  const { comparison, score, resultInput } = evaluatePracticePlanAgainstImportedSession(
+  const evaluated = evaluatePracticePlanAgainstImportedSession(
     plan,
-    sessionSummary,
+    evidence.summary,
     match.score,
     { scoringMode: "aggregate" },
   );
-
-  await persistCompletedPracticePlan(userId, saved, plan, resultInput, comparison, match);
-  await recordPracticePlanMatch(userId, saved, sessionSummary, match, true);
-
-  return {
-    sourceSessionId: sessionSummary.id,
-    comparison,
-    score,
-    matchScore: match.score,
-    matchReason: match.reason,
-    partialEvidence,
-    importedSession: {
-      shotCount: sessionSummary.shotCount,
-      sessionType: sessionSummary.sessionType,
-      sourceType: sessionSummary.sourceType,
-      dateLabel: sessionSummary.sessionDate.toISOString().slice(0, 10),
-      clubTypes: sessionSummary.clubTypes,
-    },
+  const comparison: PracticeComparison = {
+    ...evaluated.comparison,
+    importedSession: evaluated.comparison.importedSession
+      ? {
+          ...evaluated.comparison.importedSession,
+          sourceSessionIds: evidence.sourceSessionIds,
+          sessionCount: evidence.sourceSessionIds.length,
+          rawShotCount: evidence.summary.rawShotCount,
+          excludedShotCount: evidence.summary.excludedShotCount,
+        }
+      : null,
   };
+  const resultInput = buildPracticeResultFromImport(plan, evidence.summary, comparison);
+  const { score } = await persistCompletedPracticePlan(
+    userId,
+    saved,
+    plan,
+    resultInput,
+    comparison,
+    match,
+    evidence,
+  );
+
+  return { comparison, evidence, match, score };
 }
 
 async function persistCompletedPracticePlan(
@@ -1929,28 +2165,17 @@ async function persistCompletedPracticePlan(
   input: PracticeResultInput,
   comparison: PracticeComparison,
   match?: PracticePlanMatchScore,
+  evidence?: PracticeEvidenceRollup,
 ) {
   const score = scoreCompletedPractice(plan, input, comparison);
   const now = new Date();
   const db = getDb();
-  const [result] = await db
-    .insert(practiceResults)
-    .values({
-      practicePlanId: saved.id,
-      userId,
-      sourceSessionId: input.sourceSessionId ?? null,
-      completionStatus: input.completionStatus,
-      actualBalls: input.actualBalls ?? null,
-      actualMinutes: input.actualMinutes ?? null,
-      practiceScore: score.score,
-      verdict: score.verdict,
-      nextAction: score.nextAction,
-      notes: input.notes ?? null,
-      comparisonJson: comparison,
-    })
-    .onConflictDoUpdate({
-      target: practiceResults.practicePlanId,
-      set: {
+  await db.transaction(async (tx) => {
+    const [result] = await tx
+      .insert(practiceResults)
+      .values({
+        practicePlanId: saved.id,
+        userId,
         sourceSessionId: input.sourceSessionId ?? null,
         completionStatus: input.completionStatus,
         actualBalls: input.actualBalls ?? null,
@@ -1960,58 +2185,98 @@ async function persistCompletedPracticePlan(
         nextAction: score.nextAction,
         notes: input.notes ?? null,
         comparisonJson: comparison,
-        createdAt: now,
-      },
-    })
-    .returning();
+      })
+      .onConflictDoUpdate({
+        target: practiceResults.practicePlanId,
+        set: {
+          sourceSessionId: input.sourceSessionId ?? null,
+          completionStatus: input.completionStatus,
+          actualBalls: input.actualBalls ?? null,
+          actualMinutes: input.actualMinutes ?? null,
+          practiceScore: score.score,
+          verdict: score.verdict,
+          nextAction: score.nextAction,
+          notes: input.notes ?? null,
+          comparisonJson: comparison,
+        },
+      })
+      .returning();
 
-  await db.delete(practiceBlockResults).where(eq(practiceBlockResults.practiceResultId, result.id));
+    await tx
+      .delete(practiceBlockResults)
+      .where(eq(practiceBlockResults.practiceResultId, result.id));
 
-  if (input.blockResults.length > 0) {
-    const blockIdByOrderId = new Map(
-      saved.blocks.map((blockItem) => [blockItem.id, blockItem.dbId]),
-    );
-    await db.insert(practiceBlockResults).values(
-      input.blockResults
-        .map((blockResult) => {
-          const dbBlockId = blockIdByOrderId.get(blockResult.blockId);
+    if (input.blockResults.length > 0) {
+      const blockIdByOrderId = new Map(
+        saved.blocks.map((blockItem) => [blockItem.id, blockItem.dbId]),
+      );
+      await tx.insert(practiceBlockResults).values(
+        input.blockResults
+          .map((blockResult) => {
+            const dbBlockId = blockIdByOrderId.get(blockResult.blockId);
 
-          if (!dbBlockId) {
-            return null;
-          }
+            if (!dbBlockId) {
+              return null;
+            }
 
-          return {
-            practiceResultId: result.id,
-            practiceBlockId: dbBlockId,
-            userId,
-            completionStatus: blockResult.completionStatus,
-            actualBalls: blockResult.actualBalls ?? null,
-            actualMinutes: blockResult.actualMinutes ?? null,
-            score: blockResult.score ?? null,
-            passed: blockResult.passed ?? false,
-            result: blockResult.result ?? "insufficient_data",
-            summary: blockResult.summary ?? null,
-            linkedShotIdsJson: blockResult.linkedShotIds ?? [],
-            metricsJson: blockResult.metrics ?? {},
-            notes: blockResult.notes ?? null,
-          };
-        })
-        .filter((row): row is NonNullable<typeof row> => Boolean(row)),
-    );
-  }
+            return {
+              practiceResultId: result.id,
+              practiceBlockId: dbBlockId,
+              userId,
+              completionStatus: blockResult.completionStatus,
+              actualBalls: blockResult.actualBalls ?? null,
+              actualMinutes: blockResult.actualMinutes ?? null,
+              score: blockResult.score ?? null,
+              passed: blockResult.passed ?? false,
+              result: blockResult.result ?? "insufficient_data",
+              summary: blockResult.summary ?? null,
+              linkedShotIdsJson: blockResult.linkedShotIds ?? [],
+              metricsJson: blockResult.metrics ?? {},
+              notes: blockResult.notes ?? null,
+            };
+          })
+          .filter((row): row is NonNullable<typeof row> => Boolean(row)),
+      );
+    }
 
-  await db
-    .update(practicePlans)
-    .set({
-      status: input.completionStatus === "missed" ? "abandoned" : "analysed",
-      practiceScore: score.score,
-      matchConfidence: match?.score ?? comparison.matchConfidence ?? null,
-      matchReason: match?.reason ?? null,
-      sourceSessionId: input.sourceSessionId ?? null,
-      completedAt: now,
-      updatedAt: now,
-    })
-    .where(and(eq(practicePlans.id, saved.id), eq(practicePlans.userId, userId)));
+    await tx
+      .update(practicePlans)
+      .set({
+        status: input.completionStatus === "missed" ? "abandoned" : "analysed",
+        practiceScore: score.score,
+        matchConfidence: match?.score ?? comparison.matchConfidence ?? null,
+        matchReason: match?.reason ?? null,
+        sourceSessionId: input.sourceSessionId ?? null,
+        completedAt: saved.result !== null && saved.completedAt ? new Date(saved.completedAt) : now,
+        updatedAt: now,
+      })
+      .where(and(eq(practicePlans.id, saved.id), eq(practicePlans.userId, userId)));
+
+    if (evidence) {
+      await tx
+        .update(practicePlanMatches)
+        .set({ accepted: false })
+        .where(
+          and(
+            eq(practicePlanMatches.practicePlanId, saved.id),
+            eq(practicePlanMatches.userId, userId),
+            eq(practicePlanMatches.accepted, true),
+          ),
+        );
+
+      for (const session of evidence.sessions) {
+        const sessionMatch = scorePracticePlanSessionMatch(saved, session);
+        await tx
+          .insert(practicePlanMatches)
+          .values(practicePlanMatchValues(userId, saved, session, sessionMatch, true))
+          .onConflictDoUpdate({
+            target: [practicePlanMatches.practicePlanId, practicePlanMatches.sessionId],
+            set: practicePlanMatchUpdateValues(sessionMatch, true),
+          });
+      }
+    }
+  });
+
   await awardPracticePlannerAchievements(userId, "completed", score, {
     blockResults: input.blockResults,
     comparison,
@@ -2031,34 +2296,40 @@ async function recordPracticePlanMatch(
 ) {
   await getDb()
     .insert(practicePlanMatches)
-    .values({
-      practicePlanId: plan.id,
-      userId,
-      sessionId: session.id,
-      matchConfidence: match.score,
-      matchReason: match.reason,
-      dateScore: match.breakdown.dateScore,
-      sessionTypeScore: match.breakdown.sessionTypeScore,
-      ballCountScore: match.breakdown.ballCountScore,
-      focusClubScore: match.breakdown.focusClubScore,
-      clubMixScore: match.breakdown.clubMixScore,
-      sourceTypeScore: match.breakdown.sourceTypeScore,
-      accepted,
-    })
+    .values(practicePlanMatchValues(userId, plan, session, match, accepted))
     .onConflictDoUpdate({
       target: [practicePlanMatches.practicePlanId, practicePlanMatches.sessionId],
-      set: {
-        matchConfidence: match.score,
-        matchReason: match.reason,
-        dateScore: match.breakdown.dateScore,
-        sessionTypeScore: match.breakdown.sessionTypeScore,
-        ballCountScore: match.breakdown.ballCountScore,
-        focusClubScore: match.breakdown.focusClubScore,
-        clubMixScore: match.breakdown.clubMixScore,
-        sourceTypeScore: match.breakdown.sourceTypeScore,
-        accepted,
-      },
+      set: practicePlanMatchUpdateValues(match, accepted),
     });
+}
+
+function practicePlanMatchValues(
+  userId: string,
+  plan: SavedPracticePlan,
+  session: ImportedPracticeSessionSummary,
+  match: PracticePlanMatchScore,
+  accepted: boolean,
+) {
+  return {
+    practicePlanId: plan.id,
+    userId,
+    sessionId: session.id,
+    ...practicePlanMatchUpdateValues(match, accepted),
+  };
+}
+
+function practicePlanMatchUpdateValues(match: PracticePlanMatchScore, accepted: boolean) {
+  return {
+    matchConfidence: match.score,
+    matchReason: match.reason,
+    dateScore: match.breakdown.dateScore,
+    sessionTypeScore: match.breakdown.sessionTypeScore,
+    ballCountScore: match.breakdown.ballCountScore,
+    focusClubScore: match.breakdown.focusClubScore,
+    clubMixScore: match.breakdown.clubMixScore,
+    sourceTypeScore: match.breakdown.sourceTypeScore,
+    accepted,
+  };
 }
 
 export async function getPracticePlannerPageData(userId: string) {
@@ -2075,23 +2346,56 @@ export async function getPracticePlannerPageData(userId: string) {
 export function selectPracticePlannerInitialSavedPlan(
   savedPlans: SavedPracticePlan[],
   latestImportId: string | null,
+  now = new Date(),
 ) {
+  const todayKey = londonDateKey(now);
   const latestImportResult = latestImportId
-    ? savedPlans.find((plan) => plan.sourceSessionId === latestImportId && plan.result !== null)
+    ? savedPlans.find(
+        (plan) =>
+          plan.result !== null &&
+          Number.isFinite(practicePlanEvidenceTime(plan)) &&
+          londonDateKey(new Date(practicePlanEvidenceTime(plan))) === todayKey &&
+          (plan.sourceSessionId === latestImportId ||
+            plan.result.comparison?.importedSession?.sourceSessionIds?.includes(latestImportId)),
+      )
     : null;
+
+  const openPlan = savedPlans.find(
+    (plan) =>
+      plan.status === "planned" ||
+      plan.status === "active" ||
+      plan.status === "awaiting_import" ||
+      plan.status === "match_found",
+  );
+
+  if (latestImportResult && openPlan) {
+    return practicePlanEvidenceTime(openPlan) > practicePlanEvidenceTime(latestImportResult)
+      ? openPlan
+      : latestImportResult;
+  }
 
   if (latestImportResult) {
     return latestImportResult;
   }
 
+  if (openPlan) {
+    return openPlan;
+  }
+
   return (
-    savedPlans.find(
-      (plan) =>
-        plan.status === "planned" ||
-        plan.status === "awaiting_import" ||
-        plan.status === "match_found",
-    ) ?? null
+    savedPlans.find((plan) => {
+      if (plan.status !== "analysed" || plan.result === null) {
+        return false;
+      }
+
+      const resultDate = new Date(practicePlanEvidenceTime(plan));
+      return Number.isFinite(resultDate.getTime()) && londonDateKey(resultDate) === todayKey;
+    }) ?? null
   );
+}
+
+function practicePlanEvidenceTime(plan: Pick<SavedPracticePlan, "plannedAt" | "startedAt">) {
+  return Date.parse(plan.startedAt ?? plan.plannedAt);
 }
 
 export async function getSavedPracticePlans(
@@ -2132,6 +2436,7 @@ export async function getSavedPracticePlans(
       timeMinutes: plan.timeMinutes,
       focusClubs: plan.focusClubsJson,
       plannedAt: plan.plannedAt.toISOString(),
+      startedAt: plan.startedAt?.toISOString() ?? null,
       completedAt: plan.completedAt?.toISOString() ?? null,
       score: plan.practiceScore,
       matchConfidence: plan.matchConfidence,
@@ -2181,7 +2486,7 @@ export async function getPracticeImportOptions(
     id: row.id,
     label: row.fileName || row.courseName || `${formatSessionType(row.sessionType)} session`,
     sessionType: row.sessionType,
-    dateLabel: row.sessionDate.toISOString().slice(0, 10),
+    dateLabel: londonDateKey(row.sessionDate),
     shotCount: Number(row.shotCount ?? 0),
   }));
 }
@@ -2210,8 +2515,8 @@ export async function getPracticeTemplates(userId: string): Promise<PracticeTemp
 }
 
 export async function getCurrentPracticePlanSummary(userId: string) {
-  const [plan] = await getSavedPracticePlans(userId, 1);
-  return plan ?? null;
+  const plans = await getSavedPracticePlans(userId, 25);
+  return selectPracticePlannerInitialSavedPlan(plans, null);
 }
 
 export async function getPracticePlannerProgressSummary(userId: string) {
@@ -2284,9 +2589,30 @@ export async function getPracticePlanForSourceSessions(userId: string, sessionId
       result: practiceResults,
     })
     .from(practicePlans)
-    .leftJoin(practiceResults, eq(practiceResults.practicePlanId, practicePlans.id))
+    .leftJoin(
+      practiceResults,
+      and(eq(practiceResults.practicePlanId, practicePlans.id), eq(practiceResults.userId, userId)),
+    )
+    .leftJoin(
+      practicePlanMatches,
+      and(
+        eq(practicePlanMatches.practicePlanId, practicePlans.id),
+        eq(practicePlanMatches.userId, userId),
+        eq(practicePlanMatches.accepted, true),
+      ),
+    )
     .where(
-      and(eq(practicePlans.userId, userId), inArray(practicePlans.sourceSessionId, sessionIds)),
+      and(
+        eq(practicePlans.userId, userId),
+        or(
+          inArray(practicePlans.sourceSessionId, sessionIds),
+          inArray(practiceResults.sourceSessionId, sessionIds),
+          inArray(practicePlanMatches.sessionId, sessionIds),
+          ...sessionIds.map((sessionId) =>
+            practiceResultComparisonIncludesSourceSession(sessionId),
+          ),
+        ),
+      ),
     )
     .orderBy(desc(practicePlans.completedAt))
     .limit(1);
@@ -2351,12 +2677,27 @@ export async function getPracticePlanReviewForSourceSession(
       result: practiceResults,
     })
     .from(practicePlans)
-    .innerJoin(practiceResults, eq(practiceResults.practicePlanId, practicePlans.id))
+    .innerJoin(
+      practiceResults,
+      and(eq(practiceResults.practicePlanId, practicePlans.id), eq(practiceResults.userId, userId)),
+    )
+    .leftJoin(
+      practicePlanMatches,
+      and(
+        eq(practicePlanMatches.practicePlanId, practicePlans.id),
+        eq(practicePlanMatches.userId, userId),
+        eq(practicePlanMatches.accepted, true),
+      ),
+    )
     .where(
       and(
         eq(practicePlans.userId, userId),
-        eq(practicePlans.sourceSessionId, sourceSessionId),
-        eq(practiceResults.sourceSessionId, sourceSessionId),
+        or(
+          eq(practicePlans.sourceSessionId, sourceSessionId),
+          eq(practiceResults.sourceSessionId, sourceSessionId),
+          eq(practicePlanMatches.sessionId, sourceSessionId),
+          practiceResultComparisonIncludesSourceSession(sourceSessionId),
+        ),
       ),
     )
     .orderBy(desc(practiceResults.createdAt))
@@ -2377,6 +2718,15 @@ export async function getPracticePlanReviewForSourceSession(
   };
 }
 
+function practiceResultComparisonIncludesSourceSession(sourceSessionId: string) {
+  return sql<boolean>`
+    coalesce(
+      ${practiceResults.comparisonJson}->'importedSession'->'sourceSessionIds',
+      '[]'::jsonb
+    ) @> ${JSON.stringify([sourceSessionId])}::jsonb
+  `;
+}
+
 async function getImportedPracticeSessionSummary(
   userId: string,
   sourceSessionId: string,
@@ -2386,6 +2736,7 @@ async function getImportedPracticeSessionSummary(
       id: sessions.id,
       sourceType: sessions.source,
       sessionType: sessions.type,
+      playContext: sessions.playContext,
       sessionDate: sessions.date,
       uploadedAt: sessions.createdAt,
       shotCount: sql<number>`count(${shots.id})::int`,
@@ -2393,7 +2744,14 @@ async function getImportedPracticeSessionSummary(
     .from(sessions)
     .innerJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
     .where(and(eq(sessions.id, sourceSessionId), eq(sessions.userId, userId)))
-    .groupBy(sessions.id, sessions.source, sessions.type, sessions.date, sessions.createdAt)
+    .groupBy(
+      sessions.id,
+      sessions.source,
+      sessions.type,
+      sessions.playContext,
+      sessions.date,
+      sessions.createdAt,
+    )
     .limit(1);
 
   if (!session) {
@@ -2445,6 +2803,7 @@ async function getImportedPracticeSessionSummary(
     id: session.id,
     sourceType: session.sourceType,
     sessionType: session.sessionType,
+    playContext: session.playContext,
     sessionDate: session.sessionDate,
     uploadedAt: session.uploadedAt,
     shotCount: cleanShotRows.length,
@@ -3008,6 +3367,7 @@ function block(
     metric: string;
     target: number;
     maxBigMisses?: number;
+    evidenceMode?: "launch_monitor" | "manual";
   },
 ): PracticeBlock {
   return {
@@ -3026,6 +3386,8 @@ function block(
       metric: detail.metric,
       target: detail.target,
       maxBigMisses: detail.maxBigMisses,
+      evidenceMode:
+        detail.evidenceMode ?? inferPracticeBlockEvidenceMode(type, detail.drill, detail.metric),
     },
   };
 }
@@ -3598,7 +3960,7 @@ export function scorePracticePlanSessionMatch(
         )
       : 12;
   const sessionTypeScore = sessionMatchesPlanType(plan.sessionType, session.sessionType) ? 10 : 0;
-  const plannedTime = Date.parse(plan.plannedAt);
+  const plannedTime = practicePlanEvidenceTime(plan);
   const sessionTime = session.sessionDate.getTime();
   const hoursApart = Number.isFinite(plannedTime)
     ? Math.abs(sessionTime - plannedTime) / (60 * 60 * 1000)
@@ -3631,6 +3993,97 @@ export function scorePracticePlanSessionMatch(
   ].join("; ");
 
   return { score, reason, breakdown };
+}
+
+export function buildPracticeEvidenceRollup(
+  plan: SavedPracticePlan,
+  sessionsToReview: ImportedPracticeSessionSummary[],
+  representativeSessionId: string,
+) {
+  const sessionsById = new Map(sessionsToReview.map((session) => [session.id, session] as const));
+  const representative = sessionsById.get(representativeSessionId);
+
+  if (!representative || !isCompatiblePracticeEvidenceSession(plan, representative)) {
+    return null;
+  }
+
+  const contributingSessions = [...sessionsById.values()]
+    .filter((session) => isCompatiblePracticeEvidenceSession(plan, session))
+    .sort(
+      (left, right) =>
+        left.sessionDate.getTime() - right.sessionDate.getTime() ||
+        left.uploadedAt.getTime() - right.uploadedAt.getTime() ||
+        left.id.localeCompare(right.id),
+    );
+  const shotRowsById = new Map<string, ImportedPracticeShotRow>();
+
+  for (const session of contributingSessions) {
+    for (const shot of session.shotRows) {
+      if (!shotRowsById.has(shot.id)) {
+        shotRowsById.set(shot.id, shot);
+      }
+    }
+  }
+
+  const shotRows = [...shotRowsById.values()].sort(
+    (left, right) =>
+      left.shotAt.getTime() - right.shotAt.getTime() ||
+      (left.shotNumber ?? Number.MAX_SAFE_INTEGER) -
+        (right.shotNumber ?? Number.MAX_SAFE_INTEGER) ||
+      left.id.localeCompare(right.id),
+  );
+  const cleanShotRows = shotRows.filter(isCleanImportedPracticeShotRow);
+  const sourceSessionIds = contributingSessions.map((session) => session.id);
+  const anchorSession = contributingSessions[0] ?? representative;
+
+  return {
+    sourceSessionIds,
+    sessions: contributingSessions,
+    summary: {
+      id: anchorSession.id,
+      sourceType: anchorSession.sourceType,
+      sessionType: anchorSession.sessionType,
+      playContext: anchorSession.playContext,
+      sessionDate: anchorSession.sessionDate,
+      uploadedAt: contributingSessions.at(-1)?.uploadedAt ?? representative.uploadedAt,
+      shotCount: cleanShotRows.length,
+      rawShotCount: shotRows.length,
+      excludedShotCount: shotRows.length - cleanShotRows.length,
+      clubTypes: uniqueClubs(cleanShotRows.map((row) => row.clubType)),
+      clubSummaries: summarizeImportedPracticeShotRows(cleanShotRows),
+      shotRows,
+    } satisfies ImportedPracticeSessionSummary,
+  };
+}
+
+function isCompatiblePracticeEvidenceSession(
+  plan: SavedPracticePlan,
+  session: ImportedPracticeSessionSummary,
+) {
+  const planStart = Date.parse(plan.startedAt ?? plan.plannedAt);
+  const sessionTime = session.sessionDate.getTime();
+
+  if (
+    !Number.isFinite(planStart) ||
+    !Number.isFinite(sessionTime) ||
+    londonDateKey(session.sessionDate) !== londonDateKey(new Date(planStart))
+  ) {
+    return false;
+  }
+
+  return launchMonitorSourceScore(session.sourceType) > 0;
+}
+
+function londonDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: PRACTICE_EVIDENCE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+
+  return `${values.get("year")}-${values.get("month")}-${values.get("day")}`;
 }
 
 export function canImportedSessionReviewPracticePlan(
@@ -3667,7 +4120,8 @@ function hasPartialPracticeEvidence(
   );
   const hasFocusClubShots = [...focusClubs].some((club) => (importedClubCounts.get(club) ?? 0) > 0);
   const samePracticeWindow =
-    Math.abs(session.sessionDate.getTime() - Date.parse(plan.plannedAt)) <= 7 * 24 * 60 * 60 * 1000;
+    Math.abs(session.sessionDate.getTime() - practicePlanEvidenceTime(plan)) <=
+    7 * 24 * 60 * 60 * 1000;
 
   return samePracticeWindow && (hasFocusClubShots || hasPlannedClubShots);
 }
@@ -3675,7 +4129,12 @@ function hasPartialPracticeEvidence(
 function launchMonitorSourceScore(sourceType: string) {
   const source = sourceType.toLowerCase();
 
-  if (source.includes("rapsodo") || source.includes("trackman") || source.includes("flightscope")) {
+  if (
+    source.includes("rapsodo") ||
+    source.includes("square") ||
+    source.includes("trackman") ||
+    source.includes("flightscope")
+  ) {
     return 10;
   }
 
@@ -3722,7 +4181,7 @@ function buildPracticeResultFromImport(
     actualBalls: session.shotCount,
     actualMinutes: plan.estimatedTimeMinutes,
     sourceSessionId: session.id,
-    notes: "Completed automatically from the uploaded launch-monitor session.",
+    notes: "Completed automatically from all eligible launch-monitor shots on the practice day.",
     blockResults: plan.blocks.map((blockItem) => {
       const decision = decisions.get(blockItem.id);
       const actualBalls = decision?.actualBalls ?? 0;
@@ -3794,6 +4253,15 @@ function dbBlockToView(
         typeof blockRow.scoringRulesJson.unit === "string"
           ? blockRow.scoringRulesJson.unit
           : undefined,
+      evidenceMode:
+        blockRow.scoringRulesJson.evidenceMode === "manual" ||
+        blockRow.scoringRulesJson.evidenceMode === "launch_monitor"
+          ? blockRow.scoringRulesJson.evidenceMode
+          : inferPracticeBlockEvidenceMode(
+              blockRow.blockType,
+              blockRow.drill,
+              String(blockRow.scoringRulesJson.metric ?? "completion"),
+            ),
     },
   };
 }
@@ -3843,6 +4311,7 @@ function transientSavedPlanForMatch(plan: PracticePlan): SavedPracticePlan {
     timeMinutes: plan.estimatedTimeMinutes,
     focusClubs: plan.focusClubs,
     plannedAt,
+    startedAt: null,
     completedAt: null,
     score: null,
     matchConfidence: null,
@@ -3883,26 +4352,41 @@ function parsePlanGeneration(value: unknown): PracticePlanGeneration {
   };
 }
 
-function parsePracticeComparison(value: unknown): PracticeComparison | null {
+export function parsePracticeComparison(value: unknown): PracticeComparison | null {
   if (!isRecord(value) || !Array.isArray(value.decisions)) {
     return null;
   }
 
   const scoringMode = value.scoringMode === "ordered" ? "ordered" : "aggregate";
-  const importedSession = isRecord(value.importedSession)
-    ? {
-        shotCount: asNumber(value.importedSession.shotCount) ?? 0,
-        sessionType:
-          typeof value.importedSession.sessionType === "string"
-            ? value.importedSession.sessionType
-            : "range",
-        dateLabel:
-          typeof value.importedSession.dateLabel === "string"
-            ? value.importedSession.dateLabel
-            : "Imported session",
-        clubTypes: parseStringArray(value.importedSession.clubTypes),
-      }
-    : null;
+  const importedSession = (() => {
+    if (!isRecord(value.importedSession)) {
+      return null;
+    }
+
+    const sourceSessionIds = parseStringArray(value.importedSession.sourceSessionIds);
+    const sessionCount = asNumber(value.importedSession.sessionCount);
+    const rawShotCount = asNumber(value.importedSession.rawShotCount);
+    const excludedShotCount = asNumber(value.importedSession.excludedShotCount);
+
+    return {
+      shotCount: asNumber(value.importedSession.shotCount) ?? 0,
+      sessionType:
+        typeof value.importedSession.sessionType === "string"
+          ? value.importedSession.sessionType
+          : "range",
+      dateLabel:
+        typeof value.importedSession.dateLabel === "string"
+          ? value.importedSession.dateLabel
+          : "Imported session",
+      clubTypes: parseStringArray(value.importedSession.clubTypes),
+      ...(sourceSessionIds.length > 0 ? { sourceSessionIds } : {}),
+      ...(sessionCount !== null ? { sessionCount: Math.max(1, Math.trunc(sessionCount)) } : {}),
+      ...(rawShotCount !== null ? { rawShotCount: Math.max(0, Math.trunc(rawShotCount)) } : {}),
+      ...(excludedShotCount !== null
+        ? { excludedShotCount: Math.max(0, Math.trunc(excludedShotCount)) }
+        : {}),
+    };
+  })();
   const planVsActual = isRecord(value.planVsActual)
     ? {
         plannedBalls: asNumber(value.planVsActual.plannedBalls),
