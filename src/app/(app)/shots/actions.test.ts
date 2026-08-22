@@ -71,5 +71,10 @@ describe("reversible shot review actions", () => {
     expect(source).toContain(
       "await refreshPracticeEvidenceForReviewedSessions(userId, reviewed.sessionIds)",
     );
+    expect(source).toContain('reportServerFailure("shot_review_practice_refresh_failed"');
+    expect(source).toContain("} catch (error) {");
+    expect(source.indexOf("refreshPracticeEvidenceForReviewedSessions")).toBeLessThan(
+      source.indexOf("revalidateShotDerivedRoutes(reviewed.sessionIds)"),
+    );
   });
 });

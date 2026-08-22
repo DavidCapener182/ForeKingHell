@@ -29,6 +29,7 @@ import {
   type PracticePriority,
   type ProgressSummary,
 } from "@/lib/progress-summary";
+import { practiceBlockUsesLaunchMonitorEvidence } from "@/lib/practice-planner-view";
 import { getSpeedCoachCardData } from "@/lib/speed-training-data";
 import { getTodayPracticeData, type ClubDayComparison } from "@/lib/today-session-data";
 import { getTrainingOverTimeData } from "@/lib/training/trainingData";
@@ -216,6 +217,7 @@ export type PracticeBlock = {
     target: number;
     maxBigMisses?: number;
     unit?: string;
+    evidenceMode?: "launch_monitor" | "manual";
   };
 };
 
@@ -1185,7 +1187,21 @@ function evaluateAggregatePracticeBlocks(
 }
 
 function isLaunchMonitorScoredBlock(blockItem: PracticeBlock) {
-  return !blockItem.drill.toLowerCase().includes("no-ball");
+  return practiceBlockUsesLaunchMonitorEvidence(blockItem);
+}
+
+function inferPracticeBlockEvidenceMode(
+  type: PracticeBlockType | string,
+  drill: string,
+  metric: string,
+): "launch_monitor" | "manual" {
+  return type === "speed" ||
+    metric === "rpe" ||
+    metric === "speed" ||
+    metric === "speed_warmup" ||
+    /(?:no[- ]ball|overspeed)/i.test(drill)
+    ? "manual"
+    : "launch_monitor";
 }
 
 function evaluatePracticeBlockFromShots(
@@ -1847,10 +1863,60 @@ export async function completeMatchingPracticePlanFromImport(
   };
 }
 
+export async function completeAssociatedPracticePlanFromDuplicateImport(
+  userId: string,
+  sourceSessionId: string,
+): Promise<PracticePlanImportMatch | null> {
+  const [associated] = await getDb()
+    .select({ planId: practicePlans.id })
+    .from(practicePlans)
+    .leftJoin(
+      practiceResults,
+      and(eq(practiceResults.practicePlanId, practicePlans.id), eq(practiceResults.userId, userId)),
+    )
+    .leftJoin(
+      practicePlanMatches,
+      and(
+        eq(practicePlanMatches.practicePlanId, practicePlans.id),
+        eq(practicePlanMatches.userId, userId),
+        eq(practicePlanMatches.accepted, true),
+      ),
+    )
+    .where(
+      and(
+        eq(practicePlans.userId, userId),
+        or(
+          eq(practicePlans.sourceSessionId, sourceSessionId),
+          eq(practiceResults.sourceSessionId, sourceSessionId),
+          eq(practicePlanMatches.sessionId, sourceSessionId),
+          practiceResultComparisonIncludesSourceSession(sourceSessionId),
+        ),
+      ),
+    )
+    .orderBy(
+      sql`${practicePlanMatches.accepted} desc nulls last`,
+      desc(practicePlans.completedAt),
+      desc(practicePlans.updatedAt),
+    )
+    .limit(1);
+
+  if (!associated) {
+    return null;
+  }
+
+  return completeOwnedPracticePlanFromImport(userId, associated.planId, sourceSessionId, {
+    matchReasonPrefix: "Existing duplicate import association",
+  });
+}
+
 export async function completeOwnedPracticePlanFromImport(
   userId: string,
   planId: string,
   sourceSessionId: string,
+  options: {
+    minimumMatchScore?: number;
+    matchReasonPrefix?: string;
+  } = {},
 ): Promise<PracticePlanImportMatch | null> {
   const [saved, sessionSummary] = await Promise.all([
     getSavedPracticePlan(userId, planId),
@@ -1868,8 +1934,8 @@ export async function completeOwnedPracticePlanFromImport(
   }
 
   const completed = await evaluateAndPersistPracticeEvidenceRollup(userId, saved, sessionSummary, {
-    minimumMatchScore: 90,
-    matchReasonPrefix: "Owned plan selected at import",
+    minimumMatchScore: options.minimumMatchScore ?? 90,
+    matchReasonPrefix: options.matchReasonPrefix ?? "Owned plan selected at import",
   });
 
   if (!completed) {
@@ -3301,6 +3367,7 @@ function block(
     metric: string;
     target: number;
     maxBigMisses?: number;
+    evidenceMode?: "launch_monitor" | "manual";
   },
 ): PracticeBlock {
   return {
@@ -3319,6 +3386,8 @@ function block(
       metric: detail.metric,
       target: detail.target,
       maxBigMisses: detail.maxBigMisses,
+      evidenceMode:
+        detail.evidenceMode ?? inferPracticeBlockEvidenceMode(type, detail.drill, detail.metric),
     },
   };
 }
@@ -4184,6 +4253,15 @@ function dbBlockToView(
         typeof blockRow.scoringRulesJson.unit === "string"
           ? blockRow.scoringRulesJson.unit
           : undefined,
+      evidenceMode:
+        blockRow.scoringRulesJson.evidenceMode === "manual" ||
+        blockRow.scoringRulesJson.evidenceMode === "launch_monitor"
+          ? blockRow.scoringRulesJson.evidenceMode
+          : inferPracticeBlockEvidenceMode(
+              blockRow.blockType,
+              blockRow.drill,
+              String(blockRow.scoringRulesJson.metric ?? "completion"),
+            ),
     },
   };
 }

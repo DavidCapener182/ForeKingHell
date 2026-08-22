@@ -261,6 +261,10 @@ describe("practice planner", () => {
     expect(
       plan.blocks.find((block) => block.title === "R-Speed ceiling block")?.ballCount,
     ).toBeNull();
+    expect(
+      plan.blocks.find((block) => block.title === "R-Speed ceiling block")?.scoringRules
+        .evidenceMode,
+    ).toBe("manual");
     expect(plan.blocks.some((block) => block.title === "Driver transfer")).toBe(true);
     expect(plan.blocks.at(-1)?.title).toBe("Random course finish");
   });
@@ -280,6 +284,9 @@ describe("practice planner", () => {
 
     expect(totalBalls(plan)).toBe(80);
     expect(plan.blocks.some((block) => block.title === "Speed work removed")).toBe(true);
+    expect(
+      plan.blocks.find((block) => block.title === "Speed work removed")?.scoringRules.evidenceMode,
+    ).toBe("manual");
     expect(plan.blocks.some((block) => block.title === "R-Speed ceiling block")).toBe(false);
     expect(plan.blocks.some((block) => block.title === "Technical Driver")).toBe(true);
   });
@@ -299,7 +306,10 @@ describe("practice planner", () => {
     });
 
     expect(plan.title).toBe("Speed transfer baseline");
-    expect(plan.blocks.some((block) => block.title === "Controlled speed baseline")).toBe(true);
+    expect(
+      plan.blocks.find((block) => block.title === "Controlled speed baseline")?.scoringRules
+        .evidenceMode,
+    ).toBe("manual");
     expect(plan.blocks.map((block) => `${block.title} ${block.drill}`).join(" ")).not.toContain(
       "maximum",
     );
@@ -316,6 +326,9 @@ describe("practice planner", () => {
 
     expect(plan.title).toContain("Speed-Safe");
     expect(plan.blocks.map((block) => block.title).join(" ")).not.toContain("Overspeed");
+    expect(
+      plan.blocks.find((block) => block.title === "Mobility and rhythm")?.scoringRules.evidenceMode,
+    ).toBe("manual");
   });
 
   it("does not over-prioritise low-confidence clubs unless they are roadmap items", () => {
@@ -1260,6 +1273,7 @@ describe("practice planner", () => {
           ballCount: null,
           timeMinutes: 10,
           drill: "Complete five no-ball speed swings.",
+          scoringRules: { ...template.scoringRules, evidenceMode: "manual" },
         },
         {
           ...template,

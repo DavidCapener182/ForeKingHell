@@ -47,6 +47,19 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain("summarizePracticeOutcome");
     expect(companionSource).toContain("practiceDecisionResultLabel");
     expect(companionSource).toContain("practiceDecisionResultTone");
+    expect(companionSource).toContain(
+      "<MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />",
+    );
+    expect(companionSource).toContain("practiceScoredBlockIds(blocks)");
+    expect(companionSource).toContain(
+      "summarizePracticeOutcome(comparison, result.practiceScore, scoredBlockIds)",
+    );
+    expect(companionSource).toContain("scoredBlockIds.has(decision.blockId)");
+    expect(companionSource).toContain(
+      ".filter((decision) => scoredBlockIds.has(decision.blockId))",
+    );
+    expect(companionSource).toContain("value={`${decision.actualBalls}");
+    expect(companionSource).toContain("detail={decision.actual}");
     expect(companionSource).toContain("<IOSInlineStatus");
     expect(companionSource).toContain("Every eligible launch-monitor shot from the practice day");
     expect(companionSource).toContain("Today's uploads");

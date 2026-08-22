@@ -109,6 +109,7 @@ import {
   compactPracticeBlockRow,
   defaultSelectedPracticeBlockId,
   practiceDecisionResultLabel,
+  practiceScoredBlockIds,
   scoredFromLabel,
   summarizePracticeImportControl,
   summarizePracticeOutcome,
@@ -1009,9 +1010,7 @@ function PracticeBlockLedger({
 
     return { block, row, decision };
   });
-  const matchedRows = rows.filter((item) => item.decision && item.decision.actualBalls > 0).length;
-  const resultLabel =
-    matchedRows > 0 ? `${matchedRows}/${rows.length} blocks matched` : `${rows.length} blocks`;
+  const resultLabel = `${rows.length} blocks`;
 
   return (
     <Card
@@ -1102,7 +1101,9 @@ function PracticeBlockLedger({
                     {row.importedEvidence}
                   </TableCell>
                   <TableCell data-column="action" className="min-w-44 text-right">
-                    {practiceDecisionAction(decision)}
+                    {row.importStatus === "not_scored"
+                      ? "Complete manually"
+                      : practiceDecisionAction(decision)}
                   </TableCell>
                 </TableRow>
               ))
@@ -1737,20 +1738,22 @@ function SelectedBlockDetail({
             disabled={isPending}
           />
 
-          <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm leading-5 text-muted-foreground">
-            {decision ? (
-              <>
-                <p className="font-semibold text-foreground">
-                  Uploaded result: {decision.result.replace("_", " ")}
-                </p>
-                <p className="mt-1 font-medium text-foreground">{row.resultNote}</p>
-                <p className="mt-1">Actual: {decision.actual}</p>
-                <p>{decision.summary}</p>
-              </>
-            ) : (
-              "Upload the matching Rapsodo session and LM World Tour will score this block from the shot data."
-            )}
-          </div>
+          {row.importStatus !== "not_scored" ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm leading-5 text-muted-foreground">
+              {decision ? (
+                <>
+                  <p className="font-semibold text-foreground">
+                    Uploaded result: {decision.result.replace("_", " ")}
+                  </p>
+                  <p className="mt-1 font-medium text-foreground">{row.resultNote}</p>
+                  <p className="mt-1">Actual: {decision.actual}</p>
+                  <p>{decision.summary}</p>
+                </>
+              ) : (
+                "Upload the matching Rapsodo session and LM World Tour will score this block from the shot data."
+              )}
+            </div>
+          ) : null}
         </div>
       </ResponsiveDetailPanel>
     </div>
@@ -2012,12 +2015,16 @@ function PlanVsActual({
     );
   }
 
+  const scoredBlockIds = practiceScoredBlockIds(blocks);
+  const scoredDecisions = comparison.decisions.filter((decision) =>
+    scoredBlockIds.has(decision.blockId),
+  );
   const mostImportant =
-    comparison.decisions.find((decision) => decision.decision === "keep_priority") ??
-    comparison.decisions.find((decision) => decision.result === "failed") ??
-    comparison.decisions.find((decision) => decision.result === "mixed") ??
-    comparison.decisions[0];
-  const outcome = summarizePracticeOutcome(comparison, score?.score ?? null);
+    scoredDecisions.find((decision) => decision.decision === "keep_priority") ??
+    scoredDecisions.find((decision) => decision.result === "failed") ??
+    scoredDecisions.find((decision) => decision.result === "mixed") ??
+    scoredDecisions[0];
+  const outcome = summarizePracticeOutcome(comparison, score?.score ?? null, scoredBlockIds);
   const OutcomeIcon = outcome.status === "passed" ? CheckCircle2 : AlertCircle;
 
   return (
@@ -2059,7 +2066,7 @@ function PlanVsActual({
         </div>
       </div>
 
-      {comparison.decisions.map((decision, index) => {
+      {scoredDecisions.map((decision, index) => {
         const block = blocks.find((item) => item.id === decision.blockId) ?? null;
         const mattersMost = decision.blockId === mostImportant?.blockId;
         const ResultIcon =
@@ -2083,7 +2090,7 @@ function PlanVsActual({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="grid size-8 place-items-center rounded-full bg-muted font-heading text-sm font-semibold">
-                    {String(index + 1).padStart(2, "0")}
+                    {String(block?.order ?? index + 1).padStart(2, "0")}
                   </span>
                   <Badge
                     variant="outline"
@@ -2329,6 +2336,7 @@ function importStatusTone(status: PracticeBlockImportStatus) {
       "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
     status === "no_matching_shots" && "border-border bg-muted text-foreground",
     status === "waiting_for_upload" && "border-border bg-muted text-foreground",
+    status === "not_scored" && "border-border bg-muted text-foreground",
   );
 }
 
@@ -2839,7 +2847,12 @@ function applyPracticeDrillSuggestion(
     drill: suggestion.drill,
     successTarget: suggestion.successTarget,
     recordPrompt: suggestion.recordPrompt,
-    scoringRules: suggestion.scoringRules,
+    scoringRules: {
+      ...suggestion.scoringRules,
+      evidenceMode:
+        suggestion.scoringRules.evidenceMode ??
+        (suggestion.type === "speed" ? "manual" : "launch_monitor"),
+    },
   };
 
   return retargetPracticeBlock(nextBlock, ballCount);

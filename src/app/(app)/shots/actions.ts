@@ -8,6 +8,7 @@ import { shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
 import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
+import { reportServerFailure } from "@/lib/server-observability";
 import {
   buildShotReviewMutation,
   effectiveShotReviewStatus,
@@ -127,7 +128,14 @@ async function applyOwnedShotReview(input: unknown) {
     };
   });
 
-  await refreshPracticeEvidenceForReviewedSessions(userId, reviewed.sessionIds);
+  try {
+    await refreshPracticeEvidenceForReviewedSessions(userId, reviewed.sessionIds);
+  } catch (error) {
+    reportServerFailure("shot_review_practice_refresh_failed", error, {
+      "app.session_count": reviewed.sessionIds.length,
+      "app.shot_count": reviewed.shotIds.length,
+    });
+  }
   revalidateShotDerivedRoutes(reviewed.sessionIds);
   recordProductWorkflowEvent("shot_review_completed", {
     action: reviewed.status,

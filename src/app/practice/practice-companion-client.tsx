@@ -86,6 +86,7 @@ import { formatClubType } from "@/lib/club-format";
 import {
   practiceDecisionResultLabel,
   practiceDecisionResultTone,
+  practiceScoredBlockIds,
   summarizePracticeOutcome,
 } from "@/lib/practice-planner-view";
 import { cn } from "@/lib/utils";
@@ -361,7 +362,9 @@ export function PracticeCompanionClient({
           hasEvidence: Boolean(activeMeasuredResult),
         })}
       />
-      {activeMeasuredResult ? <MeasuredPracticeResultCard result={activeMeasuredResult} /> : null}
+      {activeMeasuredResult ? (
+        <MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />
+      ) : null}
       {options.intent === "speed" || options.sessionType === "speed" ? (
         <SpeedDevelopmentCompanionReadout context={context} />
       ) : null}
@@ -550,7 +553,13 @@ export function PracticeCompanionClient({
   );
 }
 
-function MeasuredPracticeResultCard({ result }: { result: NonNullable<MeasuredResult> }) {
+function MeasuredPracticeResultCard({
+  result,
+  blocks,
+}: {
+  result: NonNullable<MeasuredResult>;
+  blocks: PracticePlan["blocks"];
+}) {
   const comparison = result.comparison;
   const importedSession = comparison?.importedSession;
   const actualShots = comparison?.planVsActual.actualShots ?? 0;
@@ -558,7 +567,8 @@ function MeasuredPracticeResultCard({ result }: { result: NonNullable<MeasuredRe
   const sessionCount = importedSession?.sessionCount ?? (actualShots > 0 ? 1 : 0);
   const rawShotCount = importedSession?.rawShotCount ?? actualShots;
   const excludedShotCount = importedSession?.excludedShotCount ?? 0;
-  const outcome = summarizePracticeOutcome(comparison, result.practiceScore);
+  const scoredBlockIds = practiceScoredBlockIds(blocks);
+  const outcome = summarizePracticeOutcome(comparison, result.practiceScore, scoredBlockIds);
   const OutcomeIcon = outcome.status === "passed" ? CheckCircle2 : AlertCircle;
 
   return (
@@ -609,20 +619,22 @@ function MeasuredPracticeResultCard({ result }: { result: NonNullable<MeasuredRe
               }`}
             />
           ) : null}
-          {comparison?.decisions.map((decision) => (
-            <IOSListRow
-              key={decision.blockId}
-              label={decision.title}
-              value={`${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`}
-              detail={decision.actual}
-              status={
-                <IOSInlineStatus
-                  label={practiceDecisionResultLabel(decision)}
-                  tone={practiceDecisionResultTone(decision)}
-                />
-              }
-            />
-          ))}
+          {comparison?.decisions
+            .filter((decision) => scoredBlockIds.has(decision.blockId))
+            .map((decision) => (
+              <IOSListRow
+                key={decision.blockId}
+                label={decision.title}
+                value={`${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`}
+                detail={decision.actual}
+                status={
+                  <IOSInlineStatus
+                    label={practiceDecisionResultLabel(decision)}
+                    tone={practiceDecisionResultTone(decision)}
+                  />
+                }
+              />
+            ))}
           <IOSListRow label="Next action" detail={result.nextAction} />
         </IOSGroupedList>
       </CardContent>

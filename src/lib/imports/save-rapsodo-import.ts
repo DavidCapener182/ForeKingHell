@@ -30,6 +30,7 @@ import {
 import { requireCurrentUserId } from "@/lib/current-user";
 import { inferPlayContext } from "@/lib/play-context";
 import {
+  completeAssociatedPracticePlanFromDuplicateImport,
   completeOwnedPracticePlanFromImport,
   completeMatchingPracticePlanFromImport,
   type PracticePlanImportMatch,
@@ -256,7 +257,9 @@ export async function saveLaunchMonitorImport(
           validatedInput.practicePlanId,
           result.sessionId,
         )
-      : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
+      : result.skipped
+        ? await completeAssociatedPracticePlanFromDuplicateImport(userId, result.sessionId)
+        : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
 
     if (!result.skipped) {
       after(async () => {

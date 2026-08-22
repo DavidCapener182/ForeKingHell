@@ -122,6 +122,7 @@ describe("practice planner desktop ledger", () => {
     expect(source).toContain("setComparison(null)");
     expect(source).toContain("setPracticeScore(null)");
     expect(source).toContain("Practice drill swapped. Save the edited plan before upload.");
+    expect(source).toContain('suggestion.type === "speed" ? "manual" : "launch_monitor"');
     expect(source).toContain("<ResponsiveDetailPanel");
     expect(source).toContain("blockSheetOpen");
     expect(source).toContain("Edit block");
@@ -188,6 +189,12 @@ describe("practice planner desktop ledger", () => {
     expect(result).toContain("data-plan-vs-actual");
     expect(result).toContain("decision.target");
     expect(result).toContain("decision.actual");
+    expect(result).toContain("practiceScoredBlockIds(blocks)");
+    expect(result).toContain(
+      "summarizePracticeOutcome(comparison, score?.score ?? null, scoredBlockIds)",
+    );
+    expect(result).toContain("scoredDecisions.map");
+    expect(result).toContain("block?.order ?? index + 1");
     expect(result).toContain("practiceDecisionResultLabel(decision)");
     expect(result).toContain("practiceComparisonCardTone(decision.result)");
     expect(result).toContain('decision.result === "failed"');
