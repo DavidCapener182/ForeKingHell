@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 
@@ -34,12 +34,27 @@ export function PlaySelectionControls({
   const [isPending, startTransition] = useTransition();
   const [optimisticCourseId, setOptimisticCourseId] = useState(selectedCourseId);
   const [optimisticTeeId, setOptimisticTeeId] = useState(selectedTeeId);
-  const [error, setError] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<{
+    field: "course" | "tee";
+    message: string;
+    attempt: number;
+  } | null>(null);
+  const courseTriggerRef = useRef<HTMLButtonElement>(null);
+  const teeTriggerRef = useRef<HTMLButtonElement>(null);
+  const failedAttemptRef = useRef(0);
+
+  useEffect(() => {
+    if (!selectionError) return;
+    return replayErrorShake(
+      selectionError.field === "course" ? courseTriggerRef.current : teeTriggerRef.current,
+    );
+  }, [selectionError]);
 
   const select = (courseId: string, teeSetId?: string | null) => {
     const previousCourseId = optimisticCourseId;
     const previousTeeId = optimisticTeeId;
-    setError(null);
+    const field = teeSetId ? "tee" : "course";
+    setSelectionError(null);
     setOptimisticCourseId(courseId);
     setOptimisticTeeId(teeSetId ?? null);
     startTransition(async () => {
@@ -51,7 +66,12 @@ export function PlaySelectionControls({
       } catch {
         setOptimisticCourseId(previousCourseId);
         setOptimisticTeeId(previousTeeId);
-        setError("That course setup could not be saved. Try again.");
+        failedAttemptRef.current += 1;
+        setSelectionError({
+          field,
+          message: "That course setup could not be saved. Try again.",
+          attempt: failedAttemptRef.current,
+        });
       }
     });
   };
@@ -64,7 +84,11 @@ export function PlaySelectionControls({
           disabled={isPending}
           onValueChange={(value) => select(value)}
         >
-          <SelectTrigger className="min-h-12 w-full text-[15px] font-semibold">
+          <SelectTrigger
+            ref={courseTriggerRef}
+            aria-invalid={selectionError?.field === "course"}
+            className={`t-input min-h-12 w-full text-[15px] font-semibold ${selectionError?.field === "course" ? "is-error is-shaking" : ""}`}
+          >
             <SelectValue placeholder="Choose a course" />
           </SelectTrigger>
           <SelectContent>
@@ -84,7 +108,11 @@ export function PlaySelectionControls({
             disabled={isPending}
             onValueChange={(value) => select(selectedCourseId!, value)}
           >
-            <SelectTrigger className="min-h-12 w-full text-[15px] font-semibold">
+            <SelectTrigger
+              ref={teeTriggerRef}
+              aria-invalid={selectionError?.field === "tee"}
+              className={`t-input min-h-12 w-full text-[15px] font-semibold ${selectionError?.field === "tee" ? "is-error is-shaking" : ""}`}
+            >
               <SelectValue placeholder="Choose a tee" />
             </SelectTrigger>
             <SelectContent>
@@ -107,13 +135,25 @@ export function PlaySelectionControls({
           Updating course setup…
         </p>
       ) : null}
-      {error ? (
+      {selectionError ? (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{selectionError.message}</AlertDescription>
         </Alert>
       ) : null}
     </div>
   );
+}
+
+function replayErrorShake(element: HTMLElement | null) {
+  if (!element) return;
+  element.classList.remove("is-shaking");
+  void element.offsetWidth;
+  element.classList.add("is-shaking");
+  const timer = window.setTimeout(() => element.classList.remove("is-shaking"), 300);
+  return () => {
+    window.clearTimeout(timer);
+    element.classList.remove("is-shaking");
+  };
 }
 
 function SelectionField({

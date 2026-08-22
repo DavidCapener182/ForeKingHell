@@ -30,6 +30,7 @@ const notificationReadStorageKey = "fkh:desktop-notification-read-ids";
 export function NotificationCentre({ embedded = false }: { embedded?: boolean }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [badgeCount, setBadgeCount] = useState(0);
   const readNotificationIdsRef = useRef<Set<string>>(new Set());
   const unreadCount = notifications.filter((notification) => notification.unread).length;
 
@@ -55,9 +56,15 @@ export function NotificationCentre({ embedded = false }: { embedded?: boolean })
 
         const payload: unknown = await response.json();
         if (!controller.signal.aborted) {
-          setNotifications(
-            applyNotificationReadIds(normalizeNotificationItems(payload), storedReadIds),
+          const nextNotifications = applyNotificationReadIds(
+            normalizeNotificationItems(payload),
+            storedReadIds,
           );
+          setNotifications(nextNotifications);
+          const nextUnreadCount = nextNotifications.filter(
+            (notification) => notification.unread,
+          ).length;
+          if (nextUnreadCount > 0) setBadgeCount(nextUnreadCount);
           setLoaded(true);
         }
       } catch {
@@ -74,11 +81,12 @@ export function NotificationCentre({ embedded = false }: { embedded?: boolean })
   }, []);
 
   function markNotificationRead(id: string) {
-    setNotifications((items) =>
-      items.map((notification) =>
-        notification.id === id ? { ...notification, unread: false } : notification,
-      ),
+    const nextNotifications = notifications.map((notification) =>
+      notification.id === id ? { ...notification, unread: false } : notification,
     );
+    setNotifications(nextNotifications);
+    const nextUnreadCount = nextNotifications.filter((notification) => notification.unread).length;
+    if (nextUnreadCount > 0) setBadgeCount(nextUnreadCount);
     const next = new Set(readNotificationIdsRef.current);
     next.add(id);
     readNotificationIdsRef.current = next;
@@ -111,11 +119,15 @@ export function NotificationCentre({ embedded = false }: { embedded?: boolean })
         >
           <Bell className="size-4" />
           {embedded ? <span>Notifications</span> : null}
-          {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
-              {unreadCount > 9 ? "9+" : unreadCount}
+          <span
+            className="t-badge absolute -right-1 -top-1"
+            data-open={unreadCount > 0 ? "true" : "false"}
+            aria-hidden="true"
+          >
+            <span className="t-badge-dot !grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
+              {badgeCount > 9 ? "9+" : badgeCount}
             </span>
-          ) : null}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-2">

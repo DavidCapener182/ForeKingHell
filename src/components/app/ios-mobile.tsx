@@ -242,7 +242,7 @@ export function IOSDisclosureGroup({
       defaultValue={resolvedDefault}
       aria-label={label}
       data-ios-disclosure-group
-      className={cn("ios-grouped-list min-w-0 overflow-hidden", className)}
+      className={cn("t-ios-disclosure ios-grouped-list min-w-0 overflow-hidden", className)}
     >
       {items.map((item) => (
         <AccordionItem

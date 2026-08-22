@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { AnimatedSection } from "@/components/marketing/animated-section";
 import { BetaAccessSection } from "@/components/marketing/beta-access-section";
 import { FeatureShowcase } from "@/components/marketing/feature-showcase";
 import { HeroProductStage } from "@/components/marketing/hero-product-stage";
@@ -69,40 +68,18 @@ export default function HomePage() {
   return (
     <main className={styles.page} id="product">
       <MarketingHeader />
-      <AnimatedSection type="zoom-in">
-        <HeroProductStage />
-      </AnimatedSection>
-      <AnimatedSection type="fade-up" delay={0.04}>
-        <TrustStrip />
-      </AnimatedSection>
-      <AnimatedSection type="zoom-out">
-        <LazyScrollProductStory />
-        <MarketingStoryNoScript />
-      </AnimatedSection>
-      <AnimatedSection type="zoom-in">
-        <FeatureShowcase />
-      </AnimatedSection>
-      <AnimatedSection type="fade-up">
-        <ImportPracticeGuide />
-      </AnimatedSection>
-      <AnimatedSection type="scale-focus">
-        <LazySampleProductTour />
-      </AnimatedSection>
-      <AnimatedSection type="zoom-out">
-        <LazyCourseTwinShowcase />
-      </AnimatedSection>
-      <AnimatedSection type="fade-up">
-        <MobileProductShowcase />
-      </AnimatedSection>
-      <AnimatedSection type="zoom-in">
-        <PrivacyTrustSection />
-      </AnimatedSection>
-      <AnimatedSection type="scale-focus">
-        <BetaAccessSection />
-      </AnimatedSection>
-      <AnimatedSection type="fade-up">
-        <LazyMarketingFaq />
-      </AnimatedSection>
+      <HeroProductStage />
+      <TrustStrip />
+      <LazyScrollProductStory />
+      <MarketingStoryNoScript />
+      <FeatureShowcase />
+      <ImportPracticeGuide />
+      <LazySampleProductTour />
+      <LazyCourseTwinShowcase />
+      <MobileProductShowcase />
+      <PrivacyTrustSection />
+      <BetaAccessSection />
+      <LazyMarketingFaq />
       <MarketingFooter />
       <script
         type="application/ld+json"

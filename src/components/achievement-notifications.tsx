@@ -92,18 +92,6 @@ export function AchievementNotificationProvider({ children, initialNotifications
     return () => window.removeEventListener(ACHIEVEMENT_UNLOCK_EVENT, handleAchievementUnlock);
   }, [pushNotifications]);
 
-  useEffect(() => {
-    if (toasts.length === 0) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      setToasts((current) => current.slice(0, -1));
-    }, AUTO_DISMISS_MS);
-
-    return () => window.clearTimeout(timeout);
-  }, [toasts]);
-
   return (
     <>
       {children}
@@ -135,11 +123,52 @@ function AchievementToastCard({
   onDismiss: () => void;
 }) {
   const hiddenCount = toast.totalCount - toast.notifications.length;
+  const [open, setOpen] = useState(true);
+  const onDismissRef = useRef(onDismiss);
+  const dismissTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    onDismissRef.current = onDismiss;
+  }, [onDismiss]);
+
+  const beginDismiss = useCallback(() => {
+    setOpen(false);
+
+    if (dismissTimerRef.current !== null) {
+      return;
+    }
+
+    dismissTimerRef.current = window.setTimeout(
+      () => {
+        onDismissRef.current();
+      },
+      readMotionDuration("--toast-close", 180),
+    );
+  }, []);
+
+  useEffect(() => {
+    const autoDismissTimer = window.setTimeout(beginDismiss, AUTO_DISMISS_MS);
+
+    return () => window.clearTimeout(autoDismissTimer);
+  }, [beginDismiss]);
+
+  useEffect(
+    () => () => {
+      if (dismissTimerRef.current !== null) {
+        window.clearTimeout(dismissTimerRef.current);
+      }
+    },
+    [],
+  );
 
   return (
     <div
       data-mobile-preserve-dark
-      className="pointer-events-auto overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl"
+      data-open={open ? "true" : "false"}
+      className={cn(
+        "t-toast pointer-events-auto overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl",
+        open && "is-open",
+      )}
     >
       <div className="flex items-start gap-3 border-b border-white/10 px-4 py-3">
         <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-emerald-400/15 text-emerald-300">
@@ -160,7 +189,7 @@ function AchievementToastCard({
           variant="ghost"
           size="icon-sm"
           className="shrink-0 text-slate-300 hover:bg-white/10 hover:text-white"
-          onClick={onDismiss}
+          onClick={beginDismiss}
           aria-label="Dismiss achievement notification"
         >
           <X className="size-4" />
@@ -230,4 +259,15 @@ function notificationSignature(notifications: AchievementUnlockNotification[]) {
 
 function clearFlashCookie() {
   document.cookie = `${ACHIEVEMENT_UNLOCK_FLASH_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`;
+}
+
+function readMotionDuration(property: string, fallbackMs: number) {
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(property).trim();
+  const parsed = Number.parseFloat(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallbackMs;
+  }
+
+  return value.endsWith("ms") ? parsed : value.endsWith("s") ? parsed * 1000 : fallbackMs;
 }

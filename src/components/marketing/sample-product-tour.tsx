@@ -29,6 +29,7 @@ export function SampleProductTour() {
   const [trusted, setTrusted] = useState(true);
   const [minutes, setMinutes] = useState(30);
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [started, setStarted] = useState(false);
   const mobileRailRef = useRef<HTMLDivElement>(null);
   const controlledMobileScrollTargetRef = useRef<number | null>(null);
@@ -76,6 +77,7 @@ export function SampleProductTour() {
   function selectStep(nextStep: number, scrollMobile = false) {
     const boundedStep = Math.max(0, Math.min(tourSteps.length - 1, nextStep));
     markStarted();
+    setDirection(boundedStep < step ? "back" : "forward");
 
     if (
       !scrollMobile ||
@@ -135,6 +137,7 @@ export function SampleProductTour() {
       return;
     }
     controlledMobileScrollTargetRef.current = null;
+    setDirection(nextStep < step ? "back" : "forward");
     setStep((currentStep) => (currentStep === nextStep ? currentStep : nextStep));
   }
 
@@ -245,11 +248,18 @@ export function SampleProductTour() {
         <div className={styles.tourStage}>
           <div className={styles.tourTopline}>
             <span>Demo data · no sign-in required</span>
-            <span role="status" aria-live="polite" data-tour-step-status>
+            <span
+              key={`tour-status-${step}`}
+              className="t-text-state"
+              data-motion-ready={step > 0 ? "true" : "false"}
+              role="status"
+              aria-live="polite"
+              data-tour-step-status
+            >
               {step + 1} / {tourSteps.length}
             </span>
           </div>
-          <div className={styles.tourDesktopExperience}>
+          <div className={styles.tourDesktopExperience} data-tour-direction={direction}>
             <Tabs
               value={tourSteps[step]}
               onValueChange={(value) => {
@@ -264,7 +274,12 @@ export function SampleProductTour() {
                 ))}
               </TabsList>
               {tourSteps.map((label) => (
-                <TabsContent key={label} value={label} className={styles.tourView}>
+                <TabsContent
+                  key={label}
+                  value={label}
+                  className={styles.tourView}
+                  data-direction={direction}
+                >
                   {view[label]}
                 </TabsContent>
               ))}
@@ -311,11 +326,21 @@ export function SampleProductTour() {
           <div className={styles.tourNext}>
             {completed ? (
               <div>
-                <CircleCheck className="size-5" aria-hidden />{" "}
-                <span>Ready to use your own data?</span>
+                <span className="t-success-check" data-state="in" data-draw="false">
+                  <CircleCheck className="size-5" aria-hidden />
+                </span>{" "}
+                <span className="t-text-state" data-motion-ready="true">
+                  Ready to use your own data?
+                </span>
               </div>
             ) : (
-              <span>Next: {tourSteps[step + 1]}</span>
+              <span
+                key={`tour-next-${step}`}
+                className="t-text-state"
+                data-motion-ready={step > 0 ? "true" : "false"}
+              >
+                Next: {tourSteps[step + 1]}
+              </span>
             )}
             {completed ? (
               <div className={styles.tourEndActions}>
@@ -334,8 +359,8 @@ export function SampleProductTour() {
                 </Button>
               </div>
             ) : (
-              <Button type="button" onClick={advance}>
-                Continue <ChevronRight className="size-4" />
+              <Button type="button" onClick={advance} className="t-learn">
+                Continue <ChevronRight className="t-learn-chevron size-4" />
               </Button>
             )}
           </div>

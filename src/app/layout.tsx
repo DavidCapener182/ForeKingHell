@@ -9,6 +9,7 @@ import { themeColourByMode } from "@/lib/theme";
 import { defaultThemePreference } from "@/lib/user-settings";
 import "./globals.css";
 import "./mobile-apple.css";
+import "./motion.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
 import { Progress } from "@/components/ui/progress";
@@ -31,7 +31,7 @@ export function WhatIfClient({
     );
     return Math.max(0, estimate - gain);
   }, [estimate, groups, values]);
-  const displayPredicted = useAnimatedNumber(predicted);
+  const displayPredicted = predicted;
   const shotsSaved =
     estimate === null || displayPredicted === null
       ? null
@@ -88,7 +88,7 @@ export function WhatIfClient({
           )}
         >
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Projected</p>
-          <p className="mt-1 text-2xl font-semibold text-[var(--status-success-foreground)] transition-colors duration-300 motion-reduce:transition-none">
+          <p className="mt-1 text-2xl font-semibold text-[var(--status-success-foreground)]">
             {displayPredicted === null ? "--" : displayPredicted.toFixed(1)}
           </p>
         </div>
@@ -108,42 +108,4 @@ export function WhatIfClient({
       </div>
     </div>
   );
-}
-
-function useAnimatedNumber(value: number | null) {
-  const [displayValue, setDisplayValue] = useState(value);
-  const displayRef = useRef(value);
-  const reducedMotion =
-    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  useEffect(() => {
-    displayRef.current = displayValue;
-  }, [displayValue]);
-
-  useEffect(() => {
-    if (value === null) {
-      return;
-    }
-
-    if (reducedMotion) {
-      return;
-    }
-
-    let frame = 0;
-    const start = displayRef.current ?? value;
-    const startedAt = performance.now();
-    const durationMs = 280;
-
-    const tick = (now: number) => {
-      const progress = Math.min(1, (now - startedAt) / durationMs);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(start + (value - start) * eased);
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [reducedMotion, value]);
-
-  return value === null ? null : reducedMotion ? value : displayValue;
 }

@@ -285,7 +285,7 @@ describe("bag desktop workbench source", () => {
     expect(source).toContain("<LazyBagSimulator");
     expect(source).not.toContain('from "@/app/bag/bag-simulator"');
     expect(lazyBagSimulatorSource).toContain('"use client"');
-    expect(lazyBagSimulatorSource).toContain("dynamic<{ clubs: BagSimulatorClub[] }>");
+    expect(lazyBagSimulatorSource).toContain("dynamic<DeferredBagSimulatorProps>");
     expect(lazyBagSimulatorSource).toContain('import("@/app/bag/bag-simulator")');
     expect(lazyBagSimulatorSource).toContain("<BagSimulatorSkeleton");
   });

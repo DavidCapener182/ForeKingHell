@@ -296,7 +296,11 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
               <CollapsibleTrigger className="w-full cursor-pointer text-left text-sm font-semibold">
                 Roast draft
               </CollapsibleTrigger>
-              <CollapsibleContent forceMount className="mt-3 data-[state=closed]:hidden">
+              <CollapsibleContent
+                forceMount
+                outerClassName="data-[state=closed]:hidden"
+                className="mt-3"
+              >
                 <SessionRoastPanel session={data.latestSession} facts={data.roastFacts} />
               </CollapsibleContent>
             </Collapsible>

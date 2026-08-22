@@ -101,7 +101,15 @@ export function SessionsCompanionHistory({
             Your golf history
           </h1>
           <Badge variant="outline">
-            {visible.length} of {sessions.length}
+            <span className="sr-only" aria-live="polite" aria-atomic="true">
+              {visible.length} of {sessions.length} sessions
+            </span>
+            <span aria-hidden="true">
+              <span key={visible.length} className="t-number-pop tabular-nums">
+                {visible.length}
+              </span>{" "}
+              of {sessions.length}
+            </span>
           </Badge>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">

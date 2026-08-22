@@ -1,27 +1,59 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useCallback, useEffect, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BagSimulatorClub } from "@/lib/bag-simulator";
+import { cn } from "@/lib/utils";
 
-const DeferredBagSimulator = dynamic<{ clubs: BagSimulatorClub[] }>(
-  () => import("@/app/bag/bag-simulator").then((module) => module.BagSimulator),
+type BagSimulatorProps = { clubs: BagSimulatorClub[] };
+type DeferredBagSimulatorProps = BagSimulatorProps & { onLoaded: () => void };
+
+const DeferredBagSimulator = dynamic<DeferredBagSimulatorProps>(
+  () =>
+    import("@/app/bag/bag-simulator").then((module) => {
+      const BagSimulator = module.BagSimulator;
+
+      return function LoadedBagSimulator({ onLoaded, ...props }: DeferredBagSimulatorProps) {
+        useEffect(() => {
+          onLoaded();
+        }, [onLoaded]);
+
+        return <BagSimulator {...props} />;
+      };
+    }),
   {
-    loading: () => <BagSimulatorSkeleton />,
+    loading: () => null,
   },
 );
 
 export function LazyBagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
-  return <DeferredBagSimulator clubs={clubs} />;
+  const [loaded, setLoaded] = useState(false);
+  const revealContent = useCallback(() => setLoaded(true), []);
+
+  return (
+    <div
+      className={cn("t-skel", loaded && "is-revealed")}
+      data-state={loaded ? "loaded" : "loading"}
+      aria-busy={!loaded}
+      data-lazy-bag-simulator-boundary
+    >
+      <BagSimulatorSkeleton hidden={loaded} />
+      <div className="t-skel-content" aria-hidden={!loaded} inert={!loaded}>
+        <DeferredBagSimulator clubs={clubs} onLoaded={revealContent} />
+      </div>
+    </div>
+  );
 }
 
-function BagSimulatorSkeleton() {
+function BagSimulatorSkeleton({ hidden }: { hidden: boolean }) {
   return (
     <section
       role="status"
       aria-label="Loading bag simulator"
-      className="grid gap-4 rounded-2xl border border-border bg-card p-4"
+      aria-hidden={hidden}
+      className="t-skel-skeleton grid gap-4 rounded-2xl border border-border bg-card p-4"
       data-lazy-bag-simulator
     >
       <div className="grid gap-2">

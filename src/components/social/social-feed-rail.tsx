@@ -176,6 +176,7 @@ function SocialFeedRailContent() {
   const [status, setStatus] = useState<FeedStatus>("ready");
   const [items, setItems] = useState<SocialFeedPreviewItem[]>([]);
   const [newCount, setNewCount] = useState(0);
+  const [badgeCount, setBadgeCount] = useState(0);
   const [commentingItemId, setCommentingItemId] = useState<string | null>(null);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [busyItemId, setBusyItemId] = useState<string | null>(null);
@@ -211,7 +212,9 @@ function SocialFeedRailContent() {
           markItemsSeen(payload.items);
           setNewCount(0);
         } else {
-          setNewCount(countNewItems(payload.items));
+          const nextCount = countNewItems(payload.items);
+          setNewCount(nextCount);
+          if (nextCount > 0) setBadgeCount(nextCount);
         }
         setStatus("ready");
       })
@@ -430,16 +433,22 @@ function SocialFeedRailContent() {
         onClick={openRail}
         aria-expanded={expanded}
         aria-controls="social-feed-preview"
-        aria-label="Open social feed preview"
+        aria-label={
+          newCount > 0 ? `Open social feed preview, ${newCount} new` : "Open social feed preview"
+        }
       >
         <Radio className="size-4 text-primary" />
         <span className="lg:hidden">Feed</span>
         <span className="hidden lg:inline">Social feed</span>
-        {newCount > 0 ? (
-          <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
-            {newCount > 99 ? "99+" : numberFormatter.format(newCount)}
+        <span
+          className="t-badge absolute -right-1 -top-1"
+          data-open={newCount > 0 ? "true" : "false"}
+          aria-hidden="true"
+        >
+          <span className="t-badge-dot rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
+            {badgeCount > 99 ? "99+" : numberFormatter.format(badgeCount)}
           </span>
-        ) : null}
+        </span>
       </Button>
 
       {isMobile ? (
@@ -784,10 +793,15 @@ function RailActivityItem({
           type="button"
           variant={item.viewerReacted ? "default" : "ghost"}
           size="xs"
+          className="t-like [--like-color:currentColor]"
+          data-liked={item.viewerReacted ? "true" : "false"}
+          aria-pressed={item.viewerReacted}
           disabled={busy}
           onClick={onReactionToggle}
         >
-          <ThumbsUp className="size-3" />
+          <span className="t-like-icon inline-flex" aria-hidden="true">
+            <ThumbsUp className="t-like-heart size-3" />
+          </span>
           {item.reactionCount > 0 ? item.reactionCount : "Kudos"}
         </Button>
         <Button type="button" variant="ghost" size="xs" disabled={busy} onClick={onCommentToggle}>
@@ -815,10 +829,15 @@ function RailActivityItem({
                       type="button"
                       variant={comment.viewerLiked ? "secondary" : "ghost"}
                       size="xs"
+                      className="t-like [--like-color:currentColor]"
+                      data-liked={comment.viewerLiked ? "true" : "false"}
+                      aria-pressed={comment.viewerLiked}
                       disabled={busyCommentId === comment.id}
                       onClick={() => onCommentReactionToggle(comment)}
                     >
-                      <ThumbsUp className="size-3" />
+                      <span className="t-like-icon inline-flex" aria-hidden="true">
+                        <ThumbsUp className="t-like-heart size-3" />
+                      </span>
                       Like {comment.likeCount > 0 ? comment.likeCount : ""}
                     </Button>
                     {comment.viewerCanDelete ? (

@@ -54,10 +54,23 @@ export function AdminBulkActionSubmit({
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <p
         className="text-xs font-semibold text-[var(--status-warning-foreground)]"
-        aria-live="polite"
         data-admin-bulk-selected-count="true"
       >
-        {selectedLabel}
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {selectedLabel}
+        </span>
+        <span aria-hidden="true">
+          {selectedCount === 0 ? (
+            <>No {itemPlural} selected</>
+          ) : (
+            <>
+              <span key={selectedCount} className="t-number-pop tabular-nums">
+                {selectedCount}
+              </span>{" "}
+              {itemLabel} selected
+            </>
+          )}
+        </span>
       </p>
       <AdminConfirmSubmitButton
         confirmActionLabel={buttonLabel}

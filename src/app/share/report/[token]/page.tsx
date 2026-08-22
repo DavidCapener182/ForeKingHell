@@ -27,7 +27,7 @@ export default async function SharedCoachReportPage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; attempt?: string }>;
 }) {
   const [{ token }, query, surface] = await Promise.all([
     params,
@@ -73,7 +73,12 @@ export default async function SharedCoachReportPage({
     const store = await cookies();
     const granted = store.get(reportAccessCookieName(row.exportId))?.value;
     if (granted !== reportAccessGrant(row.tokenHash, access.passwordHash)) {
-      return renderPasswordGate(surface, token, query?.error === "password");
+      return renderPasswordGate(
+        surface,
+        token,
+        query?.error === "password",
+        query?.attempt ?? null,
+      );
     }
   }
 
@@ -98,14 +103,31 @@ export default async function SharedCoachReportPage({
   });
 }
 
-async function renderPasswordGate(surface: AppSurface, token: string, invalid: boolean) {
+async function renderPasswordGate(
+  surface: AppSurface,
+  token: string,
+  invalid: boolean,
+  invalidAttempt: string | null,
+) {
   if (surface === "companion") {
     const { SharedCoachReportPasswordGate } = await import("./shared-coach-report-companion");
-    return <SharedCoachReportPasswordGate token={token} invalid={invalid} />;
+    return (
+      <SharedCoachReportPasswordGate
+        token={token}
+        invalid={invalid}
+        invalidAttempt={invalidAttempt}
+      />
+    );
   }
 
   const { SharedCoachReportPasswordGate } = await import("./shared-coach-report-workbench");
-  return <SharedCoachReportPasswordGate token={token} invalid={invalid} />;
+  return (
+    <SharedCoachReportPasswordGate
+      token={token}
+      invalid={invalid}
+      invalidAttempt={invalidAttempt}
+    />
+  );
 }
 
 async function renderReport(

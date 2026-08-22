@@ -154,6 +154,8 @@ const METRICS: MetricDefinition[] = [
 
 const COMPARISON_METRICS = METRICS.filter((metric) => metric.key !== "carryYd");
 const PEER_TAB_VALUE = "peers";
+const BENCHMARK_TAB_VALUES = [...METRICS.map((metric) => metric.key), PEER_TAB_VALUE];
+const BENCHMARK_TAB_WIDTH_REM = 8;
 const BENCHMARK_TABLE_CLASS = "min-w-[1400px] table-fixed";
 const BENCHMARK_TABLE_COLUMN_WIDTHS = ["6%", "13%", "9%", "9%", "18%", "27%", "10%", "8%"];
 const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
@@ -229,6 +231,9 @@ export function DistanceBenchmarkPanel({
   peerBenchmarksLoaded: boolean;
   loadPeerHref?: string;
 }) {
+  const [activeMetric, setActiveMetric] = useState<string>("carryYd");
+  const activeMetricIndex = Math.max(BENCHMARK_TAB_VALUES.indexOf(activeMetric), 0);
+
   return (
     <DataPanel>
       <SectionHeader
@@ -242,24 +247,40 @@ export function DistanceBenchmarkPanel({
           peerSummary={peerSummary}
           peerBenchmarksLoaded={peerBenchmarksLoaded}
         />
-        <Tabs defaultValue="carryYd" className="gap-4">
+        <Tabs value={activeMetric} onValueChange={setActiveMetric} className="gap-4">
           <div
             data-benchmark-metric-tabs
             className="-mx-4 snap-x snap-proximity overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
           >
-            <TabsList className="h-auto w-max gap-1 justify-start rounded-lg border bg-muted p-1 shadow-sm">
+            <TabsList
+              className="relative isolate grid h-auto w-max gap-1 justify-start rounded-lg border bg-muted p-1 shadow-sm"
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${BENCHMARK_TAB_VALUES.length}, ${BENCHMARK_TAB_WIDTH_REM}rem)`,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                className="t-tabs-pill absolute inset-y-1 left-1 z-0 rounded-md bg-background shadow-sm ring-1 ring-foreground/5"
+                style={{
+                  width: `${BENCHMARK_TAB_WIDTH_REM}rem`,
+                  transform: `translateX(calc(${activeMetricIndex * 100}% + ${activeMetricIndex * 0.25}rem))`,
+                }}
+              />
               {METRICS.map((metric) => (
                 <TabsTrigger
                   key={metric.key}
                   value={metric.key}
-                  className="min-h-11 shrink-0 flex-none snap-start min-w-max px-3 text-sm sm:min-h-8"
+                  className="relative z-10 min-h-11 shrink-0 flex-none snap-start min-w-max bg-transparent px-3 text-sm shadow-none sm:min-h-8"
+                  style={{ backgroundColor: "transparent", boxShadow: "none" }}
                 >
                   {metric.shortLabel}
                 </TabsTrigger>
               ))}
               <TabsTrigger
                 value={PEER_TAB_VALUE}
-                className="min-h-11 shrink-0 flex-none snap-start min-w-max px-3 text-sm sm:min-h-8"
+                className="relative z-10 min-h-11 shrink-0 flex-none snap-start min-w-max bg-transparent px-3 text-sm shadow-none sm:min-h-8"
+                style={{ backgroundColor: "transparent", boxShadow: "none" }}
               >
                 Peers
               </TabsTrigger>

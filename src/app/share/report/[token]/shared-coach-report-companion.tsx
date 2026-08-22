@@ -84,15 +84,22 @@ export function SharedCoachReportView({
 export function SharedCoachReportPasswordGate({
   token,
   invalid,
+  invalidAttempt,
 }: {
   token: string;
   invalid: boolean;
+  invalidAttempt: string | null;
 }) {
   return (
     <main className="ios-public-auth grid min-h-dvh place-items-center bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-foreground">
       <section className="w-full max-w-md">
         <MobileTopBar title="Protected report" />
-        <SharedCoachReportPasswordForm token={token} invalid={invalid} headingLevel="h2" />
+        <SharedCoachReportPasswordForm
+          token={token}
+          invalid={invalid}
+          invalidAttempt={invalidAttempt}
+          headingLevel="h2"
+        />
       </section>
     </main>
   );

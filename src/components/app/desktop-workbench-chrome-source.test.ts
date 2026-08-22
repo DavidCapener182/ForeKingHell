@@ -428,6 +428,10 @@ describe("desktop workbench chrome source", () => {
       join(process.cwd(), "src/components/app/desktop-command-palette.tsx"),
       "utf8",
     );
+    const commandSource = readFileSync(
+      join(process.cwd(), "src/components/ui/command.tsx"),
+      "utf8",
+    );
     const dialogBlock = paletteSource.match(/<CommandDialog[\s\S]*?<\/CommandDialog>/)?.[0] ?? "";
     const commandLinkBlock =
       paletteSource.match(/function CommandLink\([\s\S]*?function QuickLinkSection/)?.[0] ?? "";
@@ -446,6 +450,8 @@ describe("desktop workbench chrome source", () => {
     expect(commandLinkBlock).toContain("aria-selected={active}");
     expect(dialogBlock).not.toContain('role="listbox"');
     expect(commandLinkBlock).not.toContain('role="option"');
+    expect(commandSource).toContain("max-h-[calc(100dvh_-_min(12rem,28dvh)_-_0.75rem)]");
+    expect(dialogBlock).toContain("overflow-y-auto");
   });
 
   it("gives labelled top-bar controls enough width without overlapping neighbours", () => {

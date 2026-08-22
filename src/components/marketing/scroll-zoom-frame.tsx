@@ -7,60 +7,111 @@ import { cn } from "@/lib/utils";
 type ScrollZoomFrameProps = ComponentPropsWithoutRef<"div">;
 
 /**
- * Updates one composited CSS custom property while a scene is near the viewport.
- * The document continues to scroll normally; the value only drives transform and
- * opacity effects in marketing CSS and is disabled for reduced-motion visitors.
+ * Updates only the composited elements that opt into scroll zoom while a scene is
+ * near the viewport. Writing transforms on the moving elements avoids invalidating
+ * every descendant through an inherited CSS custom property.
  */
 export function ScrollZoomFrame({ className, ...props }: ScrollZoomFrameProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const element = ref.current;
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const usesCompactLayout = window.matchMedia("(max-width: 767px)").matches;
-    if (!element || prefersReducedMotion || usesCompactLayout) return;
+    if (!element) return;
 
-    let active = false;
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const compactLayoutQuery = window.matchMedia("(max-width: 767px)");
+    const supportsNativeTimeline = CSS.supports("animation-timeline: view()");
+    const fallbackTargets = Array.from(
+      element.querySelectorAll<HTMLElement>("[data-scroll-zoom-target]"),
+    )
+      .filter((target) => !(supportsNativeTimeline && target.dataset.scrollZoomNative === "true"))
+      .map((target) => ({
+        target,
+        minimum: Number(target.dataset.scrollZoomMin ?? 1),
+        scaleRange: Number(target.dataset.scrollZoomRange ?? 0.1),
+      }));
+
+    if (fallbackTargets.length === 0) return;
+
+    let intersecting = false;
+    let listening = false;
     let frame: number | null = null;
+
+    const motionAllowed = () => !reducedMotionQuery.matches && !compactLayoutQuery.matches;
+
+    const clearTargetTransforms = () => {
+      fallbackTargets.forEach(({ target }) => {
+        target.style.removeProperty("transform");
+      });
+    };
+
+    const removeViewportListeners = () => {
+      if (!listening) return;
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+      listening = false;
+    };
+
+    const cancelPendingFrame = () => {
+      if (frame === null) return;
+      window.cancelAnimationFrame(frame);
+      frame = null;
+    };
 
     const update = () => {
       frame = null;
-      if (!active) return;
+      if (!intersecting || !motionAllowed()) return;
       const rect = element.getBoundingClientRect();
       const viewport = Math.max(window.innerHeight, 1);
       const range = viewport + rect.height;
       const progress = Math.min(1, Math.max(0, (viewport - rect.top) / range));
       const zoom = 1 - Math.abs(progress * 2 - 1);
-      element.style.setProperty("--marketing-scroll", progress.toFixed(3));
-      element.style.setProperty("--marketing-zoom", zoom.toFixed(3));
+
+      fallbackTargets.forEach(({ target, minimum, scaleRange }) => {
+        const scale = minimum + zoom * scaleRange;
+        target.style.transform = `scale(${scale.toFixed(4)})`;
+      });
     };
 
     const requestUpdate = () => {
-      if (frame !== null) return;
+      if (frame !== null || !intersecting || !motionAllowed()) return;
       frame = window.requestAnimationFrame(update);
+    };
+
+    const syncMotion = () => {
+      if (!intersecting || !motionAllowed()) {
+        removeViewportListeners();
+        cancelPendingFrame();
+        clearTargetTransforms();
+        return;
+      }
+
+      if (!listening) {
+        window.addEventListener("scroll", requestUpdate, { passive: true });
+        window.addEventListener("resize", requestUpdate, { passive: true });
+        listening = true;
+      }
+      requestUpdate();
     };
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        active = Boolean(entry?.isIntersecting);
-        if (active) {
-          requestUpdate();
-          window.addEventListener("scroll", requestUpdate, { passive: true });
-          window.addEventListener("resize", requestUpdate, { passive: true });
-        } else {
-          window.removeEventListener("scroll", requestUpdate);
-          window.removeEventListener("resize", requestUpdate);
-        }
+        intersecting = Boolean(entry?.isIntersecting);
+        syncMotion();
       },
       { rootMargin: "18% 0px", threshold: 0 },
     );
 
+    reducedMotionQuery.addEventListener("change", syncMotion);
+    compactLayoutQuery.addEventListener("change", syncMotion);
     observer.observe(element);
     return () => {
       observer.disconnect();
-      window.removeEventListener("scroll", requestUpdate);
-      window.removeEventListener("resize", requestUpdate);
-      if (frame !== null) window.cancelAnimationFrame(frame);
+      reducedMotionQuery.removeEventListener("change", syncMotion);
+      compactLayoutQuery.removeEventListener("change", syncMotion);
+      removeViewportListeners();
+      cancelPendingFrame();
+      clearTargetTransforms();
     };
   }, []);
 

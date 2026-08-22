@@ -120,7 +120,7 @@ describe("ordinary workbench card composition", () => {
     {
       route: "new round review",
       source: read("src/app/rounds/new/new-round-form.tsx"),
-      ranges: [['<Card className={cn("gap-0 py-0 sm:hidden"', '<Button\n        type="submit"']],
+      ranges: [['hidden={mobileStep !== "review"}', '<Button\n        type="submit"']],
     },
   ])("uses shadcn Cards instead of native premium-card shells on $route", ({ source, ranges }) => {
     for (const [start, end] of ranges) {

@@ -27,17 +27,33 @@ export function MobileSegmentedControl({
   ariaLabel: string;
   className?: string;
 }) {
+  const optionCount = Math.max(options.length, 1);
+  const activeIndex = Math.max(
+    options.findIndex((option) => option.value === value),
+    0,
+  );
+
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
       data-mobile-control="segmented"
       className={cn(
-        "grid min-w-0 gap-1 rounded-[var(--mobile-radius-md)] bg-secondary p-1",
+        "relative isolate grid min-w-0 gap-1 rounded-[var(--mobile-radius-md)] bg-secondary p-1",
         className,
       )}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
+      {options.length > 0 ? (
+        <span
+          className="t-tabs-pill absolute inset-y-1 left-1 z-0 rounded-[calc(var(--mobile-radius-md)-0.25rem)] bg-card shadow-sm ring-1 ring-foreground/5"
+          style={{
+            width: `calc((100% - 0.5rem - ${(optionCount - 1) * 0.25}rem) / ${optionCount})`,
+            transform: `translateX(calc(${activeIndex * 100}% + ${activeIndex * 0.25}rem))`,
+          }}
+          aria-hidden="true"
+        />
+      ) : null}
       {options.map((option) => {
         const selected = option.value === value;
 
@@ -50,10 +66,8 @@ export function MobileSegmentedControl({
             disabled={option.disabled}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "focus-aaa min-h-11 min-w-0 touch-manipulation rounded-[calc(var(--mobile-radius-md)-0.25rem)] px-2.5 py-2 text-sm font-semibold outline-none transition-[background-color,color,box-shadow,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
-              selected
-                ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/5"
-                : "text-muted-foreground hover:text-foreground",
+              "t-tabs-trigger focus-aaa relative z-10 min-h-11 min-w-0 touch-manipulation rounded-[calc(var(--mobile-radius-md)-0.25rem)] bg-transparent px-2.5 py-2 text-sm font-semibold outline-none",
+              selected ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
             <span className="block truncate">{option.label}</span>

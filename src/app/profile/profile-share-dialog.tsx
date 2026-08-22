@@ -61,8 +61,21 @@ export function ProfileShareDialog({
         </div>
         <DialogFooter showCloseButton>
           <Button type="button" onClick={copyProfileLink}>
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-            {copied ? "Copied" : "Copy link"}
+            <span className="t-icon-swap" data-state={copied ? "b" : "a"} aria-hidden="true">
+              <span className="t-icon" data-icon="a">
+                <Copy className="size-4" />
+              </span>
+              <span className="t-icon" data-icon="b">
+                <Check className="size-4" />
+              </span>
+            </span>
+            <span
+              key={copied ? "copied" : "copy"}
+              className="t-text-state"
+              data-motion-ready={copied ? "true" : "false"}
+            >
+              {copied ? "Copied" : "Copy link"}
+            </span>
           </Button>
           <Button asChild variant="outline">
             <Link href={profileUrl} prefetch={false}>

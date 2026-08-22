@@ -125,6 +125,8 @@ export function PracticeCompanionClient({
   const [rangeMode, setRangeMode] = useState(false);
   const [paused, setPaused] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [routeDirection, setRouteDirection] = useState<"forward" | "back" | null>(null);
+  const [blockDirection, setBlockDirection] = useState<"forward" | "back" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [blockCarouselApi, setBlockCarouselApi] = useState<CarouselApi>();
@@ -231,6 +233,8 @@ export function PracticeCompanionClient({
       const { planId } = await saveAndStartPracticePlanAction(plan);
       setSavedPlanId(planId);
       setPlan((current) => ({ ...current, id: planId, status: "awaiting_import" }));
+      setRouteDirection("forward");
+      setBlockDirection(null);
       setRangeMode(true);
       setPaused(false);
       setFinished(false);
@@ -245,6 +249,8 @@ export function PracticeCompanionClient({
     if (!savedPlanId) return;
     startTransition(async () => {
       await startPracticePlanAction(savedPlanId);
+      setRouteDirection("forward");
+      setBlockDirection(null);
       setRangeMode(true);
       setPaused(false);
       cacheActivePractice(accountId, savedPlanId, completedBlockIds, note, selectedIndex);
@@ -258,6 +264,7 @@ export function PracticeCompanionClient({
       : [...completedBlockIds, selectedBlock.id];
     const nextIndex = Math.min(selectedIndex + 1, plan.blocks.length - 1);
     setCompletedBlockIds(complete);
+    if (nextIndex !== selectedIndex) setBlockDirection("forward");
     setSelectedIndex(nextIndex);
     if (savedPlanId) cacheActivePractice(accountId, savedPlanId, complete, note, nextIndex);
   }
@@ -267,6 +274,7 @@ export function PracticeCompanionClient({
     startTransition(async () => {
       await completePracticeActivityAction(savedPlanId);
       clearActivePractice(accountId);
+      setRouteDirection("back");
       setRangeMode(false);
       setPaused(false);
       setFinished(true);
@@ -277,34 +285,51 @@ export function PracticeCompanionClient({
 
   if (rangeMode) {
     return (
-      <ActiveRangeMode
-        key={selectedBlock?.id ?? `block-${selectedIndex}`}
-        plan={plan}
-        block={selectedBlock}
-        blockIndex={selectedIndex}
-        completedBlockIds={completedBlockIds}
-        note={note}
-        pending={isPending}
-        onNote={(value) => {
-          setNote(value);
-          if (savedPlanId)
-            cacheActivePractice(accountId, savedPlanId, completedBlockIds, value, selectedIndex);
-        }}
-        onPrevious={() => setSelectedIndex((index) => Math.max(0, index - 1))}
-        onNext={() => setSelectedIndex((index) => Math.min(plan.blocks.length - 1, index + 1))}
-        onComplete={completeBlock}
-        onPause={() => {
-          setRangeMode(false);
-          setPaused(true);
-        }}
-        onFinish={finishWithoutUpload}
-        practicePlanId={savedPlanId}
-      />
+      <div
+        key="range-mode"
+        className={cn(routeDirection && "t-route-step")}
+        data-direction={routeDirection ?? undefined}
+      >
+        <ActiveRangeMode
+          plan={plan}
+          block={selectedBlock}
+          blockIndex={selectedIndex}
+          blockDirection={blockDirection}
+          completedBlockIds={completedBlockIds}
+          note={note}
+          pending={isPending}
+          onNote={(value) => {
+            setNote(value);
+            if (savedPlanId)
+              cacheActivePractice(accountId, savedPlanId, completedBlockIds, value, selectedIndex);
+          }}
+          onPrevious={() => {
+            setBlockDirection("back");
+            setSelectedIndex((index) => Math.max(0, index - 1));
+          }}
+          onNext={() => {
+            setBlockDirection("forward");
+            setSelectedIndex((index) => Math.min(plan.blocks.length - 1, index + 1));
+          }}
+          onComplete={completeBlock}
+          onPause={() => {
+            setRouteDirection("back");
+            setRangeMode(false);
+            setPaused(true);
+          }}
+          onFinish={finishWithoutUpload}
+          practicePlanId={savedPlanId}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-4">
+    <div
+      key="practice-plan"
+      className={cn("grid gap-4", routeDirection && "t-route-step")}
+      data-direction={routeDirection ?? undefined}
+    >
       <OperationStepper
         compact
         label="Practice workflow"
@@ -748,6 +773,7 @@ function ActiveRangeMode({
   plan,
   block,
   blockIndex,
+  blockDirection,
   completedBlockIds,
   note,
   pending,
@@ -762,6 +788,7 @@ function ActiveRangeMode({
   plan: PracticePlan;
   block: PracticeBlock | null;
   blockIndex: number;
+  blockDirection: "forward" | "back" | null;
   completedBlockIds: string[];
   note: string;
   pending: boolean;
@@ -775,7 +802,23 @@ function ActiveRangeMode({
 }) {
   const allComplete = plan.blocks.length > 0 && completedBlockIds.length >= plan.blocks.length;
   const [finishOpen, setFinishOpen] = useState(false);
-  const [manualRemaining, setManualRemaining] = useState<number | null>(block?.ballCount ?? null);
+  const previousButtonRef = useRef<HTMLButtonElement>(null);
+  const completeButtonRef = useRef<HTMLButtonElement>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const navigationFocusRef = useRef<"previous" | "next" | null>(null);
+
+  useEffect(() => {
+    const navigatedButton =
+      navigationFocusRef.current === "previous"
+        ? previousButtonRef.current
+        : navigationFocusRef.current === "next"
+          ? nextButtonRef.current
+          : null;
+    navigationFocusRef.current = null;
+    if (navigatedButton?.disabled) {
+      completeButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [blockIndex]);
 
   return (
     <section
@@ -794,59 +837,77 @@ function ActiveRangeMode({
         })}
       />
       <Card className="gap-3 py-3" data-current-range-block>
-        <CardHeader className="px-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              Range Mode · Block {blockIndex + 1} of {plan.blocks.length}
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">{block?.title ?? "Practice"}</h1>
-            <p className="mt-1 text-sm font-medium text-muted-foreground">
-              {block ? `${clubLabel(block)} · ${blockVolume(block)}` : plan.summary}
-            </p>
-          </div>
-          <CardAction>
-            <Badge variant={allComplete ? "default" : "secondary"}>
-              {completedBlockIds.length}/{plan.blocks.length} complete
-            </Badge>
-          </CardAction>
-        </CardHeader>
+        <div
+          key={block?.id ?? `range-block-${blockIndex}`}
+          className={cn("grid gap-3", blockDirection && "t-route-step")}
+          data-direction={blockDirection ?? undefined}
+          data-current-range-block-content
+        >
+          <CardHeader className="px-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Range Mode · Block {blockIndex + 1} of {plan.blocks.length}
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight">
+                {block?.title ?? "Practice"}
+              </h1>
+              <p className="mt-1 text-sm font-medium text-muted-foreground">
+                {block ? `${clubLabel(block)} · ${blockVolume(block)}` : plan.summary}
+              </p>
+            </div>
+            <CardAction>
+              <Badge variant={allComplete ? "default" : "secondary"}>
+                {completedBlockIds.length}/{plan.blocks.length} complete
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-3 px-3">
+            <Progress
+              value={plan.blocks.length ? (completedBlockIds.length / plan.blocks.length) * 100 : 0}
+              aria-label={`${completedBlockIds.length} of ${plan.blocks.length} practice blocks complete`}
+              className="h-2"
+            />
+            <div className="rounded-[var(--mobile-radius-md)] bg-secondary/60 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Task
+              </p>
+              <p className="mt-1 text-[15px] font-medium leading-6">
+                {block?.drill ?? plan.summary}
+              </p>
+              <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Success target
+              </p>
+              <p className="mt-1 text-lg font-semibold leading-6">
+                {block?.successTarget ?? "Choose a block"}
+              </p>
+              <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                Next action
+              </p>
+              <p className="mt-1 text-[15px] leading-6">
+                {block?.recordPrompt ?? "Complete the block, then move to the next task."}
+              </p>
+            </div>
+          </CardContent>
+        </div>
         <CardContent className="grid gap-3 px-3">
-          <Progress
-            value={plan.blocks.length ? (completedBlockIds.length / plan.blocks.length) * 100 : 0}
-            aria-label={`${completedBlockIds.length} of ${plan.blocks.length} practice blocks complete`}
-            className="h-2"
-          />
-          <div className="rounded-[var(--mobile-radius-md)] bg-secondary/60 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Task
-            </p>
-            <p className="mt-1 text-[15px] font-medium leading-6">{block?.drill ?? plan.summary}</p>
-            <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Success target
-            </p>
-            <p className="mt-1 text-lg font-semibold leading-6">
-              {block?.successTarget ?? "Choose a block"}
-            </p>
-            <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Next action
-            </p>
-            <p className="mt-1 text-[15px] leading-6">
-              {block?.recordPrompt ?? "Complete the block, then move to the next task."}
-            </p>
-          </div>
           <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
             <Button
+              ref={previousButtonRef}
               type="button"
               variant="outline"
               size="icon"
               className="size-11 rounded-[var(--mobile-radius-md)]"
               disabled={blockIndex <= 0}
-              onClick={onPrevious}
+              onClick={() => {
+                navigationFocusRef.current = "previous";
+                onPrevious();
+              }}
               aria-label="Previous practice block"
             >
               <ChevronLeft className="size-4" />
             </Button>
             <Button
+              ref={completeButtonRef}
               type="button"
               className="min-h-11 rounded-[var(--mobile-radius-md)] px-3"
               disabled={!block}
@@ -856,12 +917,16 @@ function ActiveRangeMode({
               Complete Block
             </Button>
             <Button
+              ref={nextButtonRef}
               type="button"
               variant="outline"
               size="icon"
               className="size-11 rounded-[var(--mobile-radius-md)]"
               disabled={blockIndex >= plan.blocks.length - 1}
-              onClick={onNext}
+              onClick={() => {
+                navigationFocusRef.current = "next";
+                onNext();
+              }}
               aria-label="Next practice block"
             >
               <ChevronRight className="size-4" />
@@ -870,36 +935,8 @@ function ActiveRangeMode({
           <p className="text-xs leading-5 text-muted-foreground">
             Complete records activity only. Imported launch-monitor rows decide measured success.
           </p>
-          {manualRemaining !== null ? (
-            <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-              <div>
-                <p className="text-sm font-semibold">{manualRemaining} balls remaining</p>
-                <p className="text-xs text-muted-foreground">Range counter only · not evidence</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  onClick={() => setManualRemaining((value) => Math.max(0, (value ?? 0) - 1))}
-                  aria-label="Remove one ball"
-                >
-                  −
-                </Button>
-                <span className="w-8 text-center text-lg font-bold">{manualRemaining}</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  onClick={() => setManualRemaining((value) => (value ?? 0) + 1)}
-                  aria-label="Add one ball"
-                >
-                  +
-                </Button>
-              </div>
-            </div>
+          {block?.ballCount !== null && block?.ballCount !== undefined ? (
+            <ManualBallCounter key={block.id} initialRemaining={block.ballCount} />
           ) : null}
         </CardContent>
       </Card>
@@ -986,6 +1023,42 @@ function ActiveRangeMode({
         </DrawerContent>
       </Drawer>
     </section>
+  );
+}
+
+function ManualBallCounter({ initialRemaining }: { initialRemaining: number }) {
+  const [manualRemaining, setManualRemaining] = useState(initialRemaining);
+
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+      <div>
+        <p className="text-sm font-semibold">{manualRemaining} balls remaining</p>
+        <p className="text-xs text-muted-foreground">Range counter only · not evidence</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          onClick={() => setManualRemaining((value) => Math.max(0, value - 1))}
+          aria-label="Remove one ball"
+        >
+          −
+        </Button>
+        <span className="w-8 text-center text-lg font-bold">{manualRemaining}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-11"
+          onClick={() => setManualRemaining((value) => value + 1)}
+          aria-label="Add one ball"
+        >
+          +
+        </Button>
+      </div>
+    </div>
   );
 }
 

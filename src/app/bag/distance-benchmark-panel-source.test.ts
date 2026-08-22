@@ -98,6 +98,17 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("Swipe between clubs");
   });
 
+  it("moves one equal-width benchmark pill with transform only", () => {
+    expect(source).toContain("BENCHMARK_TAB_VALUES");
+    expect(source).toContain("activeMetricIndex");
+    expect(source).toContain('className="t-tabs-pill');
+    expect(source).toContain('aria-hidden="true"');
+    expect(source).toContain("width: `${BENCHMARK_TAB_WIDTH_REM}rem`");
+    expect(source).toContain(
+      "transform: `translateX(calc(${activeMetricIndex * 100}% + ${activeMetricIndex * 0.25}rem))`",
+    );
+  });
+
   it("uses short mobile scale labels while preserving full desktop references", () => {
     expect(source).toContain("benchmarkScaleShortLabel");
     expect(source).toContain("sm:hidden");

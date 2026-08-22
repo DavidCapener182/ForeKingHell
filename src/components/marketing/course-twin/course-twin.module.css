@@ -169,6 +169,7 @@
 }
 
 .segmentedControl {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   min-width: min(17rem, 46vw);
@@ -177,6 +178,26 @@
   border-radius: 0.8rem;
   background: rgba(2, 18, 12, 0.36);
   padding: 0.22rem;
+  isolation: isolate;
+}
+
+.activePill {
+  position: absolute;
+  z-index: 0;
+  top: 0.22rem;
+  bottom: 0.22rem;
+  left: 0.22rem;
+  width: calc(50% - 0.22rem);
+  border-radius: 0.62rem;
+  background: #f5f1e5;
+  box-shadow: 0 5px 14px rgba(2, 18, 11, 0.22);
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.activePill[data-club="driver"] {
+  transform: translateX(100%);
 }
 
 .segmentedControl button,
@@ -197,6 +218,8 @@
 }
 
 .segmentedControl button {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -207,8 +230,8 @@
 }
 
 .segmentedControl button[data-selected="true"] {
-  background: #f5f1e5;
-  box-shadow: 0 5px 14px rgba(2, 18, 11, 0.22);
+  background: transparent;
+  box-shadow: none;
   color: #113426;
 }
 
@@ -237,13 +260,15 @@
   line-height: 1;
 }
 
-.segmentedControl button:hover,
-.replayButton:hover {
-  background-color: rgba(255, 255, 255, 0.13);
-}
+@media (hover: hover) and (pointer: fine) {
+  .segmentedControl button:hover,
+  .replayButton:hover {
+    background-color: rgba(255, 255, 255, 0.13);
+  }
 
-.segmentedControl button[data-selected="true"]:hover {
-  background: #fffaf0;
+  .segmentedControl button[data-selected="true"]:hover {
+    background: transparent;
+  }
 }
 
 .segmentedControl button:active,
@@ -497,6 +522,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .activePill {
+    transition: none;
+  }
+
   .segmentedControl button,
   .replayButton,
   .fallbackImage {

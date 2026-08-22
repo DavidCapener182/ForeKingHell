@@ -22,6 +22,7 @@ export function CourseTwinHud({
         <fieldset className={styles.clubFieldset}>
           <legend>Planned club</legend>
           <div className={styles.segmentedControl} aria-label="Choose planned club">
+            <span className={styles.activePill} data-club={club} aria-hidden="true" />
             {(
               [
                 ["three-wood", "3 Wood"],

@@ -1,0 +1,1173 @@
+/*
+ * ForeKingHell motion foundation.
+ *
+ * Adapted from transitions.dev for a frequently-used golf workbench:
+ * short timings, strong easing, small travel, no scale(0), and no layout
+ * animation except the disclosure height that Radix must retain while closing.
+ */
+:root {
+  /* Shared scale */
+  --duration-stagger: 40ms;
+  --duration-micro: 80ms;
+  --duration-quick: 120ms;
+  --duration-fast: 180ms;
+  --duration-medium: 220ms;
+  --duration-slow: 250ms;
+  --duration-very-slow: 250ms;
+
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-linear: linear;
+  --ease-bounce: cubic-bezier(0.34, 1.2, 0.64, 1);
+  --ease-bounce-strong: cubic-bezier(0.34, 1.28, 0.64, 1);
+
+  --distance-micro: 4px;
+  --distance-small: 6px;
+  --distance-base: 8px;
+  --distance-medium: 12px;
+  --distance-large: 16px;
+
+  --scale-large: 0.96;
+  --scale-medium: 0.97;
+  --scale-small: 0.98;
+  --scale-tiny: 0.99;
+
+  --blur-small: 2px;
+  --blur-medium: 3px;
+  --blur-large: 6px;
+
+  /* Semantic recipes */
+  --dropdown-open-dur: var(--duration-fast);
+  --dropdown-close-dur: var(--duration-quick);
+  --dropdown-pre-scale: var(--scale-medium);
+  --dropdown-closing-scale: var(--scale-tiny);
+  --dropdown-ease: var(--ease-smooth-out);
+
+  --modal-open-dur: var(--duration-medium);
+  --modal-close-dur: var(--duration-quick);
+  --modal-scale: var(--scale-large);
+  --modal-scale-close: var(--scale-large);
+  --modal-ease: var(--ease-smooth-out);
+
+  --overlay-open-dur: var(--duration-fast);
+  --overlay-close-dur: var(--duration-quick);
+
+  --panel-open-dur: var(--duration-medium);
+  --panel-close-dur: var(--duration-quick);
+  --panel-translate-y: var(--distance-base);
+  --panel-blur: 0px;
+  --panel-ease: var(--ease-smooth-out);
+
+  --page-slide-dur: var(--duration-medium);
+  --page-fade-dur: var(--duration-fast);
+  --page-slide-distance: var(--distance-base);
+  --page-blur: 0px;
+  --page-stagger: 0ms;
+  --page-exit-enabled: 1;
+  --page-slide-ease: var(--ease-smooth-out);
+  --page-fade-ease: var(--ease-smooth-out);
+
+  --text-swap-dur: var(--duration-quick);
+  --text-swap-translate-y: var(--distance-micro);
+  --text-swap-blur: 0px;
+  --text-swap-ease: var(--ease-in-out);
+
+  --icon-swap-dur: var(--duration-fast);
+  --icon-swap-blur: 0px;
+  --icon-swap-start-scale: 0.92;
+  --icon-swap-ease: var(--ease-in-out);
+
+  --badge-slide-dur: var(--duration-fast);
+  --badge-pop-dur: var(--duration-fast);
+  --badge-pop-close-dur: var(--duration-quick);
+  --badge-fade-dur: var(--duration-fast);
+  --badge-fade-close-dur: var(--duration-quick);
+  --badge-offset-x: -4px;
+  --badge-offset-y: 4px;
+  --badge-slide-ease: var(--ease-smooth-out);
+  --badge-pop-ease: var(--ease-bounce);
+  --badge-close-ease: var(--ease-out);
+
+  --check-opacity-dur: var(--duration-medium);
+  --check-rotate-dur: var(--duration-medium);
+  --check-rotate-from: 6deg;
+  --check-bob-dur: var(--duration-medium);
+  --check-y-amount: var(--distance-micro);
+  --check-path-dur: var(--duration-medium);
+  --check-path-delay: 40ms;
+  --check-ease-out: var(--ease-smooth-out);
+  --check-ease-opacity: var(--ease-out);
+  --check-ease-rotate: var(--ease-smooth-out);
+  --check-ease-bob: var(--ease-smooth-out);
+  --check-ease-path: var(--ease-smooth-out);
+
+  --shake-distance: 4px;
+  --shake-overshoot: 2px;
+  --shake-dur-a: 60ms;
+  --shake-dur-b: 50ms;
+  --shake-ease: var(--ease-smooth-out);
+  --revert-hold: 3000ms;
+  --revert-dur: var(--duration-fast);
+
+  --pulse-dur: 900ms;
+  --pulse-count: 1;
+  --pulse-min: 0.58;
+  --reveal-dur: var(--duration-medium);
+  --reveal-blur: 0px;
+  --reveal-ease: var(--ease-in-out);
+
+  --shimmer-dur: 1800ms;
+  --shimmer-base: var(--muted-foreground);
+  --shimmer-highlight: var(--foreground);
+  --shimmer-band: 300%;
+  --shimmer-ease: var(--ease-linear);
+
+  --tabs-dur: var(--duration-medium);
+  --tabs-ease: var(--ease-in-out);
+
+  --tt-in-dur: var(--duration-quick);
+  --tt-out-dur: 50ms;
+  --tt-scale: var(--scale-small);
+  --tt-in-ease: var(--ease-out);
+  --tt-out-ease: var(--ease-out);
+
+  --acc-expand: var(--duration-medium);
+  --acc-collapse: var(--duration-fast);
+  --acc-chevron: var(--duration-fast);
+  --acc-ease: var(--ease-smooth-out);
+
+  --toast-open: var(--duration-medium);
+  --toast-close: var(--duration-quick);
+  --toast-distance: var(--distance-base);
+  --toast-scale: var(--scale-small);
+  --toast-ease: var(--ease-smooth-out);
+
+  --like-color: #e11d48;
+  --like-fill: var(--duration-quick);
+  --like-pop: var(--duration-quick);
+  --like-ease: var(--ease-out);
+
+  --learn-shift: 2px;
+  --learn-in: var(--duration-quick);
+  --learn-out: var(--duration-micro);
+  --learn-ease: var(--ease-out);
+
+  --check-box: var(--duration-quick);
+  --check-draw: var(--duration-fast);
+  --check-delay: 30ms;
+  --check-uncheck: var(--duration-micro);
+  --check-ease: var(--ease-smooth-out);
+
+  --toggle-dur: var(--duration-fast);
+  --toggle-track: var(--duration-quick);
+  --toggle-ease: var(--ease-smooth-out);
+
+  --stagger-dur: var(--duration-slow);
+  --stagger-distance: var(--distance-base);
+  --stagger-stagger: var(--duration-stagger);
+  --stagger-blur: 0px;
+  --stagger-ease: var(--ease-smooth-out);
+
+  --digit-dur: var(--duration-fast);
+  --digit-distance: var(--distance-micro);
+  --digit-stagger: 30ms;
+  --digit-dir-x: 0;
+  --digit-dir-y: 1;
+  --digit-ease: var(--ease-smooth-out);
+}
+
+/* Anchored surfaces ------------------------------------------------------- */
+.t-dropdown {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin, top left);
+  will-change: transform, opacity;
+}
+
+[data-slot="popover-content"].t-dropdown {
+  transform-origin: var(--radix-popover-content-transform-origin, top center);
+}
+
+[data-slot="select-content"].t-dropdown {
+  transform-origin: var(--radix-select-content-transform-origin, top left);
+}
+
+.t-dropdown[data-state="open"] {
+  animation: t-dropdown-open var(--dropdown-open-dur) var(--dropdown-ease) both;
+}
+
+.t-dropdown[data-state="closed"] {
+  pointer-events: none;
+  animation: t-dropdown-close var(--dropdown-close-dur) var(--dropdown-ease) both;
+}
+
+.t-dropdown[data-align-trigger="true"],
+.t-dropdown[data-motion="none"] {
+  animation: none !important;
+}
+
+@keyframes t-dropdown-open {
+  from {
+    opacity: 0;
+    transform: scale(var(--dropdown-pre-scale));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes t-dropdown-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--dropdown-closing-scale));
+  }
+}
+
+/* Modals ----------------------------------------------------------------- */
+.t-modal {
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.t-modal[data-state="open"] {
+  animation: t-modal-open var(--modal-open-dur) var(--modal-ease) both;
+}
+
+.t-modal[data-state="closed"] {
+  pointer-events: none;
+  animation: t-modal-close var(--modal-close-dur) var(--modal-ease) both;
+}
+
+.t-modal-overlay[data-state="open"] {
+  animation: t-overlay-open var(--overlay-open-dur) var(--ease-out) both;
+}
+
+.t-modal-overlay[data-state="closed"] {
+  animation: t-overlay-close var(--overlay-close-dur) var(--ease-out) both;
+}
+
+@keyframes t-modal-open {
+  from {
+    opacity: 0;
+    transform: scale(var(--modal-scale));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes t-modal-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--modal-scale-close));
+  }
+}
+
+@keyframes t-overlay-open {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes t-overlay-close {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Keyboard-launched command surfaces must remain immediate. */
+.t-modal[data-motion="none"],
+.t-modal:has([data-slot="command"]),
+.t-modal-overlay:has(+ .t-modal [data-slot="command"]) {
+  animation: none !important;
+}
+
+/* Sheets and inline panels ------------------------------------------------ */
+.t-sheet {
+  --t-sheet-x: 0px;
+  --t-sheet-y: 0px;
+  will-change: transform, opacity;
+}
+
+.t-sheet[data-side="right"] {
+  --t-sheet-x: var(--distance-medium);
+}
+.t-sheet[data-side="left"] {
+  --t-sheet-x: calc(var(--distance-medium) * -1);
+}
+.t-sheet[data-side="bottom"] {
+  --t-sheet-y: var(--distance-medium);
+}
+.t-sheet[data-side="top"] {
+  --t-sheet-y: calc(var(--distance-medium) * -1);
+}
+
+.t-sheet[data-state="open"] {
+  animation: t-sheet-open var(--panel-open-dur) var(--panel-ease) both;
+}
+
+.t-sheet[data-state="closed"] {
+  animation: t-sheet-close var(--panel-close-dur) var(--panel-ease) both;
+}
+
+@keyframes t-sheet-open {
+  from {
+    opacity: 0;
+    transform: translate(var(--t-sheet-x), var(--t-sheet-y));
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes t-sheet-close {
+  from {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--t-sheet-x), var(--t-sheet-y));
+  }
+}
+
+.t-panel-slide {
+  opacity: 0;
+  transform: translateY(var(--panel-translate-y));
+  pointer-events: none;
+  transition:
+    transform var(--panel-close-dur) var(--panel-ease),
+    opacity var(--panel-close-dur) var(--panel-ease);
+  will-change: transform, opacity;
+}
+
+.t-panel-slide[data-open="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  transition-duration: var(--panel-open-dur);
+}
+
+@starting-style {
+  .t-panel-slide[data-open="true"] {
+    opacity: 0;
+    transform: translateY(var(--panel-translate-y));
+  }
+}
+
+/* Directional, keyed route/step entry. It never delays the new truth. */
+.t-route-step[data-direction="forward"] {
+  animation: t-route-step-forward var(--page-slide-dur) var(--page-slide-ease) both;
+}
+
+.t-route-step[data-direction="back"] {
+  animation: t-route-step-back var(--page-slide-dur) var(--page-slide-ease) both;
+}
+
+@keyframes t-route-step-forward {
+  from {
+    opacity: 0;
+    transform: translateX(var(--page-slide-distance));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes t-route-step-back {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--page-slide-distance) * -1));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.t-page-slide {
+  position: relative;
+}
+
+.t-page-slide .t-page {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(var(--t-page-from-x, 0));
+  transition:
+    opacity var(--page-fade-dur) var(--page-fade-ease),
+    transform var(--page-slide-dur) var(--page-slide-ease);
+}
+
+.t-page-slide .t-page[data-page-id="1"] {
+  --t-page-from-x: calc(var(--page-slide-distance) * -1);
+}
+
+.t-page-slide .t-page[data-page-id="2"] {
+  --t-page-from-x: var(--page-slide-distance);
+}
+
+.t-page-slide[data-page="1"] .t-page[data-page-id="1"],
+.t-page-slide[data-page="2"] .t-page[data-page-id="2"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  transition-delay: var(--page-stagger);
+}
+
+/* State swaps ------------------------------------------------------------ */
+.t-text-swap,
+.t-text-state {
+  display: inline-block;
+}
+
+.t-text-swap {
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform var(--text-swap-dur) var(--text-swap-ease),
+    opacity var(--text-swap-dur) var(--text-swap-ease);
+}
+
+.t-text-swap.is-exit {
+  transform: translateY(calc(var(--text-swap-translate-y) * -1));
+  opacity: 0;
+}
+
+.t-text-swap.is-enter-start {
+  transform: translateY(var(--text-swap-translate-y));
+  opacity: 0;
+  transition: none;
+}
+
+/* React callers key this element, so the correct new label renders at once. */
+.t-text-state[data-motion-ready="true"] {
+  animation: t-text-state-enter var(--text-swap-dur) var(--text-swap-ease) both;
+}
+
+@keyframes t-text-state-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--text-swap-translate-y));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+}
+
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--icon-swap-dur) var(--icon-swap-ease),
+    transform var(--icon-swap-dur) var(--icon-swap-ease);
+  will-change: opacity, transform;
+}
+
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+  opacity: 0;
+  transform: scale(var(--icon-swap-start-scale));
+  pointer-events: none;
+}
+
+/* Rare earned-success reveal. Stroke drawing is opt-in for calibrated paths. */
+.t-success-check {
+  display: inline-block;
+  transform-origin: center;
+}
+
+.t-success-check svg {
+  display: block;
+  overflow: visible;
+}
+
+.t-success-check[data-state="out"] {
+  opacity: 0;
+  transform: translateY(var(--check-y-amount)) rotate(var(--check-rotate-from)) scale(0.94);
+}
+
+.t-success-check[data-state="in"] {
+  animation: t-success-check-in var(--check-opacity-dur) var(--check-ease-out) both;
+}
+
+.t-success-check[data-draw="true"] svg path {
+  stroke-dasharray: var(--check-path-length, 20);
+  stroke-dashoffset: var(--check-path-length, 20);
+}
+
+.t-success-check[data-state="in"][data-draw="true"] svg path {
+  animation: t-success-check-draw var(--check-path-dur) var(--check-ease-path)
+    var(--check-path-delay) forwards;
+}
+
+@keyframes t-success-check-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--check-y-amount)) rotate(var(--check-rotate-from)) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes t-success-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Badges ----------------------------------------------------------------- */
+.t-badge {
+  display: inline-flex;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(var(--badge-offset-x), var(--badge-offset-y));
+  transition:
+    transform var(--badge-pop-close-dur) var(--badge-close-ease),
+    opacity var(--badge-fade-close-dur) var(--badge-close-ease);
+  will-change: transform, opacity;
+}
+
+.t-badge-dot {
+  display: block;
+  transform: scale(0.92);
+  transform-origin: center;
+  transition: transform var(--badge-pop-close-dur) var(--badge-close-ease);
+}
+
+.t-badge[data-open="true"] {
+  opacity: 1;
+  transform: translate(0, 0);
+  transition:
+    transform var(--badge-slide-dur) var(--badge-slide-ease),
+    opacity var(--badge-fade-dur) var(--badge-slide-ease);
+}
+
+.t-badge[data-open="true"] .t-badge-dot {
+  transform: scale(1);
+  transition-duration: var(--badge-pop-dur);
+  transition-timing-function: var(--badge-pop-ease);
+}
+
+/* Loading and async handoffs -------------------------------------------- */
+.t-skel {
+  display: grid;
+}
+
+.t-skel > .t-skel-skeleton,
+.t-skel > .t-skel-content {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition: opacity var(--reveal-dur) var(--reveal-ease);
+}
+
+.t-skel > .t-skel-skeleton {
+  z-index: 1;
+  opacity: 1;
+}
+
+.t-skel > .t-skel-content {
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.t-skel.is-revealed > .t-skel-skeleton {
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}
+
+.t-skel.is-revealed > .t-skel-content {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.t-skel-skeleton.is-pulsing {
+  animation: t-skeleton-pulse var(--pulse-dur) var(--ease-in-out) var(--pulse-count);
+}
+
+/* Standalone lazy roots can opt into the same keyed content entrance. */
+.t-skel-content.is-revealed {
+  animation: t-skeleton-content-in var(--reveal-dur) var(--reveal-ease) both;
+}
+
+@keyframes t-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: var(--pulse-min);
+  }
+}
+
+@keyframes t-skeleton-content-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.t-shimmer {
+  position: relative;
+  display: inline-block;
+  color: var(--shimmer-base);
+}
+
+.t-shimmer::before {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  content: attr(data-text);
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 40%,
+    var(--shimmer-highlight) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-position: 100% 0;
+  background-size: var(--shimmer-band) 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
+}
+
+@keyframes t-shimmer {
+  to {
+    background-position: 0 0;
+  }
+}
+
+/* Equal-width segmented controls only. Width is static; transform moves it. */
+.t-tabs-pill {
+  pointer-events: none;
+  will-change: transform;
+  transition: transform var(--tabs-dur) var(--tabs-ease);
+}
+
+.t-tabs-trigger {
+  transition:
+    color var(--duration-quick) var(--ease-out),
+    background-color var(--duration-quick) var(--ease-out),
+    border-color var(--duration-quick) var(--ease-out),
+    box-shadow var(--duration-quick) var(--ease-out);
+}
+
+/* Radix delays the first tooltip and exposes subsequent toolbar hints at once. */
+.t-tooltip {
+  transform-origin: var(--radix-tooltip-content-transform-origin, center bottom);
+  will-change: transform, opacity;
+}
+
+.t-tooltip[data-state="delayed-open"] {
+  animation: t-tooltip-open var(--tt-in-dur) var(--tt-in-ease) both;
+}
+
+.t-tooltip[data-state="instant-open"] {
+  animation: none;
+}
+
+.t-tooltip[data-state="closed"] {
+  animation: t-tooltip-close var(--tt-out-dur) var(--tt-out-ease) both;
+}
+
+@keyframes t-tooltip-open {
+  from {
+    opacity: 0;
+    transform: scale(var(--tt-scale));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes t-tooltip-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(var(--tt-scale));
+  }
+}
+
+/* Disclosures ----------------------------------------------------------- */
+.t-acc-chevron {
+  transform-origin: center;
+  transition: transform var(--acc-chevron) var(--acc-ease);
+}
+
+[data-slot="accordion-trigger"][data-state="open"] > .t-acc-chevron,
+.t-acc[data-open="true"] .t-acc-chevron {
+  transform: rotate(180deg);
+}
+
+.t-acc-content,
+.t-acc-panel {
+  overflow: hidden;
+}
+
+.t-acc-content[data-state="open"] {
+  animation: t-disclosure-open var(--acc-expand) var(--acc-ease) both;
+}
+
+.t-acc-content[data-state="closed"] {
+  animation: t-disclosure-close var(--acc-collapse) var(--acc-ease) both;
+}
+
+@keyframes t-disclosure-open {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height, var(--radix-collapsible-content-height));
+    opacity: 1;
+  }
+}
+
+@keyframes t-disclosure-close {
+  from {
+    height: var(--radix-accordion-content-height, var(--radix-collapsible-content-height));
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+/* Generic always-mounted accordion recipe. */
+.t-acc-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--acc-collapse) var(--acc-ease),
+    opacity var(--acc-collapse) var(--acc-ease);
+}
+
+.t-acc[data-open="true"] .t-acc-panel {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition-duration: var(--acc-expand);
+}
+
+.t-acc-panel-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Toasts ---------------------------------------------------------------- */
+.t-toast {
+  opacity: 0;
+  transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
+  pointer-events: none;
+  transition:
+    opacity var(--toast-close) var(--toast-ease),
+    transform var(--toast-close) var(--toast-ease);
+  will-change: transform, opacity;
+}
+
+.t-toast.is-open,
+.t-toast[data-open="true"] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition-duration: var(--toast-open);
+}
+
+@starting-style {
+  .t-toast.is-open,
+  .t-toast[data-open="true"] {
+    opacity: 0;
+    transform: translateY(var(--toast-distance)) scale(var(--toast-scale));
+  }
+}
+
+/* Form feedback --------------------------------------------------------- */
+.t-input {
+  transition: border-color var(--duration-quick) var(--ease-out);
+  will-change: transform;
+}
+
+.t-input.is-error {
+  transition-duration: var(--revert-dur);
+}
+
+.t-error-msg {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity var(--revert-dur) var(--ease-out),
+    visibility 0s linear var(--revert-dur);
+}
+
+.t-input-wrap.is-error .t-error-msg {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.t-input.is-shaking {
+  animation: t-input-shake calc(var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2) linear;
+}
+
+@keyframes t-input-shake {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--shake-ease);
+  }
+  27.27% {
+    transform: translateX(var(--shake-distance));
+    animation-timing-function: var(--shake-ease);
+  }
+  54.54% {
+    transform: translateX(calc(var(--shake-distance) * -1));
+    animation-timing-function: var(--shake-ease);
+  }
+  77.27% {
+    transform: translateX(var(--shake-overshoot));
+    animation-timing-function: var(--shake-ease);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Checkbox and toggle states remain interruptible. */
+.t-check {
+  transition:
+    background-color var(--check-box) var(--check-ease),
+    border-color var(--check-box) var(--check-ease),
+    color var(--check-box) var(--check-ease),
+    box-shadow var(--check-box) var(--check-ease);
+}
+
+.t-check-indicator {
+  opacity: 0;
+  transform: scale(0.92);
+  transition:
+    opacity var(--check-uncheck) var(--check-ease),
+    transform var(--check-uncheck) var(--check-ease);
+}
+
+.t-check-indicator svg path {
+  stroke-dasharray: var(--check-len, 24);
+  stroke-dashoffset: var(--check-len, 24);
+  transition: stroke-dashoffset var(--check-uncheck) var(--check-ease);
+}
+
+.t-check[data-state="checked"] .t-check-indicator,
+.t-check[aria-checked="true"] .t-check-indicator,
+.t-check[data-state="indeterminate"] .t-check-indicator,
+.t-check[aria-checked="mixed"] .t-check-indicator {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: var(--check-draw);
+}
+
+.t-check[data-state="checked"] .t-check-indicator svg path,
+.t-check[aria-checked="true"] .t-check-indicator svg path {
+  stroke-dashoffset: 0;
+  transition-duration: var(--check-draw);
+  transition-delay: var(--check-delay);
+}
+
+/* Mixed state appears immediately; animating its glyph would imply completion. */
+.t-check[data-state="indeterminate"] .t-check-indicator svg path,
+.t-check[aria-checked="mixed"] .t-check-indicator svg path {
+  stroke-dashoffset: 0;
+  transition-duration: 0.001ms;
+  transition-delay: 0s;
+}
+
+.t-toggle {
+  transition: none;
+}
+
+.t-toggle[data-motion-ready="true"] {
+  transition:
+    background-color var(--toggle-track) var(--toggle-ease),
+    border-color var(--toggle-track) var(--toggle-ease),
+    box-shadow var(--toggle-track) var(--toggle-ease);
+}
+
+.t-toggle-thumb {
+  transform: translateX(0);
+  will-change: transform;
+}
+
+.t-toggle[data-motion-ready="true"] .t-toggle-thumb {
+  transition: transform var(--toggle-dur) var(--toggle-ease);
+}
+
+.t-toggle[data-size="default"][data-state="checked"] .t-toggle-thumb,
+.t-toggle[data-size="sm"][data-state="checked"] .t-toggle-thumb {
+  transform: translateX(calc(100% - 2px));
+}
+
+/* Small, high-frequency affordances ------------------------------------ */
+.t-like-icon {
+  display: inline-flex;
+}
+
+.t-like .t-like-icon,
+.t-like .t-like-heart,
+.t-like .t-like-heart path {
+  transition:
+    transform var(--like-pop) var(--like-ease),
+    color var(--like-fill) var(--like-ease),
+    fill var(--like-fill) var(--like-ease),
+    stroke var(--like-fill) var(--like-ease);
+}
+
+.t-like[data-liked="true"] .t-like-heart {
+  color: var(--like-color);
+}
+
+.t-like[data-liked="true"] .t-like-heart path {
+  fill: currentColor;
+}
+
+.t-learn-chevron {
+  display: inline-flex;
+  transition: transform var(--learn-out) var(--learn-ease);
+}
+
+.t-like:active .t-like-icon {
+  transform: scale(0.94);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .t-learn:hover .t-learn-chevron {
+    transform: translateX(var(--learn-shift));
+    transition-duration: var(--learn-in);
+  }
+}
+
+/* Staggered explanatory copy ------------------------------------------- */
+.t-stagger-line {
+  display: block;
+}
+
+.t-stagger.is-shown .t-stagger-line {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--stagger-dur) var(--stagger-ease),
+    transform var(--stagger-dur) var(--stagger-ease);
+}
+
+.t-stagger.is-shown .t-stagger-line--2 {
+  transition-delay: var(--stagger-stagger);
+}
+
+.t-stagger.is-hiding .t-stagger-line {
+  opacity: 0;
+  transform: translateY(0);
+  transition: opacity var(--duration-quick) var(--ease-out);
+  transition-delay: 0s;
+}
+
+@starting-style {
+  .t-stagger.is-shown .t-stagger-line {
+    opacity: 0;
+    transform: translateY(var(--stagger-distance));
+  }
+}
+
+/* Keyed number changes. */
+.t-digit-group {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.t-digit,
+.t-number-pop {
+  display: inline-block;
+}
+
+.t-digit-group.is-animating .t-digit,
+.t-number-pop {
+  animation: t-number-pop var(--digit-dur) var(--digit-ease) both;
+}
+
+.t-digit[data-stagger="1"] {
+  animation-delay: var(--digit-stagger);
+}
+.t-digit[data-stagger="2"] {
+  animation-delay: calc(var(--digit-stagger) * 2);
+}
+
+@keyframes t-number-pop {
+  from {
+    opacity: 0;
+    transform: translate(
+      calc(var(--digit-distance) * var(--digit-dir-x)),
+      calc(var(--digit-distance) * var(--digit-dir-y))
+    );
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+/* Reduced motion keeps state legible while removing spatial movement. */
+@media (prefers-reduced-motion: reduce) {
+  .t-dropdown,
+  .t-modal,
+  .t-modal-overlay,
+  .t-sheet,
+  .t-success-check,
+  .t-success-check svg path,
+  .t-text-state,
+  .t-skel-content,
+  .t-skel-skeleton,
+  .t-shimmer::before,
+  .t-tooltip,
+  .t-acc-content,
+  .t-input,
+  .t-digit,
+  .t-number-pop {
+    animation: none !important;
+  }
+
+  .t-dropdown,
+  .t-modal,
+  .t-sheet,
+  .t-icon,
+  .t-badge,
+  .t-badge-dot,
+  .t-success-check,
+  .t-tooltip,
+  .t-input,
+  .t-learn-chevron,
+  .t-stagger-line,
+  .t-digit,
+  .t-number-pop {
+    transform: none !important;
+  }
+
+  .t-dropdown[data-state="closed"],
+  .t-tooltip[data-state="closed"],
+  .t-modal[data-state="closed"],
+  .t-modal-overlay[data-state="closed"],
+  .t-sheet[data-state="closed"],
+  .t-success-check[data-state="out"],
+  .t-badge[data-open="false"],
+  .t-toast:not(.is-open):not([data-open="true"]),
+  .t-skel > .t-skel-content,
+  .t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+  .t-icon-swap[data-state="b"] .t-icon[data-icon="a"] {
+    opacity: 0 !important;
+  }
+
+  .t-dropdown[data-state="open"],
+  .t-tooltip[data-state="delayed-open"],
+  .t-tooltip[data-state="instant-open"],
+  .t-modal[data-state="open"],
+  .t-modal-overlay[data-state="open"],
+  .t-sheet[data-state="open"],
+  .t-success-check[data-state="in"],
+  .t-badge[data-open="true"],
+  .t-toast.is-open,
+  .t-toast[data-open="true"],
+  .t-skel.is-revealed > .t-skel-content,
+  .t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+  .t-icon-swap[data-state="b"] .t-icon[data-icon="b"] {
+    opacity: 1 !important;
+  }
+
+  .t-panel-slide,
+  .t-page-slide .t-page,
+  .t-text-swap,
+  .t-icon-swap .t-icon,
+  .t-badge,
+  .t-badge-dot,
+  .t-skel > .t-skel-skeleton,
+  .t-skel > .t-skel-content,
+  .t-tabs-pill,
+  .t-acc-panel,
+  .t-acc-chevron,
+  .t-toast,
+  .t-error-msg,
+  .t-check,
+  .t-check-indicator,
+  .t-check-indicator svg path,
+  .t-toggle,
+  .t-toggle-thumb,
+  .t-like-icon,
+  .t-like-heart,
+  .t-like-heart path,
+  .t-learn-chevron,
+  .t-stagger-line {
+    transition-duration: 0.001ms !important;
+  }
+
+  /* Direction still reads through a brief fade, never a positional slide. */
+  .t-route-step[data-direction] {
+    animation: t-reduced-fade var(--duration-quick) var(--ease-out) both !important;
+    transform: none !important;
+  }
+
+  .t-stagger.is-shown .t-stagger-line {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .t-success-check[data-state="in"][data-draw="true"] svg path {
+    stroke-dashoffset: 0 !important;
+  }
+}
+
+@keyframes t-reduced-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

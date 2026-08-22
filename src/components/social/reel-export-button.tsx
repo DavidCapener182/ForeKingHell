@@ -88,10 +88,19 @@ export function ReelExportButton({ feedItemId, compact = false }: ReelExportButt
       disabled={!isMounted || pending}
       aria-label={compact ? label : undefined}
       title={compact ? label : undefined}
+      data-export-state={pending ? "building" : message}
       className={compact ? "bg-[#F5F6F4] text-[#0B7A3B]" : undefined}
     >
       <Clapperboard className="size-4" />
-      {compact ? null : label}
+      {compact ? null : (
+        <span
+          key={label}
+          className="t-text-state"
+          data-motion-ready={isMounted && (pending || message !== "idle") ? "true" : "false"}
+        >
+          {label}
+        </span>
+      )}
     </Button>
   );
 }
