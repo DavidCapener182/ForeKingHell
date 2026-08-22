@@ -2180,7 +2180,11 @@ function speedReadingFingerprint(reading: SpeedPbReading) {
 function clubSpeedMeasurementTrust(value: string | null): ClubSpeedMeasurementTrust {
   const normalized = value?.trim().toLowerCase() ?? "";
 
-  if (/^0(?:\.0+)?$/.test(normalized) || ["false", "measured", "direct"].includes(normalized)) {
+  if (
+    value === null ||
+    /^0(?:\.0+)?$/.test(normalized) ||
+    ["false", "measured", "direct"].includes(normalized)
+  ) {
     return "measured";
   }
 

@@ -12,11 +12,15 @@ describe("trusted speed personal best evidence", () => {
     const rows = [
       reading("measured", "one", 91, "0", duplicateSource),
       reading("duplicate", "two", 91, "0", duplicateSource),
+      reading("direct-null", "five", 92, null, { shot: "5", speed: "92" }),
       reading("estimated", "three", 95, "1", { shot: "2", speed: "95" }),
       reading("unknown", "four", 97.9, "8", { shot: "3", speed: "97.9" }),
     ];
 
-    expect(selectIndependentMeasuredSpeedReadings(rows).map((row) => row.id)).toEqual(["measured"]);
+    expect(selectIndependentMeasuredSpeedReadings(rows).map((row) => row.id)).toEqual([
+      "measured",
+      "direct-null",
+    ]);
   });
 
   it("does not treat duplicate imports of one physical 97.9 mph reading as repetition", () => {
@@ -147,7 +151,7 @@ describe("trusted speed personal best evidence", () => {
   it.each([
     ["1", "estimated_club_data"],
     ["Estimated", "estimated_club_data"],
-    [null, "unknown_club_data"],
+    ["unknown", "unknown_club_data"],
     ["8", "unknown_club_data"],
   ] as const)("does not let club-data type %s create a trusted PB", (clubDataEstType, reason) => {
     const summary = summarizeTrustedSpeedPb([
