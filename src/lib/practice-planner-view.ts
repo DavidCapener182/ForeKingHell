@@ -34,6 +34,8 @@ export type PracticeBlockImportStatus =
   | "needs_more_data"
   | "no_matching_shots";
 
+export type PracticeOutcomeStatus = "passed" | "not_passed" | "awaiting_evidence";
+
 export type PracticeFocusSummary = {
   main: string;
   secondary: string | null;
@@ -79,6 +81,80 @@ export function summarizePracticeImportControl(
 
 export function hasPlanVsActualData(comparison: PracticeComparisonViewLike) {
   return Boolean(comparison?.decisions.some((decision) => decision.actualBalls > 0));
+}
+
+export function summarizePracticeOutcome(
+  comparison: PracticeComparisonViewLike,
+  practiceScore: number | null,
+) {
+  const decisions = comparison?.decisions ?? [];
+  const passedBlocks = decisions.filter((decision) => decision.result === "passed").length;
+  const failedBlocks = decisions.filter((decision) => decision.result === "failed").length;
+  const partialBlocks = decisions.filter((decision) => decision.result === "mixed").length;
+  const insufficientBlocks = decisions.filter(
+    (decision) => decision.result === "insufficient_data",
+  ).length;
+  const hasEvidence = decisions.some((decision) => decision.actualBalls > 0);
+  const status: PracticeOutcomeStatus = !hasEvidence
+    ? "awaiting_evidence"
+    : (practiceScore ?? 0) >= 80
+      ? "passed"
+      : "not_passed";
+  const blocksStillToPass = Math.max(0, decisions.length - passedBlocks);
+
+  return {
+    status,
+    label:
+      status === "passed"
+        ? "Passed"
+        : status === "not_passed"
+          ? "Not passed yet"
+          : "Awaiting evidence",
+    detail:
+      status === "awaiting_evidence"
+        ? "Upload today’s launch-monitor shots to score this practice."
+        : blocksStillToPass === 0
+          ? `All ${decisions.length} blocks passed.`
+          : `${passedBlocks} of ${decisions.length} blocks passed. ${blocksStillToPass} still need work.`,
+    passedBlocks,
+    failedBlocks,
+    partialBlocks,
+    insufficientBlocks,
+    totalBlocks: decisions.length,
+  };
+}
+
+export function practiceDecisionResultLabel(
+  decision: NonNullable<PracticeComparisonViewLike>["decisions"][number],
+) {
+  switch (decision.result) {
+    case "passed":
+      return "Passed";
+    case "mixed":
+      return "Partial — repeat";
+    case "failed":
+      return "Failed";
+    case "insufficient_data":
+      return "Not enough shots";
+    default:
+      return decision.actualBalls > 0 ? "Needs review" : "No matching shots";
+  }
+}
+
+export function practiceDecisionResultTone(
+  decision: NonNullable<PracticeComparisonViewLike>["decisions"][number],
+): "positive" | "attention" | "critical" | "neutral" {
+  switch (decision.result) {
+    case "passed":
+      return "positive";
+    case "mixed":
+      return "attention";
+    case "failed":
+      return "critical";
+    case "insufficient_data":
+    default:
+      return "neutral";
+  }
 }
 
 export function defaultSelectedPracticeBlockId(blocks: PracticeBlockViewLike[]) {

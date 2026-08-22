@@ -135,6 +135,10 @@ describe("practice planner desktop ledger", () => {
     expect(selectedBlockPanel).not.toContain("<Card");
     const planVsActual =
       source.match(/function PlanVsActual[\s\S]*?function PracticeLibrary/)?.[0] ?? "";
+    expect(planVsActual).toContain("data-practice-result={outcome.status}");
+    expect(planVsActual).toContain("Practice result");
+    expect(planVsActual).toContain("summarizePracticeOutcome");
+    expect(planVsActual).toContain("practiceDecisionResultLabel");
     expect(planVsActual).toContain("<Card");
     expect(planVsActual).toContain("Planned target");
     expect(planVsActual).toContain("Measured actual");
@@ -178,13 +182,15 @@ describe("practice planner desktop ledger", () => {
     const result = source.match(/function PlanVsActual[\s\S]*?function PracticeLibrary/)?.[0] ?? "";
 
     expect(agenda).toContain("hasEvidence");
-    expect(agenda).toContain("<PlanVsActual comparison={comparison} blocks={blocks} />");
+    expect(agenda).toContain(
+      "<PlanVsActual comparison={comparison} blocks={blocks} score={score} />",
+    );
     expect(result).toContain("data-plan-vs-actual");
     expect(result).toContain("decision.target");
     expect(result).toContain("decision.actual");
-    expect(source).toContain('return "Pass"');
-    expect(source).toContain('return "Partial"');
-    expect(source).toContain('return "Fail"');
+    expect(result).toContain("practiceDecisionResultLabel(decision)");
+    expect(result).toContain("practiceComparisonCardTone(decision.result)");
+    expect(result).toContain('decision.result === "failed"');
   });
 
   it("keeps validation failures and successful outcomes distinct inside the Today card", () => {

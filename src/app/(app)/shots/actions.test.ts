@@ -65,4 +65,11 @@ describe("reversible shot review actions", () => {
     expect(source).toContain("refreshStockYardagesForClubs(tx");
     expect(source).toContain("clubContexts: ownedShots.map");
   });
+
+  it("recomputes matched practice-day evidence after an exclusion or restore", () => {
+    expect(source).toContain("refreshPracticeEvidenceForReviewedSessions");
+    expect(source).toContain(
+      "await refreshPracticeEvidenceForReviewedSessions(userId, reviewed.sessionIds)",
+    );
+  });
 });

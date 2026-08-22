@@ -108,8 +108,10 @@ import {
   buildPracticeFocusSummary,
   compactPracticeBlockRow,
   defaultSelectedPracticeBlockId,
+  practiceDecisionResultLabel,
   scoredFromLabel,
   summarizePracticeImportControl,
+  summarizePracticeOutcome,
   type PracticeBlockImportStatus,
 } from "@/lib/practice-planner-view";
 import { cn } from "@/lib/utils";
@@ -214,6 +216,20 @@ function errorOutcome(message: string): PracticePlannerOutcome {
   return { message, status: "error" };
 }
 
+function practiceDayEvidenceLabel(comparison: PracticeComparison | null, fallbackShotCount = 0) {
+  const importedSession = comparison?.importedSession;
+  const eligibleShots = comparison?.planVsActual.actualShots ?? fallbackShotCount;
+  const uploadCount = importedSession?.sessionCount ?? (eligibleShots > 0 ? 1 : 0);
+  const excludedShots = importedSession?.excludedShotCount ?? 0;
+  const uploadLabel = `${uploadCount} upload${uploadCount === 1 ? "" : "s"}`;
+  const excludedLabel =
+    excludedShots > 0
+      ? ` ${excludedShots} shot${excludedShots === 1 ? " was" : "s were"} not eligible for scoring and left out.`
+      : "";
+
+  return `${eligibleShots} eligible shot${eligibleShots === 1 ? "" : "s"} from ${uploadLabel} on the practice day.${excludedLabel}`;
+}
+
 export function PracticePlannerClient({
   context,
   initialPlan,
@@ -250,11 +266,21 @@ export function PracticePlannerClient({
       : (latestSessionReview?.score ?? null),
   );
   const [outcome, setOutcome] = useState<PracticePlannerOutcome | null>(
-    latestSessionReview && !initialSavedPlan?.result
+    initialSavedPlan?.result
       ? successOutcome(
-          `Latest ${latestSessionReview.importedSession.shotCount}-shot session is being used to review this plan. Incomplete planned clubs still count, but they pull the score down.`,
+          practiceDayEvidenceLabel(
+            initialSavedPlan.result.comparison,
+            initialSavedPlan.result.comparison?.planVsActual.actualShots ?? 0,
+          ),
         )
-      : null,
+      : latestSessionReview
+        ? successOutcome(
+            `${practiceDayEvidenceLabel(
+              latestSessionReview.comparison,
+              latestSessionReview.importedSession.shotCount,
+            )} Incomplete planned clubs still pull the score down.`,
+          )
+        : null,
   );
   const [savedImageDialogOpen, setSavedImageDialogOpen] = useState(false);
   const [savedImagePreviewUrl, setSavedImagePreviewUrl] = useState<string | null>(null);
@@ -396,7 +422,7 @@ export function PracticePlannerClient({
       setPracticeScore(null);
       setOutcome(
         successOutcome(
-          "Plan saved. It is waiting for the next uploaded range session; older uploads will not score this practice.",
+          "Plan saved. Choose any upload from the practice day to score it with every eligible shot from that day.",
         ),
       );
       openSavedImageDialog(false);
@@ -435,7 +461,10 @@ export function PracticePlannerClient({
       }));
       setOutcome(
         successOutcome(
-          `Selected ${result.latestSessionReview.importedSession.shotCount}-shot session is now scoring this practice. Incomplete planned clubs still pull the score down.`,
+          `${practiceDayEvidenceLabel(
+            result.latestSessionReview.comparison,
+            result.latestSessionReview.importedSession.shotCount,
+          )} The combined evidence is now scoring this practice.`,
         ),
       );
     });
@@ -1303,16 +1332,17 @@ function PracticeSessionImportBar({
       </DrawerTrigger>
       <DrawerContent className="inset-y-0 right-0 left-auto mt-0 h-full w-full max-w-xl rounded-none">
         <DrawerHeader className="border-b text-left">
-          <DrawerTitle>Match practice evidence</DrawerTitle>
+          <DrawerTitle>Match the practice day</DrawerTitle>
           <DrawerDescription>
-            Choose an uploaded session. Every result is calculated from its launch-monitor rows.
+            Choose any upload from the practice day. The result combines every eligible
+            launch-monitor shot from that day, including range and simulated-course sessions.
           </DrawerDescription>
         </DrawerHeader>
         <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-4">
           {importOptions.length > 0 ? (
             <>
               <label className="grid min-w-0 gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Uploaded session
+                Practice-day anchor
                 <Select value={selectedImportId} onValueChange={onSelect}>
                   <SelectTrigger className="min-h-11 w-full min-w-0 max-w-full normal-case tracking-normal">
                     <SelectValue placeholder="Choose uploaded session" />
@@ -1329,16 +1359,14 @@ function PracticeSessionImportBar({
               </label>
               <div className="border-y border-border/70 py-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Selected evidence
+                  Selected day
                 </p>
                 <p className="mt-2 text-lg font-semibold">
-                  {selectedSession
-                    ? `${selectedSession.shotCount} measured shots`
-                    : "No session selected"}
+                  {selectedSession ? selectedSession.dateLabel : "No session selected"}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {selectedSession
-                    ? `${selectedSession.dateLabel} · ${formatSessionOptionType(selectedSession.sessionType)}`
+                    ? "All eligible launch-monitor uploads from this day will be combined."
                     : "Upload a launch-monitor session first."}
                 </p>
               </div>
@@ -1350,8 +1378,8 @@ function PracticeSessionImportBar({
                 <Upload className="size-4" />
                 {savedPlanId
                   ? hasImport
-                    ? "Use this evidence"
-                    : "Score this plan"
+                    ? "Use this day's evidence"
+                    : "Score this practice day"
                   : "Save plan first"}
               </Button>
             </>
@@ -1485,7 +1513,7 @@ function PracticeAgenda({
       </div>
 
       {hasEvidence ? (
-        <PlanVsActual comparison={comparison} blocks={blocks} />
+        <PlanVsActual comparison={comparison} blocks={blocks} score={score} />
       ) : (
         <div className="grid gap-3">
           <ol className="relative grid gap-3 before:absolute before:top-8 before:bottom-8 before:left-[1.45rem] before:w-px before:bg-gradient-to-b before:from-primary before:via-primary/45 before:to-border motion-reduce:before:bg-border">
@@ -1970,9 +1998,11 @@ function ContextItem({ label, value, detail }: { label: string; value: string; d
 function PlanVsActual({
   comparison,
   blocks,
+  score,
 }: {
   comparison: PracticeComparison | null;
   blocks: PracticeBlock[];
+  score: PracticeScore | null;
 }) {
   if (!comparison?.decisions.length) {
     return (
@@ -1987,17 +2017,66 @@ function PlanVsActual({
     comparison.decisions.find((decision) => decision.result === "failed") ??
     comparison.decisions.find((decision) => decision.result === "mixed") ??
     comparison.decisions[0];
+  const outcome = summarizePracticeOutcome(comparison, score?.score ?? null);
+  const OutcomeIcon = outcome.status === "passed" ? CheckCircle2 : AlertCircle;
 
   return (
     <div className="grid gap-3" data-plan-vs-actual>
+      <div
+        data-practice-result={outcome.status}
+        role="status"
+        aria-label={`Practice result: ${outcome.label}. Score ${score?.score ?? 0} out of 100. ${outcome.detail}`}
+        className={cn(
+          "grid gap-4 rounded-xl border-2 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
+          outcome.status === "passed" &&
+            "border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)]",
+          outcome.status === "not_passed" &&
+            "border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]",
+          outcome.status === "awaiting_evidence" && "border-border bg-muted text-foreground",
+        )}
+      >
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-full border border-current/20 bg-background/65">
+            <OutcomeIcon className="size-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-80">
+              Practice result
+            </p>
+            <h3 className="mt-1 font-heading text-2xl font-semibold tracking-tight">
+              {outcome.label}
+            </h3>
+            <p className="mt-1 text-sm font-medium leading-5">{outcome.detail}</p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-current/20 bg-background/65 px-4 py-3 text-center">
+          <p className="font-heading text-3xl font-semibold tabular-nums">
+            {score?.score ?? 0}/100
+          </p>
+          <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.13em] opacity-75">
+            Overall score
+          </p>
+        </div>
+      </div>
+
       {comparison.decisions.map((decision, index) => {
         const block = blocks.find((item) => item.id === decision.blockId) ?? null;
         const mattersMost = decision.blockId === mostImportant?.blockId;
+        const ResultIcon =
+          decision.result === "passed"
+            ? CheckCircle2
+            : decision.result === "failed"
+              ? AlertCircle
+              : Minus;
 
         return (
           <Card
             key={decision.blockId}
-            className={cn("gap-0 py-0 shadow-sm", mattersMost && "ring-primary/45 shadow-lg")}
+            className={cn(
+              "gap-0 border-l-4 py-0 shadow-sm",
+              practiceComparisonCardTone(decision.result),
+              mattersMost && "ring-primary/45 shadow-lg",
+            )}
             data-practice-measured-block
           >
             <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
@@ -2010,7 +2089,8 @@ function PlanVsActual({
                     variant="outline"
                     className={practiceComparisonResultTone(decision.result)}
                   >
-                    {practiceComparisonResultLabel(decision)}
+                    <ResultIcon className="size-3.5" aria-hidden />
+                    {practiceDecisionResultLabel(decision)}
                   </Badge>
                   {mattersMost ? <Badge>Block that mattered most</Badge> : null}
                 </div>
@@ -2271,21 +2351,6 @@ function practiceDecisionAction(
   }
 }
 
-function practiceComparisonResultLabel(
-  decision: NonNullable<PracticeComparison>["decisions"][number],
-) {
-  switch (decision.result) {
-    case "passed":
-      return "Pass";
-    case "mixed":
-      return "Partial";
-    case "failed":
-      return "Fail";
-    case "insufficient_data":
-      return "Partial";
-  }
-}
-
 function practiceComparisonResultTone(
   result: NonNullable<PracticeComparison>["decisions"][number]["result"],
 ) {
@@ -2297,6 +2362,17 @@ function practiceComparisonResultTone(
     result === "failed" &&
       "border-[var(--status-error-border)] bg-[var(--status-error-surface)] text-destructive",
     result === "insufficient_data" && "border-border bg-muted text-foreground",
+  );
+}
+
+function practiceComparisonCardTone(
+  result: NonNullable<PracticeComparison>["decisions"][number]["result"],
+) {
+  return cn(
+    result === "passed" && "border-l-[var(--status-success-border)]",
+    result === "mixed" && "border-l-[var(--status-warning-border)]",
+    result === "failed" && "border-l-[var(--status-error-border)]",
+    result === "insufficient_data" && "border-l-border",
   );
 }
 

@@ -7,6 +7,7 @@ import { getDb } from "@/db/client";
 import { shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
+import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
 import {
   buildShotReviewMutation,
   effectiveShotReviewStatus,
@@ -126,6 +127,7 @@ async function applyOwnedShotReview(input: unknown) {
     };
   });
 
+  await refreshPracticeEvidenceForReviewedSessions(userId, reviewed.sessionIds);
   revalidateShotDerivedRoutes(reviewed.sessionIds);
   recordProductWorkflowEvent("shot_review_completed", {
     action: reviewed.status,

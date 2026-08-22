@@ -256,9 +256,7 @@ export async function saveLaunchMonitorImport(
           validatedInput.practicePlanId,
           result.sessionId,
         )
-      : result.skipped
-        ? null
-        : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
+      : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
 
     if (!result.skipped) {
       after(async () => {

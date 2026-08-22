@@ -7,6 +7,7 @@ import {
   getCurrentPracticePlanSummary,
   getPracticePlannerContext,
   savedPracticePlanToPracticePlan,
+  selectPracticePlannerInitialSavedPlan,
   type GeneratePracticePlanOptions,
 } from "@/lib/practice-planner";
 
@@ -34,14 +35,12 @@ export default async function PracticeCompanionPage({
     }),
     getCurrentPracticePlanSummary(userId),
   ]);
-  const resumable =
-    !explicitSpeedRequest &&
-    currentPlan &&
-    ["planned", "active", "awaiting_import", "match_found"].includes(currentPlan.status)
-      ? currentPlan
+  const selectedPlan =
+    !explicitSpeedRequest && currentPlan
+      ? selectPracticePlannerInitialSavedPlan([currentPlan], null)
       : null;
-  const initialPlan = resumable
-    ? savedPracticePlanToPracticePlan(resumable, context)
+  const initialPlan = selectedPlan
+    ? savedPracticePlanToPracticePlan(selectedPlan, context)
     : generatePracticePlan(context, options);
 
   return (
@@ -52,7 +51,7 @@ export default async function PracticeCompanionPage({
           context={context}
           initialPlan={initialPlan}
           initialOptions={options}
-          measuredResult={currentPlan?.result ?? null}
+          measuredResult={selectedPlan?.result ?? null}
         />
       </MobileAppShell>
     </PageShell>
