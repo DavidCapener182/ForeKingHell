@@ -23,8 +23,9 @@ describe("shots master-detail desktop table", () => {
     expect(source).toContain("Current review");
     expect(source).toContain("reviewConfidenceLabel");
     expect(source).toContain("reviewEvents.map");
-    expect(source).not.toContain("ShotDeleteButton");
-    expect(source).not.toContain('variant="destructive"');
+    expect(source).toContain("ShotDeleteButton");
+    expect(source).toContain("ShotBulkDeleteButton");
+    expect(source).toContain('variant="destructive"');
     expect(source).toContain("data-selected-shot");
     expect(source).toContain("tabIndex={0}");
 
@@ -37,16 +38,32 @@ describe("shots master-detail desktop table", () => {
     }
   });
 
-  it("offers bounded batch exclusion and single-shot restoration without deleting rows", () => {
+  it("offers reversible exclusion alongside bounded permanent deletion", () => {
     expect(source).toContain("shotIds={selectedRows}");
     expect(source).toContain("<ShotBulkReviewButton");
     expect(source).toContain("isRestorableShotReviewStatus(shot.reviewStatus)");
     expect(source).toContain('shot.reviewStatus === "suggested_exclusion"');
     expect(source).toContain('"Keep"');
     expect(source).toContain('"Restore"');
-    expect(source).toContain('"Review"');
-    expect(source).not.toContain("Delete shot");
-    expect(source).not.toContain("Delete");
+    expect(source).toContain('"Exclude from stats"');
+    expect(source).toContain("Delete permanently");
+    expect(source).toContain("<ShotBulkDeleteButton");
+    expect(source).toContain("canDeletePermanently");
+    expect(source).toContain("restrictedDeleteCount");
+    expect(source).toContain("cannot be permanently deleted here");
+  });
+
+  it("keeps one persistent single-shot action bar outside the detail tabs", () => {
+    const detailSource = source.slice(
+      source.indexOf("export function SelectedShotDetail"),
+      source.indexOf("function shotReviewMenuLabel"),
+    );
+    expect(detailSource).toContain("data-shot-action-bar");
+    expect(detailSource.indexOf("data-shot-action-bar")).toBeLessThan(
+      detailSource.indexOf("<Tabs"),
+    );
+    expect(detailSource.match(/<ShotReviewButton/g)).toHaveLength(1);
+    expect(detailSource.match(/<ShotDeleteButton/g)).toHaveLength(1);
   });
 
   it("keeps keyboard row selection controls for desktop table users", () => {

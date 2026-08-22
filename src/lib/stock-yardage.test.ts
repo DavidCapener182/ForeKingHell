@@ -40,6 +40,20 @@ describe("calculateStockYardage", () => {
     expect(result.recommendedPlayNumberYd).toBeNull();
   });
 
+  it("keeps a valid carry in stock while omitting its quarantined total", () => {
+    const quarantinedTotalShot = { ...shot(136.8, 145, -2), totalYd: null };
+    const result = calculateStockYardage([
+      shot(135, 145, -4),
+      quarantinedTotalShot,
+      shot(138, 148, 3),
+    ]);
+
+    expect(result.sampleSize).toBe(3);
+    expect(result.carryMedianYd).toBe(136.8);
+    expect(result.personalBestCarryYd).toBe(138);
+    expect(result.totalMedianYd).toBe(146.5);
+  });
+
   it("excludes chip, pitch, recovery, mishit, and bad-data rows", () => {
     const result = calculateStockYardage([
       shot(140, 148, 0),

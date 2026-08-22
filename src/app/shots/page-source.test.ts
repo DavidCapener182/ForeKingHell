@@ -73,15 +73,30 @@ describe("Shot Explorer analytics workbench", () => {
     expect(pageSource).toContain('exportTableId="shots"');
   });
 
-  it("keeps row actions inside a menu and exposes reversible review operations", () => {
-    for (const action of ["Open", "Correct", "Review", "Keep", "Restore", "View source"]) {
+  it("keeps row actions inside a menu and exposes reversible review plus permanent deletion", () => {
+    for (const action of [
+      "Open",
+      "Correct",
+      "Exclude from stats",
+      "Keep",
+      "Restore",
+      "View source",
+    ]) {
       expect(tableSource).toContain(action);
     }
     expect(tableSource).toContain("<DropdownMenu");
     expect(tableSource).toContain("<ShotReviewButton");
     expect(tableSource).toContain("<ShotBulkReviewButton");
-    expect(tableSource).not.toContain("<ShotDeleteButton");
-    expect(tableSource).not.toContain("Delete shot");
+    expect(tableSource).toContain("<ShotDeleteButton");
+    expect(tableSource).toContain("<ShotBulkDeleteButton");
+    expect(tableSource).toContain("Delete permanently");
+  });
+
+  it("uses provider session mode to keep non-course simulator practice deletable", () => {
+    expect(pageSource).toContain("rapsodoSyncSessions.providerSessionMode");
+    expect(pageSource).toContain("providerMetadataBySessionId");
+    expect(pageSource).toContain("providerKind: shot.providerKind");
+    expect(pageSource).toContain("providerSessionMode: shot.providerSessionMode");
   });
 
   it("shows launch, flight, source, evidence and correction detail", () => {

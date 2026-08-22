@@ -1,7 +1,7 @@
 {
   "/": 700000,
   "/login": 800000,
-  "/today": 1055000,
+  "/today": 1060000,
   "/dashboard": 1050000,
   "/import": 1180000,
   "/companion-runtime/import": 950000,

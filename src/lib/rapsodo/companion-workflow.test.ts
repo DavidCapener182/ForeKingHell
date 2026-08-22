@@ -42,12 +42,16 @@ describe("mocked R-Cloud companion journey", () => {
 
     expect(uncertainCompanionRapsodoShots(preview).map((item) => item.rowNumber)).toEqual([2]);
     expect(buildCompanionRapsodoShotOverrides(preview, { 2: sevenIron.clubKey })).toEqual([
-      expect.objectContaining({ rowNumber: 1, clubType: "driver" }),
-      expect.objectContaining({ rowNumber: 2, clubType: "7i" }),
+      expect.objectContaining({
+        rowNumber: 1,
+        clubType: "driver",
+        clubSelectionOrigin: "recommendation",
+      }),
+      expect.objectContaining({ rowNumber: 2, clubType: "7i", clubSelectionOrigin: "user" }),
     ]);
     expect(uncertainCompanionRapsodoShots(preview, [2])).toEqual([]);
     expect(buildCompanionRapsodoShotOverrides(preview, { 2: sevenIron.clubKey }, [1])).toEqual([
-      expect.objectContaining({ rowNumber: 2, clubType: "7i" }),
+      expect.objectContaining({ rowNumber: 2, clubType: "7i", clubSelectionOrigin: "user" }),
     ]);
     expect(companionRapsodoResultHref("saved session")).toBe(
       "/import/result?sessionId=saved%20session",

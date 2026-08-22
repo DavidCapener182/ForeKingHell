@@ -159,6 +159,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
       group.rowNumbers.map((rowNumber) => ({
         rowNumber,
         clubType: clubMappings[group.label]!,
+        clubSelectionOrigin: "user",
       })),
     );
     const input = {

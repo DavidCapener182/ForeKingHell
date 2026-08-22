@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { CheckCircle2, Crosshair, Database, ShieldCheck, Target, Upload } from "lucide-react";
 
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
@@ -15,10 +15,16 @@ import {
   type DesktopWorkflowStep,
 } from "@/components/app/desktop-workbench";
 import { PageShell, StatusPill, type Tone } from "@/components/premium";
-import { clubs, importRows, sessions, shots } from "@/db/schema";
+import { importFiles, importRows, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData, type FeatureIdeasData } from "@/lib/feature-ideas";
+import {
+  formatImportTriagePath,
+  importFieldIssueCount,
+  importSuggestionReviewHref,
+  summarizePersistedImportShots,
+} from "@/lib/import-result-triage";
 import { getPracticePlanReviewForSourceSession } from "@/lib/practice-planner";
 import { companionReviewRoute } from "@/lib/session-review-route";
 
@@ -64,29 +70,61 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
       >
         <ResultHero
           eyebrow="Import saved"
-          title={`${integerFormatter.format(result.shotCount)} shots imported`}
-          summary={`${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
+          title="Import triage ready"
+          summary={`${result.triagePath}.${
+            result.fieldIssueCount > 0
+              ? ` ${integerFormatter.format(result.fieldIssueCount)} impossible ${result.fieldIssueCount === 1 ? "field was" : "fields were"} quarantined without discarding the rest of the shot.`
+              : ""
+          } ${result.fileName ?? "CSV import"} saved on ${dateFormatter.format(result.date)} with raw rows preserved for audit.`}
           confidence={{
-            label: `${featureData.dataHealth.score}/100 trust`,
-            tone: result.questionableRowCount > 0 ? "outline" : "secondary",
+            label:
+              result.triage.confirmationCount > 0
+                ? `${integerFormatter.format(result.triage.confirmationCount)} to confirm`
+                : "No mishits suggested",
+            tone: result.triage.confirmationCount > 0 ? "outline" : "secondary",
           }}
           metrics={[
-            { label: "Accepted shots", value: integerFormatter.format(result.shotCount) },
-            { label: "Raw rows", value: integerFormatter.format(result.rawRowCount) },
-            { label: "Clubs updated", value: integerFormatter.format(result.clubCount) },
             {
-              label: "Questionable rows",
-              value: integerFormatter.format(result.questionableRowCount),
+              label: "Stock-quality",
+              value: integerFormatter.format(result.triage.stockQualityCount),
+            },
+            {
+              label: "Likely mishits",
+              value: integerFormatter.format(result.triage.likelyMishitCount),
+            },
+            {
+              label: "Partial shots",
+              value: integerFormatter.format(result.triage.partialShotCount),
+            },
+            {
+              label: "Needs review",
+              value: integerFormatter.format(result.triage.needsReviewCount),
             },
           ]}
           action={
             <div className="flex flex-wrap gap-2">
-              <Button asChild className="premium-action rounded-lg">
-                <Link href={companionReviewRoute(result)} prefetch={false}>
-                  <CheckCircle2 className="size-4" />
-                  Open session
-                </Link>
-              </Button>
+              {result.triage.confirmationCount > 0 ? (
+                <Button asChild className="premium-action rounded-lg">
+                  <Link href={result.suggestionReviewHref} prefetch={false}>
+                    <CheckCircle2 className="size-4" />
+                    Confirm flagged shots
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild className="premium-action rounded-lg">
+                  <Link href={companionReviewRoute(result)} prefetch={false}>
+                    <CheckCircle2 className="size-4" />
+                    Open session
+                  </Link>
+                </Button>
+              )}
+              {result.triage.confirmationCount > 0 ? (
+                <Button asChild variant="outline" className="rounded-lg">
+                  <Link href={companionReviewRoute(result)} prefetch={false}>
+                    Open session
+                  </Link>
+                </Button>
+              ) : null}
               <Button asChild variant="outline" className="rounded-lg">
                 <Link href="/import" prefetch={false}>
                   <Upload className="size-4" />
@@ -100,27 +138,27 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
         {result.practiceReview ? <PracticePlanReviewCard review={result.practiceReview} /> : null}
 
         <ConnectedMetricBar
-          label="Import data trust"
+          label="Import quality readback"
           metrics={[
             {
-              label: "Trust score",
-              value: `${featureData.dataHealth.score}/100`,
-              detail: featureData.dataHealth.status,
-            },
-            {
-              label: "Accepted",
+              label: "Imported",
               value: integerFormatter.format(result.shotCount),
               detail: "Normalised shot rows",
             },
             {
-              label: "Preserved",
-              value: integerFormatter.format(result.rawRowCount),
-              detail: "Original rows retained",
+              label: "Stock-quality",
+              value: integerFormatter.format(result.triage.stockQualityCount),
+              detail: "Eligible full shots",
             },
             {
-              label: "Needs review",
-              value: integerFormatter.format(result.questionableRowCount),
-              detail: "Unknown rows",
+              label: "Needs confirmation",
+              value: integerFormatter.format(result.triage.confirmationCount),
+              detail: "Likely mishits and low-tail reviews",
+            },
+            {
+              label: "Partial",
+              value: integerFormatter.format(result.triage.partialShotCount),
+              detail: "Useful short-game shots",
             },
           ]}
         />
@@ -164,7 +202,7 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
             detail="See carry numbers, trust percentages and gaps after the import."
           />
           <ResultAction
-            href="/shots"
+            href={`/shots?sessionId=${encodeURIComponent(result.id)}`}
             icon={<Database className="size-4" />}
             title="Audit shot rows"
             detail="Inspect normalized shots and preserved raw import rows."
@@ -182,21 +220,22 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
 }
 
 function importResultWorkflowSteps(result: ImportResultData): DesktopWorkflowStep[] {
+  const needsConfirmation = result.triage.confirmationCount > 0;
+
   return [
     {
       title: "CSV saved",
-      detail: `${integerFormatter.format(result.rawRowCount)} raw rows preserved for audit.`,
+      detail: `${integerFormatter.format(result.rawRowCount)} raw rows preserved for audit · ${integerFormatter.format(result.rawUnknownRowCount)} unknown.`,
       status: "complete",
       value: "Stored",
     },
     {
       title: "Quality check",
-      detail:
-        result.questionableRowCount > 0
-          ? `${integerFormatter.format(result.questionableRowCount)} rows need review before trusting every recommendation.`
-          : "No questionable rows were flagged in this import receipt.",
+      detail: needsConfirmation
+        ? `${integerFormatter.format(result.triage.likelyMishitCount)} likely ${result.triage.likelyMishitCount === 1 ? "mishit" : "mishits"} and ${integerFormatter.format(result.triage.needsReviewCount)} low-tail ${result.triage.needsReviewCount === 1 ? "shot need" : "shots need"} your confirmation; ${integerFormatter.format(result.triage.partialShotCount)} partial ${result.triage.partialShotCount === 1 ? "shot stays" : "shots stay"} separate from stock data.`
+        : `${integerFormatter.format(result.triage.stockQualityCount)} stock-quality shots identified; no likely mishits need confirmation.`,
       status: "current",
-      value: result.questionableRowCount > 0 ? "Review" : "Clear",
+      value: needsConfirmation ? "Review" : "Clear",
     },
     {
       title: "Session review",
@@ -221,8 +260,8 @@ function importResultHelpItems(
       detail: `${featureData.dataHealth.score}/100 · ${featureData.dataHealth.status}.`,
     },
     {
-      title: "Audit scope",
-      detail: `${integerFormatter.format(result.shotCount)} shots accepted from ${integerFormatter.format(result.rawRowCount)} preserved rows.`,
+      title: "Raw audit",
+      detail: `${integerFormatter.format(result.rawRowCount)} rows preserved · ${integerFormatter.format(result.rawUnknownRowCount)} unknown row ${result.rawUnknownRowCount === 1 ? "type" : "types"}.`,
     },
     {
       title: "Next evidence",
@@ -385,31 +424,49 @@ async function getImportResultData(sessionId: string) {
     notFound();
   }
 
-  const [shotStats, rowStats, practiceReview] = await Promise.all([
+  const [sessionShotRows, rowStats, importReceiptRows, practiceReview] = await Promise.all([
     db
       .select({
-        shotCount: count(shots.id),
-        clubCount: sql<number>`count(distinct ${clubs.id})::int`,
+        clubId: shots.clubId,
+        reviewStatus: shots.reviewStatus,
+        qualityTag: shots.qualityTag,
+        shotCategory: shots.shotCategory,
       })
       .from(shots)
-      .leftJoin(clubs, eq(clubs.id, shots.clubId))
       .where(and(eq(shots.sessionId, session.id), eq(shots.userId, userId))),
     db
       .select({
         rawRowCount: count(importRows.id),
-        questionableRowCount: sql<number>`count(*) filter (where ${importRows.rowType} = 'unknown')::int`,
+        rawUnknownRowCount: sql<number>`count(*) filter (where ${importRows.rowType} = 'unknown')::int`,
       })
       .from(importRows)
       .where(and(eq(importRows.sessionId, session.id), eq(importRows.userId, userId))),
+    db
+      .select({ metadataJson: importFiles.metadataJson })
+      .from(importFiles)
+      .where(
+        and(
+          eq(importFiles.sessionId, session.id),
+          eq(importFiles.userId, userId),
+          eq(importFiles.status, "saved"),
+        ),
+      )
+      .orderBy(desc(importFiles.createdAt))
+      .limit(1),
     getPracticePlanReviewForSourceSession(userId, session.id),
   ]);
+  const triage = summarizePersistedImportShots(sessionShotRows);
 
   return {
     ...session,
-    shotCount: Number(shotStats[0]?.shotCount ?? 0),
-    clubCount: Number(shotStats[0]?.clubCount ?? 0),
+    shotCount: triage.totalShotCount,
+    clubCount: new Set(sessionShotRows.map((shot) => shot.clubId)).size,
     rawRowCount: Number(rowStats[0]?.rawRowCount ?? 0),
-    questionableRowCount: Number(rowStats[0]?.questionableRowCount ?? 0),
+    rawUnknownRowCount: Number(rowStats[0]?.rawUnknownRowCount ?? 0),
+    triage,
+    triagePath: formatImportTriagePath(triage),
+    fieldIssueCount: importFieldIssueCount(importReceiptRows[0]?.metadataJson),
+    suggestionReviewHref: importSuggestionReviewHref(session.id),
     practiceReview,
   };
 }

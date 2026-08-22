@@ -73,6 +73,13 @@ import {
   formatMegabytes,
   utf8ByteLength,
 } from "@/lib/imports/import-limits";
+import {
+  buildEstablishedClubProfile,
+  triageImportedShotQuality,
+  type EstablishedClubProfile,
+  type ShotQualityClassification,
+  type ShotQualityEvidence,
+} from "@/lib/imports/shot-quality-triage";
 import { reportServerFailure } from "@/lib/server-observability";
 import {
   buildImportedShotReviewLifecycle,
@@ -80,11 +87,14 @@ import {
   type ShotReviewStatus,
 } from "@/lib/shot-review";
 
+export type RapsodoClubSelectionOrigin = "reported" | "recommendation" | "user";
+
 export type RapsodoShotOverride = {
   rowNumber: number;
   clubType: string;
   clubBrand?: string | null;
   clubModel?: string | null;
+  clubSelectionOrigin?: RapsodoClubSelectionOrigin;
   shotCategory?: ShotCategory;
   qualityTag?: string | null;
 };
@@ -133,6 +143,17 @@ export type LongestShotNotification = {
   totalYd: number | null;
 };
 
+export type ImportQualityTriageSummary = {
+  version: "v1";
+  totalShots: number;
+  stockQuality: number;
+  likelyMishits: number;
+  needsReview: number;
+  partialShots: number;
+  unusableShots: number;
+  fieldIssues: number;
+};
+
 export type SaveRapsodoImportResult =
   | {
       ok: true;
@@ -144,6 +165,7 @@ export type SaveRapsodoImportResult =
       practicePlanMatch: PracticePlanImportMatch | null;
       longestShotNotifications: LongestShotNotification[];
       achievementUnlockNotifications: AchievementUnlockNotification[];
+      qualityTriage: ImportQualityTriageSummary;
       warnings: string[];
     }
   | {
@@ -163,6 +185,7 @@ export type SaveRapsodoImportBatchResult =
       practicePlanMatches: PracticePlanImportMatch[];
       longestShotNotifications: LongestShotNotification[];
       achievementUnlockNotifications: AchievementUnlockNotification[];
+      qualityTriage: ImportQualityTriageSummary;
       warnings: string[];
     }
   | {
@@ -183,6 +206,11 @@ const IMPORT_TELEMETRY_FIELDS = new Set([
   "source",
   "offlineReplay",
   "durationMs",
+  "stockQualityCount",
+  "likelyMishitCount",
+  "needsReviewCount",
+  "partialShotCount",
+  "fieldIssueCount",
 ]);
 
 class ImportValidationError extends Error {
@@ -300,6 +328,11 @@ export async function saveLaunchMonitorImport(
       source: validatedInput.source,
       offlineReplay: false,
       durationMs: Date.now() - startedAt,
+      stockQualityCount: result.qualityTriage.stockQuality,
+      likelyMishitCount: result.qualityTriage.likelyMishits,
+      needsReviewCount: result.qualityTriage.needsReview,
+      partialShotCount: result.qualityTriage.partialShots,
+      fieldIssueCount: result.qualityTriage.fieldIssues,
     });
 
     return {
@@ -366,6 +399,7 @@ export async function saveRapsodoImportBatch(
   const longestShotNotifications: LongestShotNotification[] = [];
   const achievementUnlockNotifications: AchievementUnlockNotification[] = [];
   const practicePlanMatches: PracticePlanImportMatch[] = [];
+  const qualityTriage = emptyImportQualityTriageSummary();
 
   const parsedInputs: Array<{
     input: SaveRapsodoImportInput;
@@ -419,6 +453,7 @@ export async function saveRapsodoImportBatch(
       rawRowCount += result.rawRowCount;
       longestShotNotifications.push(...result.longestShotNotifications);
       achievementUnlockNotifications.push(...result.achievementUnlockNotifications);
+      addImportQualityTriageSummary(qualityTriage, result.qualityTriage);
       if (result.practicePlanMatch) {
         practicePlanMatches.push(result.practicePlanMatch);
       }
@@ -441,6 +476,7 @@ export async function saveRapsodoImportBatch(
     practicePlanMatches,
     longestShotNotifications,
     achievementUnlockNotifications,
+    qualityTriage,
     warnings,
   };
 }
@@ -541,6 +577,7 @@ async function persistImport(
         rawRowCount: 0,
         skipped: true,
         longestShotNotifications: [],
+        qualityTriage: emptyImportQualityTriageSummary(),
       };
     }
 
@@ -633,16 +670,6 @@ async function persistImport(
       clubIdByKey.set(clubKey, club.id);
     }
 
-    const preparedShots = input.shots.map((shot) => {
-      const shotCategory =
-        courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory;
-      const review = buildImportedShotReviewLifecycle({
-        qualityTag: shot.qualityTag,
-        shotCategory,
-      });
-
-      return { shot, shotCategory, review };
-    });
     const clubIds = [...clubIdByKey.values()];
     const previousShotRows =
       clubIds.length === 0
@@ -652,18 +679,25 @@ async function persistImport(
               clubId: shots.clubId,
               carryYd: shots.carryYd,
               totalYd: shots.totalYd,
+              ballSpeedMph: shots.ballSpeedMph,
+              smashFactor: shots.smashFactor,
               reviewStatus: shots.reviewStatus,
               qualityTag: shots.qualityTag,
               shotCategory: shots.shotCategory,
+              shotAt: shots.shotAt,
             })
             .from(shots)
+            .innerJoin(sessions, and(eq(sessions.id, shots.sessionId), eq(sessions.userId, userId)))
             .where(
               and(
                 eq(shots.userId, userId),
                 inArray(shots.clubId, clubIds),
+                eq(shots.playContext, playContext),
                 inArray(shots.reviewStatus, ["included", "restored"]),
+                inArray(sessions.source, ["rapsodo", "square", "trackman"]),
               ),
-            );
+            )
+            .orderBy(desc(shots.shotAt));
     const previousShotsByClubId = new Map<string, typeof previousShotRows>();
     for (const previousShot of previousShotRows) {
       const clubShots = previousShotsByClubId.get(previousShot.clubId) ?? [];
@@ -676,6 +710,54 @@ async function persistImport(
         maxEligibleShotDistance(previousShotsByClubId.get(clubId) ?? []),
       ]),
     );
+    const profileByClubKey = new Map<string, EstablishedClubProfile>();
+    for (const [clubKey, clubId] of clubIdByKey) {
+      const firstShotForClub = input.shots.find((shot) => shot.clubKey === clubKey);
+      if (!firstShotForClub) continue;
+
+      const profile = buildEstablishedClubProfile(
+        firstShotForClub.clubType,
+        (previousShotsByClubId.get(clubId) ?? [])
+          .filter(isTrustedHistoricalProfileShot)
+          .slice(0, 50),
+      );
+      if (profile) profileByClubKey.set(clubKey, profile);
+    }
+
+    const shotsWithCourseCategory = input.shots.map((shot) => ({
+      ...shot,
+      shotCategory: courseShotByRowNumber.get(shot.rowNumber)?.shotCategory ?? shot.shotCategory,
+    }));
+    const triaged = applyImportedShotQualityTriage(shotsWithCourseCategory, profileByClubKey);
+    const preparedShots = triaged.shots.map(({ shot, classification, evidence }) => {
+      const review = buildImportedShotReviewLifecycle({
+        qualityTag: shot.qualityTag,
+        shotCategory: shot.shotCategory,
+      });
+
+      if (classification === "likely_mishit" && review.reviewStatus === "suggested_exclusion") {
+        review.reviewReason = importTriageReviewReason(evidence);
+      }
+      if (classification === "needs_review" && review.reviewStatus === "suggested_exclusion") {
+        review.reviewReason = importTriageReviewReason(evidence);
+        review.reviewConfidence = 0.55;
+        review.reviewSource = "import";
+      }
+
+      return { shot, shotCategory: shot.shotCategory, review };
+    });
+
+    await tx
+      .update(importFiles)
+      .set({
+        metadataJson: {
+          sessionType: input.sessionType,
+          courseName: input.courseName?.trim() || null,
+          qualityTriage: triaged.summary,
+        },
+        updatedAt: now,
+      })
+      .where(and(eq(importFiles.userId, userId), eq(importFiles.sessionId, session.id)));
 
     const longestShotNotifications = buildLongestShotNotifications({
       importedShots: preparedShots.map(({ shot, shotCategory, review }) => ({
@@ -887,6 +969,7 @@ async function persistImport(
       rawRowCount: input.rawRows.length,
       skipped: false,
       longestShotNotifications,
+      qualityTriage: triaged.summary,
     };
   });
 }
@@ -991,6 +1074,227 @@ export function maxEligibleShotDistance(
   }
 
   return maximum;
+}
+
+type AppliedImportTriageClassification =
+  | Exclude<ShotQualityClassification, "bad_data_field">
+  | "unusable_shot";
+
+export function applyImportedShotQualityTriage(
+  shotsToTriage: ParsedRapsodoShot[],
+  profileByClubKey: ReadonlyMap<string, EstablishedClubProfile> = new Map(),
+) {
+  const summary = emptyImportQualityTriageSummary();
+  const activeProfiles = buildImportTriageProfiles(shotsToTriage, profileByClubKey);
+  const triagedShots = shotsToTriage.map((originalShot) => {
+    const profile = activeProfiles.get(originalShot.clubKey) ?? null;
+    const initialTriage = triageImportedShotQuality(
+      importedShotForQualityTriage(originalShot),
+      profile,
+    );
+    const quarantinedShot = applyShotFieldQuarantines(originalShot, initialTriage.fieldQuarantines);
+    const retriage =
+      initialTriage.classification === "bad_data_field"
+        ? triageImportedShotQuality(importedShotForQualityTriage(quarantinedShot), profile)
+        : initialTriage;
+    const evidence = [...initialTriage.evidence];
+    if (retriage !== initialTriage) evidence.push(...retriage.evidence);
+    const carryWasQuarantined = initialTriage.fieldQuarantines.some(
+      (issue) => issue.field === "carryYd",
+    );
+    const classification = carryWasQuarantined
+      ? "unusable_shot"
+      : resolvedImportedShotClassification(quarantinedShot, retriage.classification);
+    const shot = applyImportedShotClassification(quarantinedShot, classification);
+    const fieldIssueKeys = new Set([
+      ...(originalShot.integrityIssues ?? []).map((issue) => issue.field),
+      ...initialTriage.fieldQuarantines.map((issue) => issue.field),
+      ...(retriage.classification === "bad_data_field"
+        ? retriage.evidence.map((issue) => `unresolved:${issue.code}`)
+        : []),
+    ]);
+
+    summary.totalShots += 1;
+    summary.fieldIssues += fieldIssueKeys.size;
+    if (classification === "stock_quality") summary.stockQuality += 1;
+    if (classification === "likely_mishit") summary.likelyMishits += 1;
+    if (classification === "needs_review") summary.needsReview += 1;
+    if (classification === "partial_shot") summary.partialShots += 1;
+    if (classification === "unusable_shot") summary.unusableShots += 1;
+
+    return { shot, classification, evidence };
+  });
+
+  return { shots: triagedShots, summary };
+}
+
+function buildImportTriageProfiles(
+  shotsToTriage: ParsedRapsodoShot[],
+  establishedProfiles: ReadonlyMap<string, EstablishedClubProfile>,
+) {
+  const profiles = new Map(establishedProfiles);
+  const shotsByClubKey = new Map<string, ParsedRapsodoShot[]>();
+
+  for (const shot of shotsToTriage) {
+    const clubShots = shotsByClubKey.get(shot.clubKey) ?? [];
+    clubShots.push(shot);
+    shotsByClubKey.set(shot.clubKey, clubShots);
+  }
+
+  for (const [clubKey, clubShots] of shotsByClubKey) {
+    if (profiles.has(clubKey)) continue;
+    const firstShot = clubShots[0];
+    if (!firstShot) continue;
+
+    const profile = buildEstablishedClubProfile(
+      firstShot.clubType,
+      clubShots.filter(isCurrentImportProfileShot),
+      { scope: "import_session" },
+    );
+    if (profile) profiles.set(clubKey, profile);
+  }
+
+  return profiles;
+}
+
+function isCurrentImportProfileShot(shot: ParsedRapsodoShot) {
+  const category = shot.shotCategory?.trim().toLowerCase() ?? "";
+  const qualityTag = shot.qualityTag?.trim().toLowerCase() ?? "";
+
+  if (!["full", "stock", "tee", "approach"].includes(category) || qualityTag) return false;
+  if (!isFiniteNumber(shot.carryYd) || shot.carryYd <= 0) return false;
+
+  // Do not teach a new SW/LW profile from an import dominated by deliberate touch shots.
+  return !(isShortGameTouchClubType(shot.clubType) && shot.carryYd <= 60);
+}
+
+function importedShotForQualityTriage(shot: ParsedRapsodoShot) {
+  const rawClubType = normalizeClubType(shot.clubTypeRaw ?? "");
+  const currentClubType = normalizeClubType(shot.clubType);
+  const trustedCurrentType = isTrackedClubType(currentClubType);
+  const provenance =
+    shot.clubIdentityProvenance ??
+    (trustedCurrentType && rawClubType === currentClubType
+      ? ("source" as const)
+      : trustedCurrentType
+        ? ("inferred" as const)
+        : ("unknown" as const));
+
+  return {
+    rowNumber: shot.rowNumber,
+    club: {
+      type: trustedCurrentType ? currentClubType : null,
+      rawLabel: shot.clubTypeRaw,
+      provenance,
+    },
+    carryYd: shot.carryYd,
+    totalYd: shot.totalYd,
+    ballSpeedMph: shot.ballSpeedMph,
+    clubSpeedMph: shot.clubSpeedMph,
+    smashFactor: shot.smashFactor,
+    shotCategory: shot.shotCategory,
+  };
+}
+
+function applyShotFieldQuarantines(
+  shot: ParsedRapsodoShot,
+  quarantines: ReturnType<typeof triageImportedShotQuality>["fieldQuarantines"],
+) {
+  if (quarantines.length === 0) return shot;
+
+  const updated = { ...shot };
+  for (const quarantine of quarantines) {
+    updated[quarantine.field] = null;
+  }
+  return updated;
+}
+
+function resolvedImportedShotClassification(
+  shot: ParsedRapsodoShot,
+  detected: ShotQualityClassification,
+): AppliedImportTriageClassification {
+  const qualityTag = shot.qualityTag?.trim().toLowerCase() ?? "";
+  const category = shot.shotCategory?.trim().toLowerCase() ?? "";
+
+  if (["bad-data", "bad_data", "invalid", "launch-monitor-error", "misread"].includes(qualityTag)) {
+    return "unusable_shot";
+  }
+  if (["pitch", "chip", "recovery"].includes(category)) return "partial_shot";
+  if (["fat", "mishit", "thin", "top"].includes(qualityTag)) return "likely_mishit";
+  if (qualityTag === "needs_review") return "needs_review";
+  return detected === "bad_data_field" ? "needs_review" : detected;
+}
+
+function applyImportedShotClassification(
+  shot: ParsedRapsodoShot,
+  classification: AppliedImportTriageClassification,
+) {
+  if (classification === "likely_mishit" && !shot.qualityTag) {
+    return { ...shot, qualityTag: "mishit" };
+  }
+  if (classification === "needs_review" && !shot.qualityTag) {
+    return { ...shot, qualityTag: "needs_review" };
+  }
+  if (classification === "unusable_shot" && !shot.qualityTag) {
+    return { ...shot, qualityTag: "bad_data" };
+  }
+  if (classification === "partial_shot" && shot.shotCategory === "full") {
+    return { ...shot, shotCategory: "pitch" as const };
+  }
+  return shot;
+}
+
+function isTrustedHistoricalProfileShot(shot: {
+  reviewStatus: ShotReviewStatus;
+  qualityTag: string | null;
+  shotCategory: string;
+  carryYd: number | null;
+}) {
+  const category = shot.shotCategory.trim().toLowerCase();
+  return (
+    ["full", "stock", "tee", "approach"].includes(category) &&
+    isFiniteNumber(shot.carryYd) &&
+    shot.carryYd > 0 &&
+    isShotEvidenceEligible(shot)
+  );
+}
+
+function importTriageReviewReason(evidence: ShotQualityEvidence[]) {
+  const explanation = evidence
+    .map((item) => item.explanation)
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(" ");
+  return `Import detector suggestion: ${explanation || "This row differs materially from the established club profile."} Confirm or keep the shot.`.slice(
+    0,
+    500,
+  );
+}
+
+function emptyImportQualityTriageSummary(): ImportQualityTriageSummary {
+  return {
+    version: "v1",
+    totalShots: 0,
+    stockQuality: 0,
+    likelyMishits: 0,
+    needsReview: 0,
+    partialShots: 0,
+    unusableShots: 0,
+    fieldIssues: 0,
+  };
+}
+
+function addImportQualityTriageSummary(
+  target: ImportQualityTriageSummary,
+  source: ImportQualityTriageSummary,
+) {
+  target.totalShots += source.totalShots;
+  target.stockQuality += source.stockQuality;
+  target.likelyMishits += source.likelyMishits;
+  target.needsReview += source.needsReview;
+  target.partialShots += source.partialShots;
+  target.unusableShots += source.unusableShots;
+  target.fieldIssues += source.fieldIssues;
 }
 
 function hashRawCsv(rawCsvText: string) {
@@ -1260,12 +1564,17 @@ function sanitizeShotOverrides(input: SaveRapsodoImportInput["shotOverrides"]) {
       clubType,
       clubBrand: nullableOverrideText(override.clubBrand, 120),
       clubModel: nullableOverrideText(override.clubModel, 160),
+      clubSelectionOrigin: sanitizeClubSelectionOrigin(override.clubSelectionOrigin),
       shotCategory: sanitizeShotCategory(override.shotCategory),
       qualityTag: nullableOverrideText(override.qualityTag, 40),
     });
   }
 
   return overrides;
+}
+
+function sanitizeClubSelectionOrigin(value: RapsodoClubSelectionOrigin | undefined) {
+  return value && ["reported", "recommendation", "user"].includes(value) ? value : undefined;
 }
 
 function sanitizeShotRowNumbers(input: SaveRapsodoImportInput["excludedShotRowNumbers"]) {
@@ -1354,10 +1663,32 @@ export function applyRapsodoShotOverridesForImport(
       clubBrand,
       clubModel,
       clubKey: buildClubKey(clubType, clubBrand, clubModel),
+      clubIdentityProvenance: resolveClubIdentityProvenance(
+        shot,
+        clubType,
+        override.clubSelectionOrigin,
+      ),
       shotCategory: override.shotCategory ?? shot.shotCategory,
       qualityTag: override.qualityTag ?? shot.qualityTag,
     });
   });
+}
+
+function resolveClubIdentityProvenance(
+  shot: ParsedRapsodoShot,
+  selectedClubType: string,
+  origin: RapsodoClubSelectionOrigin | undefined,
+): NonNullable<ParsedRapsodoShot["clubIdentityProvenance"]> {
+  if (origin === "user") {
+    return "mapped_source";
+  }
+
+  const rawClubType = normalizeClubType(shot.clubTypeRaw ?? "");
+  if (isTrackedClubType(rawClubType) && rawClubType === selectedClubType) {
+    return "source";
+  }
+
+  return "inferred";
 }
 
 function buildScorecardSnapshot(

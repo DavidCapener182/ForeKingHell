@@ -179,6 +179,7 @@ const roundShotCorrectionColumns: DesktopWorkbenchColumn[] = [
   { id: "total", label: "Total" },
   { id: "side", label: "Side" },
   { id: "change-club", label: "Change club" },
+  { id: "delete", label: "Delete" },
 ];
 
 const roundShotCorrectionViews: DesktopSavedViewSuggestion[] = [
@@ -251,6 +252,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
       ? await import("@/app/rounds/[sessionId]/round-corrections-panel")
       : null;
   const RoundCorrectionsPanel = correctionsModule?.RoundCorrectionsPanel;
+  const RoundShotDeleteButton = correctionsModule?.RoundShotDeleteButton;
 
   return (
     <PageShell>
@@ -839,14 +841,14 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               </section>
             ) : null}
 
-            {view === "corrections" && RoundCorrectionsPanel ? (
+            {view === "corrections" && RoundCorrectionsPanel && RoundShotDeleteButton ? (
               <>
                 {hasClubData ? (
                   <RoundCorrectionsPanel shotCount={round.shots.length}>
                     <ReviewAccordion
                       id="shots"
-                      title="Shot club corrections"
-                      description="Use this when the CSV club is wrong for a single shot. Hole assignment is derived from the round split and is not editable from the review page."
+                      title="Shot corrections"
+                      description="Correct a single-shot club label, or permanently remove a shot that should not count on this scorecard. Delete can change the mapped hole score; exclusion elsewhere remains stats-only."
                       count={`${round.shots.length} shots`}
                     >
                       <div data-workbench-scope="round-shots">
@@ -916,6 +918,12 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                                         Save club
                                       </Button>
                                     </OfflineRoundEditForm>
+                                    <RoundShotDeleteButton
+                                      sessionId={round.session.id}
+                                      shotId={shot.id}
+                                      shotLabel={`${clubLabel(shot)} shot ${shot.shotNumber ?? "--"}`}
+                                      courseHoleNumber={shot.courseHoleNumber}
+                                    />
                                   </MobileDataCard>
                                 ))
                               ) : (
@@ -927,13 +935,13 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                           }
                         >
                           <Table
-                            className="min-w-[1120px]"
+                            className="min-w-[1200px]"
                             data-workbench-export-table="round-shots"
                             aria-describedby="round-shots-table-summary"
                           >
                             <TableCaption id="round-shots-table-summary" className="sr-only">
                               Round shot club corrections with hole, shot number, current club,
-                              distance metrics and club update controls.
+                              distance metrics, club update controls and permanent deletion.
                             </TableCaption>
                             <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
                               <TableRow>
@@ -957,6 +965,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                                   Side
                                 </TableHead>
                                 <TableHead data-column="change-club">Change club</TableHead>
+                                <TableHead data-column="delete">Delete</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1014,12 +1023,20 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                                       </Button>
                                     </OfflineRoundEditForm>
                                   </TableCell>
+                                  <TableCell data-column="delete">
+                                    <RoundShotDeleteButton
+                                      sessionId={round.session.id}
+                                      shotId={shot.id}
+                                      shotLabel={`${clubLabel(shot)} shot ${shot.shotNumber ?? "--"}`}
+                                      courseHoleNumber={shot.courseHoleNumber}
+                                    />
+                                  </TableCell>
                                 </TableRow>
                               ))}
                               {round.shots.length === 0 ? (
                                 <TableRow>
                                   <TableCell
-                                    colSpan={7}
+                                    colSpan={8}
                                     className="h-24 text-center text-muted-foreground"
                                   >
                                     No shots are linked to this round.

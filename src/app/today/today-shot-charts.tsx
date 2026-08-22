@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { Check, Eye } from "lucide-react";
+
+import type { TodayChartShot } from "@/app/today/today-shot-types";
 
 import {
   ChartAccessibleFallback,
@@ -22,19 +24,13 @@ import {
 import { buildShotShapeTrace, type ShotShapeTrace } from "@/lib/shot-shape-trace";
 import { cn } from "@/lib/utils";
 
-export type TodayChartShot = {
-  id: string;
-  clubType: string;
-  clubLabel: string;
-  shotNumber: number | null;
-  carryYd: number | null;
-  totalYd: number | null;
-  sideCarryYd: number | null;
-  launchDirectionDeg: number | null;
-  apexFt: number | null;
-  launchAngleDeg: number | null;
-  ballSpeedMph: number | null;
-};
+const TodaySelectedShotRail = lazy(() =>
+  import("@/app/today/today-selected-shot-rail").then((module) => ({
+    default: module.TodaySelectedShotRail,
+  })),
+);
+
+export type { TodayChartShot } from "@/app/today/today-shot-types";
 
 type ClubChartGroup = {
   clubType: string;
@@ -156,6 +152,7 @@ export function TodayShotCharts({
     [clubStatuses],
   );
   const [selectedClub, setSelectedClub] = useState("all");
+  const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
   const [trajectoryView, setTrajectoryView] = useState<TrajectoryView>("shots");
   const [showOutliers, setShowOutliers] = useState(true);
   const visibleShots = useMemo(() => {
@@ -170,6 +167,7 @@ export function TodayShotCharts({
         color: colorForClub(shot.clubType),
       }));
   }, [selectedClub, shots, showOutliers]);
+  const selectedShot = visibleShots.find((shot) => shot.id === selectedShotId) ?? null;
   const visibleClubCount =
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
   const dispersionSummary = buildDispersionChartSummary(visibleShots);
@@ -208,7 +206,11 @@ export function TodayShotCharts({
         <ToggleGroup
           type="single"
           value={selectedClub}
-          onValueChange={(value) => value && setSelectedClub(value)}
+          onValueChange={(value) => {
+            if (!value) return;
+            setSelectedClub(value);
+            setSelectedShotId(null);
+          }}
           variant="outline"
           aria-label="Shot chart club filters"
           className="-mx-1 w-auto justify-start overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
@@ -292,7 +294,10 @@ export function TodayShotCharts({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setSelectedClub("all")}
+              onClick={() => {
+                setSelectedClub("all");
+                setSelectedShotId(null);
+              }}
             >
               Show all clubs
             </Button>
@@ -302,7 +307,10 @@ export function TodayShotCharts({
             aria-pressed={showOutliers}
             variant={showOutliers ? "secondary" : "outline"}
             size="sm"
-            onClick={() => setShowOutliers((value) => !value)}
+            onClick={() => {
+              setShowOutliers((value) => !value);
+              setSelectedShotId(null);
+            }}
           >
             {showOutliers ? "Hide outliers" : "Show outliers"}
           </Button>
@@ -318,7 +326,7 @@ export function TodayShotCharts({
         >
           <ChartPanel
             title="Dispersion"
-            detail="Carry landing by left-right miss, with launch-direction traces when available."
+            detail="Carry landing by left-right miss. Select a point to inspect that exact shot."
             sampleSize={visibleShots.length}
             empty={!visibleShots.some(hasDispersionData)}
             footer={<DispersionPanelFooter shots={visibleShots} />}
@@ -332,34 +340,51 @@ export function TodayShotCharts({
             }
             chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
           >
-            <SharedShotPatternVisual shots={visibleShots} mode="dispersion" />
-          </ChartPanel>
-          <ChartPanel
-            title="Trajectory"
-            detail={
-              trajectoryView === "averages"
-                ? "Club average ball flights with dynamic apex scale."
-                : "Individual shot flights with dynamic apex scale."
-            }
-            sampleSize={visibleShots.length}
-            empty={!visibleShots.some(hasTrajectoryData)}
-            footer={<TrajectoryInsightCards shots={visibleShots} />}
-            fallback={
-              <ChartAccessibleFallback
-                title="Today trajectory"
-                summary={trajectorySummary}
-                columns={trajectoryChartColumns}
-                rows={trajectoryRows}
-              />
-            }
-            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
-          >
             <SharedShotPatternVisual
               shots={visibleShots}
-              mode="trajectory"
-              trajectoryView={trajectoryView}
+              mode="dispersion"
+              selectedShotId={selectedShotId}
+              onSelectShot={setSelectedShotId}
             />
           </ChartPanel>
+          {selectedShot ? (
+            <Suspense fallback={null}>
+              <TodaySelectedShotRail
+                key={selectedShot.id}
+                shot={selectedShot}
+                onClose={() => setSelectedShotId(null)}
+              />
+            </Suspense>
+          ) : (
+            <ChartPanel
+              title="Trajectory"
+              detail={
+                trajectoryView === "averages"
+                  ? "Club average ball flights with dynamic apex scale."
+                  : "Individual shot flights with dynamic apex scale. Select a flight to inspect the exact shot."
+              }
+              sampleSize={visibleShots.length}
+              empty={!visibleShots.some(hasTrajectoryData)}
+              footer={<TrajectoryInsightCards shots={visibleShots} />}
+              fallback={
+                <ChartAccessibleFallback
+                  title="Today trajectory"
+                  summary={trajectorySummary}
+                  columns={trajectoryChartColumns}
+                  rows={trajectoryRows}
+                />
+              }
+              chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
+            >
+              <SharedShotPatternVisual
+                shots={visibleShots}
+                mode="trajectory"
+                trajectoryView={trajectoryView}
+                selectedShotId={selectedShotId}
+                onSelectShot={setSelectedShotId}
+              />
+            </ChartPanel>
+          )}
         </div>
         <ClubLegend clubs={clubGroups} />
       </CardContent>
@@ -371,6 +396,8 @@ export function SharedShotPatternVisual({
   shots,
   mode,
   trajectoryView = "shots",
+  selectedShotId = null,
+  onSelectShot,
 }: {
   shots: Array<
     Omit<TodayChartShot, "totalYd" | "launchDirectionDeg" | "ballSpeedMph"> &
@@ -378,6 +405,8 @@ export function SharedShotPatternVisual({
   >;
   mode: "dispersion" | "trajectory";
   trajectoryView?: TrajectoryView;
+  selectedShotId?: string | null;
+  onSelectShot?: (shotId: string) => void;
 }) {
   const chartPoints = shots.map((shot) => ({
     ...shot,
@@ -388,9 +417,18 @@ export function SharedShotPatternVisual({
   }));
 
   return mode === "dispersion" ? (
-    <DispersionChart shots={chartPoints} />
+    <DispersionChart
+      shots={chartPoints}
+      selectedShotId={selectedShotId}
+      onSelectShot={onSelectShot}
+    />
   ) : (
-    <TrajectoryChart shots={chartPoints} view={trajectoryView} />
+    <TrajectoryChart
+      shots={chartPoints}
+      view={trajectoryView}
+      selectedShotId={selectedShotId}
+      onSelectShot={onSelectShot}
+    />
   );
 }
 
@@ -725,7 +763,15 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
   );
 }
 
-function DispersionChart({ shots }: { shots: ChartPoint[] }) {
+function DispersionChart({
+  shots,
+  selectedShotId,
+  onSelectShot,
+}: {
+  shots: ChartPoint[];
+  selectedShotId: string | null;
+  onSelectShot?: (shotId: string) => void;
+}) {
   const points = shots.filter(hasDispersionData);
   const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
   const maxSide = dispersionSideMax(points);
@@ -747,8 +793,12 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
     <svg
       viewBox={`0 0 ${chartWidth} ${chartHeight}`}
       className="block h-auto w-full"
-      role="img"
-      aria-label="Dispersion chart"
+      role={onSelectShot ? "group" : "img"}
+      aria-label={
+        onSelectShot
+          ? "Interactive dispersion chart. Select a shot point to inspect its details."
+          : "Dispersion chart"
+      }
     >
       <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
       <rect
@@ -874,6 +924,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
           strokeLinecap="round"
           strokeWidth={trace.source === "estimated" ? 1.55 : 1.05}
           strokeOpacity={trace.source === "estimated" ? 0.32 : 0.2}
+          pointerEvents="none"
         >
           <title>{`${shotTitle(shot)}; ${shapeTraceTitle(trace)}`}</title>
         </path>
@@ -881,25 +932,53 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
       {points.map((shot) => {
         const carry = shot.carryYd ?? shot.totalYd ?? 0;
         const side = shot.sideCarryYd ?? 0;
+        const selected = shot.id === selectedShotId;
 
         return (
-          <circle
+          <g
             key={shot.id}
             data-dispersion-club={shot.clubType}
-            cx={xScale(side)}
-            cy={yScale(carry)}
-            r={4.8}
-            fill={shot.color}
-            fillOpacity={0.84}
-            stroke="white"
-            strokeWidth={1.5}
-            tabIndex={0}
-            role="img"
-            aria-label={shotTitle(shot)}
-            className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[3px]"
+            data-today-shot-point={shot.id}
+            tabIndex={onSelectShot ? 0 : undefined}
+            role={onSelectShot ? "button" : "img"}
+            aria-label={onSelectShot ? `Select ${shotTitle(shot)} for details` : shotTitle(shot)}
+            aria-pressed={onSelectShot ? selected : undefined}
+            onClick={() => onSelectShot?.(shot.id)}
+            onKeyDown={(event) => handleShotSelectionKeyDown(event, shot.id, onSelectShot)}
+            className={cn("group outline-none", onSelectShot && "cursor-pointer")}
           >
+            <circle
+              cx={xScale(side)}
+              cy={yScale(carry)}
+              r={13}
+              fill="transparent"
+              stroke="transparent"
+              strokeWidth={2}
+              className="group-focus-visible:stroke-slate-950"
+            />
+            {selected ? (
+              <circle
+                cx={xScale(side)}
+                cy={yScale(carry)}
+                r={9}
+                fill="none"
+                stroke="#0f172a"
+                strokeWidth={2.5}
+                pointerEvents="none"
+              />
+            ) : null}
+            <circle
+              cx={xScale(side)}
+              cy={yScale(carry)}
+              r={selected ? 5.6 : 4.8}
+              fill={shot.color}
+              fillOpacity={selected ? 1 : 0.84}
+              stroke="white"
+              strokeWidth={1.5}
+              pointerEvents="none"
+            />
             <title>{shotTitle(shot)}</title>
-          </circle>
+          </g>
         );
       })}
       {clubAverages.map((average) => {
@@ -918,6 +997,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
             role="img"
             aria-label={`${average.clubLabel} average landing`}
             className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[3px]"
+            pointerEvents="none"
           >
             <title>{`${average.clubLabel} average: ${formatNullable(average.carryYd)} carry, ${formatSigned(average.sideYd)} side`}</title>
           </path>
@@ -944,7 +1024,7 @@ function DispersionChart({ shots }: { shots: ChartPoint[] }) {
         />
       ) : null}
       {isNumber(medianSide) && isNumber(medianCarry) ? (
-        <g>
+        <g pointerEvents="none">
           <circle
             cx={xScale(medianSide)}
             cy={yScale(medianCarry)}
@@ -1010,7 +1090,7 @@ function DispersionMarker({
   const color = tone === "green" ? "#059669" : "#db2777";
 
   return (
-    <g data-dispersion-club={shot.clubType}>
+    <g data-dispersion-club={shot.clubType} pointerEvents="none">
       <circle cx={x} cy={y} r={10} fill="none" stroke={color} strokeWidth={2.5} />
       <circle cx={x} cy={y} r={3.4} fill={color} />
       <circle cx={x + 14} cy={y - 14} r={9} fill={color} stroke="white" strokeWidth={1.5} />
@@ -1022,7 +1102,17 @@ function DispersionMarker({
   );
 }
 
-function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: TrajectoryView }) {
+function TrajectoryChart({
+  shots,
+  view,
+  selectedShotId,
+  onSelectShot,
+}: {
+  shots: ChartPoint[];
+  view: TrajectoryView;
+  selectedShotId: string | null;
+  onSelectShot?: (shotId: string) => void;
+}) {
   const points = shots.filter(hasTrajectoryData);
   const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
   const maxApex = niceTrajectoryMax(
@@ -1038,8 +1128,12 @@ function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: Trajector
     <svg
       viewBox={`0 0 ${chartWidth} ${chartHeight}`}
       className="block h-auto w-full"
-      role="img"
-      aria-label="Trajectory chart"
+      role={view === "shots" && onSelectShot ? "group" : "img"}
+      aria-label={
+        view === "shots" && onSelectShot
+          ? "Interactive trajectory chart. Select an individual flight to inspect its shot."
+          : "Trajectory chart"
+      }
     >
       <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
       {yTicks.map((tick) => (
@@ -1108,24 +1202,70 @@ function TrajectoryChart({ shots, view }: { shots: ChartPoint[]; view: Trajector
         const endY = yScale(0);
         const controlX = xScale(carry / 2);
         const controlY = yScale(apex);
+        const selected = shot.id === selectedShotId;
+        const selectable = view === "shots" && Boolean(onSelectShot);
+        const path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`;
 
         return (
-          <path
+          <g
             key={shot.id}
             data-chart-club={shot.clubType}
-            d={`M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`}
-            fill="none"
-            stroke={shot.color}
-            strokeWidth={view === "averages" ? 1.25 : 1.8}
-            strokeOpacity={view === "averages" ? 0.16 : 0.34}
-            strokeLinecap="round"
-            tabIndex={0}
-            role="img"
-            aria-label={shotTitle(shot)}
-            className="outline-none focus-visible:stroke-foreground focus-visible:stroke-[3px]"
+            data-today-shot-flight={shot.id}
+            tabIndex={selectable ? 0 : undefined}
+            role={selectable ? "button" : "img"}
+            aria-label={selectable ? `Select ${shotTitle(shot)} for details` : shotTitle(shot)}
+            aria-pressed={selectable ? selected : undefined}
+            onClick={() => selectable && onSelectShot?.(shot.id)}
+            onKeyDown={(event) =>
+              selectable && handleShotSelectionKeyDown(event, shot.id, onSelectShot)
+            }
+            className={cn("group outline-none", selectable && "cursor-pointer")}
           >
+            {selectable ? (
+              <path
+                d={path}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={14}
+                strokeLinecap="round"
+                className="group-focus-visible:stroke-slate-950/20"
+              />
+            ) : null}
+            <path
+              d={path}
+              fill="none"
+              stroke={shot.color}
+              strokeWidth={selected ? 4 : view === "averages" ? 1.25 : 1.8}
+              strokeOpacity={selected ? 0.95 : view === "averages" ? 0.16 : 0.34}
+              strokeLinecap="round"
+              pointerEvents="none"
+            />
+            {view === "shots" ? (
+              <>
+                {selected ? (
+                  <circle
+                    cx={endX}
+                    cy={endY}
+                    r={9}
+                    fill="none"
+                    stroke="#0f172a"
+                    strokeWidth={2.5}
+                    pointerEvents="none"
+                  />
+                ) : null}
+                <circle
+                  cx={endX}
+                  cy={endY}
+                  r={selected ? 5.5 : 4}
+                  fill={shot.color}
+                  stroke="white"
+                  strokeWidth={1.5}
+                  pointerEvents="none"
+                />
+              </>
+            ) : null}
             <title>{shotTitle(shot)}</title>
-          </path>
+          </g>
         );
       })}
       {view === "averages"
@@ -1486,6 +1626,16 @@ function fallbackApex(shot: TodayChartShot) {
 function shotTitle(shot: TodayChartShot) {
   const shotNumber = shot.shotNumber ? ` #${shot.shotNumber}` : "";
   return `${shot.clubLabel}${shotNumber}: ${formatNullable(shot.carryYd)} carry, ${formatSigned(shot.sideCarryYd)} side`;
+}
+
+function handleShotSelectionKeyDown(
+  event: ReactKeyboardEvent<SVGGElement>,
+  shotId: string,
+  onSelectShot?: (shotId: string) => void,
+) {
+  if (!onSelectShot || (event.key !== "Enter" && event.key !== " ")) return;
+  event.preventDefault();
+  onSelectShot(shotId);
 }
 
 function shapeTraceTitle(trace: ShotShapeTrace) {

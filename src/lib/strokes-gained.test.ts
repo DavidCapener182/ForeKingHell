@@ -2,6 +2,7 @@ import type { InferredCourseShot } from "@/lib/course-scorecard";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildStrokesGainedEventsFromRoundAssignments,
   buildStrokesGainedEventsFromCourseShots,
   calculateShotStrokesGained,
   findBaselineBucket,
@@ -206,7 +207,107 @@ describe("strokes gained", () => {
       endDistanceYd: 0,
     });
   });
+
+  it("rebuilds linked events from post-deletion round assignments", () => {
+    const afterMiddleDeletion = buildStrokesGainedEventsFromRoundAssignments({
+      userId: "user-1",
+      sessionId: "session-1",
+      holeScoring: [{ holeNumber: 1, csvShotCount: 2, score: 4, putts: 2, penalties: 0 }],
+      shots: [
+        roundAssignmentShot({
+          id: "shot-a",
+          clubType: "driver",
+          holeShotNumber: 1,
+          totalYd: 240,
+          distanceRemainingYd: 160,
+          shotCategory: "tee",
+        }),
+        roundAssignmentShot({
+          id: "shot-c",
+          clubType: "sw",
+          holeShotNumber: 2,
+          totalYd: 40,
+          distanceRemainingYd: 120,
+          shotCategory: "chip",
+        }),
+      ],
+    });
+
+    expect(afterMiddleDeletion.map((event) => event.shotId)).toEqual(["shot-a", "shot-c"]);
+    expect(afterMiddleDeletion[1]).toMatchObject({
+      shotId: "shot-c",
+      strokeNumber: 2,
+      startDistanceYd: 160,
+      endDistanceYd: 12,
+      strokesGained: null,
+      metadataJson: { originalDistanceRemainingYd: 120 },
+    });
+
+    const afterEarlyDeletion = buildStrokesGainedEventsFromRoundAssignments({
+      userId: "user-1",
+      sessionId: "session-1",
+      holeScoring: [{ holeNumber: 1, csvShotCount: 2, score: 4, putts: 2, penalties: 0 }],
+      shots: [
+        roundAssignmentShot({
+          id: "shot-b",
+          clubType: "7i",
+          holeShotNumber: 1,
+          totalYd: 120,
+          distanceRemainingYd: 280,
+          shotCategory: "tee",
+        }),
+        roundAssignmentShot({
+          id: "shot-c",
+          clubType: "sw",
+          holeShotNumber: 2,
+          totalYd: 40,
+          distanceRemainingYd: 240,
+          shotCategory: "chip",
+        }),
+      ],
+    });
+
+    expect(afterEarlyDeletion[0]).toMatchObject({
+      shotId: "shot-b",
+      strokeNumber: 1,
+      category: "tee",
+      startDistanceYd: 400,
+      endDistanceYd: 280,
+      strokesGained: -0.8,
+    });
+  });
 });
+
+function roundAssignmentShot({
+  id,
+  clubType,
+  holeShotNumber,
+  totalYd,
+  distanceRemainingYd,
+  shotCategory,
+}: {
+  id: string;
+  clubType: string;
+  holeShotNumber: number;
+  totalYd: number;
+  distanceRemainingYd: number;
+  shotCategory: string;
+}) {
+  return {
+    id,
+    shotNumber: holeShotNumber,
+    clubType,
+    carryYd: totalYd,
+    totalYd,
+    sideCarryYd: 0,
+    courseHoleNumber: 1,
+    courseHoleShotNumber: holeShotNumber,
+    courseHolePar: 4,
+    courseHoleYards: 400,
+    distanceRemainingYd,
+    shotCategory,
+  };
+}
 
 function courseShot({
   rowNumber,

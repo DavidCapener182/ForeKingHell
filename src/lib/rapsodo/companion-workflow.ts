@@ -39,6 +39,9 @@ export function buildCompanionRapsodoShotOverrides(
         clubType: choice.clubType,
         clubBrand: choice.clubBrand,
         clubModel: choice.clubModel,
+        clubSelectionOrigin: Object.hasOwn(selectedByRow, shot.rowNumber)
+          ? ("user" as const)
+          : ("recommendation" as const),
       };
     });
 }

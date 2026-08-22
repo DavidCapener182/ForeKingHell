@@ -5,6 +5,7 @@ import {
   buildShotReviewMutation,
   effectiveShotReviewStatus,
   isExcludingShotReviewStatus,
+  isPersistedShotReviewNoOp,
   isShotEvidenceEligible,
   isRestorableShotReviewStatus,
   MAX_SHOT_REVIEW_BATCH_SIZE,
@@ -110,6 +111,49 @@ describe("shot review lifecycle", () => {
     ).toMatchObject({ reviewStatus: "suggested_exclusion", qualityTag: null });
   });
 
+  it("skips only true persisted no-ops while still normalizing legacy lifecycle rows", () => {
+    expect(
+      isPersistedShotReviewNoOp(
+        {
+          reviewStatus: "user_excluded",
+          qualityTag: "excluded",
+          reviewPreviousQualityTag: null,
+        },
+        "user_excluded",
+      ),
+    ).toBe(true);
+    expect(
+      isPersistedShotReviewNoOp(
+        { reviewStatus: "restored", qualityTag: null, reviewPreviousQualityTag: null },
+        "restored",
+      ),
+    ).toBe(true);
+    expect(
+      isPersistedShotReviewNoOp(
+        { reviewStatus: "included", qualityTag: "excluded", reviewPreviousQualityTag: null },
+        "user_excluded",
+      ),
+    ).toBe(false);
+  });
+
+  it("normalizes a repeated restored decision when its persisted quality tag drifted", () => {
+    expect(
+      buildShotReviewMutation(
+        {
+          reviewStatus: "restored",
+          qualityTag: "excluded",
+          reviewPreviousQualityTag: null,
+        },
+        "restored",
+      ),
+    ).toMatchObject({
+      previousStatus: "restored",
+      previousQualityTag: "excluded",
+      reviewStatus: "restored",
+      qualityTag: null,
+    });
+  });
+
   it("rejects restore for a shot that has not been excluded or classified", () => {
     expect(() =>
       buildShotReviewMutation(
@@ -182,6 +226,7 @@ describe("shot review lifecycle", () => {
     ["warm_up", null, "warm_up"],
     [null, "warm-up", "warm_up"],
     ["mishit", null, "suggested_exclusion"],
+    ["needs_review", null, "suggested_exclusion"],
   ] as const)(
     "derives %s / %s as %s instead of displaying included",
     (qualityTag, shotCategory, expected) => {
@@ -221,6 +266,9 @@ describe("shot review lifecycle", () => {
 
   it("keeps the legacy quality and category fallback for rows without a lifecycle decision", () => {
     expect(isShotEvidenceEligible({ reviewStatus: "included", qualityTag: "mishit" })).toBe(false);
+    expect(isShotEvidenceEligible({ reviewStatus: "included", qualityTag: "needs_review" })).toBe(
+      false,
+    );
     expect(isShotEvidenceEligible({ reviewStatus: "included", qualityTag: "exclude:mishit" })).toBe(
       false,
     );
@@ -232,6 +280,7 @@ describe("shot review lifecycle", () => {
   it.each([
     ["bad_data", "launch_monitor_error", 0.9],
     ["mishit", "suggested_exclusion", 0.75],
+    ["needs_review", "suggested_exclusion", 0.75],
     ["calibration", "calibration", 0.95],
     ["warm_up", "warm_up", 0.95],
   ] as const)("initializes imported %s provenance as %s", (qualityTag, status, confidence) => {

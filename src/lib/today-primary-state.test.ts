@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { resolveTodayPrimaryState, type TodayRecommendation } from "@/lib/today-primary-state";
+import {
+  resolveTodayPrimaryState,
+  todayHeroEvidence,
+  type TodayRecommendation,
+} from "@/lib/today-primary-state";
 
 const recommendation: TodayRecommendation = {
   title: "Practise 7i dispersion control",
@@ -43,7 +47,7 @@ describe("Today primary state priority", () => {
     expect(state.action).toBe("Continue practice");
   });
 
-  it("keeps an evidence-needed plan ahead of a fresh session review", () => {
+  it("shows a fresh session review ahead of an evidence-needed plan", () => {
     vi.setSystemTime(new Date("2026-08-14T12:00:00.000Z"));
     const state = resolveTodayPrimaryState({
       currentPlan: {
@@ -57,8 +61,8 @@ describe("Today primary state priority", () => {
       latestData: review,
     });
 
-    expect(state.status).toBe("Evidence needed");
-    expect(state.href).toContain("practicePlanId=plan-2");
+    expect(state.status).toBe("Review ready");
+    expect(state.href).toBe("/sessions/session-1");
   });
 
   it("keeps a fresh review ahead of an active round", () => {
@@ -85,5 +89,41 @@ describe("Today primary state priority", () => {
     expect(state.eyebrow).toBe("Today’s recommendation");
     expect(state.action).toBe("Plan range session");
     expect(state.href).toContain("club=7i");
+  });
+});
+
+describe("Today hero evidence", () => {
+  it("summarises the combined measured review instead of the recommendation sample", () => {
+    const combinedReview = {
+      ...review,
+      dateLabel: new Date().toISOString(),
+      sessions: [
+        { id: "session-1" },
+        { id: "session-2" },
+        { id: "session-3" },
+        { id: "session-4" },
+      ],
+      shots: Array.from({ length: 63 }, () => ({})),
+    };
+    const state = resolveTodayPrimaryState({
+      currentPlan: null,
+      activeRound: null,
+      recommendation,
+      latestData: combinedReview,
+    });
+
+    expect(
+      todayHeroEvidence({
+        state,
+        recommendation,
+        latestData: combinedReview,
+      }),
+    ).toMatchObject({
+      heading: "Review status",
+      confidence: "Ready",
+      evidenceLabel: "63 measured shots",
+      contextLabel: "Sessions",
+      contextValue: "4 sessions",
+    });
   });
 });

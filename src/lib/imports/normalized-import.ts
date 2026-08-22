@@ -16,6 +16,7 @@ import {
   type NormalizedSession,
   type NormalizedShot,
 } from "@/lib/imports/providers";
+import { quarantineIncompatibleTotalDistance } from "@/lib/imports/shot-metric-integrity";
 
 export type ParsedLaunchMonitorImportResult = Omit<ParseRapsodoCsvResult, "source"> & {
   source: LaunchMonitorProviderKind;
@@ -87,7 +88,7 @@ function normalizedSessionToParsedImport(
     headers: session.rawHeaders,
     shots,
     rawRows,
-    warnings: session.warnings,
+    warnings: [...new Set([...session.warnings, ...shots.flatMap((shot) => shot.warnings)])],
   };
 }
 
@@ -125,6 +126,17 @@ function normalizedShotToParsedShot(shot: NormalizedShot, index: number): Parsed
   }
 
   const rowNumber = shot.rowNumber ?? index + 2;
+  const carryYd = metricValue(shot, "carry_yards");
+  const totalDistance = quarantineIncompatibleTotalDistance({
+    carryYd,
+    totalYd: metricValue(shot, "total_yards"),
+    rowNumber,
+  });
+  const warnings = [...shot.warnings];
+
+  if (totalDistance.warning) {
+    warnings.push(totalDistance.warning);
+  }
 
   return {
     rowNumber,
@@ -135,8 +147,8 @@ function normalizedShotToParsedShot(shot: NormalizedShot, index: number): Parsed
     clubBrand: null,
     clubModel: null,
     clubKey: buildClubKey(clubType, null, null),
-    carryYd: metricValue(shot, "carry_yards"),
-    totalYd: metricValue(shot, "total_yards"),
+    carryYd,
+    totalYd: totalDistance.totalYd,
     ballSpeedMph: metricValue(shot, "ball_speed_mph"),
     clubSpeedMph: metricValue(shot, "club_speed_mph"),
     launchAngleDeg: metricValue(shot, "launch_angle_deg"),
@@ -155,7 +167,8 @@ function normalizedShotToParsedShot(shot: NormalizedShot, index: number): Parsed
     qualityTag: null,
     clubDataEstType: null,
     sourceRawJson: shot.raw,
-    warnings: shot.warnings,
+    warnings,
+    integrityIssues: totalDistance.issue ? [totalDistance.issue] : [],
   };
 }
 

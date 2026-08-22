@@ -1,13 +1,17 @@
 "use client";
 
 import { useId, useState, useTransition, type ReactNode } from "react";
-import { Ban, LoaderCircle, RotateCcw } from "lucide-react";
+import { Ban, LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
 
-import { excludeShotAction, restoreShotAction, reviewShotsAction } from "@/app/(app)/shots/actions";
+import {
+  deleteShotsAction,
+  excludeShotAction,
+  restoreShotAction,
+  reviewShotsAction,
+} from "@/app/(app)/shots/actions";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -111,7 +115,7 @@ export function ShotReviewButton({
       <AlertDialogTrigger asChild>
         {trigger ?? (
           <Button type="button" variant="outline" className="justify-between">
-            {keepingSuggestion ? "Keep shot" : restoring ? "Restore shot" : "Review shot"}
+            {keepingSuggestion ? "Keep shot" : restoring ? "Restore shot" : "Exclude from stats"}
             {restoring ? <RotateCcw className="size-4" /> : <Ban className="size-4" />}
           </Button>
         )}
@@ -123,7 +127,9 @@ export function ShotReviewButton({
               ? "Keep this shot?"
               : restoring
                 ? "Restore this shot?"
-                : "Review this shot"}
+                : status === "user_excluded"
+                  ? "Exclude this shot from stats?"
+                  : "Review this shot"}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {keepingSuggestion
@@ -200,12 +206,11 @@ export function ShotReviewButton({
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
+            type="button"
             disabled={isPending || reason.trim().length < 3}
-            onClick={(event) => {
-              event.preventDefault();
-              submitReview();
-            }}
+            onClick={submitReview}
+            data-shot-review-confirm
           >
             {isPending ? <LoaderCircle className="animate-spin" /> : null}
             {isPending
@@ -214,8 +219,10 @@ export function ShotReviewButton({
                 ? "Keep shot"
                 : restoring
                   ? "Restore shot"
-                  : "Save review"}
-          </AlertDialogAction>
+                  : status === "user_excluded"
+                    ? "Exclude from stats"
+                    : "Save review"}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -303,16 +310,178 @@ export function ShotBulkReviewButton({
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
+            type="button"
             disabled={isPending || reason.trim().length < 3}
-            onClick={(event) => {
-              event.preventDefault();
-              excludeSelected();
-            }}
+            onClick={excludeSelected}
+            data-shot-review-confirm
           >
             {isPending ? <LoaderCircle className="animate-spin" /> : null}
             {isPending ? "Saving…" : "Exclude selected"}
-          </AlertDialogAction>
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+export function ShotDeleteButton({
+  shotId,
+  trigger,
+  onComplete,
+}: {
+  shotId: string;
+  trigger?: ReactNode;
+  onComplete?: () => void;
+}) {
+  return (
+    <ShotDeleteConfirmation
+      shotIds={[shotId]}
+      trigger={
+        trigger ?? (
+          <Button type="button" variant="destructive" className="justify-between">
+            Delete shot permanently
+            <Trash2 className="size-4" />
+          </Button>
+        )
+      }
+      onComplete={onComplete}
+    />
+  );
+}
+
+export function ShotBulkDeleteButton({
+  shotIds,
+  restrictedDeleteCount,
+  onComplete,
+}: {
+  shotIds: string[];
+  restrictedDeleteCount: number;
+  onComplete: () => void;
+}) {
+  if (restrictedDeleteCount > 0) {
+    return (
+      <Button type="button" size="sm" variant="destructive" disabled data-shot-delete-blocked>
+        <Trash2 className="size-4" />
+        Delete selected
+      </Button>
+    );
+  }
+
+  return (
+    <ShotDeleteConfirmation
+      shotIds={shotIds}
+      trigger={
+        <Button type="button" size="sm" variant="destructive">
+          <Trash2 className="size-4" />
+          Delete selected
+        </Button>
+      }
+      onComplete={onComplete}
+    />
+  );
+}
+
+function ShotDeleteConfirmation({
+  shotIds,
+  trigger,
+  onComplete,
+}: {
+  shotIds: string[];
+  trigger: ReactNode;
+  onComplete?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const singleShot = shotIds.length === 1;
+
+  function permanentlyDelete() {
+    startTransition(async () => {
+      setError(null);
+      try {
+        await deleteShotsAction({ shotIds });
+        setOpen(false);
+        onComplete?.();
+      } catch (cause) {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : `Could not permanently delete ${singleShot ? "this shot" : "the selected shots"}.`,
+        );
+      }
+    });
+  }
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!isPending) {
+          setOpen(nextOpen);
+          if (nextOpen) setError(null);
+        }
+      }}
+    >
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {singleShot
+              ? "Permanently delete this shot?"
+              : `Permanently delete ${shotIds.length} selected shots?`}
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="grid gap-2">
+              {singleShot ? (
+                <>
+                  <span>
+                    The normalized shot and its review history will be permanently deleted. Stock
+                    yardages, session analysis and linked practice evidence will recalculate. This
+                    cannot be undone.
+                  </span>
+                  <span>
+                    If it came from an import, the original import file and raw import rows remain;
+                    reprocessing that import may recreate the shot.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    The normalized shots and their review histories will be permanently deleted.
+                    Stock yardages, session analysis and linked practice evidence will recalculate.
+                    This cannot be undone.
+                  </span>
+                  <span>
+                    If they came from an import, the original import file and raw import rows
+                    remain; reprocessing that import may recreate the shots.
+                  </span>
+                </>
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>
+            {singleShot ? "Keep shot" : "Keep selected shots"}
+          </AlertDialogCancel>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending}
+            onClick={permanentlyDelete}
+            data-shot-delete-confirm
+          >
+            {isPending ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
+            {isPending ? "Deleting…" : "Permanently delete"}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

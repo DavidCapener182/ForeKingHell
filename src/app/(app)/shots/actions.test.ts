@@ -4,10 +4,26 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/shots/actions.ts"), "utf8");
 
-describe("reversible shot review actions", () => {
-  it("does not expose the former hard-delete path", () => {
-    expect(source).not.toContain("deleteShotAction");
-    expect(source).not.toContain(".delete(shots)");
+describe("shot review and permanent deletion actions", () => {
+  it("exposes a bounded owner-scoped hard-delete path", () => {
+    expect(source).toContain("export async function deleteShotAction");
+    expect(source).toContain("export async function deleteShotsAction");
+    expect(source).toContain("parseShotDeleteActionInput(input)");
+    expect(source).toContain(".delete(shots)");
+    expect(source).toContain("inArray(shots.id, deletion.shotIds)");
+    expect(source).toContain("eq(shots.userId, userId)");
+    expect(source).toContain("ownedShots.length !== deletion.shotIds.length");
+  });
+
+  it("blocks course-managed shots before deleting any row", () => {
+    expect(source).toContain("isPermanentShotDeletionRestricted");
+    expect(source).toContain("rapsodoSyncSessions.providerSessionMode");
+    expect(source).toContain("providerMetadataBySessionId");
+    expect(source).toContain("restrictedShots.length > 0");
+    expect(source).toContain("cannot be permanently deleted from Shot Explorer");
+    expect(source.indexOf("restrictedShots.length > 0")).toBeLessThan(
+      source.indexOf(".delete(shots)"),
+    );
   });
 
   it("validates and locks a bounded owner-scoped batch before mutation", () => {
@@ -37,6 +53,11 @@ describe("reversible shot review actions", () => {
     expect(source).not.toContain("sourceRawJson:");
   });
 
+  it("does not append or refresh another event for an identical persisted decision", () => {
+    expect(source).toContain("isPersistedShotReviewNoOp(shot, review.status)");
+    expect(source).toContain("if (reviewed.shotIds.length === 0)");
+  });
+
   it("provides a single-row restore and invalidates every live derived surface", () => {
     expect(source).toContain("export async function restoreShotAction");
     expect(source).toContain('status: "restored"');
@@ -63,7 +84,7 @@ describe("reversible shot review actions", () => {
     expect(source).toContain("clubId: shots.clubId");
     expect(source).toContain("playContext: shots.playContext");
     expect(source).toContain("refreshStockYardagesForClubs(tx");
-    expect(source).toContain("clubContexts: ownedShots.map");
+    expect(source).toContain("clubContexts: changedShots.map");
   });
 
   it("recomputes matched practice-day evidence after an exclusion or restore", () => {
@@ -76,5 +97,13 @@ describe("reversible shot review actions", () => {
     expect(source.indexOf("refreshPracticeEvidenceForReviewedSessions")).toBeLessThan(
       source.indexOf("revalidateShotDerivedRoutes(reviewed.sessionIds)"),
     );
+  });
+
+  it("refreshes stock, practice evidence and live routes after permanent deletion", () => {
+    expect(source).toContain("refreshStockYardagesForClubs(tx");
+    expect(source).toContain(
+      "await refreshPracticeEvidenceForReviewedSessions(userId, deleted.sessionIds)",
+    );
+    expect(source).toContain("revalidateShotDerivedRoutes(deleted.sessionIds)");
   });
 });

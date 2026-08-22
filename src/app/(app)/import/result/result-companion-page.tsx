@@ -49,22 +49,43 @@ export default async function ImportResultCompanionPage({
         <div data-session-verdict>
           <ResultHero
             eyebrow="Import complete"
-            title={result.verdict.title}
-            summary={result.verdict.summary}
+            title={`${result.shotCount} shots imported`}
+            summary={`${result.triagePath}.${
+              result.fieldIssueCount > 0
+                ? ` ${result.fieldIssueCount} impossible ${result.fieldIssueCount === 1 ? "field was" : "fields were"} quarantined without discarding the rest of the shot.`
+                : ""
+            }`}
             confidence={{
-              label: `${result.confidence.label} confidence`,
-              tone: result.confidence.label === "Low" ? "destructive" : "secondary",
+              label:
+                result.triage.confirmationCount > 0
+                  ? `${result.triage.confirmationCount} to confirm`
+                  : "No mishits suggested",
+              tone: result.triage.confirmationCount > 0 ? "outline" : "secondary",
             }}
             action={
               <ButtonGroup className="w-full">
                 <Button asChild className="min-h-12 flex-1 text-base">
-                  <Link href={result.reviewHref}>
-                    {result.isRound ? "Review this round" : "Review this session"}
+                  <Link
+                    href={
+                      result.triage.confirmationCount > 0
+                        ? result.suggestionReviewHref
+                        : result.reviewHref
+                    }
+                  >
+                    {result.triage.confirmationCount > 0
+                      ? "Confirm flagged shots"
+                      : result.isRound
+                        ? "Review this round"
+                        : "Review this session"}
                     <ArrowRight className="ml-2 size-4" aria-hidden />
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="min-h-12">
-                  <Link href="/sessions">All sessions</Link>
+                  <Link
+                    href={result.triage.confirmationCount > 0 ? result.reviewHref : "/sessions"}
+                  >
+                    {result.triage.confirmationCount > 0 ? "Open session" : "All sessions"}
+                  </Link>
                 </Button>
               </ButtonGroup>
             }
@@ -75,10 +96,10 @@ export default async function ImportResultCompanionPage({
           label="Import summary"
           className="grid-cols-2 [&>div:nth-child(2)]:border-l [&>div:nth-child(2)]:border-t-0"
           metrics={[
-            { label: "Measured shots", value: result.shotCount },
-            { label: "Clubs", value: result.clubCount },
-            { label: "Raw rows", value: result.rawRowCount },
-            { label: "Questionable", value: result.questionableRowCount },
+            { label: "Stock-quality", value: result.triage.stockQualityCount },
+            { label: "Likely mishits", value: result.triage.likelyMishitCount },
+            { label: "Needs review", value: result.triage.needsReviewCount },
+            { label: "Partial shots", value: result.triage.partialShotCount },
           ]}
         />
 
@@ -218,7 +239,15 @@ export default async function ImportResultCompanionPage({
                     {[
                       ["Source file", result.session.fileName ?? "R-Cloud session"],
                       ["Raw rows", String(result.rawRowCount)],
-                      ["Questionable rows", String(result.questionableRowCount)],
+                      ["Unknown raw rows", String(result.rawUnknownRowCount)],
+                      ["Stock-quality shots", String(result.triage.stockQualityCount)],
+                      ["Likely mishits", String(result.triage.likelyMishitCount)],
+                      ["Needs review", String(result.triage.needsReviewCount)],
+                      ["Partial shots", String(result.triage.partialShotCount)],
+                      ["Confirmed exclusions", String(result.triage.confirmedExcludedCount)],
+                      ["Other non-stock", String(result.triage.otherNonStockCount)],
+                      ["Quarantined fields", String(result.fieldIssueCount)],
+                      ["Whole-shot unusable", String(result.triage.launchMonitorErrorCount)],
                       ["Club mapping", result.clubs.join(", ") || "No club labels"],
                       [
                         "Duplicate state",
@@ -236,7 +265,7 @@ export default async function ImportResultCompanionPage({
                   </TableBody>
                 </Table>
                 <Button asChild variant="outline" className="min-h-11 justify-start">
-                  <Link href="/shots">
+                  <Link href={`/shots?sessionId=${encodeURIComponent(result.session.id)}`}>
                     <Database className="size-4 text-primary" aria-hidden />
                     Open Full Site shot audit
                   </Link>

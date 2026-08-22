@@ -87,6 +87,7 @@ import {
 } from "@/lib/practice-planner";
 import { getProductPreferences, goalProgress, type SeasonGoal } from "@/lib/product-preferences";
 import { SELECTED_COURSE_COOKIE } from "@/lib/selected-course";
+import { getTodayShotDetailRows } from "@/lib/today-shot-detail-data";
 import {
   clubTypeCurrentPerformanceScore,
   clubTypeEstimatedStrokeEffect,
@@ -103,6 +104,7 @@ import {
   buildTodayRecommendation,
   resolveTodayPrimaryState,
   todayConfidencePercent,
+  todayHeroEvidence,
   type TodayRecommendation,
 } from "@/lib/today-primary-state";
 import {
@@ -308,8 +310,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   };
   const reviewMode = parsePracticeReviewMode(first(params.evidence));
   const selectedReviewComparisons = reviewComparisons(data, reviewMode);
+  const selectedReviewShots = reviewShots(data, reviewMode);
+  const chartShotDetails = await getTodayShotDetailRows({
+    userId,
+    shotIds: selectedReviewShots.map((shot) => shot.id),
+  });
   const shotDatabaseHref = shotDatabaseLink(data);
-  const chartShots = toChartShots(reviewShots(data, reviewMode));
+  const chartShots = toChartShots(selectedReviewShots, chartShotDetails);
   const chartClubStatuses = toChartClubStatuses(selectedReviewComparisons);
   const chartPatternInsight = shotPatternInsight(selectedReviewComparisons);
   const clubSort = parseClubSort(first(params.clubSort));
@@ -639,9 +646,8 @@ function TodayDecisionHero({
   recommendation: TodayRecommendation;
   data: TodayPracticeData;
 }) {
-  const confidence = todayConfidencePercent(
-    state.status === "Review ready" ? recommendation.confidence : state.status,
-  );
+  const heroEvidence = todayHeroEvidence({ state, recommendation, latestData: data });
+  const confidence = todayConfidencePercent(heroEvidence.confidence);
 
   return (
     <Card
@@ -720,22 +726,22 @@ function TodayDecisionHero({
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
-                Decision confidence
+                {heroEvidence.heading}
               </p>
               <p className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                {recommendation.confidence}
+                {heroEvidence.confidence}
               </p>
             </div>
             <Sparkles className="size-5 text-[#a6f04a]" aria-hidden />
           </div>
           <Progress
             value={confidence}
-            aria-label={`${recommendation.confidence} decision confidence`}
+            aria-label={`${heroEvidence.confidence} ${heroEvidence.heading.toLowerCase()}`}
             className="mt-4 h-1.5 bg-white/15 [&_[data-slot=progress-indicator]]:bg-[#a6f04a]"
           />
           <div className="mt-5 grid gap-4 border-t border-white/14 pt-5">
-            <HeroEvidenceRow label="Evidence" value={recommendation.evidenceLabel} />
-            <HeroEvidenceRow label="Main club" value={recommendation.clubLabel} />
+            <HeroEvidenceRow label="Evidence" value={heroEvidence.evidenceLabel} />
+            <HeroEvidenceRow label={heroEvidence.contextLabel} value={heroEvidence.contextValue} />
             <HeroEvidenceRow
               label="Latest pattern"
               value={
@@ -3810,7 +3816,12 @@ function sortClubComparisons(comparisons: ClubDayComparison[], sort: ClubSort) {
   return comparisons;
 }
 
-function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {
+function toChartShots(
+  shots: TodayPracticeShot[],
+  details: Awaited<ReturnType<typeof getTodayShotDetailRows>>,
+): TodayChartShot[] {
+  const detailsById = new Map(details.map((detail) => [detail.id, detail] as const));
+
   return shots.map((shot) => ({
     id: shot.id,
     clubType: shot.clubType,
@@ -3823,6 +3834,7 @@ function toChartShots(shots: TodayPracticeShot[]): TodayChartShot[] {
     apexFt: shot.apexFt,
     launchAngleDeg: shot.launchAngleDeg,
     ballSpeedMph: shot.ballSpeedMph,
+    detail: detailsById.get(shot.id) ?? null,
   }));
 }
 

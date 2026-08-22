@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { applyRapsodoShotOverridesForImport } from "@/lib/imports/save-rapsodo-import";
+import {
+  applyImportedShotQualityTriage,
+  applyRapsodoShotOverridesForImport,
+} from "@/lib/imports/save-rapsodo-import";
 import {
   analyzeRapsodoCsvColumns,
   buildClubKey,
@@ -332,6 +335,47 @@ describe("Rapsodo parser edge cases", () => {
     expect(result.shots[0].sideCarryYd).toBe(-175);
   });
 
+  it("quarantines only an impossible total-distance field and preserves its raw value", () => {
+    const csv = ["Club Type,Carry Distance (yd),Total Distance (yd)", "7 Iron,136.8,8.8"].join(
+      "\n",
+    );
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(result.shots[0]).toMatchObject({
+      carryYd: 136.8,
+      totalYd: null,
+      qualityTag: null,
+      integrityIssues: [
+        expect.objectContaining({ code: "total_below_carry", field: "totalYd", value: 8.8 }),
+      ],
+    });
+    expect(result.shots[0].sourceRawJson["Total Distance (yd)"]).toBe("8.8");
+    expect(result.shots[0].warnings).toContain(
+      "Row 2: total distance 8.8 yd is incompatible with carry distance 136.8 yd; only the total-distance field was quarantined.",
+    );
+    expect(result.warnings).toContain(
+      "Row 2: total distance 8.8 yd is incompatible with carry distance 136.8 yd; only the total-distance field was quarantined.",
+    );
+  });
+
+  it("keeps plausible spinback and deliberate short-wedge partial distances", () => {
+    const csv = [
+      "Club Type,Carry Distance (yd),Total Distance (yd)",
+      "7 Iron,138.9,137.8",
+      "SW,12,0",
+    ].join("\n");
+
+    const result = parseRapsodoCsv(csv);
+
+    expect(
+      result.shots.map(({ carryYd, totalYd, warnings }) => ({ carryYd, totalYd, warnings })),
+    ).toEqual([
+      { carryYd: 138.9, totalYd: 137.8, warnings: [] },
+      { carryYd: 12, totalYd: 0, warnings: [] },
+    ]);
+  });
+
   it("finds likely headers and suggests manual mappings for unknown column names", () => {
     const csv = [
       '"Rapsodo MLM2PRO: Player - 04/05/2026 8:00 AM"',
@@ -424,5 +468,64 @@ describe("Rapsodo import shot overrides", () => {
 
     expect(prepared.map((shot) => shot.shotNumber)).toEqual([1, 3]);
     expect(prepared[1]).toMatchObject({ clubType: "9i" });
+  });
+
+  it("keeps an untouched distance recommendation inferred instead of trusting it as a mapping", () => {
+    const parsed = parseRapsodoCsv(
+      ["Shot Number,Club Type,Carry Distance (yd),Total Distance (yd)", "1,Other,42,46"].join("\n"),
+    );
+    const prepared = applyRapsodoShotOverridesForImport(parsed.shots, [
+      {
+        rowNumber: parsed.shots[0].rowNumber,
+        clubType: "7 Iron",
+        clubSelectionOrigin: "recommendation",
+      },
+    ]);
+    const clubKey = buildClubKey("7i", null, null);
+    const triaged = applyImportedShotQualityTriage(
+      prepared,
+      new Map([
+        [
+          clubKey,
+          {
+            clubType: "7i",
+            sampleSize: 40,
+            carryYd: {
+              median: 150,
+              medianAbsoluteDeviation: 4,
+              p05: 138,
+              p25: 146,
+              p75: 154,
+            },
+          },
+        ],
+      ]),
+    );
+
+    expect(prepared[0]).toMatchObject({
+      clubType: "7i",
+      clubIdentityProvenance: "inferred",
+    });
+    expect(prepared[0].sourceRawJson["Club Type"]).toBe("Other");
+    expect(triaged.shots[0]).toMatchObject({ classification: "stock_quality" });
+    expect(triaged.shots[0].shot.qualityTag).toBeNull();
+  });
+
+  it("treats an explicit user club correction as a trusted mapping", () => {
+    const parsed = parseRapsodoCsv(
+      ["Shot Number,Club Type,Carry Distance (yd),Total Distance (yd)", "1,Other,42,46"].join("\n"),
+    );
+    const prepared = applyRapsodoShotOverridesForImport(parsed.shots, [
+      {
+        rowNumber: parsed.shots[0].rowNumber,
+        clubType: "7 Iron",
+        clubSelectionOrigin: "user",
+      },
+    ]);
+
+    expect(prepared[0]).toMatchObject({
+      clubType: "7i",
+      clubIdentityProvenance: "mapped_source",
+    });
   });
 });

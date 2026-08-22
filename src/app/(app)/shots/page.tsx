@@ -41,7 +41,14 @@ import {
   type ShotMiniDispersionPoint,
   type ShotTableSort,
 } from "@/app/shots/shots-master-detail-table";
-import { clubs, importRows, sessions, shotReviewEvents, shots } from "@/db/schema";
+import {
+  clubs,
+  importRows,
+  rapsodoSyncSessions,
+  sessions,
+  shotReviewEvents,
+  shots,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
 import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
@@ -58,6 +65,7 @@ import {
   type ShotReviewStatus,
 } from "@/lib/shot-review";
 import { reportServerFailure } from "@/lib/server-observability";
+import { isPermanentShotDeletionRestricted } from "@/lib/shot-deletion";
 
 export const dynamic = "force-dynamic";
 
@@ -398,6 +406,11 @@ type SavedShotRow = {
   id: string;
   sessionId: string;
   sessionSource: string;
+  sessionType: string;
+  sessionPlayContext: string;
+  sessionCourseId: string | null;
+  providerKind: string | null;
+  providerSessionMode: string | null;
   fileName: string | null;
   shotAt: Date;
   shotNumber: number | null;
@@ -504,6 +517,9 @@ async function getLiveShotDatabase(filters: ShotFilters) {
         id: shots.id,
         sessionId: shots.sessionId,
         sessionSource: sessions.source,
+        sessionType: sessions.type,
+        sessionPlayContext: sessions.playContext,
+        sessionCourseId: sessions.courseId,
         fileName: sessions.fileName,
         shotAt: shots.shotAt,
         shotNumber: shots.shotNumber,
@@ -563,9 +579,10 @@ async function getLiveShotDatabase(filters: ShotFilters) {
       .limit(90),
   ]);
 
-  const reviewEventRows =
+  const savedSessionIds = [...new Set(savedShots.map((shot) => shot.sessionId))];
+  const [reviewEventRows, providerSessionRows] = await Promise.all([
     savedShots.length > 0
-      ? await db
+      ? db
           .select({
             id: shotReviewEvents.id,
             shotId: shotReviewEvents.shotId,
@@ -589,12 +606,41 @@ async function getLiveShotDatabase(filters: ShotFilters) {
             ),
           )
           .orderBy(desc(shotReviewEvents.createdAt))
-      : [];
+      : Promise.resolve([]),
+    savedSessionIds.length > 0
+      ? db
+          .select({
+            sessionId: rapsodoSyncSessions.importedSessionId,
+            providerKind: rapsodoSyncSessions.providerKind,
+            providerSessionMode: rapsodoSyncSessions.providerSessionMode,
+          })
+          .from(rapsodoSyncSessions)
+          .where(
+            and(
+              eq(rapsodoSyncSessions.userId, userId),
+              inArray(rapsodoSyncSessions.importedSessionId, savedSessionIds),
+            ),
+          )
+          .orderBy(desc(rapsodoSyncSessions.updatedAt))
+      : Promise.resolve([]),
+  ]);
   const reviewEventsByShotId = new Map<string, SavedShotReviewEvent[]>();
   for (const event of reviewEventRows) {
     const current = reviewEventsByShotId.get(event.shotId) ?? [];
     current.push(event);
     reviewEventsByShotId.set(event.shotId, current);
+  }
+  const providerMetadataBySessionId = new Map<
+    string,
+    { providerKind: string; providerSessionMode: string | null }
+  >();
+  for (const providerSession of providerSessionRows) {
+    if (providerSession.sessionId && !providerMetadataBySessionId.has(providerSession.sessionId)) {
+      providerMetadataBySessionId.set(providerSession.sessionId, {
+        providerKind: providerSession.providerKind,
+        providerSessionMode: providerSession.providerSessionMode,
+      });
+    }
   }
 
   return {
@@ -607,6 +653,9 @@ async function getLiveShotDatabase(filters: ShotFilters) {
     sessionSummaries: sessionRows,
     savedShots: savedShots.map((shot) => ({
       ...shot,
+      providerKind: providerMetadataBySessionId.get(shot.sessionId)?.providerKind ?? null,
+      providerSessionMode:
+        providerMetadataBySessionId.get(shot.sessionId)?.providerSessionMode ?? null,
       reviewEvents: reviewEventsByShotId.get(shot.id) ?? [],
     })),
     dispersionShots,
@@ -864,6 +913,14 @@ function serializeShotForMasterDetail(shot: SavedShotRow): ShotMasterDetailRow {
     sourceEntries: Object.entries(shot.sourceRawJson ?? {})
       .map(([key, value]) => ({ key, value: String(value) }))
       .sort((left, right) => left.key.localeCompare(right.key)),
+    canDeletePermanently: !isPermanentShotDeletionRestricted({
+      sessionType: shot.sessionType,
+      sessionPlayContext: shot.sessionPlayContext,
+      sessionCourseId: shot.sessionCourseId,
+      courseHoleNumber: shot.courseHoleNumber,
+      providerKind: shot.providerKind,
+      providerSessionMode: shot.providerSessionMode,
+    }),
   };
 }
 
