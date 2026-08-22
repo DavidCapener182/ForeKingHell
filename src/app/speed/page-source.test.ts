@@ -39,8 +39,9 @@ describe("speed centre desktop evidence ledger", () => {
   it("keeps speed coaching on clean measured fields and preserves ordered swing evidence", () => {
     expect(dataSource).toContain("qualityTag: shots.qualityTag");
     expect(dataSource).toContain("clubDataEstType: shots.clubDataEstType");
-    expect(dataSource.match(/\.limit\(200\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
-    expect(dataSource.match(/\.limit\(80\)/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(dataSource).toContain("selectIndependentMeasuredSpeedReadings");
+    expect(dataSource).toContain("summarizeTrustedSpeedPb");
+    expect(dataSource).toContain("isComparableDriverSpeedSession");
     expect(dataSource).toContain("getCompanionTrainingLoad(userId)");
     expect(dataSource).toContain('session.handedness === "dominant"');
     expect(dataSource).toContain('session.implementKind === "club"');
@@ -73,6 +74,14 @@ describe("speed centre desktop evidence ledger", () => {
     ]) {
       expect(source).toContain(`data-column="${column}"`);
     }
+  });
+
+  it("keeps rejected one-off peaks out of the visible club workbench", () => {
+    expect(source).toContain('label="Verified PB"');
+    expect(source).toContain('label="Vs verified PB"');
+    expect(source).not.toContain("Unverified peak");
+    expect(clubFocusSource).not.toContain("Unverified peak");
+    expect(futureBagSource).toContain("benchmark");
   });
 
   it("does not add a persistent AI rail to the speed centre", () => {

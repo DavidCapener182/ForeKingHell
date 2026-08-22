@@ -202,18 +202,22 @@ describe("driver speed development", () => {
         }),
       }),
     );
+    const linkedShots = driverSession("after", "2026-08-18", {
+      clubSpeedMph: 90,
+      ballSpeedMph: 132,
+      sideCarryYd: 10,
+    });
     const transferred = buildSpeedDevelopment(
       input({
         sessions: [
-          session("latest-speed", "2026-08-17", 92, 93),
+          {
+            ...session("latest-speed", "2026-08-17", 92, 93),
+            transferShotIds: linkedShots.map((shot) => shot.id!),
+          },
           session("older-pb", "2026-08-10", 98, 100),
         ],
         driverShots: [
-          ...driverSession("after", "2026-08-18", {
-            clubSpeedMph: 90,
-            ballSpeedMph: 132,
-            sideCarryYd: 10,
-          }),
+          ...linkedShots,
           ...driverSession("before", "2026-08-12", {
             clubSpeedMph: 88,
             ballSpeedMph: 128,
@@ -232,6 +236,198 @@ describe("driver speed development", () => {
       sessionId: "latest-speed",
       playingSpeedMph: 90,
       transferEfficiencyPct: 96.8,
+    });
+  });
+
+  it.each([
+    ["four linked shots", ["transfer-1", "transfer-2", "transfer-3", "transfer-4"]],
+    [
+      "a duplicated fifth link",
+      ["transfer-1", "transfer-2", "transfer-3", "transfer-4", "transfer-4"],
+    ],
+  ])("requires exactly five unique explicitly linked shots, not %s", (_label, transferShotIds) => {
+    const linkedShots = transferShots("transfer-block", "2026-08-16", [-5, 0, 5, 8, 12]);
+    const summary = buildSpeedDevelopment(
+      input({
+        sessions: [
+          {
+            ...session("speed-session", "2026-08-18", 88, 92),
+            transferShotIds,
+          },
+        ],
+        driverShots: linkedShots,
+      }),
+    );
+
+    expect(summary.verdict).toMatchObject({
+      sessionId: "speed-session",
+      grade: "Pending",
+      transferSessionId: null,
+      transferShotCount: 0,
+      inCorridorCount: null,
+      playabilityPassed: null,
+    });
+  });
+
+  it("passes an explicitly linked transfer test when four of its five shots are playable", () => {
+    const linkedShots = transferShots("linked-transfer", "2026-08-18", [-10, -5, 0, 10, 11]);
+    const summary = buildSpeedDevelopment(
+      input({
+        sessions: [
+          {
+            ...session("speed-session", "2026-08-17", 88, 92),
+            transferShotIds: linkedShots.map((shot) => shot.id!),
+          },
+        ],
+        driverShots: [...personalCorridorShots(), ...linkedShots],
+      }),
+    );
+
+    expect(summary.verdict).toMatchObject({
+      sessionId: "speed-session",
+      transferSessionId: "linked-transfer",
+      transferShotCount: 5,
+      inCorridorCount: 4,
+      requiredInCorridorCount: 4,
+      corridorMinSideYd: -10,
+      corridorMaxSideYd: 10,
+      playabilityPassed: true,
+      grade: "B+",
+      tone: "green",
+    });
+    expect(summary.verdict?.label).toContain("4 of 5 inside your personal corridor");
+  });
+
+  it("keeps a side-carry-only linked transfer test visible without inventing speed", () => {
+    const linkedShots = transferShots("linked-transfer", "2026-08-18", [-8, -4, 0, 6, 18]).map(
+      (shot) => ({
+        ...shot,
+        clubSpeedMph: null,
+        clubDataEstType: null,
+      }),
+    );
+    const summary = buildSpeedDevelopment(
+      input({
+        sessions: [
+          {
+            ...session("speed-session", "2026-08-17", 88, 92),
+            transferShotIds: linkedShots.map((shot) => shot.id!),
+            transferCorridor: {
+              minSideCarryYd: -10,
+              maxSideCarryYd: 10,
+              centreSideCarryYd: 0,
+              halfWidthYd: 10,
+              sampleSize: 20,
+              basis: "personal_80_percent",
+            },
+          },
+        ],
+        driverShots: [],
+        transferDriverShots: linkedShots,
+      }),
+    );
+
+    expect(summary.verdict).toMatchObject({
+      grade: "B+",
+      transferSessionId: "linked-transfer",
+      transferShotCount: 5,
+      inCorridorCount: 4,
+      playabilityPassed: true,
+      playingSpeedMph: null,
+      transferEfficiencyPct: null,
+    });
+  });
+
+  it("keeps a linked transfer verdict stable when later Driver shots arrive", () => {
+    const linkedShots = transferShots("linked-transfer", "2026-08-18", [-8, -4, 0, 6, 18]);
+    const laterShots = transferShots("later-session", "2026-08-19", [80, 90, 100, 110, 120]).map(
+      (shot, index) => ({ ...shot, id: `later-${index + 1}` }),
+    );
+    const summary = buildSpeedDevelopment(
+      input({
+        sessions: [
+          {
+            ...session("speed-session", "2026-08-17", 88, 92),
+            transferShotIds: linkedShots.map((shot) => shot.id!),
+            transferCorridor: {
+              minSideCarryYd: -10,
+              maxSideCarryYd: 10,
+              centreSideCarryYd: 0,
+              halfWidthYd: 10,
+              sampleSize: 20,
+              basis: "personal_80_percent",
+            },
+          },
+        ],
+        driverShots: laterShots,
+        transferDriverShots: [...laterShots, ...linkedShots],
+      }),
+    );
+
+    expect(summary.verdict).toMatchObject({
+      inCorridorCount: 4,
+      corridorMinSideYd: -10,
+      corridorMaxSideYd: 10,
+      playabilityPassed: true,
+    });
+  });
+
+  it("fails an explicitly linked transfer test when only three of five are playable", () => {
+    const linkedShots = transferShots("linked-transfer", "2026-08-18", [-10, 0, 10, -11, 11]);
+    const summary = buildSpeedDevelopment(
+      input({
+        sessions: [
+          {
+            ...session("speed-session", "2026-08-17", 88, 92),
+            transferShotIds: linkedShots.map((shot) => shot.id!),
+          },
+        ],
+        driverShots: [...personalCorridorShots(), ...linkedShots],
+      }),
+    );
+
+    expect(summary.verdict).toMatchObject({
+      transferShotCount: 5,
+      inCorridorCount: 3,
+      playabilityPassed: false,
+      grade: "Failed",
+      tone: "pink",
+    });
+    expect(summary.verdict?.label).toContain(
+      "3 of 5 inside your personal corridor — transfer failed",
+    );
+  });
+
+  it("does not count unrelated Driver shots in an explicitly linked five-shot verdict", () => {
+    const linkedShots = transferShots("linked-transfer", "2026-08-18", [-8, -4, 0, 4, 8]);
+    const unrelatedShot: SpeedDevelopmentDriverShotInput = {
+      ...linkedShots[0]!,
+      id: "unrelated-fast-shot",
+      sessionId: "unrelated-session",
+      shotAtIso: "2026-08-19T11:00:00.000Z",
+      clubSpeedMph: 120,
+      ballSpeedMph: 170,
+      sideCarryYd: 0,
+    };
+    const summary = buildSpeedDevelopment(
+      input({
+        sessions: [
+          {
+            ...session("speed-session", "2026-08-17", 88, 92),
+            transferShotIds: linkedShots.map((shot) => shot.id!),
+          },
+        ],
+        driverShots: [...personalCorridorShots(), unrelatedShot, ...linkedShots],
+      }),
+    );
+
+    expect(summary.verdict).toMatchObject({
+      transferSessionId: "linked-transfer",
+      transferShotCount: 5,
+      playingSpeedMph: 88,
+      ballSpeedMph: 130,
+      inCorridorCount: 5,
+      playabilityPassed: true,
     });
   });
 
@@ -427,6 +623,7 @@ function driverSession(
   overrides: Partial<SpeedDevelopmentDriverShotInput>,
 ): SpeedDevelopmentDriverShotInput[] {
   return Array.from({ length: 5 }, (_, index) => ({
+    id: `${sessionId}-${index + 1}`,
     sessionId,
     shotAtIso: `${date}T10:0${index}:00.000Z`,
     playContext: "practice_bay",
@@ -437,6 +634,45 @@ function driverSession(
     launchAngleDeg: 14,
     sideCarryYd: 10,
     reviewStatus: "included",
+    clubDataEstType: "0",
     ...overrides,
+  }));
+}
+
+function transferShots(
+  sessionId: string,
+  date: string,
+  sideCarryValues: number[],
+): SpeedDevelopmentDriverShotInput[] {
+  return sideCarryValues.map((sideCarryYd, index) => ({
+    id: `transfer-${index + 1}`,
+    sessionId,
+    shotAtIso: `${date}T10:0${index}:00.000Z`,
+    playContext: "practice_bay",
+    clubSpeedMph: 86 + index,
+    ballSpeedMph: 130,
+    smashFactor: 1.44,
+    carryYd: 210,
+    launchAngleDeg: 14,
+    sideCarryYd,
+    reviewStatus: "included",
+    clubDataEstType: "0",
+  }));
+}
+
+function personalCorridorShots(): SpeedDevelopmentDriverShotInput[] {
+  return Array.from({ length: 10 }, (_, index) => ({
+    id: `corridor-${index + 1}`,
+    sessionId: "corridor-baseline",
+    shotAtIso: `2026-08-10T09:${String(index).padStart(2, "0")}:00.000Z`,
+    playContext: "practice_bay",
+    clubSpeedMph: 85,
+    ballSpeedMph: 125,
+    smashFactor: 1.47,
+    carryYd: 200,
+    launchAngleDeg: 14,
+    sideCarryYd: 0,
+    reviewStatus: "included",
+    clubDataEstType: "0",
   }));
 }

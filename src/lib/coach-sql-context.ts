@@ -11,6 +11,10 @@ import {
 import { getDb } from "@/db/client";
 import { formatClubType } from "@/lib/club-format";
 import { isShotEvidenceEligible } from "@/lib/shot-review";
+import {
+  selectIndependentMeasuredSpeedReadings,
+  summarizeTrustedSpeedPb,
+} from "@/lib/speed-training-data";
 import { summarizeStrokesGainedByCategory } from "@/lib/strokes-gained";
 
 export type CoachSqlCitation = {
@@ -42,6 +46,7 @@ export async function buildCoachSqlContext(
     roundRows,
     strokesGainedRows,
     speedRows,
+    latestDriverSpeedRows,
     driverSpeedRows,
   ] = await Promise.all([
     db
@@ -128,9 +133,12 @@ export async function buildCoachSqlContext(
     db
       .select({
         id: speedTrainingSessions.id,
+        clubId: speedTrainingSessions.clubId,
         sessionDate: speedTrainingSessions.sessionDate,
+        title: speedTrainingSessions.title,
         implementKind: speedTrainingSessions.implementKind,
         implementLabel: speedTrainingSessions.implementLabel,
+        handedness: speedTrainingSessions.handedness,
         swingCount: speedTrainingSessions.swingCount,
         avgSpeedMph: speedTrainingSessions.avgSpeedMph,
         maxSpeedMph: speedTrainingSessions.maxSpeedMph,
@@ -141,9 +149,33 @@ export async function buildCoachSqlContext(
       .orderBy(desc(speedTrainingSessions.sessionDate))
       .limit(8),
     db
+      .select({ avgSpeedMph: speedTrainingSessions.avgSpeedMph })
+      .from(speedTrainingSessions)
+      .leftJoin(clubs, and(eq(clubs.id, speedTrainingSessions.clubId), eq(clubs.userId, userId)))
+      .where(
+        and(
+          eq(speedTrainingSessions.userId, userId),
+          eq(speedTrainingSessions.handedness, "dominant"),
+          eq(speedTrainingSessions.implementKind, "club"),
+          or(
+            eq(clubs.type, "driver"),
+            and(
+              isNull(speedTrainingSessions.clubId),
+              sql`lower(concat_ws(' ', coalesce(${speedTrainingSessions.title}, ''), coalesce(${speedTrainingSessions.implementLabel}, ''))) like '%driver%'`,
+            ),
+          ),
+        ),
+      )
+      .orderBy(desc(speedTrainingSessions.sessionDate))
+      .limit(1),
+    db
       .select({
+        id: shots.id,
+        sessionId: shots.sessionId,
         shotAt: shots.shotAt,
         clubSpeedMph: shots.clubSpeedMph,
+        clubDataEstType: shots.clubDataEstType,
+        sourceRawJson: shots.sourceRawJson,
         shotCategory: shots.shotCategory,
         qualityTag: shots.qualityTag,
         reviewStatus: shots.reviewStatus,
@@ -169,6 +201,9 @@ export async function buildCoachSqlContext(
   const citations: CoachSqlCitation[] = [];
   const evidenceRecentShotRows = recentShotRows.filter(isShotEvidenceEligible);
   const evidenceDriverSpeedRows = driverSpeedRows.filter(isShotEvidenceEligible);
+  const measuredDriverSpeedRows = selectIndependentMeasuredSpeedReadings(
+    evidenceDriverSpeedRows,
+  ).sort((left, right) => right.shotAt.getTime() - left.shotAt.getTime());
   const stockLines = stockRows.slice(0, 12).map((row, index) => {
     const label = clubLabelById.get(row.clubId) ?? "Unknown club";
     citations.push({
@@ -221,12 +256,10 @@ export async function buildCoachSqlContext(
     });
     return `${index + 1}. ${label}: ${formatNumber(row.avgSpeedMph)} mph average, ${formatNumber(row.maxSpeedMph)} mph max, ${row.swingCount} swings, target ${formatNumber(row.targetSpeedMph)} mph.`;
   });
-  const driverSpeeds = evidenceDriverSpeedRows
-    .map((row) => row.clubSpeedMph)
-    .filter((value): value is number => value !== null);
+  const driverSpeeds = measuredDriverSpeedRows.map((row) => row.clubSpeedMph);
   const driverLast20AvgMph = average(driverSpeeds.slice(0, 20));
-  const driverPbMph = driverSpeeds.length > 0 ? Math.max(...driverSpeeds) : null;
-  const latestDrySpeedMph = speedRows[0]?.avgSpeedMph ?? null;
+  const driverPbMph = summarizeTrustedSpeedPb(evidenceDriverSpeedRows).trustedPbMph;
+  const latestDrySpeedMph = latestDriverSpeedRows[0]?.avgSpeedMph ?? null;
   const dryVsBallGapMph =
     latestDrySpeedMph !== null && driverLast20AvgMph !== null
       ? latestDrySpeedMph - driverLast20AvgMph
@@ -259,7 +292,7 @@ export async function buildCoachSqlContext(
         : "Strokes gained: no event rows available.",
       speedLines.length || driverLast20AvgMph !== null
         ? `Speed Centre:\n${[
-            `Driver with-ball: ${formatNumber(driverLast20AvgMph)} mph last-20 average, ${formatNumber(driverPbMph)} mph personal best.`,
+            `Driver with-ball: ${formatNumber(driverLast20AvgMph)} mph last-20 measured average, ${formatNumber(driverPbMph)} mph verified personal best.`,
             `Latest dry speed session: ${formatNumber(latestDrySpeedMph)} mph average.`,
             `Dry minus with-ball gap: ${formatNumber(dryVsBallGapMph)} mph.`,
             ...speedLines,

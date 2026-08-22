@@ -7,9 +7,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import { ArrowLeft, Gauge, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Gauge, Link2, Save, Trash2 } from "lucide-react";
 
-import { deleteSpeedSessionAction, updateSpeedSessionAction } from "@/app/speed/actions";
+import {
+  deleteSpeedSessionAction,
+  saveSpeedTransferTestAction,
+  updateSpeedSessionAction,
+} from "@/app/speed/actions";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import {
   DesktopWorkbenchLayout,
@@ -62,6 +66,7 @@ type PageProps = {
   }>;
   searchParams?: Promise<{
     speed_saved?: string | string[];
+    speed_error?: string | string[];
   }>;
 };
 
@@ -111,6 +116,9 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
   }
 
   const saved = firstSearchParam(resolvedSearchParams.speed_saved);
+  const error = firstSearchParam(resolvedSearchParams.speed_error);
+  const peakSummary = data.peakSwingSummary;
+  const peakAverageFallback = peakSummary.swingCount === 0 ? data.session.avgSpeedMph : null;
   return (
     <PageShell>
       <DesktopWorkbenchLayout scope="speed-session">
@@ -120,24 +128,27 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
           description={`${data.session.implementLabel} · ${formatDate(data.session.sessionDateIso)}`}
           metrics={[
             {
-              label: "Average",
-              value: formatSpeed(data.session.avgSpeedMph),
-              detail: `${data.session.swingCount} swings`,
+              label: "Median",
+              value: formatSpeed(peakSummary.medianSpeedMph ?? peakAverageFallback),
+              detail:
+                peakSummary.swingCount > 0
+                  ? `${peakSummary.swingCount} maximum-speed swings`
+                  : "Manual speed summary",
             },
             {
-              label: "Best",
-              value: formatSpeed(data.swingSummary.bestSwingMph),
-              detail: "Fastest swing",
+              label: "Top 3 average",
+              value: formatSpeed(peakSummary.bestThreeAvgMph ?? peakAverageFallback),
+              detail: "Three fastest swings",
             },
             {
-              label: "Best 3",
-              value: formatSpeed(data.swingSummary.bestThreeAvgMph),
-              detail: "Peak quality",
+              label: "Top 5 average",
+              value: formatSpeed(peakSummary.bestFiveAvgMph ?? peakAverageFallback),
+              detail: "Five fastest swings",
             },
             {
-              label: "Finish",
-              value: formatSpeed(data.swingSummary.lastFiveAvgMph),
-              detail: data.swingSummary.trendLabel,
+              label: "Session best",
+              value: formatSpeed(peakSummary.bestSwingMph ?? data.session.maxSpeedMph),
+              detail: "Fastest single swing",
             },
           ]}
           actions={
@@ -152,7 +163,12 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
 
         {saved ? (
           <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-4 py-3 text-sm font-medium text-[var(--status-success-foreground)]">
-            Speed session updated.
+            {speedSessionSavedMessage(saved)}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            {error}
           </div>
         ) : null}
 
@@ -161,26 +177,55 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
             <SectionHeader
               title="Swing detail"
               description="Warm-up, peak speed, and late-session drop-off."
-              action={<StatusPill tone="green">{data.swingSummary.trendLabel}</StatusPill>}
+              action={<StatusPill tone="green">{peakSummary.trendLabel}</StatusPill>}
             />
             <div className="grid gap-4 p-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <MetricCard
-                  label="Best swing"
-                  value={formatSpeed(data.swingSummary.bestSwingMph)}
+                  label="Median"
+                  value={formatSpeed(peakSummary.medianSpeedMph ?? peakAverageFallback)}
                 />
                 <MetricCard
-                  label="Best 3 avg"
-                  value={formatSpeed(data.swingSummary.bestThreeAvgMph)}
+                  label="Top 3 average"
+                  value={formatSpeed(peakSummary.bestThreeAvgMph ?? peakAverageFallback)}
                 />
                 <MetricCard
-                  label="First 5"
-                  value={formatSpeed(data.swingSummary.firstFiveAvgMph)}
+                  label="Top 5 average"
+                  value={formatSpeed(peakSummary.bestFiveAvgMph ?? peakAverageFallback)}
                 />
-                <MetricCard label="Last 5" value={formatSpeed(data.swingSummary.lastFiveAvgMph)} />
                 <MetricCard
-                  label="Late change"
-                  value={formatGap(data.swingSummary.warmupGainMph)}
+                  label="Session best"
+                  value={formatSpeed(peakSummary.bestSwingMph ?? data.session.maxSpeedMph)}
+                />
+                <MetricCard
+                  label="Warm-up median"
+                  value={formatSpeed(data.phasedSummary.phases.warm_up.medianSpeedMph)}
+                />
+                <MetricCard label="Late change" value={formatGap(peakSummary.warmupGainMph)} />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3" aria-label="Speed session phases">
+                <PhaseCard
+                  title="Warm-up"
+                  count={data.phasedSummary.phases.warm_up.swingCount}
+                  value={formatSpeed(data.phasedSummary.phases.warm_up.medianSpeedMph)}
+                  detail="Progressive preparation"
+                />
+                <PhaseCard
+                  title="Maximum speed"
+                  count={data.phasedSummary.phases.max_speed.swingCount}
+                  value={formatSpeed(data.phasedSummary.phases.max_speed.sessionBestMph)}
+                  detail="Session ceiling"
+                />
+                <PhaseCard
+                  title="Transfer"
+                  count={data.transferTest?.playability.measuredShotCount ?? 0}
+                  value={
+                    data.transferTest
+                      ? `${data.transferTest.playability.inCorridorCount}/5`
+                      : "Not linked"
+                  }
+                  detail="Normal Driver shots"
                 />
               </div>
 
@@ -205,6 +250,8 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
           </DataPanel>
 
           <div className="grid gap-4">
+            {data.canLinkTransferTest ? <SpeedTransferTestPanel data={data} /> : null}
+
             <DataPanel>
               <SectionHeader
                 title="Edit session"
@@ -274,11 +321,25 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
                   <Input name="implementLabel" defaultValue={data.session.implementLabel} />
                 </Field>
 
-                <Field label="Swing speeds">
+                <Field label="Warm-up swings">
+                  <Textarea
+                    name="warmupReadings"
+                    rows={4}
+                    defaultValue={data.swings
+                      .filter((swing) => swing.phase === "warm_up")
+                      .map((swing) => swing.clubSpeedMph)
+                      .join("\n")}
+                  />
+                </Field>
+
+                <Field label="Maximum-speed swings">
                   <Textarea
                     name="speedReadings"
                     rows={8}
-                    defaultValue={data.swings.map((swing) => swing.clubSpeedMph).join("\n")}
+                    defaultValue={data.swings
+                      .filter((swing) => swing.phase === null || swing.phase === "max_speed")
+                      .map((swing) => swing.clubSpeedMph)
+                      .join("\n")}
                   />
                 </Field>
 
@@ -348,8 +409,178 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
   );
 }
 
+function SpeedTransferTestPanel({ data }: { data: SpeedSessionDetailPageData }) {
+  const linkedSessionId = data.transferTest?.metadata.shotSessionId ?? null;
+  const candidates = [...data.transferCandidates];
+
+  if (linkedSessionId && !candidates.some((candidate) => candidate.sessionId === linkedSessionId)) {
+    candidates.unshift({
+      sessionId: linkedSessionId,
+      sessionDateIso: data.transferTest?.shots[0]?.shotAtIso ?? data.session.sessionDateIso,
+      label: "Currently linked Driver session",
+      eligibleShotCount: data.transferTest?.shots.length ?? 0,
+      shots: data.transferTest?.shots ?? [],
+    });
+  }
+
+  const playability = data.transferTest?.playability ?? null;
+  const tone =
+    playability?.status === "passed"
+      ? "green"
+      : playability?.status === "failed"
+        ? "pink"
+        : "slate";
+
+  return (
+    <DataPanel>
+      <SectionHeader
+        title="Five-shot transfer test"
+        description="Link five normal Driver shots to this speed session. Playable means at least 4 of 5 finish inside your personal corridor."
+        action={
+          <StatusPill tone={tone}>
+            {playability
+              ? playability.status === "passed"
+                ? "Passed"
+                : playability.status === "failed"
+                  ? "Failed"
+                  : "Incomplete"
+              : "Not linked"}
+          </StatusPill>
+        }
+      />
+      <div className="grid gap-4 p-4">
+        {data.transferTest ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <MetricCard
+                label="Inside corridor"
+                value={`${data.transferTest.playability.inCorridorCount}/5`}
+              />
+              <MetricCard
+                label="Personal corridor"
+                value={formatCorridor(data.transferTest.corridor)}
+              />
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              {data.transferTest.corridor.basis === "personal_80_percent"
+                ? `Based on the central 80% of ${data.transferTest.corridor.sampleSize} prior Driver shots.`
+                : `Provisional ±30 yd Driver corridor until 10 historical side-carry readings are available.`}
+            </p>
+            <ol className="grid gap-1.5" aria-label="Linked five-shot transfer evidence">
+              {data.transferTest.shots.map((shot, index) => {
+                const inside =
+                  shot.sideCarryYd !== null &&
+                  shot.sideCarryYd >= data.transferTest!.corridor.minSideCarryYd &&
+                  shot.sideCarryYd <= data.transferTest!.corridor.maxSideCarryYd;
+
+                return (
+                  <li
+                    key={shot.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm"
+                  >
+                    <span className="font-medium text-foreground">
+                      Shot {shot.shotNumber ?? index + 1} · {formatSpeed(shot.clubSpeedMph)}
+                    </span>
+                    <span className={inside ? "text-primary" : "text-muted-foreground"}>
+                      {formatSideCarry(shot.sideCarryYd)} · {inside ? "Inside" : "Outside"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        ) : (
+          <div className="rounded-lg border border-border/70 bg-muted/30 p-3 text-sm leading-6 text-muted-foreground">
+            The speed block is saved. Choose the matching Driver session below so the transfer
+            result cannot be confused with an unrelated range session.
+          </div>
+        )}
+
+        {candidates.length > 0 ? (
+          <div className="grid gap-2">
+            <p className="text-sm font-medium text-foreground">
+              Choose the exact five normal Driver shots
+            </p>
+            {candidates.map((candidate, candidateIndex) => {
+              const currentLinkedIds =
+                linkedSessionId === candidate.sessionId
+                  ? new Set(data.transferTest?.metadata.shotIds ?? [])
+                  : null;
+
+              return (
+                <details
+                  key={candidate.sessionId}
+                  open={candidate.sessionId === linkedSessionId || candidateIndex === 0}
+                  className="rounded-lg border border-border/70 bg-card"
+                >
+                  <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-foreground">
+                    {formatDate(candidate.sessionDateIso)} · {candidate.label} ·{" "}
+                    {candidate.eligibleShotCount} eligible
+                  </summary>
+                  <form
+                    action={saveSpeedTransferTestAction}
+                    className="grid gap-3 border-t border-border/70 p-3"
+                  >
+                    <input type="hidden" name="speedSessionId" value={data.session.id} />
+                    <input type="hidden" name="shotSessionId" value={candidate.sessionId} />
+                    <div className="grid gap-1.5">
+                      {candidate.shots.map((shot, index) => (
+                        <label
+                          key={shot.id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-sm"
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            <input
+                              type="checkbox"
+                              name="shotId"
+                              value={shot.id}
+                              defaultChecked={
+                                currentLinkedIds?.has(shot.id) ??
+                                (candidateIndex === 0 && index < 5)
+                              }
+                              className="size-4 rounded border-border accent-primary"
+                            />
+                            <span className="truncate font-medium text-foreground">
+                              Shot {shot.shotNumber ?? index + 1}
+                            </span>
+                          </span>
+                          <span className="text-right tabular-nums text-muted-foreground">
+                            {formatSpeed(shot.clubSpeedMph)} · {formatSideCarry(shot.sideCarryYd)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button type="submit" variant="outline" className="w-full sm:w-fit">
+                      <Link2 aria-hidden="true" />
+                      Link selected five
+                    </Button>
+                  </form>
+                </details>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No nearby Driver session has five eligible shots yet.
+          </p>
+        )}
+
+        {linkedSessionId ? (
+          <form action={saveSpeedTransferTestAction}>
+            <input type="hidden" name="speedSessionId" value={data.session.id} />
+            <input type="hidden" name="shotSessionId" value="" />
+            <Button type="submit" variant="ghost" className="w-full sm:w-fit">
+              Remove transfer link
+            </Button>
+          </form>
+        ) : null}
+      </div>
+    </DataPanel>
+  );
+}
+
 function SwingLogWorkbench({ data }: { data: SpeedSessionDetailPageData }) {
-  const bestSwing = data.swingSummary.bestSwingMph;
+  const bestSwing = data.peakSwingSummary.bestSwingMph;
   const averageSwing = data.session.avgSpeedMph;
 
   return (
@@ -410,12 +641,9 @@ function SwingLogWorkbench({ data }: { data: SpeedSessionDetailPageData }) {
                   .slice(Math.max(0, index - 2), index + 1)
                   .map((reading) => reading.clubSpeedMph),
               );
-              const phase = speedSwingPhase(
-                index,
-                data.swings.length,
-                swing.clubSpeedMph,
-                bestSwing,
-              );
+              const phase = swing.phase
+                ? speedTrainingPhaseLabel(swing.phase)
+                : speedSwingPhase(index, data.swings.length, swing.clubSpeedMph, bestSwing);
               const signal = speedSwingSignal(swing.clubSpeedMph, bestSwing, averageSwing);
 
               return (
@@ -458,6 +686,29 @@ function MetricCard({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function PhaseCard({
+  title,
+  count,
+  value,
+  detail,
+}: {
+  title: string;
+  count: number;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-muted/30 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <StatusPill tone={count > 0 ? "sky" : "slate"}>{count} recorded</StatusPill>
+      </div>
+      <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -520,6 +771,42 @@ function formatDate(value: string | null) {
   }
 
   return dateFormatter.format(new Date(value));
+}
+
+function speedSessionSavedMessage(value: string) {
+  if (value === "transfer") {
+    return "Five-shot Driver transfer test linked to this speed session.";
+  }
+
+  if (value === "transfer_cleared") {
+    return "Transfer-test link removed.";
+  }
+
+  return "Speed session updated.";
+}
+
+function speedTrainingPhaseLabel(value: "warm_up" | "max_speed" | "transfer") {
+  switch (value) {
+    case "warm_up":
+      return "Warm-up";
+    case "max_speed":
+      return "Maximum speed";
+    case "transfer":
+      return "Transfer";
+  }
+}
+
+function formatCorridor(corridor: { minSideCarryYd: number; maxSideCarryYd: number }) {
+  return `${formatSignedYards(corridor.minSideCarryYd)} to ${formatSignedYards(corridor.maxSideCarryYd)}`;
+}
+
+function formatSideCarry(value: number | null) {
+  return value === null ? "No side data" : formatSignedYards(value);
+}
+
+function formatSignedYards(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} yd`;
 }
 
 function formatGap(value: number | null) {

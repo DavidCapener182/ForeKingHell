@@ -2,24 +2,43 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
-import { clubs, speedTrainingGoals, speedTrainingSessions, speedTrainingSwings } from "@/db/schema";
+import {
+  clubs,
+  sessions as practiceSessions,
+  shots,
+  speedTrainingGoals,
+  speedTrainingSessions,
+  speedTrainingSwings,
+} from "@/db/schema";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { syncAchievementsForUser } from "@/lib/achievements/service";
 import { formatClubModelName, formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { parseSpeedReadings, summarizeSpeedReadings } from "@/lib/speed-training";
+import { effectiveShotReviewStatus } from "@/lib/shot-review";
+import {
+  parseSpeedReadings,
+  summarizePhasedReadingsForPersistence,
+  type SpeedTrainingPhase,
+} from "@/lib/speed-training";
+import {
+  buildPersonalDriverCorridor,
+  buildSpeedTransferMetadata,
+  isSpeedTransferUuid,
+  withSpeedTransferMetadata,
+} from "@/lib/speed-transfer-test";
 
 const IMPLEMENT_KINDS = new Set(["club", "speed_stick", "weighted_club", "other"]);
 const HANDEDNESS_VALUES = new Set(["dominant", "non_dominant", "both"]);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function createManualSpeedSessionAction(formData: FormData) {
   const userId = await requireCurrentUserId();
-  const speedText = formValue(formData, "speedReadings");
-  const readings = parseSpeedReadings(speedText);
-  const readingSummary = summarizeSpeedReadings(readings);
+  const phasedReadings = parsePhasedSpeedReadings(formData);
+  const readings = phasedReadings.map((reading) => reading.clubSpeedMph);
+  const readingSummary = summarizePhasedReadingsForPersistence(phasedReadings);
   const fallbackSummary = buildFallbackSummary(formData);
   const summary = readingSummary ?? fallbackSummary;
 
@@ -88,19 +107,22 @@ export async function createManualSpeedSessionAction(formData: FormData) {
         rawMetadataJson: {
           entryMode: readingSummary ? "readings" : "summary",
           readingsProvided: readings.length,
+          phaseSchemaVersion: phasedReadings.length > 0 ? 1 : null,
+          phaseCounts: speedPhaseCounts(phasedReadings),
         },
       })
       .returning({ id: speedTrainingSessions.id });
 
     if (session && readings.length > 0) {
       await tx.insert(speedTrainingSwings).values(
-        readings.map((clubSpeedMph, index) => ({
+        phasedReadings.map(({ clubSpeedMph, phase }, index) => ({
           userId,
           speedSessionId: session.id,
           swingNumber: index + 1,
           clubSpeedMph,
           sourceRawJson: {
             source: "manual",
+            phase,
           },
         })),
       );
@@ -163,10 +185,12 @@ export async function updateSpeedSessionAction(formData: FormData) {
   const [existingSession] = await db
     .select({
       id: speedTrainingSessions.id,
+      clubId: speedTrainingSessions.clubId,
       swingCount: speedTrainingSessions.swingCount,
       minSpeedMph: speedTrainingSessions.minSpeedMph,
       avgSpeedMph: speedTrainingSessions.avgSpeedMph,
       maxSpeedMph: speedTrainingSessions.maxSpeedMph,
+      rawMetadataJson: speedTrainingSessions.rawMetadataJson,
     })
     .from(speedTrainingSessions)
     .where(and(eq(speedTrainingSessions.id, sessionId), eq(speedTrainingSessions.userId, userId)))
@@ -176,9 +200,9 @@ export async function updateSpeedSessionAction(formData: FormData) {
     fail("That speed session was not found.");
   }
 
-  const speedText = formValue(formData, "speedReadings");
-  const readings = parseSpeedReadings(speedText);
-  const readingSummary = summarizeSpeedReadings(readings);
+  const phasedReadings = parsePhasedSpeedReadings(formData);
+  const readings = phasedReadings.map((reading) => reading.clubSpeedMph);
+  const readingSummary = summarizePhasedReadingsForPersistence(phasedReadings);
   const fallbackSummary = buildFallbackSummary(formData);
   const summary = readingSummary ??
     fallbackSummary ?? {
@@ -201,6 +225,10 @@ export async function updateSpeedSessionAction(formData: FormData) {
     userId,
     formData,
   });
+  const retainedMetadata =
+    existingSession.clubId === sessionFields.clubId
+      ? existingSession.rawMetadataJson
+      : withSpeedTransferMetadata(existingSession.rawMetadataJson, null);
 
   await db.transaction(async (tx) => {
     await tx
@@ -220,9 +248,12 @@ export async function updateSpeedSessionAction(formData: FormData) {
         targetSpeedMph: sessionFields.targetSpeedMph,
         notes: sessionFields.notes,
         rawMetadataJson: {
+          ...retainedMetadata,
           entryMode: readings.length > 0 ? "readings" : "summary",
           readingsProvided: readings.length,
           editedFromSpeedCentre: true,
+          phaseSchemaVersion: phasedReadings.length > 0 ? 1 : null,
+          phaseCounts: speedPhaseCounts(phasedReadings),
         },
         updatedAt: new Date(),
       })
@@ -240,13 +271,14 @@ export async function updateSpeedSessionAction(formData: FormData) {
           ),
         );
       await tx.insert(speedTrainingSwings).values(
-        readings.map((clubSpeedMph, index) => ({
+        phasedReadings.map(({ clubSpeedMph, phase }, index) => ({
           userId,
           speedSessionId: sessionId,
           swingNumber: index + 1,
           clubSpeedMph,
           sourceRawJson: {
             source: "manual_edit",
+            phase,
           },
         })),
       );
@@ -259,6 +291,173 @@ export async function updateSpeedSessionAction(formData: FormData) {
   revalidatePath(`/speed/sessions/${sessionId}`);
   revalidatePath("/coach");
   redirect(`/speed/sessions/${sessionId}?speed_saved=1`);
+}
+
+export async function saveSpeedTransferTestAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  const speedSessionId = formValue(formData, "speedSessionId");
+  const shotSessionId = formValue(formData, "shotSessionId");
+  const shotIds = formData
+    .getAll("shotId")
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (!isSpeedTransferUuid(speedSessionId)) {
+    fail("Choose a valid speed session.");
+  }
+
+  if (shotSessionId && !isSpeedTransferUuid(shotSessionId)) {
+    failSpeedSession(speedSessionId, "Choose a valid Driver transfer session.");
+  }
+
+  const db = getDb();
+  const [speedSession] = await db
+    .select({
+      id: speedTrainingSessions.id,
+      clubId: speedTrainingSessions.clubId,
+      clubType: clubs.type,
+      sessionDate: speedTrainingSessions.sessionDate,
+      rawMetadataJson: speedTrainingSessions.rawMetadataJson,
+    })
+    .from(speedTrainingSessions)
+    .leftJoin(clubs, and(eq(speedTrainingSessions.clubId, clubs.id), eq(clubs.userId, userId)))
+    .where(
+      and(eq(speedTrainingSessions.id, speedSessionId), eq(speedTrainingSessions.userId, userId)),
+    )
+    .limit(1);
+
+  if (!speedSession) {
+    fail("That speed session was not found.");
+  }
+
+  if (speedSession.clubType !== "driver" || !speedSession.clubId) {
+    fail("A transfer test can only be linked to a Driver speed session.");
+  }
+
+  if (!shotSessionId) {
+    await db
+      .update(speedTrainingSessions)
+      .set({
+        rawMetadataJson: withSpeedTransferMetadata(speedSession.rawMetadataJson, null),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(speedTrainingSessions.id, speedSessionId), eq(speedTrainingSessions.userId, userId)),
+      );
+
+    revalidatePath("/speed");
+    revalidatePath(`/speed/sessions/${speedSessionId}`);
+    redirect(`/speed/sessions/${speedSessionId}?speed_saved=transfer_cleared`);
+  }
+
+  if (
+    shotIds.length !== 5 ||
+    new Set(shotIds).size !== 5 ||
+    shotIds.some((shotId) => !isSpeedTransferUuid(shotId))
+  ) {
+    failSpeedSession(
+      speedSessionId,
+      "Choose exactly five unique Driver shots for the transfer test.",
+    );
+  }
+
+  const candidateRows = await db
+    .select({
+      id: shots.id,
+      shotAt: shots.shotAt,
+      reviewStatus: shots.reviewStatus,
+      qualityTag: shots.qualityTag,
+      shotCategory: shots.shotCategory,
+      sideCarryYd: shots.sideCarryYd,
+    })
+    .from(shots)
+    .innerJoin(practiceSessions, eq(shots.sessionId, practiceSessions.id))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(practiceSessions.userId, userId),
+        eq(shots.sessionId, shotSessionId),
+        eq(shots.clubId, speedSession.clubId),
+        inArray(shots.id, shotIds),
+        gte(practiceSessions.date, new Date(speedSession.sessionDate.getTime() - DAY_MS)),
+        lte(practiceSessions.date, new Date(speedSession.sessionDate.getTime() + 7 * DAY_MS)),
+      ),
+    );
+  const transferShots = candidateRows.filter(
+    (shot) =>
+      shot.sideCarryYd !== null &&
+      ["included", "restored"].includes(
+        effectiveShotReviewStatus({
+          reviewStatus: shot.reviewStatus,
+          qualityTag: shot.qualityTag,
+          shotCategory: shot.shotCategory,
+        }),
+      ),
+  );
+
+  if (transferShots.length !== 5) {
+    failSpeedSession(
+      speedSessionId,
+      "That session needs five included Driver shots with measured side carry.",
+    );
+  }
+
+  const earliestTransferShotAt = transferShots.reduce(
+    (earliest, shot) => (shot.shotAt < earliest ? shot.shotAt : earliest),
+    transferShots[0]!.shotAt,
+  );
+  const priorDriverRows = await db
+    .select({
+      sideCarryYd: shots.sideCarryYd,
+      reviewStatus: shots.reviewStatus,
+      qualityTag: shots.qualityTag,
+      shotCategory: shots.shotCategory,
+    })
+    .from(shots)
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(shots.clubId, speedSession.clubId),
+        lt(shots.shotAt, earliestTransferShotAt),
+        isNotNull(shots.sideCarryYd),
+      ),
+    )
+    .orderBy(desc(shots.shotAt))
+    .limit(80);
+  const transferCorridor = buildPersonalDriverCorridor(
+    priorDriverRows
+      .filter((shot) =>
+        ["included", "restored"].includes(
+          effectiveShotReviewStatus({
+            reviewStatus: shot.reviewStatus,
+            qualityTag: shot.qualityTag,
+            shotCategory: shot.shotCategory,
+          }),
+        ),
+      )
+      .map((shot) => shot.sideCarryYd),
+  );
+
+  const transferTest = buildSpeedTransferMetadata({
+    shotSessionId,
+    shotIds,
+    corridor: transferCorridor,
+  });
+
+  await db
+    .update(speedTrainingSessions)
+    .set({
+      rawMetadataJson: withSpeedTransferMetadata(speedSession.rawMetadataJson, transferTest),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(eq(speedTrainingSessions.id, speedSessionId), eq(speedTrainingSessions.userId, userId)),
+    );
+
+  revalidatePath("/speed");
+  revalidatePath(`/speed/sessions/${speedSessionId}`);
+  redirect(`/speed/sessions/${speedSessionId}?speed_saved=transfer`);
 }
 
 export async function deleteSpeedSessionAction(formData: FormData) {
@@ -361,6 +560,31 @@ function buildFallbackSummary(formData: FormData) {
     avgSpeedMph,
     maxSpeedMph,
   };
+}
+
+function parsePhasedSpeedReadings(formData: FormData) {
+  const warmUp = parseSpeedReadings(formValue(formData, "warmupReadings")).map((clubSpeedMph) => ({
+    clubSpeedMph,
+    phase: "warm_up" as const,
+  }));
+  const maximumSpeed = parseSpeedReadings(formValue(formData, "speedReadings")).map(
+    (clubSpeedMph) => ({
+      clubSpeedMph,
+      phase: "max_speed" as const,
+    }),
+  );
+
+  return [...warmUp, ...maximumSpeed];
+}
+
+function speedPhaseCounts(readings: Array<{ clubSpeedMph: number; phase: SpeedTrainingPhase }>) {
+  return readings.reduce(
+    (counts, reading) => ({
+      ...counts,
+      [reading.phase]: counts[reading.phase] + 1,
+    }),
+    { warm_up: 0, max_speed: 0, transfer: 0 } satisfies Record<SpeedTrainingPhase, number>,
+  );
 }
 
 function parseSessionDate(value: string) {
@@ -487,6 +711,10 @@ function emptyToNull(value: string) {
 
 function fail(message: string): never {
   redirect(`/speed?speed_error=${encodeURIComponent(message)}`);
+}
+
+function failSpeedSession(sessionId: string, message: string): never {
+  redirect(`/speed/sessions/${sessionId}?speed_error=${encodeURIComponent(message)}`);
 }
 
 function labelForImplementKind(kind: string) {

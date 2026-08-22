@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, gte, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -17,9 +17,17 @@ import {
   average,
   buildSpeedPrescription,
   calculateSpeedIndex,
+  evaluateFiveShotTransferPlayability,
+  summarizePhasedSpeedSession,
+  selectTrainingPeakReadings,
+  summarizeRepeatedSpeedPeak,
   summarizeSessionSwings,
+  type FiveShotTransferPlayability,
+  type PhasedSpeedSessionSummary,
+  type RepeatedSpeedPeakSummary,
   type SpeedPrescription,
   type SpeedSessionSwingSummary,
+  type SpeedTrainingPhase,
 } from "@/lib/speed-training";
 import {
   RapsodoCloudClient,
@@ -31,6 +39,12 @@ import { getClubSpeedBenchmarkTarget, type ClubSpeedBenchmarkTarget } from "@/li
 import { getCompanionTrainingLoad } from "@/lib/companion-training-load";
 import { buildSpeedDevelopment, type SpeedDevelopmentSummary } from "@/lib/speed-development";
 import type { ShotReviewStatus } from "@/lib/shot-review";
+import {
+  buildPersonalDriverCorridor,
+  readSpeedTransferMetadata,
+  type SpeedTransferCorridor,
+  type SpeedTransferTestMetadata,
+} from "@/lib/speed-transfer-test";
 
 export type SpeedClubOption = {
   id: string;
@@ -54,6 +68,7 @@ export type SpeedCentreSession = {
   maxSpeedMph: number | null;
   targetSpeedMph: number | null;
   notes: string | null;
+  transferTest?: SpeedTransferTestMetadata | null;
 };
 
 export type SpeedShotSession = {
@@ -104,6 +119,7 @@ export type ShotSpeedSummary = {
   last20DriverAvgMph: number | null;
   thirtyDayDriverAvgMph: number | null;
   personalBestDriverMph: number | null;
+  personalBestEvidence: SpeedPersonalBestEvidence;
   latestShotAtIso: string | null;
   sampleSize: number;
 };
@@ -156,12 +172,14 @@ export type ClubSpeedRow = {
   benchmarkTarget: ClubSpeedBenchmarkTarget | null;
   trainingAvgMph: number | null;
   trainingPbMph: number | null;
+  trainingPbEvidence: RepeatedSpeedPeakSummary;
   trainingLastSessionIso: string | null;
   trainingSessionCount: number;
   trainingSwingCount: number;
   shotLast20AvgMph: number | null;
   shotThirtyDayAvgMph: number | null;
   shotPbMph: number | null;
+  shotPbEvidence: SpeedPersonalBestEvidence;
   latestShotSessionAvgMph: number | null;
   latestShotSessionGapToPbMph: number | null;
   shotSampleSize: number;
@@ -171,10 +189,35 @@ export type ClubSpeedRow = {
   transferStatus: string;
 };
 
+export type SpeedUnverifiedPeakReason = "one_off" | "estimated_club_data" | "unknown_club_data";
+
+export type SpeedPersonalBestEvidence = {
+  trustedPbMph: number | null;
+  trustedEvidenceCount: number;
+  independentReadingCount: number;
+  ignoredDuplicateCount: number;
+  unverifiedPeak: {
+    mph: number;
+    reason: SpeedUnverifiedPeakReason;
+    independentEvidenceCount: number;
+    duplicateImportCount: number;
+  } | null;
+};
+
+export type SpeedPbReading = {
+  id: string;
+  sessionId: string;
+  shotAt: Date;
+  clubSpeedMph: number | null;
+  clubDataEstType: string | null;
+  sourceRawJson: Record<string, string> | null;
+};
+
 export type SpeedCentreSummary = {
   currentSpeedMph: number | null;
   currentSpeedSource: "with_ball" | "training" | "none";
   trainingCurrentSpeedMph: number | null;
+  trainingPbEvidence: RepeatedSpeedPeakSummary;
   personalBestMph: number | null;
   last20AvgMph: number | null;
   thirtyDayAvgMph: number | null;
@@ -247,8 +290,38 @@ export type SpeedSessionDetailPageData = {
     swingNumber: number;
     clubSpeedMph: number;
     swingSide: string | null;
+    phase: SpeedTrainingPhase | null;
   }>;
   swingSummary: SpeedSessionSwingSummary;
+  peakSwingSummary: SpeedSessionSwingSummary;
+  phasedSummary: PhasedSpeedSessionSummary;
+  transferCandidates: Array<{
+    sessionId: string;
+    sessionDateIso: string;
+    label: string;
+    eligibleShotCount: number;
+    shots: Array<{
+      id: string;
+      shotNumber: number | null;
+      shotAtIso: string;
+      clubSpeedMph: number | null;
+      sideCarryYd: number | null;
+    }>;
+  }>;
+  transferTest: null | {
+    metadata: SpeedTransferTestMetadata;
+    corridor: SpeedTransferCorridor;
+    playability: FiveShotTransferPlayability;
+    shots: Array<{
+      id: string;
+      shotNumber: number | null;
+      shotAtIso: string;
+      clubSpeedMph: number | null;
+      ballSpeedMph: number | null;
+      sideCarryYd: number | null;
+    }>;
+  };
+  canLinkTransferTest: boolean;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -308,6 +381,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         maxSpeedMph: speedTrainingSessions.maxSpeedMph,
         targetSpeedMph: speedTrainingSessions.targetSpeedMph,
         notes: speedTrainingSessions.notes,
+        rawMetadataJson: speedTrainingSessions.rawMetadataJson,
       })
       .from(speedTrainingSessions)
       .where(eq(speedTrainingSessions.userId, userId))
@@ -318,6 +392,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         sessionId: speedTrainingSwings.speedSessionId,
         swingNumber: speedTrainingSwings.swingNumber,
         clubSpeedMph: speedTrainingSwings.clubSpeedMph,
+        sourceRawJson: speedTrainingSwings.sourceRawJson,
       })
       .from(speedTrainingSwings)
       .innerJoin(
@@ -326,10 +401,12 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
       )
       .where(eq(speedTrainingSwings.userId, userId))
       .orderBy(desc(speedTrainingSessions.sessionDate), desc(speedTrainingSwings.swingNumber))
-      .limit(200),
+      .limit(500),
     db
       .select({
+        id: shots.id,
         sessionId: shots.sessionId,
+        clubId: shots.clubId,
         shotAt: shots.shotAt,
         playContext: shots.playContext,
         reviewStatus: shots.reviewStatus,
@@ -341,15 +418,17 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         sideCarryYd: shots.sideCarryYd,
         qualityTag: shots.qualityTag,
         clubDataEstType: shots.clubDataEstType,
+        sourceRawJson: shots.sourceRawJson,
       })
       .from(shots)
       .where(
         and(eq(shots.userId, userId), eq(shots.clubType, "driver"), shotEvidenceSqlPredicate()),
       )
       .orderBy(desc(shots.shotAt))
-      .limit(80),
+      .limit(500),
     db
       .select({
+        id: shots.id,
         sessionId: shots.sessionId,
         sessionDate: practiceSessions.date,
         sessionType: practiceSessions.type,
@@ -361,6 +440,8 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         model: clubs.model,
         shotAt: shots.shotAt,
         clubSpeedMph: shots.clubSpeedMph,
+        clubDataEstType: shots.clubDataEstType,
+        sourceRawJson: shots.sourceRawJson,
       })
       .from(shots)
       .innerJoin(clubs, eq(shots.clubId, clubs.id))
@@ -374,7 +455,8 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
           isNotNull(shots.clubSpeedMph),
         ),
       )
-      .orderBy(desc(shots.shotAt)),
+      .orderBy(desc(shots.shotAt))
+      .limit(2_000),
     db
       .select({
         clubId: stockYardages.clubId,
@@ -437,18 +519,33 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     maxSpeedMph: session.maxSpeedMph,
     targetSpeedMph: session.targetSpeedMph,
     notes: session.notes,
+    transferTest: readSpeedTransferMetadata(session.rawMetadataJson),
   }));
 
-  const driverClubId = trackedClubRows.find((club) => club.type === "driver")?.id ?? null;
+  const driverClubIds = new Set(
+    trackedClubRows.filter((club) => club.type === "driver").map((club) => club.id),
+  );
+  const driverClubId =
+    sessions.find((session) => session.clubId && driverClubIds.has(session.clubId))?.clubId ??
+    trackedClubRows.find((club) => club.type === "driver")?.id ??
+    null;
+  const driverSessions = sessions.filter((session) =>
+    isComparableDriverSpeedSession(session, driverClubId),
+  );
+  const driverSessionIds = new Set(driverSessions.map((session) => session.id));
+  const driverSwings = recentSwingRows.filter((swing) => driverSessionIds.has(swing.sessionId));
+  const scopedDriverShots = recentDriverShots.filter(
+    (shot) => driverClubId === null || shot.clubId === driverClubId,
+  );
   const driverCarryBasis = buildDriverCarryBasis(trackedStockRows);
-  const summary = buildSpeedCentreSummary(sessions, recentSwingRows, recentDriverShots, goals, {
+  const summary = buildSpeedCentreSummary(driverSessions, driverSwings, scopedDriverShots, goals, {
     driverClubId,
     driverCarryBasis,
   });
   const development = buildDriverSpeedDevelopmentSummary({
     sessions,
     swings: recentSwingRows,
-    driverShots: recentDriverShots,
+    driverShots: scopedDriverShots,
     driverClubId,
     targetSpeedMph: summary.targetSpeedMph,
     currentCarryYd: summary.carryProjection.currentCarryYd,
@@ -461,7 +558,12 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     goals,
     sessions,
     shotSessions: buildShotSpeedSessions(trackedAllClubShotRows),
-    clubSpeedRows: buildClubSpeedRows(trackedClubRows, sessions, trackedAllClubShotRows),
+    clubSpeedRows: buildClubSpeedRows(
+      trackedClubRows,
+      sessions,
+      trackedAllClubShotRows,
+      recentSwingRows,
+    ),
     trend: buildTrendPoints(sessions),
     rolling: buildRollingSummary(sessions),
     futureBag: buildFutureBagRows(trackedStockRows, trackedAllClubShotRows),
@@ -519,6 +621,7 @@ export async function getSpeedCoachCardData(userId: string) {
         maxSpeedMph: speedTrainingSessions.maxSpeedMph,
         targetSpeedMph: speedTrainingSessions.targetSpeedMph,
         notes: speedTrainingSessions.notes,
+        rawMetadataJson: speedTrainingSessions.rawMetadataJson,
       })
       .from(speedTrainingSessions)
       .where(eq(speedTrainingSessions.userId, userId))
@@ -529,6 +632,7 @@ export async function getSpeedCoachCardData(userId: string) {
         sessionId: speedTrainingSwings.speedSessionId,
         swingNumber: speedTrainingSwings.swingNumber,
         clubSpeedMph: speedTrainingSwings.clubSpeedMph,
+        sourceRawJson: speedTrainingSwings.sourceRawJson,
       })
       .from(speedTrainingSwings)
       .innerJoin(
@@ -537,10 +641,12 @@ export async function getSpeedCoachCardData(userId: string) {
       )
       .where(eq(speedTrainingSwings.userId, userId))
       .orderBy(desc(speedTrainingSessions.sessionDate), desc(speedTrainingSwings.swingNumber))
-      .limit(200),
+      .limit(300),
     db
       .select({
+        id: shots.id,
         sessionId: shots.sessionId,
+        clubId: shots.clubId,
         shotAt: shots.shotAt,
         playContext: shots.playContext,
         reviewStatus: shots.reviewStatus,
@@ -552,13 +658,14 @@ export async function getSpeedCoachCardData(userId: string) {
         sideCarryYd: shots.sideCarryYd,
         qualityTag: shots.qualityTag,
         clubDataEstType: shots.clubDataEstType,
+        sourceRawJson: shots.sourceRawJson,
       })
       .from(shots)
       .where(
         and(eq(shots.userId, userId), eq(shots.clubType, "driver"), shotEvidenceSqlPredicate()),
       )
       .orderBy(desc(shots.shotAt))
-      .limit(80),
+      .limit(300),
     db
       .select({
         clubType: clubs.type,
@@ -591,6 +698,7 @@ export async function getSpeedCoachCardData(userId: string) {
     maxSpeedMph: session.maxSpeedMph,
     targetSpeedMph: session.targetSpeedMph,
     notes: session.notes,
+    transferTest: readSpeedTransferMetadata(session.rawMetadataJson),
   }));
 
   const goals = goalRows.map((goal) => ({
@@ -601,9 +709,24 @@ export async function getSpeedCoachCardData(userId: string) {
     targetDateIso: goal.targetDate ? String(goal.targetDate).slice(0, 10) : null,
     notes: goal.notes,
   }));
+  const driverClubIds = new Set(
+    clubRows
+      .filter((club) => isTrackedClubType(club.type) && club.type === "driver")
+      .map((club) => club.id),
+  );
   const driverClubId =
-    clubRows.find((club) => isTrackedClubType(club.type) && club.type === "driver")?.id ?? null;
-  const summary = buildSpeedCentreSummary(sessions, recentSwingRows, recentDriverShots, goals, {
+    sessions.find((session) => session.clubId && driverClubIds.has(session.clubId))?.clubId ??
+    clubRows.find((club) => isTrackedClubType(club.type) && club.type === "driver")?.id ??
+    null;
+  const driverSessions = sessions.filter((session) =>
+    isComparableDriverSpeedSession(session, driverClubId),
+  );
+  const driverSessionIds = new Set(driverSessions.map((session) => session.id));
+  const driverSwings = recentSwingRows.filter((swing) => driverSessionIds.has(swing.sessionId));
+  const scopedDriverShots = recentDriverShots.filter(
+    (shot) => driverClubId === null || shot.clubId === driverClubId,
+  );
+  const summary = buildSpeedCentreSummary(driverSessions, driverSwings, scopedDriverShots, goals, {
     driverClubId,
     driverCarryBasis: buildDriverCarryBasis(
       stockRows.filter((row) => isTrackedClubType(row.clubType)),
@@ -613,9 +736,9 @@ export async function getSpeedCoachCardData(userId: string) {
   return {
     summary,
     development: buildDriverSpeedDevelopmentSummary({
-      sessions,
-      swings: recentSwingRows,
-      driverShots: recentDriverShots,
+      sessions: driverSessions,
+      swings: driverSwings,
+      driverShots: scopedDriverShots,
       driverClubId,
       targetSpeedMph: summary.targetSpeedMph,
       currentCarryYd: summary.carryProjection.currentCarryYd,
@@ -692,6 +815,7 @@ export async function getSpeedSessionDetailPageData(
         maxSpeedMph: speedTrainingSessions.maxSpeedMph,
         targetSpeedMph: speedTrainingSessions.targetSpeedMph,
         notes: speedTrainingSessions.notes,
+        rawMetadataJson: speedTrainingSessions.rawMetadataJson,
       })
       .from(speedTrainingSessions)
       .where(and(eq(speedTrainingSessions.userId, userId), eq(speedTrainingSessions.id, sessionId)))
@@ -702,6 +826,7 @@ export async function getSpeedSessionDetailPageData(
         swingNumber: speedTrainingSwings.swingNumber,
         clubSpeedMph: speedTrainingSwings.clubSpeedMph,
         swingSide: speedTrainingSwings.swingSide,
+        sourceRawJson: speedTrainingSwings.sourceRawJson,
       })
       .from(speedTrainingSwings)
       .where(
@@ -725,6 +850,161 @@ export async function getSpeedSessionDetailPageData(
     label: `${formatClubType(club.type)} - ${formatClubModelName(club)}`,
   }));
   const clubLabelById = new Map(clubOptions.map((club) => [club.id, club.label]));
+  const sessionClub = trackedClubRows.find((club) => club.id === session.clubId) ?? null;
+  const canLinkTransferTest = sessionClub?.type === "driver";
+  const transferMetadata = readSpeedTransferMetadata(session.rawMetadataJson);
+  const mappedSwings: SpeedSessionDetailPageData["swings"] = swingRows.map((swing) => ({
+    id: swing.id,
+    swingNumber: swing.swingNumber,
+    clubSpeedMph: swing.clubSpeedMph,
+    swingSide: swing.swingSide,
+    phase: storedSpeedTrainingPhase(swing.sourceRawJson),
+  }));
+  let transferCandidates: SpeedSessionDetailPageData["transferCandidates"] = [];
+  let transferTest: SpeedSessionDetailPageData["transferTest"] = null;
+
+  if (canLinkTransferTest && session.clubId) {
+    const candidateStart = new Date(session.sessionDate.getTime() - DAY_MS);
+    const candidateEnd = new Date(session.sessionDate.getTime() + 7 * DAY_MS);
+    const [candidateRows, linkedRows] = await Promise.all([
+      db
+        .select({
+          sessionId: practiceSessions.id,
+          sessionDate: practiceSessions.date,
+          source: practiceSessions.source,
+          fileName: practiceSessions.fileName,
+          shotId: shots.id,
+          shotNumber: shots.shotNumber,
+          shotAt: shots.shotAt,
+          clubSpeedMph: shots.clubSpeedMph,
+          sideCarryYd: shots.sideCarryYd,
+        })
+        .from(shots)
+        .innerJoin(practiceSessions, eq(shots.sessionId, practiceSessions.id))
+        .where(
+          and(
+            eq(shots.userId, userId),
+            eq(practiceSessions.userId, userId),
+            eq(shots.clubId, session.clubId),
+            gte(practiceSessions.date, candidateStart),
+            lte(practiceSessions.date, candidateEnd),
+            isNotNull(shots.sideCarryYd),
+            shotEvidenceSqlPredicate(),
+          ),
+        )
+        .orderBy(desc(practiceSessions.date), desc(shots.shotAt))
+        .limit(300),
+      transferMetadata
+        ? db
+            .select({
+              id: shots.id,
+              shotNumber: shots.shotNumber,
+              shotAt: shots.shotAt,
+              clubSpeedMph: shots.clubSpeedMph,
+              ballSpeedMph: shots.ballSpeedMph,
+              sideCarryYd: shots.sideCarryYd,
+            })
+            .from(shots)
+            .where(
+              and(
+                eq(shots.userId, userId),
+                eq(shots.clubId, session.clubId),
+                eq(shots.sessionId, transferMetadata.shotSessionId),
+                inArray(shots.id, transferMetadata.shotIds),
+                shotEvidenceSqlPredicate(),
+              ),
+            )
+        : Promise.resolve([]),
+    ]);
+
+    transferCandidates = [...groupByKey(candidateRows, (row) => row.sessionId).values()]
+      .map((rows) => {
+        const first = rows[0]!;
+        const orderedShots = [...rows].sort((left, right) => {
+          if (left.shotNumber !== null && right.shotNumber !== null) {
+            return left.shotNumber - right.shotNumber;
+          }
+          return left.shotAt.getTime() - right.shotAt.getTime();
+        });
+
+        return {
+          sessionId: first.sessionId,
+          sessionDateIso: first.sessionDate.toISOString(),
+          label: first.fileName ?? first.source ?? "Driver session",
+          eligibleShotCount: orderedShots.length,
+          shots: orderedShots.map((row) => ({
+            id: row.shotId,
+            shotNumber: row.shotNumber,
+            shotAtIso: row.shotAt.toISOString(),
+            clubSpeedMph: row.clubSpeedMph,
+            sideCarryYd: row.sideCarryYd,
+          })),
+        };
+      })
+      .filter((candidate) => candidate.eligibleShotCount >= 5)
+      .sort(
+        (left, right) =>
+          new Date(right.sessionDateIso).getTime() - new Date(left.sessionDateIso).getTime(),
+      )
+      .slice(0, 8);
+
+    if (transferMetadata) {
+      const linkedById = new Map(linkedRows.map((row) => [row.id, row]));
+      const orderedLinkedRows = transferMetadata.shotIds.flatMap((shotId) => {
+        const row = linkedById.get(shotId);
+        return row ? [row] : [];
+      });
+      const earliestLinkedShotAt = orderedLinkedRows.reduce<Date | null>(
+        (earliest, shot) => (earliest === null || shot.shotAt < earliest ? shot.shotAt : earliest),
+        null,
+      );
+      const legacyCorridorRows =
+        transferMetadata.corridor === undefined
+          ? await db
+              .select({ sideCarryYd: shots.sideCarryYd })
+              .from(shots)
+              .where(
+                and(
+                  eq(shots.userId, userId),
+                  eq(shots.clubId, session.clubId),
+                  lt(shots.shotAt, earliestLinkedShotAt ?? new Date(transferMetadata.linkedAtIso)),
+                  isNotNull(shots.sideCarryYd),
+                  shotEvidenceSqlPredicate(),
+                ),
+              )
+              .orderBy(desc(shots.shotAt))
+              .limit(80)
+          : [];
+      const corridor =
+        transferMetadata.corridor ??
+        buildPersonalDriverCorridor(legacyCorridorRows.map((row) => row.sideCarryYd));
+      const playability = evaluateFiveShotTransferPlayability({
+        speedSessionId: session.id,
+        transferSessionId: transferMetadata.shotSessionId,
+        personalCorridor: corridor,
+        shots: orderedLinkedRows.map((shot) => ({
+          shotId: shot.id,
+          phase: "transfer",
+          sideCarryYd: shot.sideCarryYd,
+          clubSpeedMph: shot.clubSpeedMph,
+        })),
+      });
+
+      transferTest = {
+        metadata: transferMetadata,
+        corridor,
+        playability,
+        shots: orderedLinkedRows.map((shot) => ({
+          id: shot.id,
+          shotNumber: shot.shotNumber,
+          shotAtIso: shot.shotAt.toISOString(),
+          clubSpeedMph: shot.clubSpeedMph,
+          ballSpeedMph: shot.ballSpeedMph,
+          sideCarryYd: shot.sideCarryYd,
+        })),
+      };
+    }
+  }
 
   return {
     clubOptions,
@@ -746,9 +1026,24 @@ export async function getSpeedSessionDetailPageData(
       maxSpeedMph: session.maxSpeedMph,
       targetSpeedMph: session.targetSpeedMph,
       notes: session.notes,
+      transferTest: transferMetadata,
     },
-    swings: swingRows,
-    swingSummary: summarizeSessionSwings(swingRows.map((swing) => swing.clubSpeedMph)),
+    swings: mappedSwings,
+    swingSummary: summarizeSessionSwings(mappedSwings.map((swing) => swing.clubSpeedMph)),
+    peakSwingSummary: summarizeSessionSwings(
+      mappedSwings
+        .filter((swing) => swing.phase === null || swing.phase === "max_speed")
+        .map((swing) => swing.clubSpeedMph),
+    ),
+    phasedSummary: summarizePhasedSpeedSession(
+      mappedSwings.map((swing) => ({
+        clubSpeedMph: swing.clubSpeedMph,
+        phase: swing.phase ?? "max_speed",
+      })),
+    ),
+    transferCandidates,
+    transferTest,
+    canLinkTransferTest,
   };
 }
 
@@ -816,8 +1111,10 @@ function buildDriverSpeedDevelopmentSummary(input: {
     sessionId: string;
     swingNumber: number;
     clubSpeedMph: number;
+    sourceRawJson: Record<string, unknown>;
   }>;
   driverShots: Array<{
+    id: string;
     sessionId: string;
     shotAt: Date;
     playContext: string;
@@ -830,6 +1127,7 @@ function buildDriverSpeedDevelopmentSummary(input: {
     sideCarryYd: number | null;
     qualityTag: string | null;
     clubDataEstType: string | null;
+    sourceRawJson: Record<string, string>;
   }>;
   driverClubId: string | null;
   targetSpeedMph: number | null;
@@ -837,6 +1135,10 @@ function buildDriverSpeedDevelopmentSummary(input: {
   currentCarrySource: string;
   trainingLoad: Awaited<ReturnType<typeof getCompanionTrainingLoad>> | null;
 }) {
+  const trustedDriverShots = selectIndependentMeasuredSpeedReadings(input.driverShots).sort(
+    (left, right) => right.shotAt.getTime() - left.shotAt.getTime(),
+  );
+
   return buildSpeedDevelopment({
     sessions: input.sessions.map((session) => ({
       id: session.id,
@@ -844,6 +1146,8 @@ function buildDriverSpeedDevelopmentSummary(input: {
       avgSpeedMph: session.avgSpeedMph,
       maxSpeedMph: session.maxSpeedMph,
       swingCount: session.swingCount,
+      transferShotIds: session.transferTest?.shotIds ?? [],
+      transferCorridor: session.transferTest?.corridor,
       comparableToDriver:
         session.handedness === "dominant" &&
         session.implementKind === "club" &&
@@ -854,7 +1158,23 @@ function buildDriverSpeedDevelopmentSummary(input: {
           : /driver/i.test(`${session.title ?? ""} ${session.implementLabel}`)),
     })),
     swings: input.swings,
-    driverShots: input.driverShots.map((shot) => ({
+    driverShots: trustedDriverShots.map((shot) => ({
+      id: shot.id,
+      sessionId: shot.sessionId,
+      shotAtIso: shot.shotAt.toISOString(),
+      playContext: shot.playContext,
+      reviewStatus: shot.reviewStatus,
+      clubSpeedMph: shot.clubSpeedMph,
+      ballSpeedMph: shot.ballSpeedMph,
+      smashFactor: shot.smashFactor,
+      carryYd: shot.carryYd,
+      launchAngleDeg: shot.launchAngleDeg,
+      sideCarryYd: shot.sideCarryYd,
+      qualityTag: shot.qualityTag,
+      clubDataEstType: shot.clubDataEstType,
+    })),
+    transferDriverShots: input.driverShots.map((shot) => ({
+      id: shot.id,
       sessionId: shot.sessionId,
       shotAtIso: shot.shotAt.toISOString(),
       playContext: shot.playContext,
@@ -885,12 +1205,20 @@ function buildDriverSpeedDevelopmentSummary(input: {
 
 function buildSpeedCentreSummary(
   sessions: SpeedCentreSession[],
-  recentSwings: Array<{ clubSpeedMph: number }>,
+  recentSwings: Array<{
+    sessionId: string;
+    clubSpeedMph: number;
+    sourceRawJson: Record<string, unknown>;
+  }>,
   driverShots: Array<{
+    id: string;
+    sessionId: string;
     shotAt: Date;
     clubSpeedMph: number | null;
     smashFactor: number | null;
     carryYd: number | null;
+    clubDataEstType: string | null;
+    sourceRawJson?: Record<string, string>;
   }>,
   goals: SpeedGoal[],
   options: {
@@ -921,7 +1249,13 @@ function buildSpeedCentreSummary(
   const sessionsLast7Days = sessions.filter(
     (session) => new Date(session.sessionDateIso).getTime() >= sevenDaysAgo,
   ).length;
-  const driverEfficiency = buildDriverEfficiency(driverShots);
+  const trustedDriverShots = selectIndependentMeasuredSpeedReadings(
+    driverShots.map((shot) => ({
+      ...shot,
+      sourceRawJson: shot.sourceRawJson ?? null,
+    })),
+  ).sort((left, right) => right.shotAt.getTime() - left.shotAt.getTime());
+  const driverEfficiency = buildDriverEfficiency(trustedDriverShots);
   const shotSpeed = buildShotSpeedSummary(driverShots, thirtyDaysAgo);
   const trainingCurrentSpeedMph = latestSession?.avgSpeedMph ?? null;
   const withBallCurrentSpeedMph = shotSpeed.last20DriverAvgMph ?? shotSpeed.recentDriverAvgMph;
@@ -940,22 +1274,26 @@ function buildSpeedCentreSummary(
     null;
   const targetSpeedMph =
     targetGoal?.targetSpeedMph ?? benchmarkTarget?.targetSpeedMph ?? sessionTargetSpeedMph;
-  const trainingPersonalBestMph = maxOrNull(
-    sessions
-      .map((session) => session.maxSpeedMph)
-      .filter((value): value is number => value !== null),
+  const trainingPbEvidence = summarizeRepeatedSpeedPeak(
+    trainingPeakReadings(sessions, recentSwings),
   );
 
   return {
     currentSpeedMph,
     currentSpeedSource,
     trainingCurrentSpeedMph,
+    trainingPbEvidence,
     personalBestMph: maxOrNull(
-      [trainingPersonalBestMph, shotSpeed.personalBestDriverMph].filter(
+      [trainingPbEvidence.trustedPeakMph, shotSpeed.personalBestDriverMph].filter(
         (value): value is number => value !== null,
       ),
     ),
-    last20AvgMph: average(recentSwings.map((swing) => swing.clubSpeedMph)),
+    last20AvgMph: average(
+      recentSwings
+        .filter(isTrainingPeakSwing)
+        .slice(0, 20)
+        .map((swing) => swing.clubSpeedMph),
+    ),
     thirtyDayAvgMph,
     sevenDayAvgMph,
     targetSpeedMph,
@@ -1270,6 +1608,43 @@ function maxSpeeds(sessions: SpeedCentreSession[]) {
     .filter((value): value is number => value !== null);
 }
 
+function trainingPeakReadings(
+  sessions: SpeedCentreSession[],
+  swings: Array<{
+    sessionId: string;
+    clubSpeedMph: number;
+    sourceRawJson: Record<string, unknown>;
+  }>,
+) {
+  return selectTrainingPeakReadings(
+    sessions,
+    swings.map((swing) => ({
+      sessionId: swing.sessionId,
+      clubSpeedMph: swing.clubSpeedMph,
+      phase: storedSpeedTrainingPhase(swing.sourceRawJson),
+    })),
+  );
+}
+
+function isTrainingPeakSwing(swing: { sourceRawJson: Record<string, unknown> }) {
+  const phase = storedSpeedTrainingPhase(swing.sourceRawJson);
+  return phase === null || phase === "max_speed";
+}
+
+function isComparableDriverSpeedSession(session: SpeedCentreSession, driverClubId: string | null) {
+  if (session.handedness !== "dominant" || session.implementKind !== "club") {
+    return false;
+  }
+
+  if (driverClubId !== null && session.clubId === driverClubId) {
+    return true;
+  }
+
+  return (
+    session.clubId === null && /driver/i.test(`${session.title ?? ""} ${session.implementLabel}`)
+  );
+}
+
 function buildFutureBagRows(
   rows: Array<{
     clubId: string;
@@ -1283,9 +1658,13 @@ function buildFutureBagRows(
     calculatedAt: Date;
   }>,
   shotRows: Array<{
+    id: string;
+    sessionId: string;
     clubId: string;
     shotAt: Date;
     clubSpeedMph: number | null;
+    clubDataEstType: string | null;
+    sourceRawJson: Record<string, string>;
   }>,
 ): FutureBagProjectionRow[] {
   const latestByClub = new Map<string, (typeof rows)[number]>();
@@ -1304,10 +1683,11 @@ function buildFutureBagRows(
     .sort((left, right) => clubSort(left.clubType) - clubSort(right.clubType))
     .slice(0, 12)
     .map((row) => {
-      const clubShotSpeeds = (shotsByClub.get(row.clubId) ?? [])
+      const clubShotSpeeds = selectIndependentMeasuredSpeedReadings(
+        shotsByClub.get(row.clubId) ?? [],
+      )
         .sort((left, right) => right.shotAt.getTime() - left.shotAt.getTime())
-        .map((shot) => shot.clubSpeedMph)
-        .filter((value): value is number => value !== null);
+        .map((shot) => shot.clubSpeedMph);
 
       return {
         clubId: row.clubId,
@@ -1450,24 +1830,34 @@ function buildDriverEfficiency(
 
 function buildShotSpeedSummary(
   driverShots: Array<{
+    id: string;
+    sessionId: string;
     shotAt: Date;
     clubSpeedMph: number | null;
+    clubDataEstType: string | null;
+    sourceRawJson?: Record<string, string>;
   }>,
   thirtyDaysAgo: number,
 ): ShotSpeedSummary {
-  const speedRows = driverShots.filter(
-    (shot): shot is { shotAt: Date; clubSpeedMph: number } => shot.clubSpeedMph !== null,
+  const normalizedRows = driverShots.map((shot) => ({
+    ...shot,
+    sourceRawJson: shot.sourceRawJson ?? null,
+  }));
+  const speedRows = selectIndependentMeasuredSpeedReadings(normalizedRows).sort(
+    (left, right) => right.shotAt.getTime() - left.shotAt.getTime(),
   );
   const speeds = speedRows.map((shot) => shot.clubSpeedMph);
   const thirtyDaySpeeds = speedRows
     .filter((shot) => shot.shotAt.getTime() >= thirtyDaysAgo)
     .map((shot) => shot.clubSpeedMph);
+  const personalBestEvidence = summarizeTrustedSpeedPb(normalizedRows);
 
   return {
     recentDriverAvgMph: average(speeds),
     last20DriverAvgMph: average(speeds.slice(0, 20)),
     thirtyDayDriverAvgMph: average(thirtyDaySpeeds),
-    personalBestDriverMph: maxOrNull(speeds),
+    personalBestDriverMph: personalBestEvidence.trustedPbMph,
+    personalBestEvidence,
     latestShotAtIso: speedRows[0]?.shotAt.toISOString() ?? null,
     sampleSize: speedRows.length,
   };
@@ -1537,6 +1927,7 @@ function buildClubSpeedRows(
   }>,
   sessions: SpeedCentreSession[],
   shotRows: Array<{
+    id: string;
     sessionId: string;
     clubId: string;
     clubType: string;
@@ -1544,6 +1935,13 @@ function buildClubSpeedRows(
     model: string | null;
     shotAt: Date;
     clubSpeedMph: number | null;
+    clubDataEstType: string | null;
+    sourceRawJson: Record<string, string>;
+  }>,
+  trainingSwings: Array<{
+    sessionId: string;
+    clubSpeedMph: number;
+    sourceRawJson: Record<string, unknown>;
   }>,
 ): ClubSpeedRow[] {
   const thirtyDaysAgo = Date.now() - 30 * DAY_MS;
@@ -1559,6 +1957,7 @@ function buildClubSpeedRows(
         clubType: club.type,
         clubLabel: `${formatClubType(club.type)} - ${formatClubModelName(club)}`,
         sessions: clubSessions,
+        trainingReadings: trainingPeakReadings(clubSessions, trainingSwings),
         shots: clubShots,
         thirtyDaysAgo,
       });
@@ -1574,6 +1973,7 @@ function buildClubSpeedRows(
         clubType: "unassigned",
         clubLabel: "Unassigned speed sessions",
         sessions: unassignedSessions,
+        trainingReadings: trainingPeakReadings(unassignedSessions, trainingSwings),
         shots: [],
         thirtyDaysAgo,
       }),
@@ -1588,14 +1988,18 @@ function buildClubSpeedRow(input: {
   clubType: string;
   clubLabel: string;
   sessions: SpeedCentreSession[];
-  shots: Array<{ sessionId: string; shotAt: Date; clubSpeedMph: number | null }>;
+  trainingReadings: number[];
+  shots: SpeedPbReading[];
   thirtyDaysAgo: number;
 }): ClubSpeedRow {
   const sortedSessions = [...input.sessions].sort(
     (left, right) =>
       new Date(right.sessionDateIso).getTime() - new Date(left.sessionDateIso).getTime(),
   );
-  const sortedShots = [...input.shots].sort(
+  const allSortedShots = [...input.shots].sort(
+    (left, right) => right.shotAt.getTime() - left.shotAt.getTime(),
+  );
+  const sortedShots = selectIndependentMeasuredSpeedReadings(allSortedShots).sort(
     (left, right) => right.shotAt.getTime() - left.shotAt.getTime(),
   );
   const shotSpeeds = sortedShots
@@ -1614,8 +2018,10 @@ function buildClubSpeedRow(input: {
           .map((shot) => shot.clubSpeedMph)
           .filter((value): value is number => value !== null);
   const trainingAvgMph = sortedSessions[0]?.avgSpeedMph ?? null;
+  const trainingPbEvidence = summarizeRepeatedSpeedPeak(input.trainingReadings);
   const shotLast20AvgMph = average(shotSpeeds.slice(0, 20));
-  const shotPbMph = maxOrNull(shotSpeeds);
+  const shotPbEvidence = summarizeTrustedSpeedPb(allSortedShots);
+  const shotPbMph = shotPbEvidence.trustedPbMph;
   const latestShotSessionAvgMph = average(latestShotSessionSpeeds);
   const benchmarkTarget = getClubSpeedBenchmarkTarget(
     input.clubType,
@@ -1636,13 +2042,15 @@ function buildClubSpeedRow(input: {
     clubLabel: input.clubLabel,
     benchmarkTarget,
     trainingAvgMph,
-    trainingPbMph: maxOrNull(maxSpeeds(sortedSessions)),
+    trainingPbMph: trainingPbEvidence.trustedPeakMph,
+    trainingPbEvidence,
     trainingLastSessionIso: sortedSessions[0]?.sessionDateIso ?? null,
     trainingSessionCount: sortedSessions.length,
     trainingSwingCount: sortedSessions.reduce((total, session) => total + session.swingCount, 0),
     shotLast20AvgMph,
     shotThirtyDayAvgMph: average(thirtyDayShotSpeeds),
     shotPbMph,
+    shotPbEvidence,
     latestShotSessionAvgMph,
     latestShotSessionGapToPbMph:
       latestShotSessionAvgMph !== null && shotPbMph !== null
@@ -1654,6 +2062,165 @@ function buildClubSpeedRow(input: {
     transferRatioPercent,
     transferStatus: transferStatus(transferGapMph),
   };
+}
+
+// One whole-mph band allows ordinary device/display variation; copied imports are collapsed first.
+const SPEED_PB_REPEAT_WINDOW_MPH = 1;
+
+type ClubSpeedMeasurementTrust = "measured" | "estimated" | "unknown";
+
+type IndependentSpeedReading<T extends SpeedPbReading = SpeedPbReading> = {
+  mph: number;
+  measurementTrust: ClubSpeedMeasurementTrust;
+  duplicateImportCount: number;
+  reading: T & { clubSpeedMph: number };
+};
+
+export function summarizeTrustedSpeedPb(readings: SpeedPbReading[]): SpeedPersonalBestEvidence {
+  const physicalReadings = deduplicateSpeedReadings(readings).sort(
+    (left, right) => right.mph - left.mph,
+  );
+  const measuredReadings = physicalReadings.filter(
+    (reading) => reading.measurementTrust === "measured",
+  );
+  const trustedCandidate = measuredReadings.find(
+    (candidate) => corroboratingReadings(candidate, measuredReadings).length >= 2,
+  );
+  const trustedEvidenceCount = trustedCandidate
+    ? corroboratingReadings(trustedCandidate, measuredReadings).length
+    : 0;
+  const observedPeak = physicalReadings[0] ?? null;
+  const observedPeakIsTrusted =
+    observedPeak !== null &&
+    trustedCandidate !== undefined &&
+    observedPeak.mph <= trustedCandidate.mph;
+
+  return {
+    trustedPbMph: trustedCandidate?.mph ?? null,
+    trustedEvidenceCount,
+    independentReadingCount: physicalReadings.length,
+    ignoredDuplicateCount: physicalReadings.reduce(
+      (total, reading) => total + reading.duplicateImportCount,
+      0,
+    ),
+    unverifiedPeak:
+      observedPeak && !observedPeakIsTrusted
+        ? {
+            mph: observedPeak.mph,
+            reason: unverifiedPeakReason(observedPeak.measurementTrust),
+            independentEvidenceCount: corroboratingReadings(
+              observedPeak,
+              physicalReadings.filter(
+                (reading) => reading.measurementTrust === observedPeak.measurementTrust,
+              ),
+            ).length,
+            duplicateImportCount: observedPeak.duplicateImportCount,
+          }
+        : null,
+  };
+}
+
+export function selectIndependentMeasuredSpeedReadings<T extends SpeedPbReading>(
+  readings: T[],
+): Array<T & { clubSpeedMph: number }> {
+  return deduplicateSpeedReadings(readings)
+    .filter((reading) => reading.measurementTrust === "measured")
+    .map((reading) => reading.reading);
+}
+
+function deduplicateSpeedReadings<T extends SpeedPbReading>(
+  readings: T[],
+): Array<IndependentSpeedReading<T>> {
+  const grouped = groupByKey(
+    readings.filter(
+      (reading): reading is T & { clubSpeedMph: number } =>
+        typeof reading.clubSpeedMph === "number" &&
+        Number.isFinite(reading.clubSpeedMph) &&
+        reading.clubSpeedMph > 0,
+    ),
+    speedReadingFingerprint,
+  );
+
+  return [...grouped.values()].map((duplicates) => {
+    const measuredDuplicates = duplicates.filter(
+      (reading) => clubSpeedMeasurementTrust(reading.clubDataEstType) === "measured",
+    );
+    const representativePool = measuredDuplicates.length > 0 ? measuredDuplicates : duplicates;
+    const representative = representativePool.reduce((fastest, reading) =>
+      reading.clubSpeedMph > fastest.clubSpeedMph ? reading : fastest,
+    );
+    const trustLevels = duplicates.map((reading) =>
+      clubSpeedMeasurementTrust(reading.clubDataEstType),
+    );
+
+    return {
+      mph: representative.clubSpeedMph,
+      measurementTrust: trustLevels.includes("measured")
+        ? "measured"
+        : trustLevels.includes("estimated")
+          ? "estimated"
+          : "unknown",
+      duplicateImportCount: duplicates.length - 1,
+      reading: representative,
+    };
+  });
+}
+
+function speedReadingFingerprint(reading: SpeedPbReading) {
+  const sourceEntries = Object.entries(reading.sourceRawJson ?? {})
+    .map(([key, value]) => [key.trim(), value.trim()] as const)
+    .filter(([key, value]) => key.length > 0 || value.length > 0)
+    .sort(([left], [right]) => left.localeCompare(right));
+
+  return sourceEntries.length > 0
+    ? `raw:${JSON.stringify(sourceEntries)}`
+    : `shot:${reading.shotAt.toISOString()}:${reading.id}`;
+}
+
+function clubSpeedMeasurementTrust(value: string | null): ClubSpeedMeasurementTrust {
+  const normalized = value?.trim().toLowerCase() ?? "";
+
+  if (
+    value === null ||
+    /^0(?:\.0+)?$/.test(normalized) ||
+    ["false", "measured", "direct"].includes(normalized)
+  ) {
+    return "measured";
+  }
+
+  if (
+    /^1(?:\.0+)?$/.test(normalized) ||
+    normalized === "true" ||
+    normalized.includes("est") ||
+    normalized.includes("model")
+  ) {
+    return "estimated";
+  }
+
+  return "unknown";
+}
+
+function corroboratingReadings(
+  candidate: IndependentSpeedReading,
+  readings: IndependentSpeedReading[],
+) {
+  return readings.filter(
+    (reading) => Math.abs(candidate.mph - reading.mph) <= SPEED_PB_REPEAT_WINDOW_MPH,
+  );
+}
+
+function unverifiedPeakReason(
+  measurementTrust: ClubSpeedMeasurementTrust,
+): SpeedUnverifiedPeakReason {
+  if (measurementTrust === "estimated") {
+    return "estimated_club_data";
+  }
+
+  if (measurementTrust === "unknown") {
+    return "unknown_club_data";
+  }
+
+  return "one_off";
 }
 
 function groupByKey<T>(rows: T[], keyFn: (row: T) => string) {
@@ -1741,4 +2308,9 @@ function shotEvidenceSqlPredicate() {
       ),
     ),
   )!;
+}
+
+function storedSpeedTrainingPhase(value: Record<string, unknown>) {
+  const phase = value.phase;
+  return phase === "warm_up" || phase === "max_speed" || phase === "transfer" ? phase : null;
 }
