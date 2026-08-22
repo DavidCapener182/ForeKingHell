@@ -83,9 +83,13 @@ describe("shared motion foundation", () => {
 
   it("keeps collapsible spacing inside the animated height boundary", () => {
     const collapsible = source("src/components/ui/collapsible.tsx");
+    const premium = source("src/components/premium.tsx");
 
     expect(collapsible).toContain('className={cn("t-acc-content", outerClassName)}');
     expect(collapsible).toContain('className={cn("t-acc-panel-inner", className)}');
+    expect(premium).toContain(
+      '<CollapsibleContent className="contents" outerClassName="contents">',
+    );
   });
 
   it("pulses shared skeletons once, then leaves their fallback visible", () => {
