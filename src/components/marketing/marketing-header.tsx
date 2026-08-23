@@ -2,25 +2,20 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Menu } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { BrandMark } from "@/components/brand-mark";
-import { Button } from "@/components/ui/button";
 import { trackPlausibleEvent } from "@/lib/analytics";
 import { BRAND_NAME } from "@/lib/brand";
 import { marketingJoinBetaHref } from "@/lib/marketing-links";
 
-import styles from "./marketing.module.css";
+import styles from "./cinematic.module.css";
 
 const navigation = [
-  ["Product", "#product"],
-  ["How it works", "#how-it-works"],
-  ["Features", "#features"],
   ["Course Twin", "#course-twin"],
-  ["Community", "#community"],
-  ["Privacy", "#privacy"],
-  ["FAQ", "#faq"],
+  ["Practice", "#practice"],
+  ["Product screens", "#product-screens"],
+  ["Trust", "#privacy"],
+  ["Pricing", "#pricing"],
 ] as const;
 
 const MarketingMobileMenu = dynamic(
@@ -31,34 +26,58 @@ const MarketingMobileMenu = dynamic(
   {
     ssr: false,
     loading: () => (
-      <Button
-        className={styles.menuTrigger}
-        variant="outline"
-        size="icon"
-        aria-label="Open navigation"
-        disabled
-      >
-        <Menu className="size-5" aria-hidden />
-      </Button>
+      <button type="button" className={styles.menuTrigger} aria-label="Open navigation" disabled>
+        <span className={styles.menuGlyph} aria-hidden>
+          <i />
+          <i />
+          <i />
+        </span>
+      </button>
     ),
   },
 );
 
 export function MarketingHeader() {
-  const [scrolled, setScrolled] = useState(false);
+  const [headerState, setHeaderState] = useState<"hero" | "compact" | "hidden">("hero");
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
-    const update = () => setScrolled(window.scrollY > 12);
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    return () => window.removeEventListener("scroll", update);
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const nextY = Math.max(0, window.scrollY);
+      const delta = nextY - lastScrollY.current;
+      lastScrollY.current = nextY;
+
+      if (nextY < 100) {
+        setHeaderState("hero");
+      } else if (delta > 7 && nextY > 180) {
+        setHeaderState("hidden");
+      } else if (delta < -2) {
+        setHeaderState("compact");
+      }
+    };
+    const requestUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    const initialScrollY = Math.max(0, window.scrollY);
+    lastScrollY.current = initialScrollY;
+    frame = window.requestAnimationFrame(() => {
+      frame = 0;
+      setHeaderState(initialScrollY < 100 ? "hero" : "compact");
+    });
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", requestUpdate);
+    };
   }, []);
 
   return (
-    <header className={styles.header} data-scrolled={scrolled ? "true" : "false"}>
+    <header className={styles.header} data-state={headerState}>
       <div className={styles.headerInner}>
         <Link href="/" className={styles.brand} aria-label={`${BRAND_NAME} home`}>
-          <BrandMark className={styles.brandMark} sizes="36px" priority />
           <span>{BRAND_NAME}</span>
         </Link>
         <nav className={styles.desktopNav} aria-label="Public product navigation">
@@ -76,14 +95,13 @@ export function MarketingHeader() {
           >
             Sign in
           </Link>
-          <Button asChild className={styles.headerBeta}>
-            <Link
-              href={marketingJoinBetaHref}
-              onClick={() => trackPlausibleEvent("Public Join Beta Clicked")}
-            >
-              Join the beta
-            </Link>
-          </Button>
+          <Link
+            className={styles.headerBeta}
+            href={marketingJoinBetaHref}
+            onClick={() => trackPlausibleEvent("Public Join Beta Clicked")}
+          >
+            Join the beta
+          </Link>
           <MarketingMobileMenu navigation={navigation} />
         </div>
       </div>

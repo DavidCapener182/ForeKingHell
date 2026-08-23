@@ -1,86 +1,61 @@
+import { ArrowRight, Check, LogIn } from "lucide-react";
 import Link from "next/link";
-import { ArrowRight, CircleCheck, LogIn } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Item, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 
 import { marketingJoinBetaHref } from "@/lib/marketing-links";
-import styles from "./marketing.module.css";
+
+import styles from "./cinematic.module.css";
+import { Reveal } from "./reveal";
 
 export function BetaAccessSection() {
   return (
-    <section className={styles.betaSection} aria-labelledby="beta-title">
-      <div>
-        <p className={styles.eyebrow}>Beta access</p>
-        <h2 id="beta-title">Bring your own evidence. Start with the clearest next action.</h2>
-        <p>
-          Try the post-session loop: import or connect available launch-monitor data, map clubs,
-          review confidence, build a practice session and plan for the course.
-        </p>
+    <section className={styles.finalCta} aria-labelledby="beta-title" data-scroll-pause="beta">
+      <div className={styles.finalCtaStage}>
+        <picture className={styles.finalCtaImage}>
+          <source media="(max-width: 767px)" srcSet="/assets/landing/final-green-mobile.avif" />
+          <img
+            src="/assets/landing/final-green-desktop.avif"
+            alt="A quiet golf green and flag in the last light of the day"
+            width="1825"
+            height="862"
+            loading="lazy"
+            decoding="async"
+            data-scene-parallax
+          />
+        </picture>
+        <span className={styles.finalCtaShade} aria-hidden />
+        <Reveal className={styles.finalCtaCopy} from="left">
+          <p className={styles.kicker}>Your next session starts here</p>
+          <h2 id="beta-title">Stop collecting shots. Start using them.</h2>
+          <p>
+            Bring available launch-monitor evidence into one place, then follow the clearest next
+            action.
+          </p>
+          <div className={styles.finalCtaActions}>
+            <Link href={marketingJoinBetaHref} className={styles.primaryAction}>
+              Join the beta <ArrowRight aria-hidden />
+            </Link>
+            <Link href="/login" className={styles.finalSignIn}>
+              Existing golfer <LogIn aria-hidden />
+            </Link>
+          </div>
+        </Reveal>
+        <Reveal
+          as="ul"
+          className={styles.finalProof}
+          from="right"
+          ariaLabel="Beta availability summary"
+        >
+          <li>
+            <Check aria-hidden /> Rapsodo CSV available
+          </li>
+          <li>
+            <Check aria-hidden /> Demo data clearly labelled
+          </li>
+          <li>
+            <Check aria-hidden /> Provider availability varies
+          </li>
+        </Reveal>
       </div>
-      <Card className={styles.betaPanel}>
-        <CardHeader>
-          <CardTitle>Provider and beta readiness</CardTitle>
-          <Badge variant="secondary" className="w-fit">
-            Evidence first
-          </Badge>
-        </CardHeader>
-        <CardContent className="grid gap-2">
-          <ProviderItem title="Rapsodo CSV" detail="Import is available" status="Available" />
-          <ProviderItem
-            title="Rapsodo cloud"
-            detail="Depends on current environment configuration"
-            status="Configured only"
-          />
-          <ProviderItem
-            title="Square / TrackMan"
-            detail="Square is beta; TrackMan remains coming soon unless enabled"
-            status="Limited"
-          />
-          <Item variant="muted" size="sm">
-            <CircleCheck className="size-4 shrink-0 text-primary" />
-            <ItemContent>
-              <ItemTitle>Plan and configuration</ItemTitle>
-              <ItemDescription>Feature availability can depend on both.</ItemDescription>
-            </ItemContent>
-          </Item>
-        </CardContent>
-        <CardFooter className={styles.betaActions}>
-          <Button asChild>
-            <Link href={marketingJoinBetaHref} className="t-learn">
-              Join the beta <ArrowRight className="t-learn-chevron size-4" />
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/login">
-              Sign in <LogIn className="size-4" />
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
     </section>
-  );
-}
-
-function ProviderItem({
-  title,
-  detail,
-  status,
-}: {
-  title: string;
-  detail: string;
-  status: string;
-}) {
-  return (
-    <Item variant="outline" size="sm">
-      <CircleCheck className="size-4 shrink-0 text-primary" />
-      <ItemContent>
-        <ItemTitle>{title}</ItemTitle>
-        <ItemDescription>{detail}</ItemDescription>
-      </ItemContent>
-      <Badge variant="outline">{status}</Badge>
-    </Item>
   );
 }

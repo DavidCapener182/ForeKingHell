@@ -1,32 +1,35 @@
 import type { Metadata } from "next";
 
 import { BetaAccessSection } from "@/components/marketing/beta-access-section";
-import { FeatureShowcase } from "@/components/marketing/feature-showcase";
+import {
+  BrandPromise,
+  EditorialFeatureGrid,
+  PracticeShowcase,
+  ProductScreensShowcase,
+} from "@/components/marketing/cinematic-sections";
 import { HeroProductStage } from "@/components/marketing/hero-product-stage";
-import { ImportPracticeGuide } from "@/components/marketing/import-practice-guide";
 import {
   LazyCourseTwinShowcase,
   LazyMarketingFaq,
-  LazySampleProductTour,
-  LazyScrollProductStory,
 } from "@/components/marketing/lazy-marketing-sections";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
-import { MobileProductShowcase } from "@/components/marketing/mobile-product-showcase";
 import { PrivacyTrustSection } from "@/components/marketing/privacy-trust-section";
-import { TrustStrip } from "@/components/marketing/trust-strip";
-import { marketingFaqs, marketingTourSteps } from "@/lib/marketing-demo-data";
+import { PricingSection } from "@/components/marketing/pricing-section";
+import { StoryContinuity } from "@/components/marketing/story-continuity";
+import { marketingFaqs } from "@/lib/marketing-demo-data";
 
+import cinematic from "@/components/marketing/cinematic.module.css";
 import styles from "@/components/marketing/marketing.module.css";
 
 export const metadata: Metadata = {
-  title: "Launch-monitor golf, turned into decisions",
+  title: "Make your golf data playable",
   description:
-    "LM World Tour turns launch-monitor sessions into trusted club numbers, practice decisions and course plans.",
+    "LM World Tour turns measured shots into trusted club numbers, focused practice and smarter course decisions.",
   alternates: { canonical: "/" },
   openGraph: {
-    title: "LM World Tour | Turn every measured shot into a better golf game",
-    description: "Trusted launch-monitor evidence for bag mapping, practice and course decisions.",
+    title: "LM World Tour | Make your golf data playable",
+    description: "Measured shots become a trusted bag, a focused practice job and a course plan.",
     url: "/",
     siteName: "LM World Tour",
     type: "website",
@@ -34,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "LM World Tour",
-    description: "Measured golf evidence, turned into decisions.",
+    description: "Measured golf evidence, made playable.",
   },
 };
 
@@ -66,18 +69,17 @@ export default function HomePage() {
   };
 
   return (
-    <main className={styles.page} id="product">
+    <main className={`${styles.page} ${cinematic.page}`} data-marketing-motion="idle" id="product">
       <MarketingHeader />
+      <StoryContinuity />
       <HeroProductStage />
-      <TrustStrip />
-      <LazyScrollProductStory />
-      <MarketingStoryNoScript />
-      <FeatureShowcase />
-      <ImportPracticeGuide />
-      <LazySampleProductTour />
+      <BrandPromise />
       <LazyCourseTwinShowcase />
-      <MobileProductShowcase />
+      <PracticeShowcase />
+      <ProductScreensShowcase />
+      <EditorialFeatureGrid />
       <PrivacyTrustSection />
+      <PricingSection />
       <BetaAccessSection />
       <LazyMarketingFaq />
       <MarketingFooter />
@@ -90,35 +92,5 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
       />
     </main>
-  );
-}
-
-function MarketingStoryNoScript() {
-  return (
-    <noscript>
-      <section
-        id="how-it-works"
-        className={styles.storySection}
-        aria-labelledby="story-no-script-title"
-      >
-        <div className={styles.sectionIntro}>
-          <p className={styles.eyebrow}>From data to decisions</p>
-          <h2 id="story-no-script-title">One connected loop, from the range to the first tee.</h2>
-          <p>
-            Every screen answers a different question, but the evidence stays connected throughout.
-          </p>
-        </div>
-        <div className={styles.storySteps}>
-          {marketingTourSteps.map((step) => (
-            <article key={step.id} className={styles.storyStep}>
-              <p className={styles.storyStepEyebrow}>{step.eyebrow}</p>
-              <h3>{step.title}</h3>
-              <p>{step.description}</p>
-              <span>{step.detail}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-    </noscript>
   );
 }

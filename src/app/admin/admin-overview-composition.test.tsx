@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { OperationalStatusStrip, OperationsPanel } from "@/app/(admin)/admin/page";
+import { OperationalStatusStrip, OperationsPanel } from "@/app/admin/admin-overview-components";
 
 describe("admin overview operations-console composition", () => {
   it("renders one connected status strip without consumer Card components", () => {

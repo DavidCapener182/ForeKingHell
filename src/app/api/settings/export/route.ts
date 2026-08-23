@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 const SHOT_PAGE_LIMIT = 5_000;
 type ExportTable = PgTableWithColumns<TableConfig>;
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const userId = await getOptionalCurrentUserId();
 
   if (!userId) {
@@ -126,9 +126,7 @@ export async function GET(request?: Request) {
   );
 }
 
-function parseShotCursor(request?: Request) {
-  if (!request) return null;
-
+function parseShotCursor(request: Request) {
   const value = new URL(request.url).searchParams.get("shotCursor")?.trim() ?? "";
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
     ? value

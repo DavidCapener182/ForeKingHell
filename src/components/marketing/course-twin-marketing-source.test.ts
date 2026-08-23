@@ -45,9 +45,10 @@ describe("marketing Course Twin source contract", () => {
     expect(showcaseSource).not.toMatch(/from ["'](?:@react-three\/|three["'])/);
   });
 
-  it("uses the same responsive WebGL scene on compact and full viewports with no SVG planner", () => {
-    expect(showcaseSource).not.toContain("compactViewport");
-    expect(showcaseSource).not.toContain('matchMedia("(max-width: 767px)")');
+  it("keeps WebGL on capable larger viewports and a dedicated compact fallback with no SVG planner", () => {
+    expect(showcaseSource).toContain("compactViewport");
+    expect(showcaseSource).toContain('matchMedia("(max-width: 767px)")');
+    expect(showcaseSource).toContain("/assets/landing/course-twin-mobile.avif");
     expect(showcaseSource).not.toContain("CourseTwinPlan");
     expect(
       existsSync(join(root, "src/components/marketing/course-twin/course-twin-plan.tsx")),
