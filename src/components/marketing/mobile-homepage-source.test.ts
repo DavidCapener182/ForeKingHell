@@ -7,9 +7,11 @@ const readSource = (relativePath: string) => readFileSync(join(root, relativePat
 
 const pageSource = readSource("src/app/page.tsx");
 const marketingCssSource = readSource("src/components/marketing/marketing.module.css");
+const cinematicCssSource = readSource("src/components/marketing/cinematic.module.css");
 const storySource = readSource("src/components/marketing/scroll-product-story.tsx");
 const zoomSource = readSource("src/components/marketing/scroll-zoom-frame.tsx");
 const heroSource = readSource("src/components/marketing/hero-product-stage.tsx");
+const revealSource = readSource("src/components/marketing/reveal.tsx");
 const tourSource = readSource("src/components/marketing/sample-product-tour.tsx");
 const mobileShowcaseSource = readSource("src/components/marketing/mobile-product-showcase.tsx");
 
@@ -36,30 +38,22 @@ describe("public homepage mobile design source contract", () => {
   });
 
   it("uses safe areas, reachable controls and visible compact-page focus", () => {
-    expect(marketingCssSource).toContain("env(safe-area-inset-top)");
-    expect(marketingCssSource).toContain("env(safe-area-inset-right)");
-    expect(marketingCssSource).toContain("env(safe-area-inset-bottom)");
-    expect(marketingCssSource).toContain("env(safe-area-inset-left)");
-    expect(marketingCssSource).toContain("min-height: 2.75rem;");
-    expect(marketingCssSource).toContain(":focus-visible");
-    expect(marketingCssSource).toContain("outline: 3px solid #17824f;");
-    expect(marketingCssSource).toContain("100dvh");
-    expect(marketingCssSource).toContain("100svh");
+    expect(cinematicCssSource).toContain("env(safe-area-inset-top)");
+    expect(cinematicCssSource).toContain("env(safe-area-inset-right)");
+    expect(cinematicCssSource).toContain("env(safe-area-inset-bottom)");
+    expect(cinematicCssSource).toContain("env(safe-area-inset-left)");
+    expect(cinematicCssSource).toContain("min-height: 2.75rem;");
+    expect(cinematicCssSource).toContain(":focus-visible");
+    expect(cinematicCssSource).toContain("outline: 3px solid var(--cinema-yellow);");
+    expect(cinematicCssSource).toContain("100svh");
   });
 
-  it("keeps a safe-area-aware primary beta action reachable without covering the footer", () => {
-    expect(heroSource).toContain("data-mobile-sticky-cta");
-    expect(heroSource).toContain("className={styles.mobileStickyCtaButton}");
+  it("keeps a reachable primary action and purpose-composed compact hero art", () => {
+    expect(heroSource).toContain("className={cinematic.heroActions}");
     expect(heroSource).toContain("href={marketingJoinBetaHref}");
-    expect(desktopMarketingCss).toMatch(/\.mobileStickyCtaDock\s*{\s*display: none;/);
-    expect(mobileMarketingCss).toMatch(
-      /\.mobileStickyCtaDock\s*{[\s\S]*?position: fixed;[\s\S]*?bottom: 0;[\s\S]*?env\(safe-area-inset-bottom\)/,
-    );
-    expect(mobileMarketingCss).toContain(
-      "padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));",
-    );
-    expect(mobileMarketingCss).toContain("background: var(--mobile-grouped);");
-    expect(mobileMarketingCss).toContain("background: var(--marketing-green);");
+    expect(heroSource).toContain("/assets/landing/hero-course-mobile.avif");
+    expect(heroSource).toContain("/assets/landing/hero-golfer.webp");
+    expect(cinematicCssSource).toContain("bottom: max(1.5rem, env(safe-area-inset-bottom));");
   });
 
   it("turns the compact sample chapters into an accessible swipe rail with a next-card peek", () => {
@@ -86,10 +80,11 @@ describe("public homepage mobile design source contract", () => {
     expect(mobileMarketingCss).toContain("background: var(--mobile-surface);");
   });
 
-  it("keeps the opening proposition compact and shows the established companion destinations", () => {
-    expect(mobileMarketingCss).toContain("min-height: clamp(26rem, 118vw, 30rem);");
-    expect(mobileMarketingCss).not.toContain("min-height: clamp(33rem, 140vw, 38rem);");
-    expect(heroSource).toContain("Turn every measured shot into a better golf game.");
+  it("uses the cinematic proposition and keeps the established companion destination source", () => {
+    expect(cinematicCssSource).toContain("min-height: 100svh;");
+    expect(heroSource).toContain("Stop guessing.");
+    expect(heroSource).toContain("Start knowing.");
+    expect(heroSource).toContain("Turn measured shots into a trusted bag");
     expect(mobileShowcaseSource).toContain("Today, Practice, Strategy, Review and Bag");
     expect(mobileShowcaseSource).toContain("Today · Demo data");
     expect(mobileShowcaseSource).not.toContain("Home, Sessions, Analyse, Practice and More");
@@ -124,6 +119,8 @@ describe("public homepage mobile design source contract", () => {
     expect(marketingCssSource).toContain(
       "@media (max-width: 767px) and (prefers-reduced-motion: reduce)",
     );
+    expect(cinematicCssSource).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(cinematicCssSource).toContain("clip-path: none;");
     expect(marketingCssSource).toContain("animation: none;");
     expect(marketingCssSource).toContain("transition: none;");
     expect(mobileMarketingCss).toMatch(
@@ -131,14 +128,34 @@ describe("public homepage mobile design source contract", () => {
     );
   });
 
+  it("keeps server-rendered marketing content visible until the reveal controller is ready", () => {
+    expect(pageSource).toContain('data-marketing-motion="idle"');
+    expect(cinematicCssSource).toContain(
+      '.page[data-marketing-motion="ready"] [data-marketing-reveal]',
+    );
+    expect(cinematicCssSource).not.toMatch(
+      /\.page \[data-marketing-reveal\]\s*\{\s*opacity: var\(--reveal-opacity, 0\)/,
+    );
+    expect(revealSource).toContain('marketingPage.dataset.marketingMotion = "ready"');
+  });
+
+  it("holds the completed Course Twin plan before opening the digital twin", () => {
+    expect(revealSource).toContain("route: [0.56, 0.74]");
+    expect(revealSource).toContain("twin: [0.84, 0.98]");
+  });
+
   it("keeps the redesign inside the public marketing CSS module", () => {
     expect(pageSource).toContain(
       'import styles from "@/components/marketing/marketing.module.css";',
+    );
+    expect(pageSource).toContain(
+      'import cinematic from "@/components/marketing/cinematic.module.css";',
     );
     expect(pageSource).not.toContain('import "./globals.css"');
     expect(pageSource).not.toContain("mobile-apple.css");
     expect(pageSource).toContain("<MarketingHeader />");
     expect(pageSource).toContain("<LazyCourseTwinShowcase />");
-    expect(pageSource).toContain('className={styles.page} id="product"');
+    expect(pageSource).toContain("className={`${styles.page} ${cinematic.page}`}");
+    expect(pageSource).toContain('data-marketing-motion="idle"');
   });
 });

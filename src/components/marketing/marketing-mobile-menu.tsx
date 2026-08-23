@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +15,7 @@ import { trackPlausibleEvent } from "@/lib/analytics";
 import { BRAND_NAME } from "@/lib/brand";
 import { marketingJoinBetaHref } from "@/lib/marketing-links";
 
-import styles from "./marketing.module.css";
+import styles from "./cinematic.module.css";
 
 export function MarketingMobileMenu({
   navigation,
@@ -32,7 +31,11 @@ export function MarketingMobileMenu({
           size="icon"
           aria-label="Open navigation"
         >
-          <Menu className="size-5" aria-hidden />
+          <span className={styles.menuGlyph} aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className={styles.mobileSheet} showCloseButton={false}>
@@ -43,7 +46,9 @@ export function MarketingMobileMenu({
           <SheetTitle className={styles.mobileSheetTitle}>{BRAND_NAME}</SheetTitle>
           <SheetClose asChild>
             <Button variant="ghost" size="icon" aria-label="Close navigation">
-              <X className="size-5" aria-hidden />
+              <span className={styles.closeGlyph} aria-hidden>
+                ×
+              </span>
             </Button>
           </SheetClose>
         </div>

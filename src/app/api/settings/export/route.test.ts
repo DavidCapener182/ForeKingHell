@@ -26,7 +26,7 @@ describe("personal data export route", () => {
     mocks.getOptionalCurrentUserId.mockResolvedValue(null);
     const { GET } = await import("@/app/api/settings/export/route");
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/settings/export"));
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toEqual({ error: "Authentication required." });
@@ -38,7 +38,7 @@ describe("personal data export route", () => {
     mocks.getDb.mockReturnValue(emptyDb());
     const { GET } = await import("@/app/api/settings/export/route");
 
-    const response = await GET();
+    const response = await GET(new Request("http://localhost/api/settings/export"));
     const payload = await response.json();
 
     expect(response.status).toBe(200);
