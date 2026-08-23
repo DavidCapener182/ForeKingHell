@@ -3707,7 +3707,6 @@
   .promise,
   .productScreensIntro,
   .productScreenCard,
-  .pricingSection,
   .finalCta {
     min-height: 130svh;
   }
@@ -3715,7 +3714,6 @@
   .promiseStage,
   .productScreensIntroStage,
   .productScreenStage,
-  .pricingStage,
   .finalCtaStage {
     position: sticky;
     top: 0;
@@ -4084,8 +4082,13 @@
   }
 
   .pricingStage {
+    position: relative;
+    top: auto;
     align-content: center;
     gap: 1.35rem;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
     padding: 5.25rem 0 1.25rem;
   }
 
@@ -4164,7 +4167,7 @@
   }
 
   .pricingSection {
-    min-height: 125svh;
+    min-height: auto;
   }
 
   .finalCta {

@@ -61,8 +61,12 @@ export function MarketingHeader() {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
 
-    lastScrollY.current = window.scrollY;
-    update();
+    const initialScrollY = Math.max(0, window.scrollY);
+    lastScrollY.current = initialScrollY;
+    frame = window.requestAnimationFrame(() => {
+      frame = 0;
+      setHeaderState(initialScrollY < 100 ? "hero" : "compact");
+    });
     window.addEventListener("scroll", requestUpdate, { passive: true });
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
