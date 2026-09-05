@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-const calls = vi.hoisted(() => ({ where: vi.fn(), select: vi.fn() }));
+const calls = vi.hoisted(() => ({ where: vi.fn(), select: vi.fn(), leftJoin: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("drizzle-orm", () => ({
   and: (...terms: unknown[]) => terms,
@@ -9,13 +9,22 @@ vi.mock("drizzle-orm", () => ({
 vi.mock("@/db/schema", () => ({
   sessions: { id: "measured.id", type: "measured.type", userId: "measured.owner" },
   speedTrainingSessions: { id: "speed.id", userId: "speed.owner" },
+  rapsodoSyncSessions: {
+    importedSessionId: "provider.session",
+    userId: "provider.owner",
+    providerKind: "provider.kind",
+    providerSessionMode: "provider.mode",
+  },
 }));
 vi.mock("@/db/client", () => ({ getDb: () => ({ select: calls.select }) }));
 import { getMobileTrainingSourceLinks } from "./mobile-training-source-links";
 import type { TrainingSessionListItem } from "./trainingData";
 beforeEach(() => {
   vi.clearAllMocks();
-  calls.select.mockImplementation(() => ({ from: () => ({ where: calls.where }) }));
+  calls.leftJoin.mockImplementation(() => ({ where: calls.where }));
+  calls.select.mockImplementation(() => ({
+    from: () => ({ where: calls.where, leftJoin: calls.leftJoin }),
+  }));
 });
 describe("mobile training source navigation", () => {
   it("uses the actual owned source table for rounds, measured practice and speed", async () => {
@@ -55,5 +64,33 @@ describe("mobile training source navigation", () => {
       ] as TrainingSessionListItem[]),
     ).toEqual({});
     expect(calls.select).not.toHaveBeenCalled();
+  });
+  it("routes Rapsodo range, target and CTP to measured sessions using owned provider metadata", async () => {
+    const modes = ["range", "target", "ctp", "courses"];
+    calls.where
+      .mockResolvedValueOnce(
+        modes.map((mode) => ({
+          id: mode,
+          type: "simulator",
+          providerKind: "simulation",
+          providerSessionMode: mode,
+        })),
+      )
+      .mockResolvedValueOnce([]);
+    const links = await getMobileTrainingSourceLinks(
+      "owner",
+      modes.map((sourceId) => ({ sourceId })) as TrainingSessionListItem[],
+    );
+    for (const mode of ["range", "target", "ctp"])
+      expect(links[mode]).toEqual({ href: `/sessions/${mode}`, label: "View measured session" });
+    expect(links.courses).toEqual({ href: "/rounds/courses", label: "View round" });
+    expect(calls.select.mock.calls[0][0]).toMatchObject({
+      providerKind: "provider.kind",
+      providerSessionMode: "provider.mode",
+    });
+    expect(calls.leftJoin.mock.calls[0][1]).toEqual([
+      { column: "provider.session", equals: "measured.id" },
+      { column: "provider.owner", equals: "owner" },
+    ]);
   });
 });

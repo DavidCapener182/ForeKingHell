@@ -10,7 +10,9 @@ it("removes old page HTML on upgrade and recovers the newly precached offline sh
     ["forekinghell-pwa-v7", new Map()],
     ["forekinghell-pwa-v8", new Map()],
     ["forekinghell-pwa-v8-pages", new Map([["/offline", new Response("previous shell")]])],
-    ["forekinghell-pwa-v9", new Map([["/offline", new Response("new shell")]])],
+    ["forekinghell-pwa-v9", new Map([["/offline", new Response("previous shell")]])],
+    ["forekinghell-pwa-v9-pages", new Map([["/offline", new Response("previous page shell")]])],
+    ["forekinghell-pwa-v10", new Map([["/offline", new Response("new shell")]])],
   ]);
   const context = {
     self: {
@@ -45,6 +47,8 @@ it("removes old page HTML on upgrade and recovers the newly precached offline sh
   expect(stores.has("forekinghell-pwa-v7")).toBe(false);
   expect(stores.has("forekinghell-pwa-v8")).toBe(false);
   expect(stores.has("forekinghell-pwa-v8-pages")).toBe(false);
+  expect(stores.has("forekinghell-pwa-v9")).toBe(false);
+  expect(stores.has("forekinghell-pwa-v9-pages")).toBe(false);
   const response: Response = await runInNewContext(
     'networkFirstPage({ url: "https://golf.example/quick-bag" })',
     context,

@@ -31,7 +31,8 @@ import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/compone
 import { getDb } from "@/db/client";
 import { courses, holes, sessions, teeSets, weatherSnapshots } from "@/db/schema";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
-import { getCourseTwinManifest, listAvailableCourseTwins } from "@/lib/course-twin-data";
+import { listAvailableCourseTwins } from "@/lib/course-twin-data";
+import { getOptionalMobileCoursePreview } from "@/lib/mobile-course-preview";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
@@ -98,13 +99,13 @@ export default async function PlayCompanionPage({
     teeCount: tees.length,
     courseTwinAvailable: Boolean(twin),
   });
-  const [strategyData, cachedWeather, recentCourseRounds, previewManifest] = selected
+  const [strategyData, cachedWeather, recentCourseRounds, preview] = selected
     ? await Promise.all([
         getCourseStrategyData(selected.id, selectedTee?.id, "latest-reliable"),
         getCachedCourseWeather(userId, selected.id),
         getRecentCourseRounds(userId, selected.id),
         surface === "companion" && twin && !activeRound
-          ? getCourseTwinManifest({ userId, courseId: selected.id })
+          ? getOptionalMobileCoursePreview(userId, selected.id)
           : null,
       ])
     : [null, null, [], null];
@@ -175,7 +176,7 @@ export default async function PlayCompanionPage({
               teeIsDefault={teeIsDefault}
               strategyReady={strategyReady}
               twinGrade={twin?.grade ?? null}
-              preview={previewManifest?.terrain.imagery ?? null}
+              preview={preview}
               lastPlayed={lastPlayed}
               weatherLabel={weatherLabel}
               strategyHref={strategyHref}
