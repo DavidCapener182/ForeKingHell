@@ -1,5 +1,6 @@
 import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
 import { MobileRoundHandicapEffect } from "@/app/rounds/mobile-round-handicap-effect";
+import { MobileSection } from "@/components/app/mobile-screen";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { buildLiveRoundClubEvidence } from "@/lib/live-round-club-evidence";
 import Link from "next/link";
@@ -1741,17 +1742,60 @@ function MobileRoundReviewSections({
           href: `${baseHref}?view=evidence`,
           content: (
             <div className="grid gap-4">
-              {" "}
-              <RoundEvidenceSummary
-                round={round}
-                hasClubData={hasClubData}
-                hasMap={hasMap}
-                proofItems={proofItems}
-                compact
-              />
+              {roundIsComplete ? (
+                <>
+                  <MobileSection title="Next practice">
+                    <h3 className="mobile-type-title2">{companionReview.nextPractice}</h3>
+                    <p className="mobile-type-callout text-muted-foreground">
+                      {companionReview.nextPractice === "Penalty avoidance"
+                        ? `${formatNullableInteger(round.totalPenalties)} penalties recorded. Practise choosing a target that keeps your usual miss in play.`
+                        : companionReview.nextPractice === "Putting pace"
+                          ? `${formatNullableInteger(round.totalPutts)} putts across ${round.holes.length} holes. Make distance control the next focus.`
+                          : companionReview.nextPractice === "Approach control"
+                            ? `${round.gir} greens hit in ${round.holes.filter((hole) => hole.gir !== null).length} recorded attempts. Revisit your approach targets and club choice.`
+                            : `Start with ${companionReview.costliestArea.toLowerCase()} and review the decisions that led to the result.`}
+                    </p>
+                    <Button asChild className="min-h-12">
+                      <Link
+                        href={`/practice?intent=round_preparation&source=round_review&roundId=${round.session.id}`}
+                      >
+                        Build next practice
+                      </Link>
+                    </Button>
+                  </MobileSection>
+                  <MobileSection title="Scoring pattern">
+                    <ScoringBreakdown holes={round.holes} compact />
+                    <IOSGroupedList>
+                      <IOSListRow label="Best hole" value={companionReview.strongestArea} />
+                      <IOSListRow label="Costliest hole" value={companionReview.costliestArea} />
+                      <IOSListRow
+                        label="Fairways and greens"
+                        detail={companionReview.strategyResult}
+                      />
+                    </IOSGroupedList>
+                  </MobileSection>
+                </>
+              ) : (
+                <IOSInlineStatus
+                  label="Finish the scorecard to complete your scoring review."
+                  tone="info"
+                />
+              )}
               <details>
                 <summary className="flex min-h-11 items-center text-primary">
-                  Score and evidence details
+                  Round evidence
+                </summary>
+                <RoundEvidenceSummary
+                  round={round}
+                  hasClubData={hasClubData}
+                  hasMap={hasMap}
+                  proofItems={proofItems}
+                  compact
+                />
+              </details>
+              <details>
+                <summary className="flex min-h-11 items-center text-primary">
+                  Notes and score details
                 </summary>
                 {corrections}
               </details>

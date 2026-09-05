@@ -20,7 +20,12 @@ export function mobileQuickBagClub(
     playNumberYd: stock.recommendedPlayNumberYd,
     lowYd: evidence.low,
     highYd: evidence.high,
-    typicalMiss: null,
+    typicalMiss:
+      evidence.side == null
+        ? null
+        : Math.abs(evidence.side) < 4
+          ? "Near target"
+          : `${Math.round(Math.abs(evidence.side))} yd ${evidence.side > 0 ? "right" : "left"}`,
     widerSide: null,
     medianLateralYd: evidence.side,
     lateralLowYd: evidence.sideLow,

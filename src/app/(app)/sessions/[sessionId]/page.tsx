@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 
 import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
-import { MobileMetricStory } from "@/components/app/mobile-metric-story";
+import { MobileSessionPattern, MobileSessionStory } from "@/app/sessions/mobile-session-story";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { LazyMobileShotPatternCharts as MobileShotPatternCharts } from "@/components/app/lazy-mobile-shot-pattern-charts";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
 import {
-  mobileSessionMetrics,
+  mobileSessionGroups,
   sessionFocusClub,
   mobileSessionVerdict,
   sessionPracticeHref,
@@ -74,6 +74,14 @@ export default async function PracticeSessionReviewPage({
   const shots = data.shots.filter((shot) => shot.sessionId === sessionId);
   const rawShots = data.rawShots.filter((shot) => shot.sessionId === sessionId);
   const patternPoints = buildShotPatternPoints(rawShots);
+  const trustedShotIds = new Set(shots.map((shot) => shot.id));
+  const mobilePatternPoints = patternPoints.map((point) => ({
+    ...point,
+    trusted: trustedShotIds.has(point.id),
+  }));
+  const mobileConfidence = shotPatternConfidence(
+    mobilePatternPoints.filter((point) => point.trusted),
+  );
   const clubs = shotPatternClubs(patternPoints);
   const preferredClub = sessionFocusClub(
     plan?.comparisonSummary ? plan.blocks[0]?.clubs[0] : null,
@@ -89,7 +97,9 @@ export default async function PracticeSessionReviewPage({
   const patternSummary = summarizeShotPattern(trustedFocusPoints);
   const verdict = verdictPresentation(data.overall.verdict);
   const source = formatSource(rawShots[0]?.source ?? "session");
+  const storyGroups = mobileSessionGroups(rawShots, shots);
   const clubList = compactClubList(clubs.map((club) => club.label));
+  const mobileClubList = compactClubList(storyGroups.map((club) => club.label));
   const linkedPlan = plan?.title ?? "No plan linked";
   const nextAction = remaining
     ? `Work on ${remaining.clubLabel}: ${sentenceCase(remaining.summary)}`
@@ -121,14 +131,13 @@ export default async function PracticeSessionReviewPage({
     },
   ];
 
-  const focusShots = shots.filter((shot) => !preferredClub || shot.clubType === preferredClub);
-  const mobileMetrics = mobileSessionMetrics(focusShots);
   const mobileSessionTitle =
     rawShots[0]?.courseName ??
     (clubs.length === 1 ? `${clubs[0].label} practice` : "Practice session");
   const sessionPractice = sessionPracticeHref(
     remaining?.clubType ?? null,
     remaining?.clubLabel ?? null,
+    remaining?.verdict === "new" ? "baseline" : "control",
   );
 
   return (
@@ -218,14 +227,14 @@ export default async function PracticeSessionReviewPage({
           <MobileLargeTitle
             title={mobileSessionTitle}
             eyebrow={data.dateLabel}
-            detail={`${rawShots.length} shots · ${clubList} · ${source}`}
+            detail={`${rawShots.length} shots · ${mobileClubList} · ${source}`}
           />
           <section className="mobile-section" aria-label="Session verdict">
             <p className="mobile-type-footnote text-muted-foreground">Session verdict</p>
             <h2 className="mobile-type-title2">{mobileSessionVerdict(comparisons)}</h2>
             <MobileStatus
-              label={`${sessionConfidence.label} confidence · ${shots.length} trusted shots`}
-              tone={sessionConfidence.label === "Low" ? "attention" : "neutral"}
+              label={`${mobileConfidence.label} confidence · ${shots.length} trusted shots`}
+              tone={mobileConfidence.label === "Low" ? "attention" : "neutral"}
             />
             <details>
               <summary className="mobile-type-callout flex min-h-11 items-center text-primary">
@@ -238,13 +247,11 @@ export default async function PracticeSessionReviewPage({
               </p>
             </details>
           </section>
-          <MobileMetricStory
-            metrics={mobileMetrics}
-            context={`${preferredClub ? clubLabel(preferredClub) : "Session"} · ${focusShots.length} trusted shots`}
+          <MobileSessionStory
+            groups={storyGroups}
+            preferredClub={preferredClub}
+            sessionId={sessionId}
           />
-          <Button asChild variant="outline" className="min-h-12">
-            <Link href={`/shots?sessionId=${sessionId}`}>View shots</Link>
-          </Button>
           <MobileSection title="What changed">
             <MobileGroupedList>
               <MobileListRow
@@ -268,12 +275,18 @@ export default async function PracticeSessionReviewPage({
           <MobileSection title="Next practice">
             <p className="mobile-type-callout text-muted-foreground">
               {remaining
-                ? `Work on ${remaining.clubLabel} control, then import measured shots to check the result.`
+                ? remaining.verdict === "new"
+                  ? `Record another measured ${remaining.clubLabel} block to build a comparable baseline.`
+                  : `Work on ${remaining.clubLabel} control, then import measured shots to check the result.`
                 : "Repeat a measured session before choosing a new focus."}
             </p>
             <Button asChild className="min-h-12">
               <Link href={sessionPractice}>
-                {remaining ? `Practise ${remaining.clubLabel}` : "Choose practice"}
+                {remaining
+                  ? remaining.verdict === "new"
+                    ? `Build ${remaining.clubLabel} baseline`
+                    : `Practise ${remaining.clubLabel}`
+                  : "Choose practice"}
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
@@ -289,7 +302,7 @@ export default async function PracticeSessionReviewPage({
           </MobileSection>
           <MobileSection title="Shot pattern">
             <div data-mobile-primary-chart>
-              <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
+              <MobileSessionPattern points={mobilePatternPoints} preferredClub={preferredClub} />
             </div>
           </MobileSection>
         </MobileAppShell>

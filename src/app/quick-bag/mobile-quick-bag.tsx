@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import type { QuickBagClub } from "./quick-bag-client";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { MobileGroupedList } from "@/components/app/mobile-primitives";
+import { mobileBagRows } from "@/lib/mobile-bag-rows";
 
 export function MobileQuickBag({
   clubs,
@@ -31,7 +32,7 @@ export function MobileQuickBag({
       queueMicrotask(() => setCacheState("Storage unavailable. Keep this open."));
     }
   }, [accountId, clubs]);
-  const sorted = [...clubs].sort((a, b) => (b.trustedCarryYd ?? 0) - (a.trustedCarryYd ?? 0));
+  const sorted = mobileBagRows(clubs);
   return (
     <div className="grid gap-5" data-quick-bag-hydrated="true">
       <MobileSegmentedControl
@@ -57,6 +58,7 @@ export function MobileQuickBag({
               <summary className="mobile-yardage-row">
                 <span>
                   <strong>{club.label}</strong>
+                  {club.equipmentLabel ? <small>{club.equipmentLabel}</small> : null}
                   {mode === "carry" && club.lowYd != null && club.highYd != null ? (
                     <small>
                       {Math.round(club.lowYd)}–{Math.round(club.highYd)} yd

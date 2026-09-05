@@ -33,7 +33,9 @@ describe("session performance report hierarchy", () => {
     expect(mobile).not.toContain("<ResultHero");
     expect(mobile).toContain('aria-label="Session verdict"');
     expect(mobile).toContain("data-mobile-primary-chart");
-    expect(mobile).toContain("<MobileMetricStory");
+    expect(mobile).toContain("<MobileSessionStory");
+    expect(mobile).toContain("points={mobilePatternPoints}");
+    expect(source).toContain("trusted: trustedShotIds.has(point.id)");
     expect(mobile).toContain('label="Best signal"');
     expect(mobile).toContain('"Main problem" : "Next focus"');
     expect(mobile).toContain("href={sessionPractice}");

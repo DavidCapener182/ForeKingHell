@@ -6,6 +6,20 @@ import { describe, expect, it } from "vitest";
 import { QuickRangeCompanionSession } from "@/app/practice/quick-range/quick-range-session";
 
 describe("QuickRangeSession mobile task flow", () => {
+  it.each([
+    ["4i", "4 Iron"],
+    ["3h", "3 Hybrid"],
+    ["aw", "Approach Wedge"],
+  ])("retains the requested %s from club detail", (initialClubType, label) => {
+    const html = renderToStaticMarkup(
+      <QuickRangeCompanionSession
+        accountId="test-account"
+        focus="Club control"
+        initialClubType={initialClubType}
+      />,
+    );
+    expect(html).toContain(`<option selected="">${label}</option>`);
+  });
   it("opens with the supplied focus and all quick setup controls", () => {
     const html = renderToStaticMarkup(
       <QuickRangeCompanionSession accountId="test-account" focus="Driver start-line control" />,

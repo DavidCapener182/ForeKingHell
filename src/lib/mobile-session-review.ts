@@ -1,3 +1,6 @@
+import { isEstimatedClubData } from "@/lib/club-analytics";
+import { clubSortValue, formatCompanionClubType } from "@/lib/club-format";
+
 export type SessionStoryShot = {
   carryYd: number | null;
   sideCarryYd: number | null;
@@ -5,7 +8,35 @@ export type SessionStoryShot = {
   clubSpeedMph: number | null;
   launchAngleDeg: number | null;
   smashFactor: number | null;
+  clubDataEstType?: string | null;
 };
+
+export type SessionStoryGroup = {
+  clubType: string;
+  label: string;
+  importedCount: number;
+  trustedCount: number;
+  metrics: ReturnType<typeof mobileSessionMetrics>;
+};
+
+/** Only this session's rows are supplied; clubs without trusted readings stay discoverable. */
+export function mobileSessionGroups(
+  raw: Array<SessionStoryShot & { clubType: string }>,
+  trusted: Array<SessionStoryShot & { clubType: string }>,
+): SessionStoryGroup[] {
+  return [...new Set(raw.map((shot) => shot.clubType))]
+    .sort((a, b) => clubSortValue(a) - clubSortValue(b) || a.localeCompare(b))
+    .map((clubType) => {
+      const selected = trusted.filter((shot) => shot.clubType === clubType);
+      return {
+        clubType,
+        label: formatCompanionClubType(clubType),
+        importedCount: raw.filter((shot) => shot.clubType === clubType).length,
+        trustedCount: selected.length,
+        metrics: mobileSessionMetrics(selected),
+      };
+    });
+}
 
 /** Each metric uses its own available trusted readings; missing side never erases carry. */
 export function mobileSessionMetrics(shots: SessionStoryShot[]) {
@@ -38,11 +69,20 @@ export function mobileSessionMetrics(shots: SessionStoryShot[]) {
   ] as const) {
     const measured = values(key);
     if (!measured.length) continue;
+    const estimated =
+      key === "clubSpeedMph" || key === "smashFactor"
+        ? shots.filter(
+            (shot) =>
+              typeof shot[key] === "number" &&
+              Number.isFinite(shot[key]) &&
+              isEstimatedClubData(shot.clubDataEstType),
+          ).length
+        : 0;
     metrics.push({
       label,
       value: (measured.reduce((a, b) => a + b, 0) / measured.length).toFixed(digits),
       unit,
-      detail: `Average of ${measured.length} trusted readings`,
+      detail: `Average of ${measured.length} trusted readings${estimated ? ` · ${estimated} based on estimated club speed` : ""}`,
     });
   }
   return metrics;
@@ -54,9 +94,16 @@ function percentile(values: number[], fraction: number) {
   return sorted[lower] + (sorted[Math.ceil(i)] - sorted[lower]) * (i - lower);
 }
 
-export function sessionPracticeHref(clubType: string | null, clubLabel: string | null) {
+export function sessionPracticeHref(
+  clubType: string | null,
+  clubLabel: string | null,
+  purpose = "control",
+) {
   if (!clubType) return "/practice";
-  const params = new URLSearchParams({ club: clubType, focus: `${clubLabel ?? clubType} control` });
+  const params = new URLSearchParams({
+    club: clubType,
+    focus: `${clubLabel ?? clubType} ${purpose}`,
+  });
   return `/practice/quick-range?${params.toString()}`;
 }
 

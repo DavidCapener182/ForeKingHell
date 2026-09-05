@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mobileSessionMetrics,
+  mobileSessionGroups,
   sessionFocusClub,
   mobileSessionVerdict,
   sessionPracticeHref,
@@ -14,6 +15,45 @@ const shot = (carryYd: number | null, sideCarryYd: number | null) => ({
   smashFactor: null,
 });
 describe("mobile session review", () => {
+  it("keeps every imported club discoverable without mixing or restoring untrusted metrics", () => {
+    const iron = { ...shot(150, 0), clubType: "7i" };
+    const excludedDriver = { ...shot(250, 30), clubType: "driver" };
+    const groups = mobileSessionGroups([iron, excludedDriver], [iron]);
+    expect(groups.map((group) => [group.clubType, group.trustedCount])).toEqual([
+      ["driver", 0],
+      ["7i", 1],
+    ]);
+    expect(groups[0].metrics).toEqual([]);
+    expect(groups[1].metrics[0].value).toBe("150");
+  });
+  it("labels estimated club speed and derived smash without discarding their stored values", () => {
+    const metrics = mobileSessionMetrics([
+      {
+        ...shot(150, 0),
+        clubSpeedMph: 80,
+        ballSpeedMph: 110,
+        smashFactor: 1.4,
+        clubDataEstType: "Estimated",
+      },
+      {
+        ...shot(150, 0),
+        clubSpeedMph: 100,
+        ballSpeedMph: 130,
+        smashFactor: 1.5,
+        clubDataEstType: "Measured",
+      },
+    ]);
+    expect(metrics.find((metric) => metric.label === "club speed")).toMatchObject({
+      value: "90.0",
+      detail: "Average of 2 trusted readings · 1 based on estimated club speed",
+    });
+    expect(metrics.find((metric) => metric.label === "smash factor")?.detail).toContain(
+      "estimated club speed",
+    );
+    expect(metrics.find((metric) => metric.label === "ball speed")?.detail).not.toContain(
+      "estimated",
+    );
+  });
   it("shows carry even when side data is absent, without inventing other metrics", () => {
     expect(mobileSessionMetrics([shot(140, null), shot(150, null), shot(160, null)])).toEqual([
       { label: "carry", value: "150", unit: "yd", detail: "Median of 3 trusted carry readings" },
@@ -42,6 +82,12 @@ describe("mobile session review", () => {
     expect(url.searchParams.get("club")).toBe("7i");
     expect(url.searchParams.get("focus")).toBe("7 Iron control");
     expect(sessionPracticeHref(null, null)).toBe("/practice");
+    expect(
+      new URL(
+        sessionPracticeHref("driver", "Driver", "baseline"),
+        "https://example.test",
+      ).searchParams.get("focus"),
+    ).toBe("Driver baseline");
   });
   it("makes improvement claims only from supported club verdicts", () => {
     expect(

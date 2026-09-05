@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mobileQuickBagClub } from "./mobile-quick-bag-evidence";
-import type { StockShot } from "./stock-yardage";
+import { calculateStockYardage, type StockShot } from "./stock-yardage";
 const club = { id: "seven", type: "7i", brand: null, model: null };
 const shots = (): StockShot[] =>
   Array.from({ length: 12 }, (_, i) => ({
@@ -12,6 +12,16 @@ const shots = (): StockShot[] =>
     sessionType: "range",
   }));
 describe("Quick Bag evidence", () => {
+  it("keeps measured carry distinct from the existing rounded course number and reports measured miss", () => {
+    const measured = shots().map((shot) => ({ ...shot, sideCarryYd: -9 }));
+    const data = mobileQuickBagClub(club, measured);
+    expect(data.trustedCarryYd).toBe(151);
+    expect(data.playNumberYd).toBe(
+      calculateStockYardage(measured, measured.length, { clubType: "7i" }).coursePlayCarryYd,
+    );
+    expect(data.playNumberYd).not.toBe(data.trustedCarryYd);
+    expect(data.typicalMiss).toBe("9 yd left");
+  });
   it("uses one trusted selection and never lets a newer excluded shot advance its date", () => {
     const data = mobileQuickBagClub(club, [
       {
