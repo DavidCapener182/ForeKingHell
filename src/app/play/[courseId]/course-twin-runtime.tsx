@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 import mobileStyles from "./course-twin-mobile.module.css";
+import { CourseTwinMobileOverhead } from "./course-twin-mobile-overhead";
 
 const CourseTwinScene = dynamic(
   () => import("./course-twin-scene").then((module) => module.CourseTwinScene),
@@ -51,8 +52,24 @@ export function CourseTwinRuntime({
   const [renderQualityOverride, setRenderQualityOverride] =
     useState<CourseTwinRenderQuality | null>(null);
   const renderQuality = renderQualityOverride ?? detectedRenderQuality;
+  const compact = useSyncExternalStore(subscribeCompactViewport, readCompactViewport, () => false);
 
   if (renderQuality === "fallback") {
+    if (compact)
+      return (
+        <CourseTwinMobileOverhead
+          manifest={manifest}
+          replay={replay}
+          readOnly={readOnly}
+          initialMode={initialMode}
+          initialHoleNumber={initialHoleNumber}
+          onEnable3d={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("quality", "balanced");
+            window.location.assign(url);
+          }}
+        />
+      );
     return (
       <CourseTwinLowPowerFallback
         manifest={manifest}
@@ -75,6 +92,15 @@ export function CourseTwinRuntime({
   );
 }
 
+function subscribeCompactViewport(listener: () => void) {
+  const media = window.matchMedia("(max-width: 1023px)");
+  media.addEventListener("change", listener);
+  return () => media.removeEventListener("change", listener);
+}
+function readCompactViewport() {
+  return window.matchMedia("(max-width: 1023px)").matches;
+}
+
 function subscribeToStaticDeviceSignals() {
   return () => {};
 }
@@ -84,7 +110,8 @@ function readBrowserRenderQuality(): CourseTwinRenderQuality {
 }
 
 function readServerRenderQuality(): CourseTwinRenderQuality {
-  return "balanced";
+  // Do not request the 3D chunk before the browser can choose its quality tier.
+  return "fallback";
 }
 
 function CourseTwinLowPowerFallback({

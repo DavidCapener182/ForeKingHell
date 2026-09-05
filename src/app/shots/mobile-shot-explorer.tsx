@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { correctShotClubAction } from "@/app/(app)/shots/actions";
 import { useState, useTransition } from "react";
+import { ChevronDown } from "lucide-react";
 import type { ShotMasterDetailRow } from "./shots-master-detail-table";
 import { ShotReviewButton, ShotBulkReviewButton } from "./shot-review-controls";
 import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileStatus } from "@/components/app/mobile-primitives";
 import { Button } from "@/components/ui/button";
+import { MobileShotFilters, type MobileShotFiltersValue } from "./mobile-shot-filters";
+import { hasShotMetric, mobileShotMetrics, visibleShotSelection } from "./mobile-shot-evidence";
 import {
   Drawer,
   DrawerContent,
@@ -24,16 +27,7 @@ type Props = {
   correctionClubs: Option[];
   sessions: Option[];
   categories: Option[];
-  filters: {
-    q: string;
-    club: string;
-    sessionId: string;
-    category: string;
-    trust: string;
-    sort: string;
-    dir: string;
-    review?: string;
-  };
+  filters: MobileShotFiltersValue;
   total: number;
   page: number;
   pages: number;
@@ -57,6 +51,7 @@ export function MobileShotExplorer({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
+  const visibleSelection = visibleShotSelection(selectedIds, shots);
   const selected = shots.find((shot) => shot.id === selectedId);
   return (
     <section className="grid min-w-0 gap-5 lg:hidden" data-mobile-shot-explorer>
@@ -64,76 +59,12 @@ export function MobileShotExplorer({
         title={filters.review ? "Review shots" : "Shots"}
         detail={`${total.toLocaleString("en-GB")} matching shots`}
       />
-      <form action="/shots" className="mobile-shot-filters" key={JSON.stringify(filters)}>
-        <label>
-          Search sessions
-          <input name="q" type="search" defaultValue={filters.q} placeholder="Session or course" />
-        </label>
-        <Filter name="club" label="Club" value={filters.club} options={clubs} />
-        <Filter
-          name="trust"
-          label="Evidence"
-          value={filters.trust}
-          options={[
-            { value: "trusted", label: "Trusted" },
-            { value: "untrusted", label: "Untrusted" },
-          ]}
-        />
-        <details className="col-span-2">
-          <summary className="flex min-h-11 cursor-pointer items-center text-primary">
-            More filters
-          </summary>
-          <div className="mobile-shot-filters">
-            <Filter name="sessionId" label="Session" value={filters.sessionId} options={sessions} />
-            <Filter
-              name="category"
-              label="Shot type"
-              value={filters.category}
-              options={categories}
-            />
-            <Filter
-              name="sort"
-              label="Sort by"
-              value={filters.sort}
-              options={[
-                { value: "recent", label: "Date" },
-                { value: "carry", label: "Carry" },
-                { value: "side", label: "Side" },
-                { value: "ballSpeed", label: "Ball speed" },
-                { value: "clubSpeed", label: "Club speed" },
-              ]}
-            />
-            <Filter
-              name="dir"
-              label="Order"
-              value={filters.dir}
-              options={[
-                { value: "desc", label: "Highest / newest" },
-                { value: "asc", label: "Lowest / oldest" },
-              ]}
-            />
-            <Filter
-              name="review"
-              label="Review state"
-              value={filters.review ?? ""}
-              options={[
-                { value: "suggested_exclusion", label: "Suggested exclusions" },
-                { value: "user_excluded", label: "User excluded" },
-                { value: "warm_up", label: "Warm-up" },
-                { value: "calibration", label: "Calibration" },
-                { value: "launch_monitor_error", label: "Sensor anomaly" },
-                { value: "restored", label: "Restored" },
-              ]}
-            />
-          </div>
-        </details>
-        <Button type="submit" className="min-h-11">
-          Apply filters
-        </Button>
-        <Button asChild variant="ghost" className="min-h-11">
-          <Link href="/shots">Reset</Link>
-        </Button>
-      </form>
+      <MobileShotFilters
+        filters={filters}
+        clubs={clubs}
+        sessions={sessions}
+        categories={categories}
+      />
       <div className="flex items-center justify-between gap-3">
         <Link
           className="flex min-h-11 items-center text-sm font-semibold text-primary"
@@ -151,8 +82,12 @@ export function MobileShotExplorer({
           {reviewing ? "Done" : "Select shots"}
         </Button>
       </div>
-      {reviewing && selectedIds.length > 0 ? (
-        <ShotBulkReviewButton shotIds={selectedIds} onComplete={() => setSelectedIds([])} />
+      {reviewing && visibleSelection.length > 0 ? (
+        <ShotBulkReviewButton
+          companion
+          shotIds={visibleSelection}
+          onComplete={() => setSelectedIds([])}
+        />
       ) : null}
       {shots.length ? (
         <MobileGroupedList label="Measured shots">
@@ -166,7 +101,7 @@ export function MobileShotExplorer({
                   <input
                     type="checkbox"
                     className="size-5 accent-primary"
-                    checked={selectedIds.includes(shot.id)}
+                    checked={visibleSelection.includes(shot.id)}
                     onChange={(e) =>
                       setSelectedIds((ids) =>
                         e.target.checked ? [...ids, shot.id] : ids.filter((id) => id !== shot.id),
@@ -179,7 +114,7 @@ export function MobileShotExplorer({
                 type="button"
                 className="mobile-shot-row"
                 onClick={() => setSelectedId(shot.id)}
-                aria-label={`${shot.clubTypeLabel}, ${shot.carryLabel} carry, ${shot.evidenceStatus}, view shot`}
+                aria-label={`${shot.clubTypeLabel}, ${shot.carryYd !== null ? `${Math.round(shot.carryYd)} yards carry` : "carry not recorded"}, ${shot.evidenceStatus}, view shot`}
               >
                 <span className="min-w-0">
                   <span className="block font-semibold">{shot.clubTypeLabel}</span>
@@ -187,7 +122,11 @@ export function MobileShotExplorer({
                     {shot.shotAtLabel} · {shot.shotCategoryLabel}
                   </span>
                   <MobileStatus
-                    label={shot.reviewStatusLabel}
+                    label={
+                      shot.evidenceStatus === "trusted"
+                        ? "Trusted"
+                        : `${shot.reviewStatusLabel} · not trusted`
+                    }
                     tone={shot.evidenceStatus === "trusted" ? "positive" : "attention"}
                   />
                   {filters.review && shot.reviewReason ? (
@@ -197,11 +136,23 @@ export function MobileShotExplorer({
                   ) : null}
                 </span>
                 <span className="text-right tabular-nums">
-                  <span className="block text-xl font-semibold">{shot.carryLabel}</span>
-                  <span className="block text-xs text-muted-foreground">carry</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {shot.sideLabel} side · {shot.ballSpeedLabel}
+                  <span className="block text-xl font-semibold">
+                    {shot.carryYd !== null ? Math.round(shot.carryYd) : "—"}
                   </span>
+                  <span className="block text-xs text-muted-foreground">yd carry</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {[
+                      hasShotMetric(shot.sideLabel) ? `${shot.sideLabel} yd side` : null,
+                      hasShotMetric(shot.ballSpeedLabel) ? `${shot.ballSpeedLabel} mph` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  {hasShotMetric(shot.launchLabel) ? (
+                    <span className="block text-xs text-muted-foreground">
+                      {shot.launchLabel}° launch
+                    </span>
+                  ) : null}
                 </span>
               </button>
             </div>
@@ -244,19 +195,28 @@ export function MobileShotExplorer({
         }}
       >
         <DrawerContent className="max-h-[92dvh]">
-          <DrawerHeader>
-            <DrawerTitle>
-              {selected?.clubTypeLabel} · Shot {selected?.shotNumberLabel}
-            </DrawerTitle>
+          <DrawerHeader className="flex-none">
+            <div className="flex items-center justify-between gap-3">
+              <DrawerTitle>
+                {selected?.clubTypeLabel} · Shot {selected?.shotNumberLabel}
+              </DrawerTitle>
+              <Button variant="ghost" onClick={() => setSelectedId(null)}>
+                Done
+              </Button>
+            </div>
             <DrawerDescription>
               {selected?.shotAtLabel} · {selected?.fileNameLabel}
             </DrawerDescription>
           </DrawerHeader>
           {selected ? (
-            <div className="grid gap-5 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              <MobileMetric value={selected.carryLabel} label="carry" />
+            <div className="grid min-h-0 gap-5 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              {selected.carryYd !== null ? (
+                <MobileMetric value={Math.round(selected.carryYd)} unit="yd" label="carry" />
+              ) : (
+                <p className="text-sm text-muted-foreground">Carry not recorded</p>
+              )}
               <dl className="grid grid-cols-2 gap-4">
-                {shotMetrics(selected).map(([label, value]) => (
+                {mobileShotMetrics(selected).map(([label, value]) => (
                   <div key={label}>
                     <dt className="text-xs text-muted-foreground">{label}</dt>
                     <dd className="font-semibold tabular-nums">{value}</dd>
@@ -265,18 +225,31 @@ export function MobileShotExplorer({
               </dl>
               <MobileSection title="Evidence">
                 <MobileStatus
-                  label={selected.reviewStatusLabel}
+                  label={
+                    selected.evidenceStatus === "trusted"
+                      ? "Trusted"
+                      : `${selected.reviewStatusLabel} · not trusted`
+                  }
                   tone={selected.evidenceStatus === "trusted" ? "positive" : "attention"}
                 />
                 <p className="text-sm">
                   {selected.reviewReason ?? selected.evidenceReasons.join(" · ")}
                 </p>
-                <p className="text-xs text-muted-foreground">{selected.reviewConfidenceLabel}</p>
+                {hasShotMetric(selected.reviewConfidenceLabel) ? (
+                  <p className="text-xs text-muted-foreground">
+                    Review confidence · {selected.reviewConfidenceLabel}
+                  </p>
+                ) : null}
               </MobileSection>
               <ClubCorrection key={selected.id} shotId={selected.id} clubs={correctionClubs} />
-              <ShotReviewButton shotId={selected.id} reviewStatus={selected.reviewStatus} />
+              <ShotReviewButton
+                companion
+                shotId={selected.id}
+                reviewStatus={selected.reviewStatus}
+              />
               {selected.reviewStatus === "suggested_exclusion" ? (
                 <ShotBulkReviewButton
+                  companion
                   shotIds={[selected.id]}
                   onComplete={() => setSelectedId(null)}
                 />
@@ -293,48 +266,6 @@ export function MobileShotExplorer({
       </Drawer>
     </section>
   );
-}
-
-function Filter({
-  name,
-  label,
-  value,
-  options,
-}: {
-  name: string;
-  label: string;
-  value: string;
-  options: Option[];
-}) {
-  return (
-    <label>
-      {label}
-      <select name={name} defaultValue={value}>
-        <option value="">All</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function shotMetrics(shot: ShotMasterDetailRow) {
-  return Object.entries({
-    Total: shot.totalLabel,
-    Side: shot.sideLabel,
-    "Ball speed": shot.ballSpeedLabel,
-    "Club speed": shot.clubSpeedLabel,
-    Launch: shot.launchLabel,
-    Path: shot.pathLabel,
-    Face: shot.faceLabel,
-    Attack: shot.attackLabel,
-    Apex: shot.apexLabel,
-    Smash: shot.smashLabel,
-    Spin: shot.spinRateLabel,
-  }).filter(([, value]) => value && !/^(—|–|-|n\/a)$/i.test(value.trim()));
 }
 
 export function ClubCorrection({ shotId, clubs }: { shotId: string; clubs: Option[] }) {
@@ -369,14 +300,17 @@ export function ClubCorrection({ shotId, clubs }: { shotId: string; clubs: Optio
         </p>
         <label>
           Club
-          <select value={clubId} onChange={(e) => setClubId(e.target.value)}>
-            <option value="">Choose from your bag</option>
-            {clubs.map((club) => (
-              <option key={club.value} value={club.value}>
-                {club.label}
-              </option>
-            ))}
-          </select>
+          <span className="mobile-shot-select-wrap">
+            <select value={clubId} onChange={(e) => setClubId(e.target.value)}>
+              <option value="">Choose from your bag</option>
+              {clubs.map((club) => (
+                <option key={club.value} value={club.value}>
+                  {club.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown aria-hidden />
+          </span>
         </label>
         <Button disabled={pending || !clubId} onClick={() => correct(clubId)}>
           {pending ? "Updating…" : "Update club"}

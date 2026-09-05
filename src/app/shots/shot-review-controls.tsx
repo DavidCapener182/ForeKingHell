@@ -55,10 +55,14 @@ export function ShotReviewButton({
   shotId,
   reviewStatus,
   trigger,
+  intent = "review",
+  companion = false,
 }: {
   shotId: string;
   reviewStatus: ShotReviewStatus;
   trigger?: ReactNode;
+  intent?: "review" | "exclude";
+  companion?: boolean;
 }) {
   const reasonId = useId();
   const [open, setOpen] = useState(false);
@@ -67,8 +71,8 @@ export function ShotReviewButton({
   const [confidence, setConfidence] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const restoring = isRestorableShotReviewStatus(reviewStatus);
-  const keepingSuggestion = reviewStatus === "suggested_exclusion";
+  const restoring = intent !== "exclude" && isRestorableShotReviewStatus(reviewStatus);
+  const keepingSuggestion = intent !== "exclude" && reviewStatus === "suggested_exclusion";
 
   function submitReview() {
     startTransition(async () => {
@@ -133,10 +137,16 @@ export function ShotReviewButton({
           </AlertDialogTitle>
           <AlertDialogDescription>
             {keepingSuggestion
-              ? "The suggested exclusion will be dismissed and this shot will be kept in trusted calculations. Raw source evidence and review history remain unchanged."
+              ? companion
+                ? "Dismisses this suggestion. Other evidence checks still apply. Raw measurements and review history are kept."
+                : "The suggested exclusion will be dismissed and this shot will be kept in trusted calculations. Raw source evidence and review history remain unchanged."
               : restoring
-                ? "The exact quality flag saved before exclusion will be restored. Source data and review history remain unchanged."
-                : "The shot stays in raw history. Trusted calculations use the review status and a reversible compatibility flag."}
+                ? companion
+                  ? "Restores this shot for analysis. Its measurements must still meet the evidence rules. Raw data and review history are kept."
+                  : "The exact quality flag saved before exclusion will be restored. Source data and review history remain unchanged."
+                : intent === "exclude" || companion
+                  ? "The shot stays in your history and stops contributing to trusted distances and recommendations. You can restore it later."
+                  : "The shot stays in raw history. Trusted calculations use the review status and a reversible compatibility flag."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -232,9 +242,11 @@ export function ShotReviewButton({
 export function ShotBulkReviewButton({
   shotIds,
   onComplete,
+  companion = false,
 }: {
   shotIds: string[];
   onComplete: () => void;
+  companion?: boolean;
 }) {
   const reasonId = useId();
   const [open, setOpen] = useState(false);
@@ -273,8 +285,9 @@ export function ShotBulkReviewButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Exclude {shotIds.length} selected shots?</AlertDialogTitle>
           <AlertDialogDescription>
-            This is reversible. Raw source fields remain intact and every shot receives its own
-            append-only review event.
+            {companion
+              ? "These shots stay in your history and stop contributing to trusted distances and recommendations. You can restore them later."
+              : "This is reversible. Raw source fields remain intact and every shot receives its own append-only review event."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="grid gap-4 py-1">

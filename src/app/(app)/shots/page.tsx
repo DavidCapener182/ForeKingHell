@@ -199,6 +199,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
     <PageShell contentClassName="gap-4 lg:gap-4">
       {surface === "companion" ? (
         <MobileShotExplorer
+          key={JSON.stringify(filters)}
           correctionClubs={correctionClubs}
           shots={desktopShotRows}
           filters={filters}
@@ -868,6 +869,7 @@ function serializeShotForMasterDetail(shot: SavedShotRow): ShotMasterDetailRow {
     faceLabel: formatMetric(shot.faceAngleDeg),
     descentLabel: formatMetric(shot.descentAngleDeg),
     smashLabel: formatMetric(shot.smashFactor),
+    smashFactor: shot.smashFactor,
     spinRateLabel: formatMetric(shot.spinRate),
     spinAxisLabel: formatMetric(shot.spinAxis),
     estimateLabel: shot.clubDataEstType ? formatSessionType(shot.clubDataEstType) : "Measured",

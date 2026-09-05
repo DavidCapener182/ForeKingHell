@@ -14,7 +14,7 @@ export default async function AutomaticReviewPage({
   const data = await getAutomaticShotReviewData(page);
   return (
     <PageShell>
-      <MobileAutomaticReview {...data} page={page} />
+      <MobileAutomaticReview key={page} {...data} page={page} />
     </PageShell>
   );
 }

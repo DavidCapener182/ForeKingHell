@@ -8,6 +8,7 @@ import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen"
 import { MobileGroupedList, MobileStatus } from "@/components/app/mobile-primitives";
 import { Button } from "@/components/ui/button";
 import { ShotReviewButton, ShotBulkReviewButton } from "./shot-review-controls";
+import { visibleShotSelection } from "./mobile-shot-evidence";
 import { ClubCorrection } from "./mobile-shot-explorer";
 
 export function MobileAutomaticReview({
@@ -28,6 +29,7 @@ export function MobileAutomaticReview({
   const [undoIds, setUndoIds] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const visibleSelection = visibleShotSelection(selected, rows);
   async function keep(ids: string[], undo = false) {
     startTransition(async () => {
       try {
@@ -40,7 +42,9 @@ export function MobileAutomaticReview({
         router.refresh();
       } catch (error) {
         setMessage(
-          error instanceof Error ? error.message : "Could not save the review. Try again.",
+          error instanceof Error && !/load failed|failed to fetch|networkerror/i.test(error.message)
+            ? error.message
+            : "Could not save the review. Your selection is kept. Check your connection and try again.",
         );
       }
     });
@@ -67,18 +71,24 @@ export function MobileAutomaticReview({
           {message}
         </p>
       ) : null}
+      {pending ? (
+        <p role="status" className="text-sm">
+          Saving your review…
+        </p>
+      ) : null}
       {undoIds.length ? (
         <Button variant="outline" disabled={pending} onClick={() => void keep(undoIds, true)}>
           Undo keep ({undoIds.length})
         </Button>
       ) : null}
-      {selected.length ? (
+      {visibleSelection.length ? (
         <div className="grid grid-cols-2 gap-2">
-          <Button disabled={pending} onClick={() => void keep(selected)}>
-            Keep {selected.length}
+          <Button disabled={pending} onClick={() => void keep(visibleSelection)}>
+            Keep {visibleSelection.length}
           </Button>
           <ShotBulkReviewButton
-            shotIds={selected}
+            companion
+            shotIds={visibleSelection}
             onComplete={() => {
               setSelected([]);
               router.refresh();
@@ -109,8 +119,11 @@ export function MobileAutomaticReview({
                   <input
                     type="checkbox"
                     className="size-5 accent-primary"
-                    checked={selected.includes(row.id)}
-                    disabled={pending || (!selected.includes(row.id) && selected.length >= 50)}
+                    checked={visibleSelection.includes(row.id)}
+                    disabled={
+                      pending ||
+                      (!visibleSelection.includes(row.id) && visibleSelection.length >= 50)
+                    }
                     onChange={(event) =>
                       setSelected((ids) =>
                         event.target.checked ? [...ids, row.id] : ids.filter((id) => id !== row.id),
@@ -153,7 +166,12 @@ export function MobileAutomaticReview({
                 <Button variant="outline" disabled={pending} onClick={() => void keep([row.id])}>
                   Keep
                 </Button>
-                <ShotReviewButton shotId={row.id} reviewStatus={row.reviewStatus} />
+                <ShotReviewButton
+                  companion
+                  shotId={row.id}
+                  reviewStatus={row.reviewStatus}
+                  intent="exclude"
+                />
               </div>
               <details className="mt-2">
                 <summary className="flex min-h-11 cursor-pointer items-center text-primary">
