@@ -1,3 +1,4 @@
+import { MobileRoundShotMap } from "@/app/rounds/mobile-round-shot-map";
 import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
 import { MobileRoundHandicapEffect } from "@/app/rounds/mobile-round-handicap-effect";
 import { MobileSection } from "@/components/app/mobile-screen";
@@ -2251,24 +2252,12 @@ function MobileRoundMap({
   return (
     <div className="grid gap-4">
       {hasMap ? (
-        <section className="grid gap-2">
-          <IOSSectionHeader
-            title={hasClubData ? "Actual hole map" : "Estimated hole map"}
-            description={
-              hasClubData
-                ? "Saved shots projected over course geometry."
-                : "Estimated non-putt strokes placed along mapped geometry."
-            }
-          />
-          <div className="overflow-hidden rounded-xl bg-slate-950 ring-1 ring-white/10 [&_[data-chart-summary]+div_a]:min-h-11 [&_summary]:min-h-11">
-            <LazyRoundShotMap
-              holes={round.mapHoles}
-              shots={round.mapShots}
-              courseName={round.session.courseName ?? "Course map"}
-              shotMode={hasClubData ? "actual" : "estimated"}
-            />
-          </div>
-        </section>
+        <MobileRoundShotMap
+          holes={round.mapHoles}
+          shots={round.mapShots}
+          courseName={round.session.courseName ?? "Course map"}
+          shotMode={hasClubData ? "actual" : "estimated"}
+        />
       ) : (
         <div className="rounded-xl bg-card p-4 ring-1 ring-border/70">
           <IOSInlineStatus label="Map not ready" tone="attention" />
@@ -2281,6 +2270,12 @@ function MobileRoundMap({
       )}
 
       <IOSGroupedList label="Map actions">
+        <IOSListRow
+          label="Desktop map tools"
+          detail="Course-wide view and exports."
+          href={`/surface/workbench?next=${encodeURIComponent(`/rounds/${round.session.id}?view=map`)}`}
+          icon={MapPinned}
+        />
         {round.session.courseId && shotPatternEnabled ? (
           <IOSListRow
             label="Open shot pattern"

@@ -1,34 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, CheckCircle2, ChevronDown, Database, Target } from "lucide-react";
+import { ArrowRight, CheckCircle2, Target } from "lucide-react";
 
-import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
-import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { ResultHero } from "@/components/app/result-hero";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import { MobileSessionPattern } from "@/app/sessions/mobile-session-story";
+import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import {
+  MobileDisclosure,
+  MobileGroupedList,
+  MobileListRow,
+  MobileStatus,
+} from "@/components/app/mobile-primitives";
+import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { getCompanionImportResult } from "@/lib/companion-import-result";
 
 export default async function ImportResultCompanionPage({
@@ -40,240 +25,215 @@ export default async function ImportResultCompanionPage({
   if (!sessionId) notFound();
   const result = await getCompanionImportResult(sessionId);
   if (!result) notFound();
+  const needsConfirmation = result.triage.confirmationCount > 0;
+  const needsBaseline = !result.needsWork || result.needsWork.verdict === "new";
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-4" data-companion-import-result>
-        <MobileTopBar title="Import complete" />
-
-        <div data-session-verdict>
-          <ResultHero
-            eyebrow="Import complete"
-            title={`${result.shotCount} shots imported`}
-            summary={`${result.triagePath}.${
-              result.fieldIssueCount > 0
-                ? ` ${result.fieldIssueCount} impossible ${result.fieldIssueCount === 1 ? "field was" : "fields were"} quarantined without discarding the rest of the shot.`
-                : ""
-            }`}
-            confidence={{
-              label:
-                result.triage.confirmationCount > 0
-                  ? `${result.triage.confirmationCount} to confirm`
-                  : "No mishits suggested",
-              tone: result.triage.confirmationCount > 0 ? "outline" : "secondary",
-            }}
-            action={
-              <ButtonGroup className="w-full">
-                <Button asChild className="min-h-12 flex-1 text-base">
-                  <Link
-                    href={
-                      result.triage.confirmationCount > 0
-                        ? result.suggestionReviewHref
-                        : result.reviewHref
-                    }
-                  >
-                    {result.triage.confirmationCount > 0
-                      ? "Confirm flagged shots"
-                      : result.isRound
-                        ? "Review this round"
-                        : "Review this session"}
-                    <ArrowRight className="ml-2 size-4" aria-hidden />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="min-h-12">
-                  <Link
-                    href={result.triage.confirmationCount > 0 ? result.reviewHref : "/sessions"}
-                  >
-                    {result.triage.confirmationCount > 0 ? "Open session" : "All sessions"}
-                  </Link>
-                </Button>
-              </ButtonGroup>
+      <MobileAppShell className="gap-6" data-companion-import-result>
+        <MobileLargeTitle
+          title={result.isRound ? "Round saved" : "Session saved"}
+          detail={`${result.shotCount} shots saved · ${result.clubCount} clubs`}
+        />
+        <section className="grid gap-3" data-session-verdict aria-label="Import result">
+          <MobileStatus
+            tone={needsConfirmation ? "attention" : "positive"}
+            label={
+              needsConfirmation
+                ? `${result.triage.confirmationCount} shots to confirm`
+                : `${result.triage.stockQualityCount} shots ready for trusted analysis`
             }
           />
-        </div>
+          <p className="mobile-type-title2">
+            {result.isRound ? "Your round is ready to review." : result.sessionVerdict}
+          </p>
+          {needsConfirmation ? (
+            <p className="mobile-type-callout text-muted-foreground">
+              Check the flagged shots before using this session to guide your next practice.
+            </p>
+          ) : null}
+          <Button asChild className="min-h-12 w-full">
+            <Link href={needsConfirmation ? result.suggestionReviewHref : result.reviewHref}>
+              {needsConfirmation
+                ? "Confirm flagged shots"
+                : result.isRound
+                  ? "Review this round"
+                  : "Review this session"}
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+          <Link
+            className="mobile-type-callout flex min-h-11 items-center justify-center text-primary"
+            href={needsConfirmation ? result.reviewHref : "/sessions"}
+          >
+            {needsConfirmation ? "Open session" : "All sessions"}
+          </Link>
+        </section>
 
-        <ConnectedMetricBar
-          label="Import summary"
-          className="grid-cols-2 [&>div:nth-child(2)]:border-l [&>div:nth-child(2)]:border-t-0"
-          metrics={[
-            { label: "Stock-quality", value: result.triage.stockQualityCount },
-            { label: "Likely mishits", value: result.triage.likelyMishitCount },
-            { label: "Needs review", value: result.triage.needsReviewCount },
-            { label: "Partial shots", value: result.triage.partialShotCount },
-          ]}
-        />
+        {result.fieldIssueCount > 0 ? (
+          <MobileStatus
+            tone="attention"
+            label={`${result.fieldIssueCount} impossible ${result.fieldIssueCount === 1 ? "reading was" : "readings were"} set aside. The other shot measurements are retained.`}
+          />
+        ) : null}
+
+        {!result.isRound ? (
+          <MobileSection title="What changed">
+            <MobileGroupedList>
+              <MobileListRow
+                icon={CheckCircle2}
+                label={
+                  result.improved
+                    ? `What improved · ${result.improved.clubLabel}`
+                    : "Baseline building"
+                }
+                detail={
+                  result.improved?.summary ??
+                  "Another comparable session is needed before claiming an improvement."
+                }
+              />
+              <MobileListRow
+                icon={Target}
+                label={
+                  needsBaseline ? "Next measurement" : `Next focus · ${result.needsWork?.clubLabel}`
+                }
+                detail={
+                  needsBaseline
+                    ? "Repeat a measured block to build a reliable comparison."
+                    : result.needsWork?.summary
+                }
+              />
+              {!result.isRound ? (
+                <MobileListRow
+                  label="Build next plan"
+                  href={`/practice?intent=latest_weakness&source=import&session=${encodeURIComponent(result.session.id)}`}
+                />
+              ) : null}
+            </MobileGroupedList>
+          </MobileSection>
+        ) : null}
 
         {result.practiceReview ? (
-          <Card size="sm" data-plan-versus-actual>
-            <CardHeader>
-              <div>
-                <CardTitle>Plan versus actual</CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {result.practiceReview.verdict}
-                </p>
-              </div>
-              <CardAction>
-                <Badge variant="secondary">{result.practiceReview.score}/100</Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-3">
+          <MobileSection title="Your practice plan">
+            <div className="grid gap-3" data-plan-versus-actual>
+              <p className="mobile-type-headline">{result.practiceReview.verdict}</p>
               <Progress
                 value={result.practiceReview.score}
                 aria-label={`Practice plan score: ${result.practiceReview.score} out of 100`}
               />
-              <p className="text-sm leading-5">{result.practiceReview.nextAction}</p>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {!result.isRound ? (
-          <Card className="gap-3 py-3">
-            <CardHeader className="px-3">
-              <CardTitle>Your shot pattern</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Selected-club confidence uses this club only.
+              <p className="mobile-type-footnote text-muted-foreground">
+                Plan versus actual · {result.practiceReview.score}/100
               </p>
-            </CardHeader>
-            <CardContent className="px-3">
-              <MobileShotPatternCharts
-                points={result.patternPoints}
-                preferredClub={result.preferredClub}
-              />
-            </CardContent>
-          </Card>
+              <p className="mobile-type-callout">{result.practiceReview.nextAction}</p>
+            </div>
+          </MobileSection>
         ) : null}
 
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle>The golf answer</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-2">
-            <Item variant="muted" size="sm">
-              <ItemMedia>
-                <CheckCircle2 className="size-4 text-primary" aria-hidden />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>
-                  What improved · {result.improved?.clubLabel ?? "Baseline built"}
-                </ItemTitle>
-                <ItemDescription className="whitespace-normal">
-                  {result.improved?.summary ??
-                    "There is no prior like-for-like baseline strong enough for an improvement claim."}
-                </ItemDescription>
-              </ItemContent>
-            </Item>
-            <Item variant="muted" size="sm">
-              <ItemMedia>
-                <Target className="size-4 text-primary" aria-hidden />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>
-                  What still needs work · {result.needsWork?.clubLabel ?? "Retest"}
-                </ItemTitle>
-                <ItemDescription className="whitespace-normal">
-                  {result.needsWork?.summary ??
-                    "Repeat a measured block before changing the recommendation."}
-                </ItemDescription>
-              </ItemContent>
-            </Item>
-          </CardContent>
-        </Card>
-
-        <ConnectedMetricBar
-          label="Four important numbers"
-          className="grid-cols-2 [&>div:nth-child(2)]:border-l [&>div:nth-child(2)]:border-t-0"
-          metrics={[
-            { label: "Average carry", value: formatYards(result.verdict.today.carryAverageYd) },
-            { label: "Average offline", value: formatYards(result.verdict.today.offlineAverageYd) },
-            { label: "Playable rate", value: formatPercent(result.verdict.today.playableRate) },
-            {
-              label: "Carry consistency",
-              value: formatYards(result.verdict.today.carryRobustStdDevYd),
-            },
-          ]}
-        />
-
-        {!result.isRound ? (
-          <Button asChild className="min-h-12 rounded-xl text-base">
-            <Link
-              href={`/practice?intent=latest_weakness&source=import&session=${encodeURIComponent(result.session.id)}`}
-            >
-              Build next plan
-              <ArrowRight className="ml-2 size-4" aria-hidden />
-            </Link>
-          </Button>
+        {!result.isRound && result.patternPoints.length > 0 ? (
+          <MobileSessionPattern
+            points={result.patternPoints}
+            preferredClub={result.preferredClub}
+          />
         ) : null}
 
-        <Collapsible className="group" data-import-audit>
-          <Card size="sm">
-            <CardHeader>
-              <div>
-                <CardTitle>Import details</CardTitle>
-                <CardDescription>
-                  {result.rawRowCount} raw rows · source, mapping and data health
-                </CardDescription>
-              </div>
-              <CardAction>
-                <CollapsibleTrigger
-                  type="button"
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  Audit
-                  <ChevronDown
-                    className="size-4 transition-transform group-data-[state=open]:rotate-180 motion-reduce:transition-none"
-                    aria-hidden
-                  />
-                </CollapsibleTrigger>
-              </CardAction>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="grid gap-3">
-                <Table aria-label="Import audit details">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Audit field</TableHead>
-                      <TableHead className="text-right">Imported value</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[
-                      ["Source file", result.session.fileName ?? "R-Cloud session"],
-                      ["Raw rows", String(result.rawRowCount)],
-                      ["Unknown raw rows", String(result.rawUnknownRowCount)],
-                      ["Stock-quality shots", String(result.triage.stockQualityCount)],
-                      ["Likely mishits", String(result.triage.likelyMishitCount)],
-                      ["Needs review", String(result.triage.needsReviewCount)],
-                      ["Partial shots", String(result.triage.partialShotCount)],
-                      ["Confirmed exclusions", String(result.triage.confirmedExcludedCount)],
-                      ["Other non-stock", String(result.triage.otherNonStockCount)],
-                      ["Quarantined fields", String(result.fieldIssueCount)],
-                      ["Whole-shot unusable", String(result.triage.launchMonitorErrorCount)],
-                      ["Club mapping", result.clubs.join(", ") || "No club labels"],
-                      [
-                        "Duplicate state",
-                        result.sourceStatus === "duplicate" ? "Duplicate" : "Saved once",
-                      ],
-                      ["Parser", result.parseVersion],
-                    ].map(([label, value]) => (
-                      <TableRow key={label}>
-                        <TableCell className="font-medium">{label}</TableCell>
-                        <TableCell className="max-w-52 whitespace-normal text-right">
-                          {value}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <Button asChild variant="outline" className="min-h-11 justify-start">
-                  <Link href={`/shots?sessionId=${encodeURIComponent(result.session.id)}`}>
-                    <Database className="size-4 text-primary" aria-hidden />
-                    Open Full Site shot audit
-                  </Link>
-                </Button>
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
+        <div data-import-audit>
+          <MobileDisclosure
+            label="Import evidence"
+            items={[
+              {
+                value: "details",
+                title: "Import details",
+                description: `${result.rawRowCount} source rows · measurements and data checks`,
+                content: (
+                  <div className="grid gap-4">
+                    <p className="mobile-type-footnote text-muted-foreground">
+                      {result.triagePath}. Raw shots are retained; exclusions affect trusted
+                      analysis.
+                    </p>
+                    <dl className="grid gap-4">
+                      {[
+                        [
+                          "Source file",
+                          result.session.fileName ?? `${result.session.source} session`,
+                        ],
+                        ["Raw rows", String(result.rawRowCount)],
+                        ["Unknown raw rows", String(result.rawUnknownRowCount)],
+                        ["Stock-quality shots", String(result.triage.stockQualityCount)],
+                        ["Likely mishits", String(result.triage.likelyMishitCount)],
+                        ["Needs review", String(result.triage.needsReviewCount)],
+                        ["Partial shots", String(result.triage.partialShotCount)],
+                        ["Confirmed exclusions", String(result.triage.confirmedExcludedCount)],
+                        ["Other non-stock", String(result.triage.otherNonStockCount)],
+                        ["Quarantined fields", String(result.fieldIssueCount)],
+                        ["Whole-shot unusable", String(result.triage.launchMonitorErrorCount)],
+                        ["Club mapping", result.clubs.join(", ") || "No club labels"],
+                        [
+                          "Duplicate state",
+                          result.sourceStatus === "duplicate" ? "Duplicate" : "Saved once",
+                        ],
+                        ["Parser", result.parseVersion],
+                      ].map(([label, value]) => (
+                        <div key={label}>
+                          <dt className="mobile-type-footnote text-muted-foreground">{label}</dt>
+                          <dd className="mobile-type-callout break-words">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    <MobileGroupedList label="Session averages across recorded clubs">
+                      <MobileListRow
+                        label="Average carry"
+                        value={formatYards(result.verdict.today.carryAverageYd)}
+                      />
+                      <MobileListRow
+                        label="Average offline"
+                        value={formatYards(result.verdict.today.offlineAverageYd)}
+                      />
+                      <MobileListRow
+                        label="Playable rate"
+                        value={formatPercent(result.verdict.today.playableRate)}
+                      />
+                      <MobileListRow
+                        label="Carry consistency"
+                        value={formatYards(result.verdict.today.carryRobustStdDevYd)}
+                      />
+                    </MobileGroupedList>
+                    <p className="mobile-type-footnote text-muted-foreground">
+                      These session averages combine the recorded clubs. Review the session for
+                      individual club results.
+                    </p>
+                    {result.isRound ? (
+                      <MobileGroupedList label="Measured club comparisons">
+                        <MobileListRow
+                          label={
+                            result.improved
+                              ? `Improved · ${result.improved.clubLabel}`
+                              : "Baseline building"
+                          }
+                          detail={
+                            result.improved?.summary ??
+                            "No supported improvement in the measured comparison."
+                          }
+                        />
+                        <MobileListRow
+                          label={result.needsWork?.clubLabel ?? "Next measurement"}
+                          detail={
+                            result.needsWork?.summary ??
+                            "Repeat a measured block to build a comparison."
+                          }
+                        />
+                      </MobileGroupedList>
+                    ) : null}
+                    <Button asChild variant="outline" className="min-h-11">
+                      <Link href={`/shots?sessionId=${encodeURIComponent(result.session.id)}`}>
+                        Review imported shots
+                      </Link>
+                    </Button>
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </div>
       </MobileAppShell>
     </PageShell>
   );

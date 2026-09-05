@@ -238,14 +238,12 @@ export async function getTodayPracticeData(
   const requestedDate = filters.date;
   const hasExplicitDate = validDateKey(requestedDate);
   let dateKey = hasExplicitDate ? requestedDate : localDateKey(new Date());
-  let defaultSessionId = "";
 
   if (!hasExplicitDate && filters.sessionId) {
     const sessionDateKey = await findSessionDateKey(db, userId, filters.sessionId);
 
     if (sessionDateKey) {
       dateKey = sessionDateKey;
-      defaultSessionId = filters.sessionId;
     }
   } else if (!hasExplicitDate) {
     dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey, filters.club)) ?? dateKey;
@@ -254,15 +252,10 @@ export async function getTodayPracticeData(
   const bounds = dayBounds(dateKey);
   const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
 
-  const sessionIds = new Set(allTodayRows.map((shot) => shot.sessionId));
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
   const scopeToSession = filters.scope !== "day";
-  const sessionId =
-    scopeToSession && defaultSessionId && sessionIds.has(defaultSessionId)
-      ? defaultSessionId
-      : scopeToSession && filters.sessionId && sessionIds.has(filters.sessionId)
-        ? filters.sessionId
-        : "";
+  // An explicit empty session must not borrow measurements from another upload that day.
+  const sessionId = scopeToSession ? (filters.sessionId ?? "") : "";
   const club = filters.club && clubTypes.has(filters.club) ? filters.club : "";
   const filteredTodayRows = allTodayRows.filter((shot) => {
     if (sessionId && shot.sessionId !== sessionId) {

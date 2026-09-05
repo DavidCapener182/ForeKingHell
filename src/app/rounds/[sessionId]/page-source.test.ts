@@ -55,7 +55,10 @@ describe("round review scoring and learning redesign", () => {
   it("keeps the specialist map dominant in its own view", () => {
     expect(source).toContain('view === "map"');
     expect(source).toContain("<LazyRoundShotMap");
-    expect(source).toContain('className="overflow-hidden rounded-xl bg-slate-950');
+    const mobileMap = source.slice(source.indexOf("function MobileRoundMap"));
+    expect(mobileMap).toContain("<MobileRoundShotMap");
+    expect(mobileMap).not.toContain("<LazyRoundShotMap");
+    expect(mobileMap).toContain('label="Desktop map tools"');
   });
 
   it("keeps evidence concise and all editing in corrections", () => {

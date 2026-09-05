@@ -55,7 +55,9 @@ export default async function TodayCompanionPage() {
       }).catch(() => null)
     : null;
   const latestShots = latestData?.rawShots ?? [];
-  const patternPoints = buildShotPatternPoints(latestShots);
+  const patternPoints = buildShotPatternPoints(latestShots, {
+    trustedShotIds: new Set(latestData?.shots.map((shot) => shot.id) ?? []),
+  });
   const confidenceWarning = context.bag.issues.find(
     (issue) => !issue.startsWith("Bag trust is building"),
   );

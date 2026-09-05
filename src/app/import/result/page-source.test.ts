@@ -27,14 +27,14 @@ describe("surface-specific import result", () => {
     expect(runtimeEntry).not.toContain("result-workbench-page");
   });
 
-  it("renders the golf answer and charts before collapsed audit detail", () => {
+  it("leads with one review action and progressively discloses import evidence", () => {
     expect(companion).toContain("data-session-verdict");
-    expect(companion).toContain("ResultHero");
-    expect(companion).toContain("ConnectedMetricBar");
-    expect(companion).toContain("<ButtonGroup");
-    expect(companion).toContain("<Item");
+    expect(companion).toContain("<MobileLargeTitle");
+    expect(companion).not.toContain("MobileTopBar");
+    expect(companion).not.toContain("ResultHero");
+    expect(companion).not.toContain("<Table");
+    expect(companion).not.toContain("<Card");
     expect(companion).toContain("data-plan-versus-actual");
-    expect(companion).toContain('eyebrow="Import complete"');
     expect(companion).toContain("result.reviewHref");
     expect(companion).toContain("result.suggestionReviewHref");
     expect(companion).toContain("Confirm flagged shots");
@@ -42,21 +42,19 @@ describe("surface-specific import result", () => {
     expect(companion).toContain("result.triage.likelyMishitCount");
     expect(companion).toContain("result.triage.partialShotCount");
     expect(companion).toContain("Unknown raw rows");
-    expect(companion).not.toContain("Questionable rows");
-    expect(companion).toContain("MobileShotPatternCharts");
+    expect(companion).toContain("<MobileSessionPattern");
     expect(companion).toContain("What improved");
-    expect(companion).toContain("What still needs work");
+    expect(companion).toContain("Next focus");
     expect(companion).toContain("Build next plan");
     expect(companion).toContain("data-import-audit");
-    expect(companion).toContain("<Collapsible");
-    expect(companion).toContain("className={buttonVariants");
-    expect(companion).not.toContain("<CollapsibleTrigger asChild>");
-    expect(companion).toContain("<Table");
-    expect(companion).toContain("Open Full Site shot audit");
-    expect(companion).not.toContain("IOSGroupedList");
-    expect(companion).not.toContain("IOSDisclosureGroup");
-    expect(companion.match(/<ConnectedMetricBar/g)).toHaveLength(2);
-    expect(companion.indexOf("MobileShotPatternCharts")).toBeLessThan(
+    expect(companion).toContain("<MobileDisclosure");
+    expect(companion).toContain("<dl");
+    expect(companion).toContain("Review imported shots");
+    expect(companion).not.toContain("Open Full Site shot audit");
+    expect(companion.indexOf("data-session-verdict")).toBeLessThan(
+      companion.indexOf("<MobileSessionPattern"),
+    );
+    expect(companion.indexOf("<MobileSessionPattern")).toBeLessThan(
       companion.indexOf("data-import-audit"),
     );
   });

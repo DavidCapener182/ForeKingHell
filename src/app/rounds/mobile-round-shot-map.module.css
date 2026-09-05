@@ -1,0 +1,153 @@
+.screen {
+  display: grid;
+  gap: var(--mobile-space-md, 0.75rem);
+  min-width: 0;
+}
+.navigation {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+.navigation button,
+.caption button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--ios-link);
+  touch-action: manipulation;
+}
+.navigation button:disabled {
+  opacity: 0.3;
+}
+.screen button:focus-visible,
+.picker select:focus-visible {
+  outline: 2px solid var(--ios-link);
+  outline-offset: 2px;
+}
+.picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.picker select {
+  appearance: none;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 1.75rem 0 0.5rem;
+  background: transparent;
+  color: var(--ios-label);
+  font-size: 1.25rem;
+  font-weight: 650;
+  text-align: center;
+  border: 0;
+  border-radius: var(--mobile-radius-sm);
+}
+.picker svg {
+  position: absolute;
+  right: 0.25rem;
+  pointer-events: none;
+  color: var(--ios-secondary-label);
+}
+.map {
+  border-radius: var(--mobile-radius-lg);
+  overflow: hidden;
+  background: var(--ios-grouped-surface);
+  touch-action: pan-y;
+  min-height: 18rem;
+}
+.map > svg {
+  display: block;
+  width: 100%;
+  height: 21.25rem;
+}
+.map text {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ios-secondary-label);
+}
+.centreline {
+  fill: none;
+  stroke: var(--mobile-course-fairway);
+  stroke-width: 7;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.35;
+}
+.shotPath {
+  stroke: var(--ios-link);
+  stroke-width: 2;
+  opacity: 0.5;
+}
+.shotPath[data-selected="true"] {
+  stroke-width: 3;
+  opacity: 1;
+}
+.tee {
+  fill: var(--ios-label);
+}
+.green {
+  fill: var(--mobile-course-green);
+  stroke: var(--mobile-course-fairway);
+  stroke-width: 2;
+}
+.dot {
+  fill: var(--ios-grouped-surface);
+  stroke: var(--ios-link);
+  stroke-width: 2;
+}
+.marker {
+  cursor: pointer;
+  outline: none;
+}
+.marker text {
+  fill: var(--ios-label);
+  pointer-events: none;
+}
+.marker[data-selected="true"] .dot,
+.marker:focus .dot {
+  fill: var(--ios-action);
+  stroke: var(--ios-label);
+  stroke-width: 2;
+}
+.marker[data-selected="true"] text,
+.marker:focus text {
+  fill: var(--primary-foreground);
+}
+.caption {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+.caption p {
+  color: var(--ios-secondary-label);
+  font-size: var(--mobile-type-caption-size, 0.75rem);
+  line-height: 1.4;
+}
+.caption button {
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+}
+.satellite {
+  height: 21.25rem;
+  isolation: isolate;
+}
+.satellite > div {
+  min-height: 0;
+  height: 100%;
+}
+.satellite :global(.leaflet-control-zoom a) {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+}
+.satellite :global(.leaflet-popup-close-button) {
+  width: 44px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+}

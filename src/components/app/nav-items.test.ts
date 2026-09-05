@@ -75,6 +75,7 @@ describe("application navigation hierarchy", () => {
     expect(mobilePageTitle("/today")).toBe("Today");
     expect(mobilePageTitle("/rounds/round-1")).toBe("Rounds");
     expect(mobilePageTitle("/progress")).toBe("Progress");
+    expect(mobilePageTitle("/import/result")).toBe("Import result");
     expect(mobilePageTitle("/analyse/session-impact")).toBe("Session impact");
     expect(mobilePageTitle("/unknown-route")).toBe("Golf analytics");
   });
