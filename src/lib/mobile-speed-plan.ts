@@ -59,7 +59,7 @@ export function restoreMobileSpeedBlock(
 }
 
 /** An explicitly failed linked corridor test takes priority over a general speed trend. */
-export function mobileSpeedPrescription({
+export function mobileSpeedPlanForTransfer({
   plan,
   verdict,
 }: {

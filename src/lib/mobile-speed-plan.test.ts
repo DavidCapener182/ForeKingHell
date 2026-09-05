@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mobileSpeedBlocks,
-  mobileSpeedPrescription,
+  mobileSpeedPlanForTransfer,
   restoreMobileSpeedBlock,
 } from "./mobile-speed-plan";
 import type { SpeedDevelopmentSummary } from "./speed-development";
@@ -88,7 +88,7 @@ describe("mobile speed stages", () => {
 
 describe("linked transfer priority", () => {
   it("removes maximum work after an explicit failed transfer without adding swings", () => {
-    const adjusted = mobileSpeedPrescription({ plan, verdict: { playabilityPassed: false } });
+    const adjusted = mobileSpeedPlanForTransfer({ plan, verdict: { playabilityPassed: false } });
     expect(adjusted.mode).toBe("transfer");
     expect(adjusted.blocks.map((b) => b.key)).toEqual(["warmup", "transfer", "finish"]);
     expect(plan.blocks).toHaveLength(5);
@@ -96,9 +96,9 @@ describe("linked transfer priority", () => {
   it("preserves recovery plans and does not manufacture failure from absent evidence", () => {
     const technical = { ...plan, mode: "technical" as const };
     expect(
-      mobileSpeedPrescription({ plan: technical, verdict: { playabilityPassed: false } }),
+      mobileSpeedPlanForTransfer({ plan: technical, verdict: { playabilityPassed: false } }),
     ).toBe(technical);
-    expect(mobileSpeedPrescription({ plan, verdict: null })).toBe(plan);
-    expect(mobileSpeedPrescription({ plan, verdict: { playabilityPassed: true } })).toBe(plan);
+    expect(mobileSpeedPlanForTransfer({ plan, verdict: null })).toBe(plan);
+    expect(mobileSpeedPlanForTransfer({ plan, verdict: { playabilityPassed: true } })).toBe(plan);
   });
 });

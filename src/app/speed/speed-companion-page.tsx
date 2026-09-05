@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { mobileSpeedPrescription } from "@/lib/mobile-speed-plan";
+import { mobileSpeedPlanForTransfer } from "@/lib/mobile-speed-plan";
 import { MobileSpeedTrend } from "@/components/speed/mobile-speed-trend";
 import { MobileSpeedSession } from "./mobile-speed-session";
 import { PageShell } from "@/components/premium";
@@ -74,7 +74,7 @@ export default async function SpeedCompanionPage({
           />
         ) : null}
         <MobileSpeedSession
-          plan={mobileSpeedPrescription(development)}
+          plan={mobileSpeedPlanForTransfer(development)}
           clubId={driver?.id}
           accountId={accountId}
           saved={saved === "1"}
