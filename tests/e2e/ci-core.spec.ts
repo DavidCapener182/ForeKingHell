@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { hasLocalAuthBypass } from "./helpers";
 
 test.describe("clean-database companion smoke", () => {
+  test.use({ actionTimeout: 15_000 });
   test.skip(!hasLocalAuthBypass, "Enable the local Playwright auth bypass for the CI smoke.");
   test.setTimeout(240_000);
 
@@ -42,7 +43,11 @@ test.describe("clean-database companion smoke", () => {
         .or(page.getByRole("tablist", { name: "Bag views" })),
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "Import launch-monitor data" }).click();
+    await page.getByRole("button", { name: /Open profile and navigation/ }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("link", { name: "Import & Sync", exact: true })
+      .click();
     await expectCompanionRoute(page, "Import data", /\/import(?:\?|$)/);
   });
 });
@@ -52,7 +57,8 @@ async function expectCompanionRoute(
   routeLabel: string,
   path: RegExp,
 ) {
-  await expect(page).toHaveURL(path);
+  // The CI dev server compiles each destination on its first visit.
+  await expect(page).toHaveURL(path, { timeout: 60_000 });
   await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
     timeout: 60_000,
   });
