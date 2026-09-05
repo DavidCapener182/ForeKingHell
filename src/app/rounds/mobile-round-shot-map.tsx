@@ -59,13 +59,12 @@ export function MobileRoundShotMap({
   const selected = holeShots.find((s) => s.id === query.get("shot")) ?? holeShots[0] ?? null;
   const estimated = shotMode === "estimated";
   const hasGeometry = hole.geometry.length >= 2;
-  const projected = hasGeometry
-    ? projectHoleShots(hole, holeShots, distance).filter(
-        (p) =>
-          roundMapDistanceReading(p.shot, distance).value !== null ||
-          (distance === "total" && p.shot.distanceRemainingYd !== null),
-      )
-    : [];
+  const plottableShots = holeShots.filter(
+    (shot) =>
+      roundMapDistanceReading(shot, distance).value !== null ||
+      (distance === "total" && shot.distanceRemainingYd !== null),
+  );
+  const projected = hasGeometry ? projectHoleShots(hole, plottableShots, distance) : [];
   const project = roundMapViewport(hole, projected);
   const path = hole.geometry.map((p) => project(p).join(",")).join(" ");
   const tee = hole.geometry[0] ? project(hole.geometry[0]) : null;
@@ -160,12 +159,17 @@ export function MobileRoundShotMap({
               <LazyRoundShotMap
                 key={`${hole.holeNumber}-${distance}`}
                 holes={[hole]}
-                shots={holeShots}
+                shots={plottableShots}
                 courseName={courseName}
                 shotMode={shotMode}
                 compact
                 initialHoleNumber={hole.holeNumber}
                 initialDistanceMode={distance}
+                activeShotId={selected?.id ?? null}
+                onShotSelect={(id) => {
+                  const shot = holeShots.find((candidate) => candidate.id === id);
+                  if (shot) selectShot(shot);
+                }}
               />
             </div>
           ) : (

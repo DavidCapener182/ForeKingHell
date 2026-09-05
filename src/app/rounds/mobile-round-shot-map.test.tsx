@@ -1,9 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RoundMapHole, RoundMapShot } from "@/lib/round-map-projection";
 import { MobileRoundShotMap } from "./mobile-round-shot-map";
 const state = vi.hoisted(() => ({ query: new URLSearchParams() }));
+const satellite = vi.hoisted(() => ({
+  render: vi.fn<(props: Record<string, unknown>) => null>(() => null),
+}));
 vi.mock("next/navigation", () => ({ useSearchParams: () => state.query }));
+vi.mock("./[sessionId]/lazy-round-shot-map", () => ({ LazyRoundShotMap: satellite.render }));
 const holes: RoundMapHole[] = [
   {
     holeNumber: 1,
@@ -42,8 +46,58 @@ const shot: RoundMapShot = {
 };
 beforeEach(() => {
   state.query = new URLSearchParams();
+  satellite.render.mockClear();
 });
+afterEach(() => vi.unstubAllGlobals());
 describe("mobile saved round map", () => {
+  it("shares the URL selection with satellite and persists marker selections", () => {
+    state.query = new URLSearchParams("hole=1&mapView=satellite&shot=second");
+    const second = { ...shot, id: "second", holeShotNumber: 2 };
+    renderToStaticMarkup(
+      <MobileRoundShotMap holes={holes} shots={[shot, second]} courseName="Saved course" />,
+    );
+    const props = satellite.render.mock.calls.at(-1)![0];
+    expect(props.activeShotId).toBe("second");
+    const replaceState = vi.fn();
+    vi.stubGlobal("window", {
+      location: {
+        href: "https://golf.example/rounds/saved?view=map&mapView=satellite&shot=second",
+      },
+      history: { replaceState },
+    });
+    (props.onShotSelect as (id: string) => void)(shot.id);
+    const updated = replaceState.mock.calls[0][2] as URL;
+    expect(updated.searchParams.get("shot")).toBe(shot.id);
+    expect(updated.searchParams.get("hole")).toBe("1");
+    expect(updated.searchParams.get("mapView")).toBe("satellite");
+  });
+  it("keeps unplottable satellite shots in the list without inventing a marker", () => {
+    state.query = new URLSearchParams("hole=1&mapView=satellite");
+    const absent = { ...shot, id: "absent", totalYd: null };
+    const remaining = { ...absent, id: "remaining", distanceRemainingYd: 50 };
+    const html = renderToStaticMarkup(
+      <MobileRoundShotMap
+        holes={holes}
+        shots={[shot, absent, remaining]}
+        courseName="Saved course"
+      />,
+    );
+    expect(
+      (satellite.render.mock.calls.at(-1)![0].shots as RoundMapShot[]).map((s) => s.id),
+    ).toEqual([shot.id, remaining.id]);
+    expect(html).toContain("Distance unavailable");
+    state.query.set("mapDistance", "carry");
+    renderToStaticMarkup(
+      <MobileRoundShotMap
+        holes={holes}
+        shots={[shot, absent, remaining]}
+        courseName="Saved course"
+      />,
+    );
+    expect(
+      (satellite.render.mock.calls.at(-1)![0].shots as RoundMapShot[]).map((s) => s.id),
+    ).toEqual([shot.id]);
+  });
   it("shows one hole, measured rows and an honest carry fallback", () => {
     state.query = new URLSearchParams("hole=1&mapDistance=carry");
     const html = renderToStaticMarkup(

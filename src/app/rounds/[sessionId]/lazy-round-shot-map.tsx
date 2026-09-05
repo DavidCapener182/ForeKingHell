@@ -31,6 +31,8 @@ export function LazyRoundShotMap({
   compact,
   initialHoleNumber,
   initialDistanceMode,
+  activeShotId,
+  onShotSelect,
 }: {
   holes: RoundMapHole[];
   shots: RoundMapShot[];
@@ -39,6 +41,8 @@ export function LazyRoundShotMap({
   compact?: boolean;
   initialHoleNumber?: number;
   initialDistanceMode?: "carry" | "total";
+  activeShotId?: string | null;
+  onShotSelect?: (shotId: string) => void;
 }) {
   return (
     <RoundShotMap
@@ -49,6 +53,8 @@ export function LazyRoundShotMap({
       compact={compact}
       initialHoleNumber={initialHoleNumber}
       initialDistanceMode={initialDistanceMode}
+      activeShotId={activeShotId}
+      onShotSelect={onShotSelect}
     />
   );
 }

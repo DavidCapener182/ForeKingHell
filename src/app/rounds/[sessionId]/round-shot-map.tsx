@@ -29,6 +29,8 @@ type RoundShotMapProps = {
   compact?: boolean;
   initialHoleNumber?: number;
   initialDistanceMode?: DistanceMode;
+  activeShotId?: string | null;
+  onShotSelect?: (shotId: string) => void;
 };
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
@@ -43,6 +45,8 @@ export function RoundShotMap({
   compact = false,
   initialHoleNumber,
   initialDistanceMode = "total",
+  activeShotId,
+  onShotSelect,
 }: RoundShotMapProps) {
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
@@ -53,7 +57,15 @@ export function RoundShotMap({
   const [distanceMode, setDistanceMode] = useState<DistanceMode>(initialDistanceMode);
   const [showShotNumbers, setShowShotNumbers] = useState(true);
   const [showAllHoleShots, setShowAllHoleShots] = useState(false);
-  const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
+  const [localShotId, setLocalShotId] = useState<string | null>(null);
+  const selectedShotId = activeShotId === undefined ? localShotId : activeShotId;
+  const setSelectedShotId = useCallback(
+    (shotId: string) => {
+      setLocalShotId(shotId);
+      onShotSelect?.(shotId);
+    },
+    [onShotSelect],
+  );
   const [selectedHoleNumber, setSelectedHoleNumber] = useState(
     () => initialHoleNumber ?? holes[0]?.holeNumber ?? 1,
   );
@@ -81,7 +93,8 @@ export function RoundShotMap({
   );
   const visibleProjectedShots = showAllHoleShots ? allProjectedShots : projectedSelectedShots;
   const selectedShot =
-    selectedShots.find((shot) => shot.id === selectedShotId) ?? selectedShots[0] ?? null;
+    selectedShots.find((shot) => shot.id === selectedShotId) ??
+    (activeShotId === undefined ? (selectedShots[0] ?? null) : null);
   const isEstimated = shotMode === "estimated";
   const setMapContainerRef = useCallback((node: HTMLDivElement | null) => {
     setMapContainerNode(node);
@@ -219,6 +232,7 @@ export function RoundShotMap({
     }
 
     if (selectedHole) {
+      const shotMarkers: Leaflet.CircleMarker[] = [];
       for (const projected of visibleProjectedShots) {
         const isSelectedHole = projected.shot.holeNumber === selectedHoleNumber;
         const isActive = projected.shot.id === selectedShot?.id;
@@ -226,6 +240,7 @@ export function RoundShotMap({
         const markerFill = isActive ? "#f8fafc" : lineColor;
         const markerStroke = isActive ? "#0f172a" : "#0f172a";
         const primaryLine = L.polyline([projected.start, projected.end], {
+          interactive: !compact,
           color: lineColor,
           weight: isActive ? 7 : isSelectedHole ? 4 : 3,
           opacity: isSelectedHole ? 0.95 : 0.56,
@@ -245,8 +260,9 @@ export function RoundShotMap({
           weight: 1,
           opacity: isSelectedHole ? 0.38 : 0.24,
           dashArray: "4 6",
+          interactive: false,
         }).addTo(layers);
-        L.circleMarker(projected.end, {
+        const shotMarker = L.circleMarker(projected.end, {
           radius: isActive ? 9 : 7,
           color: markerStroke,
           fillColor: markerFill,
@@ -261,6 +277,7 @@ export function RoundShotMap({
             }
           })
           .addTo(layers);
+        shotMarkers.push(shotMarker);
 
         if (showShotNumbers) {
           L.marker(projected.end, {
@@ -274,6 +291,8 @@ export function RoundShotMap({
           }).addTo(layers);
         }
       }
+      // Keep the next shot's path from intercepting a tap on the preceding endpoint.
+      if (compact) shotMarkers.forEach((marker) => marker.bringToFront());
 
       const selectedBounds = L.latLngBounds([
         ...(showAllHoleShots ? holes.flatMap((hole) => hole.geometry) : selectedHole.geometry),
@@ -304,6 +323,8 @@ export function RoundShotMap({
     showAllHoleShots,
     showShotNumbers,
     visibleProjectedShots,
+    setSelectedShotId,
+    compact,
   ]);
 
   useEffect(() => {
