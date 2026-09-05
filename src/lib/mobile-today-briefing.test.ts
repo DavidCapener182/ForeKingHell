@@ -56,9 +56,20 @@ describe("Today evidence and activity handoffs", () => {
         label: "Add measured shots",
         href: "/import?practicePlanId=saved-plan",
       });
-    expect(todayPlanAction(plan, true)?.label).toBe("Add measured shots");
+    expect(todayPlanAction({ ...plan, status: "awaiting_import" }, "unfinished")).toMatchObject({
+      kind: "active",
+      label: "Resume Range Mode",
+      href: "/practice?planId=saved-plan",
+    });
+    expect(todayPlanAction({ ...plan, status: "awaiting_import" }, "finished")?.label).toBe(
+      "Add measured shots",
+    );
+    expect(todayPlanAction({ ...plan, status: "analysed" }, "unfinished")?.label).toBe(
+      "Review your practice",
+    );
+    expect(todayPlanAction(plan, "finished")?.label).toBe("Add measured shots");
     for (const status of ["match_found", "analysed"])
-      expect(todayPlanAction({ ...plan, status }, true)).toMatchObject({
+      expect(todayPlanAction({ ...plan, status }, "finished")).toMatchObject({
         label: "Review your practice",
         href: "/practice?planId=saved-plan",
       });

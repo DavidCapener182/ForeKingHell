@@ -5,10 +5,16 @@ import type { TodayPracticeData, TodayPracticeShot } from "@/lib/today-session-d
 export type TodayPlanActivity = { id: string; title: string; status: string };
 
 /** Completion and measured review are separate steps; never resume finished activity. */
-export function todayPlanAction(plan: TodayPlanActivity | null, locallyFinished = false) {
+export function todayPlanAction(
+  plan: TodayPlanActivity | null,
+  localActivity: "unfinished" | "finished" | null = null,
+) {
   if (!plan) return null;
   const planHref = `/practice?planId=${encodeURIComponent(plan.id)}`;
-  if (plan.status === "active" && !locallyFinished)
+  if (
+    (plan.status === "active" && localActivity !== "finished") ||
+    (plan.status === "awaiting_import" && localActivity === "unfinished")
+  )
     return {
       kind: "active" as const,
       label: "Resume Range Mode",
@@ -24,7 +30,7 @@ export function todayPlanAction(plan: TodayPlanActivity | null, locallyFinished 
     };
   if (
     ["awaiting_import", "completed"].includes(plan.status) ||
-    (plan.status === "active" && locallyFinished)
+    (plan.status === "active" && localActivity === "finished")
   )
     return {
       kind: "next" as const,

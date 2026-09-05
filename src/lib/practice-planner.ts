@@ -98,6 +98,8 @@ export type PracticeFacilityOptions = {
 };
 
 export type GeneratePracticePlanOptions = {
+  /** Explicit companion handoff; only a club in the golfer's bag can be selected. */
+  focusClub?: string;
   sessionType: PracticeSessionType;
   ballCount?: number | null;
   timeMinutes: number;
@@ -669,7 +671,13 @@ export function buildPracticePriorityList(
   }
 
   return items
-    .sort((left, right) => right.score - left.score || Number(right.roadmap) - Number(left.roadmap))
+    .sort(
+      (left, right) =>
+        Number(right.clubType === options.focusClub) -
+          Number(left.clubType === options.focusClub) ||
+        right.score - left.score ||
+        Number(right.roadmap) - Number(left.roadmap),
+    )
     .slice(0, 10);
 }
 

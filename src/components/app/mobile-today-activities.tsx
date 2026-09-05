@@ -13,8 +13,11 @@ export function MobileTodayActivities({
   plan: TodayPlanActivity | null;
   round: { id: string; courseName: string | null } | null;
 }) {
-  const [local, setLocal] = useState<{ planFinished: boolean; quick: string | null }>({
-    planFinished: false,
+  const [local, setLocal] = useState<{
+    planActivity: "unfinished" | "finished" | null;
+    quick: string | null;
+  }>({
+    planActivity: null,
     quick: null,
   });
   useEffect(() => {
@@ -25,7 +28,12 @@ export function MobileTodayActivities({
         );
         const quick = JSON.parse(localStorage.getItem(`fkh:quick-range:${accountId}`) ?? "null");
         setLocal({
-          planFinished: saved?.planId === plan?.id && saved?.finished === true,
+          planActivity:
+            saved && saved.planId === plan?.id
+              ? saved.finished === true
+                ? "finished"
+                : "unfinished"
+              : null,
           quick:
             quick && ["active", "paused"].includes(quick.state) && typeof quick.focus === "string"
               ? quick.focus
@@ -37,7 +45,7 @@ export function MobileTodayActivities({
     }, 0);
     return () => clearTimeout(timer);
   }, [accountId, plan?.id]);
-  const planAction = todayPlanAction(plan, local.planFinished);
+  const planAction = todayPlanAction(plan, local.planActivity);
   const activePlan = planAction?.kind === "active" ? planAction : null;
   const nextAction = planAction?.kind === "next" ? planAction : null;
   return (

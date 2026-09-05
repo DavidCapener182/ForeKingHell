@@ -8,6 +8,7 @@ import {
   generatePracticePlan,
   getCurrentPracticePlanSummary,
   getSavedPracticePlan,
+  getPracticeImportOptions,
   getPracticePlannerContext,
   savedPracticePlanToPracticePlan,
   selectPracticePlannerInitialSavedPlan,
@@ -16,6 +17,7 @@ import {
 
 type PracticeSearchParams = Promise<{
   planId?: string;
+  club?: string;
   time?: string;
   intent?: string;
   energy?: string;
@@ -38,11 +40,13 @@ export default async function PracticeCompanionPage({
   const options = practiceCompanionOptions(params);
   const requestedPlan = params?.planId ? await getSavedPracticePlan(userId, params.planId) : null;
   if (params?.planId && !requestedPlan) notFound();
-  if (requestedPlan && ["completed", "analysed"].includes(requestedPlan.status)) {
+  if (requestedPlan && ["completed", "analysed", "match_found"].includes(requestedPlan.status)) {
+    const importOptions =
+      requestedPlan.status === "match_found" ? await getPracticeImportOptions(userId) : [];
     return (
       <PageShell>
         <MobileAppShell>
-          <MobileSavedPracticeReview plan={requestedPlan} />
+          <MobileSavedPracticeReview plan={requestedPlan} importOptions={importOptions} />
         </MobileAppShell>
       </PageShell>
     );
@@ -58,7 +62,7 @@ export default async function PracticeCompanionPage({
   if (params?.planId && !currentPlan) notFound();
   const selectedPlan = params?.planId
     ? currentPlan
-    : !explicitSpeedRequest && currentPlan
+    : !explicitSpeedRequest && !options.focusClub && currentPlan
       ? selectPracticePlannerInitialSavedPlan([currentPlan], null)
       : null;
   const initialPlan = selectedPlan
@@ -69,7 +73,7 @@ export default async function PracticeCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-4" data-practice-companion>
         <PracticeCompanionClient
-          key={currentPlan?.id ?? "recommended"}
+          key={selectedPlan?.id ?? `recommended:${options.focusClub ?? "auto"}`}
           accountId={userId}
           context={context}
           initialPlan={initialPlan}
@@ -91,6 +95,9 @@ function practiceCompanionOptions(
   const session = params?.session;
 
   return {
+    focusClub: /^[a-z0-9]{1,12}$/i.test(params?.club ?? "")
+      ? params?.club?.toLowerCase()
+      : undefined,
     sessionType:
       session === "short_game" || session === "putting" || session === "speed" ? session : "range",
     ballCount: [30, 50, 80, 100, 120].includes(balls) ? balls : null,

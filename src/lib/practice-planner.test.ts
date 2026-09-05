@@ -22,6 +22,30 @@ import {
 } from "@/lib/practice-planner";
 
 describe("practice planner", () => {
+  it("honours an explicit low-sample bag club without changing automatic priority scores", () => {
+    const data = context();
+    const options = {
+      sessionType: "range" as const,
+      timeMinutes: 45,
+      energy: "normal" as const,
+      intent: "confidence" as const,
+    };
+    const automatic = buildPracticePriorityList(data, options);
+    expect(automatic[0].clubType).not.toBe("lw");
+    const requested = generatePracticePlan(data, { ...options, focusClub: "lw" });
+    expect(
+      requested.blocks.find((block) => block.title.startsWith("Main priority"))?.clubs,
+    ).toEqual(["lw"]);
+    expect(requested.focusClubs[0]).toBe("lw");
+    expect(
+      buildPracticePriorityList(data, { ...options, focusClub: "lw" }).find(
+        (item) => item.clubType === "lw",
+      )?.score,
+    ).toBe(automatic.find((item) => item.clubType === "lw")?.score);
+    expect(generatePracticePlan(data, { ...options, focusClub: "unknown" }).focusClubs).toEqual(
+      generatePracticePlan(data, options).focusClubs,
+    );
+  });
   it("opens the result linked to the latest import before an older unfinished plan", () => {
     const latestResult = savedPlanRecord({
       id: "latest-result",
