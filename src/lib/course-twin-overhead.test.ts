@@ -39,6 +39,21 @@ describe("mobile overhead replay", () => {
       3,
     );
   });
+  it("keeps mapped hazards and candidate landing points in the plan viewport", () => {
+    const extra: [number, number, number][] = [
+      [100, 0, -150],
+      [200, 0, 180],
+    ];
+    const project = overheadProjection(hole, [], extra);
+    for (const point of extra) {
+      const [x, y] = project(point);
+      expect(x).toBeGreaterThan(0);
+      expect(x).toBeLessThan(320);
+      expect(y).toBeGreaterThan(0);
+      expect(y).toBeLessThan(360);
+    }
+  });
+
   it("fits a wide actual miss inside the frame instead of cropping it", () => {
     const wide = { ...shot, totalEnd: [220, 0, 400] } as CourseTwinReplayShot;
     const project = overheadProjection(hole, [wide]);

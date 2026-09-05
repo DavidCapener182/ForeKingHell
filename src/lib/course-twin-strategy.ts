@@ -8,7 +8,16 @@ import {
   type CourseTwinSurface,
 } from "@/lib/course-twin-surface";
 
+type CourseTwinEvidenceWindow = {
+  basis: "latest-reliable";
+  latestShotAt: string | null;
+  lateralSampleSize: number;
+  lowCarryYd: number | null;
+  highCarryYd: number | null;
+};
+
 export type CourseTwinBagProfile = {
+  evidenceWindow?: CourseTwinEvidenceWindow;
   clubId: string;
   clubType: string;
   sampleSize: number;
@@ -29,6 +38,7 @@ export type CourseTwinBagProfile = {
 };
 
 export type CourseTwinStrategyClub = {
+  evidenceWindow?: CourseTwinEvidenceWindow;
   clubId: string;
   clubType: string;
   sampleSize: number;
@@ -40,7 +50,10 @@ export type CourseTwinStrategyClub = {
   averageRemainingYd: number;
   expectedRiskStrokes: number;
   confidence: "measured" | "developing" | "low_sample";
-  shotModel: Omit<CourseTwinBagProfile, "clubId" | "clubType" | "sampleSize" | "confidenceScore">;
+  shotModel: Omit<
+    CourseTwinBagProfile,
+    "clubId" | "clubType" | "sampleSize" | "confidenceScore" | "evidenceWindow"
+  >;
 };
 
 export type CourseTwinStrategyDocument = {
@@ -106,7 +119,9 @@ export function buildCourseTwinStrategy({
     saferAlternative,
     clubs,
     disclosure:
-      "Landing clouds use measured carry and dispersion from up to 50 trusted full shots per club in the latest 30 days. Hazard probabilities are modelled against mapped polygons and remain estimates, not guarantees.",
+      bag.length > 0 && bag.every((profile) => profile.evidenceWindow?.basis === "latest-reliable")
+        ? "Landing clouds use the same latest reliable full-swing window as Bag, with at least five measured carry and side readings per club. Distribution widths include model minimums. Hazard probabilities remain estimates, not guarantees."
+        : "Landing clouds use measured carry and dispersion from up to 50 trusted full shots per club in the latest 30 days. Hazard probabilities are modelled against mapped polygons and remain estimates, not guarantees.",
   };
 }
 
@@ -173,6 +188,7 @@ function simulateClubAim(
     clubType: profile.clubType,
     sampleSize: profile.sampleSize,
     confidenceScore: profile.confidenceScore,
+    ...(profile.evidenceWindow ? { evidenceWindow: profile.evidenceWindow } : {}),
     carryMedianYd: profile.carryMedianYd,
     aimOffsetYd: round(aimOffsetYd, 1),
     landingCloud,

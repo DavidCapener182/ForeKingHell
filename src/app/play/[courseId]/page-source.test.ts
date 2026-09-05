@@ -51,13 +51,13 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("<Collapsible");
     expect(sceneSource).toContain("<CollapsibleTrigger");
     expect(sceneSource).toContain("<CollapsibleContent");
-    expect(sceneSource).not.toContain("<details");
+    expect(sceneSource).toContain("<details className={mobileStyles.strategyEvidence}>");
   });
 
   it("bounds native selects to the six frame-sensitive Course Twin runtime trays", () => {
     expect(sceneSource.match(/<select\b/g) ?? []).toHaveLength(6);
     for (const control of [
-      "Club plan",
+      "Recommended club",
       'aria-label="Shot type"',
       'aria-label="Club and modelled carry in yards"',
       'aria-label="Putt aim"',

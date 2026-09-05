@@ -12,6 +12,7 @@ import type {
 import { overheadProjection, overheadReplayPosition } from "@/lib/course-twin-overhead";
 import { formatClubType } from "@/lib/club-format";
 import styles from "./course-twin-overhead.module.css";
+import { CourseTwinMobilePlan } from "./course-twin-mobile-plan";
 
 export function CourseTwinMobileOverhead({
   manifest,
@@ -55,8 +56,15 @@ export function CourseTwinMobileOverhead({
   return (
     <section className={styles.screen} data-course-twin-mobile-overhead aria-label="2D Course Twin">
       <header className={styles.header}>
-        <p>{manifest.course.name}</p>
-        <span>2D · Low power</span>
+        <div>
+          <p>{manifest.course.name}</p>
+          <span>Course Twin · map view</span>
+        </div>
+        {onEnable3d ? (
+          <button type="button" onClick={onEnable3d} aria-label="Open balanced 3D course view">
+            3D
+          </button>
+        ) : null}
       </header>
       {rendererUnavailable ? (
         <p className={styles.detail} role="status">
@@ -117,15 +125,23 @@ export function CourseTwinMobileOverhead({
           if (next) navigate(next.holeNumber);
         }}
       >
-        <HolePlayback
-          key={`${hole.holeNumber}:${mode}:${replay?.session.id}`}
-          manifest={manifest}
-          holeIndex={holeIndex}
-          shots={mode === "replay" ? shots : []}
-          replay={mode === "replay" ? replay : null}
-          replayMode={mode === "replay"}
-          initialShotId={query.get("shot")}
-        />
+        {mode === "strategy" && !readOnly ? (
+          <CourseTwinMobilePlan
+            key={`${manifest.course.id}:${hole.holeNumber}`}
+            manifest={manifest}
+            hole={hole}
+          />
+        ) : (
+          <HolePlayback
+            key={`${hole.holeNumber}:${mode}:${replay?.session.id}`}
+            manifest={manifest}
+            holeIndex={holeIndex}
+            shots={mode === "replay" ? shots : []}
+            replay={mode === "replay" ? replay : null}
+            replayMode={mode === "replay"}
+            initialShotId={query.get("shot")}
+          />
+        )}
       </div>
       {!readOnly ? (
         <div className={styles.links}>
@@ -145,7 +161,7 @@ export function CourseTwinMobileOverhead({
         <p>
           {replay && mode === "replay"
             ? replay.disclosure
-            : "Mapped course geometry uses the reference tee. Open Club strategy for your trusted bag evidence."}
+            : "Course geometry uses the reference tee. Estimated outlines are labelled in Plan; hazard comparisons cover mapped surfaces only."}
         </p>
         <p>
           2D uses the saved reconstruction. Terrain-aware 3D simulation can produce different roll
@@ -162,7 +178,6 @@ export function CourseTwinMobileOverhead({
             · {source.licence}
           </p>
         ))}
-        {onEnable3d ? <button onClick={onEnable3d}>Try balanced 3D</button> : null}
       </details>
       <nav className={styles.navigation} aria-label="Hole navigation">
         <button
