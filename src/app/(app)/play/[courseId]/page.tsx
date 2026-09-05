@@ -70,7 +70,9 @@ export default async function CourseTwinPage({
           query.mode === "strategy"
             ? "strategy"
             : query.mode === "replay" || query.sessionId
-              ? "replay"
+              ? replay
+                ? "replay"
+                : "strategy"
               : undefined
         }
         initialHoleNumber={parseHoleNumber(query.hole)}
