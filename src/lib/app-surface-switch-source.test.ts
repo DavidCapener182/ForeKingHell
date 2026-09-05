@@ -24,3 +24,15 @@ describe("application surface switches", () => {
     expect(sources.join("\n")).toContain('href="/surface/companion?next=%2Ftoday"');
   });
 });
+
+describe("grouped mobile surface links", () => {
+  it("uses document navigation rather than prefetch for a surface-changing row", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/app/mobile-primitives.tsx"),
+      "utf8",
+    );
+    expect(source).toContain('href?.startsWith("/surface/")');
+    expect(source).toContain("<AppSurfaceLink");
+    expect(source.indexOf("<AppSurfaceLink")).toBeLessThan(source.indexOf("<Link href={href}"));
+  });
+});

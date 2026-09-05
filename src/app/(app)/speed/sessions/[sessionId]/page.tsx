@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
+import { SpeedSessionCompanion } from "@/app/speed/speed-session-companion";
 import { notFound } from "next/navigation";
 import {
   Children,
@@ -117,6 +119,8 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
 
   const saved = firstSearchParam(resolvedSearchParams.speed_saved);
   const error = firstSearchParam(resolvedSearchParams.speed_error);
+  if ((await getRequestAppSurface()) === "companion")
+    return <SpeedSessionCompanion data={data} saved={saved} error={error} />;
   const peakSummary = data.peakSwingSummary;
   const peakAverageFallback = peakSummary.swingCount === 0 ? data.session.avgSpeedMph : null;
   return (

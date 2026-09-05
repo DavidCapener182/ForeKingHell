@@ -8,6 +8,8 @@ import { PageHeader, PageShell } from "@/components/premium";
 import { getDb } from "@/db/client";
 import { clubs, shots, stockYardages } from "@/db/schema";
 import { formatClubType } from "@/lib/club-format";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
+import { getMobileQuickBag } from "@/lib/mobile-quick-bag-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { isShotEvidenceEligible } from "@/lib/shot-review";
 import { buildShotPatternPoints, summarizeShotPattern } from "@/lib/shot-pattern-chart-data";
@@ -16,27 +18,30 @@ export const dynamic = "force-dynamic";
 
 export default async function QuickBagPage() {
   const userId = await requireCurrentUserId();
-  const clubs = await getQuickBag(userId);
+  const surface = await getRequestAppSurface();
+  const clubs = surface === "companion" ? await getMobileQuickBag() : await getQuickBag(userId);
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-5" data-quick-bag>
-        <MobileLargeTitle title="Quick Bag" />
-        <MobileQuickBag clubs={clubs} accountId={userId} />
-      </MobileAppShell>
-
-      <section className="hidden gap-5 lg:grid" data-quick-bag-desktop>
-        <PageHeader
-          eyebrow={
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              On-course reference
-            </p>
-          }
-          title="Quick Bag"
-          description="Enter a target distance or search your bag to check the latest measured play number, carry range and miss pattern."
-        />
-        <QuickBagClient clubs={clubs} accountId={userId} />
-      </section>
+      {surface === "companion" ? (
+        <MobileAppShell className="gap-5" data-quick-bag>
+          <MobileLargeTitle title="Quick Bag" />
+          <MobileQuickBag clubs={clubs} accountId={userId} />
+        </MobileAppShell>
+      ) : (
+        <section className="grid gap-5" data-quick-bag-desktop>
+          <PageHeader
+            eyebrow={
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                On-course reference
+              </p>
+            }
+            title="Quick Bag"
+            description="Enter a target distance or search your bag to check the latest measured play number, carry range and miss pattern."
+          />
+          <QuickBagClient clubs={clubs} accountId={userId} />
+        </section>
+      )}
     </PageShell>
   );
 }

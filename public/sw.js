@@ -1,5 +1,5 @@
-const CACHE_NAME = "forekinghell-pwa-v7";
-const PAGE_CACHE_NAME = "forekinghell-pwa-pages-v3";
+const CACHE_NAME = "forekinghell-pwa-v8";
+const PAGE_CACHE_NAME = `${CACHE_NAME}-pages`;
 const OFFLINE_SAFE_PAGE_PATHS = new Set(["/login", "/offline", "/privacy"]);
 const PRECACHE_ASSETS = [
   "/offline",
@@ -150,7 +150,8 @@ async function networkFirstPage(request) {
   } catch {
     const cached =
       (OFFLINE_SAFE_PAGE_PATHS.has(url.pathname) ? await cache.match(request) : null) ||
-      (await cache.match("/offline"));
+      (await cache.match("/offline")) ||
+      (await (await caches.open(CACHE_NAME)).match("/offline"));
 
     return (
       cached ||

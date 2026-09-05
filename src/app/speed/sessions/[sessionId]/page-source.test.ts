@@ -98,3 +98,12 @@ describe("speed session desktop-only bundle", () => {
     expect(source).not.toMatch(/\b(?:bg-white|text-slate-|border-slate-|bg-emerald-)/);
   });
 });
+
+describe("speed session companion entry", () => {
+  it("selects a dedicated phone review while retaining the desktop editor", () => {
+    expect(source).toContain("getRequestAppSurface()");
+    expect(source).toContain("<SpeedSessionCompanion data={data} saved={saved} error={error}");
+    expect(source).toContain("action={updateSpeedSessionAction}");
+    expect(source).toContain("action={saveSpeedTransferTestAction}");
+  });
+});

@@ -56,6 +56,7 @@ export function mobileClubEvidence<T extends ClubEvidenceShot>(
     high: touch ? touchSummary.carryP75Yd : stock.latestReliableCarryP75Yd,
     sampleSize: selected.length,
     total: percentile(numbers(selected.map((s) => s.totalYd)), 0.5),
+    totalSampleSize: numbers(selected.map((s) => s.totalYd)).length,
     ballSpeed: average(numbers(selected.map((s) => s.ballSpeedMph))),
     launch: average(numbers(selected.map((s) => s.launchAngleDeg))),
     side: percentile(sides, 0.5),

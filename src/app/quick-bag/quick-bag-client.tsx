@@ -18,6 +18,7 @@ export type QuickBagClub = {
   model: string;
   trustedCarryYd: number | null;
   totalYd?: number | null;
+  totalSampleSize?: number;
   playNumberYd: number | null;
   lowYd: number | null;
   highYd: number | null;
@@ -30,6 +31,7 @@ export type QuickBagClub = {
   confidence: number;
   sampleSize: number;
   latestEvidenceDate: string | null;
+  evidenceKind?: "full" | "touch";
 };
 
 type QuickBagMode = "target" | "club";
@@ -72,6 +74,11 @@ export function QuickBagClient({ clubs, accountId }: { clubs: QuickBagClub[]; ac
 
   useEffect(() => {
     try {
+      // The companion snapshot contains a consistent, newer trusted evidence window.
+      const existing = JSON.parse(
+        window.localStorage.getItem(`fkh:quick-bag:${accountId}`) ?? "null",
+      );
+      if (existing?.version === 4 && existing.accountId === accountId) return;
       window.localStorage.setItem(
         `fkh:quick-bag:${accountId}`,
         JSON.stringify({ version: 3, storedAt: new Date().toISOString(), clubs }),

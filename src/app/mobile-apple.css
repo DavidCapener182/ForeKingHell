@@ -1413,4 +1413,23 @@
     opacity: 0.8;
     border-radius: 0.25rem 0.25rem 0 0;
   }
+  [data-app-surface="companion"] .mobile-quick-bag-club {
+    border-bottom: 1px solid var(--border);
+  }
+  [data-app-surface="companion"] .mobile-quick-bag-club:last-child {
+    border-bottom: 0;
+  }
+  [data-app-surface="companion"] .mobile-quick-bag-club summary {
+    list-style: none;
+    cursor: pointer;
+    border: 0;
+  }
+  [data-app-surface="companion"] .mobile-quick-bag-club summary::-webkit-details-marker {
+    display: none;
+  }
+  [data-app-surface="companion"] .mobile-quick-bag-evidence {
+    display: grid;
+    gap: var(--mobile-space-standard);
+    padding: 0 var(--mobile-space-standard) var(--mobile-space-standard);
+  }
 }

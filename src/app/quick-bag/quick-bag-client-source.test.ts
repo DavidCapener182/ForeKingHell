@@ -56,12 +56,15 @@ describe("Quick Bag companion composition", () => {
 });
 
 describe("Quick Bag responsive route", () => {
-  it("renders an explicit desktop surface alongside the mobile companion", () => {
+  it("renders only the selected surface so hidden clients cannot overwrite the companion cache", () => {
     expect(page).toContain("<MobileAppShell");
     expect(page).toContain("data-quick-bag-desktop");
-    expect(page).toContain('<section className="hidden gap-5 lg:grid"');
+    expect(page).toContain('<section className="grid gap-5"');
     expect(page).toContain("<PageHeader");
     expect(page.match(/<QuickBagClient/g)).toHaveLength(1);
     expect(page).toContain("<MobileQuickBag");
+    expect(page).toContain('surface === "companion"');
+    expect(page).toContain("await getMobileQuickBag()");
+    expect(source).toContain("existing?.version === 4");
   });
 });
