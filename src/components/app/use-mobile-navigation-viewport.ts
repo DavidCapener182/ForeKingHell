@@ -13,7 +13,7 @@ import {
 } from "@/lib/mobile-navigation-scroll";
 
 export function useMobileNavigationViewport(location: string) {
-  const [compactTitleVisible, setCompactTitleVisible] = useState(false);
+  const [headingState, setHeadingState] = useState({ location: "", title: "", visible: false });
   const pending = useRef<{ destination: string; top: number } | null>(null);
   const entryKey = useRef<string | null>(null);
   const lastLocation = useRef<string | null>(null);
@@ -101,12 +101,16 @@ export function useMobileNavigationViewport(location: string) {
         (element) => element.getClientRects().length > 0,
       );
       const bar = document.querySelector<HTMLElement>("[aria-label='Mobile app bar']");
-      setCompactTitleVisible(
-        Boolean(
-          heading &&
-          bar &&
-          heading.getBoundingClientRect().bottom <= bar.getBoundingClientRect().bottom,
-        ),
+      const title = heading?.textContent?.trim() ?? "";
+      const visible = Boolean(
+        heading &&
+        bar &&
+        heading.getBoundingClientRect().bottom <= bar.getBoundingClientRect().bottom,
+      );
+      setHeadingState((previous) =>
+        previous.location === location && previous.title === title && previous.visible === visible
+          ? previous
+          : { location, title, visible },
       );
     };
     const queueTitle = () => {
@@ -141,7 +145,7 @@ export function useMobileNavigationViewport(location: string) {
     else if (request) pending.current = null;
     const mutation = new MutationObserver(queueTitle);
     const resize = new ResizeObserver(queueTitle);
-    mutation.observe(document.body, { childList: true, subtree: true });
+    mutation.observe(document.body, { childList: true, characterData: true, subtree: true });
     resize.observe(document.body);
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", queueTitle);
@@ -162,5 +166,9 @@ export function useMobileNavigationViewport(location: string) {
     };
   }, [location, remember]);
 
-  return { compactTitleVisible, prepareNavigation };
+  return {
+    compactTitleVisible: headingState.location === location && headingState.visible,
+    compactTitle: headingState.location === location ? headingState.title : "",
+    prepareNavigation,
+  };
 }

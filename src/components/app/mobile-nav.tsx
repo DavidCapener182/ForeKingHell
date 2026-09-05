@@ -67,7 +67,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
     ? requestedSettingsSection
     : null;
   const profileLabel = profile?.displayName || profile?.username || "Profile";
-  const pageTitle = settingsSection
+  const routeTitle = settingsSection
     ? settingsSections.find((section) => section.value === settingsSection)!.label
     : savedPlanId
       ? "Practice plan"
@@ -88,7 +88,10 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
   const moreCloseRef = useRef<HTMLButtonElement>(null);
   const search = params.toString();
   const location = `${pathname}${search ? `?${search}` : ""}`;
-  const { compactTitleVisible, prepareNavigation } = useMobileNavigationViewport(location);
+  const { compactTitle, compactTitleVisible, prepareNavigation } =
+    useMobileNavigationViewport(location);
+  const pageTitle =
+    backNavigation && !settingsSection && !savedPlanId ? compactTitle || routeTitle : routeTitle;
   const normalizedQuery = query.trim().toLowerCase();
   const filteredGroups = useMemo(() => {
     if (!normalizedQuery) {
