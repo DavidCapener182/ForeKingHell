@@ -13,6 +13,7 @@ import { getDb } from "@/db/client";
 import { isTrackedClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
+import { getMobileClubNeighbours } from "@/lib/mobile-club-neighbours-data";
 import { type AnalysisShot } from "@/app/bag/[clubId]/club-analysis-tabs";
 import { ClubDetailClient } from "@/app/bag/[clubId]/club-detail-client";
 
@@ -27,9 +28,10 @@ type PageProps = {
 export default async function ClubDetailPage({ params }: PageProps) {
   const { clubId } = await params;
   const surface = await getRequestAppSurface();
-  const [club, featureData] = await Promise.all([
+  const [club, featureData, neighbours] = await Promise.all([
     getClubDetail(clubId),
     surface === "workbench" ? getFeatureIdeasData() : Promise.resolve(null),
+    surface === "companion" ? getMobileClubNeighbours() : Promise.resolve([]),
   ]);
 
   if (!club) {
@@ -54,7 +56,7 @@ export default async function ClubDetailPage({ params }: PageProps) {
           </Button>
         </div>
 
-        <ClubDetailClient club={club} companion={surface === "companion"}>
+        <ClubDetailClient club={club} companion={surface === "companion"} neighbours={neighbours}>
           {featureData ? <BagFeaturePanel data={featureData} /> : null}
         </ClubDetailClient>
       </DesktopWorkbenchLayout>
@@ -79,6 +81,8 @@ async function getClubDetail(clubId: string) {
     db
       .select({
         id: shots.id,
+        sessionId: sessions.id,
+        sessionTitle: sessions.courseName,
         shotNumber: shots.shotNumber,
         shotAt: shots.shotAt,
         carryYd: shots.carryYd,
@@ -117,6 +121,9 @@ async function getClubDetail(clubId: string) {
 
   const analysisShots: AnalysisShot[] = shotRows.map((shot) => ({
     id: shot.id,
+    sessionId: shot.sessionId,
+    sessionTitle:
+      shot.sessionTitle ?? (shot.sessionType === "range" ? "Range session" : "Measured session"),
     shotNumber: shot.shotNumber,
     shotAt: shot.shotAt.toISOString(),
     carryYd: shot.carryYd,

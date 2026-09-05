@@ -210,11 +210,12 @@ describe("SessionTimeline golf history", () => {
     expect(historySource).toContain("formatRoundScore");
     expect(historySource).toContain("recordedScores.length");
     expect(historySource).toContain("importedEvidence");
-    expect(reviewSource).toContain("ResultHero");
+    expect(reviewSource).toContain("mobileSessionVerdict(comparisons)");
+    expect(reviewSource).not.toContain("ResultHero");
     expect(reviewSource).toContain("ConnectedMetricBar");
     expect(reviewSource).toContain("data-plan-versus-actual");
     expect(reviewSource).toContain("<Progress");
-    expect(reviewSource).toContain("<ButtonGroup");
+    expect(reviewSource).toContain("<MobileGroupedList>");
     expect(reviewSource).toContain("MobileShotPatternCharts");
     expect(mobileChartSource).toContain("data-shot-detail-drawer");
     expect(mobileChartSource).toContain("<Drawer");

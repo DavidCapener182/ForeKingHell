@@ -30,12 +30,13 @@ describe("session performance report hierarchy", () => {
 
   it("keeps the mobile composition focused on the requested seven outcomes", () => {
     const mobile = source.match(/<MobileAppShell[\s\S]*?<\/MobileAppShell>/)?.[0] ?? "";
-    expect(mobile).toContain("<ResultHero");
+    expect(mobile).not.toContain("<ResultHero");
+    expect(mobile).toContain('aria-label="Session verdict"');
     expect(mobile).toContain("data-mobile-primary-chart");
     expect(mobile).toContain("<MobileMetricStory");
-    expect(mobile).toContain('label="What improved"');
-    expect(mobile).toContain('label="What needs work"');
-    expect(mobile).toContain("Build next plan");
+    expect(mobile).toContain('label="Best signal"');
+    expect(mobile).toContain('"Main problem" : "Next focus"');
+    expect(mobile).toContain("href={sessionPractice}");
     expect(mobile).not.toContain("<PlanVersusActual");
     expect(mobile).not.toContain("<ClubSummary");
     expect(mobile).not.toContain("<EvidenceDisclosure");

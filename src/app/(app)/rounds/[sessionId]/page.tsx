@@ -1691,7 +1691,7 @@ function MobileRoundReviewSections({
           <Link
             href={`/surface/workbench?next=${encodeURIComponent(`${baseHref}?view=corrections`)}`}
           >
-            Open shot correction table
+            Advanced shot correction · Desktop
           </Link>
         </Button>
       ) : null}

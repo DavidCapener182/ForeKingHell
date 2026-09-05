@@ -12,16 +12,21 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { MobileLargeTitle } from "@/components/app/mobile-screen";
+import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
 import { MobileMetricStory } from "@/components/app/mobile-metric-story";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { LazyMobileShotPatternCharts as MobileShotPatternCharts } from "@/components/app/lazy-mobile-shot-pattern-charts";
-import { ResultHero } from "@/components/app/result-hero";
+import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
+import {
+  mobileSessionMetrics,
+  sessionFocusClub,
+  mobileSessionVerdict,
+  sessionPracticeHref,
+} from "@/lib/mobile-session-review";
 import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -70,10 +75,12 @@ export default async function PracticeSessionReviewPage({
   const rawShots = data.rawShots.filter((shot) => shot.sessionId === sessionId);
   const patternPoints = buildShotPatternPoints(rawShots);
   const clubs = shotPatternClubs(patternPoints);
-  const preferredClub =
-    plan?.comparisonSummary && plan.blocks[0]?.clubs[0]
-      ? plan.blocks[0].clubs[0]
-      : (remaining?.clubType ?? patternPoints[0]?.clubType ?? null);
+  const preferredClub = sessionFocusClub(
+    plan?.comparisonSummary ? plan.blocks[0]?.clubs[0] : null,
+    remaining?.clubType,
+    shots.map((shot) => shot.clubType),
+    patternPoints.map((point) => point.clubType),
+  );
   const trustedFocusPoints = patternPoints.filter(
     (point) => point.trusted && (!preferredClub || point.clubType === preferredClub),
   );
@@ -115,43 +122,15 @@ export default async function PracticeSessionReviewPage({
   ];
 
   const focusShots = shots.filter((shot) => !preferredClub || shot.clubType === preferredClub);
-  const averageMetric = (
-    key: "ballSpeedMph" | "clubSpeedMph" | "launchAngleDeg" | "smashFactor",
-  ) => {
-    const values = focusShots
-      .map((shot) => shot[key])
-      .filter((value): value is number => value != null && Number.isFinite(value));
-    return values.length
-      ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(
-          key === "smashFactor" ? 2 : 1,
-        )
-      : null;
-  };
-  const mobileMetrics = [
-    ...(patternSummary.medianCarryYd != null
-      ? [
-          {
-            label: "carry",
-            value: String(Math.round(patternSummary.medianCarryYd)),
-            unit: "yd",
-            detail: "Median trusted carry",
-          },
-        ]
-      : []),
-    ...(
-      [
-        ["Ball speed", "ballSpeedMph", "mph"],
-        ["Club speed", "clubSpeedMph", "mph"],
-        ["Launch", "launchAngleDeg", "°"],
-        ["Smash", "smashFactor", ""],
-      ] as const
-    ).flatMap(([label, key, unit]) => {
-      const value = averageMetric(key);
-      return value == null
-        ? []
-        : [{ label, value, unit, detail: "Average of available trusted readings" }];
-    }),
-  ];
+  const mobileMetrics = mobileSessionMetrics(focusShots);
+  const mobileSessionTitle =
+    rawShots[0]?.courseName ??
+    (clubs.length === 1 ? `${clubs[0].label} practice` : "Practice session");
+  const sessionPractice = sessionPracticeHref(
+    remaining?.clubType ?? null,
+    remaining?.clubLabel ?? null,
+  );
+
   return (
     <PageShell>
       {surface === "workbench" ? (
@@ -237,86 +216,82 @@ export default async function PracticeSessionReviewPage({
       {surface === "companion" ? (
         <MobileAppShell className="gap-6" data-practice-session-review>
           <MobileLargeTitle
-            title="Session review"
+            title={mobileSessionTitle}
             eyebrow={data.dateLabel}
             detail={`${rawShots.length} shots · ${clubList} · ${source}`}
           />
-          <ResultHero
-            eyebrow="Session verdict"
-            title={verdict.label}
-            summary={
-              <div className="grid gap-2">
-                <p className="font-semibold text-foreground">{data.overall.title}</p>
-                <p>{data.overall.summary}</p>
-                <p className="text-xs">
-                  {data.dateLabel} · {source} · {clubList} ·{" "}
-                  {plan ? "Plan linked" : "No linked plan"}
-                </p>
-              </div>
-            }
-            confidence={{
-              label: `${sessionConfidence.label} confidence`,
-              tone: sessionConfidence.label === "Low" ? "outline" : "secondary",
-            }}
-            className={verdict.mobileClassName}
-          />
-
-          <Card className="gap-3 py-3" data-mobile-primary-chart>
-            <CardHeader className="px-3">
-              <CardTitle>Dispersion</CardTitle>
-              <CardDescription>
-                Tap a shot to inspect it. Switch to Flight for ball shape.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-3">
-              <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
-            </CardContent>
-          </Card>
-
+          <section className="mobile-section" aria-label="Session verdict">
+            <p className="mobile-type-footnote text-muted-foreground">Session verdict</p>
+            <h2 className="mobile-type-title2">{mobileSessionVerdict(comparisons)}</h2>
+            <MobileStatus
+              label={`${sessionConfidence.label} confidence · ${shots.length} trusted shots`}
+              tone={sessionConfidence.label === "Low" ? "attention" : "neutral"}
+            />
+            <details>
+              <summary className="mobile-type-callout flex min-h-11 items-center text-primary">
+                Comparison evidence
+              </summary>
+              <p className="mobile-type-callout text-muted-foreground">{data.overall.summary}</p>
+              <p className="mobile-type-footnote mt-2 text-muted-foreground">
+                {shots.length} of {rawShots.length} imported shots used. Full-shot comparisons use
+                prior evidence for the same clubs.
+              </p>
+            </details>
+          </section>
           <MobileMetricStory
             metrics={mobileMetrics}
-            context={`${preferredClub ? clubLabel(preferredClub) : "Selected club"} · ${focusShots.length} trusted shots`}
+            context={`${preferredClub ? clubLabel(preferredClub) : "Session"} · ${focusShots.length} trusted shots`}
           />
           <Button asChild variant="outline" className="min-h-12">
             <Link href={`/shots?sessionId=${sessionId}`}>View shots</Link>
           </Button>
-
-          <Card size="sm">
-            <CardHeader>
-              <CardTitle>What changed</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-0 overflow-hidden rounded-xl border p-0">
-              <MobileFinding
-                icon={TrendingUp}
-                label="What improved"
-                title={improved?.clubLabel ?? "Baseline built"}
+          <MobileSection title="What changed">
+            <MobileGroupedList>
+              <MobileListRow
+                label="Best signal"
+                value={improved?.clubLabel ?? "Baseline"}
                 detail={
                   improved?.summary ??
-                  "There is no prior like-for-like baseline strong enough for an improvement claim."
+                  "No supported improvement yet. Repeat the same measured block to build a comparison."
                 }
-                tone="positive"
               />
-              <Separator />
-              <MobileFinding
-                icon={TrendingDown}
-                label="What needs work"
-                title={remaining?.clubLabel ?? "Retest"}
+              <MobileListRow
+                label={remaining?.verdict === "worse" ? "Main problem" : "Next focus"}
+                value={remaining?.clubLabel ?? "Build evidence"}
                 detail={
-                  remaining?.summary ?? "Repeat the same measured block before changing focus."
+                  remaining?.summary ??
+                  "There is not enough comparable evidence to identify a weakness."
                 }
-                tone="negative"
               />
-            </CardContent>
-          </Card>
-
-          <ButtonGroup className="w-full">
-            <Button asChild className="min-h-12 flex-1 rounded-xl text-base">
-              <Link href="/practice?intent=latest_weakness">
-                Build next plan
-                <ArrowRight className="ml-2 size-4" aria-hidden />
+            </MobileGroupedList>
+          </MobileSection>
+          <MobileSection title="Next practice">
+            <p className="mobile-type-callout text-muted-foreground">
+              {remaining
+                ? `Work on ${remaining.clubLabel} control, then import measured shots to check the result.`
+                : "Repeat a measured session before choosing a new focus."}
+            </p>
+            <Button asChild className="min-h-12">
+              <Link href={sessionPractice}>
+                {remaining ? `Practise ${remaining.clubLabel}` : "Choose practice"}
+                <ArrowRight className="size-4" aria-hidden />
               </Link>
             </Button>
-          </ButtonGroup>
+            {plan ? (
+              <MobileGroupedList>
+                <MobileListRow
+                  label="Linked practice"
+                  detail={plan.title}
+                  href={`/practice?planId=${plan.id}`}
+                />
+              </MobileGroupedList>
+            ) : null}
+          </MobileSection>
+          <MobileSection title="Shot pattern">
+            <div data-mobile-primary-chart>
+              <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
+            </div>
+          </MobileSection>
         </MobileAppShell>
       ) : null}
     </PageShell>
@@ -660,40 +635,6 @@ function EvidenceFact({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 truncate font-medium" title={value}>
         {value}
       </dd>
-    </div>
-  );
-}
-
-function MobileFinding({
-  icon: Icon,
-  label,
-  title,
-  detail,
-  tone,
-}: {
-  icon: typeof TrendingUp;
-  label: string;
-  title: string;
-  detail: string;
-  tone: "positive" | "negative";
-}) {
-  return (
-    <div className="flex gap-3 p-3">
-      <span
-        className={cn(
-          "grid size-9 shrink-0 place-items-center rounded-full",
-          tone === "positive" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700",
-        )}
-      >
-        <Icon className="size-4" aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          {label}
-        </p>
-        <p className="mt-0.5 font-semibold">{title}</p>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
-      </div>
     </div>
   );
 }

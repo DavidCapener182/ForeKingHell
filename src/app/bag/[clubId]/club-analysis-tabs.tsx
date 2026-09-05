@@ -39,6 +39,8 @@ import { selectStockYardageShots } from "@/lib/stock-yardage";
 import { cn } from "@/lib/utils";
 
 export type AnalysisShot = {
+  sessionId?: string;
+  sessionTitle?: string | null;
   id: string;
   shotNumber: number | null;
   shotAt: string;

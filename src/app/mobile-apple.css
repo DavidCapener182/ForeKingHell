@@ -1375,4 +1375,42 @@
     appearance: none;
     margin: 0;
   }
+
+  [data-app-surface="companion"] .mobile-round-history-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--mobile-space-standard);
+    row-gap: var(--mobile-space-compact);
+    padding: 1rem 2rem 1rem 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  [data-app-surface="companion"] .mobile-round-history-row:last-child {
+    border-bottom: 0;
+  }
+  [data-app-surface="companion"] .mobile-round-history-row:active {
+    background: var(--secondary);
+  }
+  [data-app-surface="companion"] .mobile-round-trend {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    padding-block: 0.5rem;
+  }
+  [data-app-surface="companion"] .mobile-round-trend-point {
+    display: flex;
+    flex: 1 0 2.75rem;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 6.5rem;
+    border-radius: var(--mobile-radius-sm);
+  }
+  [data-app-surface="companion"] .mobile-round-trend-bar {
+    width: 60%;
+    background: var(--primary);
+    opacity: 0.8;
+    border-radius: 0.25rem 0.25rem 0 0;
+  }
 }

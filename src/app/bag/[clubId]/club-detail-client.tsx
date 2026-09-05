@@ -1,6 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import {
+  mobileClubEvidence,
+  mobileClubNeighbours,
+  type ClubNeighbour,
+} from "@/lib/mobile-club-evidence";
 import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
 import { type ReactNode, useMemo, useState } from "react";
@@ -112,6 +117,7 @@ export function ClubDetailClient({
   club,
   children,
   companion = false,
+  neighbours = [],
 }: {
   club: {
     id: string;
@@ -122,6 +128,7 @@ export function ClubDetailClient({
   };
   children?: ReactNode;
   companion?: boolean;
+  neighbours?: ClubNeighbour[];
 }) {
   const accent = clubAccent(club.type);
   const clubModelName = formatClubModelName(club);
@@ -180,9 +187,18 @@ export function ClubDetailClient({
   );
 
   if (companion) {
-    const carry = isShortGameTouch ? touch.carryMedianYd : stock.latestReliableCarryYd;
-    const low = isShortGameTouch ? touch.carryP25Yd : stock.latestReliableCarryP25Yd;
-    const high = isShortGameTouch ? touch.carryP75Yd : stock.latestReliableCarryP75Yd;
+    const mobileTouch = isShortGameTouch && !isSandWedge;
+    const evidence = mobileClubEvidence(selectedShots, club.type, mobileTouch);
+    const { carry, low, high } = evidence;
+    const adjacent = mobileTouch
+      ? []
+      : mobileClubNeighbours(neighbours, { id: club.id, type: club.type, carry });
+    const miss =
+      evidence.side === null
+        ? "Not measured"
+        : Math.abs(evidence.side) < 4
+          ? "Near target"
+          : `${Math.round(Math.abs(evidence.side))} yd ${evidence.side > 0 ? "right" : "left"}`;
     const value = (number: number | null) => (number == null ? "—" : String(Math.round(number)));
     return (
       <div className="grid gap-6" data-mobile-club-detail>
@@ -193,7 +209,7 @@ export function ClubDetailClient({
         <MobileMetric
           value={value(carry)}
           unit="yd"
-          label={isShortGameTouch ? "touch carry" : "carry"}
+          label={mobileTouch ? "touch carry" : "carry"}
           detail={
             low != null && high != null
               ? `${Math.round(low)}–${Math.round(high)} yd usual range`
@@ -201,8 +217,12 @@ export function ClubDetailClient({
           }
         />
         <MobileStatus
-          label={stock.label}
-          tone={stock.confidenceScore >= 75 ? "positive" : "attention"}
+          label={
+            mobileTouch
+              ? `${evidence.sampleSize} touch shots · distance varies by intent`
+              : `${stock.confidenceScore >= 75 && stock.sampleSize >= 10 ? "High" : stock.confidenceScore >= 50 ? "Moderate" : "Building"} confidence`
+          }
+          tone={!mobileTouch && stock.confidenceScore >= 75 ? "positive" : "attention"}
         />
         <Button asChild className="min-h-14 rounded-2xl text-base">
           <Link
@@ -213,26 +233,63 @@ export function ClubDetailClient({
         </Button>
         <MobileSection title="Your numbers">
           <MobileGroupedList>
-            <MobileListRow label="Total distance" value={`${value(stock.totalMedianYd)} yd`} />
-            <MobileListRow label="Ball speed" value={`${value(stock.averageBallSpeedMph)} mph`} />
             <MobileListRow
-              label="Launch"
+              label="Total distance"
+              value={evidence.total === null ? "Not measured" : `${value(evidence.total)} yd`}
+            />
+            <MobileListRow
+              label="Ball speed"
               value={
-                stock.averageLaunchAngleDeg == null
-                  ? "—"
-                  : `${stock.averageLaunchAngleDeg.toFixed(1)}°`
+                evidence.ballSpeed === null ? "Not measured" : `${value(evidence.ballSpeed)} mph`
               }
             />
             <MobileListRow
+              label="Launch"
+              value={evidence.launch == null ? "Not measured" : `${evidence.launch.toFixed(1)}°`}
+            />
+            <MobileListRow
               label="Usual miss"
-              value={typicalMiss.label}
-              detail={typicalMiss.detail}
+              value={miss}
+              detail={
+                evidence.sideSampleSize
+                  ? `Median side from ${evidence.sideSampleSize} measured shots`
+                  : "Side data is needed to identify a usual miss"
+              }
             />
             <MobileListRow
               label="Sample"
-              value={`${stock.latestReliableSampleSize} trusted shots`}
-              detail={`Latest evidence · ${latestShotDate}`}
+              value={`${evidence.sampleSize} ${mobileTouch ? "touch" : "trusted full"} shots`}
+              detail={
+                mobileTouch
+                  ? "Touch shots stay separate from full-swing yardages"
+                  : "Latest reliable carry window; middle-half range"
+              }
             />
+          </MobileGroupedList>
+        </MobileSection>
+        <MobileSection title="Evidence">
+          <MobileGroupedList>
+            <MobileListRow
+              label="Last verified"
+              value={evidence.verifiedAt ? formatDate(evidence.verifiedAt) : "No trusted evidence"}
+              detail="Latest shot included in this distance sample"
+            />
+            <MobileListRow
+              label="Dispersion"
+              value={
+                evidence.sideLow === null || evidence.sideHigh === null
+                  ? "Not measured"
+                  : `${Math.round(evidence.sideHigh - evidence.sideLow)} yd wide`
+              }
+              detail="Middle half of measured lateral results; not a full miss envelope"
+            />
+            {!mobileTouch ? (
+              <MobileListRow
+                label="Stock confidence"
+                value={`${stock.confidenceScore}%`}
+                detail="Existing stock evidence score"
+              />
+            ) : null}
           </MobileGroupedList>
         </MobileSection>
         <MobileSection title="Current trend">
@@ -251,14 +308,63 @@ export function ClubDetailClient({
             />
           </MobileGroupedList>
         </MobileSection>
-        <MobileGroupedList label="Club evidence">
-          <MobileListRow
-            label="Gapping neighbours"
-            detail="Compare this club with the rest of your bag"
-            href="/bag"
-          />
-          <MobileListRow label="Recent shots and sessions" href={`/shots?club=${club.type}`} />
-        </MobileGroupedList>
+        {isSandWedge && touch.sampleSize > 0 ? (
+          <MobileSection title="Short-game touch">
+            <MobileGroupedList>
+              <MobileListRow
+                label="Touch carry"
+                value={`${value(touch.carryMedianYd)} yd`}
+                detail={`${touch.sampleSize} pitch and chip shots · separate from the full-swing carry above`}
+              />
+            </MobileGroupedList>
+          </MobileSection>
+        ) : null}
+        <MobileSection title="Gapping neighbours">
+          <MobileGroupedList label="Club evidence">
+            {adjacent.length ? (
+              adjacent.map((neighbour) => (
+                <MobileListRow
+                  key={neighbour.id}
+                  label={formatClubType(neighbour.type)}
+                  value={`${Math.round(neighbour.carry)} yd`}
+                  detail={`${Math.round(Math.abs(neighbour.gap))} yd ${neighbour.gap > 0 ? "longer" : neighbour.gap === 0 ? "gap · overlaps this club" : "shorter"} · latest reliable carry`}
+                  href={`/bag/${neighbour.id}`}
+                />
+              ))
+            ) : (
+              <MobileListRow
+                label="Gapping neighbours"
+                detail={
+                  mobileTouch
+                    ? "Compare full-swing clubs in your bag; touch distances depend on intent"
+                    : "More trusted club distances are needed to compare gaps"
+                }
+                href="/bag"
+              />
+            )}
+            <MobileListRow label="Recent shots and sessions" href={`/shots?club=${club.type}`} />
+          </MobileGroupedList>
+        </MobileSection>
+        <MobileSection title="Recent evidence">
+          <MobileGroupedList>
+            {evidence.sessions.length ? (
+              evidence.sessions.map((session) => (
+                <MobileListRow
+                  key={session.id}
+                  label={session.title ?? "Measured session"}
+                  detail={`${formatDate(session.date)} · ${session.shots} ${session.shots === 1 ? "shot" : "shots"} in this distance sample`}
+                  href={session.href}
+                />
+              ))
+            ) : (
+              <MobileListRow
+                label="No linked trusted sessions"
+                detail="Import a measured session to establish this club’s evidence"
+                href="/import"
+              />
+            )}
+          </MobileGroupedList>
+        </MobileSection>
         <details>
           <summary className="flex min-h-12 items-center text-primary font-semibold">
             View analytics

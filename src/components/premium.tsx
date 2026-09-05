@@ -27,6 +27,7 @@ import {
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
+  DrawerClose,
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
@@ -441,7 +442,12 @@ export function MobileFilterSheet({
         </DrawerTrigger>
         <DrawerContent className="max-h-[86dvh]">
           <DrawerHeader className="text-left">
-            <DrawerTitle>{label}</DrawerTitle>
+            <div className="flex items-center justify-between gap-3">
+              <DrawerTitle>{label}</DrawerTitle>
+              <DrawerClose className="min-h-11 min-w-11 px-2 text-sm font-semibold text-primary">
+                Done
+              </DrawerClose>
+            </div>
             <DrawerDescription>Refine the current view without leaving the page.</DrawerDescription>
           </DrawerHeader>
           <ScrollArea className="overflow-y-auto px-4 pb-[calc(7rem+env(safe-area-inset-bottom))]">

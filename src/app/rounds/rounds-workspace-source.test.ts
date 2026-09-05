@@ -15,7 +15,7 @@ const desktopRoundRows = source.slice(
 describe("rounds desktop workspace source", () => {
   it("renders concise mobile rows and progressively discloses older rounds", () => {
     expect(mobileSource).toContain("export function RoundsMobileList");
-    expect(mobileSource).toContain('label="Round type"');
+    expect(mobileSource).toContain('ariaLabel="Round type"');
     expect(mobileSource).toContain('label="Search and data filters"');
     expect(mobileSource).toContain("const recentRounds = filteredRounds.slice(0, 10)");
     expect(mobileSource).toContain("const olderRounds = filteredRounds.slice(10)");
