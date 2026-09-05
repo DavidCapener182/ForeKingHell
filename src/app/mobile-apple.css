@@ -1432,4 +1432,134 @@
     gap: var(--mobile-space-standard);
     padding: 0 var(--mobile-space-standard) var(--mobile-space-standard);
   }
+  /* Companion Progress keeps the story in open content, with disclosure at the point of use. */
+  .mobile-progress-screen {
+    display: grid;
+    gap: var(--mobile-space-large, 1.5rem);
+    min-width: 0;
+  }
+  .mobile-progress-overview {
+    display: grid;
+    gap: var(--mobile-space-standard, 1rem);
+  }
+  .mobile-progress-comparison {
+    display: grid;
+    gap: var(--mobile-space-compact, 0.5rem);
+    padding-block: 0.5rem;
+  }
+  .mobile-progress-disclosure {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--ios-tint, var(--primary));
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  summary.mobile-progress-disclosure::after {
+    content: "+";
+    margin-left: auto;
+    padding-left: 0.75rem;
+  }
+  details[open] > summary.mobile-progress-disclosure::after {
+    content: "−";
+  }
+  summary.mobile-progress-disclosure::-webkit-details-marker {
+    display: none;
+  }
+  .mobile-progress-goal {
+    display: grid;
+    gap: 0.75rem;
+    padding-block: 1rem;
+    border-bottom: 1px solid var(--mobile-separator, var(--border));
+  }
+  .mobile-progress-goal progress {
+    display: block;
+    width: 100%;
+    height: 6px;
+    border: 0;
+    border-radius: 99px;
+    appearance: none;
+    overflow: hidden;
+    background: var(--secondary);
+    accent-color: var(--ios-tint, var(--primary));
+  }
+  .mobile-progress-goal progress::-webkit-progress-bar {
+    background: var(--secondary);
+  }
+  .mobile-progress-goal progress::-webkit-progress-value {
+    background: var(--ios-tint, var(--primary));
+    border-radius: 99px;
+  }
+  .mobile-progress-goal progress::-moz-progress-bar {
+    background: var(--ios-tint, var(--primary));
+    border-radius: 99px;
+  }
+  .mobile-progress-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 180px;
+  }
+
+  /* Settings use the companion's navigation and save above its persistent tabs. */
+  .mobile-settings-screen [data-dirty-form-bar] {
+    bottom: calc(
+      var(--mobile-tab-height) + env(safe-area-inset-bottom, 0px) + var(--mobile-space-compact)
+    );
+    box-shadow: none;
+    border-color: var(--mobile-separator);
+  }
+  [data-mobile-keyboard="open"] .mobile-settings-screen [data-dirty-form-bar] {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--mobile-space-compact));
+  }
+  .mobile-settings-screen [data-dirty-form-bar] button {
+    min-height: 44px;
+  }
+  .mobile-settings-screen > div > .mt-5 {
+    margin-top: 0;
+  }
+  .mobile-settings-desktop > summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--ios-link);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .mobile-settings-desktop > summary::after {
+    content: "+";
+    margin-left: auto;
+  }
+  .mobile-settings-desktop[open] > summary::after {
+    content: "−";
+  }
+  .mobile-settings-desktop > summary::-webkit-details-marker {
+    display: none;
+  }
+  .mobile-settings-desktop > div {
+    padding-top: var(--mobile-space-standard);
+  }
+  .mobile-settings-screen :where(input, textarea, [role="combobox"]) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  [data-route-error-state] [data-app-error-state] {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--mobile-label);
+    padding: 1rem 0;
+  }
+  [data-route-error-state] h1 {
+    font-size: 22px;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+  [data-route-error-state] [data-slot="alert-description"] {
+    color: var(--mobile-secondary-label);
+    font-size: 15px;
+  }
 }

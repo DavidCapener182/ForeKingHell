@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/settings/page.tsx"), "utf8");
+const sectionsSource = readFileSync(join(process.cwd(), "src/lib/settings-sections.ts"), "utf8");
 const actionsSource = readFileSync(join(process.cwd(), "src/app/settings/actions.ts"), "utf8");
 const notificationActionsSource = readFileSync(
   join(process.cwd(), "src/app/settings/notifications/actions.ts"),
@@ -25,7 +26,7 @@ describe("settings information architecture", () => {
 
     let previousIndex = -1;
     for (const label of labels) {
-      const index = source.indexOf(`label: \"${label}\"`);
+      const index = sectionsSource.indexOf(`label: \"${label}\"`);
       expect(index).toBeGreaterThan(previousIndex);
       previousIndex = index;
     }

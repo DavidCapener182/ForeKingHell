@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import {
-  ArrowLeft,
   Bell,
   CreditCard,
   Database,
@@ -31,7 +30,9 @@ import { saveNotificationPreferencesAction } from "@/app/settings/notifications/
 import { OfflineStoragePanel } from "@/app/settings/offline-storage-panel";
 import { SettingsStatusToast } from "@/app/settings/settings-status-toast";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
-import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
+import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
+import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { settingsSections, isSettingsSection, type SettingsSection } from "@/lib/settings-sections";
 import {
   DataHealthFeaturePanel,
   ProviderHealthFeaturePanel,
@@ -99,17 +100,6 @@ type SettingsPageProps = {
   }>;
 };
 
-type SettingsSection =
-  | "general"
-  | "appearance"
-  | "privacy"
-  | "sharing"
-  | "notifications"
-  | "data"
-  | "offline"
-  | "billing"
-  | "danger";
-
 type SettingsAccessRow = {
   id: string;
   scope: string;
@@ -119,58 +109,6 @@ type SettingsAccessRow = {
   detail: string;
   action?: ReactNode;
 };
-
-const settingsSections: Array<{
-  value: SettingsSection;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "general",
-    label: "General",
-    description: "Account details, measurement units and dashboard shortcuts.",
-  },
-  {
-    value: "appearance",
-    label: "Appearance",
-    description: "Theme and information density across your account.",
-  },
-  {
-    value: "privacy",
-    label: "Privacy",
-    description: "Choose what other golfers and invited coaches can see.",
-  },
-  {
-    value: "sharing",
-    label: "Sharing",
-    description: "Manage collaborators, invitations and shared accounts.",
-  },
-  {
-    value: "notifications",
-    label: "Notifications",
-    description: "Control which updates reach you and how they are delivered.",
-  },
-  {
-    value: "data",
-    label: "Connected Data",
-    description: "Review launch-monitor connections, imports and data health.",
-  },
-  {
-    value: "offline",
-    label: "Offline",
-    description: "Control what this device keeps for retry when a connection drops.",
-  },
-  {
-    value: "billing",
-    label: "Billing",
-    description: "Review your plan, subscription and invoices.",
-  },
-  {
-    value: "danger",
-    label: "Danger Zone",
-    description: "Reset golf history or permanently delete this account.",
-  },
-];
 
 const dashboardPinLabels: Record<(typeof dashboardPinOptions)[number], string> = {
   shots: "Shots",
@@ -305,12 +243,13 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <div className="mt-5 grid min-w-0 gap-8 lg:mt-7 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[16rem_minmax(0,1fr)]">
               <SettingsSectionNavigation activeSection={activeSection} />
 
-              <main className="min-w-0" aria-labelledby="settings-section-title">
+              <section className="min-w-0" aria-label={settingsSection(activeSection).label}>
                 <SettingsSectionHeading section={activeSection} surface={surface} />
                 <SettingsAlerts params={params} inviteUrl={inviteUrl} />
                 <div className="mt-5">
                   <SettingsSectionContent
                     activeSection={activeSection}
+                    companion={surface === "companion"}
                     profile={profile}
                     privacy={privacy}
                     accessRows={accessRows}
@@ -320,7 +259,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     receivedMembershipCount={receivedMemberships.length}
                   />
                 </div>
-              </main>
+              </section>
             </div>
           </div>
         )}
@@ -340,113 +279,92 @@ function MobileSettingsIndex({
 }) {
   return (
     <div className="grid gap-6 pb-3">
-      <header className="px-1 pt-1">
-        <p className="text-sm font-medium text-primary">Your account</p>
-        <h1 className="mt-1 text-[2rem] font-bold leading-tight tracking-[-0.025em]">Settings</h1>
-        <p className="mt-1 text-[15px] leading-5 text-muted-foreground">
-          Choose a section to review or change.
-        </p>
-      </header>
+      <MobileLargeTitle title="Settings" eyebrow="Your account" />
 
-      <section className="grid gap-2" aria-label="Preferences">
-        <IOSSectionHeader title="Preferences" />
-        <IOSGroupedList label="Preferences">
-          <IOSListRow
+      <MobileSection title="Preferences">
+        <MobileGroupedList label="Preferences">
+          <MobileListRow
             label="General"
             value={titleCase(profile.preferredUnits)}
-            detail="Account, units and dashboard"
+            detail="Name and measurement units"
             href="/settings?section=general"
             icon={SlidersHorizontal}
           />
-          <IOSListRow
+          <MobileListRow
             label="Appearance"
             value={titleCase(profile.theme)}
-            detail="Theme and information density"
+            detail="Device appearance and desktop preferences"
             href="/settings?section=appearance"
             icon={Palette}
           />
-          <IOSListRow
+          <MobileListRow
             label="Privacy"
             value={privacy.publicProfile ? "Public" : "Private"}
             detail="Profile and coach visibility"
             href="/settings?section=privacy"
             icon={ShieldCheck}
           />
-          <IOSListRow
+          <MobileListRow
             label="Notifications"
             detail="Delivery and in-app updates"
             href="/settings?section=notifications"
             icon={Bell}
           />
-        </IOSGroupedList>
-      </section>
+        </MobileGroupedList>
+      </MobileSection>
 
-      <section className="grid gap-2" aria-label="Account and data">
-        <IOSSectionHeader title="Account and data" />
-        <IOSGroupedList label="Account and data">
-          <IOSListRow
+      <MobileSection title="Account and data">
+        <MobileGroupedList label="Account and data">
+          <MobileListRow
             label="Sharing"
             value={sharedAccessCount > 0 ? sharedAccessCount : "None"}
             detail="Collaborators and invitations"
             href="/settings?section=sharing"
             icon={UserPlus}
           />
-          <IOSListRow
+          <MobileListRow
             label="Connected Data"
             detail="Providers, imports and exports"
             href="/settings?section=data"
             icon={Database}
           />
-          <IOSListRow
+          <MobileListRow
             label="Offline"
             detail="Storage and retry queue"
             href="/settings?section=offline"
             icon={HardDrive}
           />
-          <IOSListRow
+          <MobileListRow
             label="Billing"
             detail="Plan, subscription and invoices"
             href="/settings?section=billing"
             icon={CreditCard}
           />
-        </IOSGroupedList>
-      </section>
+        </MobileGroupedList>
+      </MobileSection>
 
-      <section className="grid gap-2" aria-label="Danger zone">
-        <IOSSectionHeader title="Danger zone" />
-        <IOSGroupedList label="Danger zone">
-          <IOSListRow
+      <MobileSection title="Danger zone">
+        <MobileGroupedList label="Danger zone">
+          <MobileListRow
             label="Danger Zone"
             detail="Reset golf history or delete this account"
             href="/settings?section=danger"
             icon={Trash2}
             destructive
           />
-        </IOSGroupedList>
-      </section>
+        </MobileGroupedList>
+      </MobileSection>
     </div>
   );
 }
 
 function SettingsPageHeading({
   surface,
-  activeSection,
 }: {
   surface: "companion" | "workbench";
   activeSection: SettingsSection;
 }) {
-  if (surface === "companion") {
-    return (
-      <Link
-        href="/settings"
-        className="focus-aaa inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-sm font-semibold text-primary outline-none"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Settings
-        <span className="sr-only">from {settingsSection(activeSection).label}</span>
-      </Link>
-    );
-  }
+  if (surface === "companion") return null;
 
   return (
     <header className="border-b border-border pb-5">
@@ -467,17 +385,11 @@ function SettingsSectionHeading({
   surface: "companion" | "workbench";
 }) {
   const item = settingsSection(section);
+  if (surface === "companion") return <MobileLargeTitle title={item.label} />;
 
   return (
-    <header className={surface === "companion" ? "mt-2 px-1" : "border-b border-border pb-5"}>
-      <h1
-        id="settings-section-title"
-        className={
-          surface === "companion"
-            ? "text-[2rem] font-bold leading-tight tracking-[-0.025em]"
-            : "text-2xl font-semibold tracking-[-0.02em]"
-        }
-      >
+    <header className="border-b border-border pb-5">
+      <h1 id="settings-section-title" className="text-2xl font-semibold tracking-[-0.02em]">
         {item.label}
       </h1>
       <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{item.description}</p>
@@ -638,6 +550,7 @@ function SettingsInlineStatus({ title, detail }: { title: string; detail: string
 
 function SettingsSectionContent({
   activeSection,
+  companion,
   profile,
   privacy,
   accessRows,
@@ -647,6 +560,7 @@ function SettingsSectionContent({
   receivedMembershipCount,
 }: {
   activeSection: SettingsSection;
+  companion: boolean;
   profile: SettingsProfile;
   privacy: PrivacySettings;
   accessRows: SettingsAccessRow[];
@@ -657,9 +571,9 @@ function SettingsSectionContent({
 }) {
   switch (activeSection) {
     case "general":
-      return <GeneralSettings profile={profile} />;
+      return <GeneralSettings profile={profile} companion={companion} />;
     case "appearance":
-      return <AppearanceSettings profile={profile} />;
+      return <AppearanceSettings profile={profile} companion={companion} />;
     case "privacy":
       return (
         <PrivacySettingsSection
@@ -685,7 +599,7 @@ function SettingsSectionContent({
   }
 }
 
-function GeneralSettings({ profile }: { profile: SettingsProfile }) {
+function GeneralSettings({ profile, companion }: { profile: SettingsProfile; companion: boolean }) {
   return (
     <SettingsDirtyForm action={updateUserSettingsAction} className="grid gap-6">
       <input type="hidden" name="settingsSection" value="general" />
@@ -705,52 +619,70 @@ function GeneralSettings({ profile }: { profile: SettingsProfile }) {
         </div>
       </SettingsGroup>
 
-      <SettingsGroup
-        title="Dashboard shortcuts"
-        description="Choose the areas kept close at hand on your desktop dashboard."
-      >
-        <div className="grid sm:grid-cols-2">
-          {dashboardPinOptions.map((pin) => (
-            <SettingsToggleRow
-              key={pin}
-              name="dashboardPins"
-              value={pin}
-              label={dashboardPinLabels[pin]}
-              detail={`Show ${dashboardPinLabels[pin].toLowerCase()} in dashboard shortcuts.`}
-              defaultChecked={profile.dashboardPins.includes(pin)}
-            />
-          ))}
-        </div>
-      </SettingsGroup>
+      <DesktopSettingsDisclosure companion={companion}>
+        <SettingsGroup
+          title="Dashboard shortcuts"
+          description="Choose the areas kept close at hand on your desktop dashboard."
+        >
+          <div className="grid sm:grid-cols-2">
+            {dashboardPinOptions.map((pin) => (
+              <SettingsToggleRow
+                key={pin}
+                name="dashboardPins"
+                value={pin}
+                label={dashboardPinLabels[pin]}
+                detail={`Show ${dashboardPinLabels[pin].toLowerCase()} in dashboard shortcuts.`}
+                defaultChecked={profile.dashboardPins.includes(pin)}
+              />
+            ))}
+          </div>
+        </SettingsGroup>
+      </DesktopSettingsDisclosure>
     </SettingsDirtyForm>
   );
 }
 
-function AppearanceSettings({ profile }: { profile: SettingsProfile }) {
+function AppearanceSettings({
+  profile,
+  companion,
+}: {
+  profile: SettingsProfile;
+  companion: boolean;
+}) {
   return (
     <SettingsDirtyForm action={updateUserSettingsAction} className="grid gap-6">
       <input type="hidden" name="settingsSection" value="appearance" />
-      <SettingsGroup
-        title="Theme"
-        description="Preview a desktop theme, then save it to your account."
-      >
-        <div className="px-4 py-4 sm:px-5">
-          <ThemePreferenceSelect defaultValue={parseTheme(profile.theme)} />
+      {companion ? (
+        <div className="grid gap-2">
+          <p className="mobile-type-headline">Automatic appearance</p>
+          <p className="mobile-type-callout text-muted-foreground">
+            ForeKingHell follows this iPhone’s Light or Dark appearance.
+          </p>
         </div>
-      </SettingsGroup>
-      <SettingsGroup
-        title="Information density"
-        description="Control how much information is visible in tables and workbench views."
-      >
-        <div className="px-4 py-4 sm:max-w-md sm:px-5">
-          <SelectField
-            label="Table density"
-            name="tableDensity"
-            defaultValue={profile.tableDensity}
-            values={tableDensityOptions}
-          />
-        </div>
-      </SettingsGroup>
+      ) : null}
+      <DesktopSettingsDisclosure companion={companion}>
+        <SettingsGroup
+          title="Theme"
+          description="Preview a desktop theme, then save it to your account."
+        >
+          <div className="px-4 py-4 sm:px-5">
+            <ThemePreferenceSelect defaultValue={parseTheme(profile.theme)} />
+          </div>
+        </SettingsGroup>
+        <SettingsGroup
+          title="Information density"
+          description="Control how much information is visible in tables and workbench views."
+        >
+          <div className="px-4 py-4 sm:max-w-md sm:px-5">
+            <SelectField
+              label="Table density"
+              name="tableDensity"
+              defaultValue={profile.tableDensity}
+              values={tableDensityOptions}
+            />
+          </div>
+        </SettingsGroup>
+      </DesktopSettingsDisclosure>
     </SettingsDirtyForm>
   );
 }
@@ -1017,6 +949,22 @@ function DangerZoneSettings({ profile }: { profile: SettingsProfile }) {
   );
 }
 
+function DesktopSettingsDisclosure({
+  companion,
+  children,
+}: {
+  companion: boolean;
+  children: ReactNode;
+}) {
+  if (!companion) return children;
+  return (
+    <details className="mobile-settings-desktop">
+      <summary>Desktop preferences</summary>
+      <div className="grid gap-6">{children}</div>
+    </details>
+  );
+}
+
 function SettingsGroup({
   title,
   description,
@@ -1183,9 +1131,9 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
   return (
     <>
       <div className="lg:hidden">
-        <IOSGroupedList label="Account access" className="rounded-none border-0 shadow-none">
+        <MobileGroupedList label="Account access" className="rounded-none border-0 shadow-none">
           {rows.map((row) => (
-            <IOSListRow
+            <MobileListRow
               key={row.id}
               label={row.party}
               value={row.role}
@@ -1193,7 +1141,7 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
               trailing={row.action}
             />
           ))}
-        </IOSGroupedList>
+        </MobileGroupedList>
       </div>
       <div className="hidden overflow-x-auto lg:block">
         <Table>
@@ -1297,7 +1245,7 @@ async function SettingsSurfaceLayout({
   children: ReactNode;
 }) {
   if (surface === "companion") {
-    return <div className="min-w-0">{children}</div>;
+    return <div className="min-w-0 mobile-settings-screen">{children}</div>;
   }
 
   const { DesktopWorkbenchLayout } = await import("@/components/app/desktop-workbench");
@@ -1409,10 +1357,6 @@ function buildAccessRows({
       };
     }),
   ];
-}
-
-function isSettingsSection(value: string | undefined): value is SettingsSection {
-  return settingsSections.some((section) => section.value === value);
 }
 
 function parseSettingsSection(value: string | undefined): SettingsSection {
