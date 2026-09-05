@@ -1,5 +1,15 @@
 export type CourseTwinRenderQuality = "fallback" | "balanced" | "high";
 
+export function courseTwin2dUrl(currentUrl: string, hole: number, mode: string, shotId?: string) {
+  const url = new URL(currentUrl);
+  url.searchParams.set("quality", "2d");
+  url.searchParams.set("hole", String(hole));
+  url.searchParams.set("mode", mode === "replay" ? "replay" : "strategy");
+  if (mode === "replay" && shotId) url.searchParams.set("shot", shotId);
+  else url.searchParams.delete("shot");
+  return url.toString();
+}
+
 export type CourseTwinDeviceSignals = {
   override?: string | null;
   reducedMotion: boolean;

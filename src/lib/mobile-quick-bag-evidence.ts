@@ -12,6 +12,7 @@ export function mobileQuickBagClub(
   const stock = calculateStockYardage(shots, shots.length, { clubType: club.type });
   return {
     id: club.id,
+    clubType: club.type,
     label: formatClubType(club.type),
     model: [club.brand, club.model].filter(Boolean).join(" ") || "Current club",
     trustedCarryYd: evidence.carry,
@@ -31,6 +32,8 @@ export function mobileQuickBagClub(
     lateralLowYd: evidence.sideLow,
     lateralHighYd: evidence.sideHigh,
     patternSampleSize: evidence.sideSampleSize,
+    observedLeftYd: evidence.sideLeft,
+    observedRightYd: evidence.sideRight,
     confidence: touch ? 0 : stock.confidenceScore,
     sampleSize: evidence.sampleSize,
     latestEvidenceDate: evidence.verifiedAt,

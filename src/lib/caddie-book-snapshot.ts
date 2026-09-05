@@ -198,7 +198,17 @@ function mode(v: unknown) {
       nullableDistance(e.rightYd) &&
       typeof e.carryRangeMeasured === "boolean" &&
       count(e.sampleSize) &&
+      (e.window === undefined || evidenceWindow(e.window)) &&
       confidence(e.confidence))
+  );
+}
+function evidenceWindow(v: unknown) {
+  return (
+    record(v) &&
+    v.basis === "latest-reliable" &&
+    count(v.lateralSampleSize) &&
+    (v.latestShotAt === null ||
+      (text(v.latestShotAt) && Number.isFinite(Date.parse(v.latestShotAt))))
   );
 }
 function hole(v: unknown) {

@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 
 const mock = vi.hoisted(() => ({ results: [] as unknown[][], conditions: [] as unknown[] }));
+const mobileBag = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/mobile-quick-bag-data", () => ({ getMobileQuickBag: mobileBag }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => "owner" }));
 vi.mock("@/db/client", () => ({
   getDb: () => ({
@@ -36,6 +38,7 @@ const tee = {
 beforeEach(() => {
   mock.results.length = 0;
   mock.conditions.length = 0;
+  mobileBag.mockReset();
 });
 
 describe("strategy data identity and current evidence", () => {
@@ -99,6 +102,7 @@ describe("strategy data identity and current evidence", () => {
     );
     const data = await getCourseStrategyData(course.id, tee.id);
     expect(data.trustedBag).toHaveLength(1);
+    expect(mobileBag).not.toHaveBeenCalled();
     expect(data.trustedBag[0].carryYd).toBe(190);
     expect(data.strategies[0].personalCarryYd).toBe(190);
     expect(data.strategies[0].strategyModes[0].evidence?.carryRangeMeasured).toBe(false);
@@ -109,5 +113,43 @@ describe("strategy data identity and current evidence", () => {
     expect(
       scopedQueries.some((query) => query.params.includes("owner") && query.params.includes(true)),
     ).toBe(true);
+  });
+  it("uses the mobile Bag window for companion strategy without querying stored stock", async () => {
+    mobileBag.mockResolvedValue([
+      {
+        id: "club",
+        clubType: "5w",
+        label: "5 Wood",
+        evidenceKind: "full",
+        trustedCarryYd: 172,
+        lowYd: 165,
+        highYd: 178,
+        sampleSize: 20,
+        patternSampleSize: 18,
+        observedLeftYd: 11,
+        observedRightYd: 25,
+        latestEvidenceDate: "2026-09-01T10:00:00.000Z",
+        confidence: 80,
+      },
+    ]);
+    mock.results.push([course], [tee], [], [{ holeNumber: 1, par: 4, yards: 350 }]);
+    const data = await getCourseStrategyData(course.id, tee.id, "latest-reliable");
+    expect(mobileBag).toHaveBeenCalledOnce();
+    expect(data.strategies[0].personalCarryYd).toBe(172);
+    expect(data.strategies[0].strategyModes[0].evidence).toMatchObject({
+      carryYd: 172,
+      minCarryYd: 165,
+      maxCarryYd: 178,
+      leftYd: 11,
+      rightYd: 25,
+      window: { basis: "latest-reliable", lateralSampleSize: 18 },
+    });
+    expect(mock.results).toHaveLength(0);
+    const dialect = new PgDialect();
+    expect(
+      mock.conditions
+        .map((c) => dialect.sqlToQuery(c as Parameters<typeof dialect.sqlToQuery>[0]).sql)
+        .join(" "),
+    ).not.toContain("stock_yardages");
   });
 });

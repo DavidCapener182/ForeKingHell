@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { Component, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import type { CourseTwinManifest, CourseTwinReplayDocument } from "@/lib/course-twin-contract";
 import {
@@ -63,6 +63,7 @@ export function CourseTwinRuntime({
           readOnly={readOnly}
           initialMode={initialMode}
           initialHoleNumber={initialHoleNumber}
+          rendererUnavailable={webGlAvailable === false}
           onEnable3d={() => {
             const url = new URL(window.location.href);
             url.searchParams.set("quality", "balanced");
@@ -73,23 +74,60 @@ export function CourseTwinRuntime({
     return (
       <CourseTwinLowPowerFallback
         manifest={manifest}
-        onEnable3d={() => setRenderQualityOverride("balanced")}
+        onEnable3d={() =>
+          webGlAvailable === false ? window.location.reload() : setRenderQualityOverride("balanced")
+        }
       />
     );
   }
 
   return (
-    <CourseTwinScene
-      manifest={manifest}
-      replay={replay}
-      readOnly={readOnly}
-      tournamentId={tournamentId}
-      tournamentRoundNumber={tournamentRoundNumber}
-      initialMode={initialMode}
-      initialHoleNumber={initialHoleNumber}
-      renderQuality={renderQuality}
-    />
+    <CourseTwinRendererBoundary
+      key={`${manifest.course.id}:${renderQuality}`}
+      fallback={
+        compact ? (
+          <CourseTwinMobileOverhead
+            manifest={manifest}
+            replay={replay}
+            readOnly={readOnly}
+            initialMode={initialMode}
+            initialHoleNumber={initialHoleNumber}
+            rendererUnavailable
+            onEnable3d={() => window.location.reload()}
+          />
+        ) : (
+          <CourseTwinLowPowerFallback
+            manifest={manifest}
+            onEnable3d={() => window.location.reload()}
+          />
+        )
+      }
+    >
+      <CourseTwinScene
+        manifest={manifest}
+        replay={replay}
+        readOnly={readOnly}
+        tournamentId={tournamentId}
+        tournamentRoundNumber={tournamentRoundNumber}
+        initialMode={initialMode}
+        initialHoleNumber={initialHoleNumber}
+        renderQuality={renderQuality}
+      />
+    </CourseTwinRendererBoundary>
   );
+}
+
+class CourseTwinRendererBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
 }
 
 function subscribeCompactViewport(listener: () => void) {
@@ -106,7 +144,23 @@ function subscribeToStaticDeviceSignals() {
 }
 
 function readBrowserRenderQuality(): CourseTwinRenderQuality {
-  return courseTwinRenderQuality(browserCourseTwinDeviceSignals());
+  const quality = courseTwinRenderQuality(browserCourseTwinDeviceSignals());
+  return quality !== "fallback" && !canCreateWebGlContext() ? "fallback" : quality;
+}
+
+let webGlAvailable: boolean | null = null;
+function canCreateWebGlContext() {
+  if (webGlAvailable !== null) return webGlAvailable;
+  try {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("webgl2");
+    webGlAvailable = context !== null;
+    // Release the probe immediately; the actual renderer owns its own context.
+    context?.getExtension("WEBGL_lose_context")?.loseContext();
+  } catch {
+    webGlAvailable = false;
+  }
+  return webGlAvailable;
 }
 
 function readServerRenderQuality(): CourseTwinRenderQuality {

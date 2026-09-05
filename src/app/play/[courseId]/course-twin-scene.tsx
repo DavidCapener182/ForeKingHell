@@ -145,7 +145,8 @@ import {
   type CourseTwinVirtualShotKind,
 } from "@/lib/course-twin-virtual-round";
 import { cn } from "@/lib/utils";
-import type { CourseTwinRenderQuality } from "@/lib/course-twin-performance";
+import { courseTwin2dUrl, type CourseTwinRenderQuality } from "@/lib/course-twin-performance";
+import { courseTwinTerrainRenderGrid } from "@/lib/course-twin-terrain-lod";
 
 type RuntimeMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
 type ExploreTransport = "walk" | "cart";
@@ -259,8 +260,6 @@ const bushBillboards = [
     aspect: 1024 / 683,
   },
 ] as const;
-
-[...treeBillboards, ...bushBillboards].forEach(({ url }) => useTexture.preload(url));
 
 type PbrSurfaceType = "tee" | "rough" | "fairway" | "green" | "bunker";
 
@@ -386,6 +385,10 @@ export function CourseTwinScene({
 }) {
   const initialCompactViewport =
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+  useEffect(() => {
+    if (renderQuality === "high")
+      [...treeBillboards, ...bushBillboards].forEach(({ url }) => useTexture.preload(url));
+  }, [renderQuality]);
   const [holeNumber, setHoleNumber] = useState(
     manifest.holes.some((hole) => hole.holeNumber === initialHoleNumber)
       ? initialHoleNumber!
@@ -400,7 +403,16 @@ export function CourseTwinScene({
       ? "aerial"
       : "golfer",
   );
-  const [shotIndex, setShotIndex] = useState(0);
+  const [shotIndex, setShotIndex] = useState(() => {
+    const requested =
+      typeof window === "undefined" ? null : new URL(window.location.href).searchParams.get("shot");
+    return Math.max(
+      0,
+      (replay?.shots.filter((shot) => shot.holeNumber === holeNumber) ?? []).findIndex(
+        (shot) => shot.id === requested,
+      ),
+    );
+  });
   const [playing, setPlaying] = useState(false);
   const [playback, setPlayback] = useState(0);
   const [cameraCommand, setCameraCommand] = useState<CameraCommand>(null);
@@ -2405,12 +2417,42 @@ export function CourseTwinScene({
                     {manifest.course.name}
                   </h1>
                   <p className="text-sm leading-6 text-emerald-100/70 xl:text-xs xl:leading-4">
-                    Real mapped holes over Environment Agency LiDAR terrain and georeferenced aerial
-                    reference imagery.{" "}
+                    {manifest.terrain.kind === "lidar_dtm"
+                      ? "Mapped holes over LiDAR terrain and aerial reference imagery."
+                      : manifest.terrain.kind === "global_dem"
+                        ? "Mapped holes over global elevation data and aerial reference imagery."
+                        : "Prototype course geometry; elevation detail is not surveyed."}{" "}
                     {manifest.quality.verified
                       ? "Putting contours are backed by reviewed high-resolution green surveys."
                       : "Green contours remain unverified for putting."}
                   </p>
+                </div>
+                <div className={mobileStyles.displayChoice}>
+                  <p>Display</p>
+                  <span>{renderQuality === "high" ? "Detailed 3D" : "Balanced 3D"}</span>
+                  <button
+                    type="button"
+                    disabled={
+                      roundSync.status === "saving" || Boolean(virtualShot) || Boolean(liveShot)
+                    }
+                    onClick={() =>
+                      window.location.assign(
+                        courseTwin2dUrl(
+                          window.location.href,
+                          selectedHole.holeNumber,
+                          mode,
+                          selectedShot?.id,
+                        ),
+                      )
+                    }
+                  >
+                    Use 2D · save power
+                  </button>
+                  {roundSync.status === "saving" || virtualShot || liveShot ? (
+                    <p className={mobileStyles.provenance}>
+                      Finish and save the current shot before changing display.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div
@@ -3179,7 +3221,24 @@ export function CourseTwinScene({
             }}
             fallback={
               <div className="grid h-full min-h-0 place-items-center p-8 text-center lg:min-h-[560px]">
-                WebGL is unavailable. Use the hole table below for the accessible course view.
+                <div>
+                  <p>3D is unavailable on this device.</p>
+                  <Button
+                    className="mt-4 min-h-11"
+                    onClick={() =>
+                      window.location.assign(
+                        courseTwin2dUrl(
+                          window.location.href,
+                          selectedHole.holeNumber,
+                          mode,
+                          selectedShot?.id,
+                        ),
+                      )
+                    }
+                  >
+                    Open 2D course view
+                  </Button>
+                </div>
               </div>
             }
           >
@@ -5105,7 +5164,12 @@ function CourseWorld({
 
   return (
     <group>
-      <Terrain manifest={manifest} samples={terrainSamples} onAimPoint={onAimPoint} />
+      <Terrain
+        manifest={manifest}
+        samples={terrainSamples}
+        onAimPoint={onAimPoint}
+        renderQuality={renderQuality}
+      />
       {(manifest.puttingSurfaces ?? [])
         .filter((surface) => surface.holeNumber === selectedHole.holeNumber)
         .map((surface) => (
@@ -5256,14 +5320,25 @@ function Terrain({
   manifest,
   samples,
   onAimPoint,
+  renderQuality,
 }: {
   manifest: CourseTwinManifest;
   samples: Float32Array;
   onAimPoint: ((point: CourseTwinPoint) => void) | null;
+  renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
   const asset = manifest.terrain.heightmap;
   const imagery = manifest.terrain.imagery;
   if (!asset || !imagery) return null;
+  if (renderQuality === "balanced")
+    return (
+      <BalancedTerrain
+        asset={asset}
+        samples={samples}
+        imageryUrl={imagery.url}
+        onAimPoint={onAimPoint}
+      />
+    );
   return (
     <LidarTerrain
       asset={asset}
@@ -5273,6 +5348,54 @@ function Terrain({
       features={manifest.features}
       onAimPoint={onAimPoint}
     />
+  );
+}
+
+function BalancedTerrain({
+  asset,
+  samples,
+  imageryUrl,
+  onAimPoint,
+}: {
+  asset: NonNullable<CourseTwinManifest["terrain"]["heightmap"]>;
+  samples: Float32Array;
+  imageryUrl: string;
+  onAimPoint: ((point: CourseTwinPoint) => void) | null;
+}) {
+  const loadedTexture = useTexture(imageryUrl);
+  const texture = useMemo(() => {
+    const copy = loadedTexture.clone();
+    copy.colorSpace = THREE.SRGBColorSpace;
+    copy.anisotropy = 2;
+    copy.needsUpdate = true;
+    return copy;
+  }, [loadedTexture]);
+  const geometry = useMemo(() => {
+    const grid = courseTwinTerrainRenderGrid(asset, samples);
+    const mesh = new THREE.BufferGeometry();
+    mesh.setAttribute("position", new THREE.BufferAttribute(grid.positions, 3));
+    mesh.setAttribute("uv", new THREE.BufferAttribute(grid.uv, 2));
+    mesh.setIndex(new THREE.BufferAttribute(grid.indices, 1));
+    mesh.computeVertexNormals();
+    return mesh;
+  }, [asset, samples]);
+  useEffect(() => () => texture.dispose(), [texture]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh
+      geometry={geometry}
+      receiveShadow
+      onClick={
+        onAimPoint
+          ? (event) => {
+              event.stopPropagation();
+              onAimPoint([event.point.x, event.point.y, event.point.z]);
+            }
+          : undefined
+      }
+    >
+      <meshStandardMaterial map={texture} roughness={0.96} metalness={0} />
+    </mesh>
   );
 }
 

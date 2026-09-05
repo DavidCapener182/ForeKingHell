@@ -62,6 +62,8 @@ export function mobileClubEvidence<T extends ClubEvidenceShot>(
     side: percentile(sides, 0.5),
     sideLow: percentile(sides, 0.25),
     sideHigh: percentile(sides, 0.75),
+    sideLeft: sides.length ? Math.abs(Math.min(0, ...sides)) : null,
+    sideRight: sides.length ? Math.max(0, ...sides) : null,
     sideSampleSize: sides.length,
     verifiedAt: latest?.shotAt ? new Date(latest.shotAt).toISOString() : null,
     sessions: [...sessions.values()].slice(0, 3),

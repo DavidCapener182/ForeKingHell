@@ -14,6 +14,7 @@ import { rankQuickBagForTarget } from "@/lib/quick-bag-ranking";
 
 export type QuickBagClub = {
   id: string;
+  clubType?: string;
   label: string;
   model: string;
   trustedCarryYd: number | null;
@@ -28,6 +29,8 @@ export type QuickBagClub = {
   lateralLowYd: number | null;
   lateralHighYd: number | null;
   patternSampleSize: number;
+  observedLeftYd?: number | null;
+  observedRightYd?: number | null;
   confidence: number;
   sampleSize: number;
   latestEvidenceDate: string | null;

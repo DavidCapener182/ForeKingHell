@@ -76,6 +76,19 @@ function read(value: unknown, account = "alice") {
   return readCaddieBookSnapshot(JSON.stringify(value), account);
 }
 describe("saved caddie books", () => {
+  it("retains the new evidence basis offline and does not relabel older stock snapshots", () => {
+    const original = snapshot();
+    expect(read(original)?.strategy[0].strategyModes[0].evidence?.window).toBeUndefined();
+    const evidence = original.strategy[0].strategyModes[0].evidence!;
+    evidence.window = {
+      basis: "latest-reliable",
+      latestShotAt: "2026-09-01T12:00:00.000Z",
+      lateralSampleSize: 18,
+    };
+    expect(read(original)?.strategy[0].strategyModes[0].evidence?.window).toEqual(evidence.window);
+    evidence.window.latestShotAt = "invalid date";
+    expect(read(original)).toBeNull();
+  });
   it("keeps exact club evidence, hole selection and save time with self-contained geometry", () => {
     const original = snapshot();
     const saved = read(original)!;

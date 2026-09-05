@@ -1,4 +1,9 @@
 export type StrategyClub = {
+  evidenceWindow?: {
+    basis: "latest-reliable";
+    latestShotAt: string | null;
+    lateralSampleSize: number;
+  };
   clubId: string;
   clubType?: string;
   label: string;
@@ -24,6 +29,7 @@ export type HoleStrategyMode = {
   expectedLeave: string;
   rationale: string;
   evidence?: {
+    window?: StrategyClub["evidenceWindow"];
     clubId: string;
     carryYd: number;
     minCarryYd: number;
@@ -86,13 +92,14 @@ export function buildHoleStrategies(input: {
       expectedLeaveYd !== null && expectedLeaveYd > 0
         ? selectClubsForLeave(expectedLeaveYd, clubs, selected)
         : null;
-    const miss = selected
-      ? selected.leftYd > selected.rightYd
-        ? "left"
-        : selected.rightYd > selected.leftYd
-          ? "right"
-          : "balanced"
-      : "unknown";
+    const miss =
+      selected && selected.dispersionAvailable !== false
+        ? selected.leftYd > selected.rightYd
+          ? "left"
+          : selected.rightYd > selected.leftYd
+            ? "right"
+            : "balanced"
+        : "unknown";
     const confidence = selected ? confidenceLabel(selected) : "Low";
     const normalMode = selected
       ? strategyMode({
@@ -208,6 +215,7 @@ function strategyMode({
     expectedLeave: `${Math.max(0, Math.round(hole.yards - club.carryYd))} yd after the first shot`,
     rationale,
     evidence: {
+      ...(club.evidenceWindow ? { window: club.evidenceWindow } : {}),
       clubId: club.clubId,
       carryYd: club.carryYd,
       minCarryYd: club.minCarryYd,
