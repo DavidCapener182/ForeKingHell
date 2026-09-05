@@ -163,6 +163,12 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Text accents use the link tint; filled actions retain their separate green surface. */
+  [data-mobile-platform="apple"] .text-primary,
+  .ios-public-auth .text-primary {
+    color: var(--ios-link);
+  }
+
   .ios-public-auth :where(h1, h2, h3, h4) {
     font-family:
       -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;

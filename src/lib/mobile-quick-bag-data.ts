@@ -16,7 +16,7 @@ export async function getMobileQuickBag() {
 // refreshes provider imports without retaining the full shot history in the cache.
 const getCachedMobileQuickBag = unstable_cache(
   calculateMobileQuickBag,
-  ["mobile-quick-bag-evidence-v1"],
+  ["mobile-quick-bag-evidence-v2"],
   { revalidate: 60 },
 );
 

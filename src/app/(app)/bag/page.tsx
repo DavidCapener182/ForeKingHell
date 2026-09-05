@@ -1,5 +1,6 @@
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
-import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
+import { MobileBagLadder } from "@/app/bag/mobile-bag-ladder";
+import { getMobileQuickBag } from "@/lib/mobile-quick-bag-data";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -79,7 +80,6 @@ import {
   buildShotPatternOverlaySummaries,
   buildSmartBagBuilder,
   buildWedgeMatrix,
-  calculateBagReadinessScore,
   type ConfidenceHeatMap,
   type ShotPatternOverlaySummary,
   type SmartBagBuilder,
@@ -318,46 +318,28 @@ async function BagCompanionPage({
   const mobileView = parseMobileBagPrimaryView(searchParams.view);
   const mobileBenchmarksLoaded = shouldLoadMobileBenchmarks(searchParams.mobile);
   const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(searchParams.peers);
-  const [bag, profile] = await Promise.all([
-    getBag({ scope: mobileBenchmarksLoaded ? "companion-benchmarks" : "companion" }),
-    ensureCurrentSocialProfile(),
+  const accountId = await requireCurrentUserId();
+  const [bag, quickBagClubs] = await Promise.all([
+    mobileBenchmarksLoaded ? getBag({ scope: "companion-benchmarks" }) : Promise.resolve([]),
+    getMobileQuickBag(),
   ]);
-  const gappingRows = buildGappingRows(bag, {
-    handicapBand: profile.handicapBand,
-  });
   const benchmarkRows = mobileBenchmarksLoaded ? buildBenchmarkRows(bag) : [];
   const peerBenchmarkSummary =
     benchmarkRows.length > 0 && peerBenchmarksLoaded
       ? await getPeerBenchmarkSummary(benchmarkRows)
       : emptyPeerSummary();
-  const stockConfidenceClubs = bag.filter(shouldShowInCarryGapping);
-  const averageConfidence =
-    stockConfidenceClubs.length === 0
-      ? 0
-      : Math.round(
-          stockConfidenceClubs.reduce((total, club) => total + club.stock.confidenceScore, 0) /
-            stockConfidenceClubs.length,
-        );
-  const trustedClubCount = gappingRows.filter(
-    (row) => row.sampleSize >= 10 && row.confidenceScore >= 75,
-  ).length;
 
   return (
     <PageShell contentClassName="overflow-x-clip pb-5">
       <div className={styles.mobileSurface} data-bag-mobile-surface>
         <MobileBagPage
-          bag={bag}
-          gappingRows={gappingRows}
           benchmarkRows={benchmarkRows}
           peerBenchmarkSummary={peerBenchmarkSummary}
           peerBenchmarksLoaded={peerBenchmarksLoaded}
           mobileBenchmarksLoaded={mobileBenchmarksLoaded}
           initialView={mobileView}
-          quickBagClubs={buildQuickBagClubs(bag)}
-          accountId={bag[0]?.userId ?? "current"}
-          bagScore={calculateBagReadinessScore(bag, gappingRows)}
-          averageConfidence={averageConfidence}
-          trustedClubCount={trustedClubCount}
+          quickBagClubs={quickBagClubs}
+          accountId={accountId}
         />
       </div>
     </PageShell>
@@ -568,8 +550,6 @@ async function BagWorkbenchPage({
 }
 
 function MobileBagPage({
-  bag,
-  gappingRows,
   benchmarkRows,
   peerBenchmarkSummary,
   peerBenchmarksLoaded,
@@ -577,11 +557,7 @@ function MobileBagPage({
   initialView,
   quickBagClubs,
   accountId,
-  averageConfidence,
-  trustedClubCount,
 }: {
-  bag: BagClub[];
-  gappingRows: GappingRow[];
   benchmarkRows: ClubBenchmarkRow[];
   peerBenchmarkSummary: ClubBenchmarkPeerSummary;
   peerBenchmarksLoaded: boolean;
@@ -589,10 +565,18 @@ function MobileBagPage({
   initialView: MobileBagPrimaryView;
   quickBagClubs: QuickBagClub[];
   accountId: string;
-  bagScore: number;
-  averageConfidence: number;
-  trustedClubCount: number;
 }) {
+  const measuredClubs = quickBagClubs.filter(
+    (club) => club.evidenceKind !== "touch" && club.sampleSize > 0,
+  );
+  const trustedClubCount = measuredClubs.filter(
+    (club) => club.confidence >= 75 && club.sampleSize >= 10,
+  ).length;
+  const averageConfidence = measuredClubs.length
+    ? Math.round(
+        measuredClubs.reduce((total, club) => total + club.confidence, 0) / measuredClubs.length,
+      )
+    : null;
   return (
     <section className="grid gap-5" data-bag-mobile-full>
       <MobileLargeTitle
@@ -604,11 +588,13 @@ function MobileBagPage({
           </Button>
         }
       />
-      <p className="mobile-type-footnote text-muted-foreground">
-        {trustedClubCount} trusted clubs · {averageConfidence}% average confidence
-      </p>
+      {averageConfidence !== null ? (
+        <p className="mobile-type-footnote text-muted-foreground">
+          {trustedClubCount} trusted clubs · {averageConfidence}% average confidence
+        </p>
+      ) : null}
 
-      {bag.length === 0 ? (
+      {quickBagClubs.length === 0 ? (
         <AppEmptyState
           icon={<Target className="size-5" />}
           title="No clubs imported yet"
@@ -631,62 +617,7 @@ function MobileBagPage({
               href: "/bag?view=yardages#bag-yardages",
               content: (
                 <div id="bag-yardages" className="min-w-0">
-                  <MobileGroupedList label="Club distance ladder">
-                    {[...gappingRows]
-                      .sort(
-                        (a, b) => (b.latestReliableCarryYd ?? -1) - (a.latestReliableCarryYd ?? -1),
-                      )
-                      .map((row) => (
-                        <MobileListRow
-                          key={row.id}
-                          href={`/bag/${row.id}`}
-                          label={formatClubType(row.clubType)}
-                          value={
-                            <span className="text-xl font-semibold tabular-nums">
-                              {row.latestReliableCarryYd == null
-                                ? "—"
-                                : `${Math.round(row.latestReliableCarryYd)} yd`}
-                            </span>
-                          }
-                          detail={
-                            <span className="grid gap-1">
-                              <span>
-                                {formatCarryRange(
-                                  row.latestReliableCarryP25Yd == null
-                                    ? null
-                                    : Math.round(row.latestReliableCarryP25Yd),
-                                  row.latestReliableCarryP75Yd == null
-                                    ? null
-                                    : Math.round(row.latestReliableCarryP75Yd),
-                                )}{" "}
-                                · {row.sampleSize} shots
-                              </span>
-                              <span
-                                className="h-1 w-full overflow-hidden rounded-full bg-muted"
-                                aria-hidden
-                              >
-                                <span
-                                  className="block h-full rounded-full bg-primary"
-                                  style={{
-                                    width: `${Math.max(0, Math.min(100, ((row.latestReliableCarryYd ?? 0) / Math.max(1, ...gappingRows.map((club) => club.latestReliableCarryYd ?? 0))) * 100))}%`,
-                                  }}
-                                />
-                              </span>
-                            </span>
-                          }
-                          status={
-                            <MobileStatus
-                              tone={
-                                row.confidenceScore >= 75 && row.sampleSize >= 10
-                                  ? "positive"
-                                  : "attention"
-                              }
-                              label={`${row.confidenceScore >= 75 && row.sampleSize >= 10 ? "High" : row.confidenceScore >= 50 ? "Moderate" : "Building"} confidence`}
-                            />
-                          }
-                        />
-                      ))}
-                  </MobileGroupedList>
+                  <MobileBagLadder clubs={quickBagClubs} />
                 </div>
               ),
             },
@@ -708,7 +639,7 @@ function MobileBagPage({
         />
       )}
 
-      {bag.length > 0 ? (
+      {quickBagClubs.length > 0 ? (
         <section id="bag-benchmarks" className="grid min-w-0 gap-3 scroll-mt-24">
           <div className="rounded-[var(--mobile-radius-md)] border border-border bg-card px-4 py-3">
             <div className="flex items-center justify-between gap-3">
@@ -1046,38 +977,6 @@ function buildBagHistoryTimeline(
   return [...equipmentEvents, ...retiredEvents, ...movementEvents, ...baselineEvents]
     .sort((left, right) => right.date.getTime() - left.date.getTime())
     .slice(0, 24);
-}
-
-function buildQuickBagClubs(bag: BagClub[]): QuickBagClub[] {
-  return bag.map((club) => {
-    const widerSide =
-      club.stock.dispersionLeftYd === null || club.stock.dispersionRightYd === null
-        ? null
-        : Math.abs(club.stock.dispersionLeftYd) > Math.abs(club.stock.dispersionRightYd)
-          ? "Left"
-          : Math.abs(club.stock.dispersionRightYd) > Math.abs(club.stock.dispersionLeftYd)
-            ? "Right"
-            : "Balanced";
-
-    return {
-      id: club.id,
-      label: formatClubType(club.type),
-      model: club.brandModel,
-      trustedCarryYd: clubPrimaryCarryYd(club),
-      playNumberYd: club.stock.coursePlayCarryYd,
-      lowYd: club.stock.latestReliableCarryP25Yd,
-      highYd: club.stock.latestReliableCarryP75Yd,
-      typicalMiss: clubCurrentMiss(club).label,
-      widerSide,
-      medianLateralYd: null,
-      lateralLowYd: club.stock.dispersionLeftYd,
-      lateralHighYd: club.stock.dispersionRightYd,
-      patternSampleSize: club.shots.length,
-      confidence: clubTrustScore(club),
-      sampleSize: club.stock.sampleSize,
-      latestEvidenceDate: club.shots[0]?.shotAt?.toISOString() ?? null,
-    };
-  });
 }
 
 async function getBagEquipmentContext() {

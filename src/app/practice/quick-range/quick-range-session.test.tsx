@@ -1,11 +1,58 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const selection = vi.hoisted(() => ({ club: null as string | null }));
+vi.mock("react", async (importOriginal) => {
+  const react = await importOriginal<typeof import("react")>();
+  return {
+    ...react,
+    useState: (initial: unknown) =>
+      react.useState(
+        selection.club && initial && typeof initial === "object" && "club" in initial
+          ? { ...initial, club: selection.club }
+          : initial,
+      ),
+  };
+});
+afterEach(() => {
+  selection.club = null;
+});
 
 import { QuickRangeCompanionSession } from "@/app/practice/quick-range/quick-range-session";
 
 describe("QuickRangeSession mobile task flow", () => {
+  it.each([
+    ["4i", "4 Iron"],
+    ["3h", "3 Hybrid"],
+    ["aw", "Approach Wedge"],
+  ])("keeps linked %s available after selecting Driver", (initialClubType, label) => {
+    selection.club = "Driver";
+    const html = renderToStaticMarkup(
+      <QuickRangeCompanionSession
+        accountId="test-account"
+        focus="Club control"
+        initialClubType={initialClubType}
+      />,
+    );
+    expect(html).toContain('<option selected="">Driver</option>');
+    expect(html).toContain(`<option>${label}</option>`);
+  });
+  it.each([
+    ["4i", "4 Iron"],
+    ["3h", "3 Hybrid"],
+    ["aw", "Approach Wedge"],
+  ])("retains the requested %s from club detail", (initialClubType, label) => {
+    const html = renderToStaticMarkup(
+      <QuickRangeCompanionSession
+        accountId="test-account"
+        focus="Club control"
+        initialClubType={initialClubType}
+      />,
+    );
+    expect(html).toContain(`<option selected="">${label}</option>`);
+  });
   it("opens with the supplied focus and all quick setup controls", () => {
     const html = renderToStaticMarkup(
       <QuickRangeCompanionSession accountId="test-account" focus="Driver start-line control" />,

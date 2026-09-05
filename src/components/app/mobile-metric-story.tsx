@@ -33,8 +33,12 @@ export function MobileMetricStory({
       <p className="text-sm text-muted-foreground">{context}</p>
       <Carousel setApi={setApi} opts={{ align: "start" }} className="min-w-0">
         <CarouselContent>
-          {metrics.map((metric) => (
-            <CarouselItem key={metric.label} className="basis-[90%]">
+          {metrics.map((metric, metricIndex) => (
+            <CarouselItem
+              key={metric.label}
+              className="basis-[90%]"
+              aria-label={`${metric.label}, ${metricIndex + 1} of ${metrics.length}`}
+            >
               <div className="rounded-2xl bg-card p-5">
                 <MobileMetric {...metric} />
               </div>

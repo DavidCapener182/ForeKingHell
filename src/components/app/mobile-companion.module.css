@@ -167,6 +167,28 @@
   max-width: 65%;
   font-size: 1rem;
 }
+.clubPicker {
+  position: relative;
+  max-width: 65%;
+  min-width: 0;
+}
+.clubPicker select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  width: 100%;
+  max-width: none;
+  padding: 0 1.5rem 0 0.5rem;
+  border: 0;
+}
+.clubPicker > svg {
+  position: absolute;
+  inset-inline-end: 0.375rem;
+  top: calc(50% - 0.5rem);
+  pointer-events: none;
+  color: var(--ios-secondary-label);
+}
 .activityHeading {
   display: grid;
   gap: 0.75rem;

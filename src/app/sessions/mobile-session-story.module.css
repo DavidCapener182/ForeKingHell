@@ -1,0 +1,32 @@
+.picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.control {
+  position: relative;
+  min-width: 0;
+  max-width: 65%;
+}
+.control select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 2.75rem;
+  width: 100%;
+  padding: 0 1.75rem 0 0.75rem;
+  border: 0;
+  border-radius: var(--mobile-radius-md);
+  background: var(--ios-grouped-surface);
+  color: var(--ios-label);
+  font: inherit;
+}
+.control > svg {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  top: calc(50% - 0.5rem);
+  color: var(--ios-secondary-label);
+  pointer-events: none;
+}

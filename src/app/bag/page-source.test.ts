@@ -34,7 +34,7 @@ describe("bag desktop workbench source", () => {
     expect(mobileTabs).not.toContain('label: "Benchmarks"');
     expect(source).toContain('<p className="font-semibold text-foreground">Benchmarks</p>');
     expect(source).toContain("mobile=benchmarks#bag-benchmarks");
-    expect(source).toContain('label="Club distance ladder"');
+    expect(source).toContain("<MobileBagLadder clubs={quickBagClubs}");
     expect(source).toContain("<DistanceBenchmarkPanel");
     expect(source).toContain("<QuickBagClient");
     expect(source).toContain("row.latestReliableCarryP25Yd");
@@ -51,8 +51,10 @@ describe("bag desktop workbench source", () => {
       source.indexOf("<BagCompanionPage"),
     );
     expect(companion).toContain(
-      'getBag({ scope: mobileBenchmarksLoaded ? "companion-benchmarks" : "companion" })',
+      'mobileBenchmarksLoaded ? getBag({ scope: "companion-benchmarks" }) : Promise.resolve([])',
     );
+    expect(companion).toContain("getMobileQuickBag()");
+    expect(companion).not.toContain("buildQuickBagClubs(bag)");
     expect(companion).toContain("mobileBenchmarksLoaded ? buildBenchmarkRows(bag) : []");
     expect(companion).not.toContain("getFeatureIdeasData()");
     expect(companion).not.toContain("getBagSpeedSummary()");

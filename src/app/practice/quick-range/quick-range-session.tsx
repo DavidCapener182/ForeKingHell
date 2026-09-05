@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { formatCompanionClubType } from "@/lib/club-format";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Minus, Plus, Play, Upload } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, Minus, Plus, Play, Upload } from "lucide-react";
 import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { useMobileActivity, activityHaptic } from "@/components/app/use-mobile-activity";
@@ -48,26 +49,10 @@ export function QuickRangeCompanionSession({
   accountId: string;
   initialClubType?: string;
 }) {
+  const initialClub = formatCompanionClubType(initialClubType || "7i");
   const [draft, setDraft] = useState<Draft>({
     state: "ready",
-    club:
-      (
-        {
-          driver: "Driver",
-          "3w": "3 Wood",
-          "5w": "5 Wood",
-          hybrid: "Hybrid",
-          "5i": "5 Iron",
-          "6i": "6 Iron",
-          "7i": "7 Iron",
-          "8i": "8 Iron",
-          "9i": "9 Iron",
-          pw: "Pitching Wedge",
-          gw: "Gap Wedge",
-          sw: "Sand Wedge",
-          lw: "Lob Wedge",
-        } as Record<string, string>
-      )[initialClubType ?? ""] ?? "7 Iron",
+    club: initialClub,
     focus,
     balls: 20,
     target: "",
@@ -88,7 +73,9 @@ export function QuickRangeCompanionSession({
           value &&
           (!initialClubType || ["active", "paused"].includes(value.state)) &&
           ["ready", "active", "paused", "finished"].includes(value.state) &&
-          clubs.includes(value.club) &&
+          (clubs.includes(value.club) ||
+            /^[1-9] (Iron|Wood|Hybrid)$/.test(value.club) ||
+            ["Approach Wedge", "Wedge"].includes(value.club)) &&
           [20, 30, 40, 60].includes(value.balls) &&
           typeof value.notes === "string" &&
           typeof value.focus === "string" &&
@@ -161,11 +148,18 @@ export function QuickRangeCompanionSession({
           <div className={styles.setup}>
             <label>
               Club
-              <select value={draft.club} onChange={(e) => patch({ club: e.target.value })}>
-                {clubs.map((club) => (
-                  <option key={club}>{club}</option>
-                ))}
-              </select>
+              <span className={styles.clubPicker}>
+                <select
+                  aria-label="Club"
+                  value={draft.club}
+                  onChange={(e) => patch({ club: e.target.value })}
+                >
+                  {[...new Set([...clubs, initialClub, draft.club])].map((club) => (
+                    <option key={club}>{club}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} aria-hidden />
+              </span>
             </label>
             <label>
               Focus
