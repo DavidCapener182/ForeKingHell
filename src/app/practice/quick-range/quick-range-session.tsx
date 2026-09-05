@@ -49,9 +49,10 @@ export function QuickRangeCompanionSession({
   accountId: string;
   initialClubType?: string;
 }) {
+  const initialClub = formatCompanionClubType(initialClubType || "7i");
   const [draft, setDraft] = useState<Draft>({
     state: "ready",
-    club: formatCompanionClubType(initialClubType || "7i"),
+    club: initialClub,
     focus,
     balls: 20,
     target: "",
@@ -153,7 +154,7 @@ export function QuickRangeCompanionSession({
                   value={draft.club}
                   onChange={(e) => patch({ club: e.target.value })}
                 >
-                  {[...new Set([...clubs, draft.club])].map((club) => (
+                  {[...new Set([...clubs, initialClub, draft.club])].map((club) => (
                     <option key={club}>{club}</option>
                   ))}
                 </select>
