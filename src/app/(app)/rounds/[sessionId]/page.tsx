@@ -217,7 +217,11 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
     ["active", "in_progress"].includes(round.session.roundStatus) &&
     round.session.courseId &&
     round.session.teeSetId
-      ? await getCourseStrategyData(round.session.courseId, round.session.teeSetId)
+      ? await getCourseStrategyData(
+          round.session.courseId,
+          round.session.teeSetId,
+          "latest-reliable",
+        )
       : null;
   const clubEvidence =
     liveStrategy?.selectedCourse?.id === round.session.courseId &&

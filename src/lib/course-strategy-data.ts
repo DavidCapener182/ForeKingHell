@@ -5,14 +5,18 @@ import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clubs, courseFeatures, courses, holes, stockYardages, teeSets } from "@/db/schema";
 import { formatClubType } from "@/lib/club-format";
-import { buildHoleStrategies } from "@/lib/course-strategy";
+import { buildHoleStrategies, type StrategyClub } from "@/lib/course-strategy";
 import { requireCurrentUserId } from "@/lib/current-user";
+
+import { getMobileQuickBag } from "@/lib/mobile-quick-bag-data";
+import { mobileStrategyClubs } from "@/lib/mobile-strategy-evidence";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function getCourseStrategyData(
   requestedCourseId?: string,
   requestedTeeSetId?: string,
+  evidenceBasis: "stock" | "latest-reliable" = "stock",
 ) {
   const db = getDb();
   const userId = await requireCurrentUserId();
@@ -58,23 +62,25 @@ export async function getCourseStrategyData(
       .select({ holeNumber: courseFeatures.holeNumber, featureType: courseFeatures.featureType })
       .from(courseFeatures)
       .where(eq(courseFeatures.courseId, selectedCourse.id)),
-    db
-      .select({
-        clubId: clubs.id,
-        type: clubs.type,
-        sampleSize: stockYardages.sampleSize,
-        carry: stockYardages.carryMedianYd,
-        p25: stockYardages.carryP25Yd,
-        p75: stockYardages.carryP75Yd,
-        left: stockYardages.dispersionLeftYd,
-        right: stockYardages.dispersionRightYd,
-        confidence: stockYardages.confidenceScore,
-        calculatedAt: stockYardages.calculatedAt,
-      })
-      .from(stockYardages)
-      .innerJoin(clubs, and(eq(clubs.id, stockYardages.clubId), eq(clubs.userId, userId)))
-      .where(and(eq(stockYardages.userId, userId), eq(clubs.active, true)))
-      .orderBy(desc(stockYardages.calculatedAt)),
+    evidenceBasis === "latest-reliable"
+      ? Promise.resolve([])
+      : db
+          .select({
+            clubId: clubs.id,
+            type: clubs.type,
+            sampleSize: stockYardages.sampleSize,
+            carry: stockYardages.carryMedianYd,
+            p25: stockYardages.carryP25Yd,
+            p75: stockYardages.carryP75Yd,
+            left: stockYardages.dispersionLeftYd,
+            right: stockYardages.dispersionRightYd,
+            confidence: stockYardages.confidenceScore,
+            calculatedAt: stockYardages.calculatedAt,
+          })
+          .from(stockYardages)
+          .innerJoin(clubs, and(eq(clubs.id, stockYardages.clubId), eq(clubs.userId, userId)))
+          .where(and(eq(stockYardages.userId, userId), eq(clubs.active, true)))
+          .orderBy(desc(stockYardages.calculatedAt)),
   ]);
   let selectedTee = requestedTeeSetId
     ? (teeRows.find((tee) => tee.id === requestedTeeSetId) ?? null)
@@ -110,6 +116,23 @@ export async function getCourseStrategyData(
     if (row.carry !== null && !newestByClub.has(row.clubId)) newestByClub.set(row.clubId, row);
   }
   const latestStocks = [...newestByClub.values()];
+  const strategyClubs: StrategyClub[] =
+    evidenceBasis === "latest-reliable"
+      ? mobileStrategyClubs(await getMobileQuickBag())
+      : latestStocks.map((row) => ({
+          clubId: row.clubId,
+          clubType: row.type,
+          label: formatClubType(row.type),
+          carryYd: row.carry!,
+          minCarryYd: row.p25 ?? row.carry! * 0.94,
+          maxCarryYd: row.p75 ?? row.carry! * 1.04,
+          dispersionAvailable: row.left !== null && row.right !== null,
+          carryRangeMeasured: row.p25 !== null && row.p75 !== null,
+          leftYd: Math.abs(row.left ?? 0),
+          rightYd: Math.abs(row.right ?? 0),
+          confidence: normalizedConfidence(row.confidence),
+          sampleSize: row.sampleSize,
+        }));
   const hazardsByHole = new Map<number, string[]>();
 
   for (const feature of featureRows) {
@@ -128,31 +151,9 @@ export async function getCourseStrategyData(
     strategies: buildHoleStrategies({
       holes: holeRows,
       hazardsByHole,
-      clubs: latestStocks.map((row) => ({
-        clubId: row.clubId,
-        clubType: row.type,
-        label: formatClubType(row.type),
-        carryYd: row.carry!,
-        minCarryYd: row.p25 ?? row.carry! * 0.94,
-        maxCarryYd: row.p75 ?? row.carry! * 1.04,
-        dispersionAvailable: row.left !== null && row.right !== null,
-        carryRangeMeasured: row.p25 !== null && row.p75 !== null,
-        leftYd: Math.abs(row.left ?? 0),
-        rightYd: Math.abs(row.right ?? 0),
-        confidence: normalizedConfidence(row.confidence),
-        sampleSize: row.sampleSize,
-      })),
+      clubs: strategyClubs,
     }),
-    trustedBag: latestStocks.map((row) => ({
-      clubId: row.clubId,
-      clubType: row.type,
-      label: formatClubType(row.type),
-      carryYd: row.carry!,
-      minCarryYd: row.p25 ?? row.carry! * 0.94,
-      maxCarryYd: row.p75 ?? row.carry! * 1.04,
-      confidence: normalizedConfidence(row.confidence),
-      sampleSize: row.sampleSize,
-    })),
+    trustedBag: strategyClubs.map((club) => ({ ...club, clubType: club.clubType! })),
   };
 }
 

@@ -17,12 +17,18 @@ export const dynamic = "force-dynamic";
 
 export default async function SharedCourseTwinPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ hole?: string | string[] }>;
 }) {
   const { token } = await params;
   const shared = await loadSharedReplay(token);
   if (!shared) notFound();
+  const requestedHole = Number((await searchParams).hole);
+  const initialHoleNumber = shared.manifest.holes.find(
+    (hole) => hole.holeNumber === requestedHole,
+  )?.holeNumber;
 
   return (
     <main
@@ -71,7 +77,13 @@ export default async function SharedCourseTwinPage({
         aria-describedby="shared-course-twin-context"
         className="relative h-full min-h-0 lg:h-auto lg:flex-1"
       >
-        <CourseTwinRuntime manifest={shared.manifest} replay={shared.replay} readOnly />
+        <CourseTwinRuntime
+          manifest={shared.manifest}
+          replay={shared.replay}
+          readOnly
+          initialMode="replay"
+          initialHoleNumber={initialHoleNumber}
+        />
       </section>
       <footer className="hidden border-t border-white/10 px-6 py-3 text-xs text-emerald-100/70 lg:block">
         This private link exposes the reconstructed shot path and course package only. It does not

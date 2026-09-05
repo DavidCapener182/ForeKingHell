@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { Component, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import type { CourseTwinManifest, CourseTwinReplayDocument } from "@/lib/course-twin-contract";
 import {
@@ -63,33 +63,78 @@ export function CourseTwinRuntime({
           readOnly={readOnly}
           initialMode={initialMode}
           initialHoleNumber={initialHoleNumber}
-          onEnable3d={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set("quality", "balanced");
-            window.location.assign(url);
-          }}
+          rendererUnavailable={webGlAvailable === false}
+          onEnable3d={
+            webGlAvailable === false
+              ? undefined
+              : () => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("quality", "balanced");
+                  window.location.assign(url);
+                }
+          }
         />
       );
     return (
       <CourseTwinLowPowerFallback
         manifest={manifest}
-        onEnable3d={() => setRenderQualityOverride("balanced")}
+        rendererUnavailable={webGlAvailable === false}
+        onEnable3d={
+          webGlAvailable === false
+            ? undefined
+            : () => setRenderQualityOverride(canCreateWebGlContext() ? "balanced" : "fallback")
+        }
       />
     );
   }
 
   return (
-    <CourseTwinScene
-      manifest={manifest}
-      replay={replay}
-      readOnly={readOnly}
-      tournamentId={tournamentId}
-      tournamentRoundNumber={tournamentRoundNumber}
-      initialMode={initialMode}
-      initialHoleNumber={initialHoleNumber}
-      renderQuality={renderQuality}
-    />
+    <CourseTwinRendererBoundary
+      key={`${manifest.course.id}:${renderQuality}`}
+      fallback={
+        compact ? (
+          <CourseTwinMobileOverhead
+            manifest={manifest}
+            replay={replay}
+            readOnly={readOnly}
+            initialMode={initialMode}
+            initialHoleNumber={initialHoleNumber}
+            rendererUnavailable
+            onEnable3d={() => window.location.reload()}
+          />
+        ) : (
+          <CourseTwinLowPowerFallback
+            manifest={manifest}
+            onEnable3d={() => window.location.reload()}
+          />
+        )
+      }
+    >
+      <CourseTwinScene
+        manifest={manifest}
+        replay={replay}
+        readOnly={readOnly}
+        tournamentId={tournamentId}
+        tournamentRoundNumber={tournamentRoundNumber}
+        initialMode={initialMode}
+        initialHoleNumber={initialHoleNumber}
+        renderQuality={renderQuality}
+      />
+    </CourseTwinRendererBoundary>
   );
+}
+
+class CourseTwinRendererBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
 }
 
 function subscribeCompactViewport(listener: () => void) {
@@ -106,7 +151,23 @@ function subscribeToStaticDeviceSignals() {
 }
 
 function readBrowserRenderQuality(): CourseTwinRenderQuality {
-  return courseTwinRenderQuality(browserCourseTwinDeviceSignals());
+  const quality = courseTwinRenderQuality(browserCourseTwinDeviceSignals());
+  return quality !== "fallback" && !canCreateWebGlContext() ? "fallback" : quality;
+}
+
+let webGlAvailable: boolean | null = null;
+function canCreateWebGlContext() {
+  if (webGlAvailable !== null) return webGlAvailable;
+  try {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("webgl2");
+    webGlAvailable = context !== null;
+    // Release the probe immediately; the actual renderer owns its own context.
+    context?.getExtension("WEBGL_lose_context")?.loseContext();
+  } catch {
+    webGlAvailable = false;
+  }
+  return webGlAvailable;
 }
 
 function readServerRenderQuality(): CourseTwinRenderQuality {
@@ -117,9 +178,11 @@ function readServerRenderQuality(): CourseTwinRenderQuality {
 function CourseTwinLowPowerFallback({
   manifest,
   onEnable3d,
+  rendererUnavailable = false,
 }: {
   manifest: CourseTwinManifest;
-  onEnable3d: () => void;
+  onEnable3d?: () => void;
+  rendererUnavailable?: boolean;
 }) {
   const bounds = manifest.terrain.heightmap?.localBounds ?? manifest.bounds;
   const width = Math.max(1, bounds.maxX - bounds.minX);
@@ -144,6 +207,7 @@ function CourseTwinLowPowerFallback({
           <p className="mt-1 text-sm text-emerald-50/70">
             The mapped hole plan remains available without loading the animated 3D renderer.
           </p>
+          {rendererUnavailable ? <p role="status">3D is unavailable on this device.</p> : null}
         </div>
         <svg
           viewBox="0 0 1000 700"
@@ -199,9 +263,11 @@ function CourseTwinLowPowerFallback({
               Open Strategy map
             </Link>
           </Button>
-          <Button type="button" variant="outline" className="min-h-11" onClick={onEnable3d}>
-            Try balanced 3D
-          </Button>
+          {onEnable3d ? (
+            <Button type="button" variant="outline" className="min-h-11" onClick={onEnable3d}>
+              Try balanced 3D
+            </Button>
+          ) : null}
         </div>
       </aside>
     </section>

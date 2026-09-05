@@ -10,6 +10,7 @@ import type {
   CourseTwinReplayShot,
 } from "@/lib/course-twin-contract";
 import { overheadProjection, overheadReplayPosition } from "@/lib/course-twin-overhead";
+import { formatClubType } from "@/lib/club-format";
 import styles from "./course-twin-overhead.module.css";
 
 export function CourseTwinMobileOverhead({
@@ -19,13 +20,15 @@ export function CourseTwinMobileOverhead({
   initialMode,
   initialHoleNumber,
   onEnable3d,
+  rendererUnavailable = false,
 }: {
   manifest: CourseTwinManifest;
   replay: CourseTwinReplayDocument | null;
   readOnly?: boolean;
   initialMode?: "strategy" | "replay";
   initialHoleNumber?: number;
-  onEnable3d: () => void;
+  onEnable3d?: () => void;
+  rendererUnavailable?: boolean;
 }) {
   const query = useSearchParams();
   const requestedHole = Number(query.get("hole") ?? initialHoleNumber);
@@ -55,6 +58,11 @@ export function CourseTwinMobileOverhead({
         <p>{manifest.course.name}</p>
         <span>2D · Low power</span>
       </header>
+      {rendererUnavailable ? (
+        <p className={styles.detail} role="status">
+          3D is unavailable. Your mapped course and replay remain available in 2D.
+        </p>
+      ) : null}
       <div
         className={styles.modes}
         data-read-only={readOnly || undefined}
@@ -154,7 +162,7 @@ export function CourseTwinMobileOverhead({
             · {source.licence}
           </p>
         ))}
-        <button onClick={onEnable3d}>Try balanced 3D</button>
+        {onEnable3d ? <button onClick={onEnable3d}>Try balanced 3D</button> : null}
       </details>
       <nav className={styles.navigation} aria-label="Hole navigation">
         <button
@@ -349,7 +357,7 @@ function HolePlayback({
             <div className={styles.shotHeading} aria-live="polite">
               <div>
                 <span>Shot {shot.holeShotNumber ?? index + 1}</span>
-                <h2>{shot.clubType}</h2>
+                <h2>{formatClubType(shot.clubType)}</h2>
               </div>
               {shot.metrics.carryYd.value !== null ? (
                 <div className={styles.metric}>
@@ -370,7 +378,7 @@ function HolePlayback({
                 >
                   {shots.map((s, i) => (
                     <option key={s.id} value={i}>
-                      Shot {s.holeShotNumber ?? i + 1} · {s.clubType}
+                      Shot {s.holeShotNumber ?? i + 1} · {formatClubType(s.clubType)}
                     </option>
                   ))}
                 </select>

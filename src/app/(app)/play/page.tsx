@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { getDb } from "@/db/client";
-import { courses, holes, sessions, stockYardages, teeSets, weatherSnapshots } from "@/db/schema";
+import { courses, holes, sessions, teeSets, weatherSnapshots } from "@/db/schema";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -54,15 +54,13 @@ export default async function PlayCompanionPage({
   searchParams: Promise<{ courseId?: string }>;
 }) {
   const userId = await requireCurrentUserId();
-  const [params, cookieStore, twins, availableCourses, activeRound, trustedBagCount] =
-    await Promise.all([
-      searchParams,
-      cookies(),
-      listAvailableCourseTwins(userId),
-      getPlayCourses(userId),
-      getInProgressRound(userId),
-      getTrustedBagCount(userId),
-    ]);
+  const [params, cookieStore, twins, availableCourses, activeRound] = await Promise.all([
+    searchParams,
+    cookies(),
+    listAvailableCourseTwins(userId),
+    getPlayCourses(userId),
+    getInProgressRound(userId),
+  ]);
   const requestedCourseId = params.courseId ?? cookieStore.get(SELECTED_COURSE_COOKIE)?.value;
   const fallbackRecentRound = await getMostRecentRound(
     userId,
@@ -97,14 +95,14 @@ export default async function PlayCompanionPage({
     teeCount: tees.length,
     courseTwinAvailable: Boolean(twin),
   });
-  const trustedBagReady = trustedBagCount > 0;
   const [strategyData, cachedWeather, recentCourseRounds] = selected
     ? await Promise.all([
-        getCourseStrategyData(selected.id, selectedTee?.id),
+        getCourseStrategyData(selected.id, selectedTee?.id, "latest-reliable"),
         getCachedCourseWeather(userId, selected.id),
         getRecentCourseRounds(userId, selected.id),
       ])
     : [null, null, []];
+  const trustedBagReady = Boolean(strategyData?.trustedBag.some((club) => club.sampleSize >= 5));
   const weatherLabel = formatWeather(cachedWeather?.conditionsJson);
   const lastPlayed = recentCourseRounds[0]?.date ?? null;
   const trustedClubs =
@@ -875,14 +873,6 @@ function finiteNumber(value: unknown) {
   const parsed =
     typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-async function getTrustedBagCount(userId: string) {
-  const [row] = await getDb()
-    .select({ count: countDistinct(stockYardages.clubId) })
-    .from(stockYardages)
-    .where(eq(stockYardages.userId, userId));
-  return Number(row?.count ?? 0);
 }
 
 async function getPlayCourses(userId: string) {

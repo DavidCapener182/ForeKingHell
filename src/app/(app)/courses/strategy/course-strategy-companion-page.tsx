@@ -26,7 +26,7 @@ export default async function CourseStrategyCompanionPage({
   const teeSetId =
     params?.teeSetId ??
     (courseId === rememberedCourse ? cookieStore.get(SELECTED_TEE_COOKIE)?.value : undefined);
-  const data = await getCourseStrategyData(courseId, teeSetId);
+  const data = await getCourseStrategyData(courseId, teeSetId, "latest-reliable");
   const courseTwinManifest = data.selectedCourse
     ? await getCourseTwinManifest({ userId, courseId: data.selectedCourse.id })
     : null;

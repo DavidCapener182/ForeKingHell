@@ -88,13 +88,16 @@ export function MobileHoleStrategy({
       const timer = window.setTimeout(() => {
         setDownloaded(true);
         setSavedAt(date);
-        setSavedCopyIsStale(Date.now() - date.getTime() > 24 * 60 * 60 * 1_000);
+        setSavedCopyIsStale(
+          Date.now() - date.getTime() > 24 * 60 * 60 * 1_000 ||
+            JSON.stringify(saved.strategy) !== JSON.stringify(strategies),
+        );
       }, 0);
       return () => window.clearTimeout(timer);
     } catch {
       // Local storage is an optional poor-connection aid.
     }
-  }, [accountId, course.id, tee?.id, offline]);
+  }, [accountId, course.id, tee?.id, offline, strategies]);
 
   if (!strategy) return null;
 
@@ -110,7 +113,11 @@ export function MobileHoleStrategy({
     if (tee) url.searchParams.set("teeSetId", tee.id);
     url.searchParams.set("hole", String(hole));
     url.searchParams.set("option", option);
-    window.history.replaceState(null, "", url);
+    const historyState = { ...window.history.state };
+    // Next reattaches its markers. Passing them here bypasses its search-param update.
+    delete historyState.__NA;
+    delete historyState._N;
+    window.history.replaceState(historyState, "", url);
     onSelectionChange?.(hole, option);
   };
   const selectHole = (nextIndex: number) => {
@@ -194,21 +201,53 @@ export function MobileHoleStrategy({
           <summary>Club evidence and course detail</summary>
           <dl className={styles.mobileStrategyList}>
             <MobileRow
+              label="Carry basis"
+              value={
+                evidence?.window?.basis === "latest-reliable"
+                  ? offline
+                    ? "Latest reliable · saved with book"
+                    : "Latest reliable · same as Bag"
+                  : evidence
+                    ? "Saved stock window"
+                    : "No measured window"
+              }
+            />
+            <MobileRow
               label="Carry range"
               value={
                 evidence
-                  ? `${mode.carryRange}${evidence.carryRangeMeasured ? " · measured" : " · estimated"}`
+                  ? `${mode.carryRange}${evidence.carryRangeMeasured ? " · middle 50%" : " · estimated"}`
                   : "Not available"
               }
             />
             <MobileRow
-              label="Lateral range"
+              label="Observed lateral range"
               value={
                 evidence?.leftYd != null && evidence?.rightYd != null
                   ? `${Math.round(evidence.leftYd)} yd left · ${Math.round(evidence.rightYd)} yd right`
-                  : "Not measured"
+                  : "Not enough measured side data"
               }
             />
+            {evidence?.window ? (
+              <MobileRow
+                label="Side evidence"
+                value={`${evidence.window.lateralSampleSize} measured shots`}
+              />
+            ) : null}
+            {evidence?.window ? (
+              <MobileRow
+                label="Latest trusted shot"
+                value={
+                  evidence.window.latestShotAt
+                    ? new Date(evidence.window.latestShotAt).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })
+                    : "Date unavailable"
+                }
+              />
+            ) : null}
             <MobileRow
               label="Evidence"
               value={
