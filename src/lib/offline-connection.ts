@@ -16,3 +16,18 @@ export async function checkAppConnection(fetcher: typeof fetch = fetch): Promise
     clearTimeout(timer);
   }
 }
+
+/** A response cannot navigate after the golfer has chosen a different saved activity. */
+export function createOfflineConnectionCheck(check = checkAppConnection) {
+  let generation = 0;
+  return {
+    cancel() {
+      generation += 1;
+    },
+    async check(): Promise<boolean | null> {
+      const attempt = ++generation;
+      const connected = await check();
+      return attempt === generation ? connected : null;
+    },
+  };
+}

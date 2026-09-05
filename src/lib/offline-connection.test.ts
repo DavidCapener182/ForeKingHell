@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { checkAppConnection } from "./offline-connection";
+import { checkAppConnection, createOfflineConnectionCheck } from "./offline-connection";
 afterEach(() => vi.useRealTimers());
 it("requires the exact network marker and bypasses browser caches without sending account cookies", async () => {
   const fetcher = vi.fn().mockResolvedValue(new Response("forekinghell-connection-v1\n"));
@@ -30,4 +30,19 @@ it("bounds a stalled connection so the retry control becomes available again", a
   await vi.advanceTimersByTimeAsync(8000);
   expect(await result).toBe(false);
   expect(vi.getTimerCount()).toBe(0);
+});
+
+it("ignores a late success after saved-activity navigation or a newer retry", async () => {
+  const pending: ((result: boolean) => void)[] = [];
+  const check = createOfflineConnectionCheck(() => new Promise((resolve) => pending.push(resolve)));
+  const first = check.check();
+  check.cancel();
+  pending[0](true);
+  expect(await first).toBeNull();
+  const stale = check.check();
+  const latest = check.check();
+  pending[1](true);
+  pending[2](false);
+  expect(await stale).toBeNull();
+  expect(await latest).toBe(false);
 });

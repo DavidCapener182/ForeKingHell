@@ -16,6 +16,12 @@ The fix does not remove account-owned local storage, create golf measurements, c
 
 ## Release verification
 
-The fix passed 524 Vitest files / 2,478 tests, full ESLint, standalone TypeScript, production build, formatting and all unchanged route budgets. PR and deployment history provide release status. The unrelated local nightly workflow remains excluded.
+The fix passed 525 Vitest files / 2,481 tests, full ESLint, standalone TypeScript, production build, formatting and all unchanged route budgets. PR and deployment history provide release status. The unrelated local nightly workflow remains excluded.
 
 The full live five-tab walkthrough, current imagery/3D scene, successful account mutations, physical keyboard/safe-area acceptance and handset heat/battery observations remain unverified by this pass. Local browser validation is reported separately from actual iPhone observations.
+
+## Review corrections and subsequent handset observations
+
+- Recovered documents now derive the selected destination from the failed route or installed shortcut, retaining its query/deep-link state. External shortcut targets are rejected.
+- Every saved-activity navigation and Back invalidates any pending reconnect, with a tested cancellation generation preventing late responses from interrupting practice/scoring. A saved bag counts as Play content, avoiding a contradictory empty state.
+- After connectivity returned, the actual iPhone loaded Today, Practice with the corrected photograph, Range Mode and its options/Pause return, and Play with Aintree's aerial. The original 3D terrain, dispersion and planned path rendered, and Hole 2 selection worked. These observations used the preceding deployed release while this recovery fix was undergoing CI; they do not certify the new offline shell on the handset or successful measured-data mutations.

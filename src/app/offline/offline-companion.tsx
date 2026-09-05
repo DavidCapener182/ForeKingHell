@@ -24,7 +24,8 @@ import {
 import type { HoleStrategyMode } from "@/lib/course-strategy";
 import { ActiveRangeMode } from "@/app/practice/active-range-mode";
 
-import { checkAppConnection } from "@/lib/offline-connection";
+import { offlineDestination } from "@/lib/offline-destination";
+import { createOfflineConnectionCheck } from "@/lib/offline-connection";
 import { OfflineNavigation } from "./offline-navigation";
 import styles from "./offline.module.css";
 
@@ -52,27 +53,23 @@ export function OfflineCompanion() {
   const [section, setSection] = useState("today");
   const [connecting, setConnecting] = useState(false);
   const connectingRef = useRef(false);
-  const connectionAttempt = useRef(0);
-  useEffect(
-    () => () => {
-      connectionAttempt.current += 1;
-    },
-    [],
-  );
+  const [connection] = useState(createOfflineConnectionCheck);
+  useEffect(() => () => connection.cancel(), [connection]);
   const [connectionMessage, setConnectionMessage] = useState("");
   async function reconnect() {
     if (connectingRef.current) return;
-    const attempt = ++connectionAttempt.current;
     connectingRef.current = true;
     setConnecting(true);
     setConnectionMessage("Checking connection…");
-    const connected = await checkAppConnection();
-    if (attempt !== connectionAttempt.current) return;
+    const connected = await connection.check();
+    if (connected === null) return;
     if (connected) {
       setConnectionMessage("Connected. Opening the app…");
       // A hard navigation replaces the recovered offline document and stale client chunks.
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign(`/surface/companion?next=${encodeURIComponent(`/${section}`)}`);
+      window.location.assign(
+        `/surface/companion?next=${encodeURIComponent(offlineDestination(new URL(window.location.href)).target)}`,
+      );
     } else {
       setConnectionMessage(
         "Still unable to reach ForeKingHell. Check your connection and try again. Your saved golf stays available.",
@@ -114,12 +111,7 @@ export function OfflineCompanion() {
     const restoreView = () => {
       try {
         const query = new URLSearchParams(window.location.search);
-        const requestedSection = query.get("section");
-        setSection(
-          ["today", "practice", "play", "progress", "bag"].includes(requestedSection ?? "")
-            ? requestedSection!
-            : "today",
-        );
+        setSection(offlineDestination(new URL(window.location.href)).section);
         setView("saved");
         const id = localStorage.getItem("fkh:offline-account");
         if (!id) return;
@@ -199,6 +191,10 @@ export function OfflineCompanion() {
       }
     };
     const onHistory = () => {
+      connection.cancel();
+      connectingRef.current = false;
+      setConnecting(false);
+      setConnectionMessage("");
       checkAccount();
       restoreView();
     };
@@ -211,7 +207,7 @@ export function OfflineCompanion() {
       window.removeEventListener("focus", checkAccount);
       document.removeEventListener("visibilitychange", checkAccount);
     };
-  }, []);
+  }, [connection]);
   useMobileActivity(view === "practice" && !practice?.finished);
   function updatePractice(update: Partial<SavedPractice>) {
     if (!practice || !account) return;
@@ -226,7 +222,14 @@ export function OfflineCompanion() {
     }
   }
   const book = books.find((item) => item.course.id === bookId);
+  function cancelReconnect() {
+    connection.cancel();
+    connectingRef.current = false;
+    setConnecting(false);
+    setConnectionMessage("");
+  }
   function navigate(nextView: string, params: Record<string, string> = {}) {
+    cancelReconnect();
     const url = new URL("/offline", window.location.origin);
     url.searchParams.set("view", nextView === "book" ? "caddie" : nextView);
     url.searchParams.set("section", section);
@@ -253,6 +256,7 @@ export function OfflineCompanion() {
     });
   }
   function showSaved() {
+    cancelReconnect();
     if (window.history.state?.fkhOfflineDetail) {
       window.history.back();
       return;
@@ -277,11 +281,7 @@ export function OfflineCompanion() {
     }
   }
   function selectSection(nextSection: string) {
-    connectionAttempt.current += 1;
-    connectingRef.current = false;
-    setConnecting(false);
     setSection(nextSection);
-    setConnectionMessage("");
     navigate(nextSection === "bag" && bag?.clubs.length ? "bag" : "saved", {
       section: nextSection,
     });
@@ -305,7 +305,7 @@ export function OfflineCompanion() {
       : section === "practice"
         ? Boolean(quick || practice)
         : section === "play"
-          ? Boolean(rounds.length || books.length)
+          ? Boolean(rounds.length || books.length || bag?.clubs.length)
           : section === "bag"
             ? Boolean(bag?.clubs.length)
             : false;
