@@ -268,7 +268,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Sign out of LM World Tour?</AlertDialogTitle>
+                      <AlertDialogTitle>Sign out of ForeKingHell?</AlertDialogTitle>
                       <AlertDialogDescription>
                         Private offline golf data will be cleared from this device before the
                         session ends.

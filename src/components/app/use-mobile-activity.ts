@@ -10,15 +10,24 @@ export function useMobileActivity(active: boolean) {
     if (shell) shell.dataset.mobileFlow = "immersive";
     let cancelled = false;
     let lock: WakeLockSentinel | null = null;
+    let acquiring = false;
     const acquire = async () => {
-      if (cancelled || document.visibilityState !== "visible" || lock || !("wakeLock" in navigator))
+      if (
+        cancelled ||
+        acquiring ||
+        document.visibilityState !== "visible" ||
+        lock ||
+        !("wakeLock" in navigator)
+      )
         return;
+      acquiring = true;
       try {
         const next = await navigator.wakeLock.request("screen");
-        if (cancelled) {
+        if (cancelled || document.visibilityState !== "visible") {
           await next.release();
           return;
         }
+        if (next.released) return;
         lock = next;
         next.addEventListener(
           "release",
@@ -29,6 +38,8 @@ export function useMobileActivity(active: boolean) {
         );
       } catch {
         /* Auto-lock remains available when the OS declines. */
+      } finally {
+        acquiring = false;
       }
     };
     const visibility = () => {

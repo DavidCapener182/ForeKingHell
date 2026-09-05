@@ -1,0 +1,57 @@
+.recommendation {
+  overflow: hidden;
+  border-radius: var(--mobile-radius-lg);
+  background: var(--mobile-surface);
+}
+.artwork {
+  position: relative;
+  aspect-ratio: 2.2;
+  background: var(--mobile-grouped-background, var(--background));
+}
+.artwork img {
+  object-fit: cover;
+  object-position: 50% 75%;
+}
+.summary {
+  display: grid;
+  gap: var(--mobile-space-standard);
+  padding: var(--mobile-space-standard);
+}
+.heading {
+  display: grid;
+  gap: var(--mobile-space-compact);
+}
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--mobile-space-compact) var(--mobile-space-large);
+  font-variant-numeric: tabular-nums;
+}
+.metric {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+.metric strong {
+  font-size: 1.5rem;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+}
+.metric span {
+  font-size: 0.8125rem;
+  color: var(--ios-secondary-label);
+}
+.action {
+  min-height: 3rem;
+  width: 100%;
+}
+.blockDetail {
+  display: grid;
+  gap: var(--mobile-space-standard);
+  padding: var(--mobile-space-compact) 0;
+}
+.blockDetail > div {
+  display: grid;
+  gap: var(--mobile-space-compact);
+}

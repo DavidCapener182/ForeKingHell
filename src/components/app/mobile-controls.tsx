@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,40 @@ export type MobileControlOption = {
   label: ReactNode;
   disabled?: boolean;
 };
+
+/** Radio choices activate as focus moves; page tabs wait for Space/Enter to avoid unwanted navigation. */
+function moveControlFocus(event: KeyboardEvent<HTMLDivElement>, role: "radio" | "tab") {
+  if (event.altKey || event.ctrlKey || event.metaKey) return;
+  const horizontal = event.key === "ArrowLeft" || event.key === "ArrowRight";
+  const vertical = role === "radio" && (event.key === "ArrowUp" || event.key === "ArrowDown");
+  if (!horizontal && !vertical && event.key !== "Home" && event.key !== "End") return;
+  const buttons = Array.from(
+    event.currentTarget.querySelectorAll<HTMLButtonElement>(`button[role="${role}"]`),
+  ).filter((button) => !button.disabled);
+  const current = buttons.indexOf(event.target as HTMLButtonElement);
+  if (current < 0 || !buttons.length) return;
+  const rtl = getComputedStyle(event.currentTarget).direction === "rtl";
+  const forward = horizontal ? (event.key === "ArrowRight") !== rtl : event.key === "ArrowDown";
+  const index =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? buttons.length - 1
+        : (current + (forward ? 1 : -1) + buttons.length) % buttons.length;
+  event.preventDefault();
+  event.stopPropagation();
+  const next = buttons[index];
+  next.focus({ preventScroll: true });
+  next.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (role === "radio" && next.getAttribute("aria-checked") !== "true") next.click();
+}
+
+function controlTabStop(options: MobileControlOption[], value: string) {
+  return (
+    options.find((option) => option.value === value && !option.disabled)?.value ??
+    options.find((option) => !option.disabled)?.value
+  );
+}
 
 /**
  * A local, mutually exclusive view control. Use this for presentation state such as
@@ -28,23 +62,22 @@ export function MobileSegmentedControl({
   className?: string;
 }) {
   const optionCount = Math.max(options.length, 1);
-  const activeIndex = Math.max(
-    options.findIndex((option) => option.value === value),
-    0,
-  );
+  const tabStop = controlTabStop(options, value);
+  const activeIndex = options.findIndex((option) => option.value === value);
 
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
       data-mobile-control="segmented"
+      onKeyDown={(event) => moveControlFocus(event, "radio")}
       className={cn(
         "relative isolate grid min-w-0 gap-1 rounded-[var(--mobile-radius-md)] bg-secondary p-1",
         className,
       )}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
-      {options.length > 0 ? (
+      {activeIndex >= 0 ? (
         <span
           className="t-tabs-pill absolute inset-y-1 left-1 z-0 rounded-[calc(var(--mobile-radius-md)-0.25rem)] bg-card shadow-sm ring-1 ring-foreground/5"
           style={{
@@ -64,9 +97,10 @@ export function MobileSegmentedControl({
             role="radio"
             aria-checked={selected}
             disabled={option.disabled}
+            tabIndex={option.value === tabStop ? 0 : -1}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "t-tabs-trigger focus-aaa relative z-10 min-h-11 min-w-0 touch-manipulation rounded-[calc(var(--mobile-radius-md)-0.25rem)] bg-transparent px-2.5 py-2 text-sm font-semibold outline-none",
+              "t-tabs-trigger focus-aaa relative z-10 min-h-11 min-w-0 touch-manipulation rounded-[calc(var(--mobile-radius-md)-0.25rem)] bg-transparent px-2.5 py-2 text-sm font-semibold outline-none disabled:opacity-50",
               selected ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -97,11 +131,13 @@ export function MobileFilterChipGroup({
   className?: string;
   scrollable?: boolean;
 }) {
+  const tabStop = controlTabStop(options, value);
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
       data-mobile-control="chips"
+      onKeyDown={(event) => moveControlFocus(event, "radio")}
       className={cn(
         "flex min-w-0 gap-2",
         scrollable
@@ -120,9 +156,10 @@ export function MobileFilterChipGroup({
             role="radio"
             aria-checked={selected}
             disabled={option.disabled}
+            tabIndex={option.value === tabStop ? 0 : -1}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "focus-aaa min-h-11 shrink-0 snap-start touch-manipulation rounded-[var(--mobile-radius-pill)] border px-3 py-2 text-sm font-semibold outline-none transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100",
+              "focus-aaa min-h-11 shrink-0 snap-start touch-manipulation rounded-[var(--mobile-radius-pill)] border px-3 py-2 text-sm font-semibold outline-none transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:opacity-50",
               selected
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-foreground hover:bg-secondary",
@@ -169,7 +206,7 @@ export function MobileCarouselPagination({
   }
 
   return (
-    <div className="flex items-center justify-center gap-2" aria-label={ariaLabel}>
+    <div role="group" className="flex items-center justify-center gap-2" aria-label={ariaLabel}>
       {labels.map((label, index) => (
         <button
           key={`${label}-${index}`}
@@ -250,21 +287,22 @@ export function MobilePageTabs({
 }) {
   const [value, setValue] = useState(initialValue);
   const panelId = useId();
-  const selected = tabs.find((tab) => tab.value === value) ?? tabs[0];
+  const selected =
+    tabs.find((tab) => tab.value === value && !tab.disabled) ?? tabs.find((tab) => !tab.disabled);
 
   useEffect(() => {
     if (mode !== "navigable") return;
 
     const syncValueFromUrl = () => {
       const urlValue = resolveMobilePageTabValue(tabs, window.location.href);
-      if (urlValue) setValue(urlValue);
+      setValue(urlValue ?? initialValue);
     };
 
     syncValueFromUrl();
     window.addEventListener("popstate", syncValueFromUrl);
 
     return () => window.removeEventListener("popstate", syncValueFromUrl);
-  }, [mode, tabs]);
+  }, [initialValue, mode, tabs]);
 
   if (!selected) return null;
 
@@ -273,6 +311,7 @@ export function MobilePageTabs({
       <div
         role="tablist"
         aria-label={ariaLabel}
+        onKeyDown={(event) => moveControlFocus(event, "tab")}
         className="flex min-w-0 overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((tab) => {
@@ -283,6 +322,8 @@ export function MobilePageTabs({
               key={tab.value}
               type="button"
               role="tab"
+              id={`${panelId}-mobile-tab-${tab.value}`}
+              tabIndex={active ? 0 : -1}
               aria-selected={active}
               aria-controls={`${panelId}-mobile-tab-panel-${tab.value}`}
               disabled={tab.disabled}
@@ -304,14 +345,19 @@ export function MobilePageTabs({
           );
         })}
       </div>
-      <div
-        id={`${panelId}-mobile-tab-panel-${selected.value}`}
-        role="tabpanel"
-        tabIndex={0}
-        className="min-w-0 outline-none"
-      >
-        {selected.content}
-      </div>
+      {tabs.map((tab) => (
+        <div
+          key={tab.value}
+          id={`${panelId}-mobile-tab-panel-${tab.value}`}
+          role="tabpanel"
+          aria-labelledby={`${panelId}-mobile-tab-${tab.value}`}
+          tabIndex={tab.value === selected.value ? 0 : -1}
+          hidden={tab.value !== selected.value}
+          className="min-w-0 outline-none"
+        >
+          {tab.value === selected.value ? tab.content : null}
+        </div>
+      ))}
       <span className="sr-only" aria-live="polite">
         {String(selected.label)} selected
       </span>

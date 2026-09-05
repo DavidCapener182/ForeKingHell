@@ -4,6 +4,8 @@ import { useMobileActivity } from "@/components/app/use-mobile-activity";
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
 
 import Link from "next/link";
+import Image from "next/image";
+import styles from "./practice-companion.module.css";
 import dynamic from "next/dynamic";
 import { clubLabel, clubSummary, blockVolume } from "./practice-mobile-format";
 import { lazy, Suspense, useEffect, useRef, useState, useTransition } from "react";
@@ -11,7 +13,7 @@ import { lazy, Suspense, useEffect, useRef, useState, useTransition } from "reac
 const loadActiveRangeMode = () =>
   import("./active-range-mode").then((module) => ({ default: module.ActiveRangeMode }));
 const ActiveRangeMode = lazy(loadActiveRangeMode);
-import { CheckCircle2, ChevronRight, Save } from "lucide-react";
+import { CheckCircle2, ChevronRight, Play } from "lucide-react";
 
 import {
   completePracticeActivityAction,
@@ -517,51 +519,65 @@ export function PracticeCompanionClient({
         <SpeedDevelopmentCompanionReadout context={context} />
       ) : null}
       {finished ? <FinishedActions message={message} planId={savedPlanId} /> : null}
-      <Card className="relative isolate gap-3 overflow-hidden py-3" data-current-practice-plan>
-        <CardHeader>
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              {activeMeasuredResult || finished ? "Completed practice" : "Recommended session"}
+      <section
+        className={styles.recommendation}
+        data-current-practice-plan
+        aria-label="Your practice"
+      >
+        {!activeMeasuredResult && !finished ? (
+          <div className={styles.artwork}>
+            <Image
+              src="/assets/companion/practice-focus-v2.avif"
+              loading="eager"
+              alt="Golfer addressing a ball on a practice tee"
+              fill
+              sizes="(max-width: 767px) calc(100vw - 32px), 720px"
+            />
+          </div>
+        ) : null}
+        <div className={styles.summary}>
+          <div className={styles.heading}>
+            <p className="mobile-type-footnote font-semibold text-primary">
+              {activeMeasuredResult || finished ? "Completed practice" : "Recommended for you"}
             </p>
-            <CardTitle className="mt-1 text-xl font-bold leading-6 tracking-tight">
-              {plan.title}
-            </CardTitle>
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            <h2 className="mobile-type-title2">{plan.title}</h2>
+            <p className="mobile-type-callout text-muted-foreground">
               {plan.why[0] ?? plan.summary}
             </p>
           </div>
-          <CardAction>
-            <Badge variant="secondary">
-              {activeMeasuredResult ? "Measured" : plan.confidenceLabel}
-            </Badge>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm font-semibold text-foreground" aria-label="Plan summary">
-            {plan.totalBalls === null ? "Time based" : `${plan.totalBalls} balls`} ·{" "}
-            {plan.estimatedTimeMinutes} min · {clubSummary(plan)} · {plan.blocks.length} blocks
+          <div className={styles.metrics} aria-label="Plan summary">
+            <p className={styles.metric}>
+              <strong>{plan.estimatedTimeMinutes}</strong>
+              <span>min</span>
+            </p>
+            {plan.totalBalls !== null ? (
+              <p className={styles.metric}>
+                <strong>{plan.totalBalls}</strong>
+                <span>balls</span>
+              </p>
+            ) : null}
+            <p className="mobile-type-footnote text-muted-foreground">
+              {activeMeasuredResult ? "Measured result" : `${plan.confidenceLabel} confidence`}
+            </p>
+          </div>
+          <p className="mobile-type-footnote text-muted-foreground">
+            {clubSummary(plan)} · {plan.blocks.length} blocks
           </p>
-        </CardContent>
-        {isPending ? (
-          <CardContent>
+          {isPending ? (
             <OperationStatus
               status="working"
               title={savedPlanId ? "Starting Range Mode" : "Saving and starting practice"}
               description="Keeping the plan and activity state together before the first block opens."
             />
-          </CardContent>
-        ) : message ? (
-          <CardContent>
+          ) : message ? (
             <p role="status" className="mobile-type-callout text-muted-foreground">
               {message}
             </p>
-          </CardContent>
-        ) : null}
-        <CardFooter className="bg-background/70 p-3">
+          ) : null}
           {activeMeasuredResult || finished ? (
             <Button
               type="button"
-              className="min-h-12 w-full rounded-xl text-base"
+              className={styles.action}
               onClick={() => regenerate(options)}
               disabled={isPending || !hydrated}
             >
@@ -571,16 +587,16 @@ export function PracticeCompanionClient({
           ) : (
             <Button
               type="button"
-              className="min-h-12 w-full rounded-xl text-base"
+              className={styles.action}
               onClick={savedPlanId ? resume : saveAndStart}
               disabled={isPending || !hydrated}
             >
-              <Save className="size-4" aria-hidden />
+              <Play className="size-4" aria-hidden />
               {savedPlanId ? "Resume Range Mode" : "Start practice"}
             </Button>
           )}
-        </CardFooter>
-      </Card>
+        </div>
+      </section>
 
       <MobileSegmentedControl
         ariaLabel="Practice duration"
@@ -635,7 +651,7 @@ export function PracticeCompanionClient({
                 >
                   <span className="block min-w-0">
                     <span className="block text-xs font-semibold opacity-75">
-                      {index + 1} of {plan.blocks.length} · Block {block.order}
+                      Block {index + 1} of {plan.blocks.length}
                     </span>
                     <span className="mt-2 block break-words text-lg font-bold leading-5">
                       {block.title}
@@ -752,28 +768,26 @@ function SpeedDevelopmentCompanionReadout({ context }: { context: PracticePlanne
 
 function BlockCard({ block }: { block: PracticeBlock }) {
   return (
-    <Card size="sm">
-      <CardContent className="grid gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Task
-          </p>
-          <p className="mt-1 text-sm leading-5">{block.drill}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Success
-          </p>
-          <p className="mt-1 text-sm font-semibold leading-5">{block.successTarget}</p>
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-            Key focus
-          </p>
-          <p className="mt-1 text-sm leading-5">{block.recordPrompt}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <section className={styles.blockDetail} aria-label="Selected block instructions">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Task
+        </p>
+        <p className="mt-1 text-sm leading-5">{block.drill}</p>
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Success
+        </p>
+        <p className="mt-1 text-sm font-semibold leading-5">{block.successTarget}</p>
+      </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Key focus
+        </p>
+        <p className="mt-1 text-sm leading-5">{block.recordPrompt}</p>
+      </div>
+    </section>
   );
 }
 

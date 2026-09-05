@@ -10,8 +10,8 @@ const heroByVariant: Record<CompanionImageHeroVariant, { src: string; imageClass
     imageClassName: "object-[50%_57%]",
   },
   practice: {
-    src: "/assets/companion/practice-hero.avif",
-    imageClassName: "object-[58%_58%]",
+    src: "/assets/companion/practice-focus-v2.avif",
+    imageClassName: "object-[50%_75%]",
   },
   play: {
     src: "/assets/generated/course-twin-premium-desktop.webp",

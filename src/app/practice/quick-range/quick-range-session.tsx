@@ -18,6 +18,7 @@ import {
   quickRangeLabels,
   parseQuickRangeDraft,
   updateQuickRangeDraft,
+  quickRangeElapsed,
   type QuickRangeDraft as Draft,
   type QuickRangeRecord,
 } from "./quick-range-draft";
@@ -56,6 +57,7 @@ export function QuickRangeCompanionSession({
   const [review, setReview] = useState<QuickRangeRecord | null>(null);
   const [ready, setReady] = useState(false);
   const [stored, setStored] = useState(true);
+  const [clockNow, setClockNow] = useState<number | null>(null);
   const key = `fkh:quick-range:${accountId}`;
   const patch = (value: Partial<Draft>) => {
     const now = new Date().toISOString();
@@ -66,8 +68,10 @@ export function QuickRangeCompanionSession({
       try {
         const value = parseQuickRangeDraft(JSON.parse(localStorage.getItem(key) ?? "null"));
         if (value) {
-          if (!initialClubType || ["active", "paused"].includes(value.state)) setDraft(value);
-          else {
+          if (!initialClubType || ["active", "paused"].includes(value.state)) {
+            // Legacy drafts have no clock anchor; keep their known duration and start tracking now.
+            setDraft(updateQuickRangeDraft(value, {}, new Date().toISOString()));
+          } else {
             const preserved = updateQuickRangeDraft(
               value,
               { state: "ready" },
@@ -79,6 +83,7 @@ export function QuickRangeCompanionSession({
       } catch {
         /* A missing or old draft starts with the supplied focus. */
       }
+      setClockNow(Date.now());
       setReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -94,15 +99,23 @@ export function QuickRangeCompanionSession({
   }, [draft, key, ready]);
   useEffect(() => {
     if (draft.state !== "active") return;
-    const timer = window.setInterval(
-      () => setDraft((current) => ({ ...current, elapsed: current.elapsed + 1 })),
-      1000,
-    );
-    return () => window.clearInterval(timer);
+    const tick = () => setClockNow(Date.now());
+    const timer = window.setInterval(tick, 1000);
+    const visible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", visible);
+    window.addEventListener("pageshow", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", visible);
+      window.removeEventListener("pageshow", tick);
+    };
   }, [draft.state]);
   useMobileActivity(draft.state === "active");
   const active = draft.state === "active";
   const finished = draft.state === "finished";
+  const elapsed = quickRangeElapsed(draft, clockNow ?? Date.parse(draft.runningSince ?? ""));
   function mark(label: string) {
     activityHaptic();
     setDraft((current) => ({
@@ -124,8 +137,12 @@ export function QuickRangeCompanionSession({
           <Button variant="ghost" onClick={() => patch({ state: "paused" })} className="min-h-11">
             <ChevronLeft aria-hidden className="size-5" /> Pause
           </Button>
-          <span className="tabular-nums text-muted-foreground">
-            {Math.floor(draft.elapsed / 60)}:{String(draft.elapsed % 60).padStart(2, "0")}
+          <span
+            role="timer"
+            aria-label="Active practice time"
+            className="tabular-nums text-muted-foreground"
+          >
+            {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
           </span>
         </div>
       ) : (

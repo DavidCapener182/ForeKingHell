@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseQuickRangeDraft,
   updateQuickRangeDraft,
+  quickRangeElapsed,
   type QuickRangeDraft,
 } from "./quick-range-draft";
 
@@ -23,7 +24,7 @@ describe("Quick Range review later", () => {
   it("keeps completed activity and its latest note after a new session starts", () => {
     const active = updateQuickRangeDraft(ready, { state: "active" }, start);
     const done = updateQuickRangeDraft(
-      { ...active, count: 2, labels: ["Playable", "Left"], elapsed: 720 },
+      { ...active, count: 2, labels: ["Playable", "Left"] },
       { state: "finished", notes: "Start left of the flag" },
       finish,
     );
@@ -92,5 +93,43 @@ describe("Quick Range review later", () => {
     expect(draft.history?.[0].id).toBe("activity-54");
     expect(draft.history?.at(-1)?.id).toBe("activity-5");
     expect(updateQuickRangeDraft(draft, { notes: "Edited" }, finish).history).toHaveLength(50);
+  });
+});
+
+describe("Quick Range elapsed time", () => {
+  it("recovers wall time without timer callbacks and excludes time spent paused", () => {
+    const active = updateQuickRangeDraft(ready, { state: "active" }, start);
+    const restored = parseQuickRangeDraft(JSON.parse(JSON.stringify(active)))!;
+    expect(quickRangeElapsed(restored, Date.parse(finish))).toBe(720);
+    expect(restored.elapsed).toBe(0);
+    const paused = updateQuickRangeDraft(restored, { state: "paused" }, finish);
+    expect(paused.elapsed).toBe(720);
+    expect(quickRangeElapsed(paused, Date.parse("2026-09-05T10:00:00Z"))).toBe(720);
+    const resumed = updateQuickRangeDraft(paused, { state: "active" }, "2026-09-05T10:00:00Z");
+    const done = updateQuickRangeDraft(resumed, { state: "finished" }, "2026-09-05T10:02:30Z");
+    expect(done.elapsed).toBe(870);
+    expect(done.history?.[0].elapsed).toBe(870);
+    expect(done.runningSince).toBeUndefined();
+    expect(
+      updateQuickRangeDraft(done, { notes: "Remember target" }, "2026-09-05T11:00:00Z").history?.[0]
+        .elapsed,
+    ).toBe(870);
+  });
+
+  it("does not invent unrecorded time for legacy drafts or reset an active anchor when logging", () => {
+    const legacy = parseQuickRangeDraft({
+      ...ready,
+      state: "active",
+      elapsed: 90,
+      runningSince: "invalid",
+    })!;
+    const restored = updateQuickRangeDraft(legacy, {}, start);
+    const logged = updateQuickRangeDraft(restored, { count: 1, labels: ["Left"] }, finish);
+    expect(logged.runningSince).toBe(start);
+    expect(logged.elapsed).toBe(90);
+    expect(quickRangeElapsed(logged, Date.parse(finish))).toBe(810);
+    expect(quickRangeElapsed(logged, Date.parse(start) - 10_000)).toBe(90);
+    expect(quickRangeElapsed(logged, NaN)).toBe(90);
+    expect(quickRangeElapsed(logged, Date.parse(start) + 1e12)).toBe(604800);
   });
 });

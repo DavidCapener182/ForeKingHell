@@ -32,6 +32,8 @@ export type QuickRangeDraft = Omit<QuickRangeRecord, "id" | "finishedAt"> & {
   activityId?: string;
   finishedAt?: string | null;
   history?: QuickRangeRecord[];
+  /** Elapsed is the settled duration; this anchor covers the current running interval. */
+  runningSince?: string;
 };
 
 function metrics(value: unknown) {
@@ -97,7 +99,19 @@ export function parseQuickRangeDraft(value: unknown): QuickRangeDraft | null {
     history,
     activityId: typeof item.activityId === "string" ? item.activityId.slice(0, 100) : undefined,
     finishedAt: date(item.finishedAt),
+    runningSince: item.state === "active" ? (date(item.runningSince) ?? undefined) : undefined,
   };
+}
+
+/** Callback throttling must not change the duration of an unpaused activity. */
+export function quickRangeElapsed(draft: QuickRangeDraft, now: number): number {
+  const anchor =
+    draft.state === "active" && draft.runningSince ? Date.parse(draft.runningSince) : NaN;
+  const running =
+    Number.isFinite(anchor) && Number.isFinite(now)
+      ? Math.max(0, Math.floor((now - anchor) / 1000))
+      : 0;
+  return Math.min(604800, Math.max(0, draft.elapsed) + running);
 }
 
 export function updateQuickRangeDraft(
@@ -106,6 +120,15 @@ export function updateQuickRangeDraft(
   now: string,
 ): QuickRangeDraft {
   let next = { ...current, ...change };
+  if (current.state === "active" && next.state !== "active") {
+    next.elapsed = change.elapsed ?? quickRangeElapsed(current, Date.parse(now));
+  }
+  if (next.state === "active") {
+    next.runningSince =
+      current.state === "active" && date(current.runningSince) ? current.runningSince : now;
+  } else {
+    next.runningSince = undefined;
+  }
   let history = current.history ?? [];
   // Preserve a legacy finished session even when New Quick Range is the next action.
   if (current.state === "finished") history = archive(current, history);

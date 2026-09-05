@@ -1,5 +1,6 @@
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { MobileTrainingLoad } from "@/components/training/mobile-training-load";
+import { getMobileTrainingSourceLinks } from "@/lib/training/mobile-training-source-links";
 import Link from "next/link";
 
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
@@ -28,9 +29,10 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
   const userId = await requireCurrentUserId();
   if ((await getRequestAppSurface()) === "companion") {
     const data = await getTrainingOverTimeData(userId, "1y");
+    const sourceLinks = await getMobileTrainingSourceLinks(userId, data.sessions);
     return (
       <PageShell>
-        <MobileTrainingLoad data={data} initialRange={rangeKey} />
+        <MobileTrainingLoad data={data} initialRange={rangeKey} sourceLinks={sourceLinks} />
       </PageShell>
     );
   }

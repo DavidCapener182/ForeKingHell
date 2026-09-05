@@ -1,0 +1,53 @@
+.preview {
+  margin-bottom: calc(-1 * var(--mobile-space-standard));
+}
+.imageLink {
+  position: relative;
+  display: block;
+  aspect-ratio: 1.8;
+  overflow: hidden;
+  background: var(--ios-secondary-surface);
+}
+.imageLink img {
+  object-fit: cover;
+}
+.imageLink:active {
+  opacity: 0.85;
+}
+.imageLink:focus-visible {
+  outline: 3px solid var(--ios-tint);
+  outline-offset: -3px;
+}
+.openLabel {
+  position: absolute;
+  inset-inline-end: var(--mobile-space-standard);
+  bottom: var(--mobile-space-standard);
+  display: flex;
+  align-items: center;
+  gap: var(--mobile-space-compact);
+  min-height: 2.75rem;
+  padding-inline: var(--mobile-space-standard);
+  border-radius: var(--mobile-radius-md);
+  background: var(--mobile-surface);
+  color: var(--ios-label);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.openLabel svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+.credits {
+  padding-inline: var(--mobile-space-standard);
+  font-size: 0.75rem;
+  color: var(--ios-secondary-label);
+}
+.credits summary {
+  align-content: center;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.credits p {
+  padding-bottom: var(--mobile-space-compact);
+  overflow-wrap: anywhere;
+}

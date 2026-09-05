@@ -744,7 +744,7 @@
   }
 
   .ios-mobile-screen .premium-action,
-  .ios-mobile-screen [data-primary-action] [data-slot="button"]:not([data-variant="outline"]) {
+  .ios-mobile-screen [data-primary-action] [data-slot="button"][data-variant="default"] {
     border: 0 !important;
     background: var(--ios-action) !important;
     color: #ffffff !important;
@@ -1041,21 +1041,23 @@
     .ios-tab-item,
     .ios-tab-icon,
     .ios-route-tab,
-    [role="group"] button,
-    body[data-mobile-platform="apple"] [data-slot="sheet-content"],
-    body[data-mobile-platform="apple"] [data-slot="drawer-content"] {
+    [role="group"] button {
       transition: none !important;
       animation: none !important;
       transform: none !important;
     }
 
+    /* Preserve animation names so Radix/Vaul receive completion when the preference changes mid-close. */
+    body[data-mobile-platform="apple"] [data-slot="sheet-content"],
+    body[data-mobile-platform="apple"] [data-slot="drawer-content"],
     body[data-mobile-platform="apple"] [data-slot="dialog-content"],
     body[data-mobile-platform="apple"] [data-slot="alert-dialog-content"],
     body[data-mobile-platform="apple"] [data-slot="popover-content"],
     body[data-mobile-platform="apple"] [data-slot="dropdown-menu-content"],
     body[data-mobile-platform="apple"] [data-slot="select-content"] {
-      transition: none !important;
-      animation: none !important;
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
     }
   }
 
@@ -1519,6 +1521,10 @@
     padding: 0 var(--mobile-space-standard) var(--mobile-space-standard);
   }
   /* Companion Progress keeps the story in open content, with disclosure at the point of use. */
+  [data-mobile-platform="apple"] [data-mobile-page-tabs] [role="tab"]:focus-visible {
+    outline-offset: -3px !important;
+  }
+
   .mobile-progress-screen {
     display: grid;
     gap: var(--mobile-space-large, 1.5rem);
@@ -1527,11 +1533,6 @@
   .mobile-progress-overview {
     display: grid;
     gap: var(--mobile-space-standard, 1rem);
-  }
-  .mobile-progress-comparison {
-    display: grid;
-    gap: var(--mobile-space-compact, 0.5rem);
-    padding-block: 0.5rem;
   }
   .mobile-progress-disclosure {
     display: flex;
@@ -1570,6 +1571,22 @@
     background: var(--secondary);
     accent-color: var(--ios-tint, var(--primary));
   }
+  .mobile-goal-values {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mobile-space-standard);
+    font-variant-numeric: tabular-nums;
+  }
+  .mobile-goal-values dt,
+  .mobile-goal-values dd span {
+    font-size: 0.8125rem;
+    color: var(--ios-secondary-label);
+  }
+  .mobile-goal-values dd {
+    font-size: 1.5rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
   .mobile-progress-goal progress::-webkit-progress-bar {
     background: var(--secondary);
   }
@@ -1581,13 +1598,6 @@
     background: var(--ios-tint, var(--primary));
     border-radius: 99px;
   }
-  .mobile-progress-chart svg {
-    display: block;
-    width: 100%;
-    height: auto;
-    max-height: 180px;
-  }
-
   /* Settings use the companion's navigation and save above its persistent tabs. */
   .mobile-settings-screen [data-dirty-form-bar] {
     bottom: calc(

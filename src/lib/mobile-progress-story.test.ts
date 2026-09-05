@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  mobileComparisonMeasure,
   mobilePerformanceStory,
   mobileScoringStory,
   mobileTrainingConsistency,
@@ -37,6 +38,35 @@ function club(id: string, side: number | null, carry = 0): ProgressClub {
   return { clubId: id, clubType: "7i", brandModel: "", analytics };
 }
 describe("mobile progress evidence", () => {
+  it("keeps zero lateral miss measurable and scales comparisons from zero", () => {
+    const c = club("a", -10, 4);
+    const comparison = mobilePerformanceStory([c]).comparisons[0];
+    expect(mobileComparisonMeasure(comparison, "side")).toEqual({
+      previous: 10,
+      latest: 0,
+      delta: -10,
+      maximum: 10,
+    });
+    expect(mobileComparisonMeasure(comparison, "carry")).toEqual({
+      previous: 150,
+      latest: 154,
+      delta: 4,
+      maximum: 154,
+    });
+    comparison.change.carryDeltaYd = 3.75;
+    expect(mobileComparisonMeasure(comparison, "carry")?.delta).toBe(3.75);
+  });
+  it("does not render absent or non-finite metrics as measured comparison bars", () => {
+    const comparison = mobilePerformanceStory([club("a", -3)]).comparisons[0];
+    for (const invalid of [null, Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+      comparison.latest.absoluteOfflineAverageYd = invalid;
+      expect(mobileComparisonMeasure(comparison, "side")).toBeNull();
+      expect(mobileComparisonMeasure(comparison, "carry")).not.toBeNull();
+    }
+    comparison.latest.absoluteOfflineAverageYd = 0;
+    comparison.change.offlineDeltaYd = null;
+    expect(mobileComparisonMeasure(comparison, "side")).toBeNull();
+  });
   it("does not turn trust or overlapping baseline windows into improvement", () => {
     const c = club("one", 0);
     c.analytics.consistency.clubTrustIndex = 100;

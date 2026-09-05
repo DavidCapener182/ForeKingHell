@@ -51,6 +51,7 @@ export function MobileLiveRound({
   clubEvidence,
   holes: initialHoles,
   recordVersion,
+  offlineNavigation,
 }: {
   accountId: string;
   sessionId: string;
@@ -61,6 +62,7 @@ export function MobileLiveRound({
   clubEvidence?: LiveRoundClubEvidence;
   holes: Hole[];
   recordVersion: string;
+  offlineNavigation?: { onBack: () => void; onQuickBag?: () => void };
 }) {
   const router = useRouter();
   const storageKey = `fkh:live-round:${accountId}:${sessionId}`;
@@ -287,12 +289,35 @@ export function MobileLiveRound({
   return (
     <section className="grid gap-5" data-mobile-live-round>
       <div className="flex items-center justify-between gap-3">
-        <Link href="/play" className="flex min-h-11 items-center text-primary">
-          Back to Play
-        </Link>
-        <Link href="/quick-bag" className="flex min-h-11 items-center text-primary">
-          Quick Bag
-        </Link>
+        {offlineNavigation ? (
+          <>
+            <Button
+              variant="ghost"
+              className="min-h-11 px-0 text-primary"
+              onClick={offlineNavigation.onBack}
+            >
+              Back to saved golf
+            </Button>
+            {offlineNavigation.onQuickBag ? (
+              <Button
+                variant="ghost"
+                className="min-h-11 px-0 text-primary"
+                onClick={offlineNavigation.onQuickBag}
+              >
+                Quick Bag
+              </Button>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <Link href="/play" className="flex min-h-11 items-center text-primary">
+              Back to Play
+            </Link>
+            <Link href="/quick-bag" className="flex min-h-11 items-center text-primary">
+              Quick Bag
+            </Link>
+          </>
+        )}
       </div>
       <p className="truncate text-sm text-muted-foreground">
         {course}
