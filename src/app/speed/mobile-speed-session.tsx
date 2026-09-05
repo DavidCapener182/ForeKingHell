@@ -63,7 +63,7 @@ export function MobileSpeedSession({
           setNote("");
           setBlock(0);
           setRecordingNew(false);
-        } else if (draft && Array.isArray(draft.readings)) {
+        } else if (draft?.planTitle === plan.title && Array.isArray(draft.readings)) {
           setReadings(
             draft.readings.filter(
               (item: { value: number; warmup: boolean }) =>
@@ -73,11 +73,7 @@ export function MobileSpeedSession({
                 typeof item.warmup === "boolean",
             ),
           );
-          setBlock(
-            draft.planTitle === plan.title
-              ? Math.max(0, Math.min(plan.blocks.length - 1, Number(draft.block) || 0))
-              : 0,
-          );
+          setBlock(Math.max(0, Math.min(plan.blocks.length - 1, Number(draft.block) || 0)));
           setNote(typeof draft.note === "string" ? draft.note : "");
           setAccumulatedMs(
             typeof draft.elapsedMs === "number" && Number.isFinite(draft.elapsedMs)

@@ -8,8 +8,14 @@ export function speedElapsedMs(accumulated: number, runningSince: number | null,
 export function speedFatigueStop(readings: MobileSpeedReading[]) {
   const measured = readings.filter((item) => !item.warmup && Number.isFinite(item.value));
   if (measured.length < 3) return false;
-  const peak = Math.max(...measured.map((item) => item.value));
-  return measured.slice(-2).every((item) => item.value <= peak * 0.96);
+  let peak = 0;
+  let consecutiveDrops = 0;
+  for (const item of measured) {
+    peak = Math.max(peak, item.value);
+    consecutiveDrops = item.value <= peak * 0.96 ? consecutiveDrops + 1 : 0;
+    if (consecutiveDrops >= 2) return true;
+  }
+  return false;
 }
 
 /** The second maximum block prescribes 60–90 seconds before starting. */

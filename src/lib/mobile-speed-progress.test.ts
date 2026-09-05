@@ -12,7 +12,11 @@ describe("mobile speed progress", () => {
     const readings = [100, 96, 95].map((value) => ({ value, warmup: false }));
     expect(speedFatigueStop(readings)).toBe(true);
     expect(speedFatigueStop(readings.slice(0, 2))).toBe(false);
-    expect(speedFatigueStop([...readings, { value: 99, warmup: false }])).toBe(false);
+    expect(speedFatigueStop([...readings, { value: 99, warmup: false }])).toBe(true);
+    expect(speedFatigueStop([...readings, { value: 105, warmup: false }])).toBe(true);
+  });
+  it("does not retrospectively treat a progressive build as fatigue", () => {
+    expect(speedFatigueStop([90, 91, 100].map((value) => ({ value, warmup: false })))).toBe(false);
   });
   it("does not treat progressive warm-up or unmeasured values as evidence of fatigue", () => {
     expect(
