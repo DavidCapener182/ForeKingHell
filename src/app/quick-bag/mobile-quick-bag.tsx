@@ -1,25 +1,34 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import { ChevronRight } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { QuickBagClub } from "./quick-bag-client";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { MobileGroupedList } from "@/components/app/mobile-primitives";
-const Detail = dynamic(() => import("./quick-bag-club-drawer").then((m) => m.QuickBagClubDrawer));
 
-export function MobileQuickBag({ clubs, accountId }: { clubs: QuickBagClub[]; accountId: string }) {
+export function MobileQuickBag({
+  clubs,
+  accountId,
+  savedAt,
+  legacy = false,
+}: {
+  clubs: QuickBagClub[];
+  accountId?: string;
+  savedAt?: string;
+  legacy?: boolean;
+}) {
   const [mode, setMode] = useState("carry");
-  const [selected, setSelected] = useState<QuickBagClub | null>(null);
-  const [cached, setCached] = useState(false);
+  const [cacheState, setCacheState] = useState("Saving for offline use…");
   useEffect(() => {
+    if (!accountId) return;
     try {
       localStorage.setItem(
         `fkh:quick-bag:${accountId}`,
-        JSON.stringify({ version: 3, storedAt: new Date().toISOString(), clubs }),
+        JSON.stringify({ version: 4, accountId, storedAt: new Date().toISOString(), clubs }),
       );
-      queueMicrotask(() => setCached(true));
+      queueMicrotask(() => setCacheState("Saved for offline use."));
     } catch {
-      queueMicrotask(() => setCached(false));
+      queueMicrotask(() => setCacheState("Storage unavailable. Keep this open."));
     }
   }, [accountId, clubs]);
   const sorted = [...clubs].sort((a, b) => (b.trustedCarryYd ?? 0) - (a.trustedCarryYd ?? 0));
@@ -34,55 +43,101 @@ export function MobileQuickBag({ clubs, accountId }: { clubs: QuickBagClub[]; ac
           { value: "total", label: "Total" },
         ]}
       />
+      {savedAt ? (
+        <p className="mobile-type-footnote text-muted-foreground" role="status">
+          Offline · saved {formatDate(savedAt, true)}. Reconnect to refresh.
+          {legacy ? " Older snapshot. Reopen online to verify." : ""}
+        </p>
+      ) : null}
       <MobileGroupedList label="Club yardages">
         {sorted.map((club) => {
           const number = mode === "carry" ? club.trustedCarryYd : club.totalYd;
           return (
-            <button key={club.id} onClick={() => setSelected(club)} className="mobile-yardage-row">
-              <span>
-                <strong>{club.label}</strong>
-                {mode === "carry" && club.lowYd != null && club.highYd != null ? (
-                  <small>
-                    {Math.round(club.lowYd)}–{Math.round(club.highYd)} yd
-                  </small>
-                ) : (
-                  <small>
-                    {club.sampleSize
-                      ? `${club.sampleSize} trusted shots`
-                      : "Needs measured evidence"}
-                  </small>
-                )}
-              </span>
-              <span className="mobile-yardage-number">
-                {number != null ? Math.round(number) : "—"}
-                <small>yd</small>
-              </span>
-              <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-            </button>
+            <details key={club.id} className="mobile-quick-bag-club group">
+              <summary className="mobile-yardage-row">
+                <span>
+                  <strong>{club.label}</strong>
+                  {mode === "carry" && club.lowYd != null && club.highYd != null ? (
+                    <small>
+                      {Math.round(club.lowYd)}–{Math.round(club.highYd)} yd
+                      {club.evidenceKind === "touch" ? " · touch" : ""}
+                    </small>
+                  ) : (
+                    <small>
+                      {number == null
+                        ? "Not measured"
+                        : `${mode === "total" ? (club.totalSampleSize ?? club.sampleSize) : club.sampleSize} trusted shots`}
+                    </small>
+                  )}
+                </span>
+                <span className="mobile-yardage-number">
+                  {number != null ? Math.round(number) : "—"}
+                  <small>yd</small>
+                </span>
+                <ChevronDown
+                  className="size-4 text-muted-foreground group-open:rotate-180"
+                  aria-hidden
+                />
+              </summary>
+              <div className="mobile-quick-bag-evidence">
+                <p className="mobile-type-callout">{club.model}</p>
+                <dl className="mobile-type-footnote grid gap-2">
+                  <Evidence
+                    label="Sample"
+                    value={`${club.sampleSize} trusted ${club.evidenceKind === "touch" ? "touch" : club.evidenceKind === "full" ? "full-swing" : "measured"} shots`}
+                  />
+                  <Evidence label="Last measured" value={formatDate(club.latestEvidenceDate)} />
+                  <Evidence
+                    label="Confidence"
+                    value={
+                      club.evidenceKind === "touch"
+                        ? "Touch depends on intent"
+                        : club.sampleSize === 0
+                          ? "Not established"
+                          : `${club.confidence}% stock score`
+                    }
+                  />
+                </dl>
+                {accountId ? (
+                  <Link
+                    className="mobile-type-callout flex min-h-11 items-center text-primary"
+                    href={`/bag/${club.id}`}
+                  >
+                    Club detail
+                  </Link>
+                ) : null}
+              </div>
+            </details>
           );
         })}
       </MobileGroupedList>
       {!clubs.length ? (
-        <p className="text-muted-foreground">
-          Import a measured session to build your club distances.
-        </p>
+        <p className="text-muted-foreground">Import shots to establish distances.</p>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          {cached ? "Yardages saved on this iPhone." : "Offline storage unavailable."}{" "}
+        <p className="mobile-type-footnote text-muted-foreground" role="status">
+          {savedAt ? "" : cacheState + " "}
           {mode === "total"
-            ? "Measured finish distance varies with ground conditions."
-            : "Ranges show the middle half of trusted carries."}
+            ? "Total varies with ground conditions."
+            : "Range: middle half of trusted carries."}
         </p>
       )}
-      {selected ? (
-        <Detail
-          club={selected}
-          open={Boolean(selected)}
-          onOpenChange={(open) => {
-            if (!open) setSelected(null);
-          }}
-        />
-      ) : null}
     </div>
   );
+}
+function Evidence({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right">{value}</dd>
+    </div>
+  );
+}
+function formatDate(value: string | null | undefined, time = false) {
+  if (!value || !Number.isFinite(Date.parse(value))) return "Not available";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    ...(time ? ({ hour: "2-digit", minute: "2-digit" } as const) : {}),
+  }).format(new Date(value));
 }

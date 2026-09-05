@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import type { ReactNode } from "react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 
@@ -162,6 +163,17 @@ export function MobileListRow({
     className,
   );
 
+  if (href?.startsWith("/surface/")) {
+    return (
+      <AppSurfaceLink
+        href={href as `/surface/${string}`}
+        aria-label={ariaLabel}
+        className={rowClassName}
+      >
+        {content}
+      </AppSurfaceLink>
+    );
+  }
   if (href) {
     return (
       <Link href={href} prefetch aria-label={ariaLabel} className={rowClassName}>

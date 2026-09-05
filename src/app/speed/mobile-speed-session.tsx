@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { createManualSpeedSessionAction } from "./actions";
 import type { SpeedDevelopmentSummary } from "@/lib/speed-development";
@@ -7,6 +7,7 @@ import { MobileMetric } from "@/components/app/mobile-screen";
 import { useMobileActivity, activityHaptic } from "@/components/app/use-mobile-activity";
 import { Button } from "@/components/ui/button";
 import { useFormStatus } from "react-dom";
+import { mobileSpeedBlocks, restoreMobileSpeedBlock } from "@/lib/mobile-speed-plan";
 import {
   speedElapsedMs,
   speedFatigueStop,
@@ -27,6 +28,7 @@ export function MobileSpeedSession({
   saved?: boolean;
   personalBestMph: number | null;
 }) {
+  const blocks = useMemo(() => mobileSpeedBlocks(plan), [plan]);
   const [active, setActive] = useState(false);
   const [block, setBlock] = useState(0);
   const [started, setStarted] = useState<number | null>(null);
@@ -73,7 +75,7 @@ export function MobileSpeedSession({
                 typeof item.warmup === "boolean",
             ),
           );
-          setBlock(Math.max(0, Math.min(plan.blocks.length - 1, Number(draft.block) || 0)));
+          setBlock(restoreMobileSpeedBlock(plan, draft));
           setNote(typeof draft.note === "string" ? draft.note : "");
           setAccumulatedMs(
             typeof draft.elapsedMs === "number" && Number.isFinite(draft.elapsedMs)
@@ -93,7 +95,7 @@ export function MobileSpeedSession({
       setHydrated(true);
     }, 0);
     return () => clearTimeout(timer);
-  }, [draftKey, saved, personalBestMph, plan.title, plan.blocks.length]);
+  }, [draftKey, saved, personalBestMph, plan]);
   useEffect(() => {
     if (!hydrated || (saved && !recordingNew)) return;
     if (!readings.length && !active && accumulatedMs === 0) return;
@@ -102,6 +104,8 @@ export function MobileSpeedSession({
         draftKey,
         JSON.stringify({
           planTitle: plan.title,
+          version: 2,
+          blockKey: (blocks[block] ?? blocks[0]).key,
           block,
           readings,
           note,
@@ -124,12 +128,13 @@ export function MobileSpeedSession({
     note,
     personalBestMph,
     plan.title,
+    blocks,
     accumulatedMs,
     started,
     now,
     restUntil,
   ]);
-  const current = plan.blocks[block];
+  const current = blocks[block] ?? blocks[0];
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -139,8 +144,7 @@ export function MobileSpeedSession({
   const rest = restUntil ? Math.max(0, Math.ceil((restUntil - now) / 1000)) : 0;
   const blockReadings = readings.filter((item) => item.blockKey === current.key);
   const fatigueStop = speedFatigueStop(readings);
-  const stopMaximumWork =
-    fatigueStop && plan.mode === "speed" && current.key !== "warmup" && !current.balls;
+  const stopMaximumWork = fatigueStop && plan.mode === "speed" && !current.warmup && !current.balls;
   useEffect(() => {
     if (active && stopMaximumWork) finishSpeedRef.current?.focus({ preventScroll: true });
   }, [active, stopMaximumWork]);
@@ -153,9 +157,9 @@ export function MobileSpeedSession({
     setActive(false);
   }
   function moveBlock(index: number) {
-    const next = Math.max(0, Math.min(plan.blocks.length - 1, index));
+    const next = Math.max(0, Math.min(blocks.length - 1, index));
     setBlock(next);
-    const recovery = speedBlockRecoverySeconds(plan.blocks[next].key);
+    const recovery = speedBlockRecoverySeconds(blocks[next].key);
     if (next > block && recovery)
       setRestUntil(Math.max(restUntil ?? 0, Date.now() + recovery * 1000));
     setNow(Date.now());
@@ -167,10 +171,7 @@ export function MobileSpeedSession({
       return;
     }
     activityHaptic();
-    setReadings((items) => [
-      ...items,
-      { value, warmup: current.key === "warmup" || plan.mode !== "speed", blockKey: current.key },
-    ]);
+    setReadings((items) => [...items, { value, warmup: current.warmup, blockKey: current.key }]);
     setSpeed("");
     setError("");
     setNow(Date.now());
@@ -188,9 +189,24 @@ export function MobileSpeedSession({
           <header className="grid gap-1">
             <h2 className="mobile-type-title3">{plan.title}</h2>
             <p className="mobile-type-footnote text-muted-foreground">
-              {plan.durationMinutes} min · {plan.blocks.length} blocks
+              {plan.durationMinutes} min · {blocks.length} stages
             </p>
           </header>
+        ) : null}
+        {!active ? (
+          <details>
+            <summary className="flex min-h-11 items-center text-primary">Session stages</summary>
+            <ol className="divide-y">
+              {blocks.map((item) => (
+                <li key={item.key} className="py-3">
+                  <p className="mobile-type-headline">{item.label}</p>
+                  <p className="mobile-type-footnote text-muted-foreground">
+                    {item.reps ? `${item.reps} swings` : `${item.balls} balls`} · {item.target}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </details>
         ) : null}
         {!active ? (
           <Button
@@ -214,10 +230,20 @@ export function MobileSpeedSession({
               Pause session
             </Button>
             <p className="text-sm text-muted-foreground">
-              Block {block + 1} of {plan.blocks.length} · {Math.floor(elapsed / 60)}:
+              Stage {block + 1} of {blocks.length} · {Math.floor(elapsed / 60)}:
               {String(elapsed % 60).padStart(2, "0")}
             </p>
             <h1 className="mobile-type-title1">{current.label}</h1>
+            <p className="mobile-type-footnote text-muted-foreground">
+              Driver ·{" "}
+              {current.key === "finish"
+                ? "Normal course swings"
+                : current.warmup
+                  ? "Preparation and control"
+                  : current.balls
+                    ? "Measured ball transfer"
+                    : "Maximum-speed readings"}
+            </p>
             {!stopMaximumWork ? (
               <>
                 <p className="font-semibold">
@@ -245,7 +271,7 @@ export function MobileSpeedSession({
                 Finish speed work
               </Button>
             ) : null}
-            {current.balls ? (
+            {current.key === "finish" ? null : current.balls ? (
               <>
                 <p className="text-sm text-muted-foreground">
                   Import the ball session to assess playable strike and transfer.
@@ -328,9 +354,9 @@ export function MobileSpeedSession({
               </Button>
               <Button
                 variant={stopMaximumWork ? "outline" : "default"}
-                onClick={() => (block < plan.blocks.length - 1 ? moveBlock(block + 1) : pause())}
+                onClick={() => (block < blocks.length - 1 ? moveBlock(block + 1) : pause())}
               >
-                {block < plan.blocks.length - 1 ? "Next block" : "Finish activity"}
+                {block < blocks.length - 1 ? "Next block" : "Finish activity"}
               </Button>
             </div>
           </div>

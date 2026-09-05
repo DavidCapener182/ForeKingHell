@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { mobileSpeedPrescription } from "@/lib/mobile-speed-plan";
 import { MobileSpeedTrend } from "@/components/speed/mobile-speed-trend";
 import { MobileSpeedSession } from "./mobile-speed-session";
 import { PageShell } from "@/components/premium";
@@ -17,13 +18,21 @@ export default async function SpeedCompanionPage({
   const accountId = await requireCurrentUserId();
   const data = await getSpeedCentrePageData(accountId);
   const { summary, development } = data;
+  const linkedTransferFailed = development.verdict?.playabilityPassed === false;
   const playing = development.funnel.find((item) => item.key === "playing");
   const driver = data.clubOptions.find((club) => club.type === "driver");
   const speed = (value: number | null) => (value === null ? "—" : value.toFixed(1));
   return (
     <PageShell>
       <div className="grid gap-6" data-mobile-speed>
-        <MobileLargeTitle title="Speed" detail={development.readiness.recommendation} />
+        <MobileLargeTitle
+          title="Speed"
+          detail={
+            linkedTransferFailed
+              ? "Rebuild Driver control before more maximum-speed work."
+              : development.readiness.recommendation
+          }
+        />
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}
@@ -46,10 +55,16 @@ export default async function SpeedCompanionPage({
           <MobileMetric value={speed(summary.targetSpeedMph)} unit="mph" label="target" />
         </div>
         <MobileStatus
-          label={development.chaos.label}
-          tone={development.chaos.status === "successful" ? "positive" : "attention"}
+          label={linkedTransferFailed ? "Linked transfer needs work" : development.chaos.label}
+          tone={
+            !linkedTransferFailed && development.chaos.status === "successful"
+              ? "positive"
+              : "attention"
+          }
         />
-        <p className="text-sm">{development.chaos.nextAction}</p>
+        <p className="text-sm">
+          {linkedTransferFailed ? development.verdict?.nextAction : development.chaos.nextAction}
+        </p>
         {summary.carryProjection.targetCarryYd !== null ? (
           <MobileMetric
             value={Math.round(summary.carryProjection.targetCarryYd)}
@@ -59,12 +74,29 @@ export default async function SpeedCompanionPage({
           />
         ) : null}
         <MobileSpeedSession
-          plan={development.plan}
+          plan={mobileSpeedPrescription(development)}
           clubId={driver?.id}
           accountId={accountId}
           saved={saved === "1"}
           personalBestMph={summary.personalBestMph}
         />
+        {development.verdict ? (
+          <MobileSection title="Latest review">
+            <MobileGroupedList>
+              <MobileListRow
+                label={
+                  development.verdict.playabilityPassed === false
+                    ? "Transfer needs work"
+                    : development.verdict.playabilityPassed === true
+                      ? "Linked corridor test passed"
+                      : "Check ball transfer"
+                }
+                detail={development.verdict.label}
+                href={`/speed/sessions/${development.verdict.sessionId}`}
+              />
+            </MobileGroupedList>
+          </MobileSection>
+        ) : null}
         <MobileSpeedTrend sessions={data.sessions} />
         <MobileSection title="Target ladder">
           <MobileGroupedList>

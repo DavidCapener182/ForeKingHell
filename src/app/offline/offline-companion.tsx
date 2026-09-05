@@ -4,9 +4,9 @@ import { MobileLiveRound, type SavedRound } from "@/app/rounds/mobile-live-round
 import { QuickRangeCompanionSession } from "@/app/practice/quick-range/quick-range-session";
 import { useEffect, useState } from "react";
 import type { PracticePlan } from "@/lib/practice-planner";
-import type { QuickBagClub } from "@/app/quick-bag/quick-bag-client";
+import { MobileQuickBag } from "@/app/quick-bag/mobile-quick-bag";
+import { readQuickBagSnapshot, type QuickBagSnapshot } from "@/lib/quick-bag-snapshot";
 import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
-import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { useMobileActivity } from "@/components/app/use-mobile-activity";
 import { Button } from "@/components/ui/button";
 import { ActiveRangeMode } from "@/app/practice/active-range-mode";
@@ -20,7 +20,7 @@ type SavedPractice = {
   finished?: boolean;
   remainingBalls?: Record<string, number>;
 };
-type SavedBag = { clubs: QuickBagClub[]; storedAt: string };
+type SavedBag = QuickBagSnapshot;
 export function OfflineCompanion() {
   const [round, setRound] = useState<SavedRound | null>(null);
   const [quick, setQuick] = useState(false);
@@ -28,7 +28,6 @@ export function OfflineCompanion() {
   const [bag, setBag] = useState<SavedBag | null>(null);
   const [practice, setPractice] = useState<SavedPractice | null>(null);
   const [view, setView] = useState("saved");
-  const [mode, setMode] = useState("carry");
   const [message, setMessage] = useState("");
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -49,10 +48,8 @@ export function OfflineCompanion() {
           setRound(savedRound);
         const quickDraft = JSON.parse(localStorage.getItem(`fkh:quick-range:${id}`) ?? "null");
         setQuick(Boolean(quickDraft && ["active", "paused"].includes(quickDraft.state)));
-        const savedBag = JSON.parse(
-          localStorage.getItem(`fkh:quick-bag:${id}`) ?? "null",
-        ) as SavedBag | null;
-        if (savedBag && Array.isArray(savedBag.clubs)) setBag(savedBag);
+        const savedBag = readQuickBagSnapshot(localStorage.getItem(`fkh:quick-bag:${id}`), id);
+        if (savedBag) setBag(savedBag);
         const savedPractice = JSON.parse(
           localStorage.getItem(`fkh:active-practice:${id}`) ?? "null",
         ) as SavedPractice | null;
@@ -157,41 +154,7 @@ export function OfflineCompanion() {
           </Button>
         </>
       ) : view === "bag" && bag ? (
-        <>
-          <MobileSegmentedControl
-            ariaLabel="Offline yardage type"
-            value={mode}
-            onValueChange={setMode}
-            options={[
-              { value: "carry", label: "Carry" },
-              { value: "total", label: "Total" },
-            ]}
-          />
-          <div className="overflow-hidden rounded-2xl bg-card">
-            {bag.clubs.map((club) => (
-              <div key={club.id} className="mobile-yardage-row">
-                <span>
-                  <strong>{club.label}</strong>
-                  <small>
-                    {club.lowYd != null && club.highYd != null
-                      ? `${Math.round(club.lowYd)}–${Math.round(club.highYd)} yd carry`
-                      : "Range unavailable"}
-                  </small>
-                </span>
-                <span className="mobile-yardage-number">
-                  {(mode === "carry" ? club.trustedCarryYd : club.totalYd) != null
-                    ? Math.round((mode === "carry" ? club.trustedCarryYd : club.totalYd)!)
-                    : "—"}
-                  <small>yd</small>
-                </span>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Saved {new Date(bag.storedAt).toLocaleDateString("en-GB")}. Reconnect to refresh
-            yardages.
-          </p>
-        </>
+        <MobileQuickBag clubs={bag.clubs} savedAt={bag.storedAt} legacy={bag.legacy} />
       ) : view === "practice" && practice && block ? (
         practice.finished ? (
           <MobileSection title="Practice activity">
