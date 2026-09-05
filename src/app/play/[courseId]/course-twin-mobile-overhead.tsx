@@ -34,7 +34,8 @@ export function CourseTwinMobileOverhead({
     manifest.holes.findIndex((h) => h.holeNumber === requestedHole),
   );
   const hole = manifest.holes[holeIndex];
-  const mode = (query.get("mode") ?? initialMode) === "replay" ? "replay" : "strategy";
+  const defaultMode = initialMode ?? (readOnly && replay ? "replay" : "strategy");
+  const mode = (query.get("mode") ?? defaultMode) === "replay" ? "replay" : "strategy";
   const shots = useMemo(
     () => replay?.shots.filter((s) => s.holeNumber === hole?.holeNumber) ?? [],
     [replay, hole?.holeNumber],

@@ -54,18 +54,25 @@ const replay = {
     },
   ],
 } as unknown as CourseTwinReplayDocument;
-function draw(readOnly = false) {
+function draw(readOnly = false, initialMode: "replay" | "strategy" | null = "replay") {
   return renderToStaticMarkup(
     <CourseTwinMobileOverhead
       manifest={manifest}
       replay={replay}
-      initialMode="replay"
+      initialMode={initialMode ?? undefined}
       readOnly={readOnly}
       onEnable3d={() => {}}
     />,
   );
 }
 describe("phone low-power evidence", () => {
+  it("opens a shared replay without a mode hint and still allows explicit Plan", () => {
+    state.query = new URLSearchParams("hole=2");
+    expect(draw(true, null)).toContain("Show result");
+    expect(draw(false, null)).not.toContain("Show result");
+    state.query = new URLSearchParams("hole=2&mode=strategy");
+    expect(draw(true, null)).not.toContain("Show result");
+  });
   it("honours the requested hole and shot without manufacturing missing metrics", () => {
     state.query = new URLSearchParams("hole=2&mode=replay&shot=second-shot");
     const html = draw();
