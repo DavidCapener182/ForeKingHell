@@ -1,6 +1,5 @@
 "use client";
-import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, WifiOff } from "lucide-react";
 import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
 import {
   readOfflineSavedRounds,
@@ -9,7 +8,7 @@ import {
 } from "@/lib/offline-saved-rounds";
 import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
 import { QuickRangeCompanionSession } from "@/app/practice/quick-range/quick-range-session";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { PracticePlan } from "@/lib/practice-planner";
 import { MobileQuickBag } from "@/app/quick-bag/mobile-quick-bag";
 import { readQuickBagSnapshot, type QuickBagSnapshot } from "@/lib/quick-bag-snapshot";
@@ -24,6 +23,11 @@ import {
 } from "@/lib/caddie-book-snapshot";
 import type { HoleStrategyMode } from "@/lib/course-strategy";
 import { ActiveRangeMode } from "@/app/practice/active-range-mode";
+
+import { offlineDestination } from "@/lib/offline-destination";
+import { createOfflineConnectionCheck } from "@/lib/offline-connection";
+import { OfflineNavigation } from "./offline-navigation";
+import styles from "./offline.module.css";
 
 type SavedPractice = {
   planId: string;
@@ -46,6 +50,34 @@ export function OfflineCompanion() {
   const [bag, setBag] = useState<SavedBag | null>(null);
   const [practice, setPractice] = useState<SavedPractice | null>(null);
   const [view, setView] = useState("saved");
+  const [section, setSection] = useState("today");
+  const [connecting, setConnecting] = useState(false);
+  const connectingRef = useRef(false);
+  const [connection] = useState(createOfflineConnectionCheck);
+  useEffect(() => () => connection.cancel(), [connection]);
+  const [connectionMessage, setConnectionMessage] = useState("");
+  async function reconnect() {
+    if (connectingRef.current) return;
+    connectingRef.current = true;
+    setConnecting(true);
+    setConnectionMessage("Checking connection…");
+    const connected = await connection.check();
+    if (connected === null) return;
+    if (connected) {
+      setConnectionMessage("Connected. Opening the app…");
+      // A hard navigation replaces the recovered offline document and stale client chunks.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(
+        `/surface/companion?next=${encodeURIComponent(offlineDestination(new URL(window.location.href)).target)}`,
+      );
+    } else {
+      setConnectionMessage(
+        "Still unable to reach ForeKingHell. Check your connection and try again. Your saved golf stays available.",
+      );
+    }
+    connectingRef.current = false;
+    setConnecting(false);
+  }
   const [message, setMessage] = useState("");
   useEffect(() => {
     let loadedAccount: string | null = null;
@@ -78,15 +110,16 @@ export function OfflineCompanion() {
     document.addEventListener("visibilitychange", checkAccount);
     const restoreView = () => {
       try {
+        const query = new URLSearchParams(window.location.search);
+        setSection(offlineDestination(new URL(window.location.href)).section);
+        setView("saved");
         const id = localStorage.getItem("fkh:offline-account");
         if (!id) return;
         loadedAccount = id;
         setAccount(id);
-        setView("saved");
         setMessage("");
         const savedBooks = readSavedCaddieBooks(localStorage, id);
         setBooks(savedBooks);
-        const query = new URLSearchParams(window.location.search);
         const requestedBook = savedBooks.find(
           (b) =>
             b.course.id === query.get("courseId") &&
@@ -158,8 +191,12 @@ export function OfflineCompanion() {
       }
     };
     const onHistory = () => {
+      connection.cancel();
+      connectingRef.current = false;
+      setConnecting(false);
+      setConnectionMessage("");
       checkAccount();
-      if (loadedAccount) restoreView();
+      restoreView();
     };
     window.addEventListener("popstate", onHistory);
     const timer = setTimeout(restoreView, 0);
@@ -170,7 +207,7 @@ export function OfflineCompanion() {
       window.removeEventListener("focus", checkAccount);
       document.removeEventListener("visibilitychange", checkAccount);
     };
-  }, []);
+  }, [connection]);
   useMobileActivity(view === "practice" && !practice?.finished);
   function updatePractice(update: Partial<SavedPractice>) {
     if (!practice || !account) return;
@@ -185,9 +222,17 @@ export function OfflineCompanion() {
     }
   }
   const book = books.find((item) => item.course.id === bookId);
+  function cancelReconnect() {
+    connection.cancel();
+    connectingRef.current = false;
+    setConnecting(false);
+    setConnectionMessage("");
+  }
   function navigate(nextView: string, params: Record<string, string> = {}) {
+    cancelReconnect();
     const url = new URL("/offline", window.location.origin);
     url.searchParams.set("view", nextView === "book" ? "caddie" : nextView);
+    url.searchParams.set("section", section);
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
     const state = { ...window.history.state, fkhOfflineDetail: true };
     delete state.__NA;
@@ -211,6 +256,7 @@ export function OfflineCompanion() {
     });
   }
   function showSaved() {
+    cancelReconnect();
     if (window.history.state?.fkhOfflineDetail) {
       window.history.back();
       return;
@@ -234,13 +280,52 @@ export function OfflineCompanion() {
       setMessage("Hole selection could not be saved. Keep this screen open.");
     }
   }
+  function selectSection(nextSection: string) {
+    setSection(nextSection);
+    navigate(nextSection === "bag" && bag?.clubs.length ? "bag" : "saved", {
+      section: nextSection,
+    });
+  }
   const block = practice?.plan.blocks[practice.blockIndex];
+  const immersive =
+    view === "round" || view === "quick" || (view === "practice" && !practice?.finished);
+  const sectionTitle =
+    section === "today"
+      ? "Saved golf"
+      : section === "practice"
+        ? "Practice"
+        : section === "play"
+          ? "Play"
+          : section === "bag"
+            ? "Bag"
+            : "Progress";
+  const hasSavedSection =
+    section === "today"
+      ? Boolean(rounds.length || quick || practice || bag?.clubs.length || books.length)
+      : section === "practice"
+        ? Boolean(quick || practice)
+        : section === "play"
+          ? Boolean(rounds.length || books.length || bag?.clubs.length)
+          : section === "bag"
+            ? Boolean(bag?.clubs.length)
+            : false;
   return (
     <main
       data-app-surface="companion"
       data-mobile-platform="apple"
-      className="grid min-h-dvh content-start gap-6 bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground"
+      className={styles.screen}
+      data-immersive={immersive}
     >
+      {!immersive ? (
+        <div className={styles.connection}>
+          <strong>
+            <WifiOff aria-hidden size={18} /> Connection unavailable
+          </strong>
+          <p>
+            Saved practice and course essentials stay available. Latest data needs a connection.
+          </p>
+        </div>
+      ) : null}
       {view !== "saved" && view !== "round" && !(view === "practice" && !practice?.finished) ? (
         <Button variant="ghost" className="min-h-11 justify-self-start" onClick={showSaved}>
           <ChevronLeft aria-hidden className="size-5" /> Back
@@ -248,7 +333,7 @@ export function OfflineCompanion() {
       ) : null}
       {view !== "round" && view !== "quick" && view !== "practice" && view !== "book" ? (
         <MobileLargeTitle
-          title={view === "bag" ? "Quick Bag" : "Saved golf"}
+          title={view === "bag" ? "Quick Bag" : sectionTitle}
           detail={
             view === "bag"
               ? "Your saved distances, ready to use."
@@ -278,7 +363,7 @@ export function OfflineCompanion() {
               {message}
             </p>
           ) : null}
-          {rounds.length ? (
+          {(section === "today" || section === "play") && rounds.length ? (
             <MobileSection title="Saved rounds">
               <MobileGroupedList label="Saved rounds">
                 {rounds.map((item) => (
@@ -301,7 +386,7 @@ export function OfflineCompanion() {
               </MobileGroupedList>
             </MobileSection>
           ) : null}
-          {quick || practice ? (
+          {(section === "today" || section === "practice") && (quick || practice) ? (
             <MobileSection title="Practice">
               <MobileGroupedList label="Saved practice">
                 {quick ? (
@@ -326,7 +411,7 @@ export function OfflineCompanion() {
               </MobileGroupedList>
             </MobileSection>
           ) : null}
-          {bag?.clubs.length || books.length ? (
+          {(section === "today" || section === "play") && (bag?.clubs.length || books.length) ? (
             <MobileSection title="On the course">
               <MobileGroupedList label="Saved course essentials">
                 {bag?.clubs.length ? (
@@ -352,11 +437,18 @@ export function OfflineCompanion() {
               </MobileGroupedList>
             </MobileSection>
           ) : null}
-          {!rounds.length && !quick && !practice && !bag?.clubs.length && !books.length ? (
-            <MobileSection title="Nothing saved yet">
+          {!hasSavedSection ? (
+            <MobileSection
+              title={
+                section === "progress"
+                  ? "Your progress needs a connection"
+                  : "Nothing saved here yet"
+              }
+            >
               <p className="mobile-type-body text-muted-foreground">
-                Open Quick Bag, a course strategy or start practice while connected to keep it
-                available here.
+                {section === "progress"
+                  ? "Reconnect to see your latest scores, training and goals."
+                  : "Open Quick Bag, a course strategy or start practice while connected to keep it available here."}
               </p>
             </MobileSection>
           ) : null}
@@ -364,11 +456,12 @@ export function OfflineCompanion() {
             Saved copies may be older than your latest online data. Reopen the activity online to
             sync changes.
           </p>
-          <Button asChild className="min-h-12">
-            <Link href="/practice" prefetch={false}>
-              Return to Practice
-            </Link>
+          <Button className="min-h-12" disabled={connecting} onClick={reconnect}>
+            {connecting ? "Checking connection…" : "Reconnect and open app"}
           </Button>
+          <p role="status" aria-live="polite" className="mobile-type-callout text-muted-foreground">
+            {connectionMessage}
+          </p>
         </>
       ) : view === "book" && book && account ? (
         <div className="grid gap-3" data-offline-caddie-book>
@@ -469,6 +562,9 @@ export function OfflineCompanion() {
         <p role="status" className="text-sm text-muted-foreground">
           {message}
         </p>
+      ) : null}
+      {!immersive ? (
+        <OfflineNavigation section={view === "bag" ? "bag" : section} onSelect={selectSection} />
       ) : null}
     </main>
   );

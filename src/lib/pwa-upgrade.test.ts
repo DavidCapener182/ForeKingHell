@@ -12,7 +12,9 @@ it("removes old page HTML on upgrade and recovers the newly precached offline sh
     ["forekinghell-pwa-v8-pages", new Map([["/offline", new Response("previous shell")]])],
     ["forekinghell-pwa-v9", new Map([["/offline", new Response("previous shell")]])],
     ["forekinghell-pwa-v9-pages", new Map([["/offline", new Response("previous page shell")]])],
-    ["forekinghell-pwa-v10", new Map([["/offline", new Response("new shell")]])],
+    ["forekinghell-pwa-v10", new Map([["/offline", new Response("previous shell")]])],
+    ["forekinghell-pwa-v10-pages", new Map()],
+    ["forekinghell-pwa-v11", new Map([["/offline", new Response("new shell")]])],
   ]);
   const context = {
     self: {
@@ -49,9 +51,36 @@ it("removes old page HTML on upgrade and recovers the newly precached offline sh
   expect(stores.has("forekinghell-pwa-v8-pages")).toBe(false);
   expect(stores.has("forekinghell-pwa-v9")).toBe(false);
   expect(stores.has("forekinghell-pwa-v9-pages")).toBe(false);
+  expect(stores.has("forekinghell-pwa-v10")).toBe(false);
+  expect(stores.has("forekinghell-pwa-v10-pages")).toBe(false);
   const response: Response = await runInNewContext(
     'networkFirstPage({ url: "https://golf.example/quick-bag" })',
     context,
   );
   expect(await response.text()).toBe("new shell");
+});
+
+it("renders usable recovery without any cached shell, scripts or imagery", async () => {
+  const context = {
+    self: { addEventListener() {}, location: new URL("https://golf.example") },
+    caches: { open: async () => ({ match: async () => undefined }) },
+    URL,
+    Response,
+    fetch: async () => {
+      throw new Error("TLS unavailable");
+    },
+  };
+  runInNewContext(readFileSync(resolve("public/sw.js"), "utf8"), context);
+  const response: Response = await runInNewContext(
+    'networkFirstPage({ url: "https://golf.example/today" })',
+    context,
+  );
+  expect(response.status).toBe(503);
+  expect(response.headers.get("content-type")).toContain("text/html");
+  const html = await response.text();
+  expect(html).toContain("ForeKingHell");
+  expect(html).toContain('href="/offline"');
+  expect(html).toContain("Try again");
+  expect(html).not.toContain("<script");
+  expect(html).not.toContain("LM World Tour");
 });
