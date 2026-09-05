@@ -83,7 +83,7 @@
     "ws": "^8.21.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/proj4": "^2.5.6",
@@ -102,7 +102,7 @@
     "shadcn": "^4.13.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "sharp": "^0.35.3"
