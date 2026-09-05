@@ -77,6 +77,7 @@ export type ShotMasterDetailRow = {
   faceLabel: string;
   descentLabel: string;
   smashLabel: string;
+  smashFactor?: number | null;
   spinRateLabel: string;
   spinAxisLabel: string;
   estimateLabel: string;
