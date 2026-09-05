@@ -64,18 +64,25 @@ export function CourseTwinRuntime({
           initialMode={initialMode}
           initialHoleNumber={initialHoleNumber}
           rendererUnavailable={webGlAvailable === false}
-          onEnable3d={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.set("quality", "balanced");
-            window.location.assign(url);
-          }}
+          onEnable3d={
+            webGlAvailable === false
+              ? undefined
+              : () => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("quality", "balanced");
+                  window.location.assign(url);
+                }
+          }
         />
       );
     return (
       <CourseTwinLowPowerFallback
         manifest={manifest}
-        onEnable3d={() =>
-          webGlAvailable === false ? window.location.reload() : setRenderQualityOverride("balanced")
+        rendererUnavailable={webGlAvailable === false}
+        onEnable3d={
+          webGlAvailable === false
+            ? undefined
+            : () => setRenderQualityOverride(canCreateWebGlContext() ? "balanced" : "fallback")
         }
       />
     );
@@ -171,9 +178,11 @@ function readServerRenderQuality(): CourseTwinRenderQuality {
 function CourseTwinLowPowerFallback({
   manifest,
   onEnable3d,
+  rendererUnavailable = false,
 }: {
   manifest: CourseTwinManifest;
-  onEnable3d: () => void;
+  onEnable3d?: () => void;
+  rendererUnavailable?: boolean;
 }) {
   const bounds = manifest.terrain.heightmap?.localBounds ?? manifest.bounds;
   const width = Math.max(1, bounds.maxX - bounds.minX);
@@ -198,6 +207,7 @@ function CourseTwinLowPowerFallback({
           <p className="mt-1 text-sm text-emerald-50/70">
             The mapped hole plan remains available without loading the animated 3D renderer.
           </p>
+          {rendererUnavailable ? <p role="status">3D is unavailable on this device.</p> : null}
         </div>
         <svg
           viewBox="0 0 1000 700"
@@ -253,9 +263,11 @@ function CourseTwinLowPowerFallback({
               Open Strategy map
             </Link>
           </Button>
-          <Button type="button" variant="outline" className="min-h-11" onClick={onEnable3d}>
-            Try balanced 3D
-          </Button>
+          {onEnable3d ? (
+            <Button type="button" variant="outline" className="min-h-11" onClick={onEnable3d}>
+              Try balanced 3D
+            </Button>
+          ) : null}
         </div>
       </aside>
     </section>

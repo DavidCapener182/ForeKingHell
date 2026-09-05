@@ -27,7 +27,7 @@ export function CourseTwinMobileOverhead({
   readOnly?: boolean;
   initialMode?: "strategy" | "replay";
   initialHoleNumber?: number;
-  onEnable3d: () => void;
+  onEnable3d?: () => void;
   rendererUnavailable?: boolean;
 }) {
   const query = useSearchParams();
@@ -162,7 +162,7 @@ export function CourseTwinMobileOverhead({
             · {source.licence}
           </p>
         ))}
-        <button onClick={onEnable3d}>Try balanced 3D</button>
+        {onEnable3d ? <button onClick={onEnable3d}>Try balanced 3D</button> : null}
       </details>
       <nav className={styles.navigation} aria-label="Hole navigation">
         <button

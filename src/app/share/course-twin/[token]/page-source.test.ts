@@ -18,7 +18,7 @@ describe("public Course Twin replay sharing", () => {
     expect(page).toContain("gt(shareLinks.expiresAt, now)");
     expect(page).toContain("getCourseTwinReplay");
     expect(page).toContain("Read-only replay");
-    expect(page).toContain("replay={shared.replay} readOnly");
+    expect(page).toMatch(/replay=\{shared\.replay\}\s+readOnly/);
   });
 
   it("uses the immersive viewport contract with a safe mobile exit", () => {
