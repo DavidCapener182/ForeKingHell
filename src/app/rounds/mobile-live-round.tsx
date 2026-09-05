@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MobileMetric, MobileLargeTitle } from "@/components/app/mobile-screen";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
+import { initialRoundHoleIndex } from "@/lib/play-companion-state";
 
 export type MobileRoundHole = {
   holeNumber: number;
@@ -23,7 +24,13 @@ export type SavedRound = {
   finished?: boolean;
   completedSynced?: boolean;
   completion?: { id: string; version: string };
-  context?: { sessionId: string; course: string; tee: string | null; courseId: string | null };
+  context?: {
+    sessionId: string;
+    course: string;
+    tee: string | null;
+    courseId: string | null;
+    teeSetId?: string | null;
+  };
   version: string;
   holes: Hole[];
   index: number;
@@ -38,6 +45,7 @@ export function MobileLiveRound({
   course,
   tee,
   courseId,
+  teeSetId = null,
   holes: initialHoles,
   recordVersion,
 }: {
@@ -46,19 +54,17 @@ export function MobileLiveRound({
   course: string;
   tee: string | null;
   courseId: string | null;
+  teeSetId?: string | null;
   holes: Hole[];
   recordVersion: string;
 }) {
   const router = useRouter();
   const storageKey = `fkh:live-round:${accountId}:${sessionId}`;
   const [state, setState] = useState<SavedRound>({
-    context: { sessionId, course, tee, courseId },
+    context: { sessionId, course, tee, courseId, teeSetId },
     version: recordVersion,
     holes: initialHoles,
-    index: Math.max(
-      0,
-      initialHoles.findIndex((hole) => hole.score === null),
-    ),
+    index: initialRoundHoleIndex(initialHoles),
     dirty: [],
     inFlight: null,
   });
@@ -93,8 +99,9 @@ export function MobileLiveRound({
           Array.isArray(saved.dirty)
         ) {
           if (saved.dirty.length || saved.inFlight || saved.finished) {
-            stateRef.current = saved;
-            setState(saved);
+            const restored = { ...saved, context: stateRef.current.context };
+            stateRef.current = restored;
+            setState(restored);
             setFinished(saved.finished ?? false);
             setStatus(saved.completedSynced ? "Saved" : "Saved on this phone; sync pending");
           } else {
@@ -391,10 +398,11 @@ export function MobileLiveRound({
             </div>
           </details>
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" disabled={!state.index} onClick={() => move(-1)}>
+            <Button variant="outline" disabled={!ready || !state.index} onClick={() => move(-1)}>
               Previous hole
             </Button>
             <Button
+              disabled={!ready}
               onClick={() => (state.index === state.holes.length - 1 ? finishRound() : move(1))}
             >
               {state.index === state.holes.length - 1 ? "Finish round" : "Next hole"}
@@ -402,7 +410,7 @@ export function MobileLiveRound({
           </div>
           {courseId ? (
             <Link
-              href={`/courses/strategy?courseId=${courseId}&hole=${hole.holeNumber}`}
+              href={`/courses/strategy?courseId=${courseId}${teeSetId ? `&teeSetId=${teeSetId}` : ""}&hole=${hole.holeNumber}`}
               className="flex min-h-11 items-center text-primary"
             >
               Hole strategy

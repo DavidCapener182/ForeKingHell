@@ -1,6 +1,6 @@
 import { MobileCurrentActivity } from "@/components/app/mobile-current-activity";
 import styles from "@/components/app/mobile-companion.module.css";
-import { ChevronRight, Flag, Upload, Activity } from "lucide-react";
+import { ChevronRight, Flag, Upload, Activity, Trophy, Target } from "lucide-react";
 import { MobileTodayGreeting } from "@/components/app/mobile-today-greeting";
 import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
@@ -20,6 +20,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { getCurrentPracticePlanSummary, getPracticePlannerContext } from "@/lib/practice-planner";
 import { buildShotPatternPoints } from "@/lib/shot-pattern-chart-data";
 import { buildTodayRecommendation, resolveTodayPrimaryState } from "@/lib/today-primary-state";
+import { getTodayActivity } from "@/lib/today-activity-data";
 import { getTodayPracticeData } from "@/lib/today-session-data";
 
 export default async function TodayCompanionPage() {
@@ -44,18 +45,7 @@ export default async function TodayCompanionPage() {
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
     getCurrentPracticePlanSummary(userId),
     getInProgressRound(userId),
-    getDb()
-      .select({
-        id: sessions.id,
-        date: sessions.date,
-        type: sessions.type,
-        fileName: sessions.fileName,
-        courseName: sessions.courseName,
-      })
-      .from(sessions)
-      .where(eq(sessions.userId, userId))
-      .orderBy(desc(sessions.date))
-      .limit(6),
+    getTodayActivity(userId),
   ]);
   const recommendation = buildTodayRecommendation(context);
   const latestData = context.latestPractice.sessionId
@@ -152,20 +142,25 @@ export default async function TodayCompanionPage() {
         {recent.length ? (
           <MobileSection title="Recent">
             <MobileGroupedList>
-              {recent.map((item) => {
-                const round = ["round", "real_round", "simulator", "simulated_course"].includes(
-                  item.type,
-                );
-                return (
-                  <MobileListRow
-                    key={item.id}
-                    label={item.courseName ?? (round ? "Round" : "Range practice")}
-                    icon={round ? Flag : Activity}
-                    detail={`${round ? "Round" : "Practice import"} · ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(item.date)}`}
-                    href={round ? `/rounds/${item.id}` : `/sessions/${item.id}`}
-                  />
-                );
-              })}
+              {recent.map((item) => (
+                <MobileListRow
+                  key={item.id}
+                  label={item.title}
+                  icon={
+                    item.kind === "round"
+                      ? Flag
+                      : item.kind === "import"
+                        ? Upload
+                        : item.kind === "goal"
+                          ? Target
+                          : ["achievement", "personal-best"].includes(item.kind)
+                            ? Trophy
+                            : Activity
+                  }
+                  detail={`${item.detail} · ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(item.date)}`}
+                  href={item.href}
+                />
+              ))}
             </MobileGroupedList>
           </MobileSection>
         ) : null}

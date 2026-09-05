@@ -3,6 +3,7 @@ import { getRequestAppSurface } from "@/lib/app-surface-server";
 export const dynamic = "force-dynamic";
 
 type PracticeSearchParams = Promise<{
+  planId?: string;
   source?: string;
   time?: string;
   intent?: string;

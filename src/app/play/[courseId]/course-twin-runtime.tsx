@@ -40,7 +40,7 @@ export function CourseTwinRuntime({
   readOnly?: boolean;
   tournamentId?: string | null;
   tournamentRoundNumber?: number | null;
-  initialMode?: "strategy";
+  initialMode?: "strategy" | "replay";
   initialHoleNumber?: number;
 }) {
   const detectedRenderQuality = useSyncExternalStore(

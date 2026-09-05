@@ -2401,6 +2401,7 @@ function practicePlanEvidenceTime(plan: Pick<SavedPracticePlan, "plannedAt" | "s
 export async function getSavedPracticePlans(
   userId: string,
   limit = 8,
+  planId?: string,
 ): Promise<SavedPracticePlan[]> {
   const rows = await getDb()
     .select({
@@ -2409,7 +2410,7 @@ export async function getSavedPracticePlans(
     })
     .from(practicePlans)
     .leftJoin(practiceResults, eq(practiceResults.practicePlanId, practicePlans.id))
-    .where(eq(practicePlans.userId, userId))
+    .where(and(eq(practicePlans.userId, userId), planId ? eq(practicePlans.id, planId) : undefined))
     .orderBy(desc(practicePlans.createdAt))
     .limit(limit);
   const planIds = rows.map((row) => row.plan.id);
@@ -2458,8 +2459,9 @@ export async function getSavedPracticePlans(
 }
 
 export async function getSavedPracticePlan(userId: string, planId: string) {
-  const plans = await getSavedPracticePlans(userId, 25);
-  return plans.find((plan) => plan.id === planId) ?? null;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(planId)) return null;
+  const plans = await getSavedPracticePlans(userId, 1, planId);
+  return plans[0] ?? null;
 }
 
 export async function getPracticeImportOptions(

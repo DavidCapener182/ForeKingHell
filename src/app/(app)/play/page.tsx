@@ -33,6 +33,7 @@ import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { listAvailableCourseTwins } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
+  activeRoundStrategy,
   companionCourseReadiness,
   findInProgressRound,
   selectCompanionTee,
@@ -354,54 +355,53 @@ function SelectedCourseMobile({
 
 function ActiveRoundMobile({ round }: { round: ActiveRound }) {
   const summary = summarizeScorecard(round.scorecardJson);
+  const scorecard = round.scorecardJson ?? [];
+  const { currentHole, href: strategyHref } = activeRoundStrategy(round);
 
   return (
-    <Card
-      className="overflow-hidden border-0 bg-slate-950 py-0 text-white shadow-[0_24px_60px_rgba(2,44,28,0.28)]"
-      data-active-round
-      data-mobile-preserve-dark
-    >
-      <div className="relative overflow-hidden px-5 pb-5 pt-6">
-        <div className="absolute -right-16 -top-24 size-56 rounded-full bg-emerald-400/20 blur-3xl" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
-              Round in progress
-            </p>
-            <Badge className="border-emerald-300/20 bg-emerald-300/15 text-emerald-100">
-              Active
-            </Badge>
-          </div>
-          <h1 className="mt-5 text-balance text-[2rem] font-bold leading-none tracking-tight">
-            {round.courseName ?? "Current round"}
-          </h1>
-          <p className="mt-2 text-sm text-white/65">{round.teeName ?? "Tee not recorded"}</p>
-          <div className="mt-7 grid grid-cols-3 gap-3 border-t border-white/10 pt-4">
-            <DarkMetric label="Progress" value={summary.progressLabel} />
-            <DarkMetric label="Score" value={summary.scoreLabel} />
-            <DarkMetric label="To par" value={summary.toParLabel} />
-          </div>
+    <section className={styles.activeRound} data-active-round aria-label="Round in progress">
+      <p className="mobile-type-subheadline text-primary">Round in progress · Hole {currentHole}</p>
+      <h2 className="mobile-type-title1">{round.courseName ?? "Current round"}</h2>
+      <p className="mobile-type-callout text-muted-foreground">
+        {round.teeName ?? "Tee not recorded"}
+      </p>
+      <div className={styles.activeRoundMetrics}>
+        <div>
+          <strong>{summary.scoreLabel}</strong>
+          <span>strokes</span>
+        </div>
+        <div>
+          <strong>{summary.toParLabel}</strong>
+          <span>to par</span>
+        </div>
+        <div>
+          <strong>{scorecard.filter((hole) => hole.score != null).length}</strong>
+          <span>holes scored</span>
         </div>
       </div>
-      <CardFooter className="grid gap-2 border-white/10 bg-white/[0.06] p-3" data-primary-action>
-        <Button asChild className="min-h-12 w-full rounded-xl bg-emerald-500 text-base text-white">
-          <Link href={`/rounds/${round.id}`}>
-            <Flag aria-hidden />
-            Continue Round
-          </Link>
-        </Button>
-        <Button
-          asChild
-          variant="ghost"
-          className="min-h-11 w-full rounded-xl text-white hover:bg-white/10 hover:text-white"
-        >
+      <Button asChild className="min-h-12 w-full" data-primary-action>
+        <Link href={`/rounds/${round.id}`}>
+          <Flag aria-hidden />
+          Continue Round
+        </Link>
+      </Button>
+      <div className={styles.activeRoundActions}>
+        {strategyHref ? (
+          <Button asChild variant="ghost">
+            <Link href={strategyHref}>
+              <MapPinned aria-hidden />
+              Strategy
+            </Link>
+          </Button>
+        ) : null}
+        <Button asChild variant="ghost">
           <Link href="/quick-bag">
             <ShieldCheck aria-hidden />
-            Open Quick Bag
+            Quick Bag
           </Link>
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </section>
   );
 }
 

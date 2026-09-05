@@ -303,6 +303,15 @@
     min-height: 3.5rem;
     border-bottom: 1px solid rgb(255 255 255 / 8%);
   }
+  .mobileActionSummary[data-replay="true"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mobileActionSummary[data-replay="true"] .actionFact {
+    padding-inline: 0.75rem;
+  }
+  .mobileActionSummary[data-replay="true"] .actionFact span {
+    font-size: 0.6875rem;
+  }
 
   .actionFact {
     display: flex;
