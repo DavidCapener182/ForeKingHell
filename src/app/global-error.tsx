@@ -7,21 +7,21 @@ import { Button } from "@/components/ui/button";
 import { BRAND_NAME } from "@/lib/brand";
 
 export default function GlobalError({
-  unstable_retry,
+  retry,
 }: {
   error: Error & { digest?: string };
-  unstable_retry: () => void;
+  retry: () => void;
 }) {
   return (
     <html lang="en">
       <body className="bg-background text-foreground">
         <main id="main-content" className="grid min-h-dvh place-items-center px-4 py-10">
           <AppErrorState
-            className="w-full max-w-xl shadow-lg"
-            title={`${BRAND_NAME} hit a fatal error`}
-            description="The app shell could not recover automatically."
+            className="w-full"
+            title={<h1>{BRAND_NAME} could not open</h1>}
+            description="Try again to reopen the app."
             action={
-              <Button type="button" variant="destructive" onClick={unstable_retry}>
+              <Button type="button" variant="destructive" className="min-h-11" onClick={retry}>
                 Try again
               </Button>
             }

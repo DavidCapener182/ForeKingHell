@@ -15,14 +15,13 @@ describe("authenticated route state boundaries", () => {
     expect(loading).toContain('aria-busy="true"');
     expect(loading).toContain("AppLoadingSkeleton");
     expect(error).toContain("AuthenticatedRouteError");
-    expect(error).toContain('role="alert"');
-    expect(error).toContain("unstable_retry");
-    expect(error).not.toContain("SegmentErrorState");
+    expect(error).toContain("retry: () => void");
+    expect(error).toContain("<SegmentErrorState {...props}");
   });
 
   it("keeps reusable empty, offline and retry states available to partial routes", () => {
     expect(source("src/components/app/app-empty-state.tsx")).toContain("AppEmptyState");
     expect(source("src/components/app/offline-state.tsx")).toContain("OfflineState");
-    expect(source("src/components/segment-error-state.tsx")).toContain("unstable_retry");
+    expect(source("src/components/segment-error-state.tsx")).toContain("onClick={retry}");
   });
 });

@@ -40,6 +40,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { isSettingsSection, settingsSections } from "@/lib/settings-sections";
 import { isMobileCompanionHeroRoute, mobileBackNavigation } from "@/components/app/route-metadata";
 
 export type MobileNavProfile = {
@@ -61,12 +62,25 @@ const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
 export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps) {
   const params = useSearchParams();
   const savedPlanId = pathname === "/practice" ? params.get("planId") : null;
+  const requestedSettingsSection = pathname === "/settings" ? params.get("section") : null;
+  const settingsSection = isSettingsSection(requestedSettingsSection)
+    ? requestedSettingsSection
+    : null;
   const profileLabel = profile?.displayName || profile?.username || "Profile";
-  const pageTitle = savedPlanId ? "Practice plan" : mobilePageTitle(pathname);
+  const pageTitle = settingsSection
+    ? settingsSections.find((section) => section.value === settingsSection)!.label
+    : savedPlanId
+      ? "Practice plan"
+      : mobilePageTitle(pathname);
   const heroRoute = isMobileCompanionHeroRoute(pathname);
   const backNavigation = useMemo(
-    () => (savedPlanId ? { href: "/practice", label: "Practice" } : mobileBackNavigation(pathname)),
-    [pathname, savedPlanId],
+    () =>
+      settingsSection
+        ? { href: "/settings", label: "Settings" }
+        : savedPlanId
+          ? { href: "/practice", label: "Practice" }
+          : mobileBackNavigation(pathname),
+    [pathname, savedPlanId, settingsSection],
   );
   const groups = mobileMoreGroups;
   const [query, setQuery] = useState("");
@@ -78,7 +92,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
     mobilePrimaryItems.find((item) => item.isActive(pathname))?.href ?? pathname;
   const tabScrollStorageKey = `${mobileScrollStoragePrefix}${
     backNavigation
-      ? `detail:${pathname}${savedPlanId ? `?planId=${savedPlanId}` : ""}`
+      ? `detail:${pathname}${savedPlanId ? `?planId=${savedPlanId}` : settingsSection ? `?section=${settingsSection}` : ""}`
       : activePrimaryHref
   }`;
   const normalizedQuery = query.trim().toLowerCase();

@@ -78,6 +78,7 @@ export async function getHandicapRoundsForUser(userId: string) {
         id: sessions.id,
         fileName: sessions.fileName,
         type: sessions.type,
+        roundStatus: sessions.roundStatus,
         courseName: sessions.courseName,
         date: sessions.date,
         scorecardJson: sessions.scorecardJson,

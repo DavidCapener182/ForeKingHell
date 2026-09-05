@@ -12,7 +12,8 @@ describe("global error boundary", () => {
     expect(source).toContain("<body");
     expect(source).toContain("<AppErrorState");
     expect(source).toContain("<Button");
-    expect(source).toContain("onClick={unstable_retry}");
+    expect(source).toContain("onClick={retry}");
+    expect(source).not.toContain("unstable_retry");
     expect(source).toContain("bg-background text-foreground");
 
     for (const retiredShell of ["<button", "premium-card", "bg-[#", "bg-white", "text-white"]) {
