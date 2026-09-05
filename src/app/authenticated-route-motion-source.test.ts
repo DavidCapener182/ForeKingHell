@@ -92,8 +92,8 @@ describe("authenticated route and feedback motion", () => {
   });
 
   it("respects reduced motion for every audited smooth-scroll handoff", () => {
-    expect(strategySource).toContain('matchMedia("(prefers-reduced-motion: reduce)")');
-    expect(strategySource).toContain('behavior: reduceMotion ? "auto" : "smooth"');
+    expect(strategySource).toContain('behavior: "auto"');
+    expect(strategySource).not.toContain('behavior: "smooth"');
     expect(rapsodoSource.match(/prefers-reduced-motion: reduce/g)).toHaveLength(2);
     expect(rapsodoSource).not.toContain('scrollIntoView({ behavior: "smooth"');
   });

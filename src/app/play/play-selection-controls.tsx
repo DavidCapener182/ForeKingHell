@@ -22,6 +22,7 @@ export type PlaySelectionControlsProps = {
   tees: PlaySelectionItem[];
   selectedCourseId: string | null;
   selectedTeeId: string | null;
+  destination?: "/play" | "/courses/strategy";
 };
 
 export function PlaySelectionControls({
@@ -29,6 +30,7 @@ export function PlaySelectionControls({
   tees,
   selectedCourseId,
   selectedTeeId,
+  destination = "/play",
 }: PlaySelectionControlsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -62,7 +64,7 @@ export function PlaySelectionControls({
         const result = await selectCompanionPlayContextAction(courseId, teeSetId);
         const query = new URLSearchParams({ courseId: result.courseId });
         if (result.teeSetId) query.set("teeSetId", result.teeSetId);
-        router.replace(`/play?${query.toString()}`, { scroll: false });
+        router.replace(`${destination}?${query.toString()}`, { scroll: false });
       } catch {
         setOptimisticCourseId(previousCourseId);
         setOptimisticTeeId(previousTeeId);
@@ -86,6 +88,7 @@ export function PlaySelectionControls({
         >
           <SelectTrigger
             ref={courseTriggerRef}
+            aria-label="Course"
             aria-invalid={selectionError?.field === "course"}
             className={`t-input min-h-12 w-full text-[15px] font-semibold ${selectionError?.field === "course" ? "is-error is-shaking" : ""}`}
           >
@@ -110,6 +113,7 @@ export function PlaySelectionControls({
           >
             <SelectTrigger
               ref={teeTriggerRef}
+              aria-label="Tee"
               aria-invalid={selectionError?.field === "tee"}
               className={`t-input min-h-12 w-full text-[15px] font-semibold ${selectionError?.field === "tee" ? "is-error is-shaking" : ""}`}
             >

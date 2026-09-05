@@ -22,18 +22,40 @@ export function HoleStrategyVisual({
 }) {
   const mappedHole = courseMap?.holes.find((hole) => hole.holeNumber === strategy.holeNumber);
   const mapped = Boolean(courseMap && mappedHole);
-  const left = strategy.dispersionLeftYd ?? 8;
-  const right = strategy.dispersionRightYd ?? 8;
+  const left = compact ? (mode.evidence?.leftYd ?? 0) : (strategy.dispersionLeftYd ?? 8);
+  const right = compact ? (mode.evidence?.rightYd ?? 0) : (strategy.dispersionRightYd ?? 8);
+  const measuredDispersion =
+    !compact ||
+    (mode.evidence?.leftYd != null &&
+      mode.evidence?.rightYd != null &&
+      mode.evidence.carryRangeMeasured);
+  if (compact && !mapped)
+    return (
+      <div className={styles.mobileMapUnavailable} role="status">
+        <MapPinned aria-hidden />
+        <p>Hole map unavailable</p>
+        <span>
+          Your measured club options are below. Confirm the target and hazards on the course.
+        </span>
+      </div>
+    );
 
   return (
     <figure className={styles.visualFrame} data-compact={compact ? "true" : "false"}>
       <div className={styles.visualMeta}>
         <span>
-          <MapPinned aria-hidden /> {mapped ? "Mapped aerial plan" : "Illustrative fallback"}
+          <MapPinned aria-hidden />{" "}
+          {mapped
+            ? compact && !courseMap?.imageUrl
+              ? "Mapped hole plan"
+              : "Mapped aerial plan"
+            : "Illustrative fallback"}
         </span>
         <span>
           {mapped
-            ? "Course Twin geometry · personal shot overlay"
+            ? compact
+              ? "Reference tee"
+              : "Course Twin geometry · personal shot overlay"
             : `Hazard distance ${strategy.hazards.length ? "not mapped" : "unavailable"}`}
         </span>
       </div>
@@ -43,7 +65,7 @@ export function HoleStrategyVisual({
           preserveAspectRatio="xMidYMid meet"
           className={styles.holeVisual}
           role="img"
-          aria-label={`${mapped ? "Mapped aerial" : "Illustrative"} plan for hole ${strategy.holeNumber}. ${mode.club} to ${mode.target}, carrying ${mode.carryRange}. Dispersion is ${left} yards left and ${right} yards right.`}
+          aria-label={`${mapped ? "Mapped aerial" : "Illustrative"} plan for hole ${strategy.holeNumber}. ${mode.club} to ${mode.target}, carrying ${mode.carryRange}. ${measuredDispersion ? `Dispersion is ${left} yards left and ${right} yards right.` : "Measured dispersion unavailable."}`}
         >
           {courseMap && mappedHole ? (
             <MappedHolePlan
@@ -53,6 +75,8 @@ export function HoleStrategyVisual({
               mode={mode}
               left={left}
               right={right}
+              compact={compact}
+              measuredDispersion={measuredDispersion}
             />
           ) : (
             <IllustrativeHolePlan strategy={strategy} mode={mode} left={left} right={right} />
@@ -60,8 +84,10 @@ export function HoleStrategyVisual({
         </svg>
       </div>
       <figcaption className={styles.visualLegend}>
-        <span data-legend="target">Recommended landing</span>
-        <span data-legend="dispersion">Measured dispersion</span>
+        <span data-legend="target">{compact ? "Indicative target" : "Recommended landing"}</span>
+        <span data-legend="dispersion">
+          {measuredDispersion ? "Measured dispersion" : "Dispersion unavailable"}
+        </span>
         <span data-legend="hazard">Mapped course</span>
       </figcaption>
     </figure>
@@ -75,6 +101,8 @@ function MappedHolePlan({
   mode,
   left,
   right,
+  compact,
+  measuredDispersion,
 }: {
   courseMap: CourseStrategyMap;
   hole: CourseStrategyMap["holes"][number];
@@ -82,11 +110,16 @@ function MappedHolePlan({
   mode: HoleStrategyMode;
   left: number;
   right: number;
+  compact: boolean;
+  measuredDispersion: boolean;
 }) {
   const projection = createHoleProjection(hole);
   const carryValues = rangeValues(mode.carryRange);
   const carryMidpoint =
-    midpoint(mode.carryRange) ?? strategy.personalCarryYd ?? strategy.yards * 0.5;
+    (compact ? mode.evidence?.carryYd : null) ??
+    midpoint(mode.carryRange) ??
+    strategy.personalCarryYd ??
+    strategy.yards * 0.5;
   const landing = pointAlongPolyline(hole.centerline, carryMidpoint * YARDS_TO_METRES);
   const targetOffset = mode.target.toLowerCase().includes("left")
     ? -8
@@ -94,21 +127,39 @@ function MappedHolePlan({
       ? 8
       : 0;
   const target = projection.project(landing.point);
-  target.x += targetOffset * projection.scale;
+  const tangentStart = projection.project(landing.segmentStart);
+  const tangentEnd = projection.project(landing.segmentEnd);
+  const tangentLength =
+    Math.hypot(tangentEnd.x - tangentStart.x, tangentEnd.y - tangentStart.y) || 1;
+  const rightVector = {
+    x: -(tangentEnd.y - tangentStart.y) / tangentLength,
+    y: (tangentEnd.x - tangentStart.x) / tangentLength,
+  };
+  if (compact) {
+    target.x += rightVector.x * targetOffset * YARDS_TO_METRES * projection.scale;
+    target.y += rightVector.y * targetOffset * YARDS_TO_METRES * projection.scale;
+  } else target.x += targetOffset * projection.scale;
 
   const shotPoints = landing.path.map(projection.project);
   shotPoints[shotPoints.length - 1] = target;
 
   const dispersionRadiusX = clamp(
     ((left + right) * YARDS_TO_METRES * projection.scale) / 2,
-    24,
-    112,
+    compact ? 0 : 24,
+    compact ? Number.POSITIVE_INFINITY : 112,
   );
-  const carrySpread = Math.max(12, (carryValues.maximum - carryValues.minimum) * YARDS_TO_METRES);
-  const dispersionRadiusY = clamp((carrySpread * projection.scale) / 2, 14, 48);
-  const dispersionCentreX = target.x + ((right - left) * YARDS_TO_METRES * projection.scale) / 2;
-  const tangentStart = projection.project(landing.segmentStart);
-  const tangentEnd = projection.project(landing.segmentEnd);
+  const carrySpread = Math.max(
+    compact ? 0 : 12,
+    (carryValues.maximum - carryValues.minimum) * YARDS_TO_METRES,
+  );
+  const dispersionRadiusY = clamp(
+    (carrySpread * projection.scale) / 2,
+    compact ? 0 : 14,
+    compact ? Number.POSITIVE_INFINITY : 48,
+  );
+  const lateralShift = ((right - left) * YARDS_TO_METRES * projection.scale) / 2;
+  const dispersionCentreX = target.x + lateralShift * (compact ? rightVector.x : 1);
+  const dispersionCentreY = target.y + (compact ? lateralShift * rightVector.y : 0);
   const dispersionAngle =
     (Math.atan2(tangentEnd.y - tangentStart.y, tangentEnd.x - tangentStart.x) * 180) / Math.PI + 90;
   const labelOnLeft = dispersionCentreX + dispersionRadiusX > 390;
@@ -148,25 +199,36 @@ function MappedHolePlan({
       <path d={screenPath(hole.centerline.map(projection.project))} className={styles.mappedLine} />
       <circle cx={green.x} cy={green.y} r="10" className={styles.mappedGreenMarker} />
       <circle cx={tee.x} cy={tee.y} r="8" className={styles.mappedTeeMarker} />
-      <path d={screenPath(shotPoints)} className={styles.shotLine} />
-      <ellipse
-        cx={dispersionCentreX}
-        cy={target.y}
-        rx={dispersionRadiusX}
-        ry={dispersionRadiusY}
-        transform={`rotate(${dispersionAngle} ${dispersionCentreX} ${target.y})`}
-        className={styles.dispersion}
-      />
-      <circle cx={target.x} cy={target.y} r="12" className={styles.landingTarget} />
-      <circle cx={target.x} cy={target.y} r="3.5" className={styles.landingCentre} />
-      <g className={styles.mappedRangeLabel} textAnchor={labelOnLeft ? "end" : "start"}>
-        <text x={labelX} y={target.y - 4}>
-          {mode.carryRange}
-        </text>
-        <text x={labelX} y={target.y + 16}>
-          personal range
-        </text>
-      </g>
+      {!compact || mode.evidence ? (
+        <path d={screenPath(compact ? [tee, target] : shotPoints)} className={styles.shotLine} />
+      ) : null}
+      {measuredDispersion && (!compact || mode.evidence?.carryRangeMeasured) ? (
+        <ellipse
+          data-personal-dispersion
+          cx={dispersionCentreX}
+          cy={dispersionCentreY}
+          rx={dispersionRadiusX}
+          ry={dispersionRadiusY}
+          transform={`rotate(${svgNumber(dispersionAngle)} ${dispersionCentreX} ${dispersionCentreY})`}
+          className={styles.dispersion}
+        />
+      ) : null}
+      {!compact || mode.evidence ? (
+        <>
+          <circle cx={target.x} cy={target.y} r="12" className={styles.landingTarget} />
+          <circle cx={target.x} cy={target.y} r="3.5" className={styles.landingCentre} />
+        </>
+      ) : null}
+      {!compact ? (
+        <g className={styles.mappedRangeLabel} textAnchor={labelOnLeft ? "end" : "start"}>
+          <text x={labelX} y={target.y - 4}>
+            {mode.carryRange}
+          </text>
+          <text x={labelX} y={target.y + 16}>
+            personal range
+          </text>
+        </g>
+      ) : null}
     </>
   );
 }
@@ -260,9 +322,11 @@ function createHoleProjection(hole: CourseStrategyMap["holes"][number]) {
   const maxAlong = Math.max(...alongValues);
   const minAcross = Math.min(...acrossValues);
   const maxAcross = Math.max(...acrossValues);
-  const scale = Math.min(
-    640 / Math.max(120, maxAlong - minAlong + 36),
-    390 / Math.max(90, maxAcross - minAcross + 72),
+  const scale = svgNumber(
+    Math.min(
+      640 / Math.max(120, maxAlong - minAlong + 36),
+      390 / Math.max(90, maxAcross - minAcross + 72),
+    ),
   );
   const offsetX = VIEWBOX_WIDTH / 2 - ((minAcross + maxAcross) / 2) * scale;
   const offsetY = VIEWBOX_HEIGHT / 2 + ((minAlong + maxAlong) / 2) * scale;
@@ -275,12 +339,13 @@ function createHoleProjection(hole: CourseStrategyMap["holes"][number]) {
 
   return {
     scale,
-    matrix: `matrix(${matrixA} ${matrixB} ${matrixC} ${matrixD} ${matrixE} ${matrixF})`,
+    matrix: `matrix(${[matrixA, matrixB, matrixC, matrixD, matrixE, matrixF].map(svgNumber).join(" ")})`,
     project: (point: CourseStrategyMapPoint) => ({
-      x:
+      x: svgNumber(
         offsetX +
-        ((point[0] - tee[0]) * perpendicularX + (point[1] - tee[1]) * perpendicularZ) * scale,
-      y: offsetY - ((point[0] - tee[0]) * unitX + (point[1] - tee[1]) * unitZ) * scale,
+          ((point[0] - tee[0]) * perpendicularX + (point[1] - tee[1]) * perpendicularZ) * scale,
+      ),
+      y: svgNumber(offsetY - ((point[0] - tee[0]) * unitX + (point[1] - tee[1]) * unitZ) * scale),
     }),
   };
 }
@@ -355,4 +420,9 @@ function midpoint(range: string) {
 
 function clamp(value: number, minimum: number, maximum: number) {
   return Math.min(maximum, Math.max(minimum, value));
+}
+
+// Stable SVG serialization across V8 and WebKit; sub-pixel rounding only.
+function svgNumber(value: number) {
+  return Number(value.toFixed(4));
 }

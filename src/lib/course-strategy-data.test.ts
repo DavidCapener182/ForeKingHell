@@ -51,6 +51,15 @@ describe("strategy data identity and current evidence", () => {
       .map((condition) => dialect.sqlToQuery(condition as Parameters<typeof dialect.sqlToQuery>[0]))
       .find((query) => query.params.includes(tee.id));
     expect(teePredicate?.params).toEqual([tee.id, course.id]);
+    const courseQueries = mock.conditions
+      .map((condition) => dialect.sqlToQuery(condition as Parameters<typeof dialect.sqlToQuery>[0]))
+      .filter((query) => query.sql.includes('"visibility"'));
+    expect(courseQueries).toHaveLength(2);
+    expect(
+      courseQueries.every(
+        (query) => query.params.includes("shared") && query.params.includes("owner"),
+      ),
+    ).toBe(true);
   });
 
   it("does not substitute a different course for an invalid explicit deep link", async () => {
@@ -92,6 +101,7 @@ describe("strategy data identity and current evidence", () => {
     expect(data.trustedBag).toHaveLength(1);
     expect(data.trustedBag[0].carryYd).toBe(190);
     expect(data.strategies[0].personalCarryYd).toBe(190);
+    expect(data.strategies[0].strategyModes[0].evidence?.carryRangeMeasured).toBe(false);
     const dialect = new PgDialect();
     const scopedQueries = mock.conditions.map((condition) =>
       dialect.sqlToQuery(condition as Parameters<typeof dialect.sqlToQuery>[0]),

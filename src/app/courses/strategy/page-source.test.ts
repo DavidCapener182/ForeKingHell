@@ -38,7 +38,7 @@ describe("course strategy surface split", () => {
     expect(companionSource).toContain("getCourseTwinManifest");
     expect(companionSource).toContain("courseStrategyMapFromManifest");
     expect(companionSource).toContain("PlaySetupDrawer");
-    expect(companionSource).toContain('title="Caddie Book"');
+    expect(mobileHoleSource).toContain("<h1>Hole {strategy.holeNumber}</h1>");
     expect(companionSource).not.toContain("IOSGroupedList");
     expect(companionSource).not.toContain("getDashboardData");
   });
@@ -47,12 +47,10 @@ describe("course strategy surface split", () => {
     expect(mobileHoleSource).toContain("data-mobile-one-hole-strategy");
     expect(mobileHoleSource).toContain("<HoleStrategyVisual");
     expect(mobileHoleSource).toContain("Recommended play");
-    expect(mobileHoleSource).toContain('<MobileRow label="Club"');
-    expect(mobileHoleSource).toContain('<MobileRow label="Target"');
-    expect(mobileHoleSource).toContain('<MobileRow label="Carry"');
-    expect(mobileHoleSource).toContain('<MobileRow label="Miss"');
-    expect(mobileHoleSource).toContain('<MobileRow label="Hazard"');
-    expect(mobileHoleSource).toContain('<MobileRow label="Alternative"');
+    expect(mobileHoleSource).toContain("Club evidence and course detail");
+    expect(mobileHoleSource).toContain("evidence.sampleSize");
+    expect(mobileHoleSource).toContain("evidence.carryYd");
+    expect(mobileHoleSource).toContain("window.history.replaceState");
     expect(mobileHoleSource).toContain("mobileFixedControls");
     expect(mobileHoleSource).toContain('aria-label="Previous hole"');
     expect(mobileHoleSource).toContain('aria-label="Next hole"');

@@ -5,6 +5,8 @@ export type StrategyClub = {
   carryYd: number;
   minCarryYd: number;
   maxCarryYd: number;
+  dispersionAvailable?: boolean;
+  carryRangeMeasured?: boolean;
   leftYd: number;
   rightYd: number;
   confidence: number;
@@ -21,6 +23,17 @@ export type HoleStrategyMode = {
   target: string;
   expectedLeave: string;
   rationale: string;
+  evidence?: {
+    clubId: string;
+    carryYd: number;
+    minCarryYd: number;
+    maxCarryYd: number;
+    leftYd: number | null;
+    rightYd: number | null;
+    carryRangeMeasured: boolean;
+    sampleSize: number;
+    confidence: "High" | "Moderate" | "Low";
+  };
 };
 
 export type HoleStrategy = {
@@ -194,6 +207,17 @@ function strategyMode({
     target,
     expectedLeave: `${Math.max(0, Math.round(hole.yards - club.carryYd))} yd after the first shot`,
     rationale,
+    evidence: {
+      clubId: club.clubId,
+      carryYd: club.carryYd,
+      minCarryYd: club.minCarryYd,
+      maxCarryYd: club.maxCarryYd,
+      leftYd: club.dispersionAvailable === false ? null : club.leftYd,
+      rightYd: club.dispersionAvailable === false ? null : club.rightYd,
+      carryRangeMeasured: club.carryRangeMeasured !== false,
+      sampleSize: club.sampleSize,
+      confidence: confidenceLabel(club),
+    },
   };
 }
 
