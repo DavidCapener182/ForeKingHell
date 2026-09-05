@@ -172,6 +172,7 @@ export type TodayPracticeData = {
   allTodayShotCount: number;
   allCleanTodayShotCount: number;
   comparisonShots: TodayPracticeShot[];
+  previousComparisonShots?: TodayPracticeShot[];
   rawComparisonShots: TodayPracticeShot[];
   clubComparisons: ClubDayComparison[];
   rawClubComparisons: ClubDayComparison[];
@@ -500,6 +501,7 @@ function buildTodayPracticeData({
     allTodayShotCount: allTodayRows.length,
     allCleanTodayShotCount: cleanAllTodayRows.length,
     comparisonShots,
+    previousComparisonShots: previousComparableShots,
     rawComparisonShots,
     clubComparisons,
     rawClubComparisons,

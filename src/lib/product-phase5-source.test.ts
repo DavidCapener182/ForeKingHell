@@ -17,7 +17,8 @@ describe("Phase 5 product-page contract", () => {
     expect(primaryAnswer).toContain("data-primary-recommendation");
     expect(companion).toContain("resolveTodayPrimaryState");
     expect(primaryState).toContain("Plan range session");
-    expect(companion).toContain("Why this recommendation?");
+    expect(primaryAnswer).toContain("Why this recommendation?");
+    expect(companion).toContain("evidenceContent=");
     expect(companion).not.toContain("TodayMobileEvidence");
     expect(today).toContain("TodayDesktopFilterBar");
     expect(today).toContain("<ToggleGroup");

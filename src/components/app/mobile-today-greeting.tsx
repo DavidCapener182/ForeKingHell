@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { MobileLargeTitle } from "./mobile-screen";
 
-export function MobileTodayGreeting() {
-  const [now, setNow] = useState<Date | null>(null);
+export function MobileTodayGreeting({ initialNow }: { initialNow: string }) {
+  const [now, setNow] = useState(() => new Date(initialNow));
   useEffect(() => {
     const update = () => setNow(new Date());
     const timer = window.setTimeout(update, 0);
@@ -13,27 +13,25 @@ export function MobileTodayGreeting() {
       clearInterval(interval);
     };
   }, []);
-  const hour = now?.getHours();
-  const greeting =
-    hour === undefined
-      ? "Your golf companion"
-      : hour < 12
-        ? "Good morning"
-        : hour < 18
-          ? "Good afternoon"
-          : "Good evening";
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "numeric",
+      hourCycle: "h23",
+      timeZone: "Europe/London",
+    })
+      .formatToParts(now)
+      .find((part) => part.type === "hour")?.value,
+  );
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   return (
     <MobileLargeTitle
       title="Today"
-      eyebrow={
-        now
-          ? new Intl.DateTimeFormat(undefined, {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            }).format(now)
-          : undefined
-      }
+      eyebrow={new Intl.DateTimeFormat("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        timeZone: "Europe/London",
+      }).format(now)}
       detail={greeting}
     />
   );

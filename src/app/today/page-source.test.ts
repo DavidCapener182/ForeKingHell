@@ -51,7 +51,8 @@ describe("latest practice desktop dashboard", () => {
     expect(primaryAnswerSource).toContain("styles.focusEvidence");
     expect(companionSource).toContain("resolveTodayPrimaryState");
     expect(primaryStateSource).toContain("Plan range session");
-    expect(companionSource).toContain("Why this recommendation?");
+    expect(primaryAnswerSource).toContain("Why this recommendation?");
+    expect(primaryAnswerSource).toContain("evidenceOpen ? evidenceContent : null");
     expect(companionSource).toContain("getTodayPracticeData({");
     expect(companionSource).toContain("sessionId: context.latestPractice.sessionId");
     expect(companionSource).toContain('scope: "day"');
@@ -65,7 +66,7 @@ describe("latest practice desktop dashboard", () => {
   });
 
   it("keeps the latest-pattern club controls outside session navigation", () => {
-    expect(companionSource).toContain('id="today-evidence"');
+    expect(primaryAnswerSource).toContain('id="today-evidence"');
     expect(companionSource).toContain("<MobileShotPatternCharts");
     expect(companionSource).toContain("preferredClub={recommendation.clubType}");
   });
