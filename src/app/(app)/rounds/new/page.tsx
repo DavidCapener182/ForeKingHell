@@ -1,3 +1,4 @@
+import { MobileStartRound } from "@/app/rounds/new/mobile-start-round";
 import Link from "next/link";
 import { ArrowLeft, MapPinned } from "lucide-react";
 import { asc, eq, inArray, or } from "drizzle-orm";
@@ -53,7 +54,12 @@ const roundWorkflowHelpItems = [
   },
 ];
 
-export default async function NewRoundPage() {
+export default async function NewRoundPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ courseId?: string; teeSetId?: string; mode?: string }>;
+}) {
+  const params = await searchParams;
   const [courseOptions, surface] = await Promise.all([
     getRoundCourseOptions(),
     getRequestAppSurface(),
@@ -64,7 +70,14 @@ export default async function NewRoundPage() {
 
   return (
     <PageShell>
-      {surface === "companion" ? (
+      {surface === "companion" && params?.mode !== "history" ? (
+        <MobileStartRound
+          courses={courseOptions}
+          courseId={params?.courseId}
+          teeSetId={params?.teeSetId}
+          action={createManualRoundAction}
+        />
+      ) : surface === "companion" ? (
         <MobileAppShell className="gap-3">
           <MobileTopBar title="Add Round" />
           <p className="px-1 text-sm leading-5 text-muted-foreground">

@@ -16,15 +16,19 @@ test.describe("clean-database companion smoke", () => {
 
     const primaryNavigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(primaryNavigation).toBeVisible();
+    await expect(primaryNavigation.getByRole("link")).toHaveText([
+      "Today",
+      "Practice",
+      "Play",
+      "Progress",
+      "Bag",
+    ]);
 
     for (const destination of [
-      { navigationLabel: "Practice", routeLabel: "Practice Planner", path: /\/practice(?:\?|$)/ },
-      {
-        navigationLabel: "Strategy",
-        routeLabel: "Course Strategy",
-        path: /\/courses\/strategy(?:\?|$)/,
-      },
-      { navigationLabel: "Review", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
+      { navigationLabel: "Practice", routeLabel: "Practice", path: /\/practice(?:\?|$)/ },
+      { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
+      { navigationLabel: "Progress", routeLabel: "Progress", path: /\/progress(?:\?|$)/ },
+      { navigationLabel: "Bag", routeLabel: "Bag", path: /\/bag(?:\?|$)/ },
     ]) {
       await primaryNavigation
         .getByRole("link", { name: destination.navigationLabel, exact: true })
@@ -32,8 +36,6 @@ test.describe("clean-database companion smoke", () => {
       await expectCompanionRoute(page, destination.routeLabel, destination.path);
     }
 
-    await page.goto("/bag", { waitUntil: "commit" });
-    await expectCompanionRoute(page, "Bag map", /\/bag(?:\?|$)/);
     await expect(
       page
         .getByText("No clubs imported yet", { exact: true })

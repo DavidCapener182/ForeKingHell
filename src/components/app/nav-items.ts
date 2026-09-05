@@ -118,8 +118,8 @@ export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
 const mobilePrimaryDefinitions = [
   { id: "today", label: "Today", group: "today" },
   { id: "practice", label: "Practice", group: "practice" },
-  { id: "course-strategy", label: "Strategy", group: "strategy" },
-  { id: "sessions", label: "Review", group: "review" },
+  { id: "play-companion", label: "Play", group: "strategy" },
+  { id: "progress", label: "Progress", group: "review" },
   { id: "bag", label: "Bag", group: "bag" },
 ] as const;
 
@@ -137,7 +137,7 @@ export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(
 const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
 
 const mobileMoreIds = {
-  Golf: ["import", "handicap", "goals"],
+  Golf: ["import", "sessions", "shots", "speed", "training-load", "handicap", "goals"],
   Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
   Account: ["profile", "notifications", "settings"],
 } as const;
@@ -174,5 +174,10 @@ export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
   .filter((group) => group.items.length > 0);
 
 export function mobilePageTitle(pathname: string) {
-  return findRouteMetadata(pathname)?.pageTitle ?? "Golf analytics";
+  if (pathname === "/shots/review") return "Review shots";
+  return (
+    mobilePrimaryItems.find((item) => item.href === pathname)?.label ??
+    findRouteMetadata(pathname)?.pageTitle ??
+    "Golf analytics"
+  );
 }

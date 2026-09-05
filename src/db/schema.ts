@@ -1865,6 +1865,7 @@ export const sessions = pgTable(
         strokeIndex?: number | null;
         chipShots?: number | null;
         greensideSandShots?: number | null;
+        notes?: string | null;
       }>
     >(),
     notes: text("notes"),

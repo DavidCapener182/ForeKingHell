@@ -507,6 +507,13 @@ const baseAppRouteMetadata = [
 export const appRouteMetadata: AppRouteMetadata[] = baseAppRouteMetadata.map((route) => ({
   ...route,
   ...mobileCapabilities[route.id],
+  ...(["sessions", "shots"].includes(route.id) ? { mobilePrimaryGroup: "practice" as const } : {}),
+  ...(["rounds", "challenges", "tournaments", "leaderboard"].includes(route.id)
+    ? { mobilePrimaryGroup: "strategy" as const }
+    : {}),
+  ...(["handicap", "goals", "achievements"].includes(route.id)
+    ? { mobilePrimaryGroup: "review" as const }
+    : {}),
 }));
 
 function meta<const Id extends string>(
@@ -591,6 +598,18 @@ export type MobileBackNavigation = {
  */
 export function mobileBackNavigation(pathname: string): MobileBackNavigation | null {
   const exactParents: Record<string, MobileBackNavigation> = {
+    "/sessions": { href: "/practice", label: "Practice" },
+    "/shots": { href: "/practice", label: "Practice" },
+    "/shots/review": { href: "/shots", label: "Shots" },
+    "/speed": { href: "/practice", label: "Practice" },
+    "/stats/training-over-time": { href: "/progress", label: "Progress" },
+    "/rounds": { href: "/play", label: "Play" },
+    "/courses": { href: "/play", label: "Play" },
+    "/course-twins": { href: "/play", label: "Play" },
+    "/quick-bag": { href: "/bag", label: "Bag" },
+    "/goals": { href: "/progress", label: "Progress" },
+    "/handicap": { href: "/progress", label: "Progress" },
+    "/achievements": { href: "/progress", label: "Progress" },
     "/analyse/compare": { href: "/analyse", label: "Analyse" },
     "/analyse/conditions": { href: "/analyse", label: "Analyse" },
     "/analyse/session-impact": { href: "/analyse", label: "Analyse" },
@@ -600,7 +619,7 @@ export function mobileBackNavigation(pathname: string): MobileBackNavigation | n
     "/coach/reports": { href: "/coach", label: "Coach" },
     "/coach/workspace": { href: "/coach", label: "Coach" },
     "/courses/new": { href: "/courses", label: "Courses" },
-    "/courses/strategy": { href: "/courses", label: "Courses" },
+    "/courses/strategy": { href: "/play", label: "Play" },
     "/equipment/experiments": { href: "/equipment", label: "Equipment" },
     "/import/result": { href: "/import", label: "Import" },
     "/practice/quick-range": { href: "/practice", label: "Practice" },

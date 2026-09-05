@@ -2,6 +2,7 @@ export const offlineRoundEditKinds = [
   "round-context",
   "round-course-link",
   "round-hole",
+  "round-complete",
   "shot-club",
   "club",
   "resplit-round",

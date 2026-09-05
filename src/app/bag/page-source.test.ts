@@ -24,7 +24,7 @@ describe("bag desktop workbench source", () => {
   it("keeps Yardages and Target primary while moving Benchmarks to secondary disclosure", () => {
     expect(source).toContain("data-bag-mobile-full");
     expect(source).not.toContain("data-bag-mobile-quick-only");
-    expect(source).toContain('title="My Bag"');
+    expect(source).toContain('title="Your bag"');
     expect(source).toContain("<MobilePageTabs");
     expect(source).toContain('label: "Yardages"');
     expect(source).toContain('label: "Target"');
@@ -34,7 +34,7 @@ describe("bag desktop workbench source", () => {
     expect(mobileTabs).not.toContain('label: "Benchmarks"');
     expect(source).toContain('<p className="font-semibold text-foreground">Benchmarks</p>');
     expect(source).toContain("mobile=benchmarks#bag-benchmarks");
-    expect(source).toContain("<MobileBagYardageCarousel");
+    expect(source).toContain('label="Club distance ladder"');
     expect(source).toContain("<DistanceBenchmarkPanel");
     expect(source).toContain("<QuickBagClient");
     expect(source).toContain("row.latestReliableCarryP25Yd");
@@ -105,15 +105,14 @@ describe("bag desktop workbench source", () => {
 
   it("derives mobile Bag selection from the URL and keeps the summary compact", () => {
     const summary =
-      source.match(/function MobileBagSummary[\s\S]*?function BagSupportingEvidence/)?.[0] ?? "";
+      source.match(/function MobileBagPage[\s\S]*?function BagSupportingEvidence/)?.[0] ?? "";
 
     expect(source).toContain("parseMobileBagPrimaryView(searchParams.view)");
     expect(source).toContain("initialValue={initialView}");
     expect(source).toContain('href: "/bag?view=yardages#bag-yardages"');
     expect(source).toContain('href: "/bag?view=target#bag-quick"');
-    expect(summary).toContain("Bag {bagScore}");
-    expect(summary).toContain("{trustedClubCount}/{gappingClubCount} trusted");
-    expect(summary).toContain("{averageConfidence}% confidence");
+    expect(summary).toContain("{trustedClubCount} trusted clubs");
+    expect(summary).toContain("{averageConfidence}% average confidence");
     expect(summary).not.toContain("ios-grouped-row");
   });
 
@@ -469,8 +468,8 @@ describe("bag desktop and Quick Bag boundary", () => {
     }
 
     expect(source).not.toContain("@/components/app/ios-mobile");
-    expect(source).toContain("@/components/mobile-sports");
-    expect(source).toContain("<MobileTopBar");
+    expect(source).toContain("@/components/app/mobile-screen");
+    expect(source).toContain("<MobileLargeTitle");
     expect(source).toContain('<section className="grid gap-5" data-bag-mobile-full>');
     expect(source).toContain("<QuickBagClient");
     expect(source).not.toContain("data-bag-mobile-quick-only");

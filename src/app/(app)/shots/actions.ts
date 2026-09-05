@@ -4,7 +4,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { getDb } from "@/db/client";
-import { rapsodoSyncSessions, sessions, shotReviewEvents, shots } from "@/db/schema";
+import { clubs, rapsodoSyncSessions, sessions, shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
 import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
@@ -22,6 +22,63 @@ import {
   type ShotReviewActionInput,
 } from "@/lib/shot-review";
 import { refreshStockYardagesForClubs } from "@/lib/stock-yardage-refresh";
+
+/** Club corrections retain raw measurements and rebuild both clubs' trusted evidence. */
+export async function correctShotClubAction(shotId: string, clubId: string) {
+  const userId = await requireCurrentUserId();
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(shotId) || !uuid.test(clubId))
+    throw new Error("Choose a shot and a club from your bag.");
+  const changed = await getDb().transaction(async (tx) => {
+    const [shot] = await tx
+      .select()
+      .from(shots)
+      .where(and(eq(shots.id, shotId), eq(shots.userId, userId)))
+      .for("update");
+    const [club] = await tx
+      .select({ id: clubs.id, type: clubs.type })
+      .from(clubs)
+      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
+    if (!shot || !club) throw new Error("The shot or club is unavailable. Refresh and try again.");
+    if (shot.clubId === club.id && shot.clubType === club.type)
+      return { sessionId: shot.sessionId, previousClubId: shot.clubId };
+    await tx
+      .update(shots)
+      .set({ clubId: club.id, clubType: club.type })
+      .where(and(eq(shots.id, shotId), eq(shots.userId, userId)));
+    await tx.insert(shotReviewEvents).values({
+      userId,
+      shotId,
+      previousStatus: shot.reviewStatus,
+      status: shot.reviewStatus,
+      reason: `Club corrected from ${shot.clubType} (${shot.clubId}) to ${club.type} (${club.id}). Measurements retained.`,
+      confidence: 1,
+      source: "user",
+      previousQualityTag: shot.qualityTag,
+      resultingQualityTag: shot.qualityTag,
+    });
+    await refreshStockYardagesForClubs(tx, {
+      userId,
+      clubContexts: [
+        { clubId: shot.clubId, playContext: shot.playContext },
+        { clubId: club.id, playContext: shot.playContext },
+      ],
+      calculatedAt: new Date(),
+    });
+    return { sessionId: shot.sessionId, previousClubId: shot.clubId };
+  });
+  try {
+    await refreshPracticeEvidenceForReviewedSessions(userId, [changed.sessionId]);
+  } catch (error) {
+    reportServerFailure("shot_club_correction_practice_refresh_failed", error, {
+      "app.shot_count": 1,
+    });
+  }
+  revalidateShotDerivedRoutes([changed.sessionId]);
+  revalidatePath("/quick-bag");
+  revalidatePath(`/rounds/${changed.sessionId}`);
+  return { previousClubId: changed.previousClubId };
+}
 
 export async function reviewShotsAction(input: ShotReviewActionInput) {
   return applyOwnedShotReview(input);
@@ -277,6 +334,7 @@ async function applyOwnedShotReview(input: unknown) {
 function revalidateShotDerivedRoutes(sessionIds: string[]) {
   for (const path of [
     "/shots",
+    "/shots/review",
     "/today",
     "/dashboard",
     "/bag",
@@ -295,4 +353,94 @@ function revalidateShotDerivedRoutes(sessionIds: string[]) {
     revalidatePath(`/sessions/${sessionId}`);
   }
   revalidatePath("/", "layout");
+}
+
+const automaticKeepReason = "Automatic review: golfer kept this shot.";
+
+/** A Keep decision records provenance; Undo only reopens a still-current Keep decision. */
+export async function keepAutomaticShotReviewAction(shotIds: string[], undo = false) {
+  const userId = await requireCurrentUserId();
+  const input = parseShotReviewActionInput({
+    shotIds,
+    status: "restored",
+    reason: automaticKeepReason,
+    confidence: 1,
+  });
+  const changed = await getDb().transaction(async (tx) => {
+    const owned = await tx
+      .select()
+      .from(shots)
+      .where(and(eq(shots.userId, userId), inArray(shots.id, input.shotIds)))
+      .for("update");
+    if (owned.length !== input.shotIds.length)
+      throw new Error("A shot is unavailable. Refresh before reviewing.");
+    for (const shot of owned) {
+      let status = shot.reviewStatus;
+      let qualityTag = shot.qualityTag;
+      let previousQualityTag = shot.reviewPreviousQualityTag;
+      if (undo) {
+        if (shot.reviewReason !== automaticKeepReason || shot.reviewSource !== "user")
+          throw new Error("This shot was reviewed again. Refresh to see the latest decision.");
+        const [event] = await tx
+          .select()
+          .from(shotReviewEvents)
+          .where(and(eq(shotReviewEvents.shotId, shot.id), eq(shotReviewEvents.userId, userId)))
+          .orderBy(desc(shotReviewEvents.createdAt))
+          .limit(1);
+        if (!event || event.reason !== automaticKeepReason)
+          throw new Error("This decision has changed and cannot be undone here.");
+        status = event.previousStatus;
+        qualityTag = event.previousQualityTag;
+      } else {
+        if (shot.reviewReason === automaticKeepReason && shot.reviewSource === "user") continue;
+        if (shot.reviewSource === "user" || !["included", "suggested_exclusion"].includes(status))
+          throw new Error("A shot already has a review decision. Refresh to see it.");
+        if (status === "suggested_exclusion") {
+          const mutation = buildShotReviewMutation(shot, "restored");
+          status = mutation.reviewStatus;
+          qualityTag = mutation.qualityTag;
+          previousQualityTag = mutation.reviewPreviousQualityTag;
+        }
+      }
+      const reason = undo ? "Automatic review reopened by golfer." : automaticKeepReason;
+      await tx
+        .update(shots)
+        .set({
+          reviewStatus: status,
+          qualityTag,
+          reviewPreviousQualityTag: previousQualityTag,
+          reviewReason: reason,
+          reviewConfidence: undo ? null : 1,
+          reviewSource: undo ? "system" : "user",
+          reviewedAt: undo ? null : new Date(),
+        })
+        .where(and(eq(shots.id, shot.id), eq(shots.userId, userId)));
+      await tx.insert(shotReviewEvents).values({
+        userId,
+        shotId: shot.id,
+        previousStatus: shot.reviewStatus,
+        status,
+        reason,
+        confidence: 1,
+        source: "user",
+        previousQualityTag: shot.qualityTag,
+        resultingQualityTag: qualityTag,
+      });
+    }
+    await refreshStockYardagesForClubs(tx, {
+      userId,
+      clubContexts: owned.map((shot) => ({ clubId: shot.clubId, playContext: shot.playContext })),
+      calculatedAt: new Date(),
+    });
+    return { sessionIds: [...new Set(owned.map((shot) => shot.sessionId))] };
+  });
+  try {
+    await refreshPracticeEvidenceForReviewedSessions(userId, changed.sessionIds);
+  } catch (error) {
+    reportServerFailure("automatic_review_practice_refresh_failed", error, {
+      "app.shot_count": input.shotIds.length,
+    });
+  }
+  revalidateShotDerivedRoutes(changed.sessionIds);
+  revalidatePath("/shots/review");
 }

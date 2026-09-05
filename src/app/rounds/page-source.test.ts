@@ -13,7 +13,7 @@ describe("rounds scoring index", () => {
     expect(pageSource).toContain("getRequestAppSurface()");
     expect(pageSource).toContain("<RoundsScoringIndex rounds={indexRounds} />");
     expect(pageSource).toContain("data-rounds-workbench");
-    expect(pageSource).toContain("data-rounds-companion");
+    expect(pageSource).toContain("<MobileLargeTitle");
     expect(pageSource).not.toContain("RoundsHero");
     expect(pageSource).not.toContain("RoundTasks");
     expect(pageSource).not.toContain("RoundOpportunityFeaturePanel");

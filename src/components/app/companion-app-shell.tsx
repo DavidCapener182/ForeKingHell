@@ -26,6 +26,7 @@ export function CompanionAppShell({
   const router = useRouter();
   const immersive = isMobileImmersiveRoute(pathname);
   const heroRoute = isMobileCompanionHeroRoute(pathname);
+  const primaryRoot = ["/today", "/practice", "/play", "/progress", "/bag"].includes(pathname);
   const level = calculateUserLevel(totalXp);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function CompanionAppShell({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      for (const href of ["/today", "/practice", "/courses/strategy", "/sessions", "/bag"]) {
+      for (const href of ["/today", "/practice", "/play", "/progress", "/bag"]) {
         router.prefetch(href);
       }
     }, 450);
@@ -68,7 +69,9 @@ export function CompanionAppShell({
       data-companion-hero-shell={heroRoute ? "true" : undefined}
       className={cn(
         "relative flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip bg-background",
-        immersive || heroRoute ? "pt-0" : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
+        immersive || heroRoute || primaryRoot
+          ? "pt-0"
+          : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
       )}
     >
       <a

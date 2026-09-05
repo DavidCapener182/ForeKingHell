@@ -1,3 +1,4 @@
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
 import {
   Children,
@@ -122,6 +123,15 @@ const speedEvidenceColumns: DesktopWorkbenchColumn[] = [
 
 export default async function SpeedCentrePage({ searchParams }: PageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
+  if ((await getRequestAppSurface()) === "companion") {
+    const { default: SpeedCompanionPage } = await import("@/app/speed/speed-companion-page");
+    return (
+      <SpeedCompanionPage
+        error={firstSearchParam(resolvedSearchParams.speed_error)}
+        saved={firstSearchParam(resolvedSearchParams.speed_saved)}
+      />
+    );
+  }
   const userId = await requireCurrentUserId();
   const data = await getSpeedCentrePageData(userId);
   const speedError = firstSearchParam(resolvedSearchParams.speed_error);

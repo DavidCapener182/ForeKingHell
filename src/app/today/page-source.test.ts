@@ -34,7 +34,7 @@ describe("latest practice desktop dashboard", () => {
     expect(companionSource).toContain("TodayPrimaryAnswer");
     expect(primaryAnswerSource).toContain("data-primary-recommendation");
     expect(primaryAnswerSource).toContain("data-today-sync-state");
-    expect(primaryAnswerSource).toContain("<Progress");
+    expect(primaryAnswerSource).not.toContain("<Progress");
     expect(primaryAnswerSource).toContain('new Event("fkh-offline-retry-requested")');
     expect(loadingSource).toContain("Loading Today answer");
     expect(loadingSource).toContain("Loading latest shot pattern");
@@ -42,14 +42,13 @@ describe("latest practice desktop dashboard", () => {
     expect(loadingSource.match(/aria-busy="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
     expect(loadingSource).toContain("aspect-[82/43]");
     expect(primaryAnswerSource).toContain("Retry sync");
-    expect(primaryAnswerSource).toContain('syncState.status !== "Needs attention"');
     expect(primaryAnswerSource).toContain(
       'role={syncState.status === "Needs attention" ? "alert" : "status"}',
     );
-    expect(primaryAnswerSource).toContain("Retry session upload sync");
-    expect(primaryAnswerSource).toContain('aria-label="Today actions"');
+    expect(primaryAnswerSource).toContain("onClick={retrySync}");
+    expect(primaryAnswerSource).toContain("data-today-primary-action");
     expect(primaryAnswerSource).not.toContain("<ButtonGroup");
-    expect(primaryAnswerSource).toContain("<DropdownMenu");
+    expect(primaryAnswerSource).toContain("styles.focusEvidence");
     expect(companionSource).toContain("resolveTodayPrimaryState");
     expect(primaryStateSource).toContain("Plan range session");
     expect(companionSource).toContain("Why this recommendation?");
@@ -57,7 +56,7 @@ describe("latest practice desktop dashboard", () => {
     expect(companionSource).toContain("sessionId: context.latestPractice.sessionId");
     expect(companionSource).toContain('scope: "day"');
     expect(companionSource).toContain("const latestShots = latestData?.rawShots ?? []");
-    expect(companionSource).toContain("defaultToAllClubs");
+    expect(companionSource).toContain("preferredClub={recommendation.clubType}");
     expect(companionSource).toContain("measured shots across");
     expect(companionSource).toContain('href="/quick-bag"');
     expect(companionSource).not.toContain("TodayShotCharts");
@@ -66,12 +65,9 @@ describe("latest practice desktop dashboard", () => {
   });
 
   it("keeps the latest-pattern club controls outside session navigation", () => {
-    const latestPatternCard =
-      companionSource.match(/<Card aria-label="Latest measured pattern"[\s\S]*?<\/Card>/)?.[0] ??
-      "";
-
-    expect(latestPatternCard).toContain("<MobileShotPatternCharts");
-    expect(latestPatternCard).not.toContain("<Link");
+    expect(companionSource).toContain('id="today-evidence"');
+    expect(companionSource).toContain("<MobileShotPatternCharts");
+    expect(companionSource).toContain("preferredClub={recommendation.clubType}");
   });
 
   it("keeps companion and iOS rendering out of the workbench bundle", () => {

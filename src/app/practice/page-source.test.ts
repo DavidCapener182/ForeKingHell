@@ -11,10 +11,10 @@ const companionPageSource = readFileSync(
   "utf8",
 );
 const routeSource = readFileSync(join(process.cwd(), "src/app/(app)/practice/page.tsx"), "utf8");
-const companionSource = readFileSync(
-  join(process.cwd(), "src/app/practice/practice-companion-client.tsx"),
-  "utf8",
-);
+const companionSource =
+  readFileSync(join(process.cwd(), "src/app/practice/practice-companion-client.tsx"), "utf8") +
+  readFileSync(join(process.cwd(), "src/app/practice/active-range-mode.tsx"), "utf8") +
+  readFileSync(join(process.cwd(), "src/app/practice/measured-practice-result-card.tsx"), "utf8");
 const plannerSource = readFileSync(
   join(process.cwd(), "src/app/practice/practice-planner-client.tsx"),
   "utf8",
@@ -29,14 +29,9 @@ describe("practice planner desktop workflow", () => {
     expect(routeSource).toContain('surface === "companion"');
     expect(routeSource).toContain('await import("./practice-companion-page")');
     expect(routeSource).toContain('await import("./practice-workbench-page")');
-    expect(companionSource).toContain("Save & Start Practice");
+    expect(companionSource).toContain("Start practice");
     expect(companionSource).toContain("data-active-range-mode");
-    expect(companionSource).toContain("OperationStepper");
-    expect(companionSource).toContain('id: "brief"');
-    expect(companionSource).toContain('id: "plan"');
-    expect(companionSource).toContain('id: "start"');
-    expect(companionSource).toContain('id: "evidence"');
-    expect(companionSource).toContain('id: "review"');
+    expect(companionSource).toContain("MobileLargeTitle");
     expect(companionSource).toContain("<Progress");
     expect(companionSource).toContain("<Drawer");
     expect(companionSource).toContain("<AlertDialog");
@@ -139,7 +134,7 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain("context.speed.readinessScore");
     expect(companionSource).toContain("context.speed.projectLabel");
     expect(companionSource.indexOf("<SpeedDevelopmentCompanionReadout")).toBeLessThan(
-      companionSource.indexOf("/assets/companion/practice-hero.avif"),
+      companionSource.indexOf("data-current-practice-plan"),
     );
   });
 
@@ -161,7 +156,7 @@ describe("practice planner desktop workflow", () => {
     expect(companionPageSource).toContain("savedPracticePlanToPracticePlan(selectedPlan, context)");
     expect(companionPageSource).toContain("measuredResult={selectedPlan?.result ?? null}");
     expect(companionSource).toContain('plan.id === initialPlan.id && plan.status === "analysed"');
-    expect(companionSource).toContain("hasEvidence: Boolean(activeMeasuredResult)");
+    expect(companionSource).toContain("<MeasuredPracticeResultCard result={activeMeasuredResult}");
     expect(companionSource).not.toContain("hasEvidence: Boolean(measuredResult)");
   });
 });

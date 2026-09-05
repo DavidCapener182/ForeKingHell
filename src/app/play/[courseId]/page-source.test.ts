@@ -293,7 +293,7 @@ describe("Course Twin route boundaries", () => {
   it("does not let a late persisted-round response override a golfer-selected mode", () => {
     expect(sceneSource).toContain("const modeRef = useRef(mode)");
     expect(sceneSource).toContain("const modeAtLoad = modeRef.current");
-    expect(sceneSource).toContain("if (modeRef.current === modeAtLoad)");
+    expect(sceneSource).toContain("modeRef.current === modeAtLoad)");
     expect(sceneSource).toContain('selectMode("explore")');
   });
 
@@ -410,4 +410,11 @@ describe("Course Twin route boundaries", () => {
     expect(mobileStylesSource).toContain(".exitButton {");
     expect(mobileStylesSource).toContain("display: none;");
   });
+});
+
+it("preserves an explicit strategy or hole link while loading a resumable round", () => {
+  expect(sceneSource).toContain(
+    "!initialMode && !initialHoleNumber && modeRef.current === modeAtLoad",
+  );
+  expect(sceneSource).toContain("restorePersistedRoundHole(activeRound)");
 });

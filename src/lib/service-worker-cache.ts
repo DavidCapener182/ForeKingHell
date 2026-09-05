@@ -23,19 +23,28 @@ export async function purgePrivateClientData() {
 
 export function purgeCompanionDataForOtherAccounts(activeUserId: string) {
   if (typeof window === "undefined") return;
-  for (const key of companionLocalStorageKeys()) {
-    if (!key.includes(`:${activeUserId}`)) window.localStorage.removeItem(key);
+  try {
+    window.localStorage.setItem("fkh:offline-account", activeUserId);
+    for (const key of companionLocalStorageKeys()) {
+      if (key.split(":")[2] !== activeUserId) window.localStorage.removeItem(key);
+    }
+  } catch {
+    /* Restricted storage disables offline recovery without blocking navigation. */
   }
 }
 
 function purgeCompanionLocalData() {
   if (typeof window === "undefined") return;
+  window.localStorage.removeItem("fkh:offline-account");
   for (const key of companionLocalStorageKeys()) window.localStorage.removeItem(key);
 }
 
 function companionLocalStorageKeys() {
   const prefixes = [
     "fkh:active-practice:",
+    "fkh:live-round:",
+    "fkh:quick-range:",
+    "fkh:speed-session:",
     "fkh:quick-bag:",
     "fkh:round-download:",
     "fkh:recent-review:",

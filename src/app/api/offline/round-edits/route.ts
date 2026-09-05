@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import {
   resplitRoundAction,
+  completeLiveRoundAction,
   updateClubAction,
   updateRoundContextAction,
   updateRoundCourseLinkAction,
@@ -74,6 +75,9 @@ export async function POST(request: NextRequest) {
           break;
         case "round-course-link":
           await updateRoundCourseLinkAction(formData);
+          break;
+        case "round-complete":
+          await completeLiveRoundAction(formData);
           break;
         case "round-hole":
           await updateRoundHoleAction(formData);

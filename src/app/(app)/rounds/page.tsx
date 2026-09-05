@@ -4,7 +4,7 @@ import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 
 import { RoundsScoringIndex } from "@/app/rounds/rounds-scoring-index";
 import type { RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
-import { MobileRouteHeader } from "@/components/mobile-sports";
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
 import { Button } from "@/components/ui/button";
 import { PageShell, StatusPill } from "@/components/premium";
 import { rapsodoSyncSessions, sessions, shots, teeSets } from "@/db/schema";
@@ -34,40 +34,52 @@ export default async function RoundsPage() {
   return (
     <PageShell>
       {surface === "companion" ? (
-        <MobileRouteHeader title="Rounds" group="play" activeKey="rounds" />
+        <MobileLargeTitle
+          title="Rounds"
+          detail={`${completedRounds} completed · ${indexRounds.length} saved`}
+          action={
+            <Button asChild variant="ghost" className="min-h-11">
+              <Link href="/rounds/new">
+                <Plus aria-hidden className="size-5" />
+                <span className="sr-only">Add round</span>
+              </Link>
+            </Button>
+          }
+        />
       ) : null}
 
-      <header
-        className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between"
-        data-rounds-workbench={surface === "workbench" ? "" : undefined}
-        data-rounds-companion={surface === "companion" ? "" : undefined}
-      >
-        <div className="min-w-0">
-          <StatusPill tone="sky">Scoring history</StatusPill>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Rounds</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Follow the score, see what changed your handicap, and carry one lesson into the next
-            practice session.
-          </p>
-          <p className="mt-2 text-xs font-medium text-muted-foreground">
-            {completedRounds} completed · {indexRounds.length} saved
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex">
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href="/import">
-              <Upload className="size-4" />
-              Import
-            </Link>
-          </Button>
-          <Button asChild className="min-h-11" data-primary-action>
-            <Link href="/rounds/new">
-              <Plus className="size-4" />
-              Add round
-            </Link>
-          </Button>
-        </div>
-      </header>
+      {surface === "workbench" ? (
+        <header
+          className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between"
+          data-rounds-workbench={surface === "workbench" ? "" : undefined}
+        >
+          <div className="min-w-0">
+            <StatusPill tone="sky">Scoring history</StatusPill>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Rounds</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+              Follow the score, see what changed your handicap, and carry one lesson into the next
+              practice session.
+            </p>
+            <p className="mt-2 text-xs font-medium text-muted-foreground">
+              {completedRounds} completed · {indexRounds.length} saved
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href="/import">
+                <Upload className="size-4" />
+                Import
+              </Link>
+            </Button>
+            <Button asChild className="min-h-11" data-primary-action>
+              <Link href="/rounds/new">
+                <Plus className="size-4" />
+                Add round
+              </Link>
+            </Button>
+          </div>
+        </header>
+      ) : null}
 
       <RoundsScoringIndex rounds={indexRounds} />
     </PageShell>

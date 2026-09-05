@@ -1774,11 +1774,14 @@ export function CourseTwinScene({
         setRoundRules(round.rulesJson);
         setRoundHoleCount(round.holeCount === 9 ? 9 : 18);
         setRoundStartingHole(round.startingHole === 10 ? 10 : 1);
-        if (modeRef.current === modeAtLoad) {
+        if (!initialMode && !initialHoleNumber && modeRef.current === modeAtLoad) {
           modeRef.current = round.mode;
           setMode(round.mode);
+          restorePersistedRoundHole(round);
+        } else {
+          // Explicit strategy/hole links take precedence; the round is ready when Play is selected.
+          setRoundSync({ status: "ready", error: null });
         }
-        restorePersistedRoundHole(round);
       })
       .catch((error) => {
         if (!mounted) return;
@@ -3802,7 +3805,7 @@ function CourseTwinMinimalHud({
               disabled={(item === "replay" && !replayAvailable) || (item === "play" && readOnly)}
               className="h-9 rounded-full border-0 px-4 text-xs font-semibold text-white/62 hover:bg-white/8 hover:text-white data-[state=on]:bg-[#e7ff6a] data-[state=on]:text-[#102217]"
             >
-              {runtimeModeLabel(item)}
+              {item === "strategy" ? "Plan" : runtimeModeLabel(item)}
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
@@ -4084,7 +4087,7 @@ function MobileCourseTwinChrome({
               )}
               disabled={unavailable}
             >
-              {runtimeModeLabel(item)}
+              {item === "strategy" ? "Plan" : runtimeModeLabel(item)}
             </ToggleGroupItem>
           );
         })}

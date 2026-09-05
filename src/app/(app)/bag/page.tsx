@@ -1,3 +1,5 @@
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
+import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -68,12 +70,7 @@ import {
   userProfiles,
 } from "@/db/schema";
 import { LazyBagSimulator } from "@/app/bag/lazy-bag-simulator";
-import {
-  MobileBagYardageCarousel,
-  type MobileBagYardage,
-} from "@/app/bag/mobile-bag-yardage-carousel";
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
-import { MobileTopBar } from "@/components/mobile-sports";
 import { getDb } from "@/db/client";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { reportServerFailure } from "@/lib/server-observability";
@@ -580,7 +577,6 @@ function MobileBagPage({
   initialView,
   quickBagClubs,
   accountId,
-  bagScore,
   averageConfidence,
   trustedClubCount,
 }: {
@@ -597,35 +593,20 @@ function MobileBagPage({
   averageConfidence: number;
   trustedClubCount: number;
 }) {
-  const mobileYardages: MobileBagYardage[] = gappingRows.map((row) => ({
-    id: row.id,
-    club: formatClubType(row.clubType),
-    model: row.brandModel,
-    playNumber: formatCarryYards(row.gappingCarryYd),
-    reliableRange: formatCarryRange(row.latestReliableCarryP25Yd, row.latestReliableCarryP75Yd),
-    gap: row.gapToNextYd === null ? "End of bag" : `${Math.round(row.gapToNextYd)} yd`,
-    confidence: row.confidenceScore,
-    nextStep: row.targetMessage,
-  }));
-
   return (
     <section className="grid gap-5" data-bag-mobile-full>
-      <MobileTopBar title="My Bag" />
-
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Bag map</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Know every number</h1>
-        <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-          Swipe through playable yardages or find the club that covers your next target.
-        </p>
-      </div>
-
-      <MobileBagSummary
-        bagScore={bagScore}
-        trustedClubCount={trustedClubCount}
-        gappingClubCount={gappingRows.length}
-        averageConfidence={averageConfidence}
+      <MobileLargeTitle
+        title="Your bag"
+        detail="Trusted numbers, ready to play."
+        action={
+          <Button asChild variant="ghost">
+            <Link href="/quick-bag">Quick Bag</Link>
+          </Button>
+        }
       />
+      <p className="mobile-type-footnote text-muted-foreground">
+        {trustedClubCount} trusted clubs · {averageConfidence}% average confidence
+      </p>
 
       {bag.length === 0 ? (
         <AppEmptyState
@@ -650,7 +631,62 @@ function MobileBagPage({
               href: "/bag?view=yardages#bag-yardages",
               content: (
                 <div id="bag-yardages" className="min-w-0">
-                  <MobileBagYardageCarousel clubs={mobileYardages} />
+                  <MobileGroupedList label="Club distance ladder">
+                    {[...gappingRows]
+                      .sort(
+                        (a, b) => (b.latestReliableCarryYd ?? -1) - (a.latestReliableCarryYd ?? -1),
+                      )
+                      .map((row) => (
+                        <MobileListRow
+                          key={row.id}
+                          href={`/bag/${row.id}`}
+                          label={formatClubType(row.clubType)}
+                          value={
+                            <span className="text-xl font-semibold tabular-nums">
+                              {row.latestReliableCarryYd == null
+                                ? "—"
+                                : `${Math.round(row.latestReliableCarryYd)} yd`}
+                            </span>
+                          }
+                          detail={
+                            <span className="grid gap-1">
+                              <span>
+                                {formatCarryRange(
+                                  row.latestReliableCarryP25Yd == null
+                                    ? null
+                                    : Math.round(row.latestReliableCarryP25Yd),
+                                  row.latestReliableCarryP75Yd == null
+                                    ? null
+                                    : Math.round(row.latestReliableCarryP75Yd),
+                                )}{" "}
+                                · {row.sampleSize} shots
+                              </span>
+                              <span
+                                className="h-1 w-full overflow-hidden rounded-full bg-muted"
+                                aria-hidden
+                              >
+                                <span
+                                  className="block h-full rounded-full bg-primary"
+                                  style={{
+                                    width: `${Math.max(0, Math.min(100, ((row.latestReliableCarryYd ?? 0) / Math.max(1, ...gappingRows.map((club) => club.latestReliableCarryYd ?? 0))) * 100))}%`,
+                                  }}
+                                />
+                              </span>
+                            </span>
+                          }
+                          status={
+                            <MobileStatus
+                              tone={
+                                row.confidenceScore >= 75 && row.sampleSize >= 10
+                                  ? "positive"
+                                  : "attention"
+                              }
+                              label={`${row.confidenceScore >= 75 && row.sampleSize >= 10 ? "High" : row.confidenceScore >= 50 ? "Moderate" : "Building"} confidence`}
+                            />
+                          }
+                        />
+                      ))}
+                  </MobileGroupedList>
                 </div>
               ),
             },
@@ -708,37 +744,6 @@ function MobileBagPage({
         </section>
       ) : null}
     </section>
-  );
-}
-
-function MobileBagSummary({
-  bagScore,
-  trustedClubCount,
-  gappingClubCount,
-  averageConfidence,
-}: {
-  bagScore: number;
-  trustedClubCount: number;
-  gappingClubCount: number;
-  averageConfidence: number;
-}) {
-  return (
-    <p
-      className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--mobile-radius-md)] bg-card px-4 py-2.5 text-sm font-semibold tabular-nums text-foreground"
-      aria-label={`Bag score ${bagScore} out of 100, ${trustedClubCount} of ${gappingClubCount} trusted, ${averageConfidence} percent average confidence`}
-    >
-      <span>Bag {bagScore}</span>
-      <span aria-hidden className="text-muted-foreground">
-        ·
-      </span>
-      <span>
-        {trustedClubCount}/{gappingClubCount} trusted
-      </span>
-      <span aria-hidden className="text-muted-foreground">
-        ·
-      </span>
-      <span>{averageConfidence}% confidence</span>
-    </p>
   );
 }
 

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, MoreHorizontal, Search, Upload, UserRound, X } from "lucide-react";
 
-import { CompanionBrandLockup } from "@/components/app/companion-brand";
 import {
   mobileMoreGroups,
   mobilePageTitle,
@@ -91,6 +90,26 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
   }, [groups, normalizedQuery]);
 
   useEffect(() => {
+    const viewport = window.visualViewport;
+    const updateKeyboard = () => {
+      const editing = document.activeElement?.matches("input, textarea, [contenteditable='true']");
+      const keyboardOpen = Boolean(
+        editing && viewport && window.innerHeight - viewport.height > 150,
+      );
+      const shell = document.querySelector<HTMLElement>("[data-app-surface='companion']");
+      if (shell) shell.dataset.mobileKeyboard = keyboardOpen ? "open" : "closed";
+    };
+    viewport?.addEventListener("resize", updateKeyboard);
+    document.addEventListener("focusin", updateKeyboard);
+    document.addEventListener("focusout", updateKeyboard);
+    return () => {
+      viewport?.removeEventListener("resize", updateKeyboard);
+      document.removeEventListener("focusin", updateKeyboard);
+      document.removeEventListener("focusout", updateKeyboard);
+    };
+  }, []);
+
+  useEffect(() => {
     let restoreFrame: number | null = null;
 
     const readStoredScroll = () => {
@@ -159,6 +178,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
         aria-label="Mobile app bar"
         data-companion-hero-header={heroRoute ? "true" : undefined}
         data-hero-collapsed={compactTitleVisible ? "true" : "false"}
+        data-mobile-root={!backNavigation ? "true" : undefined}
         className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full px-3 pt-[env(safe-area-inset-top)]"
       >
         <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
@@ -301,12 +321,6 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
           </Sheet>
 
           <div className="relative grid min-w-0 place-items-center">
-            <CompanionBrandLockup
-              className={cn(
-                "absolute transition-opacity duration-150 motion-reduce:transition-none",
-                compactTitleVisible ? "pointer-events-none opacity-0" : "opacity-100",
-              )}
-            />
             <p
               className={cn(
                 "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",

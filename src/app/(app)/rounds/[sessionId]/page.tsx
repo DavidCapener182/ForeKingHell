@@ -1,3 +1,4 @@
+import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -198,6 +199,7 @@ const roundShotCorrectionViews: DesktopSavedViewSuggestion[] = [
 export default async function RoundDetailPage({ params, searchParams }: PageProps) {
   const { sessionId } = await params;
   const surface = await getRequestAppSurface();
+  const accountId = await requireCurrentUserId();
   const view = parseRoundReviewView((await searchParams)?.view);
   const round = await getRoundDetail(sessionId);
 
@@ -256,7 +258,29 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
 
   return (
     <PageShell>
-      {surface === "companion" ? (
+      {surface === "companion" &&
+      ["active", "in_progress"].includes(round.session.roundStatus) &&
+      nextIncompleteHole ? (
+        <MobileLiveRound
+          accountId={accountId}
+          sessionId={round.session.id}
+          course={round.session.courseName ?? "Round"}
+          tee={round.session.teeName}
+          courseId={round.session.courseId}
+          recordVersion={round.session.updatedAt.toISOString()}
+          holes={round.holes.map((hole) => ({
+            holeNumber: hole.holeNumber,
+            par: hole.par,
+            yards: hole.yards,
+            score: hole.score ?? null,
+            putts: hole.putts ?? null,
+            penalties: hole.penalties ?? null,
+            fairwayHit: hole.fairwayHit ?? null,
+            gir: hole.gir ?? null,
+            notes: hole.notes ?? null,
+          }))}
+        />
+      ) : surface === "companion" ? (
         <MobileRoundDetail
           round={round}
           view={view}
@@ -1658,7 +1682,7 @@ function MobileRoundReviewSections({
 
   return (
     <MobilePageTabs
-      initialValue={view}
+      initialValue={view === "corrections" ? "evidence" : view}
       ariaLabel="Round review sections"
       tabs={[
         { value: "summary", label: "Summary", href: baseHref, content: summary },
@@ -1666,7 +1690,18 @@ function MobileRoundReviewSections({
           value: "scorecard",
           label: "Scorecard",
           href: `${baseHref}?view=scorecard`,
-          content: <DigitalRoundScorecard round={round} compact />,
+          content: (
+            <IOSGroupedList label="Hole-by-hole scores">
+              {round.holes.map((hole) => (
+                <IOSListRow
+                  key={hole.holeNumber}
+                  label={`Hole ${hole.holeNumber} · Par ${hole.par}`}
+                  value={formatNullableInteger(hole.score)}
+                  detail={`${formatNullableInteger(hole.putts)} putts · ${formatNullableInteger(hole.penalties)} penalties`}
+                />
+              ))}
+            </IOSGroupedList>
+          ),
         },
         {
           value: "map",
@@ -1684,23 +1719,26 @@ function MobileRoundReviewSections({
         },
         {
           value: "evidence",
-          label: "Evidence",
+          label: "Insights",
           href: `${baseHref}?view=evidence`,
           content: (
-            <RoundEvidenceSummary
-              round={round}
-              hasClubData={hasClubData}
-              hasMap={hasMap}
-              proofItems={proofItems}
-              compact
-            />
+            <div className="grid gap-4">
+              {" "}
+              <RoundEvidenceSummary
+                round={round}
+                hasClubData={hasClubData}
+                hasMap={hasMap}
+                proofItems={proofItems}
+                compact
+              />
+              <details>
+                <summary className="flex min-h-11 items-center text-primary">
+                  Score and evidence details
+                </summary>
+                {corrections}
+              </details>
+            </div>
           ),
-        },
-        {
-          value: "corrections",
-          label: "Corrections",
-          href: `${baseHref}?view=corrections`,
-          content: corrections,
         },
       ]}
     />

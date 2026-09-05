@@ -122,11 +122,10 @@ describe("Shot Explorer analytics workbench", () => {
     expect(tableSource).toContain("data-shot-mini-dispersion");
   });
 
-  it("replaces the table with a deliberate phone handoff", () => {
-    expect(pageSource).toContain("data-shots-mobile-handoff");
-    expect(pageSource).toContain("lg:hidden");
-    expect(pageSource).toContain("Session Review");
-    expect(pageSource).toContain("Quick Bag");
+  it("serves a focused phone explorer beside the desktop workbench", () => {
+    expect(pageSource).toContain("<MobileShotExplorer");
+    expect(pageSource).toContain("data-shots-desktop-workbench");
+    expect(pageSource).toContain("correctionClubs={correctionClubs}");
     expect(tableSource).toContain("hidden min-w-0 gap-4 lg:grid");
   });
 });

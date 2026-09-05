@@ -287,8 +287,8 @@ describe("production readiness gate", () => {
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
       "Practice",
-      "Strategy",
-      "Review",
+      "Play",
+      "Progress",
       "Bag",
     ]);
     expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
@@ -357,10 +357,10 @@ describe("production readiness gate", () => {
       "utf8",
     );
     const challengesSource = readFileSync(join(root, "src/app/(app)/challenges/page.tsx"), "utf8");
-    const practiceSource = readFileSync(
-      join(root, "src/app/practice/practice-companion-client.tsx"),
-      "utf8",
-    );
+    const practiceSource =
+      readFileSync(join(root, "src/app/practice/practice-companion-client.tsx"), "utf8") +
+      readFileSync(join(root, "src/app/practice/active-range-mode.tsx"), "utf8") +
+      readFileSync(join(root, "src/app/practice/measured-practice-result-card.tsx"), "utf8");
     const importSource = readFileSync(
       join(root, "src/app/(app)/import/import-companion-page.tsx"),
       "utf8",
@@ -397,7 +397,7 @@ describe("production readiness gate", () => {
     expect(challengesSource).toContain("ActiveChallengeCard");
     expect(challengesSource).toContain("/assets/challenge-longest-drive.webp");
     expect(challengesSource).toContain("challengeImageSrc");
-    expect(practiceSource).toContain("<OperationStepper");
+    expect(practiceSource).toContain("<MobileLargeTitle");
     expect(practiceSource).toContain("<Carousel");
     expect(practiceSource).toContain("<Textarea");
     expect(importSource).toContain("Choose CSV from Files");

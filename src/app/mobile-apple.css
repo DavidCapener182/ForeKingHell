@@ -1,5 +1,6 @@
-/* A mobile-only platform layer. Desktop deliberately keeps the ForeKingHell visual system. */
 @media (max-width: 1023px) {
+  /* A mobile-only platform layer. Desktop deliberately keeps the ForeKingHell visual system. */
+
   body[data-mobile-platform="apple"],
   body:has([data-mobile-platform="apple"]),
   body:has(.ios-public-auth),
@@ -17,11 +18,11 @@
     --ios-fill: rgba(120, 120, 128, 0.12);
     --ios-material: rgba(248, 248, 250, 0.82);
     --ios-material-strong: rgba(248, 248, 250, 0.94);
-    --ios-tint: #007aff;
-    --ios-tint-pressed: #0062cc;
-    --ios-link: #0066cc;
-    --ios-action: #0066cc;
-    --ios-action-pressed: #0057b8;
+    --ios-tint: #087443;
+    --ios-tint-pressed: #065c35;
+    --ios-link: #08663d;
+    --ios-action: #087443;
+    --ios-action-pressed: #065c35;
     --ios-positive: #248a3d;
     --ios-warning: #c93400;
     --ios-radius: 0.875rem;
@@ -79,7 +80,7 @@
     --sidebar-accent-foreground: var(--ios-label);
     --sidebar-border: var(--ios-separator);
     --sidebar-ring: var(--ios-tint);
-    --chart-1: #007aff;
+    --chart-1: #087443;
     --chart-2: #5856d6;
     --chart-3: #ff9500;
     --chart-4: #5ac8fa;
@@ -126,16 +127,16 @@
       --ios-fill: rgba(120, 120, 128, 0.24);
       --ios-material: rgba(28, 28, 30, 0.82);
       --ios-material-strong: rgba(28, 28, 30, 0.94);
-      --ios-tint: #0a84ff;
-      --ios-tint-pressed: #409cff;
-      --ios-link: #409cff;
-      --ios-action: #0066cc;
-      --ios-action-pressed: #0057b8;
+      --ios-tint: #63d99b;
+      --ios-tint-pressed: #91e8b8;
+      --ios-link: #63d99b;
+      --ios-action: #087443;
+      --ios-action-pressed: #065c35;
       --ios-positive: #30d158;
       --ios-warning: #ff9f0a;
       --primary-foreground: #ffffff;
       --destructive: #ff453a;
-      --chart-1: #0a84ff;
+      --chart-1: #63d99b;
       --chart-2: #5e5ce6;
       --chart-3: #ff9f0a;
       --chart-4: #64d2ff;
@@ -833,6 +834,11 @@
     min-height: 2.75rem;
   }
 
+  [data-app-surface="companion"] [data-slot="button"] {
+    border-radius: var(--mobile-radius-md);
+    box-shadow: none !important;
+  }
+
   [data-mobile-platform="apple"] main#main-content :where(button, [role="button"], a[aria-label]) {
     min-width: 2.75rem;
   }
@@ -1053,5 +1059,305 @@
     .ios-mobile-screen :where(.premium-card, [data-slot="card"], .premium-hero) {
       border: 1px solid var(--ios-separator) !important;
     }
+  }
+
+  /* Companion type and spacing roles. Keep feature markup free of arbitrary sizes. */
+
+  [data-app-surface="companion"] {
+    --mobile-space-compact: 0.5rem;
+    --mobile-space-standard: 1rem;
+    --mobile-space-large: 1.5rem;
+    --mobile-navigation-height: 3.25rem;
+    --mobile-tab-height: 4rem;
+    --mobile-safe-top: env(safe-area-inset-top, 0px);
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-course-fairway: #2c8453;
+    --mobile-course-green: #76b95d;
+    --mobile-course-water: #3687b0;
+    --mobile-course-bunker: #d5c49a;
+    --mobile-information: #176a98;
+    --mobile-elevated-material: var(--ios-material-strong);
+    --mobile-label: var(--ios-label);
+    --mobile-secondary-label: var(--ios-secondary-label);
+    --mobile-separator: var(--ios-separator);
+    --mobile-surface: var(--ios-grouped-surface);
+  }
+  .mobile-large-title {
+    display: grid;
+    gap: var(--mobile-space-compact);
+  }
+  .mobile-large-title h1 {
+    font-size: 2.125rem;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+  .mobile-type-title1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  .mobile-type-title2 {
+    font-size: 1.375rem;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+  .mobile-type-title3 {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  .mobile-type-headline {
+    font-size: 1.0625rem;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+  .mobile-type-body {
+    font-size: 1.0625rem;
+    line-height: 1.45;
+  }
+  .mobile-type-callout {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+  .mobile-type-subheadline {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+  }
+  .mobile-type-footnote {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+  .mobile-type-caption {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+  .mobile-section {
+    display: grid;
+    min-width: 0;
+    gap: var(--mobile-space-compact);
+    scroll-margin-top: calc(var(--mobile-navigation-height) + var(--mobile-safe-top) + 1rem);
+  }
+  .mobile-metric {
+    min-width: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .mobile-metric-value {
+    font-size: 2.5rem;
+    line-height: 1.15;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+  }
+  .mobile-metric-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--mobile-space-standard);
+  }
+  .mobile-metric-strip .mobile-metric-value {
+    font-size: 1.75rem;
+  }
+  .mobile-shot-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mobile-space-compact);
+  }
+  .mobile-shot-filters label {
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    color: var(--ios-secondary-label);
+  }
+  .mobile-shot-filters input,
+  .mobile-shot-filters select {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0.625rem;
+    border-radius: var(--mobile-radius-sm);
+    background: var(--ios-grouped-surface);
+    color: var(--ios-label);
+    font-size: 1rem;
+  }
+  .mobile-shot-filters > :first-child {
+    grid-column: 1 / -1;
+  }
+  [data-mobile-keyboard="open"] nav[aria-label="Mobile primary"] {
+    display: none;
+  }
+  [data-mobile-flow="immersive"] [aria-label="Mobile primary"],
+  [data-mobile-flow="immersive"] [aria-label="Mobile app bar"] {
+    display: none;
+  }
+  [data-app-surface="companion"][data-mobile-flow="immersive"] {
+    padding-top: 0;
+  }
+  [data-mobile-flow="immersive"] #main-content {
+    padding-top: var(--mobile-safe-top);
+    padding-bottom: var(--mobile-safe-bottom);
+  }
+  .mobile-shot-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--mobile-space-standard);
+    min-height: 72px;
+    padding: var(--mobile-space-standard);
+    text-align: left;
+    width: 100%;
+  }
+  .mobile-shot-row:active {
+    background: var(--ios-fill);
+  }
+
+  [data-mobile-platform="apple"]
+    main#main-content
+    [data-primary-recommendation][data-mobile-preserve-dark] {
+    background: #073b2b !important;
+    border: 0 !important;
+  }
+
+  /* Native companion hierarchy: quiet navigation, large content titles, inset groups. */
+
+  [data-app-surface="companion"] {
+    --ios-background: #f5f6f3;
+    --ios-radius: 1.25rem;
+  }
+  [data-app-surface="companion"] .mobile-large-title {
+    gap: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+  [data-app-surface="companion"] .mobile-large-title h1 {
+    font-size: 2.125rem;
+    letter-spacing: -0.035em;
+    line-height: 1.18;
+  }
+  [data-app-surface="companion"] .mobile-large-title > p:first-child {
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+  [data-app-surface="companion"] .mobile-large-title > p:last-child {
+    margin-top: 0.375rem;
+    font-size: 1.0625rem;
+  }
+  .mobile-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .mobile-section-heading h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+  [data-app-surface="companion"] .mobile-section {
+    gap: 0.75rem;
+  }
+  [data-app-surface="companion"] .ios-app-header {
+    border-bottom: 0 !important;
+  }
+  [data-app-surface="companion"] .ios-app-header::after {
+    display: none;
+  }
+  [data-app-surface="companion"] .ios-app-header[data-hero-collapsed="false"] {
+    background: var(--ios-background) !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  [data-app-surface="companion"] .ios-grouped-row {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  [data-app-surface="companion"] .ios-tab-item {
+    min-height: 3.5rem;
+    gap: 0.25rem;
+  }
+  [data-app-surface="companion"] .ios-tab-item svg {
+    width: 1.375rem;
+    height: 1.375rem;
+    stroke-width: 1.8;
+  }
+  [data-app-surface="companion"] .ios-tab-item[aria-current="page"] svg {
+    stroke-width: 2.4;
+  }
+  @media (prefers-color-scheme: dark) {
+    [data-app-surface="companion"] {
+      --ios-background: #090e0b;
+    }
+  }
+
+  [data-app-surface="companion"]
+    .ios-app-header[data-mobile-root="true"][data-hero-collapsed="false"] {
+    background: transparent !important;
+    pointer-events: none;
+    padding-top: calc(1.25rem + env(safe-area-inset-top)) !important;
+  }
+  [data-app-surface="companion"]
+    .ios-app-header[data-mobile-root="true"]
+    button[aria-label^="Open profile"] {
+    grid-column: 3;
+    grid-row: 1;
+    pointer-events: auto;
+    background: var(--ios-fill) !important;
+  }
+  [data-app-surface="companion"] .ios-app-header[data-mobile-root="true"] > div > div {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  [data-app-surface="companion"]
+    .ios-app-header[data-mobile-root="true"]
+    a[aria-label="Import launch-monitor data"] {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  [data-app-surface="companion"]
+    .ios-app-header[data-mobile-root="true"][data-hero-collapsed="false"]
+    a[aria-label="Import launch-monitor data"] {
+    visibility: hidden;
+  }
+  [data-app-surface="companion"] .mobile-large-title {
+    padding-right: 3rem;
+  }
+
+  [data-app-surface="companion"] .mobile-yardage-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    text-align: left;
+    min-height: 76px;
+  }
+  [data-app-surface="companion"] .mobile-yardage-row + .mobile-yardage-row {
+    border-top: 1px solid var(--ios-separator);
+  }
+  [data-app-surface="companion"] .mobile-yardage-row > span:first-child {
+    flex: 1;
+    display: grid;
+    gap: 0.25rem;
+  }
+  [data-app-surface="companion"] .mobile-yardage-row strong {
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+  [data-app-surface="companion"] .mobile-yardage-row small {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--ios-secondary-label);
+  }
+  [data-app-surface="companion"] .mobile-yardage-number {
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+  [data-app-surface="companion"] .mobile-yardage-number small {
+    margin-left: 0.25rem;
+    letter-spacing: 0;
+  }
+  [data-mobile-speed]:has([data-speed-session-active="true"]) > :not([data-speed-session-active]) {
+    display: none;
   }
 }

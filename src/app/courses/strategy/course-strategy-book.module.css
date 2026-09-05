@@ -661,9 +661,13 @@
 }
 
 .mobileBook .visualFrame {
+  --book-ink: #f3faf5;
+  --book-muted: #d0e3d6;
+  --book-accent: #a7e5bd;
+  color: var(--book-ink);
   min-height: 23rem;
   border-radius: 1rem;
-  box-shadow: 0 16px 42px rgb(3 12 8 / 16%);
+  box-shadow: none;
 }
 
 .mobileBook .holeVisual {

@@ -17,6 +17,7 @@ export type QuickBagClub = {
   label: string;
   model: string;
   trustedCarryYd: number | null;
+  totalYd?: number | null;
   playNumberYd: number | null;
   lowYd: number | null;
   highYd: number | null;

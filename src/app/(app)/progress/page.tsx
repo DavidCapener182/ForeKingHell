@@ -1,3 +1,6 @@
+import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
+import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
+import { getUserHandicapProfile } from "@/lib/handicap-data";
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import {
@@ -119,6 +122,164 @@ export default async function ProgressPage() {
     bagSnapshots,
     goalPlanUpdatedAt: preferenceRow[0]?.updatedAt ?? null,
   });
+
+  if (surface === "companion") {
+    const handicap = await getUserHandicapProfile(userId);
+    const confidence = progressConfidence(summary, scoringEvidence);
+    const momentum = progressScoreMomentum(summary);
+    const strongest = summary.rankings.mostImproved;
+    const blocker = summary.practicePlan[0];
+    const trend = summary.trends.find((item) => item.points.length > 1);
+    return (
+      <PageShell>
+        <div className="grid gap-6" data-mobile-progress-story>
+          <MobileLargeTitle
+            title="Progress"
+            eyebrow="Your game, over time"
+            detail={
+              summary.totals.trackedCleanShots
+                ? progressScoreReadout(summary, momentum)
+                : "Build your first measured baseline."
+            }
+          />
+          {summary.totals.trackedCleanShots > 0 ? (
+            <section className="grid gap-3" aria-label="Progress overview">
+              <MobileMetric
+                value={progressScore(summary)}
+                label="progress score"
+                detail="Composite of trust, playable shots, sample depth and movement."
+              />
+              <MobileStatus
+                label={`${momentum > 0 ? "Moving forward" : momentum < 0 ? "Below baseline" : "Holding steady"} · ${confidence.label.toLowerCase()} confidence`}
+                tone={momentum > 0 ? "positive" : momentum < 0 ? "attention" : "neutral"}
+              />
+              <p className="text-xs text-muted-foreground">{confidence.detail}</p>
+            </section>
+          ) : (
+            <Button asChild>
+              <Link href="/import">Import a measured session</Link>
+            </Button>
+          )}
+          <MobileSection title="Performance">
+            <MobileGroupedList>
+              <MobileListRow
+                label={
+                  strongest
+                    ? `${formatClubType(strongest.clubType)} · strongest improvement`
+                    : "Building an improvement signal"
+                }
+                detail={
+                  strongest
+                    ? strongestImprovementDetail(strongest)
+                    : "Comparable sessions will show what changed."
+                }
+                href={strongest ? `/bag/${strongest.clubId}/analytics` : "/sessions"}
+              />
+              <MobileListRow
+                label={blocker?.title ?? "Next practice"}
+                detail={blocker?.reason ?? "Build a repeatable measured baseline."}
+                href="/practice"
+              />
+              <MobileListRow
+                label="Latest review"
+                detail="Verdict, shot evidence and your next action"
+                href="/sessions"
+              />
+            </MobileGroupedList>
+            {trend ? (
+              <div className="grid gap-2 rounded-xl bg-card p-4">
+                <div className="flex justify-between gap-3">
+                  <h3 className="font-semibold">{trend.label}</h3>
+                  <span className="font-semibold tabular-nums">{trend.value}</span>
+                </div>
+                <ProgressSparkline values={trend.points} label={trend.label} />
+                <p className="text-xs text-muted-foreground">{trend.detail}</p>
+              </div>
+            ) : null}
+          </MobileSection>
+          <MobileSection title="Scoring">
+            <MobileMetric
+              value={handicap.displayValue === null ? "—" : handicap.displayValue.toFixed(1)}
+              label="handicap estimate"
+              detail={handicap.sourceLabel}
+            />
+            <MobileGroupedList>
+              <MobileListRow
+                label="Handicap evidence"
+                detail={`${scoringEvidence.comparableRoundCount} comparable real rounds`}
+                href="/handicap"
+              />
+              {handicap.rounds.slice(0, 3).map((round) => (
+                <MobileListRow
+                  key={round.id}
+                  label={round.courseName ?? round.fileName ?? "Round"}
+                  detail={compactDateFormatter.format(round.date)}
+                  value={round.totalScore ?? "—"}
+                  href={`/rounds/${round.id}`}
+                />
+              ))}
+              <MobileListRow label="All rounds" href="/rounds" />
+            </MobileGroupedList>
+          </MobileSection>
+          <MobileSection title="Training">
+            {trainingData.hasTrainingData ? (
+              <>
+                <div className="mobile-metric-strip">
+                  <MobileMetric
+                    value={Math.round(trainingData.summary.fitness.value)}
+                    label="fitness"
+                  />
+                  <MobileMetric
+                    value={Math.round(trainingData.summary.fatigue.value)}
+                    label="recent load"
+                  />
+                  <MobileMetric value={Math.round(trainingData.summary.form.value)} label="form" />
+                </div>
+                <p className="text-sm">{trainingData.status.advice}</p>
+                <ProgressTrainingLoadChart
+                  data={loadView.series}
+                  sessionMarkers={loadView.sessionMarkers}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {trainingData.confidence.label} confidence · {trainingData.confidence.detail}
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Your practice and rounds will build the training story.
+              </p>
+            )}
+            <MobileGroupedList>
+              <MobileListRow label="Training over time" href="/stats/training-over-time" />
+              <MobileListRow
+                label="Start practice"
+                detail={practicePlannerSummary.topFocus?.label}
+                href="/practice"
+              />
+            </MobileGroupedList>
+          </MobileSection>
+          <MobileSection title="Goals">
+            <MobileGroupedList>
+              {activeGoals.map((goal) => (
+                <MobileListRow
+                  key={goal.id}
+                  label={goal.title}
+                  value={`${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
+                  detail={goal.nextAction}
+                  href="/goals"
+                />
+              ))}
+              <MobileListRow
+                label={activeGoals.length ? "All goals" : "Set your next target"}
+                href="/goals"
+              />
+              <MobileListRow label="Achievements" href="/achievements" />
+            </MobileGroupedList>
+          </MobileSection>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
@@ -1196,4 +1357,33 @@ function clampNumber(value: number, min: number, max: number) {
 function averageNumber(values: number[]) {
   if (values.length === 0) return 0;
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function ProgressSparkline({ values, label }: { values: number[]; label: string }) {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const points = values
+    .map(
+      (value, index) =>
+        `${8 + (index / Math.max(1, values.length - 1)) * 304},${88 - ((value - min) / range) * 72}`,
+    )
+    .join(" ");
+  return (
+    <svg
+      viewBox="0 0 320 100"
+      className="h-28 w-full"
+      role="img"
+      aria-label={`${label}: ${values.join(", ")}`}
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="var(--primary)"
+        strokeWidth="3"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }

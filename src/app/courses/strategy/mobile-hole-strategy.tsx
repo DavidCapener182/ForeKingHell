@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Cuboid, Save, Trash2 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -38,7 +39,14 @@ export function MobileHoleStrategy({
   courseTwinAvailable?: boolean;
   courseMap?: CourseStrategyMap | null;
 }) {
-  const [index, setIndex] = useState(0);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const params = useSearchParams();
+  const [index, setIndex] = useState(() =>
+    Math.max(
+      0,
+      strategies.findIndex((hole) => hole.holeNumber === Number(params.get("hole"))),
+    ),
+  );
   const [modeId, setModeId] = useState<HoleStrategyMode["id"]>("normal");
   const [downloaded, setDownloaded] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
@@ -100,6 +108,21 @@ export function MobileHoleStrategy({
       className={styles.mobileBook}
       data-mobile-one-hole-strategy
       aria-label="One-hole digital caddie book"
+      style={{ touchAction: "pan-y" }}
+      onTouchStart={(event) => {
+        const point = event.touches[0];
+        swipeStart.current = { x: point.clientX, y: point.clientY };
+      }}
+      onTouchEnd={(event) => {
+        const start = swipeStart.current;
+        swipeStart.current = null;
+        if (!start) return;
+        const point = event.changedTouches[0];
+        const dx = point.clientX - start.x;
+        const dy = point.clientY - start.y;
+        if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5)
+          selectHole(Math.max(0, Math.min(strategies.length - 1, index + (dx < 0 ? 1 : -1))));
+      }}
     >
       <header className={styles.mobileHoleHeader} aria-live="polite">
         <div>

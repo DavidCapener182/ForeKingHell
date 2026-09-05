@@ -1,366 +1,337 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Sun, Target, Upload } from "lucide-react";
-
-import { DataWarning } from "@/components/app/evidence-status";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-  IOSMetricRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import { useEffect, useState } from "react";
+import { Check, ChevronLeft, Minus, Plus, Play, Upload } from "lucide-react";
+import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSegmentedControl } from "@/components/app/mobile-controls";
+import { useMobileActivity, activityHaptic } from "@/components/app/use-mobile-activity";
+import { MobileAppShell } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import styles from "@/components/app/mobile-companion.module.css";
 
-type RangeState = "ready" | "active" | "finished";
-
-const blocks = [
-  {
-    title: "Calibrate",
-    shots: 5,
-    intent: "Start at playing speed and find the normal strike and carry window.",
-  },
-  {
-    title: "Build the pattern",
-    shots: 10,
-    intent: "Repeat one target and one shot intention. Do not chase the longest ball.",
-  },
-  {
-    title: "Pressure set",
-    shots: 5,
-    intent: "Use the same routine and target with one chance per ball.",
-  },
-];
-
-export function QuickRangeCompanionSession({ focus }: { focus: string }) {
-  const [state, setState] = useState<RangeState>("ready");
-  const [activeBlock, setActiveBlock] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [shotCount, setShotCount] = useState(0);
-  const [club, setClub] = useState("Driver");
-  const [notes, setNotes] = useState("");
-  const [labels, setLabels] = useState<Record<string, number>>({});
-  const [outdoor, setOutdoor] = useState(false);
-  const [wakeLocked, setWakeLocked] = useState(false);
-
-  useEffect(() => {
-    if (state !== "active") return;
-    const timer = window.setInterval(() => setElapsedSeconds((value) => value + 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [state]);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const previous = root.dataset.theme;
-    if (outdoor) root.dataset.theme = "outdoor";
-    return () => {
-      if (previous) root.dataset.theme = previous;
-      else delete root.dataset.theme;
-    };
-  }, [outdoor]);
-
-  const elapsed = useMemo(() => formatElapsed(elapsedSeconds), [elapsedSeconds]);
-  const current = blocks[activeBlock];
-
-  function advance() {
-    if (activeBlock < blocks.length - 1) {
-      setActiveBlock((value) => value + 1);
-      return;
-    }
-    setState("finished");
-  }
-
-  function mark(label: string) {
-    setShotCount((value) => value + 1);
-    setLabels((value) => ({ ...value, [label]: (value[label] ?? 0) + 1 }));
-  }
-
-  async function toggleWakeLock() {
-    if (wakeLocked) {
-      setWakeLocked(false);
-      return;
-    }
-    const wakeLock = "wakeLock" in navigator ? navigator.wakeLock : null;
-    if (!wakeLock) return;
-    try {
-      const lock = await wakeLock.request("screen");
-      setWakeLocked(true);
-      lock.addEventListener("release", () => setWakeLocked(false), { once: true });
-    } catch {
-      setWakeLocked(false);
-    }
-  }
-
-  const finished = state === "finished";
-  const active = state === "active";
-
-  return (
-    <MobileAppShell className="gap-4">
-      <span data-quick-range-mobile className="sr-only" aria-hidden />
-      <MobileTopBar title="Quick Range" />
-
-      <section className="grid gap-3" aria-labelledby="quick-range-current-task">
-        <IOSSectionHeader
-          title={<span id="quick-range-current-task">Current task</span>}
-          description={
-            finished
-              ? "Guidance is complete; imported shot rows still decide the result."
-              : "The block, target and next action stay in the first view."
-          }
-        />
-        <IOSGroupedList label="Quick Range current task">
-          <IOSListRow
-            label={focus}
-            value={finished ? "Complete" : club}
-            detail={
-              finished
-                ? "Import the measured session before judging effectiveness."
-                : current.intent
-            }
-            icon={Target}
-            status={
-              <IOSInlineStatus
-                label={active ? "Session live" : finished ? "Evidence needed" : "Ready to start"}
-                tone={active ? "positive" : finished ? "attention" : "info"}
-              />
-            }
-          />
-          <IOSMetricRow
-            label={finished ? "Guided shots" : `Block ${activeBlock + 1} of ${blocks.length}`}
-            value={finished ? integerLabel(shotCount) : current.title}
-            detail={finished ? "Context labels only" : `${current.shots} measured shots planned`}
-          />
-          <IOSMetricRow
-            label="Elapsed"
-            value={elapsed}
-            detail={active ? `Shot ${shotCount + 1} of 20` : "Timer starts with the guided session"}
-          />
-        </IOSGroupedList>
-
-        {finished ? (
-          <Button asChild className="min-h-12 w-full rounded-xl" data-primary-action>
-            <Link href="/import">
-              <Upload className="size-4" aria-hidden />
-              Import this session
-            </Link>
-          </Button>
-        ) : active ? (
-          <div className="grid gap-3">
-            <div
-              className="grid grid-cols-2 gap-2"
-              aria-label="Quick Range context labels"
-              role="group"
-            >
-              {[
-                ["Good", "col-span-2"],
-                ["Left", ""],
-                ["Right", ""],
-                ["Short", ""],
-                ["Long", ""],
-              ].map(([label, className]) => (
-                <Button
-                  key={label}
-                  type="button"
-                  variant={label === "Good" ? "default" : "outline"}
-                  className={cn("min-h-14 rounded-xl text-base", className)}
-                  onClick={() => mark(label)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-            <p className="px-1 text-[13px] leading-5 text-muted-foreground">
-              These taps preserve context only. Imported launch-monitor rows replace them for
-              completion and effectiveness.
-            </p>
-            <Button
-              type="button"
-              onClick={advance}
-              className="min-h-12 w-full rounded-xl"
-              data-primary-action
-            >
-              {activeBlock === blocks.length - 1 ? "Finish session" : "Next block"}
-              <ArrowRight className="size-4" aria-hidden />
-            </Button>
-          </div>
-        ) : (
-          <Button
-            type="button"
-            onClick={() => setState("active")}
-            className="min-h-12 w-full rounded-xl"
-            data-primary-action
-          >
-            Start guided session
-            <ArrowRight className="size-4" aria-hidden />
-          </Button>
-        )}
-      </section>
-
-      {finished && Object.keys(labels).length > 0 ? (
-        <section className="grid gap-3" aria-labelledby="quick-range-context-summary">
-          <IOSSectionHeader
-            title={<span id="quick-range-context-summary">Context summary</span>}
-            description="Manual labels are shown as notes, never as scored evidence."
-          />
-          <IOSGroupedList label="Quick Range context label counts">
-            {Object.entries(labels).map(([label, count]) => (
-              <IOSMetricRow key={label} label={label} value={integerLabel(count)} />
-            ))}
-          </IOSGroupedList>
-        </section>
-      ) : null}
-
-      <section className="grid gap-3" aria-labelledby="quick-range-supporting-controls">
-        <IOSSectionHeader
-          title={<span id="quick-range-supporting-controls">Session controls</span>}
-          description="Setup, plan and methodology stay available without delaying the task."
-        />
-        <IOSDisclosureGroup
-          label="Quick Range supporting controls"
-          items={[
-            {
-              value: "setup",
-              title: "Club and display",
-              summary: club,
-              description: `${outdoor ? "Outdoor mode" : "Saved theme"} · ${wakeLocked ? "Screen awake" : "Auto-lock normal"}`,
-              content: (
-                <div className="grid gap-3">
-                  <label className="grid gap-1.5 text-[13px] font-medium text-foreground">
-                    Club
-                    <Select value={club} onValueChange={setClub}>
-                      <SelectTrigger className="min-h-11 w-full text-base">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clubOptions.map((value) => (
-                          <SelectItem key={value} value={value}>
-                            {value}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11 justify-start rounded-xl"
-                    onClick={() => setOutdoor((value) => !value)}
-                    aria-pressed={outdoor}
-                  >
-                    <Sun className="size-4" aria-hidden />
-                    {outdoor ? "Outdoor mode on" : "Outdoor mode"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11 justify-start rounded-xl"
-                    onClick={() => void toggleWakeLock()}
-                    aria-pressed={wakeLocked}
-                  >
-                    <Sun className="size-4" aria-hidden />
-                    {wakeLocked ? "Screen awake" : "Keep screen awake"}
-                  </Button>
-                </div>
-              ),
-            },
-            {
-              value: "plan",
-              title: "Three-block plan",
-              summary: "20 shots",
-              description: "Calibrate, build the pattern, then add pressure",
-              content: (
-                <IOSGroupedList label="Quick Range session plan" className="bg-card">
-                  {blocks.map((block, index) => (
-                    <IOSListRow
-                      key={block.title}
-                      label={`${index + 1}. ${block.title}`}
-                      value={`${block.shots} shots`}
-                      detail={block.intent}
-                      status={
-                        index === activeBlock && !finished ? (
-                          <IOSInlineStatus label="Current block" tone="info" />
-                        ) : undefined
-                      }
-                    />
-                  ))}
-                </IOSGroupedList>
-              ),
-            },
-            ...(active || notes
-              ? [
-                  {
-                    value: "note",
-                    title: "Range note",
-                    summary: notes ? "Added" : "Optional",
-                    description: "Target, feel, conditions or equipment context",
-                    content: (
-                      <label className="grid gap-2 text-[13px] font-medium text-foreground">
-                        Note
-                        <Textarea
-                          value={notes}
-                          onChange={(event) => setNotes(event.target.value)}
-                          rows={3}
-                          maxLength={500}
-                          className="min-h-24 rounded-xl border border-input bg-background p-3 text-base"
-                          placeholder="Target, feel, conditions or equipment context"
-                        />
-                      </label>
-                    ),
-                  },
-                ]
-              : []),
-            {
-              value: "method",
-              title: "How results are scored",
-              summary: "Imported shots",
-              description: "Guidance and manual labels do not claim performance",
-              content: (
-                <DataWarning
-                  title="Guidance is not a score"
-                  detail="Moving through blocks records no performance result. Completion, effectiveness and Plan vs Actual come from the imported shot rows."
-                />
-              ),
-            },
-          ]}
-        />
-      </section>
-    </MobileAppShell>
-  );
-}
-
-const clubOptions = [
+type Draft = {
+  state: "ready" | "active" | "paused" | "finished";
+  club: string;
+  focus: string;
+  balls: number;
+  target: string;
+  count: number;
+  notes: string;
+  labels: string[];
+  elapsed: number;
+};
+const clubs = [
   "Driver",
   "3 Wood",
+  "5 Wood",
   "Hybrid",
   "5 Iron",
+  "6 Iron",
   "7 Iron",
+  "8 Iron",
   "9 Iron",
   "Pitching Wedge",
   "Gap Wedge",
   "Sand Wedge",
+  "Lob Wedge",
 ];
 
-function integerLabel(value: number) {
-  return new Intl.NumberFormat("en-GB").format(value);
-}
-
-function formatElapsed(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${seconds}`;
+export function QuickRangeCompanionSession({
+  focus,
+  accountId,
+  initialClubType,
+}: {
+  focus: string;
+  accountId: string;
+  initialClubType?: string;
+}) {
+  const [draft, setDraft] = useState<Draft>({
+    state: "ready",
+    club:
+      (
+        {
+          driver: "Driver",
+          "3w": "3 Wood",
+          "5w": "5 Wood",
+          hybrid: "Hybrid",
+          "5i": "5 Iron",
+          "6i": "6 Iron",
+          "7i": "7 Iron",
+          "8i": "8 Iron",
+          "9i": "9 Iron",
+          pw: "Pitching Wedge",
+          gw: "Gap Wedge",
+          sw: "Sand Wedge",
+          lw: "Lob Wedge",
+        } as Record<string, string>
+      )[initialClubType ?? ""] ?? "7 Iron",
+    focus,
+    balls: 20,
+    target: "",
+    count: 0,
+    notes: "",
+    labels: [],
+    elapsed: 0,
+  });
+  const [ready, setReady] = useState(false);
+  const [stored, setStored] = useState(true);
+  const key = `fkh:quick-range:${accountId}`;
+  const patch = (value: Partial<Draft>) => setDraft((current) => ({ ...current, ...value }));
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) ?? "null") as Draft | null;
+        if (
+          value &&
+          (!initialClubType || ["active", "paused"].includes(value.state)) &&
+          ["ready", "active", "paused", "finished"].includes(value.state) &&
+          clubs.includes(value.club) &&
+          [20, 30, 40, 60].includes(value.balls) &&
+          typeof value.notes === "string" &&
+          typeof value.focus === "string" &&
+          typeof value.target === "string" &&
+          Number.isFinite(value.count) &&
+          Number.isFinite(value.elapsed) &&
+          Array.isArray(value.labels)
+        )
+          setDraft(value);
+      } catch {
+        /* A missing or old draft starts with the supplied focus. */
+      }
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [key, initialClubType]);
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(draft));
+      queueMicrotask(() => setStored(true));
+    } catch {
+      queueMicrotask(() => setStored(false));
+    }
+  }, [draft, key, ready]);
+  useEffect(() => {
+    if (draft.state !== "active") return;
+    const timer = window.setInterval(
+      () => setDraft((current) => ({ ...current, elapsed: current.elapsed + 1 })),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [draft.state]);
+  useMobileActivity(draft.state === "active");
+  const active = draft.state === "active";
+  const finished = draft.state === "finished";
+  function mark(label: string) {
+    activityHaptic();
+    setDraft((current) => ({
+      ...current,
+      count: current.count + 1,
+      labels: [...current.labels, label],
+    }));
+  }
+  const block =
+    draft.count < Math.round(draft.balls / 4)
+      ? "Calibrate"
+      : draft.count < Math.round((draft.balls * 3) / 4)
+        ? "Build the pattern"
+        : "Pressure set";
+  return (
+    <MobileAppShell className="gap-6" data-quick-range-mobile>
+      {active ? (
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={() => patch({ state: "paused" })} className="min-h-11">
+            <ChevronLeft aria-hidden className="size-5" /> Pause
+          </Button>
+          <span className="tabular-nums text-muted-foreground">
+            {Math.floor(draft.elapsed / 60)}:{String(draft.elapsed % 60).padStart(2, "0")}
+          </span>
+        </div>
+      ) : (
+        <MobileLargeTitle
+          title={finished ? "Practice complete" : "Quick Range"}
+          detail={finished ? "Your activity is saved on this iPhone." : "One club. One focus."}
+        />
+      )}
+      {!active && !finished ? (
+        <>
+          <div className={styles.setup}>
+            <label>
+              Club
+              <select value={draft.club} onChange={(e) => patch({ club: e.target.value })}>
+                {clubs.map((club) => (
+                  <option key={club}>{club}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Focus
+              <Input
+                value={draft.focus}
+                maxLength={80}
+                onChange={(e) => patch({ focus: e.target.value })}
+                placeholder="Start line, strike, distance…"
+              />
+            </label>
+            <label>
+              Target <span className="text-muted-foreground">Optional</span>
+              <Input
+                value={draft.target}
+                maxLength={80}
+                onChange={(e) => patch({ target: e.target.value })}
+                placeholder="150 yd flag"
+              />
+            </label>
+          </div>
+          <MobileSection title="Balls">
+            <MobileSegmentedControl
+              ariaLabel="Ball count"
+              value={String(draft.balls)}
+              onValueChange={(value) => patch({ balls: Number(value) })}
+              options={[20, 30, 40, 60].map((value) => ({
+                value: String(value),
+                label: String(value),
+              }))}
+            />
+          </MobileSection>
+          <Button
+            disabled={!ready || !draft.focus.trim()}
+            onClick={() => patch({ state: "active" })}
+            className="min-h-14 rounded-2xl text-lg"
+          >
+            <Play className="size-5" aria-hidden />
+            {draft.count || draft.state === "paused" ? "Resume" : "Start"}
+          </Button>
+        </>
+      ) : active ? (
+        <>
+          <div className={styles.activityHeading}>
+            <p>{block}</p>
+            <h1>{draft.focus}</h1>
+            <span>
+              {draft.club}
+              {draft.target ? ` · ${draft.target}` : ""}
+            </span>
+          </div>
+          <p className="text-lg leading-relaxed">
+            {block === "Calibrate"
+              ? "Start at playing speed. Find your usual strike and carry window."
+              : block === "Build the pattern"
+                ? "Repeat your target and routine. Keep each swing at a playable speed."
+                : "One chance per ball. Step back and reset your routine."}
+          </p>
+          <div className={styles.activityProgress}>
+            <span>
+              {draft.count}
+              <small> / {draft.balls}</small>
+            </span>
+            <p>Balls logged</p>
+            <progress
+              value={Math.min(draft.count, draft.balls)}
+              max={draft.balls}
+              aria-label="Balls logged"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Shot context">
+            {["Playable", "Left", "Right", "Short", "Long", "Unlabelled"].map((label) => (
+              <Button
+                variant={label === "Playable" ? "default" : "outline"}
+                key={label}
+                className="min-h-14 rounded-xl text-base"
+                onClick={() => mark(label)}
+              >
+                {label === "Unlabelled" ? <Plus className="size-4" aria-hidden /> : null}
+                {label === "Unlabelled" ? "Log ball" : label}
+              </Button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              disabled={!draft.count}
+              onClick={() =>
+                setDraft((current) => ({
+                  ...current,
+                  count: Math.max(0, current.count - 1),
+                  labels: current.labels.slice(0, -1),
+                }))
+              }
+            >
+              <Minus className="size-4" aria-hidden />
+              Undo ball
+            </Button>
+            <span className="text-xs text-muted-foreground">Manual context only</span>
+          </div>
+          <details className={styles.disclosure}>
+            <summary>Add note</summary>
+            <Textarea
+              aria-label="Range note"
+              value={draft.notes}
+              onChange={(e) => patch({ notes: e.target.value })}
+              maxLength={500}
+            />
+          </details>
+          <Button
+            onClick={() => patch({ state: "finished" })}
+            className="min-h-14 rounded-2xl text-base"
+          >
+            <Check className="size-5" aria-hidden />
+            Finish practice
+          </Button>
+        </>
+      ) : (
+        <>
+          <div className={styles.activityHeading}>
+            <h2>{draft.focus}</h2>
+            <span>
+              {draft.club}
+              {draft.target ? ` · ${draft.target}` : ""}
+            </span>
+          </div>
+          <div className={styles.activityProgress}>
+            <span>{draft.count}</span>
+            <p>Balls logged · {Math.floor(draft.elapsed / 60)} min</p>
+          </div>
+          <p className="text-muted-foreground">
+            Import measured shots to see what changed. Logging activity does not prove improvement.
+          </p>
+          <Button asChild className="min-h-14 rounded-2xl text-base">
+            <Link href="/import">
+              <Upload className="size-5" aria-hidden />
+              Import measured session
+            </Link>
+          </Button>
+          <MobileSection title="Session note">
+            <Textarea
+              aria-label="Session note"
+              value={draft.notes}
+              onChange={(e) => patch({ notes: e.target.value })}
+              maxLength={500}
+              placeholder="What worked? What will you repeat?"
+            />
+            <p className="text-xs text-muted-foreground" role="status">
+              {stored ? "Saved on this iPhone" : "Storage unavailable. Keep this page open."}
+            </p>
+          </MobileSection>
+          <Button asChild variant="outline" className="min-h-12">
+            <Link href="/practice">Review later</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => patch({ state: "ready", count: 0, labels: [], elapsed: 0, notes: "" })}
+          >
+            New Quick Range
+          </Button>
+        </>
+      )}
+      {!stored && !finished ? (
+        <p role="status" className="text-sm text-destructive">
+          Storage unavailable. Keep this page open to retain your session.
+        </p>
+      ) : null}
+    </MobileAppShell>
+  );
 }

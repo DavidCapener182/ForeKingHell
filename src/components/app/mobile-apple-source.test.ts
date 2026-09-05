@@ -141,7 +141,7 @@ describe("Apple mobile shell contract", () => {
     }
   });
 
-  it("uses neutral Apple light and dark surfaces with system blue for primary tint", () => {
+  it("uses neutral Apple light and dark surfaces with golf green for primary tint", () => {
     const darkAppearanceStart = appleCssSource.indexOf("@media (prefers-color-scheme: dark)");
     expect(darkAppearanceStart).toBeGreaterThanOrEqual(0);
 
@@ -151,9 +151,9 @@ describe("Apple mobile shell contract", () => {
     expect(lightAppearanceSource).toContain("color-scheme: light;");
     expect(lightAppearanceSource).toContain("--ios-background: #f2f2f7;");
     expect(lightAppearanceSource).toContain("--ios-grouped-surface: #ffffff;");
-    expect(lightAppearanceSource).toContain("--ios-tint: #007aff;");
-    expect(lightAppearanceSource).toContain("--ios-link: #0066cc;");
-    expect(lightAppearanceSource).toContain("--ios-action: #0066cc;");
+    expect(lightAppearanceSource).toContain("--ios-tint: #087443;");
+    expect(lightAppearanceSource).toContain("--ios-link: #08663d;");
+    expect(lightAppearanceSource).toContain("--ios-action: #087443;");
     expect(lightAppearanceSource).toContain("--ios-positive: #248a3d;");
 
     expect(darkAppearanceSource).toContain("color-scheme: dark;");
@@ -161,9 +161,9 @@ describe("Apple mobile shell contract", () => {
     expect(darkAppearanceSource).toContain("--ios-grouped-surface: #1c1c1e;");
     expect(darkAppearanceSource).toContain("--ios-secondary-surface: #2c2c2e;");
     expect(darkAppearanceSource).toContain("--ios-label: #ffffff;");
-    expect(darkAppearanceSource).toContain("--ios-tint: #0a84ff;");
-    expect(darkAppearanceSource).toContain("--ios-link: #409cff;");
-    expect(darkAppearanceSource).toContain("--ios-action: #0066cc;");
+    expect(darkAppearanceSource).toContain("--ios-tint: #63d99b;");
+    expect(darkAppearanceSource).toContain("--ios-link: #63d99b;");
+    expect(darkAppearanceSource).toContain("--ios-action: #087443;");
     expect(darkAppearanceSource).toContain("--ios-positive: #30d158;");
 
     expect(appleCssSource).toContain("--ios-background: #f2f2f7;");

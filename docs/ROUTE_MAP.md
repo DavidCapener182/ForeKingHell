@@ -1,6 +1,6 @@
 # Product route map
 
-The desktop workbench retains the full **investigate -> compare -> configure -> manage** product. The phone companion concentrates on **Today -> Practice -> Strategy -> Review -> Bag**. Account, settings and secondary tools sit behind the profile affordance rather than occupying a primary tab. Desktop-only routes receive a companion handoff instead of loading hidden workbench code. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and surface capability.
+The desktop workbench retains the full **investigate -> compare -> configure -> manage** product. The phone companion concentrates on **Today -> Practice -> Play -> Progress -> Bag**. Account, settings and secondary tools sit behind the profile affordance rather than occupying a primary tab. Desktop-only routes receive a companion handoff instead of loading hidden workbench code. `src/components/app/route-metadata.ts` is the route-identity authority for shell labels, navigation, search aliases and surface capability.
 
 ## Primary personal analysis
 
@@ -79,3 +79,5 @@ Administration is never inferred from navigation visibility. Every route must va
 | Challenge operations | `/admin/challenges`    |
 | Moderation           | `/admin/moderation`    |
 | System checks        | `/admin/system-checks` |
+
+`/shots/review` — Practice → Shots → automatic evidence review. Bounded history-based suggestions, batch review, Keep/Undo, reversible exclusion and club correction.

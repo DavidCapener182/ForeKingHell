@@ -19,5 +19,7 @@
   "/bag": 1130000,
   "/shots": 1150000,
   "/play/[courseId]": 1050000,
-  "/stats/training-over-time": 1500000
+  "/stats/training-over-time": 1500000,
+  "/shots/review": 1150000,
+  "/speed": 1050000
 }

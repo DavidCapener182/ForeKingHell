@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 
 const source = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
-const practiceSource = source("src/app/practice/practice-companion-client.tsx");
+const practiceSource =
+  source("src/app/practice/practice-companion-client.tsx") +
+  source("src/app/practice/active-range-mode.tsx") +
+  source("src/app/practice/measured-practice-result-card.tsx");
 const roundSource = source("src/app/rounds/new/new-round-form.tsx");
 const sessionsSource = source("src/app/sessions/session-timeline.tsx");
 const loginSource = source("src/app/login/login-form.tsx");
@@ -23,7 +26,9 @@ describe("authenticated route and feedback motion", () => {
     expect(practiceSource).toContain("const [blockDirection, setBlockDirection] = useState<");
     expect(practiceSource).toContain('setBlockDirection("forward")');
     expect(practiceSource).toContain('setBlockDirection("back")');
-    expect(practiceSource).toContain('<Card className="gap-3 py-3" data-current-range-block>');
+    expect(practiceSource).toContain(
+      "<div className={styles.rangeBlock} data-current-range-block>",
+    );
     expect(practiceSource).toContain("key={block?.id ?? `range-block-${blockIndex}`}");
     expect(practiceSource).toContain('blockDirection && "t-route-step"');
     expect(practiceSource).toContain("data-direction={blockDirection ?? undefined}");
@@ -34,12 +39,12 @@ describe("authenticated route and feedback motion", () => {
 
     const activeRange = practiceSource.slice(practiceSource.indexOf("function ActiveRangeMode"));
     const motionRegionEnd = activeRange.indexOf(
-      "</div>\n        <CardContent",
+      '</div>\n        <div className="grid gap-3">',
       activeRange.indexOf("data-current-range-block-content"),
     );
     expect(motionRegionEnd).toBeGreaterThan(0);
     for (const stableHandler of ["onPrevious();", "onClick={onComplete}", "onNext();"]) {
-      expect(activeRange.indexOf(stableHandler)).toBeGreaterThan(motionRegionEnd);
+      expect(activeRange.indexOf(stableHandler, motionRegionEnd)).toBeGreaterThan(motionRegionEnd);
     }
   });
 

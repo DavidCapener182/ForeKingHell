@@ -156,6 +156,31 @@ export async function createManualRoundAction(formData: FormData) {
   redirect(`/rounds/${session.id}`);
 }
 
+export async function completeLiveRoundAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  const sessionId = requiredString(formData, "sessionId");
+  const db = getDb();
+  const [round] = await db
+    .select({ scorecard: sessions.scorecardJson })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+  if (!round?.scorecard?.length || round.scorecard.some((hole) => hole.score == null))
+    throw new Error("Score every hole before finishing the round.");
+  await db
+    .update(sessions)
+    .set({ roundStatus: "complete" })
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+  try {
+    await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
+  } catch (error) {
+    reportServerFailure("live_round_completion_achievements_failed", error);
+  }
+  revalidateRound(sessionId);
+  revalidatePath("/play");
+  revalidatePath("/today");
+}
+
 export async function updateRoundContextAction(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
@@ -625,6 +650,9 @@ export async function updateRoundHoleAction(formData: FormData) {
       fairwayHit: booleanFromForm(formData, "fairwayHit"),
       gir: booleanFromForm(formData, "gir"),
     };
+
+    if (formData.has("notes"))
+      updatedHole.notes = nullableString(formData, "notes")?.slice(0, 500) ?? null;
 
     if (formData.has("chipShots")) {
       updatedHole.chipShots = numberFromForm(formData, "chipShots");

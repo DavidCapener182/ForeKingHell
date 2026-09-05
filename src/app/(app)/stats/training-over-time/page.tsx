@@ -1,3 +1,5 @@
+import { getRequestAppSurface } from "@/lib/app-surface-server";
+import { MobileTrainingLoad } from "@/components/training/mobile-training-load";
 import Link from "next/link";
 
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
@@ -24,6 +26,14 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
   const resolvedSearchParams = (await searchParams) ?? {};
   const rangeKey = normalizeTrainingRange(resolvedSearchParams.range);
   const userId = await requireCurrentUserId();
+  if ((await getRequestAppSurface()) === "companion") {
+    const data = await getTrainingOverTimeData(userId, "1y");
+    return (
+      <PageShell>
+        <MobileTrainingLoad data={data} initialRange={rangeKey} />
+      </PageShell>
+    );
+  }
   const [data, speedCoachData] = await Promise.all([
     getTrainingOverTimeData(userId, "1y"),
     getSpeedCoachCardData(userId),

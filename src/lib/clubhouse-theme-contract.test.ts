@@ -88,8 +88,8 @@ describe("Clubhouse Manager theme contract", () => {
     expect(mobile).not.toContain("clubhouse");
     expect(mobile).toContain("--ios-background: #f2f2f7");
     expect(mobile).toContain("--ios-grouped-surface: #ffffff");
-    expect(mobile).toContain("--ios-tint: #007aff");
-    expect(mobile).toContain("--ios-tint: #0a84ff");
+    expect(mobile).toContain("--ios-tint: #087443");
+    expect(mobile).toContain("--ios-tint: #63d99b");
     expect(mobile).toContain("--ios-radius: 0.875rem");
     expect(mobile).not.toContain("--ios-material-strong: rgba(9, 39, 27, 0.97)");
     expect(mobile).toContain('.ios-tab-item[aria-current="page"]');
