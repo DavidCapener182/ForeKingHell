@@ -19,9 +19,12 @@ export function MobileMetricStory({
   useEffect(() => {
     if (!api) return;
     const update = () => setIndex(api.selectedScrollSnap());
+    update();
     api.on("select", update);
+    api.on("reInit", update);
     return () => {
       api.off("select", update);
+      api.off("reInit", update);
     };
   }, [api]);
   if (!metrics.length) return null;
@@ -48,7 +51,7 @@ export function MobileMetricStory({
         >
           Previous
         </button>
-        <span className="text-sm tabular-nums">
+        <span className="text-sm tabular-nums" role="status" aria-live="polite" aria-atomic="true">
           {index + 1} of {metrics.length}
         </span>
         <button

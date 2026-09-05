@@ -30,9 +30,7 @@ export function calculateShortGameTouchSummary(
   maxShots = 80,
   options: { clubType?: string | null } = {},
 ): ShortGameTouchSummary {
-  const carryValues = shots
-    .filter((shot) => isLikelyShortGameTouch(shot, options))
-    .slice(0, maxShots)
+  const carryValues = selectShortGameTouchShots(shots, maxShots, options)
     .map((shot) => shot.carryYd)
     .filter(isNumber);
 
@@ -55,6 +53,14 @@ export function calculateShortGameTouchSummary(
     longestCarryYd: roundOne(Math.max(...carryValues)),
     under30YdCount: carryValues.filter((value) => value <= 30).length,
   };
+}
+
+export function selectShortGameTouchShots<T extends ShortGameTouchShot>(
+  shots: T[],
+  maxShots = 80,
+  options: { clubType?: string | null } = {},
+) {
+  return shots.filter((shot) => isLikelyShortGameTouch(shot, options)).slice(0, maxShots);
 }
 
 function isLikelyShortGameTouch(shot: ShortGameTouchShot, options: { clubType?: string | null }) {

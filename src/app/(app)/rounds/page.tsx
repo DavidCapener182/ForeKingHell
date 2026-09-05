@@ -13,11 +13,11 @@ import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
 import { isRoundHistorySession, roundSessionTypes } from "@/lib/round-sessions";
 import { reportServerFailure } from "@/lib/server-observability";
-import {
-  calculateHandicapSummary,
-  calculateRoundDifferential,
-  formatHandicapValue,
-} from "@/lib/round-handicap";
+import { calculateRoundDifferential, formatHandicapValue } from "@/lib/round-handicap";
+
+import { calculateRoundHandicapEffect } from "@/lib/round-handicap-effect";
+import { roundHistoryScore, roundHistoryVerdict } from "@/lib/round-history-evidence";
+import { RoundsMobileList } from "@/app/rounds/rounds-mobile-list";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,9 @@ const handicapFormatter = new Intl.NumberFormat("en-GB", {
 export default async function RoundsPage() {
   const [surface, rounds] = await Promise.all([getRequestAppSurface(), getRounds()]);
   const indexRounds = toWorkspaceRounds(rounds);
-  const completedRounds = indexRounds.filter((round) => round.totalScore !== null).length;
+  const completedRounds = indexRounds.filter(
+    (round) => roundHistoryScore(round.scorecardHoles, round.roundStatus).complete,
+  ).length;
 
   return (
     <PageShell>
@@ -81,7 +83,11 @@ export default async function RoundsPage() {
         </header>
       ) : null}
 
-      <RoundsScoringIndex rounds={indexRounds} />
+      {surface === "companion" ? (
+        <RoundsMobileList rounds={indexRounds} />
+      ) : (
+        <RoundsScoringIndex rounds={indexRounds} />
+      )}
     </PageShell>
   );
 }
@@ -139,12 +145,10 @@ async function getLiveRounds() {
 
   return sessionRows.filter(isRoundHistorySession).map((session) => {
     const scorecard = session.scorecardJson ?? [];
-    const totalScore = sumNullable(scorecard.map((hole) => hole.score ?? null));
+    const { totalScore, totalPar, complete } = roundHistoryScore(scorecard, session.roundStatus);
     const totalPutts = sumNullable(scorecard.map((hole) => hole.putts ?? null));
-    const totalPar =
-      scorecard.length > 0 ? scorecard.reduce((total, hole) => total + hole.par, 0) : null;
     const handicapDifferential = calculateRoundDifferential({
-      totalScore,
+      totalScore: complete ? totalScore : null,
       totalPar,
       courseRating: session.courseRating,
       slopeRating: session.slopeRating,
@@ -167,10 +171,7 @@ function toWorkspaceRounds(rounds: Awaited<ReturnType<typeof getRounds>>): Round
     const scorecard = (round.scorecardJson ?? [])
       .slice()
       .sort((left, right) => left.holeNumber - right.holeNumber);
-    const toPar =
-      round.totalScore !== null && round.totalPar !== null
-        ? round.totalScore - round.totalPar
-        : null;
+    const { toPar } = roundHistoryScore(scorecard, round.roundStatus);
     const handicapImpact = handicapImpactForRound(rounds, index);
 
     return {
@@ -216,47 +217,21 @@ function handicapImpactForRound(
   rounds: Awaited<ReturnType<typeof getRounds>>,
   index: number,
 ): { label: string; tone: "positive" | "attention" | "neutral" } {
-  const differential = rounds[index]?.handicapDifferential;
-  if (typeof differential !== "number") return { label: "Not eligible", tone: "neutral" };
-
-  const current = calculateHandicapSummary(
-    rounds.slice(index).map((round) => round.handicapDifferential),
-  );
-  const previous = calculateHandicapSummary(
-    rounds.slice(index + 1).map((round) => round.handicapDifferential),
-  );
-
-  if (typeof current.value !== "number") return { label: "Not eligible", tone: "neutral" };
-  if (typeof previous.value !== "number") {
-    return { label: `Established ${formatHandicapValue(current.value)}`, tone: "neutral" };
-  }
-
-  const delta = current.value - previous.value;
-  if (Math.abs(delta) < 0.05) return { label: "No change", tone: "neutral" };
-  return delta < 0
-    ? { label: `Improved by ${handicapFormatter.format(Math.abs(delta))}`, tone: "positive" }
-    : { label: `Increased by ${handicapFormatter.format(delta)}`, tone: "attention" };
+  const effect = calculateRoundHandicapEffect(rounds, rounds[index].id);
+  if (!effect) return { label: "Estimate unavailable", tone: "neutral" };
+  const scope = `${effect.scope} estimate`;
+  if (effect.previous === null)
+    return { label: `${scope} · first ${formatHandicapValue(effect.current)}`, tone: "neutral" };
+  const delta = effect.delta ?? 0;
+  if (Math.abs(delta) < 0.05) return { label: `${scope} · no change`, tone: "neutral" };
+  return {
+    label: `${scope} · ${delta < 0 ? "down" : "up"} ${handicapFormatter.format(Math.abs(delta))}`,
+    tone: delta < 0 ? "positive" : "attention",
+  };
 }
 
 function mainRoundVerdict(round: Awaited<ReturnType<typeof getRounds>>[number]) {
-  if (round.roundStatus === "in_progress") return "Finish the scorecard";
-  if (round.totalScore === null || round.totalPar === null) return "Scorecard needs completing";
-
-  const scoredHoles = (round.scorecardJson ?? []).filter(
-    (hole): hole is typeof hole & { score: number } => typeof hole.score === "number",
-  );
-  const penaltyTotal = scoredHoles.reduce((total, hole) => total + (hole.penalties ?? 0), 0);
-  const costliest = [...scoredHoles].sort(
-    (left, right) =>
-      right.score - right.par - (left.score - left.par) || left.holeNumber - right.holeNumber,
-  )[0];
-  const worstDifference = costliest ? costliest.score - costliest.par : 0;
-
-  if (penaltyTotal >= 2) return `${penaltyTotal} penalties drove the damage`;
-  if (costliest && worstDifference >= 3) return `Hole ${costliest.holeNumber} was the blow-up`;
-  if (costliest && worstDifference === 2) return `Hole ${costliest.holeNumber} cost two shots`;
-  if (round.totalScore <= round.totalPar) return "Scoring held under pressure";
-  return "Bogey control is the next win";
+  return roundHistoryVerdict(round.scorecardJson ?? [], round.roundStatus);
 }
 
 function scoreSummary(totalScore: number | null, toPar: number | null) {

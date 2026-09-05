@@ -9,9 +9,10 @@ const indexSource = readFileSync(
 );
 
 describe("rounds scoring index", () => {
-  it("uses one chronological scoring list on desktop and companion surfaces", () => {
+  it("uses surface-specific chronological scoring lists", () => {
     expect(pageSource).toContain("getRequestAppSurface()");
     expect(pageSource).toContain("<RoundsScoringIndex rounds={indexRounds} />");
+    expect(pageSource).toContain("<RoundsMobileList rounds={indexRounds} />");
     expect(pageSource).toContain("data-rounds-workbench");
     expect(pageSource).toContain("<MobileLargeTitle");
     expect(pageSource).not.toContain("RoundsHero");
