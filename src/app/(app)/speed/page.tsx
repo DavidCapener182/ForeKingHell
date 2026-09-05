@@ -96,6 +96,7 @@ type PageProps = {
     club?: string | string[];
     speed_error?: string | string[];
     speed_saved?: string | string[];
+    speed_session?: string | string[];
   }>;
 };
 
@@ -129,6 +130,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
       <SpeedCompanionPage
         error={firstSearchParam(resolvedSearchParams.speed_error)}
         saved={firstSearchParam(resolvedSearchParams.speed_saved)}
+        savedSessionId={firstSearchParam(resolvedSearchParams.speed_session)}
       />
     );
   }

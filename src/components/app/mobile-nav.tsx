@@ -40,6 +40,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useMobileNavigationViewport } from "./use-mobile-navigation-viewport";
 import { isSettingsSection, settingsSections } from "@/lib/settings-sections";
 import { isMobileCompanionHeroRoute, mobileBackNavigation } from "@/components/app/route-metadata";
 
@@ -57,7 +58,6 @@ type MobileNavProps = {
 };
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
-const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
 
 export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps) {
   const params = useSearchParams();
@@ -85,16 +85,10 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
   const groups = mobileMoreGroups;
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
-  const [compactTitleVisible, setCompactTitleVisible] = useState(false);
   const moreCloseRef = useRef<HTMLButtonElement>(null);
-  const scrollFrameRef = useRef<number | null>(null);
-  const activePrimaryHref =
-    mobilePrimaryItems.find((item) => item.isActive(pathname))?.href ?? pathname;
-  const tabScrollStorageKey = `${mobileScrollStoragePrefix}${
-    backNavigation
-      ? `detail:${pathname}${savedPlanId ? `?planId=${savedPlanId}` : settingsSection ? `?section=${settingsSection}` : ""}`
-      : activePrimaryHref
-  }`;
+  const search = params.toString();
+  const location = `${pathname}${search ? `?${search}` : ""}`;
+  const { compactTitleVisible, prepareNavigation } = useMobileNavigationViewport(location);
   const normalizedQuery = query.trim().toLowerCase();
   const filteredGroups = useMemo(() => {
     if (!normalizedQuery) {
@@ -113,86 +107,35 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
 
   useEffect(() => {
     const viewport = window.visualViewport;
+    const shell = document.querySelector<HTMLElement>("[data-app-surface='companion']");
+    let frame: number | null = null;
     const updateKeyboard = () => {
-      const editing = document.activeElement?.matches("input, textarea, [contenteditable='true']");
+      frame = null;
+      const editing = document.activeElement?.matches(
+        "textarea:not([readonly]):not([disabled]), input:not([readonly]):not([disabled]):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='button']):not([type='submit']):not([type='reset']):not([type='file']):not([type='color']), [contenteditable='true']",
+      );
       const keyboardOpen = Boolean(
         editing && viewport && window.innerHeight - viewport.height > 150,
       );
-      const shell = document.querySelector<HTMLElement>("[data-app-surface='companion']");
       if (shell) shell.dataset.mobileKeyboard = keyboardOpen ? "open" : "closed";
     };
-    viewport?.addEventListener("resize", updateKeyboard);
-    document.addEventListener("focusin", updateKeyboard);
-    document.addEventListener("focusout", updateKeyboard);
+    const queueKeyboard = () => {
+      if (frame === null) frame = requestAnimationFrame(updateKeyboard);
+    };
+    queueKeyboard();
+    viewport?.addEventListener("resize", queueKeyboard);
+    window.addEventListener("resize", queueKeyboard);
+    document.addEventListener("focusin", queueKeyboard);
+    document.addEventListener("focusout", queueKeyboard);
     return () => {
-      viewport?.removeEventListener("resize", updateKeyboard);
-      document.removeEventListener("focusin", updateKeyboard);
-      document.removeEventListener("focusout", updateKeyboard);
+      viewport?.removeEventListener("resize", queueKeyboard);
+      window.removeEventListener("resize", queueKeyboard);
+      document.removeEventListener("focusin", queueKeyboard);
+      document.removeEventListener("focusout", queueKeyboard);
+      if (frame !== null) cancelAnimationFrame(frame);
+      if (shell) delete shell.dataset.mobileKeyboard;
     };
   }, []);
-
-  useEffect(() => {
-    let restoreFrame: number | null = null;
-
-    const readStoredScroll = () => {
-      try {
-        const storedValue = window.sessionStorage.getItem(tabScrollStorageKey);
-        const storedScroll = storedValue ? Number.parseFloat(storedValue) : 0;
-        return Number.isFinite(storedScroll) && storedScroll > 0 ? storedScroll : 0;
-      } catch {
-        return 0;
-      }
-    };
-
-    const rememberCurrentScroll = () => {
-      const scrollY = Math.max(0, window.scrollY);
-
-      const heroHeight = document
-        .querySelector<HTMLElement>("[data-companion-image-hero]")
-        ?.getBoundingClientRect().height;
-      const compactTitleThreshold = heroRoute && heroHeight ? Math.max(44, heroHeight - 52) : 44;
-
-      setCompactTitleVisible(scrollY >= compactTitleThreshold);
-
-      try {
-        window.sessionStorage.setItem(tabScrollStorageKey, String(scrollY));
-      } catch {
-        // Private browsing and strict storage policies can disable session storage.
-      }
-    };
-
-    const handleScroll = () => {
-      if (scrollFrameRef.current !== null) {
-        return;
-      }
-
-      scrollFrameRef.current = window.requestAnimationFrame(() => {
-        scrollFrameRef.current = null;
-        rememberCurrentScroll();
-      });
-    };
-
-    const storedScroll = readStoredScroll();
-    restoreFrame = window.requestAnimationFrame(() => {
-      restoreFrame = window.requestAnimationFrame(() => {
-        window.scrollTo({ top: storedScroll, behavior: "auto" });
-        rememberCurrentScroll();
-      });
-    });
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (restoreFrame !== null) {
-        window.cancelAnimationFrame(restoreFrame);
-      }
-      if (scrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollFrameRef.current);
-        scrollFrameRef.current = null;
-      }
-    };
-  }, [backNavigation, heroRoute, tabScrollStorageKey]);
 
   return (
     <>
@@ -212,7 +155,14 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                 size="icon"
                 className="ios-nav-button focus-aaa relative z-10 size-11"
               >
-                <Link href={backNavigation.href} aria-label={`Back to ${backNavigation.label}`}>
+                <Link
+                  href={backNavigation.href}
+                  scroll={false}
+                  onNavigate={(event) => {
+                    if (prepareNavigation(backNavigation.href)) event.preventDefault();
+                  }}
+                  aria-label={`Back to ${backNavigation.label}`}
+                >
                   <ArrowLeft className="size-5" aria-hidden />
                 </Link>
               </Button>
@@ -350,6 +300,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
               )}
               data-mobile-route-label
               data-compact-title-visible={compactTitleVisible ? "true" : "false"}
+              aria-hidden={!compactTitleVisible}
             >
               {pageTitle}
             </p>
@@ -393,6 +344,10 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
               <Link
                 key={`${item.label}-${item.href}`}
                 href={item.href}
+                scroll={false}
+                onNavigate={(event) => {
+                  if (prepareNavigation(item.href)) event.preventDefault();
+                }}
                 prefetch
                 aria-current={active ? "page" : undefined}
                 className={cn(

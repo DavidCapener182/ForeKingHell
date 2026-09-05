@@ -1,11 +1,18 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  matchesMobileSpeedSaveReceipt,
+  readMobileSpeedSaveReceipt,
+  type MobileSpeedSaveReceipt,
+} from "@/lib/mobile-speed-save-receipt";
 import Link from "next/link";
 import { createManualSpeedSessionAction } from "./actions";
 import type { SpeedDevelopmentSummary } from "@/lib/speed-development";
 import { MobileMetric } from "@/components/app/mobile-screen";
 import { useMobileActivity, activityHaptic } from "@/components/app/use-mobile-activity";
 import { Button } from "@/components/ui/button";
+import { MobileStatus } from "@/components/app/mobile-primitives";
+import styles from "./mobile-speed.module.css";
 import { useFormStatus } from "react-dom";
 import { mobileSpeedBlocks, restoreMobileSpeedBlock } from "@/lib/mobile-speed-plan";
 import {
@@ -19,14 +26,20 @@ export function MobileSpeedSession({
   plan,
   clubId,
   accountId,
-  saved = false,
+  savedReceipt,
   personalBestMph,
+  recommendation,
+  statusLabel,
+  statusTone = "attention",
 }: {
   plan: SpeedDevelopmentSummary["plan"];
   clubId?: string;
   accountId: string;
-  saved?: boolean;
+  savedReceipt?: MobileSpeedSaveReceipt | null;
   personalBestMph: number | null;
+  recommendation?: string;
+  statusLabel?: string;
+  statusTone?: "positive" | "attention";
 }) {
   const blocks = useMemo(() => mobileSpeedBlocks(plan), [plan]);
   const [active, setActive] = useState(false);
@@ -42,6 +55,10 @@ export function MobileSpeedSession({
   const [hydrated, setHydrated] = useState(false);
   const [pb, setPb] = useState<number | null>(null);
   const [recordingNew, setRecordingNew] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [planChanged, setPlanChanged] = useState(false);
   const finishSpeedRef = useRef<HTMLButtonElement>(null);
   const draftKey = `fkh:speed-session:${accountId}`;
   useMobileActivity(active);
@@ -49,11 +66,20 @@ export function MobileSpeedSession({
     const timer = setTimeout(() => {
       try {
         const draft = JSON.parse(localStorage.getItem(draftKey) ?? "null");
-        if (saved) {
+        if (matchesMobileSpeedSaveReceipt(draft, savedReceipt)) {
+          setAcknowledged(true);
           if (
             draft &&
             personalBestMph != null &&
-            (draft.personalBestMph == null || personalBestMph > draft.personalBestMph)
+            (draft.personalBestMph == null || personalBestMph > draft.personalBestMph) &&
+            Array.isArray(draft.readings) &&
+            draft.readings.some(
+              (item: MobileSpeedReading | null) =>
+                item &&
+                !item.warmup &&
+                Number.isFinite(item.value) &&
+                Math.abs(item.value - personalBestMph) < 0.05,
+            )
           )
             setPb(personalBestMph);
           localStorage.removeItem(draftKey);
@@ -65,17 +91,22 @@ export function MobileSpeedSession({
           setNote("");
           setBlock(0);
           setRecordingNew(false);
-        } else if (draft?.planTitle === plan.title && Array.isArray(draft.readings)) {
+        } else if (Array.isArray(draft?.readings)) {
+          setPlanChanged(draft.planTitle !== plan.title);
+          const identity = readMobileSpeedSaveReceipt(draft);
+          setDraftId(identity?.draftId ?? crypto.randomUUID());
+          setRevision(identity?.revision ?? 0);
           setReadings(
             draft.readings.filter(
-              (item: { value: number; warmup: boolean }) =>
+              (item: { value: number; warmup: boolean } | null) =>
+                item &&
                 Number.isFinite(item.value) &&
                 item.value >= 20 &&
                 item.value <= 180 &&
                 typeof item.warmup === "boolean",
             ),
           );
-          setBlock(restoreMobileSpeedBlock(plan, draft));
+          setBlock(draft.planTitle === plan.title ? restoreMobileSpeedBlock(plan, draft) : 0);
           setNote(typeof draft.note === "string" ? draft.note : "");
           setAccumulatedMs(
             typeof draft.elapsedMs === "number" && Number.isFinite(draft.elapsedMs)
@@ -88,21 +119,26 @@ export function MobileSpeedSession({
               : null,
           );
           setNow(Date.now());
+        } else {
+          setDraftId(crypto.randomUUID());
         }
       } catch {
+        setDraftId(crypto.randomUUID());
         /* Unavailable storage leaves the measured readings on screen. */
       }
       setHydrated(true);
     }, 0);
     return () => clearTimeout(timer);
-  }, [draftKey, saved, personalBestMph, plan]);
+  }, [draftKey, savedReceipt, personalBestMph, plan]);
   useEffect(() => {
-    if (!hydrated || (saved && !recordingNew)) return;
+    if (!hydrated || (acknowledged && !recordingNew)) return;
     if (!readings.length && !active && accumulatedMs === 0) return;
     try {
       localStorage.setItem(
         draftKey,
         JSON.stringify({
+          draftId,
+          revision,
           planTitle: plan.title,
           version: 2,
           blockKey: (blocks[block] ?? blocks[0]).key,
@@ -120,8 +156,10 @@ export function MobileSpeedSession({
   }, [
     draftKey,
     hydrated,
-    saved,
+    acknowledged,
     recordingNew,
+    draftId,
+    revision,
     active,
     block,
     readings,
@@ -172,6 +210,7 @@ export function MobileSpeedSession({
     }
     activityHaptic();
     setReadings((items) => [...items, { value, warmup: current.warmup, blockKey: current.key }]);
+    setRevision((value) => value + 1);
     setSpeed("");
     setError("");
     setNow(Date.now());
@@ -179,7 +218,15 @@ export function MobileSpeedSession({
   }
   return (
     <div data-speed-session-active={active ? "true" : "false"}>
-      <section className="mobile-section" aria-label="Speed session">
+      <section
+        className={active ? "mobile-section" : styles.sessionOffer}
+        aria-label="Speed session"
+      >
+        {planChanged && !active ? (
+          <p role="status" className="mobile-type-footnote text-muted-foreground">
+            Today’s plan has changed. Your saved readings and note are retained.
+          </p>
+        ) : null}
         {pb != null && !active ? (
           <p role="status" className="rounded-xl bg-primary/10 p-4 font-semibold text-primary">
             Personal best · {pb.toFixed(1)} mph. Check ball transfer before using it on the course.
@@ -187,36 +234,34 @@ export function MobileSpeedSession({
         ) : null}
         {!active ? (
           <header className="grid gap-1">
+            {statusLabel ? <MobileStatus label={statusLabel} tone={statusTone} /> : null}
             <h2 className="mobile-type-title3">{plan.title}</h2>
             <p className="mobile-type-footnote text-muted-foreground">
               {plan.durationMinutes} min · {blocks.length} stages
             </p>
+            {recommendation ? <p className={styles.recommendation}>{recommendation}</p> : null}
           </header>
         ) : null}
         {!active ? (
-          <details>
-            <summary className="flex min-h-11 items-center text-primary">Session stages</summary>
-            <ol className="divide-y">
-              {blocks.map((item) => (
-                <li key={item.key} className="py-3">
-                  <p className="mobile-type-headline">{item.label}</p>
-                  <p className="mobile-type-footnote text-muted-foreground">
-                    {item.reps ? `${item.reps} swings` : `${item.balls} balls`} · {item.target}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </details>
-        ) : null}
-        {!active ? (
           <Button
-            className="min-h-12"
+            className={styles.startButton}
             disabled={!hydrated}
             onClick={() => {
               setRecordingNew(true);
+              if (acknowledged) {
+                setDraftId(crypto.randomUUID());
+                setRevision(0);
+                setAcknowledged(false);
+              }
+              setPb(null);
               const url = new URL(window.location.href);
               url.searchParams.delete("speed_saved");
-              window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+              url.searchParams.delete("speed_session");
+              window.history.replaceState(
+                window.history.state,
+                "",
+                `${url.pathname}${url.search}${url.hash}`,
+              );
               setActive(true);
               setStarted(Date.now());
               setNow(Date.now());
@@ -361,12 +406,29 @@ export function MobileSpeedSession({
             </div>
           </div>
         )}
+        {!active ? (
+          <details>
+            <summary className="flex min-h-11 items-center text-primary">Session stages</summary>
+            <ol className="divide-y">
+              {blocks.map((item) => (
+                <li key={item.key} className="py-3">
+                  <p className="mobile-type-headline">{item.label}</p>
+                  <p className="mobile-type-footnote text-muted-foreground">
+                    {item.reps ? `${item.reps} swings` : `${item.balls} balls`} · {item.target}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </details>
+        ) : null}
         {readings.length ? (
           <details open={!active} className="border-t pt-2">
             <summary className="flex min-h-11 cursor-pointer items-center text-primary">
               Readings and note · {readings.length}
             </summary>
             <form action={createManualSpeedSessionAction} className="grid gap-3">
+              <input type="hidden" name="mobileDraftId" value={draftId ?? ""} />
+              <input type="hidden" name="mobileDraftRevision" value={revision} />
               <input type="hidden" name="clubId" value={clubId ?? ""} />
               <input type="hidden" name="implementKind" value="club" />
               <input
@@ -391,7 +453,10 @@ export function MobileSpeedSession({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setReadings((items) => items.slice(0, -1))}
+                onClick={() => {
+                  setReadings((items) => items.slice(0, -1));
+                  setRevision((value) => value + 1);
+                }}
               >
                 Undo last reading
               </Button>
@@ -400,7 +465,10 @@ export function MobileSpeedSession({
                 <textarea
                   name="notes"
                   value={note}
-                  onChange={(event) => setNote(event.target.value)}
+                  onChange={(event) => {
+                    setNote(event.target.value);
+                    setRevision((value) => value + 1);
+                  }}
                   className="min-h-20 rounded-xl border bg-card p-3 text-base"
                   placeholder="Strike, energy or anything to remember"
                 />

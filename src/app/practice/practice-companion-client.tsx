@@ -6,17 +6,11 @@ import { MobileLargeTitle } from "@/components/app/mobile-screen";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { clubLabel, clubSummary, blockVolume } from "./practice-mobile-format";
-const ActiveRangeMode = dynamic(
-  () => import("./active-range-mode").then((module) => module.ActiveRangeMode),
-  {
-    loading: () => (
-      <p role="status" className="py-6">
-        Opening Range Mode…
-      </p>
-    ),
-  },
-);
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, useTransition } from "react";
+
+const loadActiveRangeMode = () =>
+  import("./active-range-mode").then((module) => ({ default: module.ActiveRangeMode }));
+const ActiveRangeMode = lazy(loadActiveRangeMode);
 import { CheckCircle2, ChevronRight, Save } from "lucide-react";
 
 import {
@@ -134,7 +128,9 @@ export function PracticeCompanionClient({
   const [note, setNote] = useState("");
   const [remainingBalls, setRemainingBalls] = useState<Record<string, number>>({});
   const [rangeMode, setRangeMode] = useState(false);
-  const [, setPaused] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [activityStarted, setActivityStarted] = useState(false);
+  const startRequired = useRef(false);
   const [finished, setFinished] = useState(false);
   const [routeDirection, setRouteDirection] = useState<"forward" | "back" | null>(null);
   const [blockDirection, setBlockDirection] = useState<"forward" | "back" | null>(null);
@@ -143,31 +139,56 @@ export function PracticeCompanionClient({
   const [blockCarouselApi, setBlockCarouselApi] = useState<CarouselApi>();
   const [isPending, startTransition] = useTransition();
   const selectedBlock = plan.blocks[selectedIndex] ?? plan.blocks[0] ?? null;
-  const activeCachedPlan = useMemo(() => readActivePractice(accountId), [accountId]);
   const activeMeasuredResult =
     plan.id && plan.id === initialPlan.id && plan.status === "analysed" ? measuredResult : null;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setHydrated(true), 0);
-    return () => window.clearTimeout(timer);
-  }, []);
+    if (!savedPlanId || initialPlan.status === "analysed") return;
+    // Prepare the immersive screen while connected, before an offline Resume tap.
+    const prepareRangeMode = () => {
+      if (navigator.onLine) void loadActiveRangeMode().catch(() => undefined);
+    };
+    prepareRangeMode();
+    window.addEventListener("online", prepareRangeMode);
+    return () => window.removeEventListener("online", prepareRangeMode);
+  }, [savedPlanId, initialPlan.status]);
 
   useEffect(() => {
-    if (plan.status === "analysed") {
-      if (savedPlanId && activeCachedPlan?.planId === savedPlanId) clearActivePractice(accountId);
-      return;
-    }
-    if (!activeCachedPlan || activeCachedPlan.planId !== savedPlanId) return;
     const timer = window.setTimeout(() => {
-      setCompletedBlockIds(activeCachedPlan.completedBlockIds);
-      setNote(activeCachedPlan.note);
-      setRemainingBalls(activeCachedPlan.remainingBalls ?? {});
-      setSelectedIndex(Math.min(activeCachedPlan.blockIndex, Math.max(0, plan.blocks.length - 1)));
-      setFinished(activeCachedPlan.finished ?? false);
-      setRangeMode(!activeCachedPlan.finished);
+      const cached = readActivePractice(accountId);
+      if (initialPlan.status === "analysed") {
+        if (cached?.planId === initialPlan.id) clearActivePractice(accountId);
+      } else if (cached && cached.planId === initialPlan.id) {
+        const blockIds = new Set(initialPlan.blocks.map((block) => block.id));
+        setCompletedBlockIds(cached.completedBlockIds.filter((id) => blockIds.has(id)));
+        setNote(cached.note);
+        setRemainingBalls(cached.remainingBalls ?? {});
+        setSelectedIndex(Math.min(cached.blockIndex, Math.max(0, initialPlan.blocks.length - 1)));
+        setFinished(cached.finished ?? false);
+        setPaused(cached.paused ?? false);
+        setRangeMode(!cached.finished && !cached.paused);
+        setActivityStarted(true);
+        startRequired.current = initialPlan.status === "planned";
+      } else if (initialPlan.activityProgress) {
+        const progress = initialPlan.activityProgress;
+        const blockIds = new Set(initialPlan.blocks.map((block) => block.id));
+        setCompletedBlockIds(progress.completedBlockIds.filter((id) => blockIds.has(id)));
+        setNote(progress.note);
+        setSelectedIndex(Math.min(progress.blockIndex, Math.max(0, initialPlan.blocks.length - 1)));
+        setPaused(true);
+        // Showing saved server progress is read-only until Resume is chosen.
+      }
+      // One state batch restores the activity before enabling any persistence effect.
+      setHydrated(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [accountId, activeCachedPlan, plan.blocks.length, plan.status, savedPlanId]);
+  }, [
+    accountId,
+    initialPlan.id,
+    initialPlan.status,
+    initialPlan.blocks,
+    initialPlan.activityProgress,
+  ]);
 
   useEffect(() => {
     if (!blockCarouselApi) return;
@@ -202,7 +223,7 @@ export function PracticeCompanionClient({
   }, [savedPlanId, selectedIndex, completedBlockIds, note, plan, finished]);
 
   useEffect(() => {
-    if (!hydrated || !savedPlanId || plan.status === "analysed") return;
+    if (!hydrated || !activityStarted || !savedPlanId || plan.status === "analysed") return;
     cacheActivePractice(
       accountId,
       savedPlanId,
@@ -212,6 +233,7 @@ export function PracticeCompanionClient({
       plan,
       finished,
       remainingBalls,
+      paused,
     );
     let cancelled = false;
     async function sync() {
@@ -228,6 +250,11 @@ export function PracticeCompanionClient({
       if (signature === lastSynced.current) return;
       syncing.current = true;
       try {
+        if (startRequired.current) {
+          await startPracticePlanAction(current.savedPlanId);
+          if (syncSnapshot.current.savedPlanId === current.savedPlanId)
+            startRequired.current = false;
+        }
         await savePracticeActivityProgressAction(current.savedPlanId, {
           blockIndex: current.selectedIndex,
           completedBlockIds: current.completedBlockIds,
@@ -258,6 +285,8 @@ export function PracticeCompanionClient({
   }, [
     accountId,
     hydrated,
+    activityStarted,
+    paused,
     completedBlockIds,
     note,
     savedPlanId,
@@ -275,6 +304,8 @@ export function PracticeCompanionClient({
         setOptions(nextOptions);
         setPlan(compactCompanionPlan(generated));
         setSavedPlanId(null);
+        setActivityStarted(false);
+        startRequired.current = false;
         setSelectedIndex(0);
         setCompletedBlockIds([]);
         setRemainingBalls({});
@@ -291,6 +322,8 @@ export function PracticeCompanionClient({
       try {
         const { planId } = await saveAndStartPracticePlanAction(plan);
         setSavedPlanId(planId);
+        setActivityStarted(true);
+        startRequired.current = false;
         setPlan((current) => ({ ...current, id: planId, status: "awaiting_import" }));
         setRouteDirection("forward");
         setBlockDirection(null);
@@ -310,6 +343,7 @@ export function PracticeCompanionClient({
           { ...plan, id: planId, status: "awaiting_import" },
           false,
           {},
+          false,
         );
         setMessage(null);
       } catch {
@@ -319,21 +353,26 @@ export function PracticeCompanionClient({
   }
 
   function resume() {
-    if (!savedPlanId) return;
-    startTransition(async () => {
-      if (navigator.onLine) {
-        try {
-          await startPracticePlanAction(savedPlanId);
-        } catch {
-          setMessage("Using your saved practice. Reconnect to sync.");
-        }
-      }
-      setRouteDirection("forward");
-      setBlockDirection(null);
-      setRangeMode(true);
-      setPaused(false);
-      cacheActivePractice(accountId, savedPlanId, completedBlockIds, note, selectedIndex);
-    });
+    if (!savedPlanId || finished) return;
+    // Reopen cached activity immediately; network latency must not block range controls.
+    startRequired.current = plan.status === "planned";
+    setRouteDirection("forward");
+    setBlockDirection(null);
+    setRangeMode(true);
+    setPaused(false);
+    setFinished(false);
+    setActivityStarted(true);
+    cacheActivePractice(
+      accountId,
+      savedPlanId,
+      completedBlockIds,
+      note,
+      selectedIndex,
+      plan,
+      false,
+      remainingBalls,
+      false,
+    );
   }
 
   function completeBlock() {
@@ -355,6 +394,17 @@ export function PracticeCompanionClient({
     setPaused(false);
     setFinished(true);
     setPlan((current) => ({ ...current, status: "completed" }));
+    cacheActivePractice(
+      accountId,
+      savedPlanId,
+      completedBlockIds,
+      note,
+      selectedIndex,
+      plan,
+      true,
+      remainingBalls,
+      false,
+    );
     setMessage("Activity complete. Import shots to measure the result.");
   }
 
@@ -365,48 +415,90 @@ export function PracticeCompanionClient({
         className={cn(routeDirection && "t-route-step")}
         data-direction={routeDirection ?? undefined}
       >
-        {message ? (
-          <p role="status" className="mb-3 text-sm text-muted-foreground">
-            {message}
-          </p>
-        ) : null}
-        <ActiveRangeMode
-          plan={plan}
-          block={selectedBlock}
-          blockIndex={selectedIndex}
-          blockDirection={blockDirection}
-          completedBlockIds={completedBlockIds}
-          note={note}
-          remainingBalls={
-            selectedBlock ? (remainingBalls[selectedBlock.id] ?? selectedBlock.ballCount ?? 0) : 0
+        <Suspense
+          fallback={
+            <p role="status" className="py-6">
+              Opening Range Mode…
+            </p>
           }
-          onRemainingBalls={(count) => {
-            if (selectedBlock)
-              setRemainingBalls((current) => ({ ...current, [selectedBlock.id]: count }));
-          }}
-          pending={isPending}
-          onNote={(value) => {
-            setNote(value);
-            if (savedPlanId)
-              cacheActivePractice(accountId, savedPlanId, completedBlockIds, value, selectedIndex);
-          }}
-          onPrevious={() => {
-            setBlockDirection("back");
-            setSelectedIndex((index) => Math.max(0, index - 1));
-          }}
-          onNext={() => {
-            setBlockDirection("forward");
-            setSelectedIndex((index) => Math.min(plan.blocks.length - 1, index + 1));
-          }}
-          onComplete={completeBlock}
-          onPause={() => {
-            setRouteDirection("back");
-            setRangeMode(false);
-            setPaused(true);
-          }}
-          onFinish={finishWithoutUpload}
-          practicePlanId={savedPlanId}
-        />
+        >
+          <ActiveRangeMode
+            plan={plan}
+            block={selectedBlock}
+            blockIndex={selectedIndex}
+            blockDirection={blockDirection}
+            completedBlockIds={completedBlockIds}
+            note={note}
+            remainingBalls={
+              selectedBlock ? (remainingBalls[selectedBlock.id] ?? selectedBlock.ballCount ?? 0) : 0
+            }
+            onRemainingBalls={(count) => {
+              if (selectedBlock) {
+                const next = { ...remainingBalls, [selectedBlock.id]: count };
+                setRemainingBalls(next);
+                if (savedPlanId)
+                  cacheActivePractice(
+                    accountId,
+                    savedPlanId,
+                    completedBlockIds,
+                    note,
+                    selectedIndex,
+                    plan,
+                    finished,
+                    next,
+                    paused,
+                  );
+              }
+            }}
+            pending={isPending}
+            onNote={(value) => {
+              setNote(value);
+              if (savedPlanId)
+                cacheActivePractice(
+                  accountId,
+                  savedPlanId,
+                  completedBlockIds,
+                  value,
+                  selectedIndex,
+                );
+            }}
+            onPrevious={() => {
+              setBlockDirection("back");
+              const next = Math.max(0, selectedIndex - 1);
+              setSelectedIndex(next);
+              if (savedPlanId)
+                cacheActivePractice(accountId, savedPlanId, completedBlockIds, note, next);
+            }}
+            onNext={() => {
+              setBlockDirection("forward");
+              const next = Math.min(plan.blocks.length - 1, selectedIndex + 1);
+              setSelectedIndex(next);
+              if (savedPlanId)
+                cacheActivePractice(accountId, savedPlanId, completedBlockIds, note, next);
+            }}
+            onComplete={completeBlock}
+            onPause={() => {
+              setRouteDirection("back");
+              setRangeMode(false);
+              setPaused(true);
+              if (savedPlanId)
+                cacheActivePractice(
+                  accountId,
+                  savedPlanId,
+                  completedBlockIds,
+                  note,
+                  selectedIndex,
+                  plan,
+                  finished,
+                  remainingBalls,
+                  true,
+                );
+            }}
+            onFinish={finishWithoutUpload}
+            practicePlanId={savedPlanId}
+            status={message}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -424,12 +516,12 @@ export function PracticeCompanionClient({
       {options.intent === "speed" || options.sessionType === "speed" ? (
         <SpeedDevelopmentCompanionReadout context={context} />
       ) : null}
-      {finished ? <FinishedActions message={message} /> : null}
+      {finished ? <FinishedActions message={message} planId={savedPlanId} /> : null}
       <Card className="relative isolate gap-3 overflow-hidden py-3" data-current-practice-plan>
         <CardHeader>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              {activeMeasuredResult ? "Completed practice" : "Recommended session"}
+              {activeMeasuredResult || finished ? "Completed practice" : "Recommended session"}
             </p>
             <CardTitle className="mt-1 text-xl font-bold leading-6 tracking-tight">
               {plan.title}
@@ -460,11 +552,13 @@ export function PracticeCompanionClient({
           </CardContent>
         ) : message ? (
           <CardContent>
-            <OperationStatus status="success" title="Practice updated" description={message} />
+            <p role="status" className="mobile-type-callout text-muted-foreground">
+              {message}
+            </p>
           </CardContent>
         ) : null}
         <CardFooter className="bg-background/70 p-3">
-          {activeMeasuredResult ? (
+          {activeMeasuredResult || finished ? (
             <Button
               type="button"
               className="min-h-12 w-full rounded-xl text-base"
@@ -834,7 +928,8 @@ function ChoiceGroup({
   );
 }
 
-function FinishedActions({ message }: { message: string | null }) {
+function FinishedActions({ message, planId }: { message: string | null; planId: string | null }) {
+  const query = planId ? `?practicePlanId=${encodeURIComponent(planId)}` : "";
   return (
     <Card data-practice-finished>
       <CardHeader>
@@ -849,10 +944,10 @@ function FinishedActions({ message }: { message: string | null }) {
       <CardFooter className="p-3">
         <ButtonGroup className="w-full">
           <Button asChild className="min-h-11 flex-1">
-            <Link href="/rapsodo">Sync Rapsodo</Link>
+            <Link href={`/rapsodo${query}`}>Sync Rapsodo</Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11 flex-1">
-            <Link href="/import">Upload CSV</Link>
+            <Link href={`/import${query}`}>Upload CSV</Link>
           </Button>
         </ButtonGroup>
       </CardFooter>
@@ -911,6 +1006,7 @@ type CachedActivePractice = {
   blockIndex: number;
   plan?: PracticePlan;
   finished?: boolean;
+  paused?: boolean;
   remainingBalls?: Record<string, number>;
 };
 
@@ -918,24 +1014,28 @@ function activePracticeStorageKey(accountId: string) {
   return `fkh:active-practice:${accountId}`;
 }
 
-function cacheActivePractice(
+export function cacheActivePractice(
   accountId: string,
   planId: string,
   completedBlockIds: string[],
   note: string,
   blockIndex: number,
   plan?: PracticePlan,
-  finished = false,
+  finished?: boolean,
   remainingBalls?: Record<string, number>,
+  paused?: boolean,
 ) {
   try {
+    const cached = readActivePractice(accountId);
+    const previous = cached?.planId === planId ? cached : null;
     window.localStorage.setItem(
       activePracticeStorageKey(accountId),
       JSON.stringify({
         planId,
-        plan: plan ?? readActivePractice(accountId)?.plan,
-        finished,
-        remainingBalls: remainingBalls ?? readActivePractice(accountId)?.remainingBalls,
+        plan: plan ?? previous?.plan,
+        finished: finished ?? previous?.finished ?? false,
+        paused: paused ?? previous?.paused ?? false,
+        remainingBalls: remainingBalls ?? previous?.remainingBalls,
         completedBlockIds,
         note,
         blockIndex,
@@ -946,7 +1046,7 @@ function cacheActivePractice(
   }
 }
 
-function readActivePractice(accountId: string): CachedActivePractice | null {
+export function readActivePractice(accountId: string): CachedActivePractice | null {
   try {
     const raw = window.localStorage.getItem(activePracticeStorageKey(accountId));
     if (!raw) return null;
@@ -958,9 +1058,13 @@ function readActivePractice(accountId: string): CachedActivePractice | null {
         ? parsed.completedBlockIds.filter((id): id is string => typeof id === "string")
         : [],
       note: typeof parsed.note === "string" ? parsed.note : "",
-      blockIndex: typeof parsed.blockIndex === "number" ? parsed.blockIndex : 0,
+      blockIndex:
+        typeof parsed.blockIndex === "number" && Number.isFinite(parsed.blockIndex)
+          ? Math.max(0, Math.trunc(parsed.blockIndex))
+          : 0,
       plan: parsed.plan,
       finished: parsed.finished === true,
+      paused: parsed.paused === true,
       remainingBalls:
         parsed.remainingBalls && typeof parsed.remainingBalls === "object"
           ? Object.fromEntries(
