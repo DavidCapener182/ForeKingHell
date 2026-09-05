@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
 import { Button } from "@/components/ui/button";
-import { MobileTrainingStory } from "./mobile-training-story";
+import { MobileTrainingChart } from "@/components/training/mobile-training-chart";
 import {
   mobilePerformanceStory,
   mobileScoringStory,
@@ -15,6 +15,7 @@ import type { TrainingOverTimeData } from "@/lib/training/trainingData";
 import { goalProgress, type SeasonGoal } from "@/lib/product-preferences";
 import { selectTrainingRangeData } from "@/lib/training/rangeSelection";
 import { roundHistoryScore } from "@/lib/round-history-evidence";
+import { MobilePerformanceComparisonView } from "./mobile-performance-comparison";
 
 type Props = {
   clubs: ProgressClub[];
@@ -41,14 +42,6 @@ export function ProgressCompanion({
   const consistency = mobileTrainingConsistency(training.sessionMarkers, training.today);
   const load = selectTrainingRangeData(training, "3m");
   const signal = story.signal;
-  const before =
-    story.metric === "side"
-      ? signal?.previous.absoluteOfflineAverageYd
-      : signal?.previous.carryMedianYd;
-  const after =
-    story.metric === "side"
-      ? signal?.latest.absoluteOfflineAverageYd
-      : signal?.latest.carryMedianYd;
   const next = summary.practicePlan[0];
   return (
     <div className="mobile-progress-screen" data-mobile-progress-story>
@@ -84,26 +77,12 @@ export function ProgressCompanion({
         )}
       </section>
       <MobileSection title="Performance">
-        {signal && before != null && after != null ? (
-          <div className="mobile-progress-comparison">
-            <p className="mobile-type-headline">
-              {formatClubType(signal.clubType)} ·{" "}
-              {story.metric === "side" ? "average lateral miss" : "carry"}
-            </p>
-            <div className="mobile-metric-strip">
-              <MobileMetric value={before.toFixed(1)} unit="yd" label="previous session" />
-              <MobileMetric value={after.toFixed(1)} unit="yd" label="latest session" />
-            </div>
-            <p className="mobile-type-footnote text-muted-foreground">
-              {signal.previous.shotCount} and {signal.latest.shotCount} clean shots respectively.
-              {story.metric === "side"
-                ? " Lower is closer to the target line."
-                : " More distance is a change, not always an improvement."}
-            </p>
-            <Link className="mobile-progress-disclosure" href={`/bag/${signal.clubId}`}>
-              Explore club evidence
-            </Link>
-          </div>
+        {signal ? (
+          <MobilePerformanceComparisonView
+            comparisons={story.comparisons}
+            initialClubId={signal.clubId}
+            initialMeasure={story.metric}
+          />
         ) : null}
         <MobileGroupedList>
           <MobileListRow
@@ -216,7 +195,7 @@ export function ProgressCompanion({
               {consistency.last ? `Last logged ${date(consistency.last)} · ` : ""}
               {training.confidence.label}.
             </p>
-            <MobileTrainingStory data={load.series} />
+            <MobileTrainingChart data={load.series} />
           </>
         ) : (
           <p className="mobile-type-callout text-muted-foreground">
@@ -232,49 +211,63 @@ export function ProgressCompanion({
           <MobileListRow label="Start practice" href="/practice" />
         </MobileGroupedList>
       </MobileSection>
-      <MobileSection title="Goals">
-        {goals.slice(0, 4).map((goal) => (
-          <article key={goal.id} className="mobile-progress-goal">
-            <h3 className="mobile-type-headline">{goal.title}</h3>
-            <div className="flex flex-wrap items-baseline justify-between gap-2 mobile-type-callout">
-              <span className="tabular-nums">
-                {goal.currentValue} / {goal.targetValue} {goal.unit}
-              </span>
-              <span className="text-muted-foreground">{goalProgress(goal)}%</span>
-            </div>
-            <progress max="100" value={goalProgress(goal)} aria-label={`${goal.title} progress`} />
-            <p className="mobile-type-callout">{goal.nextAction}</p>
-            <details>
-              <summary className="mobile-progress-disclosure">Target and evidence</summary>
-              <dl className="grid gap-2 mobile-type-footnote">
-                <div>
-                  <dt className="text-muted-foreground">Evidence source saved with this goal</dt>
-                  <dd>{goal.evidenceSource}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Target date</dt>
-                  <dd>{goal.targetDate ? date(goal.targetDate) : "Not set"}</dd>
-                </div>
-              </dl>
-              <p className="mobile-type-footnote text-muted-foreground">
-                These are your saved goal values. They are not automatically verified against a new
-                session.
-              </p>
-            </details>
-            <Link href="/goals" className="mobile-progress-disclosure">
-              Update goal
-            </Link>
-          </article>
-        ))}
-        <MobileGroupedList>
-          <MobileListRow
-            label={goals.length ? "All goals" : "Set your next target"}
-            href="/goals"
-          />
-          <MobileListRow label="Achievements" href="/achievements" />
-        </MobileGroupedList>
-      </MobileSection>
+      <MobileProgressGoals goals={goals} />
     </div>
+  );
+}
+
+export function MobileProgressGoals({ goals }: { goals: SeasonGoal[] }) {
+  return (
+    <MobileSection title="Goals">
+      {goals.slice(0, 4).map((goal) => (
+        <article key={goal.id} className="mobile-progress-goal">
+          <h3 className="mobile-type-headline">{goal.title}</h3>
+          <dl className="mobile-goal-values">
+            <div>
+              <dt>Current</dt>
+              <dd>
+                {goal.currentValue} <span>{goal.unit}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Target</dt>
+              <dd>
+                {goal.targetValue} <span>{goal.unit}</span>
+              </dd>
+            </div>
+          </dl>
+          <p className="mobile-type-footnote text-muted-foreground">
+            {goalProgress(goal)}% progress
+          </p>
+          <progress max="100" value={goalProgress(goal)} aria-label={`${goal.title} progress`} />
+          <p className="mobile-type-callout">{goal.nextAction}</p>
+          <details>
+            <summary className="mobile-progress-disclosure">Target and evidence</summary>
+            <dl className="grid gap-2 mobile-type-footnote">
+              <div>
+                <dt className="text-muted-foreground">Evidence source saved with this goal</dt>
+                <dd>{goal.evidenceSource}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Target date</dt>
+                <dd>{goal.targetDate ? date(goal.targetDate) : "Not set"}</dd>
+              </div>
+            </dl>
+            <p className="mobile-type-footnote text-muted-foreground">
+              These are your saved goal values. They are not automatically verified against a new
+              session.
+            </p>
+          </details>
+          <Link href="/goals" className="mobile-progress-disclosure">
+            Update goal
+          </Link>
+        </article>
+      ))}
+      <MobileGroupedList>
+        <MobileListRow label={goals.length ? "All goals" : "Set your next target"} href="/goals" />
+        <MobileListRow label="Achievements" href="/achievements" />
+      </MobileGroupedList>
+    </MobileSection>
   );
 }
 function date(value: Date | string) {

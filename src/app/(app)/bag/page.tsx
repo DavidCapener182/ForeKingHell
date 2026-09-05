@@ -1,4 +1,5 @@
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
+import { MobileBagDistanceExplorer } from "@/app/bag/mobile-bag-distance-explorer";
 import { MobileBagLadder } from "@/app/bag/mobile-bag-ladder";
 import { getMobileQuickBag } from "@/lib/mobile-quick-bag-data";
 import Link from "next/link";
@@ -617,6 +618,7 @@ function MobileBagPage({
               href: "/bag?view=yardages#bag-yardages",
               content: (
                 <div id="bag-yardages" className="min-w-0">
+                  <MobileBagDistanceExplorer clubs={quickBagClubs} />
                   <MobileBagLadder clubs={quickBagClubs} />
                 </div>
               ),

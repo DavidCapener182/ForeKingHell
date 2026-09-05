@@ -1,0 +1,104 @@
+.comparison {
+  display: grid;
+  min-width: 0;
+  gap: var(--mobile-space-standard);
+  padding-block: var(--mobile-space-compact);
+}
+.picker {
+  display: grid;
+  gap: var(--mobile-space-compact);
+}
+.picker label {
+  font-size: 0.8125rem;
+  color: var(--ios-secondary-label);
+}
+.picker > div {
+  position: relative;
+}
+.picker select {
+  appearance: none;
+  width: 100%;
+  min-height: 3rem;
+  padding: var(--mobile-space-compact) 2.5rem var(--mobile-space-compact)
+    var(--mobile-space-standard);
+  border-radius: var(--mobile-radius-md);
+  border: 1px solid var(--mobile-separator);
+  background: var(--mobile-surface);
+  color: var(--ios-label);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.picker svg {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  right: var(--mobile-space-standard);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--ios-secondary-label);
+}
+.readout {
+  display: grid;
+  gap: 0.25rem;
+}
+.value {
+  font-size: 2.125rem;
+  line-height: 1.15;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.value span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ios-secondary-label);
+}
+.change {
+  font-size: 0.9375rem;
+  margin-top: var(--mobile-space-compact);
+}
+.bars {
+  display: grid;
+  gap: var(--mobile-space-standard);
+}
+.barRow {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr) 3.5rem;
+  align-items: center;
+  gap: var(--mobile-space-compact);
+  font-size: 0.8125rem;
+}
+.barRow > span {
+  color: var(--ios-secondary-label);
+}
+.barRow strong {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.track {
+  height: 0.625rem;
+  overflow: hidden;
+  border-radius: var(--mobile-radius-pill);
+  background: var(--ios-fill);
+}
+.bar {
+  height: 100%;
+  background: var(--ios-secondary-label);
+  transform-origin: left;
+  transition: transform 180ms ease-out;
+}
+.bar[data-period="latest"] {
+  background: var(--ios-tint);
+}
+.evidence {
+  color: var(--ios-secondary-label);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    transition: none;
+  }
+}

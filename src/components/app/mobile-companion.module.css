@@ -260,17 +260,12 @@
 .courseHeading {
   display: grid;
   gap: 0.65rem;
-  padding: 1.5rem;
-  background: #123d2c;
-  color: #fff;
-}
-.courseHeading > svg {
-  color: #b7e7b9;
-  margin-bottom: 0.5rem;
+  padding: var(--mobile-space-standard);
+  color: var(--ios-label);
 }
 .courseHeading p {
   font-size: 0.8125rem;
-  color: #b7d4c4;
+  color: var(--ios-secondary-label);
 }
 .courseHeading h2 {
   font-size: 1.75rem;
@@ -280,8 +275,23 @@
 }
 .courseHeading > span {
   font-size: 0.875rem;
-  color: #caddd0;
+  color: var(--ios-secondary-label);
   line-height: 1.5;
+}
+.courseActions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--mobile-space-compact);
+}
+.courseActions > a {
+  flex-direction: column;
+  height: auto;
+  min-height: 3.5rem;
+  padding: var(--mobile-space-compact) 0;
+  font-size: 0.8125rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
 }
 
 .rangeStage {

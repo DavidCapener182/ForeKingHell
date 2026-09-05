@@ -146,6 +146,7 @@ import {
 } from "@/lib/course-twin-virtual-round";
 import { cn } from "@/lib/utils";
 import { courseTwin2dUrl, type CourseTwinRenderQuality } from "@/lib/course-twin-performance";
+import { bindMobileCourseTwinLifecycle } from "@/lib/mobile-course-twin-lifecycle";
 import { mobilePlanHasMappedSurfaces } from "@/lib/course-twin-mobile-plan";
 import { courseTwinTerrainRenderGrid } from "@/lib/course-twin-terrain-lod";
 
@@ -342,6 +343,33 @@ function roundShotEvidence(
   };
 }
 
+function CourseTwinMobileRenderLifecycle({
+  enabled,
+  onSuspend,
+  onContextChange,
+  setSuspended,
+}: {
+  enabled: boolean;
+  setSuspended: (suspended: boolean) => void;
+  onSuspend: () => void;
+  onContextChange: (lost: boolean) => void;
+}) {
+  const get = useThree((state) => state.get);
+  useEffect(() => {
+    if (!enabled) return;
+    const { gl } = get();
+    return bindMobileCourseTwinLifecycle({
+      canvas: gl.domElement,
+      document,
+      initialContextLost: gl.getContext().isContextLost(),
+      setSuspended,
+      onSuspend,
+      onContextChange,
+    });
+  }, [enabled, get, onSuspend, onContextChange, setSuspended]);
+  return null;
+}
+
 function CourseTwinAdaptiveQuality({
   renderQuality,
 }: {
@@ -420,6 +448,8 @@ export function CourseTwinScene({
   const [cameraCommand, setCameraCommand] = useState<CameraCommand>(null);
   const [hudPanel, setHudPanel] = useState<HudPanel>(null);
   const [isCompactViewport, setIsCompactViewport] = useState(false);
+  const [mobileContextLost, setMobileContextLost] = useState(false);
+  const [mobileRenderingSuspended, setMobileRenderingSuspended] = useState(false);
   const [terrainSamples, setTerrainSamples] = useState<Float32Array | null>(null);
   const [terrainError, setTerrainError] = useState<string | null>(null);
   const [strategyState, setStrategyState] = useState<StrategyLoadState>({
@@ -502,6 +532,10 @@ export function CourseTwinScene({
     },
     [syncPlaybackProgress],
   );
+  const suspendMobilePlayback = useCallback(() => {
+    setPlaybackPosition(playbackRef.current);
+    setPlaying(false);
+  }, [setPlaybackPosition]);
   const togglePlayback = useCallback(() => {
     if (playing) {
       setPlaybackPosition(playbackRef.current);
@@ -3203,6 +3237,9 @@ export function CourseTwinScene({
 
         <section
           data-course-twin-canvas
+          data-mobile-render-suspended={
+            (isCompactViewport && mobileRenderingSuspended) || undefined
+          }
           inert={isCompactViewport && Boolean(hudPanel) ? true : undefined}
           aria-hidden={isCompactViewport && Boolean(hudPanel) ? true : undefined}
           className={cn(
@@ -3211,6 +3248,7 @@ export function CourseTwinScene({
           )}
         >
           <Canvas
+            frameloop={isCompactViewport && mobileRenderingSuspended ? "never" : "always"}
             shadows={renderQuality === "high" ? "percentage" : "basic"}
             dpr={renderQuality === "high" ? [1, 1.75] : [0.75, 1.25]}
             style={{
@@ -3247,6 +3285,12 @@ export function CourseTwinScene({
               </div>
             }
           >
+            <CourseTwinMobileRenderLifecycle
+              enabled={isCompactViewport}
+              onSuspend={suspendMobilePlayback}
+              onContextChange={setMobileContextLost}
+              setSuspended={setMobileRenderingSuspended}
+            />
             <CourseTwinAdaptiveQuality renderQuality={renderQuality} />
             <color attach="background" args={[cameraView === "aerial" ? "#666b49" : "#75aecd"]} />
             <fog
@@ -3365,6 +3409,33 @@ export function CourseTwinScene({
               </>
             ) : null}
           </Canvas>
+          {isCompactViewport && mobileContextLost ? (
+            <aside className={mobileStyles.contextRecovery} role="status">
+              <h2>3D paused</h2>
+              <p>The graphics connection was interrupted. Your place is held while it recovers.</p>
+              <button
+                type="button"
+                disabled={
+                  roundSync.status === "saving" || Boolean(virtualShot) || Boolean(liveShot)
+                }
+                onClick={() =>
+                  window.location.assign(
+                    courseTwin2dUrl(
+                      window.location.href,
+                      selectedHole.holeNumber,
+                      mode,
+                      selectedShot?.id,
+                    ),
+                  )
+                }
+              >
+                Open 2D course view
+              </button>
+              {roundSync.status === "saving" || virtualShot || liveShot ? (
+                <p>Keep this view open to retain the current shot and any pending save.</p>
+              ) : null}
+            </aside>
+          ) : null}
           <MobileCourseTwinChrome
             courseName={manifest.course.name}
             mode={mode}

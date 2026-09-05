@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { LazyPlaySetupDrawer } from "@/app/play/lazy-play-setup-drawer";
+import { MobileCoursePreview } from "@/app/play/mobile-course-preview";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
@@ -31,6 +32,8 @@ import { getDb } from "@/db/client";
 import { courses, holes, sessions, teeSets, weatherSnapshots } from "@/db/schema";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { listAvailableCourseTwins } from "@/lib/course-twin-data";
+import { getOptionalMobileCoursePreview } from "@/lib/mobile-course-preview";
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   activeRoundStrategy,
@@ -54,12 +57,13 @@ export default async function PlayCompanionPage({
   searchParams: Promise<{ courseId?: string }>;
 }) {
   const userId = await requireCurrentUserId();
-  const [params, cookieStore, twins, availableCourses, activeRound] = await Promise.all([
+  const [params, cookieStore, twins, availableCourses, activeRound, surface] = await Promise.all([
     searchParams,
     cookies(),
     listAvailableCourseTwins(userId),
     getPlayCourses(userId),
     getInProgressRound(userId),
+    getRequestAppSurface(),
   ]);
   const requestedCourseId = params.courseId ?? cookieStore.get(SELECTED_COURSE_COOKIE)?.value;
   const fallbackRecentRound = await getMostRecentRound(
@@ -95,13 +99,16 @@ export default async function PlayCompanionPage({
     teeCount: tees.length,
     courseTwinAvailable: Boolean(twin),
   });
-  const [strategyData, cachedWeather, recentCourseRounds] = selected
+  const [strategyData, cachedWeather, recentCourseRounds, preview] = selected
     ? await Promise.all([
         getCourseStrategyData(selected.id, selectedTee?.id, "latest-reliable"),
         getCachedCourseWeather(userId, selected.id),
         getRecentCourseRounds(userId, selected.id),
+        surface === "companion" && twin && !activeRound
+          ? getOptionalMobileCoursePreview(userId, selected.id)
+          : null,
       ])
-    : [null, null, []];
+    : [null, null, [], null];
   const trustedBagReady = Boolean(strategyData?.trustedBag.some((club) => club.sampleSize >= 5));
   const weatherLabel = formatWeather(cachedWeather?.conditionsJson);
   const lastPlayed = recentCourseRounds[0]?.date ?? null;
@@ -169,6 +176,7 @@ export default async function PlayCompanionPage({
               teeIsDefault={teeIsDefault}
               strategyReady={strategyReady}
               twinGrade={twin?.grade ?? null}
+              preview={preview}
               lastPlayed={lastPlayed}
               weatherLabel={weatherLabel}
               strategyHref={strategyHref}
@@ -260,6 +268,7 @@ function SelectedCourseMobile({
   teeIsDefault,
   strategyReady,
   twinGrade,
+  preview,
   lastPlayed,
   weatherLabel,
   strategyHref,
@@ -271,6 +280,7 @@ function SelectedCourseMobile({
   teeIsDefault: boolean;
   strategyReady: boolean;
   twinGrade: string | null;
+  preview: { url: string; attribution: string } | null;
   lastPlayed: Date | null;
   weatherLabel: string | null;
   strategyHref: string;
@@ -279,8 +289,16 @@ function SelectedCourseMobile({
 }) {
   return (
     <Card className="overflow-hidden pt-0" data-selected-course>
+      {preview ? (
+        <MobileCoursePreview
+          key={preview.url}
+          courseName={course.name}
+          imageUrl={preview.url}
+          attribution={preview.attribution}
+          href={twinHref}
+        />
+      ) : null}
       <div className={styles.courseHeading}>
-        <Flag className="size-7" aria-hidden />
         <p>Selected course</p>
         <h2>{course.name}</h2>
         <span>
@@ -326,20 +344,20 @@ function SelectedCourseMobile({
             Prepare Course
           </Link>
         </Button>
-        <div className="grid grid-cols-3 gap-2">
-          <Button asChild variant="outline" className="min-h-12 rounded-xl px-2 text-xs">
+        <div className={styles.courseActions}>
+          <Button asChild variant="ghost">
             <Link href={twinHref} aria-label="Open Course Twin">
               <Cuboid aria-hidden />
               Course Twin
             </Link>
           </Button>
-          <Button asChild variant="outline" className="min-h-12 rounded-xl px-2 text-xs">
+          <Button asChild variant="ghost">
             <Link href={startRoundHref}>
               <Flag aria-hidden />
               Start Round
             </Link>
           </Button>
-          <Button asChild variant="outline" className="min-h-12 rounded-xl px-2 text-xs">
+          <Button asChild variant="ghost">
             <Link href="/quick-bag">
               <ShieldCheck aria-hidden />
               Quick Bag

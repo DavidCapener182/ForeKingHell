@@ -45,6 +45,46 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  .contextRecovery {
+    position: absolute;
+    z-index: 95;
+    inset: 50% 1rem auto;
+    transform: translateY(-50%);
+    display: grid;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 1rem;
+    background: #07150e;
+    color: #fff;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 18%);
+    font-size: 1rem;
+    line-height: 1.45;
+    touch-action: pan-y;
+  }
+  .contextRecovery h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  .contextRecovery p {
+    color: rgb(255 255 255 / 75%);
+  }
+  .contextRecovery button {
+    min-height: 2.75rem;
+    padding: 0.625rem;
+    border-radius: 0.75rem;
+    background: #9be6bb;
+    color: #07150e;
+    font-weight: 600;
+    touch-action: manipulation;
+  }
+  .contextRecovery button:disabled {
+    opacity: 0.5;
+  }
+  .contextRecovery button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 3px;
+  }
+
   .displayChoice {
     display: grid;
     grid-template-columns: 1fr auto;

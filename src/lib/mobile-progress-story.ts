@@ -19,7 +19,16 @@ export function mobilePerformanceStory(clubs: ProgressClub[]) {
       (change.offlineDeltaYd === null && change.carryDeltaYd === null)
     )
       return [];
-    return [{ clubId: club.clubId, clubType: club.clubType, previous, latest, change }];
+    return [
+      {
+        clubId: club.clubId,
+        clubType: club.clubType,
+        brandModel: club.brandModel,
+        previous,
+        latest,
+        change,
+      },
+    ];
   });
   const tighter = comparisons
     .filter((c) => c.change.offlineDeltaYd !== null && c.change.offlineDeltaYd <= -0.5)
@@ -61,6 +70,40 @@ export function mobilePerformanceStory(clubs: ProgressClub[]) {
         ? "Moderate"
         : "Early signal",
   };
+}
+
+export type MobilePerformanceComparison = ReturnType<
+  typeof mobilePerformanceStory
+>["comparisons"][number];
+export type MobilePerformanceMeasure = "carry" | "side";
+
+/** Preserve the analytics' session delta; absent measurements never become zero-length bars. */
+export function mobileComparisonMeasure(
+  comparison: MobilePerformanceComparison,
+  measure: MobilePerformanceMeasure,
+) {
+  const previous =
+    measure === "carry"
+      ? comparison.previous.carryMedianYd
+      : comparison.previous.absoluteOfflineAverageYd;
+  const latest =
+    measure === "carry"
+      ? comparison.latest.carryMedianYd
+      : comparison.latest.absoluteOfflineAverageYd;
+  const delta =
+    measure === "carry" ? comparison.change.carryDeltaYd : comparison.change.offlineDeltaYd;
+  if (
+    previous == null ||
+    latest == null ||
+    delta == null ||
+    !Number.isFinite(previous) ||
+    !Number.isFinite(latest) ||
+    !Number.isFinite(delta) ||
+    previous < 0 ||
+    latest < 0
+  )
+    return null;
+  return { previous, latest, delta, maximum: Math.max(1, previous, latest) };
 }
 
 export function mobileTrainingConsistency(markers: TrainingSessionMarker[], today: string) {

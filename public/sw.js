@@ -1,4 +1,4 @@
-const CACHE_NAME = "forekinghell-pwa-v9";
+const CACHE_NAME = "forekinghell-pwa-v10";
 const PAGE_CACHE_NAME = `${CACHE_NAME}-pages`;
 const OFFLINE_SAFE_PAGE_PATHS = new Set(["/login", "/offline", "/privacy"]);
 const PRECACHE_ASSETS = [

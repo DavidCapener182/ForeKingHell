@@ -1,6 +1,13 @@
 "use client";
 import Link from "next/link";
-import { MobileLiveRound, type SavedRound } from "@/app/rounds/mobile-live-round";
+import { ChevronLeft } from "lucide-react";
+import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
+import {
+  readOfflineSavedRounds,
+  requestedOfflineRound,
+  type OfflineSavedRound,
+} from "@/lib/offline-saved-rounds";
+import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
 import { QuickRangeCompanionSession } from "@/app/practice/quick-range/quick-range-session";
 import { Suspense, useEffect, useState } from "react";
 import type { PracticePlan } from "@/lib/practice-planner";
@@ -32,8 +39,8 @@ export function OfflineCompanion() {
   const [openedAt] = useState(() => Date.now());
   const [books, setBooks] = useState<CaddieBookSnapshot[]>([]);
   const [bookId, setBookId] = useState<string | null>(null);
-  const [bagReturn, setBagReturn] = useState("saved");
-  const [round, setRound] = useState<SavedRound | null>(null);
+  const [rounds, setRounds] = useState<OfflineSavedRound[]>([]);
+  const [round, setRound] = useState<OfflineSavedRound | null>(null);
   const [quick, setQuick] = useState(false);
   const [account, setAccount] = useState<string | null>(null);
   const [bag, setBag] = useState<SavedBag | null>(null);
@@ -46,6 +53,7 @@ export function OfflineCompanion() {
       setBooks([]);
       setBookId(null);
       setRound(null);
+      setRounds([]);
       setQuick(false);
       setBag(null);
       setPractice(null);
@@ -68,12 +76,14 @@ export function OfflineCompanion() {
     window.addEventListener("storage", checkAccount);
     window.addEventListener("focus", checkAccount);
     document.addEventListener("visibilitychange", checkAccount);
-    const timer = setTimeout(() => {
+    const restoreView = () => {
       try {
         const id = localStorage.getItem("fkh:offline-account");
         if (!id) return;
         loadedAccount = id;
         setAccount(id);
+        setView("saved");
+        setMessage("");
         const savedBooks = readSavedCaddieBooks(localStorage, id);
         setBooks(savedBooks);
         const query = new URLSearchParams(window.location.search);
@@ -106,21 +116,31 @@ export function OfflineCompanion() {
           setBookId(requestedBook.course.id);
           setView("book");
         }
-        const roundKey = Array.from({ length: localStorage.length }, (_, index) =>
-          localStorage.key(index),
-        ).find((key) => key?.startsWith(`fkh:live-round:${id}:`));
-        const savedRound = roundKey ? parseSaved(localStorage.getItem(roundKey)) : null;
-        if (
-          savedRound?.context?.sessionId &&
-          typeof savedRound.version === "string" &&
-          Array.isArray(savedRound.holes) &&
-          savedRound.holes.length
-        )
-          setRound(savedRound);
+        const savedRounds = readOfflineSavedRounds(localStorage, id);
+        setRounds(savedRounds);
+        const requestedId = requestedOfflineRound(new URL(window.location.href));
+        const requestedRound = savedRounds.find((item) => item.context.sessionId === requestedId);
+        setRound(requestedRound ?? null);
+        if (requestedRound) setView("round");
+        else if (requestedId)
+          setMessage(
+            "This round has no usable saved copy on this device. Choose another saved activity or reconnect to open it.",
+          );
         const quickDraft = parseSaved(localStorage.getItem(`fkh:quick-range:${id}`));
         setQuick(Boolean(quickDraft && ["active", "paused"].includes(quickDraft.state)));
         const savedBag = readQuickBagSnapshot(localStorage.getItem(`fkh:quick-bag:${id}`), id);
-        if (savedBag) setBag(savedBag);
+        setBag(savedBag);
+        if (savedBag) {
+          if (query.get("view") === "bag" || window.location.pathname === "/quick-bag")
+            setView("bag");
+        }
+        if (
+          quickDraft &&
+          ["active", "paused"].includes(quickDraft.state) &&
+          query.get("view") === "quick"
+        )
+          setView("quick");
+        setPractice(null);
         const savedPractice = parseSaved(
           localStorage.getItem(`fkh:active-practice:${id}`),
         ) as SavedPractice | null;
@@ -129,13 +149,22 @@ export function OfflineCompanion() {
           Array.isArray(savedPractice.plan.blocks) &&
           Array.isArray(savedPractice.completedBlockIds) &&
           Number.isInteger(savedPractice.blockIndex)
-        )
+        ) {
           setPractice(savedPractice);
+          if (query.get("view") === "practice") setView("practice");
+        }
       } catch {
         setMessage("Saved activity could not be opened on this device.");
       }
-    }, 0);
+    };
+    const onHistory = () => {
+      checkAccount();
+      if (loadedAccount) restoreView();
+    };
+    window.addEventListener("popstate", onHistory);
+    const timer = setTimeout(restoreView, 0);
     return () => {
+      window.removeEventListener("popstate", onHistory);
       clearTimeout(timer);
       window.removeEventListener("storage", checkAccount);
       window.removeEventListener("focus", checkAccount);
@@ -156,24 +185,43 @@ export function OfflineCompanion() {
     }
   }
   const book = books.find((item) => item.course.id === bookId);
+  function navigate(nextView: string, params: Record<string, string> = {}) {
+    const url = new URL("/offline", window.location.origin);
+    url.searchParams.set("view", nextView === "book" ? "caddie" : nextView);
+    for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+    const state = { ...window.history.state, fkhOfflineDetail: true };
+    delete state.__NA;
+    delete state._N;
+    window.history.pushState(state, "", url);
+    setMessage("");
+    setView(nextView);
+    window.scrollTo(0, 0);
+  }
+  function openRound(selected: OfflineSavedRound) {
+    setRound(selected);
+    navigate("round", { sessionId: selected.context.sessionId });
+  }
   function openBook(selected: CaddieBookSnapshot) {
-    const url = new URL(window.location.href);
-    url.searchParams.set("view", "caddie");
-    url.searchParams.set("courseId", selected.course.id);
-    if (selected.tee) url.searchParams.set("teeSetId", selected.tee.id);
-    else url.searchParams.delete("teeSetId");
-    url.searchParams.set("hole", String(selected.selectedHole));
-    url.searchParams.set("option", selected.selectedMode);
-    window.history.replaceState(null, "", url);
     setBookId(selected.course.id);
-    setView("book");
+    navigate("book", {
+      courseId: selected.course.id,
+      ...(selected.tee ? { teeSetId: selected.tee.id } : {}),
+      hole: String(selected.selectedHole),
+      option: selected.selectedMode,
+    });
   }
   function showSaved() {
-    const url = new URL(window.location.href);
-    for (const key of ["view", "courseId", "teeSetId", "hole", "option"])
-      url.searchParams.delete(key);
-    window.history.replaceState(null, "", url);
+    if (window.history.state?.fkhOfflineDetail) {
+      window.history.back();
+      return;
+    }
+    const state = { ...window.history.state };
+    delete state.__NA;
+    delete state._N;
+    window.history.replaceState(state, "", "/offline");
+    if (account) setRounds(readOfflineSavedRounds(localStorage, account));
     setView("saved");
+    setMessage("");
   }
   function updateBookSelection(hole: number, mode: HoleStrategyMode["id"]) {
     if (!book || !account) return;
@@ -193,100 +241,132 @@ export function OfflineCompanion() {
       data-mobile-platform="apple"
       className="grid min-h-dvh content-start gap-6 bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground"
     >
-      {view !== "saved" && !(view === "practice" && !practice?.finished) ? (
-        <Button
-          variant="ghost"
-          className="min-h-11 justify-self-start"
-          onClick={() => (view === "bag" && bagReturn === "book" ? setView("book") : showSaved())}
-        >
-          Back
+      {view !== "saved" && view !== "round" && !(view === "practice" && !practice?.finished) ? (
+        <Button variant="ghost" className="min-h-11 justify-self-start" onClick={showSaved}>
+          <ChevronLeft aria-hidden className="size-5" /> Back
         </Button>
       ) : null}
       {view !== "round" && view !== "quick" && view !== "practice" && view !== "book" ? (
         <MobileLargeTitle
           title={view === "bag" ? "Quick Bag" : "Saved golf"}
-          detail="Your saved golf essentials are here."
+          detail={
+            view === "bag"
+              ? "Your saved distances, ready to use."
+              : "Keep playing with what’s saved on this iPhone."
+          }
         />
       ) : null}
       {view === "round" && round?.context && account ? (
         <MobileLiveRound
+          key={round.context.sessionId}
           accountId={account}
           {...round.context}
           holes={round.holes}
           recordVersion={round.version}
+          offlineNavigation={{
+            onBack: showSaved,
+            onQuickBag: bag?.clubs.length ? () => navigate("bag") : undefined,
+          }}
         />
       ) : view === "quick" && account ? (
-        <div className="px-4">
-          <QuickRangeCompanionSession accountId={account} focus="Distance control" />
-        </div>
+        <QuickRangeCompanionSession accountId={account} focus="Distance control" />
       ) : null}
       {view === "saved" ? (
         <>
-          {round?.context ? (
-            <Button className="min-h-14" onClick={() => setView("round")}>
-              Continue {round.context.course}
-            </Button>
-          ) : null}
-          {quick ? (
-            <Button variant="outline" className="min-h-14" onClick={() => setView("quick")}>
-              Resume Quick Range
-            </Button>
-          ) : null}
-          {practice ? (
-            <MobileSection title={practice.finished ? "Completed activity" : "Saved practice"}>
-              <h3 className="text-xl font-semibold">{practice.plan.title}</h3>
-              <p className="text-muted-foreground">
-                {practice.completedBlockIds.length} of {practice.plan.blocks.length} blocks complete
-              </p>
-              <Button className="min-h-12" onClick={() => setView("practice")}>
-                {practice.finished ? "Review activity" : "Resume Range Mode"}
-              </Button>
-            </MobileSection>
-          ) : null}
-          {bag?.clubs.length ? (
-            <Button
-              variant="outline"
-              className="min-h-14"
-              onClick={() => {
-                setBagReturn("saved");
-                setView("bag");
-              }}
-            >
-              Open Quick Bag
-            </Button>
-          ) : null}
-          {books.length ? (
-            <MobileSection title="Saved caddie books">
-              <div className="grid divide-y">
-                {books.map((item) => (
-                  <Button
-                    key={item.course.id}
-                    variant="ghost"
-                    className="h-auto min-h-14 justify-start whitespace-normal px-0 py-3 text-left"
-                    onClick={() => openBook(item)}
-                  >
-                    <span className="grid gap-1">
-                      <strong>{item.course.name}</strong>
-                      <span className="text-sm font-normal text-muted-foreground">
-                        {item.tee?.name ?? "Tee not recorded"} · {item.strategy.length} holes
-                      </span>
-                      <span className="text-xs font-normal text-muted-foreground">
-                        Saved {savedDate(item.storedAt)}
-                      </span>
-                    </span>
-                  </Button>
-                ))}
-              </div>
-            </MobileSection>
-          ) : null}
-          {!practice && !bag?.clubs.length && !books.length ? (
-            <p className="text-muted-foreground">
-              Open Quick Bag or start a practice while connected to save it for later.
+          {message ? (
+            <p role="status" className="mobile-type-callout text-muted-foreground">
+              {message}
             </p>
           ) : null}
+          {rounds.length ? (
+            <MobileSection title="Saved rounds">
+              <MobileGroupedList label="Saved rounds">
+                {rounds.map((item) => (
+                  <MobileListRow
+                    key={item.context.sessionId}
+                    label={item.context.course}
+                    detail={`${item.context.tee ?? "Tee not recorded"} · ${item.finished ? "Round finished" : `Hole ${item.holes[item.index].holeNumber}`}`}
+                    status={
+                      item.dirty.length ||
+                      item.inFlight ||
+                      (item.finished && !item.completedSynced) ? (
+                        <span className="mobile-type-footnote text-muted-foreground">
+                          Sync pending
+                        </span>
+                      ) : undefined
+                    }
+                    onClick={() => openRound(item)}
+                  />
+                ))}
+              </MobileGroupedList>
+            </MobileSection>
+          ) : null}
+          {quick || practice ? (
+            <MobileSection title="Practice">
+              <MobileGroupedList label="Saved practice">
+                {quick ? (
+                  <MobileListRow
+                    label="Quick Range"
+                    detail="Resume your saved activity"
+                    onClick={() => navigate("quick")}
+                  />
+                ) : null}
+                {practice ? (
+                  <MobileListRow
+                    label={practice.plan.title}
+                    detail={`${practice.completedBlockIds.length} of ${practice.plan.blocks.length} blocks complete`}
+                    status={
+                      practice.finished
+                        ? "Activity finished · measured results need an import"
+                        : "Resume Range Mode"
+                    }
+                    onClick={() => navigate("practice")}
+                  />
+                ) : null}
+              </MobileGroupedList>
+            </MobileSection>
+          ) : null}
+          {bag?.clubs.length || books.length ? (
+            <MobileSection title="On the course">
+              <MobileGroupedList label="Saved course essentials">
+                {bag?.clubs.length ? (
+                  <MobileListRow
+                    label="Quick Bag"
+                    detail={`${bag.clubs.length} clubs · saved distances`}
+                    onClick={() => navigate("bag")}
+                  />
+                ) : null}
+                {books.map((item) => (
+                  <MobileListRow
+                    key={item.course.id}
+                    label={item.course.name}
+                    detail={`${item.tee?.name ?? "Tee not recorded"} · ${item.strategy.length} holes`}
+                    status={
+                      <span className="mobile-type-footnote text-muted-foreground">
+                        Caddie book · saved {savedDate(item.storedAt)}
+                      </span>
+                    }
+                    onClick={() => openBook(item)}
+                  />
+                ))}
+              </MobileGroupedList>
+            </MobileSection>
+          ) : null}
+          {!rounds.length && !quick && !practice && !bag?.clubs.length && !books.length ? (
+            <MobileSection title="Nothing saved yet">
+              <p className="mobile-type-body text-muted-foreground">
+                Open Quick Bag, a course strategy or start practice while connected to keep it
+                available here.
+              </p>
+            </MobileSection>
+          ) : null}
+          <p className="mobile-type-footnote text-muted-foreground">
+            Saved copies may be older than your latest online data. Reopen the activity online to
+            sync changes.
+          </p>
           <Button asChild className="min-h-12">
             <Link href="/practice" prefetch={false}>
-              Reconnect and sync
+              Return to Practice
             </Link>
           </Button>
         </>
@@ -322,8 +402,7 @@ export function OfflineCompanion() {
               onQuickBag={
                 bag?.clubs.length
                   ? () => {
-                      setBagReturn("book");
-                      setView("bag");
+                      navigate("bag");
                     }
                   : undefined
               }
@@ -377,16 +456,16 @@ export function OfflineCompanion() {
                 blockIndex: Math.min(practice.plan.blocks.length - 1, practice.blockIndex + 1),
               })
             }
-            onPause={() => setView("saved")}
+            onPause={showSaved}
             onFinish={() => {
               updatePractice({ finished: true });
-              setView("saved");
+              showSaved();
             }}
             practicePlanId={practice.planId}
           />
         )
       ) : null}
-      {message ? (
+      {message && view !== "saved" ? (
         <p role="status" className="text-sm text-muted-foreground">
           {message}
         </p>
