@@ -98,7 +98,7 @@
     "eslint-config-next": "16.3.0",
     "lighthouse": "^13.4.1",
     "postject": "^1.0.0-alpha.6",
-    "prettier": "^3.8.3",
+    "prettier": "^3.9.6",
     "shadcn": "^4.13.0",
     "tailwindcss": "^4",
     "typescript": "^5",
