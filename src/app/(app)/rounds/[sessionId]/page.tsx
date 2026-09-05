@@ -1,4 +1,7 @@
 import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
+import { MobileRoundHandicapEffect } from "@/app/rounds/mobile-round-handicap-effect";
+import { getCourseStrategyData } from "@/lib/course-strategy-data";
+import { buildLiveRoundClubEvidence } from "@/lib/live-round-club-evidence";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
@@ -207,6 +210,20 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
     notFound();
   }
 
+  const liveStrategy =
+    surface === "companion" &&
+    ["active", "in_progress"].includes(round.session.roundStatus) &&
+    round.session.courseId &&
+    round.session.teeSetId
+      ? await getCourseStrategyData(round.session.courseId, round.session.teeSetId)
+      : null;
+  const clubEvidence =
+    liveStrategy?.selectedCourse?.id === round.session.courseId &&
+    liveStrategy?.selectedTee?.id === round.session.teeSetId &&
+    liveStrategy
+      ? buildLiveRoundClubEvidence(liveStrategy.strategies, round.shots)
+      : undefined;
+
   const isRealRound = round.session.type === "real_round";
   const hasClubData = round.shots.length > 0;
   const hasMap = round.mapHoles.length > 0;
@@ -268,6 +285,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
           tee={round.session.teeName}
           courseId={round.session.courseId}
           teeSetId={round.session.teeSetId}
+          clubEvidence={clubEvidence}
           recordVersion={round.session.updatedAt.toISOString()}
           holes={round.holes.map((hole) => ({
             holeNumber: hole.holeNumber,
@@ -1509,9 +1527,7 @@ function MiniSummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 px-2">
       <p className="truncate text-base font-semibold tabular-nums">{value}</p>
-      <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </p>
+      <p className="mobile-type-caption mt-0.5 text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -1797,6 +1813,7 @@ function MobileRoundResultCard({
         <MiniSummaryStat label="Differential" value={formatHandicapValue(handicapDifferential)} />
       </div>
       <p className="mt-2 text-sm text-muted-foreground">{evidenceSummary}</p>
+      <MobileRoundHandicapEffect sessionId={sessionId} />
       <ScoringBreakdown holes={holes} compact />
       <IOSGroupedList className="mt-4">
         <IOSListRow label="Best part" value={review.strongestArea} />

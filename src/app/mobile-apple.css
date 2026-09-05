@@ -1363,4 +1363,16 @@
   [data-mobile-speed]:has([data-speed-session-active="true"]) > :not([data-speed-session-active]) {
     display: none;
   }
+  [data-app-surface="companion"] main#main-content input[data-mobile-metric-input] {
+    min-height: 5rem;
+    font-size: 2.5rem;
+    font-weight: 600;
+    text-align: center;
+    appearance: textfield;
+  }
+  input[data-mobile-metric-input]::-webkit-inner-spin-button,
+  input[data-mobile-metric-input]::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
 }

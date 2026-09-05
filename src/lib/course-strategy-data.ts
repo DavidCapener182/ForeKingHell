@@ -8,6 +8,8 @@ import { formatClubType } from "@/lib/club-format";
 import { buildHoleStrategies } from "@/lib/course-strategy";
 import { requireCurrentUserId } from "@/lib/current-user";
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getCourseStrategyData(
   requestedCourseId?: string,
   requestedTeeSetId?: string,
@@ -19,8 +21,18 @@ export async function getCourseStrategyData(
     .from(courses)
     .orderBy(asc(courses.name))
     .limit(80);
-  const selectedCourse =
-    courseOptions.find((course) => course.id === requestedCourseId) ?? courseOptions[0] ?? null;
+  let selectedCourse = requestedCourseId
+    ? (courseOptions.find((course) => course.id === requestedCourseId) ?? null)
+    : (courseOptions[0] ?? null);
+  if (!selectedCourse && requestedCourseId && uuidPattern.test(requestedCourseId)) {
+    const [requestedCourse] = await db
+      .select({ id: courses.id, name: courses.name })
+      .from(courses)
+      .where(eq(courses.id, requestedCourseId))
+      .limit(1);
+    selectedCourse = requestedCourse ?? null;
+    if (selectedCourse) courseOptions.push(selectedCourse);
+  }
 
   if (!selectedCourse) {
     return {
@@ -59,13 +71,21 @@ export async function getCourseStrategyData(
       })
       .from(stockYardages)
       .innerJoin(clubs, and(eq(clubs.id, stockYardages.clubId), eq(clubs.userId, userId)))
-      .where(eq(stockYardages.userId, userId))
+      .where(and(eq(stockYardages.userId, userId), eq(clubs.active, true)))
       .orderBy(desc(stockYardages.calculatedAt)),
   ]);
-  const selectedTee =
-    teeRows.find((tee) => tee.id === requestedTeeSetId) ??
-    teeRows[Math.floor((teeRows.length - 1) / 2)] ??
-    null;
+  let selectedTee = requestedTeeSetId
+    ? (teeRows.find((tee) => tee.id === requestedTeeSetId) ?? null)
+    : (teeRows[Math.floor((teeRows.length - 1) / 2)] ?? null);
+  if (!selectedTee && requestedTeeSetId && uuidPattern.test(requestedTeeSetId)) {
+    const [requestedTee] = await db
+      .select()
+      .from(teeSets)
+      .where(and(eq(teeSets.id, requestedTeeSetId), eq(teeSets.courseId, selectedCourse.id)))
+      .limit(1);
+    selectedTee = requestedTee ?? null;
+    if (selectedTee) teeRows.push(selectedTee);
+  }
 
   if (!selectedTee) {
     return {
@@ -83,11 +103,11 @@ export async function getCourseStrategyData(
     .from(holes)
     .where(eq(holes.teeSetId, selectedTee.id))
     .orderBy(asc(holes.holeNumber));
-  const latestStocks = [
-    ...new Map(
-      stockRows.filter((row) => row.carry !== null).map((row) => [row.clubId, row] as const),
-    ).values(),
-  ];
+  const newestByClub = new Map<string, (typeof stockRows)[number]>();
+  for (const row of stockRows) {
+    if (row.carry !== null && !newestByClub.has(row.clubId)) newestByClub.set(row.clubId, row);
+  }
+  const latestStocks = [...newestByClub.values()];
   const hazardsByHole = new Map<number, string[]>();
 
   for (const feature of featureRows) {

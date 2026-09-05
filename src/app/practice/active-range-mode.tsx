@@ -1,10 +1,19 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Pause, Upload, CheckCircle2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Upload,
+  CheckCircle2,
+  MoreHorizontal,
+  SkipForward,
+} from "lucide-react";
 import type { PracticePlan, PracticeBlock } from "@/lib/practice-planner";
 import { cn } from "@/lib/utils";
 import styles from "@/components/app/mobile-companion.module.css";
+import { activityHaptic } from "@/components/app/use-mobile-activity";
 import { clubLabel, blockVolume } from "./practice-mobile-format";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -15,6 +24,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerDescription,
+  DrawerTrigger,
 } from "@/components/ui/drawer";
 import {
   AlertDialog,
@@ -64,6 +74,8 @@ export function ActiveRangeMode({
 }) {
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [skipMessage, setSkipMessage] = useState("");
   const previousButtonRef = useRef<HTMLButtonElement>(null);
   const completeButtonRef = useRef<HTMLButtonElement>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
@@ -87,6 +99,14 @@ export function ActiveRangeMode({
       className={styles.rangeStage}
       data-active-range-mode
       onTouchStart={(event) => {
+        if (
+          (event.target as HTMLElement).closest(
+            "button, a, input, textarea, summary, [role='dialog']",
+          )
+        ) {
+          swipeStart.current = null;
+          return;
+        }
         const t = event.touches[0];
         swipeStart.current = { x: t.clientX, y: t.clientY };
       }}
@@ -155,7 +175,11 @@ export function ActiveRangeMode({
               type="button"
               className="min-h-11 rounded-[var(--mobile-radius-md)] px-3"
               disabled={!block}
-              onClick={onComplete}
+              onClick={() => {
+                activityHaptic();
+                onComplete();
+                if (blockIndex === plan.blocks.length - 1) setFinishOpen(true);
+              }}
             >
               <CheckCircle2 className="size-4" />
               Complete Block
@@ -200,21 +224,69 @@ export function ActiveRangeMode({
           />
         </label>
       </details>
-      <div className="flex items-center justify-between gap-3">
-        <Button type="button" variant="ghost" className="min-h-11" onClick={onPause}>
-          <Pause className="size-4" />
-          Pause
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="min-h-11"
-          onClick={() => setFinishOpen(true)}
-          disabled={pending}
-        >
-          Finish Practice
-        </Button>
-      </div>
+      <p role="status" className="sr-only">
+        {skipMessage}
+      </p>
+      <Drawer open={optionsOpen} onOpenChange={setOptionsOpen} repositionInputs={false}>
+        <DrawerTrigger asChild>
+          <Button type="button" variant="ghost" className="min-h-11 w-full">
+            <MoreHorizontal className="size-5" aria-hidden /> Session options
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Practice options</DrawerTitle>
+            <DrawerDescription>
+              Block {blockIndex + 1} of {plan.blocks.length}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="grid divide-y px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-14 justify-start"
+              onClick={() => {
+                setOptionsOpen(false);
+                onPause();
+              }}
+            >
+              <Pause className="size-5" aria-hidden /> Pause session
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-16 justify-start"
+              disabled={!block || completedBlockIds.includes(block.id)}
+              onClick={() => {
+                setOptionsOpen(false);
+                setSkipMessage(`${block?.title ?? "Block"} skipped. It remains incomplete.`);
+                if (blockIndex === plan.blocks.length - 1) setFinishOpen(true);
+                else onNext();
+              }}
+            >
+              <SkipForward className="size-5" aria-hidden />
+              <span className="grid text-left">
+                <span>Skip block</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  Leave incomplete. You can return to it.
+                </span>
+              </span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-14 justify-start"
+              disabled={pending}
+              onClick={() => {
+                setOptionsOpen(false);
+                setFinishOpen(true);
+              }}
+            >
+              <CheckCircle2 className="size-5" aria-hidden /> Finish practice
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
       <Drawer open={finishOpen} onOpenChange={setFinishOpen} repositionInputs={false}>
         <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <DrawerHeader className="text-left">

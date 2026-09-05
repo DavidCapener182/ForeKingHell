@@ -36,6 +36,33 @@ describe("mobile round completion entry", () => {
     expect(html).toContain("courseId=course&amp;hole=18");
     expect(html).not.toContain("teeSetId=");
   });
+  it("shows current strategy and only linked actual clubs", () => {
+    const html = renderToStaticMarkup(
+      <MobileLiveRound
+        {...props}
+        clubEvidence={{
+          18: { plan: ["5W", "7i"], actual: ["Driver", "PW"], actualOrderKnown: true },
+        }}
+      />,
+    );
+    expect(html).toContain("5W → 7i");
+    expect(html).toContain("Driver → PW");
+    expect(html).toContain("Current trusted-bag strategy");
+    const missing = renderToStaticMarkup(
+      <MobileLiveRound {...props} clubEvidence={{ 18: { plan: ["7i"], actual: [] } }} />,
+    );
+    expect(missing).toContain("No linked shots yet");
+  });
+  it("does not imply a shot sequence when ordering evidence is unavailable", () => {
+    const html = renderToStaticMarkup(
+      <MobileLiveRound
+        {...props}
+        clubEvidence={{ 18: { plan: ["5W"], actual: ["Driver", "PW"], actualOrderKnown: false } }}
+      />,
+    );
+    expect(html).toContain("Driver · PW");
+    expect(html).toContain("shot order unavailable");
+  });
   it("keeps active complete scorecards in scoring until the completion action succeeds", () => {
     const source = readFileSync("src/app/(app)/rounds/[sessionId]/page.tsx", "utf8");
     expect(source).toMatch(

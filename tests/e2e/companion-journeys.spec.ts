@@ -59,12 +59,18 @@ test.describe("phone companion journeys", () => {
 
     await page.getByRole("button", { name: "Complete Block" }).click();
     await expect(page.getByText(/Range Mode · Block 2 of 3/i)).toBeVisible();
-    await page.getByRole("button", { name: "Next practice block" }).click();
+    await page.getByRole("button", { name: "Session options", exact: true }).click();
+    await page.getByRole("button", { name: /Skip block/ }).click();
     await expect(page.getByText(/Range Mode · Block 3 of 3/i)).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveAttribute(
+      "aria-label",
+      "1 of 3 practice blocks complete",
+    );
     await page.getByRole("button", { name: "Previous practice block" }).click();
     await expect(page.getByText(/Range Mode · Block 2 of 3/i)).toBeVisible();
 
-    await page.getByRole("button", { name: "Finish Practice" }).click();
+    await page.getByRole("button", { name: "Session options" }).click();
+    await page.getByRole("button", { name: "Finish practice", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Add measured evidence?" })).toBeVisible();
     await page.getByRole("link", { name: "Choose CSV" }).click();
     await expect(page).toHaveURL(/\/import\?source=csv&practicePlanId=/);

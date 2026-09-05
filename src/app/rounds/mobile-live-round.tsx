@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MobileMetric, MobileLargeTitle } from "@/components/app/mobile-screen";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { initialRoundHoleIndex } from "@/lib/play-companion-state";
+import type { LiveRoundClubEvidence } from "@/lib/live-round-club-evidence";
 
 export type MobileRoundHole = {
   holeNumber: number;
@@ -30,6 +31,7 @@ export type SavedRound = {
     tee: string | null;
     courseId: string | null;
     teeSetId?: string | null;
+    clubEvidence?: LiveRoundClubEvidence;
   };
   version: string;
   holes: Hole[];
@@ -46,6 +48,7 @@ export function MobileLiveRound({
   tee,
   courseId,
   teeSetId = null,
+  clubEvidence,
   holes: initialHoles,
   recordVersion,
 }: {
@@ -55,13 +58,14 @@ export function MobileLiveRound({
   tee: string | null;
   courseId: string | null;
   teeSetId?: string | null;
+  clubEvidence?: LiveRoundClubEvidence;
   holes: Hole[];
   recordVersion: string;
 }) {
   const router = useRouter();
   const storageKey = `fkh:live-round:${accountId}:${sessionId}`;
   const [state, setState] = useState<SavedRound>({
-    context: { sessionId, course, tee, courseId, teeSetId },
+    context: { sessionId, course, tee, courseId, teeSetId, clubEvidence },
     version: recordVersion,
     holes: initialHoles,
     index: initialRoundHoleIndex(initialHoles),
@@ -242,6 +246,14 @@ export function MobileLiveRound({
   }, [state.holes, state.finished, ready, sync]);
   const hole = state.holes[state.index];
   if (!hole) return null;
+  const candidateEvidence = clubEvidence?.[hole.holeNumber];
+  const evidence =
+    candidateEvidence &&
+    [candidateEvidence.plan, candidateEvidence.actual].every(
+      (values) => Array.isArray(values) && values.every((value) => typeof value === "string"),
+    )
+      ? candidateEvidence
+      : null;
   function edit(patch: Partial<Hole>) {
     const saved = stateRef.current;
     publish({
@@ -415,6 +427,24 @@ export function MobileLiveRound({
             >
               Hole strategy
             </Link>
+          ) : null}
+          {evidence ? (
+            <div className="border-t pt-3" aria-label="Hole plan and actual clubs">
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+                <dt className="text-muted-foreground">Plan</dt>
+                <dd className="font-semibold">{evidence.plan.join(" → ")}</dd>
+                <dt className="text-muted-foreground">Actual</dt>
+                <dd>
+                  {evidence.actual.length
+                    ? evidence.actual.join(evidence.actualOrderKnown === false ? " · " : " → ")
+                    : "No linked shots yet"}
+                </dd>
+              </dl>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Current trusted-bag strategy · actual clubs from linked shots
+                {evidence.actualOrderKnown === false ? " · shot order unavailable" : ""}
+              </p>
+            </div>
           ) : null}
           <p className="text-center text-sm tabular-nums">
             {total} strokes · {toPar > 0 ? "+" : ""}
