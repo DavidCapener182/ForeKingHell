@@ -175,6 +175,7 @@ export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
 
 export function mobilePageTitle(pathname: string) {
   if (pathname === "/shots/review") return "Review shots";
+  if (pathname === "/import/result") return "Import result";
   return (
     mobilePrimaryItems.find((item) => item.href === pathname)?.label ??
     findRouteMetadata(pathname)?.pageTitle ??

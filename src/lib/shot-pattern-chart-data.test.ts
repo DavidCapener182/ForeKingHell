@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 
 import {
   buildShotPatternPoints,
@@ -26,6 +27,44 @@ function point(index: number, clubType = "7i", sideCarryYd = 0): ShotPatternPoin
 }
 
 describe("mobile shot pattern data", () => {
+  it("uses reviewed eligibility without deleting excluded points or rejecting restores", () => {
+    const rows = [
+      { id: "included", reviewStatus: "included", carryYd: 140, sideCarryYd: 0 },
+      { id: "excluded", reviewStatus: "user_excluded", carryYd: 20, sideCarryYd: 80 },
+      { id: "suggested", reviewStatus: "suggested_exclusion", carryYd: 300, sideCarryYd: -90 },
+      { id: "warm-up", reviewStatus: "warm_up", carryYd: 50, sideCarryYd: 40 },
+      { id: "calibration", reviewStatus: "calibration", carryYd: 400, sideCarryYd: 100 },
+      { id: "sensor", reviewStatus: "launch_monitor_error", carryYd: 900, sideCarryYd: 200 },
+      { id: "restored", reviewStatus: "restored", carryYd: 150, sideCarryYd: 4 },
+    ].map((row) => ({
+      ...row,
+      reviewStatus: row.reviewStatus as ShotReviewStatus,
+      clubType: "7i",
+      apexFt: 80,
+      qualityTag: row.id === "restored" ? "misread" : null,
+      dataIntegrityIssue: row.id === "restored" ? "Previously flagged" : null,
+    }));
+    const points = buildShotPatternPoints(rows, {
+      trustedShotIds: new Set(rows.filter(isShotEvidenceEligible).map((row) => row.id)),
+    });
+    const trusted = points.filter((row) => row.trusted);
+    expect(trusted.map((row) => row.id)).toEqual(["included", "restored"]);
+    expect(summarizeShotPattern(trusted).medianCarryYd).toBe(145);
+    expect(shotPatternConfidence(trusted).sampleSize).toBe(2);
+    expect(points.map(({ id, carryYd, sideCarryYd }) => ({ id, carryYd, sideCarryYd }))).toEqual(
+      rows.map(({ id, carryYd, sideCarryYd }) => ({ id, carryYd, sideCarryYd })),
+    );
+  });
+
+  it("respects an empty authoritative selection even when raw quality flags are absent", () => {
+    const rows = [point(1)];
+    const points = buildShotPatternPoints(rows, { trustedShotIds: new Set() });
+    expect(points).toHaveLength(1);
+    expect(points[0].trusted).toBe(false);
+    expect(shotPatternConfidence(points.filter((row) => row.trusted)).sampleSize).toBe(0);
+    expect(buildShotPatternPoints(rows)[0].trusted).toBe(true);
+  });
+
   it("excludes questionable quality rows from a trusted pattern summary", () => {
     const trusted = buildShotPatternPoints([
       {

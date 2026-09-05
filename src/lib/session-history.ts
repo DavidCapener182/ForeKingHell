@@ -89,8 +89,10 @@ export async function getRecentSessionHistory(
     : [];
   const pointsBySession = new Map<string, ShotPatternPoint[]>();
 
-  for (const shot of shotRows.filter(isShotEvidenceEligible)) {
-    const point = buildShotPatternPoints([shot])[0];
+  const eligibleShots = shotRows.filter(isShotEvidenceEligible);
+  const trustedShotIds = new Set(eligibleShots.map((shot) => shot.id));
+  for (const shot of eligibleShots) {
+    const point = buildShotPatternPoints([shot], { trustedShotIds })[0];
     if (!point) continue;
     pointsBySession.set(shot.sessionId, [...(pointsBySession.get(shot.sessionId) ?? []), point]);
   }

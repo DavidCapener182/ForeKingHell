@@ -8,8 +8,7 @@ describe("today session data cleaning source", () => {
   it("can resolve a selected upload to its complete practice day", () => {
     expect(source).toContain('scope?: "session" | "day"');
     expect(source).toContain('const scopeToSession = filters.scope !== "day"');
-    expect(source).toContain("scopeToSession && defaultSessionId");
-    expect(source).toContain("scopeToSession && filters.sessionId");
+    expect(source).toContain('scopeToSession ? (filters.sessionId ?? "") : ""');
   });
 
   it("uses lifecycle status for clean scoring while retaining raw shot history", () => {

@@ -9,66 +9,54 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { formatClubType } from "@/lib/rapsodo/parser";
+
+export type { RoundMapHole, RoundMapShot } from "@/lib/round-map-projection";
 import {
-  YARDS_TO_METERS,
-  destinationPoint,
-  forwardDistanceYd,
-  pointAlongGeometry,
-} from "@/lib/geo/yard-projection";
-
-export type RoundMapHole = {
-  holeNumber: number;
-  par: number;
-  yards: number;
-  score: number | null;
-  putts: number | null;
-  geometry: Array<[number, number]>;
-};
-
-export type RoundMapShot = {
-  id: string;
-  holeNumber: number | null;
-  holeShotNumber: number | null;
-  shotNumber: number | null;
-  clubType: string;
-  carryYd: number | null;
-  totalYd: number | null;
-  sideCarryYd: number | null;
-  distanceRemainingYd: number | null;
-  courseHoleYards: number | null;
-};
-
-type ProjectedShot = {
-  shot: RoundMapShot;
-  start: [number, number];
-  end: [number, number];
-};
+  groupShotsByHole,
+  projectHoleShots,
+  shotDistanceForMode,
+  type RoundMapHole,
+  type RoundMapShot,
+  type ProjectedShot,
+  type DistanceMode,
+} from "@/lib/round-map-projection";
 
 type RoundShotMapProps = {
   holes: RoundMapHole[];
   shots: RoundMapShot[];
   courseName: string;
   shotMode?: "actual" | "estimated";
+  compact?: boolean;
+  initialHoleNumber?: number;
+  initialDistanceMode?: DistanceMode;
 };
-
-type DistanceMode = "total" | "carry";
 
 const numberFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 1,
 });
 
-export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: RoundShotMapProps) {
+export function RoundShotMap({
+  holes,
+  shots,
+  courseName,
+  shotMode = "actual",
+  compact = false,
+  initialHoleNumber,
+  initialDistanceMode = "total",
+}: RoundShotMapProps) {
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
   const [leaflet, setLeaflet] = useState<typeof Leaflet | null>(null);
   const [tileReady, setTileReady] = useState(false);
   const [mapMode, setMapMode] = useState<"course" | "satellite">("satellite");
-  const [distanceMode, setDistanceMode] = useState<DistanceMode>("total");
+  const [distanceMode, setDistanceMode] = useState<DistanceMode>(initialDistanceMode);
   const [showShotNumbers, setShowShotNumbers] = useState(true);
   const [showAllHoleShots, setShowAllHoleShots] = useState(false);
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
-  const [selectedHoleNumber, setSelectedHoleNumber] = useState(() => holes[0]?.holeNumber ?? 1);
+  const [selectedHoleNumber, setSelectedHoleNumber] = useState(
+    () => initialHoleNumber ?? holes[0]?.holeNumber ?? 1,
+  );
   const selectedHole =
     holes.find((hole) => hole.holeNumber === selectedHoleNumber) ?? holes[0] ?? null;
   const selectedHoleIndex = holes.findIndex((hole) => hole.holeNumber === selectedHole?.holeNumber);
@@ -326,6 +314,25 @@ export function RoundShotMap({ holes, shots, courseName, shotMode = "actual" }: 
 
   if (holes.length === 0) {
     return null;
+  }
+
+  if (compact) {
+    return (
+      <div
+        className="relative h-full min-h-0"
+        aria-label={`Satellite map for hole ${selectedHoleNumber}`}
+      >
+        <div ref={setMapContainerRef} className="absolute inset-0" />
+        {!tileReady ? (
+          <p
+            role="status"
+            className="absolute inset-x-3 top-3 z-[500] rounded-lg bg-card p-3 text-sm text-foreground"
+          >
+            Satellite imagery is loading. Use Course view if the connection is weak.
+          </p>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -919,68 +926,6 @@ function yardageRings(points: Array<{ x: number; y: number }>) {
     x: first.x + (last.x - first.x) * ratio,
     y: first.y + (last.y - first.y) * ratio,
   }));
-}
-
-function groupShotsByHole(shots: RoundMapShot[]) {
-  const shotsByHole = new Map<number, RoundMapShot[]>();
-
-  for (const shot of shots) {
-    if (shot.holeNumber === null) {
-      continue;
-    }
-
-    const holeShots = shotsByHole.get(shot.holeNumber) ?? [];
-    holeShots.push(shot);
-    shotsByHole.set(shot.holeNumber, holeShots);
-  }
-
-  for (const holeShots of shotsByHole.values()) {
-    holeShots.sort(
-      (left, right) =>
-        (left.holeShotNumber ?? left.shotNumber ?? 0) -
-        (right.holeShotNumber ?? right.shotNumber ?? 0),
-    );
-  }
-
-  return shotsByHole;
-}
-
-function projectHoleShots(
-  hole: RoundMapHole,
-  shots: RoundMapShot[],
-  distanceMode: DistanceMode = "total",
-) {
-  const projectedShots: ProjectedShot[] = [];
-  let previousEnd = hole.geometry[0];
-  let fallbackProgressYd = 0;
-
-  for (const shot of shots) {
-    const holeYards = shot.courseHoleYards ?? hole.yards;
-    const distanceYd = shotDistanceForMode(shot, distanceMode);
-    const shotForwardYd = forwardDistanceYd(distanceYd, shot.sideCarryYd);
-    fallbackProgressYd += shotForwardYd ?? 0;
-    const progressYd =
-      distanceMode === "carry" || shot.distanceRemainingYd === null
-        ? fallbackProgressYd
-        : Math.max(0, holeYards - shot.distanceRemainingYd);
-    const projected = pointAlongGeometry(hole.geometry, Math.min(1, progressYd / holeYards));
-    const sideYd = shot.sideCarryYd ?? 0;
-    const sideBearing = projected.bearingDeg + (sideYd >= 0 ? 90 : -90);
-    const end = destinationPoint(projected.point, sideBearing, Math.abs(sideYd) * YARDS_TO_METERS);
-
-    projectedShots.push({
-      shot,
-      start: previousEnd,
-      end,
-    });
-    previousEnd = end;
-  }
-
-  return projectedShots;
-}
-
-function shotDistanceForMode(shot: RoundMapShot, distanceMode: DistanceMode) {
-  return distanceMode === "carry" ? (shot.carryYd ?? shot.totalYd) : (shot.totalYd ?? shot.carryYd);
 }
 
 function shotPopup(shot: RoundMapShot, distanceMode: DistanceMode = "total") {

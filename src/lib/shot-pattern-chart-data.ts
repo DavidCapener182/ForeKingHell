@@ -53,7 +53,10 @@ const excludedQualityTags = new Set([
   "deleted",
 ]);
 
-export function buildShotPatternPoints(shots: ShotPatternInput[]): ShotPatternPoint[] {
+export function buildShotPatternPoints(
+  shots: ShotPatternInput[],
+  options: { trustedShotIds?: ReadonlySet<string> } = {},
+): ShotPatternPoint[] {
   return shots.map((shot) => ({
     id: shot.id,
     clubType: shot.clubType,
@@ -72,9 +75,12 @@ export function buildShotPatternPoints(shots: ShotPatternInput[]): ShotPatternPo
         : typeof shot.shotAt === "string"
           ? shot.shotAt
           : null,
-    trusted:
-      !shot.dataIntegrityIssue &&
-      !excludedQualityTags.has((shot.qualityTag ?? "").trim().toLowerCase()),
+    // A service's reviewed selection takes precedence, including explicit restores.
+    // Keep every raw point available to the chart's All shots view.
+    trusted: options.trustedShotIds
+      ? options.trustedShotIds.has(shot.id)
+      : !shot.dataIntegrityIssue &&
+        !excludedQualityTags.has((shot.qualityTag ?? "").trim().toLowerCase()),
   }));
 }
 

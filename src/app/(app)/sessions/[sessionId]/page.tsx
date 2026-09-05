@@ -1,6 +1,9 @@
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getSessionReviewMetadata } from "@/lib/session-review-metadata";
+import { companionReviewRoute } from "@/lib/session-review-route";
+import { MobileUnmeasuredSession } from "@/app/sessions/mobile-unmeasured-session";
 import {
   ArrowRight,
   CalendarDays,
@@ -59,11 +62,23 @@ export default async function PracticeSessionReviewPage({
   const { sessionId } = await params;
   const surface = await getRequestAppSurface();
   const userId = await requireCurrentUserId();
+  const metadata =
+    surface === "companion" ? await getSessionReviewMetadata(userId, sessionId) : null;
+  if (surface === "companion" && !metadata) notFound();
+  if (metadata && companionReviewRoute(metadata).startsWith("/rounds/")) {
+    redirect(companionReviewRoute(metadata));
+  }
+  if (metadata?.shotCount === 0) {
+    const plan = await getPracticePlanForSourceSessions(userId, [sessionId]);
+    return <MobileUnmeasuredSession session={metadata} plan={plan} />;
+  }
   const data = await getTodayPracticeData({ sessionId });
 
-  if (!data.sessions.some((session) => session.id === sessionId)) notFound();
-
   const plan = await getPracticePlanForSourceSessions(userId, [sessionId]);
+  if (metadata && !data.rawShots.some((shot) => shot.sessionId === sessionId)) {
+    return <MobileUnmeasuredSession session={metadata} plan={plan} />;
+  }
+  if (!data.sessions.some((session) => session.id === sessionId)) notFound();
   const comparisons = [...data.clubComparisons].sort((left, right) => left.score - right.score);
   const remaining = comparisons[0] ?? null;
   const bestClub = comparisons.at(-1) ?? null;
@@ -75,10 +90,7 @@ export default async function PracticeSessionReviewPage({
   const rawShots = data.rawShots.filter((shot) => shot.sessionId === sessionId);
   const patternPoints = buildShotPatternPoints(rawShots);
   const trustedShotIds = new Set(shots.map((shot) => shot.id));
-  const mobilePatternPoints = patternPoints.map((point) => ({
-    ...point,
-    trusted: trustedShotIds.has(point.id),
-  }));
+  const mobilePatternPoints = buildShotPatternPoints(rawShots, { trustedShotIds });
   const mobileConfidence = shotPatternConfidence(
     mobilePatternPoints.filter((point) => point.trusted),
   );

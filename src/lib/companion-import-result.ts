@@ -4,7 +4,7 @@ import { and, count, desc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { importFiles, importRows, sessions, shots } from "@/db/schema";
-import { formatClubType } from "@/lib/club-format";
+import { formatClubType, formatCompanionClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   formatImportTriagePath,
@@ -16,6 +16,7 @@ import { getPracticePlanReviewForSourceSession } from "@/lib/practice-planner";
 import { buildShotPatternPoints, shotPatternConfidence } from "@/lib/shot-pattern-chart-data";
 import { companionReviewRoute } from "@/lib/session-review-route";
 import { getTodayPracticeData } from "@/lib/today-session-data";
+import { mobileSessionVerdict } from "@/lib/mobile-session-review";
 
 export async function getCompanionImportResult(sessionId: string) {
   const userId = await requireCurrentUserId();
@@ -72,8 +73,13 @@ export async function getCompanionImportResult(sessionId: string) {
   );
   const sessionShots = data.rawShots.filter((shot) => shot.sessionId === sessionId);
   const triage = summarizePersistedImportShots(persistedShotRows);
-  const patternPoints = buildShotPatternPoints(sessionShots);
-  const comparisons = data.clubComparisons;
+  const patternPoints = buildShotPatternPoints(sessionShots, {
+    trustedShotIds: new Set(data.shots.map((shot) => shot.id)),
+  });
+  const comparisons = data.clubComparisons.map((comparison) => ({
+    ...comparison,
+    clubLabel: formatCompanionClubType(comparison.clubType),
+  }));
   const improved =
     comparisons
       .filter((comparison) => comparison.verdict === "better")
@@ -113,6 +119,7 @@ export async function getCompanionImportResult(sessionId: string) {
     sourceStatus: importFileRows[0]?.status ?? "saved",
     parseVersion: importFileRows[0]?.parseVersion ?? `${session.source}-v1`,
     verdict: data.overall,
+    sessionVerdict: mobileSessionVerdict(comparisons),
     confidence,
     practiceReview,
     improved,

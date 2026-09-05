@@ -28,11 +28,27 @@ export function LazyRoundShotMap({
   shots,
   courseName,
   shotMode = "actual",
+  compact,
+  initialHoleNumber,
+  initialDistanceMode,
 }: {
   holes: RoundMapHole[];
   shots: RoundMapShot[];
   courseName: string;
   shotMode?: "actual" | "estimated";
+  compact?: boolean;
+  initialHoleNumber?: number;
+  initialDistanceMode?: "carry" | "total";
 }) {
-  return <RoundShotMap holes={holes} shots={shots} courseName={courseName} shotMode={shotMode} />;
+  return (
+    <RoundShotMap
+      holes={holes}
+      shots={shots}
+      courseName={courseName}
+      shotMode={shotMode}
+      compact={compact}
+      initialHoleNumber={initialHoleNumber}
+      initialDistanceMode={initialDistanceMode}
+    />
+  );
 }
