@@ -22,6 +22,21 @@ test.describe("authentication", () => {
     await expect(page.getByRole("link", { name: /read the data notice/i })).toBeVisible();
   });
 
+  test("keeps a dropped sign-in request in the form and permits retry", async ({ page }) => {
+    await page.goto("/login");
+    await page.route("**/login", (route) =>
+      route.request().method() === "POST" ? route.abort("failed") : route.continue(),
+    );
+    await page.getByRole("button", { name: /sign in with password/i }).click();
+    await expect(page.locator("#password-login-message")).toContainText("connection dropped");
+    await expect(page.locator("[data-route-error-state]")).toHaveCount(0);
+    await page.unroute("**/login");
+    await page.getByRole("button", { name: /sign in with password/i }).click();
+    await expect(page.locator("#password-login-message")).toContainText(
+      /Enter your email and password|Supabase Auth is not configured/i,
+    );
+  });
+
   test("shows a visible password sign-in failure message", async ({ page }) => {
     await page.goto("/login");
 
@@ -100,6 +115,25 @@ test.describe("authentication", () => {
     const cookies = await context.cookies();
     expect(cookies.some((cookie) => cookie.name.startsWith(`sb-${projectRef}-auth-token`))).toBe(
       false,
+    );
+  });
+});
+
+test.describe("native sign-in fallback", () => {
+  test.use({ javaScriptEnabled: false, storageState: { cookies: [], origins: [] } });
+
+  test("retains native POST forms and submits without JavaScript", async ({ page }) => {
+    await page.goto("/login");
+    const forms = page.locator("form");
+    await expect(forms).toHaveCount(3);
+    for (const form of await forms.all()) {
+      await expect(form).toHaveAttribute("method", "POST");
+      await expect(form).not.toHaveAttribute("action", /javascript:/);
+      expect(await form.locator('input[name^="$ACTION_"]').count()).toBeGreaterThan(0);
+    }
+    await page.getByRole("button", { name: /sign in with password/i }).click();
+    await expect(page.locator("#password-login-message")).toContainText(
+      /Enter your email and password|Supabase Auth is not configured/i,
     );
   });
 });

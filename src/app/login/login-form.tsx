@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useSyncExternalStore } from "react";
 import { KeyRound, Mail } from "lucide-react";
 
 import {
@@ -12,6 +12,19 @@ import {
 } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { recoverLoginConnection } from "./recover-connection";
+
+const passwordActionWithRecovery = recoverLoginConnection(
+  signInWithPasswordAction,
+  "The connection dropped before sign-in could be confirmed. Check your signal, then try again.",
+);
+const magicActionWithRecovery = recoverLoginConnection(
+  sendMagicLinkAction,
+  "The connection dropped before we could confirm your request. Check your inbox before trying again.",
+);
+const subscribeHydration = () => () => {};
+const hydratedSnapshot = () => true;
+const serverSnapshot = () => false;
 
 const initialState: LoginActionState = {
   message: null,
@@ -19,13 +32,18 @@ const initialState: LoginActionState = {
 };
 
 export function LoginForm({ error, next }: { error?: string | null; next?: string | null }) {
+  // Keep native Server Function metadata in the HTML until hydration finishes.
+  const hydrated = useSyncExternalStore(subscribeHydration, hydratedSnapshot, serverSnapshot);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const magicEmailInputRef = useRef<HTMLInputElement>(null);
   const [passwordState, passwordAction, passwordPending] = useActionState(
-    signInWithPasswordAction,
+    hydrated ? passwordActionWithRecovery : signInWithPasswordAction,
     initialState,
   );
-  const [magicState, magicAction, magicPending] = useActionState(sendMagicLinkAction, initialState);
+  const [magicState, magicAction, magicPending] = useActionState(
+    hydrated ? magicActionWithRecovery : sendMagicLinkAction,
+    initialState,
+  );
 
   const passwordMessage =
     passwordState.status === "idle" ? error : (passwordState.message ?? error);
