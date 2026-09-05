@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clubs, sessions, shots } from "@/db/schema";
@@ -7,6 +8,19 @@ import { mobileQuickBagClub } from "@/lib/mobile-quick-bag-evidence";
 
 export async function getMobileQuickBag() {
   const userId = await requireCurrentUserId();
+  return getCachedMobileQuickBag(userId);
+}
+
+// Authentication stays outside the cache. Its argument keys the compact result by owner.
+// Existing shot mutations revalidate /quick-bag or the root layout; the TTL also
+// refreshes provider imports without retaining the full shot history in the cache.
+const getCachedMobileQuickBag = unstable_cache(
+  calculateMobileQuickBag,
+  ["mobile-quick-bag-evidence-v1"],
+  { revalidate: 60 },
+);
+
+async function calculateMobileQuickBag(userId: string) {
   const [equipment, measured] = await Promise.all([
     getDb()
       .select({ id: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
