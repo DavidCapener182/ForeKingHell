@@ -1,4 +1,4 @@
-const CACHE_NAME = "forekinghell-pwa-v10";
+const CACHE_NAME = "forekinghell-pwa-v11";
 const PAGE_CACHE_NAME = `${CACHE_NAME}-pages`;
 const OFFLINE_SAFE_PAGE_PATHS = new Set(["/login", "/offline", "/privacy"]);
 const PRECACHE_ASSETS = [
@@ -155,10 +155,24 @@ async function networkFirstPage(request) {
 
     return (
       cached ||
-      new Response("LM World Tour is offline and this page is not cached yet.", {
+      new Response(offlineFallbackHtml(), {
         status: 503,
-        headers: { "content-type": "text/plain; charset=utf-8" },
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
       })
     );
   }
+}
+
+// No scripts, fonts or external assets: recovery still renders when every cache is empty.
+function offlineFallbackHtml() {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7"><title>Connection unavailable · ForeKingHell</title>
+<style>
+:root{color-scheme:light dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f2f2f7;color:#161a18}
+*{box-sizing:border-box}body{margin:0}main{min-height:100dvh;padding:calc(env(safe-area-inset-top,0px) + 32px) max(24px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 32px) max(24px,env(safe-area-inset-left,0px))}
+p{font-size:17px;line-height:1.5;color:#555d59}h1{font-size:32px;line-height:1.12;letter-spacing:-.7px;margin:24px 0 16px}.brand{font-weight:600;color:inherit;font-size:15px}
+nav{display:grid;gap:12px;margin-top:32px}a{display:flex;min-height:52px;align-items:center;justify-content:center;border-radius:12px;background:#087442;color:white;text-decoration:none;font-weight:600}a.secondary{background:#e3e8e5;color:#164b32}a:focus-visible{outline:3px solid #469bf5;outline-offset:3px}
+@media(prefers-color-scheme:dark){:root{background:#080d0a;color:#f2f6f3}p{color:#b0bbb4}a.secondary{background:#1c2821;color:#a3e8bb}}
+</style></head><body><main><p class="brand">ForeKingHell</p><h1>Connection unavailable</h1><p>We couldn’t reach the app, and this screen hasn’t been saved on your iPhone.</p><p>Your saved practice and bag data have not been removed. Check your connection, then try again.</p><nav aria-label="Recovery"><a href="">Try again</a><a class="secondary" href="/offline">Open saved golf</a></nav></main></body></html>`;
 }
