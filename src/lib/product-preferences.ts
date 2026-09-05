@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { userFeaturePreferences } from "@/db/schema";
+import { recordGoalMovements } from "@/lib/goal-movement";
 import {
   goalTypeLabel,
   goalTypes,
@@ -86,28 +87,44 @@ export async function getProductPreferences(userId: string): Promise<ProductPref
 }
 
 export async function updateProductPreferences(userId: string, patch: Partial<ProductPreferences>) {
-  const db = getDb();
-  const [existing] = await db
-    .select({ settings: userFeaturePreferences.highlightSettingsJson })
-    .from(userFeaturePreferences)
-    .where(eq(userFeaturePreferences.userId, userId))
-    .limit(1);
-  const current = record(existing?.settings);
-  const next = {
-    ...current,
-    ...(patch.seasonPlan ? { seasonPlan: patch.seasonPlan } : {}),
-    ...(patch.goals ? { goals: patch.goals } : {}),
-    ...(patch.notifications ? { notifications: patch.notifications } : {}),
-  };
-  const now = new Date();
+  await getDb().transaction(async (db) => {
+    await db
+      .insert(userFeaturePreferences)
+      .values({ userId })
+      .onConflictDoNothing({ target: userFeaturePreferences.userId });
+    const [existing] = await db
+      .select({ settings: userFeaturePreferences.highlightSettingsJson })
+      .from(userFeaturePreferences)
+      .where(eq(userFeaturePreferences.userId, userId))
+      .limit(1)
+      .for("update");
+    const current = record(existing?.settings);
+    const now = new Date();
+    const next = {
+      ...current,
+      ...(patch.seasonPlan ? { seasonPlan: patch.seasonPlan } : {}),
+      ...(patch.goals
+        ? {
+            goals: patch.goals,
+            goalMovements: recordGoalMovements(
+              parseProductPreferences(current).goals,
+              patch.goals,
+              current.goalMovements,
+              now,
+            ),
+          }
+        : {}),
+      ...(patch.notifications ? { notifications: patch.notifications } : {}),
+    };
 
-  await db
-    .insert(userFeaturePreferences)
-    .values({ userId, highlightSettingsJson: next, updatedAt: now })
-    .onConflictDoUpdate({
-      target: userFeaturePreferences.userId,
-      set: { highlightSettingsJson: next, updatedAt: now },
-    });
+    await db
+      .insert(userFeaturePreferences)
+      .values({ userId, highlightSettingsJson: next, updatedAt: now })
+      .onConflictDoUpdate({
+        target: userFeaturePreferences.userId,
+        set: { highlightSettingsJson: next, updatedAt: now },
+      });
+  });
 }
 
 export function parseProductPreferences(value: unknown): ProductPreferences {

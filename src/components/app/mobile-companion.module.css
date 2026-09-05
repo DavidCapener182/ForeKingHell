@@ -283,3 +283,40 @@
   border-block: 1px solid var(--ios-separator, var(--border));
   padding-block: 0.25rem;
 }
+
+.activeRound {
+  display: grid;
+  gap: var(--mobile-space-compact);
+  padding-block: var(--mobile-space-standard);
+}
+.activeRoundMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding-block: 1.5rem;
+}
+.activeRoundMetrics > div {
+  display: grid;
+  gap: 0.25rem;
+}
+.activeRoundMetrics strong {
+  font-size: 2rem;
+  line-height: 1.1;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+.activeRoundMetrics span {
+  font-size: 0.8125rem;
+  color: var(--ios-secondary-label);
+}
+.activeRoundActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 0.5rem;
+}
+.activeRoundActions > a {
+  min-height: 44px;
+  flex: 1;
+}

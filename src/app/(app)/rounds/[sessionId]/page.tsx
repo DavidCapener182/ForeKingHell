@@ -260,13 +260,14 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
     <PageShell>
       {surface === "companion" &&
       ["active", "in_progress"].includes(round.session.roundStatus) &&
-      nextIncompleteHole ? (
+      round.holes.length > 0 ? (
         <MobileLiveRound
           accountId={accountId}
           sessionId={round.session.id}
           course={round.session.courseName ?? "Round"}
           tee={round.session.teeName}
           courseId={round.session.courseId}
+          teeSetId={round.session.teeSetId}
           recordVersion={round.session.updatedAt.toISOString()}
           holes={round.holes.map((hole) => ({
             holeNumber: hole.holeNumber,
@@ -1610,6 +1611,7 @@ function MobileRoundReviewSections({
       totalScore={round.totalScore}
       totalPar={round.totalPar}
       totalPutts={round.totalPutts}
+      totalPenalties={round.totalPenalties}
       handicapDifferential={round.handicapDifferential}
       evidenceSummary={evidenceSummary}
       proofReadyCount={proofReadyCount}
@@ -1749,6 +1751,7 @@ function MobileRoundResultCard({
   totalScore,
   totalPar,
   totalPutts,
+  totalPenalties,
   handicapDifferential,
   evidenceSummary,
   proofReadyCount,
@@ -1761,6 +1764,7 @@ function MobileRoundResultCard({
   totalScore: number | null;
   totalPar: number | null;
   totalPutts: number | null;
+  totalPenalties: number | null;
   handicapDifferential: number | null;
   evidenceSummary: string;
   proofReadyCount: number;
@@ -1789,9 +1793,10 @@ function MobileRoundResultCard({
       </div>
       <div className="mt-4 grid grid-cols-3 divide-x rounded-xl bg-muted/45 py-3 text-center">
         <MiniSummaryStat label="Putts" value={formatNullableInteger(totalPutts)} />
+        <MiniSummaryStat label="Penalties" value={formatNullableInteger(totalPenalties)} />
         <MiniSummaryStat label="Differential" value={formatHandicapValue(handicapDifferential)} />
-        <MiniSummaryStat label="Evidence" value={evidenceSummary} />
       </div>
+      <p className="mt-2 text-sm text-muted-foreground">{evidenceSummary}</p>
       <ScoringBreakdown holes={holes} compact />
       <IOSGroupedList className="mt-4">
         <IOSListRow label="Best part" value={review.strongestArea} />

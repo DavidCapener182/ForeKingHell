@@ -1257,6 +1257,9 @@
   [data-app-surface="companion"] .ios-app-header {
     border-bottom: 0 !important;
   }
+  [data-app-surface="companion"] .ios-app-header[data-hero-collapsed="true"] {
+    background: var(--ios-material-strong) !important;
+  }
   [data-app-surface="companion"] .ios-app-header::after {
     display: none;
   }

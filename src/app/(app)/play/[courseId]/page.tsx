@@ -66,7 +66,13 @@ export default async function CourseTwinPage({
         replay={replay}
         tournamentId={query.tournamentId}
         tournamentRoundNumber={parseRoundNumber(query.roundNumber)}
-        initialMode={query.mode === "strategy" ? "strategy" : undefined}
+        initialMode={
+          query.mode === "strategy"
+            ? "strategy"
+            : query.mode === "replay" || query.sessionId
+              ? "replay"
+              : undefined
+        }
         initialHoleNumber={parseHoleNumber(query.hole)}
       />
     </main>

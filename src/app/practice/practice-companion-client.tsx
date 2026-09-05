@@ -155,7 +155,7 @@ export function PracticeCompanionClient({
 
   useEffect(() => {
     if (plan.status === "analysed") {
-      if (savedPlanId) clearActivePractice(accountId);
+      if (savedPlanId && activeCachedPlan?.planId === savedPlanId) clearActivePractice(accountId);
       return;
     }
     if (!activeCachedPlan || activeCachedPlan.planId !== savedPlanId) return;

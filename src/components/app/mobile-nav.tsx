@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, MoreHorizontal, Search, Upload, UserRound, X } from "lucide-react";
 
@@ -58,10 +59,15 @@ const xpFormatter = new Intl.NumberFormat("en-GB");
 const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:";
 
 export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps) {
+  const params = useSearchParams();
+  const savedPlanId = pathname === "/practice" ? params.get("planId") : null;
   const profileLabel = profile?.displayName || profile?.username || "Profile";
-  const pageTitle = mobilePageTitle(pathname);
+  const pageTitle = savedPlanId ? "Practice plan" : mobilePageTitle(pathname);
   const heroRoute = isMobileCompanionHeroRoute(pathname);
-  const backNavigation = useMemo(() => mobileBackNavigation(pathname), [pathname]);
+  const backNavigation = useMemo(
+    () => (savedPlanId ? { href: "/practice", label: "Practice" } : mobileBackNavigation(pathname)),
+    [pathname, savedPlanId],
+  );
   const groups = mobileMoreGroups;
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
@@ -71,7 +77,9 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
   const activePrimaryHref =
     mobilePrimaryItems.find((item) => item.isActive(pathname))?.href ?? pathname;
   const tabScrollStorageKey = `${mobileScrollStoragePrefix}${
-    backNavigation ? `detail:${pathname}` : activePrimaryHref
+    backNavigation
+      ? `detail:${pathname}${savedPlanId ? `?planId=${savedPlanId}` : ""}`
+      : activePrimaryHref
   }`;
   const normalizedQuery = query.trim().toLowerCase();
   const filteredGroups = useMemo(() => {

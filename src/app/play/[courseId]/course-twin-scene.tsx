@@ -1,4 +1,5 @@
 "use client";
+import { formatClubType } from "@/lib/club-format";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
@@ -4029,23 +4030,31 @@ function MobileCourseTwinChrome({
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         </div>
-        <div className={mobileStyles.mobileActionSummary} aria-label="Current shot plan">
+        <div
+          className={mobileStyles.mobileActionSummary}
+          data-replay={mode === "replay" ? "true" : undefined}
+          aria-label={mode === "replay" ? "Current replay shot" : "Current shot plan"}
+        >
           <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
             <span>Club</span>
-            <strong>{clubLabel}</strong>
+            <strong>{formatClubType(clubLabel)}</strong>
           </button>
           <div className={mobileStyles.actionFact}>
             <span>Carry</span>
             <strong>{carryLabel}</strong>
           </div>
-          <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
-            <span>Target</span>
-            <strong>{targetLabel}</strong>
-          </button>
-          <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
-            <span>Shape / miss</span>
-            <strong>{missLabel}</strong>
-          </button>
+          {mode !== "replay" ? (
+            <>
+              <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+                <span>Target</span>
+                <strong>{targetLabel}</strong>
+              </button>
+              <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+                <span>Shape / miss</span>
+                <strong>{missLabel}</strong>
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className={cn(mobileStyles.actionFact, mobileStyles.nextHoleAction)}

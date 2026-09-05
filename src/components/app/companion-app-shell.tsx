@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { MobileNav, type MobileNavProfile } from "@/components/app/mobile-nav";
 import { CompanionRouteProgress } from "@/components/app/companion-route-progress";
@@ -23,10 +23,13 @@ export function CompanionAppShell({
   profile?: MobileNavProfile;
 }) {
   const pathname = usePathname();
+  const params = useSearchParams();
   const router = useRouter();
   const immersive = isMobileImmersiveRoute(pathname);
   const heroRoute = isMobileCompanionHeroRoute(pathname);
-  const primaryRoot = ["/today", "/practice", "/play", "/progress", "/bag"].includes(pathname);
+  const primaryRoot =
+    ["/today", "/practice", "/play", "/progress", "/bag"].includes(pathname) &&
+    !(pathname === "/practice" && params.has("planId"));
   const level = calculateUserLevel(totalXp);
 
   useEffect(() => {
