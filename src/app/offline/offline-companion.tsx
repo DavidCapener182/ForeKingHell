@@ -9,7 +9,7 @@ import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen"
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { useMobileActivity } from "@/components/app/use-mobile-activity";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { ActiveRangeMode } from "@/app/practice/active-range-mode";
 
 type SavedPractice = {
   planId: string;
@@ -18,6 +18,7 @@ type SavedPractice = {
   completedBlockIds: string[];
   note: string;
   finished?: boolean;
+  remainingBalls?: Record<string, number>;
 };
 type SavedBag = { clubs: QuickBagClub[]; storedAt: string };
 export function OfflineCompanion() {
@@ -68,7 +69,7 @@ export function OfflineCompanion() {
     }, 0);
     return () => clearTimeout(timer);
   }, []);
-  useMobileActivity(view === "practice");
+  useMobileActivity(view === "practice" && !practice?.finished);
   function updatePractice(update: Partial<SavedPractice>) {
     if (!practice || !account) return;
     const next = { ...practice, ...update };
@@ -87,7 +88,7 @@ export function OfflineCompanion() {
       data-mobile-platform="apple"
       className="grid min-h-dvh content-start gap-6 bg-background px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground"
     >
-      {view !== "saved" ? (
+      {view !== "saved" && !(view === "practice" && !practice?.finished) ? (
         <Button
           variant="ghost"
           className="min-h-11 justify-self-start"
@@ -96,7 +97,7 @@ export function OfflineCompanion() {
           Back
         </Button>
       ) : null}
-      {view !== "round" && view !== "quick" ? (
+      {view !== "round" && view !== "quick" && view !== "practice" ? (
         <MobileLargeTitle
           title={
             view === "bag" ? "Quick Bag" : view === "practice" ? "Range Mode" : "You're offline"
@@ -192,66 +193,58 @@ export function OfflineCompanion() {
           </p>
         </>
       ) : view === "practice" && practice && block ? (
-        <>
-          <p className="text-sm text-primary">
-            Block {practice.blockIndex + 1} of {practice.plan.blocks.length}
-          </p>
-          <h2 className="text-2xl font-bold">{block.title}</h2>
-          <p className="text-lg">{block.drill}</p>
-          <p className="text-muted-foreground">Success target: {block.successTarget}</p>
-          <progress
-            className="w-full accent-primary"
-            max={practice.plan.blocks.length}
-            value={practice.completedBlockIds.length}
-            aria-label="Completed blocks"
-          />
-          <Button
-            className="min-h-14"
-            onClick={() =>
+        practice.finished ? (
+          <MobileSection title="Practice activity">
+            <h2 className="mobile-type-title2">{practice.plan.title}</h2>
+            <p className="mobile-type-callout text-muted-foreground">
+              Activity saved. Measured success needs imported shots.
+            </p>
+            <ol className="divide-y">
+              {practice.plan.blocks.map((item) => (
+                <li key={item.id} className="py-3">
+                  <p className="mobile-type-headline">{item.title}</p>
+                  <p className="mobile-type-footnote text-muted-foreground">
+                    {practice.completedBlockIds.includes(item.id) ? "Completed" : "Incomplete"}
+                  </p>
+                </li>
+              ))}
+            </ol>
+            {practice.note ? <p className="mobile-type-body">{practice.note}</p> : null}
+          </MobileSection>
+        ) : (
+          <ActiveRangeMode
+            plan={practice.plan}
+            block={block}
+            blockIndex={practice.blockIndex}
+            blockDirection={null}
+            completedBlockIds={practice.completedBlockIds}
+            note={practice.note}
+            remainingBalls={practice.remainingBalls?.[block.id] ?? block.ballCount ?? 0}
+            onRemainingBalls={(count) =>
+              updatePractice({ remainingBalls: { ...practice.remainingBalls, [block.id]: count } })
+            }
+            pending={false}
+            onNote={(note) => updatePractice({ note })}
+            onPrevious={() => updatePractice({ blockIndex: Math.max(0, practice.blockIndex - 1) })}
+            onNext={() =>
+              updatePractice({
+                blockIndex: Math.min(practice.plan.blocks.length - 1, practice.blockIndex + 1),
+              })
+            }
+            onComplete={() =>
               updatePractice({
                 completedBlockIds: [...new Set([...practice.completedBlockIds, block.id])],
                 blockIndex: Math.min(practice.plan.blocks.length - 1, practice.blockIndex + 1),
               })
             }
-          >
-            {practice.completedBlockIds.includes(block.id) ? "Block complete" : "Complete block"}
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant="outline"
-              disabled={!practice.blockIndex}
-              onClick={() => updatePractice({ blockIndex: practice.blockIndex - 1 })}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              disabled={practice.blockIndex >= practice.plan.blocks.length - 1}
-              onClick={() => updatePractice({ blockIndex: practice.blockIndex + 1 })}
-            >
-              Next
-            </Button>
-          </div>
-          <Textarea
-            aria-label="Practice note"
-            value={practice.note}
-            maxLength={500}
-            placeholder="Add note"
-            onChange={(e) => updatePractice({ note: e.target.value })}
-          />
-          <Button
-            variant="outline"
-            onClick={() => {
+            onPause={() => setView("saved")}
+            onFinish={() => {
               updatePractice({ finished: true });
               setView("saved");
             }}
-          >
-            Finish practice
-          </Button>
-          <p className="text-sm text-muted-foreground">
-            Activity completion is saved. Measured success still requires imported shots.
-          </p>
-        </>
+            practicePlanId={practice.planId}
+          />
+        )
       ) : null}
       {message ? (
         <p role="status" className="text-sm text-muted-foreground">

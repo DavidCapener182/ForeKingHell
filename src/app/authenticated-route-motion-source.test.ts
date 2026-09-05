@@ -43,7 +43,7 @@ describe("authenticated route and feedback motion", () => {
       activeRange.indexOf("data-current-range-block-content"),
     );
     expect(motionRegionEnd).toBeGreaterThan(0);
-    for (const stableHandler of ["onPrevious();", "onClick={onComplete}", "onNext();"]) {
+    for (const stableHandler of ["onPrevious();", "onComplete();", "onNext();"]) {
       expect(activeRange.indexOf(stableHandler, motionRegionEnd)).toBeGreaterThan(motionRegionEnd);
     }
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { activityHaptic } from "@/components/app/use-mobile-activity";
+import { useMobileActivity } from "@/components/app/use-mobile-activity";
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
 
 import Link from "next/link";
@@ -142,7 +142,6 @@ export function PracticeCompanionClient({
   const [hydrated, setHydrated] = useState(false);
   const [blockCarouselApi, setBlockCarouselApi] = useState<CarouselApi>();
   const [isPending, startTransition] = useTransition();
-  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
   const selectedBlock = plan.blocks[selectedIndex] ?? plan.blocks[0] ?? null;
   const activeCachedPlan = useMemo(() => readActivePractice(accountId), [accountId]);
   const activeMeasuredResult =
@@ -186,45 +185,7 @@ export function PracticeCompanionClient({
     blockCarouselApi.scrollTo(selectedIndex);
   }, [blockCarouselApi, selectedIndex]);
 
-  useEffect(() => {
-    const shell = document.querySelector<HTMLElement>("[data-app-surface='companion']");
-    if (shell) shell.dataset.mobileFlow = rangeMode ? "immersive" : "standard";
-    return () => {
-      if (shell) delete shell.dataset.mobileFlow;
-    };
-  }, [rangeMode]);
-
-  useEffect(() => {
-    if (!rangeMode || !("wakeLock" in navigator)) return;
-    let cancelled = false;
-    const wakeLock = navigator.wakeLock as {
-      request: (type: "screen") => Promise<{ release: () => Promise<void> }>;
-    };
-    const acquire = () => {
-      if (cancelled || document.visibilityState !== "visible" || wakeLockRef.current) return;
-      void wakeLock
-        .request("screen")
-        .then((sentinel) => {
-          if (cancelled) return sentinel.release();
-          wakeLockRef.current = sentinel;
-        })
-        .catch(() => undefined);
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") acquire();
-      else wakeLockRef.current = null;
-    };
-    acquire();
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", handleVisibility);
-      const sentinel = wakeLockRef.current;
-      wakeLockRef.current = null;
-      if (sentinel) void sentinel.release().catch(() => undefined);
-    };
-  }, [rangeMode]);
+  useMobileActivity(rangeMode);
 
   const syncSnapshot = useRef({
     savedPlanId,
@@ -377,7 +338,6 @@ export function PracticeCompanionClient({
 
   function completeBlock() {
     if (!selectedBlock) return;
-    activityHaptic();
     const complete = completedBlockIds.includes(selectedBlock.id)
       ? completedBlockIds
       : [...completedBlockIds, selectedBlock.id];
