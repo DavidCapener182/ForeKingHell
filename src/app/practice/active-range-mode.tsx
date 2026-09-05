@@ -16,7 +16,6 @@ import styles from "@/components/app/mobile-companion.module.css";
 import { activityHaptic } from "@/components/app/use-mobile-activity";
 import { clubLabel, blockVolume } from "./practice-mobile-format";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Drawer,
@@ -54,6 +53,7 @@ export function ActiveRangeMode({
   onPause,
   onFinish,
   practicePlanId,
+  status,
 }: {
   plan: PracticePlan;
   block: PracticeBlock | null;
@@ -71,6 +71,7 @@ export function ActiveRangeMode({
   onPause: () => void;
   onFinish: () => void;
   practicePlanId: string | null;
+  status?: string | null;
 }) {
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
@@ -93,6 +94,8 @@ export function ActiveRangeMode({
       completeButtonRef.current?.focus({ preventScroll: true });
     }
   }, [blockIndex]);
+
+  const completedCount = plan.blocks.filter((item) => completedBlockIds.includes(item.id)).length;
 
   return (
     <section
@@ -123,6 +126,101 @@ export function ActiveRangeMode({
       }}
       data-practice-plan-id={practicePlanId ?? undefined}
     >
+      <div className={styles.rangeToolbar}>
+        <div>
+          <p className="mobile-type-headline">Range Mode</p>
+          <p className="mobile-type-footnote text-muted-foreground">
+            Block {blockIndex + 1} of {plan.blocks.length}
+          </p>
+        </div>
+        <Drawer open={optionsOpen} onOpenChange={setOptionsOpen} repositionInputs={false}>
+          <DrawerTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className={styles.rangeOptionsButton}
+              aria-label="Session options"
+            >
+              <MoreHorizontal className="size-5" aria-hidden />
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Practice options</DrawerTitle>
+              <DrawerDescription>
+                Block {blockIndex + 1} of {plan.blocks.length}
+              </DrawerDescription>
+            </DrawerHeader>
+            <div className="grid divide-y px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-14 justify-start"
+                onClick={() => {
+                  setOptionsOpen(false);
+                  onPause();
+                }}
+              >
+                <Pause className="size-5" aria-hidden /> Pause session
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-16 justify-start"
+                disabled={!block || completedBlockIds.includes(block.id)}
+                onClick={() => {
+                  setOptionsOpen(false);
+                  setSkipMessage(`${block?.title ?? "Block"} skipped. It remains incomplete.`);
+                  if (blockIndex === plan.blocks.length - 1) setFinishOpen(true);
+                  else onNext();
+                }}
+              >
+                <SkipForward className="size-5" aria-hidden />
+                <span className="grid text-left">
+                  <span>Skip block</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Leave incomplete. You can return to it.
+                  </span>
+                </span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-14 justify-start"
+                disabled={pending}
+                onClick={() => {
+                  setOptionsOpen(false);
+                  setFinishOpen(true);
+                }}
+              >
+                <CheckCircle2 className="size-5" aria-hidden /> Finish practice
+              </Button>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      </div>
+      {status ? (
+        <p role="status" className={styles.rangeStatus}>
+          {status}
+        </p>
+      ) : null}
+      <div
+        className={styles.rangeProgress}
+        role="progressbar"
+        aria-label="Practice blocks completed"
+        aria-valuemin={0}
+        aria-valuemax={plan.blocks.length}
+        aria-valuenow={completedCount}
+        aria-valuetext={`${completedCount} of ${plan.blocks.length} blocks complete`}
+      >
+        {plan.blocks.map((item, index) => (
+          <span
+            key={item.id}
+            data-complete={completedBlockIds.includes(item.id)}
+            data-current={index === blockIndex}
+          />
+        ))}
+      </div>
       <div className={styles.rangeBlock} data-current-range-block>
         <div
           key={block?.id ?? `range-block-${blockIndex}`}
@@ -131,82 +229,27 @@ export function ActiveRangeMode({
           data-current-range-block-content
         >
           <header className={styles.rangeHeader}>
-            <p className="mobile-type-footnote text-primary">
-              Range Mode · Block {blockIndex + 1} of {plan.blocks.length}
-            </p>
             <h1>{block?.title ?? "Practice"}</h1>
-            <p className="text-lg text-muted-foreground">
-              {block ? `${clubLabel(block)} · ${blockVolume(block)}` : plan.summary}
+            <p className={styles.rangeClub}>
+              {block ? clubLabel(block) : "Practice"}
+              <span>{block ? blockVolume(block) : plan.summary}</span>
             </p>
           </header>
-          <Progress
-            value={plan.blocks.length ? (completedBlockIds.length / plan.blocks.length) * 100 : 0}
-            aria-label={`${completedBlockIds.length} of ${plan.blocks.length} practice blocks complete`}
-            className="h-2"
-          />
           <p className={styles.rangeInstruction}>{block?.drill ?? plan.summary}</p>
           <div className={styles.rangeSuccess}>
             <p className="mobile-type-footnote text-muted-foreground">Success target</p>
             <p className="text-xl font-semibold">{block?.successTarget ?? "Choose a block"}</p>
           </div>
-          <p className="mobile-type-footnote text-muted-foreground">
-            {block?.recordPrompt ?? "Complete the block, then move to the next task."}
-          </p>
-        </div>
-        <div className="grid gap-3">
-          <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
-            <Button
-              ref={previousButtonRef}
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11 rounded-[var(--mobile-radius-md)]"
-              disabled={blockIndex <= 0}
-              onClick={() => {
-                navigationFocusRef.current = "previous";
-                onPrevious();
-              }}
-              aria-label="Previous practice block"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              ref={completeButtonRef}
-              type="button"
-              className="min-h-11 rounded-[var(--mobile-radius-md)] px-3"
-              disabled={!block}
-              onClick={() => {
-                activityHaptic();
-                onComplete();
-                if (blockIndex === plan.blocks.length - 1) setFinishOpen(true);
-              }}
-            >
-              <CheckCircle2 className="size-4" />
-              Complete Block
-            </Button>
-            <Button
-              ref={nextButtonRef}
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11 rounded-[var(--mobile-radius-md)]"
-              disabled={blockIndex >= plan.blocks.length - 1}
-              onClick={() => {
-                navigationFocusRef.current = "next";
-                onNext();
-              }}
-              aria-label="Next practice block"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Complete records activity only. Imported launch-monitor rows decide measured success.
-          </p>
-          {block?.ballCount !== null && block?.ballCount !== undefined ? (
-            <ManualBallCounter remaining={remainingBalls} onChange={onRemainingBalls} />
+          {block?.recordPrompt ? (
+            <details className={styles.rangeDetail}>
+              <summary>What to record</summary>
+              <p>{block.recordPrompt}</p>
+            </details>
           ) : null}
         </div>
+        {block?.ballCount !== null && block?.ballCount !== undefined ? (
+          <ManualBallCounter remaining={remainingBalls} onChange={onRemainingBalls} />
+        ) : null}
       </div>
       <details className={styles.rangeNote}>
         <summary className="flex min-h-11 cursor-pointer items-center text-primary">
@@ -227,66 +270,6 @@ export function ActiveRangeMode({
       <p role="status" className="sr-only">
         {skipMessage}
       </p>
-      <Drawer open={optionsOpen} onOpenChange={setOptionsOpen} repositionInputs={false}>
-        <DrawerTrigger asChild>
-          <Button type="button" variant="ghost" className="min-h-11 w-full">
-            <MoreHorizontal className="size-5" aria-hidden /> Session options
-          </Button>
-        </DrawerTrigger>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Practice options</DrawerTitle>
-            <DrawerDescription>
-              Block {blockIndex + 1} of {plan.blocks.length}
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="grid divide-y px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <Button
-              type="button"
-              variant="ghost"
-              className="min-h-14 justify-start"
-              onClick={() => {
-                setOptionsOpen(false);
-                onPause();
-              }}
-            >
-              <Pause className="size-5" aria-hidden /> Pause session
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="min-h-16 justify-start"
-              disabled={!block || completedBlockIds.includes(block.id)}
-              onClick={() => {
-                setOptionsOpen(false);
-                setSkipMessage(`${block?.title ?? "Block"} skipped. It remains incomplete.`);
-                if (blockIndex === plan.blocks.length - 1) setFinishOpen(true);
-                else onNext();
-              }}
-            >
-              <SkipForward className="size-5" aria-hidden />
-              <span className="grid text-left">
-                <span>Skip block</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  Leave incomplete. You can return to it.
-                </span>
-              </span>
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="min-h-14 justify-start"
-              disabled={pending}
-              onClick={() => {
-                setOptionsOpen(false);
-                setFinishOpen(true);
-              }}
-            >
-              <CheckCircle2 className="size-5" aria-hidden /> Finish practice
-            </Button>
-          </div>
-        </DrawerContent>
-      </Drawer>
       <Drawer open={finishOpen} onOpenChange={setFinishOpen} repositionInputs={false}>
         <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <DrawerHeader className="text-left">
@@ -340,6 +323,57 @@ export function ActiveRangeMode({
           </div>
         </DrawerContent>
       </Drawer>
+      <footer className={styles.rangeActions}>
+        <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
+          <Button
+            ref={previousButtonRef}
+            type="button"
+            variant="outline"
+            size="icon"
+            className={styles.rangeStepButton}
+            disabled={blockIndex <= 0}
+            onClick={() => {
+              navigationFocusRef.current = "previous";
+              onPrevious();
+            }}
+            aria-label="Previous practice block"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button
+            ref={completeButtonRef}
+            type="button"
+            className={styles.rangeCompleteButton}
+            disabled={!block}
+            onClick={() => {
+              activityHaptic();
+              onComplete();
+              if (blockIndex === plan.blocks.length - 1) setFinishOpen(true);
+            }}
+          >
+            <CheckCircle2 className="size-4" />
+            Complete Block
+          </Button>
+          <Button
+            ref={nextButtonRef}
+            type="button"
+            variant="outline"
+            size="icon"
+            className={styles.rangeStepButton}
+            disabled={blockIndex >= plan.blocks.length - 1}
+            onClick={() => {
+              navigationFocusRef.current = "next";
+              onNext();
+            }}
+            aria-label="Next practice block"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+        <p className="mobile-type-caption text-center text-muted-foreground">
+          Activity only · Import shots to measure success.
+        </p>
+      </footer>
     </section>
   );
 }
@@ -352,28 +386,30 @@ function ManualBallCounter({
   onChange: (count: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
+    <div className={styles.rangeCounter}>
       <div>
-        <p className="text-sm font-semibold">{manualRemaining} balls remaining</p>
-        <p className="text-xs text-muted-foreground">Range counter only · not evidence</p>
+        <p className="mobile-type-headline">Ball counter</p>
+        <p className="text-xs text-muted-foreground">balls remaining</p>
       </div>
       <div className="flex items-center gap-2">
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="size-11"
+          className={styles.rangeCounterButton}
           onClick={() => onChange(Math.max(0, manualRemaining - 1))}
           aria-label="Remove one ball"
         >
           −
         </Button>
-        <span className="w-8 text-center text-lg font-bold">{manualRemaining}</span>
+        <output aria-label="Balls remaining" className={styles.rangeCounterValue}>
+          {manualRemaining}
+        </output>
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="size-11"
+          className={styles.rangeCounterButton}
           onClick={() => onChange(Math.min(999, manualRemaining + 1))}
           aria-label="Add one ball"
         >

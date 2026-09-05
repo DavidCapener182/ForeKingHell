@@ -39,7 +39,7 @@ describe("authenticated route and feedback motion", () => {
 
     const activeRange = practiceSource.slice(practiceSource.indexOf("function ActiveRangeMode"));
     const motionRegionEnd = activeRange.indexOf(
-      '</div>\n        <div className="grid gap-3">',
+      "<footer className={styles.rangeActions}>",
       activeRange.indexOf("data-current-range-block-content"),
     );
     expect(motionRegionEnd).toBeGreaterThan(0);

@@ -13,32 +13,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import styles from "@/components/app/mobile-companion.module.css";
 
-type Draft = {
-  state: "ready" | "active" | "paused" | "finished";
-  club: string;
-  focus: string;
-  balls: number;
-  target: string;
-  count: number;
-  notes: string;
-  labels: string[];
-  elapsed: number;
-};
-const clubs = [
-  "Driver",
-  "3 Wood",
-  "5 Wood",
-  "Hybrid",
-  "5 Iron",
-  "6 Iron",
-  "7 Iron",
-  "8 Iron",
-  "9 Iron",
-  "Pitching Wedge",
-  "Gap Wedge",
-  "Sand Wedge",
-  "Lob Wedge",
-];
+import {
+  quickRangeClubs as clubs,
+  quickRangeLabels,
+  parseQuickRangeDraft,
+  updateQuickRangeDraft,
+  type QuickRangeDraft as Draft,
+  type QuickRangeRecord,
+} from "./quick-range-draft";
+import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerClose,
+} from "@/components/ui/drawer";
 
 export function QuickRangeCompanionSession({
   focus,
@@ -61,30 +52,30 @@ export function QuickRangeCompanionSession({
     labels: [],
     elapsed: 0,
   });
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [review, setReview] = useState<QuickRangeRecord | null>(null);
   const [ready, setReady] = useState(false);
   const [stored, setStored] = useState(true);
   const key = `fkh:quick-range:${accountId}`;
-  const patch = (value: Partial<Draft>) => setDraft((current) => ({ ...current, ...value }));
+  const patch = (value: Partial<Draft>) => {
+    const now = new Date().toISOString();
+    setDraft((current) => updateQuickRangeDraft(current, value, now));
+  };
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const value = JSON.parse(localStorage.getItem(key) ?? "null") as Draft | null;
-        if (
-          value &&
-          (!initialClubType || ["active", "paused"].includes(value.state)) &&
-          ["ready", "active", "paused", "finished"].includes(value.state) &&
-          (clubs.includes(value.club) ||
-            /^[1-9] (Iron|Wood|Hybrid)$/.test(value.club) ||
-            ["Approach Wedge", "Wedge"].includes(value.club)) &&
-          [20, 30, 40, 60].includes(value.balls) &&
-          typeof value.notes === "string" &&
-          typeof value.focus === "string" &&
-          typeof value.target === "string" &&
-          Number.isFinite(value.count) &&
-          Number.isFinite(value.elapsed) &&
-          Array.isArray(value.labels)
-        )
-          setDraft(value);
+        const value = parseQuickRangeDraft(JSON.parse(localStorage.getItem(key) ?? "null"));
+        if (value) {
+          if (!initialClubType || ["active", "paused"].includes(value.state)) setDraft(value);
+          else {
+            const preserved = updateQuickRangeDraft(
+              value,
+              { state: "ready" },
+              new Date().toISOString(),
+            );
+            setDraft((current) => ({ ...current, history: preserved.history }));
+          }
+        }
       } catch {
         /* A missing or old draft starts with the supplied focus. */
       }
@@ -140,7 +131,13 @@ export function QuickRangeCompanionSession({
       ) : (
         <MobileLargeTitle
           title={finished ? "Practice complete" : "Quick Range"}
-          detail={finished ? "Your activity is saved on this iPhone." : "One club. One focus."}
+          detail={
+            finished
+              ? stored
+                ? "Your activity is saved on this iPhone."
+                : "Keep this page open to retain your activity."
+              : "One club. One focus."
+          }
         />
       )}
       {!active && !finished ? (
@@ -230,7 +227,7 @@ export function QuickRangeCompanionSession({
             />
           </div>
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Shot context">
-            {["Playable", "Left", "Right", "Short", "Long", "Unlabelled"].map((label) => (
+            {quickRangeLabels.map((label) => (
               <Button
                 variant={label === "Playable" ? "default" : "outline"}
                 key={label}
@@ -321,6 +318,79 @@ export function QuickRangeCompanionSession({
           </Button>
         </>
       )}
+      {!active && draft.history?.length ? (
+        <MobileSection title="Recent Quick Range">
+          <MobileGroupedList label="Recent Quick Range activities">
+            {draft.history.slice(0, showAllHistory ? 50 : 5).map((item) => (
+              <MobileListRow
+                key={item.id}
+                label={item.focus}
+                value={`${item.count} balls`}
+                detail={`${item.club} · ${item.finishedAt ? new Date(item.finishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "Saved activity"}`}
+                onClick={() => setReview(item)}
+              />
+            ))}
+          </MobileGroupedList>
+          {draft.history.length > 5 ? (
+            <Button
+              variant="ghost"
+              className="min-h-11"
+              onClick={() => setShowAllHistory(!showAllHistory)}
+            >
+              {showAllHistory ? "Show recent five" : `Show all ${draft.history.length} activities`}
+            </Button>
+          ) : null}
+          <p className="mobile-type-footnote text-muted-foreground">
+            Up to 50 activities saved on this iPhone.
+          </p>
+        </MobileSection>
+      ) : null}
+      <Drawer
+        open={!!review}
+        onOpenChange={(open) => {
+          if (!open) setReview(null);
+        }}
+      >
+        <DrawerContent>
+          {review ? (
+            <>
+              <DrawerHeader className="shrink-0 flex-row items-start justify-between gap-3 text-left">
+                <div className="grid gap-1">
+                  <DrawerTitle>{review.focus}</DrawerTitle>
+                  <DrawerDescription>
+                    {review.club} · {stored ? "Saved on this iPhone" : "Not saved"}
+                  </DrawerDescription>
+                </div>
+                <DrawerClose asChild>
+                  <Button variant="ghost" className="min-h-11" aria-label="Close activity review">
+                    Done
+                  </Button>
+                </DrawerClose>
+              </DrawerHeader>
+              <div className={styles.quickRangeReview}>
+                <div className={styles.activityProgress}>
+                  <span>{review.count}</span>
+                  <p>Balls logged · {Math.floor(review.elapsed / 60)} min</p>
+                </div>
+                {review.target ? <p>Target: {review.target}</p> : null}
+                <MobileGroupedList label="Manual ball labels">
+                  {quickRangeLabels.map((label) => {
+                    const count = review.labels.filter((value) => value === label).length;
+                    return count ? <MobileListRow key={label} label={label} value={count} /> : null;
+                  })}
+                </MobileGroupedList>
+                <p className="mobile-type-footnote text-muted-foreground">
+                  Manual notes · These are not measured shot results.
+                </p>
+                {review.notes ? <p className="whitespace-pre-wrap">{review.notes}</p> : null}
+                <Button asChild className="min-h-12">
+                  <Link href="/import">Import measured session</Link>
+                </Button>
+              </div>
+            </>
+          ) : null}
+        </DrawerContent>
+      </Drawer>
       {!stored && !finished ? (
         <p role="status" className="text-sm text-destructive">
           Storage unavailable. Keep this page open to retain your session.

@@ -1069,6 +1069,7 @@
 
   /* Companion type and spacing roles. Keep feature markup free of arbitrary sizes. */
 
+  body:has([data-app-surface="companion"]),
   [data-app-surface="companion"] {
     --mobile-space-compact: 0.5rem;
     --mobile-space-standard: 1rem;
@@ -1084,6 +1085,7 @@
     --mobile-information: #176a98;
     --mobile-elevated-material: var(--ios-material-strong);
     --mobile-label: var(--ios-label);
+    --mobile-tint: var(--ios-tint);
     --mobile-secondary-label: var(--ios-secondary-label);
     --mobile-separator: var(--ios-separator);
     --mobile-surface: var(--ios-grouped-surface);

@@ -1,3 +1,4 @@
+import { readMobileSpeedSaveReceipt } from "./mobile-speed-save-receipt";
 import "server-only";
 
 import { and, asc, desc, eq, gte, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
@@ -53,6 +54,7 @@ export type SpeedClubOption = {
 };
 
 export type SpeedCentreSession = {
+  mobileSaveReceipt?: import("./mobile-speed-save-receipt").MobileSpeedSaveReceipt | null;
   id: string;
   source: string;
   sessionDateIso: string;
@@ -520,6 +522,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
     targetSpeedMph: session.targetSpeedMph,
     notes: session.notes,
     transferTest: readSpeedTransferMetadata(session.rawMetadataJson),
+    mobileSaveReceipt: readMobileSpeedSaveReceipt(session.rawMetadataJson?.mobileSaveReceipt),
   }));
 
   const driverClubIds = new Set(
@@ -699,6 +702,7 @@ export async function getSpeedCoachCardData(userId: string) {
     targetSpeedMph: session.targetSpeedMph,
     notes: session.notes,
     transferTest: readSpeedTransferMetadata(session.rawMetadataJson),
+    mobileSaveReceipt: readMobileSpeedSaveReceipt(session.rawMetadataJson?.mobileSaveReceipt),
   }));
 
   const goals = goalRows.map((goal) => ({

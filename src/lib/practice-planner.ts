@@ -223,7 +223,14 @@ export type PracticeBlock = {
   };
 };
 
+export type PracticeActivityProgress = {
+  blockIndex: number;
+  completedBlockIds: string[];
+  note: string;
+};
+
 export type PracticePlan = {
+  activityProgress?: PracticeActivityProgress | null;
   id?: string;
   status?: PracticePlanStatus;
   sessionType: PracticeSessionType;
@@ -376,6 +383,7 @@ export type PracticePlanGeneration = {
 };
 
 export type SavedPracticePlan = {
+  activityProgress?: PracticeActivityProgress | null;
   id: string;
   title: string;
   sessionType: PracticeSessionType;
@@ -1717,6 +1725,25 @@ export async function updatePracticePlanStatusForUser(
     .where(and(eq(practicePlans.id, planId), eq(practicePlans.userId, userId)));
 }
 
+/** Existing saved activity is recoverable without counting it as measured performance. */
+export function parsePracticeActivityProgress(value: unknown): PracticeActivityProgress | null {
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.completedBlockIds) ||
+    typeof value.note !== "string" ||
+    typeof value.blockIndex !== "number" ||
+    !Number.isFinite(value.blockIndex)
+  )
+    return null;
+  return {
+    blockIndex: Math.max(0, Math.min(12, Math.trunc(value.blockIndex))),
+    completedBlockIds: value.completedBlockIds
+      .filter((id): id is string => typeof id === "string" && id.length <= 100)
+      .slice(0, 12),
+    note: value.note.slice(0, 300),
+  };
+}
+
 export async function savePracticePlanActivityProgressForUser(
   userId: string,
   planId: string,
@@ -2453,6 +2480,7 @@ export async function getSavedPracticePlans(
       summary: plan.generatedSummary,
       generation: parsePlanGeneration(plan.facilityJson.generation),
       sourceSessionId: plan.sourceSessionId,
+      activityProgress: parsePracticeActivityProgress(plan.contextJson.activityProgress),
       blocks,
       result: result
         ? {
@@ -4283,6 +4311,7 @@ export function savedPracticePlanToPracticePlan(
   return {
     id: saved.id,
     status: saved.status,
+    activityProgress: saved.activityProgress,
     sessionType: saved.sessionType,
     title: saved.title,
     summary: saved.summary,

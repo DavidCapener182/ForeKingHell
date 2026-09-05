@@ -37,23 +37,17 @@ function sourceAfterBalancedBlock(source: string, marker: string) {
 }
 
 describe("Apple mobile shell contract", () => {
-  it("restores route scroll, promotes large titles after scrolling and gives detail screens native back navigation", () => {
-    expect(mobileNavSource).toContain('const mobileScrollStoragePrefix = "fkh:mobile-tab-scroll:"');
-    expect(mobileNavSource).toContain("window.sessionStorage.getItem(tabScrollStorageKey)");
-    expect(mobileNavSource).toContain("window.sessionStorage.setItem(tabScrollStorageKey");
-    expect(mobileNavSource).toContain('window.addEventListener("scroll", handleScroll');
-    expect(mobileNavSource).toContain('window.scrollTo({ top: storedScroll, behavior: "auto" })');
+  it("uses explicit tab restoration and keeps detail back navigation in the mobile shell", () => {
+    expect(mobileNavSource).toContain("useMobileNavigationViewport(location)");
+    expect(mobileNavSource).toContain("prepareNavigation(item.href)");
+    expect(mobileNavSource).toContain("prepareNavigation(backNavigation.href)");
+    expect(mobileNavSource).toContain("scroll={false}");
     expect(mobileNavSource).toContain("ios-inline-title min-w-0 truncate text-center");
     expect(mobileNavSource).toContain("data-mobile-route-label");
     expect(mobileNavSource).toContain("{pageTitle}");
-    expect(mobileNavSource).toContain("Math.max(44, heroHeight - 52)");
-    expect(mobileNavSource).toContain("scrollY >= compactTitleThreshold");
-    expect(mobileNavSource).toContain("const [compactTitleVisible, setCompactTitleVisible] =");
-    expect(mobileNavSource).toContain("useState(false)");
     expect(mobileNavSource).toContain("data-compact-title-visible");
     expect(mobileNavSource).toContain("mobileBackNavigation(pathname)");
     expect(mobileNavSource).toContain("Back to ${backNavigation.label}");
-    expect(mobileNavSource).toContain("detail:${pathname}");
   });
 
   it("lets PageShell own tab-bar clearance instead of padding every mobile page twice", () => {

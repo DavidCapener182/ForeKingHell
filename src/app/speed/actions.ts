@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { readMobileSpeedSaveReceipt } from "@/lib/mobile-speed-save-receipt";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 
@@ -36,6 +37,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export async function createManualSpeedSessionAction(formData: FormData) {
   const userId = await requireCurrentUserId();
+  const mobileSaveReceipt = readMobileSpeedSaveReceipt({
+    draftId: formValue(formData, "mobileDraftId"),
+    revision: Number(formValue(formData, "mobileDraftRevision")),
+  });
   const phasedReadings = parsePhasedSpeedReadings(formData);
   const readings = phasedReadings.map((reading) => reading.clubSpeedMph);
   const readingSummary = summarizePhasedReadingsForPersistence(phasedReadings);
@@ -85,7 +90,7 @@ export async function createManualSpeedSessionAction(formData: FormData) {
       ? `${formatClubType(club.type)} - ${formatClubModelName(club)}`
       : (customImplementLabel ?? labelForImplementKind(implementKind));
 
-  await db.transaction(async (tx) => {
+  const savedSessionId = await db.transaction(async (tx) => {
     const [session] = await tx
       .insert(speedTrainingSessions)
       .values({
@@ -109,6 +114,7 @@ export async function createManualSpeedSessionAction(formData: FormData) {
           readingsProvided: readings.length,
           phaseSchemaVersion: phasedReadings.length > 0 ? 1 : null,
           phaseCounts: speedPhaseCounts(phasedReadings),
+          ...(mobileSaveReceipt ? { mobileSaveReceipt } : {}),
         },
       })
       .returning({ id: speedTrainingSessions.id });
@@ -127,11 +133,14 @@ export async function createManualSpeedSessionAction(formData: FormData) {
         })),
       );
     }
+    return session?.id;
   });
 
   await syncSpeedAchievementsAndFlash(userId);
 
   revalidatePath("/speed");
+  if (mobileSaveReceipt && savedSessionId)
+    redirect(`/speed?speed_saved=1&speed_session=${encodeURIComponent(savedSessionId)}`);
   redirect("/speed?speed_saved=1");
 }
 

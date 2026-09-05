@@ -1,85 +1,117 @@
+import { resolveMobileSpeedSaveReceipt } from "@/lib/mobile-speed-save-receipt";
 import Link from "next/link";
 import { mobileSpeedPlanForTransfer } from "@/lib/mobile-speed-plan";
 import { MobileSpeedTrend } from "@/components/speed/mobile-speed-trend";
 import { MobileSpeedSession } from "./mobile-speed-session";
 import { PageShell } from "@/components/premium";
-import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
-import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
+import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
 import { getSpeedCentrePageData } from "@/lib/speed-training-data";
 import { requireCurrentUserId } from "@/lib/current-user";
+import styles from "./mobile-speed.module.css";
 
 export default async function SpeedCompanionPage({
   error,
   saved,
+  savedSessionId,
 }: {
   error?: string | null;
   saved?: string | null;
+  savedSessionId?: string | null;
 }) {
   const accountId = await requireCurrentUserId();
   const data = await getSpeedCentrePageData(accountId);
   const { summary, development } = data;
+  const savedReceipt =
+    saved === "1" ? resolveMobileSpeedSaveReceipt(data.sessions, savedSessionId) : null;
   const linkedTransferFailed = development.verdict?.playabilityPassed === false;
   const playing = development.funnel.find((item) => item.key === "playing");
   const driver = data.clubOptions.find((club) => club.type === "driver");
   const speed = (value: number | null) => (value === null ? "—" : value.toFixed(1));
   return (
     <PageShell>
-      <div className="grid gap-6" data-mobile-speed>
-        <MobileLargeTitle
-          title="Speed"
-          detail={
-            linkedTransferFailed
-              ? "Rebuild Driver control before more maximum-speed work."
-              : development.readiness.recommendation
-          }
-        />
+      <div className={styles.screen} data-mobile-speed>
+        <MobileLargeTitle title="Speed" />
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         ) : null}
-        {saved ? (
+        {savedReceipt || saved === "goals" || saved === "deleted" ? (
           <p role="status" className="text-sm text-primary">
-            Speed session saved.
+            {saved === "goals"
+              ? "Speed targets updated."
+              : saved === "deleted"
+                ? "Speed session deleted."
+                : "Speed session saved."}
           </p>
         ) : null}
-        <MobileMetric
-          value={speed(playing?.valueMph ?? null)}
-          unit="mph"
-          label="playing speed"
-          detail={playing?.source ?? "Measured playable ball evidence needed"}
-        />
-        <div className="mobile-metric-strip">
-          <MobileMetric value={speed(summary.personalBestMph)} unit="mph" label="verified PB" />
-          <MobileMetric value={speed(summary.sevenDayAvgMph)} unit="mph" label="7-day average" />
-          <MobileMetric value={speed(summary.targetSpeedMph)} unit="mph" label="target" />
-        </div>
-        <MobileStatus
-          label={linkedTransferFailed ? "Linked transfer needs work" : development.chaos.label}
-          tone={
+        <section className={styles.readout} aria-label="Your speed">
+          <p className="mobile-type-headline">Playing speed</p>
+          <p className={styles.playingNumber}>
+            {speed(playing?.valueMph ?? null)}
+            <span>mph</span>
+          </p>
+          <dl className={styles.metrics}>
+            {[
+              { label: "Verified PB", value: summary.personalBestMph },
+              { label: "7-day average", value: summary.sevenDayAvgMph },
+              { label: "Target", value: summary.targetSpeedMph },
+            ].map((item) => (
+              <div key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>
+                  {speed(item.value)}
+                  {item.value !== null ? <span>mph</span> : null}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <details className={styles.evidence}>
+            <summary>Playing speed evidence</summary>
+            <p>{playing?.source ?? "Measured playable ball evidence needed"}</p>
+            <p>
+              {linkedTransferFailed
+                ? development.verdict?.nextAction
+                : development.chaos.nextAction}
+            </p>
+          </details>
+        </section>
+        <MobileSpeedSession
+          plan={mobileSpeedPlanForTransfer(development)}
+          recommendation={
+            linkedTransferFailed
+              ? (development.verdict?.nextAction ??
+                "Rebuild Driver control before more maximum-speed work.")
+              : development.readiness.recommendation
+          }
+          statusLabel={
+            linkedTransferFailed ? "Linked transfer needs work" : development.chaos.label
+          }
+          statusTone={
             !linkedTransferFailed && development.chaos.status === "successful"
               ? "positive"
               : "attention"
           }
-        />
-        <p className="text-sm">
-          {linkedTransferFailed ? development.verdict?.nextAction : development.chaos.nextAction}
-        </p>
-        {summary.carryProjection.targetCarryYd !== null ? (
-          <MobileMetric
-            value={Math.round(summary.carryProjection.targetCarryYd)}
-            unit="yd"
-            label="potential carry"
-            detail={`Modelled · ${summary.carryProjection.basis}`}
-          />
-        ) : null}
-        <MobileSpeedSession
-          plan={mobileSpeedPlanForTransfer(development)}
           clubId={driver?.id}
           accountId={accountId}
-          saved={saved === "1"}
+          savedReceipt={savedReceipt}
           personalBestMph={summary.personalBestMph}
         />
+        {summary.carryProjection.targetCarryYd !== null ? (
+          <section className={styles.carry} aria-label="Potential carry">
+            <div>
+              <p className="mobile-type-headline">Potential carry</p>
+              <p className="mobile-type-footnote text-muted-foreground">
+                Modelled · {summary.carryProjection.basis}
+              </p>
+            </div>
+            <p>
+              {Math.round(summary.carryProjection.targetCarryYd)}
+              <span>yd</span>
+            </p>
+          </section>
+        ) : null}
         {development.verdict ? (
           <MobileSection title="Latest review">
             <MobileGroupedList>
@@ -98,26 +130,43 @@ export default async function SpeedCompanionPage({
           </MobileSection>
         ) : null}
         <MobileSpeedTrend sessions={data.sessions} />
-        <MobileSection title="Target ladder">
+        <details className={styles.ladder}>
+          <summary>
+            Target ladder{" "}
+            {development.ladder.nextLevelMph !== null ? (
+              <span>Next · {development.ladder.nextLevelMph} mph</span>
+            ) : null}
+          </summary>
           <MobileGroupedList>
             {development.ladder.levels.map((level) => (
               <MobileListRow
                 key={level.speedMph}
                 label={`${level.speedMph} mph`}
-                value={level.state}
+                value={
+                  level.state === "unlocked"
+                    ? "Reached"
+                    : level.state === "current"
+                      ? "Current"
+                      : "Ahead"
+                }
                 detail={`${level.qualifyingSessions} qualifying sessions · ${Math.round(level.progressPercent)}%`}
               />
             ))}
           </MobileGroupedList>
-        </MobileSection>
+        </details>
         <MobileSection title="History">
+          {!data.sessions.length ? (
+            <p className="mobile-type-callout text-muted-foreground">
+              Your saved speed sessions will appear here.
+            </p>
+          ) : null}
           <MobileGroupedList>
             {data.sessions.slice(0, 12).map((session) => (
               <MobileListRow
                 key={session.id}
                 label={session.title ?? session.implementLabel}
                 value={`${speed(session.avgSpeedMph)} mph`}
-                detail={`${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(session.sessionDateIso))} · ${session.swingCount} swings`}
+                detail={`${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(session.sessionDateIso))} · ${session.implementLabel} · ${session.swingCount} swings`}
                 href={`/speed/sessions/${session.id}`}
               />
             ))}
