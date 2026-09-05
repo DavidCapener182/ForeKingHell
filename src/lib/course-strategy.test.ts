@@ -41,6 +41,16 @@ describe("course strategy", () => {
     expect(strategy.hazardWarning).toContain("Bunker");
     expect(strategy.strategyModes.map((mode) => mode.id)).toEqual(["normal", "aggressive"]);
     expect(strategy.caveat).toContain("can change it");
+    expect(strategy.strategyModes.find((mode) => mode.id === "normal")?.evidence).toMatchObject({
+      clubId: "3w",
+      leftYd: 12,
+      rightYd: 15,
+      carryYd: 220,
+      sampleSize: 22,
+    });
+    expect(strategy.strategyModes.find((mode) => mode.id === "aggressive")?.evidence).toMatchObject(
+      { clubId: "driver", leftYd: 16, rightYd: 28, carryYd: 245, sampleSize: 30 },
+    );
   });
 
   it("uses Driver only for the opening shot and splits a par-5 leave across non-driver clubs", () => {

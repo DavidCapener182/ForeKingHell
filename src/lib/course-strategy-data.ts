@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { clubs, courseFeatures, courses, holes, stockYardages, teeSets } from "@/db/schema";
@@ -16,9 +16,11 @@ export async function getCourseStrategyData(
 ) {
   const db = getDb();
   const userId = await requireCurrentUserId();
+  const visibleCourse = or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId));
   const courseOptions = await db
     .select({ id: courses.id, name: courses.name })
     .from(courses)
+    .where(visibleCourse)
     .orderBy(asc(courses.name))
     .limit(80);
   let selectedCourse = requestedCourseId
@@ -28,7 +30,7 @@ export async function getCourseStrategyData(
     const [requestedCourse] = await db
       .select({ id: courses.id, name: courses.name })
       .from(courses)
-      .where(eq(courses.id, requestedCourseId))
+      .where(and(eq(courses.id, requestedCourseId), visibleCourse))
       .limit(1);
     selectedCourse = requestedCourse ?? null;
     if (selectedCourse) courseOptions.push(selectedCourse);
@@ -133,6 +135,8 @@ export async function getCourseStrategyData(
         carryYd: row.carry!,
         minCarryYd: row.p25 ?? row.carry! * 0.94,
         maxCarryYd: row.p75 ?? row.carry! * 1.04,
+        dispersionAvailable: row.left !== null && row.right !== null,
+        carryRangeMeasured: row.p25 !== null && row.p75 !== null,
         leftYd: Math.abs(row.left ?? 0),
         rightYd: Math.abs(row.right ?? 0),
         confidence: normalizedConfidence(row.confidence),
