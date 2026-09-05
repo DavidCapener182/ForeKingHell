@@ -58,14 +58,22 @@ export function projectedLandingEllipse(points: [number, number][]) {
   };
 }
 
+/** Keep hole-specific geometry scoped while retaining shared course features. */
+export function mobilePlanFeatures(
+  manifest: Pick<CourseTwinManifest, "features">,
+  holeNumber: number,
+) {
+  return manifest.features.filter(
+    (feature) => feature.holeNumber === holeNumber || feature.holeNumber === null,
+  );
+}
+
 /** Estimated corridors cannot substantiate hazard-avoidance recommendations. */
 export function mobilePlanHasMappedSurfaces(
   manifest: Pick<CourseTwinManifest, "features">,
   holeNumber: number,
 ) {
-  const features = manifest.features.filter(
-    (feature) => feature.holeNumber === holeNumber || feature.holeNumber === null,
-  );
+  const features = mobilePlanFeatures(manifest, holeNumber);
   return (
     features.some((feature) => feature.type !== "course_boundary") &&
     features.every((feature) => !/estimated|prototype/i.test(feature.source))

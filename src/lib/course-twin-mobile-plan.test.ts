@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mobileCourseTwinPlanOptions,
+  mobilePlanFeatures,
   projectedLandingEllipse,
   mobilePlanHasMappedSurfaces,
 } from "./course-twin-mobile-plan";
@@ -28,6 +29,24 @@ function document(clubs: CourseTwinStrategyClub[]): CourseTwinStrategyDocument {
   return { recommended: clubs[0] ?? null, clubs } as CourseTwinStrategyDocument;
 }
 describe("mobile map strategy comparisons", () => {
+  it("keeps selected-hole and shared geometry without changing the source manifest", () => {
+    const features = [
+      { id: "shared", holeNumber: null },
+      { id: "second-fairway", holeNumber: 2 },
+      { id: "third-green", holeNumber: 3 },
+      { id: "third-water", holeNumber: 3 },
+    ] as CourseTwinFeature[];
+    expect(mobilePlanFeatures({ features }, 2).map((feature) => feature.id)).toEqual([
+      "shared",
+      "second-fairway",
+    ]);
+    expect(mobilePlanFeatures({ features }, 3).map((feature) => feature.id)).toEqual([
+      "shared",
+      "third-green",
+      "third-water",
+    ]);
+    expect(features).toHaveLength(4);
+  });
   it("withholds hazard choices when the course only has estimated outlines or missing features", () => {
     const feature = {
       holeNumber: 2,

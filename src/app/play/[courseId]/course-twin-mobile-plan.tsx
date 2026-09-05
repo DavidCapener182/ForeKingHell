@@ -14,6 +14,7 @@ import type {
 } from "@/lib/course-twin-strategy";
 import {
   mobileCourseTwinPlanOptions,
+  mobilePlanFeatures,
   mobilePlanHasMappedSurfaces,
   modelledHazardChance,
   projectedLandingEllipse,
@@ -83,10 +84,10 @@ export function CourseTwinMobilePlan({
     : (options?.[intent] ?? null);
   const features = useMemo(
     () =>
-      [...manifest.features].sort(
+      mobilePlanFeatures(manifest, hole.holeNumber).sort(
         (a, b) => renderOrder.indexOf(a.type) - renderOrder.indexOf(b.type),
       ),
-    [manifest.features],
+    [manifest, hole.holeNumber],
   );
   const project = useMemo(
     () =>
