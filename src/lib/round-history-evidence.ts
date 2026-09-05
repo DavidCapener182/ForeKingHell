@@ -13,7 +13,11 @@ export function roundHistoryScore(holes: HistoryHole[], status: string) {
   );
   const totalScore = scored.length ? scored.reduce((sum, hole) => sum + hole.score, 0) : null;
   const totalPar = holes.length ? holes.reduce((sum, hole) => sum + hole.par, 0) : null;
-  const complete = holes.length > 0 && scored.length === holes.length && status !== "in_progress";
+  const complete =
+    holes.length > 0 &&
+    scored.length === holes.length &&
+    status !== "in_progress" &&
+    status !== "active";
   const toPar =
     totalScore === null ? null : totalScore - scored.reduce((sum, hole) => sum + hole.par, 0);
   return { totalScore, totalPar, toPar, complete, scoredHoles: scored.length };
@@ -22,7 +26,9 @@ export function roundHistoryScore(holes: HistoryHole[], status: string) {
 export function roundHistoryVerdict(holes: HistoryHole[], status: string) {
   const evidence = roundHistoryScore(holes, status);
   if (!evidence.complete)
-    return status === "in_progress" ? "Continue round" : "Complete the scorecard";
+    return status === "in_progress" || status === "active"
+      ? "Continue round"
+      : "Complete the scorecard";
   const penalties = holes.reduce((sum, hole) => sum + (hole.penalties ?? 0), 0);
   if (penalties >= 2) return `${penalties} penalty strokes recorded`;
   const worst = [...holes].sort(

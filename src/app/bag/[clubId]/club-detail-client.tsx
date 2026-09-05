@@ -353,7 +353,7 @@ export function ClubDetailClient({
                   key={session.id}
                   label={session.title ?? "Measured session"}
                   detail={`${formatDate(session.date)} · ${session.shots} ${session.shots === 1 ? "shot" : "shots"} in this distance sample`}
-                  href={`/sessions/${session.id}`}
+                  href={session.href}
                 />
               ))
             ) : (

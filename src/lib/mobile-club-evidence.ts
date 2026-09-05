@@ -1,3 +1,4 @@
+import { companionReviewRoute } from "@/lib/session-review-route";
 import { calculateShortGameTouchSummary, selectShortGameTouchShots } from "@/lib/short-game";
 import {
   calculateStockYardage,
@@ -26,7 +27,14 @@ export function mobileClubEvidence<T extends ClubEvidenceShot>(
   const latest = selected.find((s) => s.shotAt && Number.isFinite(new Date(s.shotAt).getTime()));
   const sessions = new Map<
     string,
-    { id: string; title: string | null; date: string; shots: number }
+    {
+      id: string;
+      type: string | null;
+      href: string;
+      title: string | null;
+      date: string;
+      shots: number;
+    }
   >();
   for (const shot of selected) {
     if (!shot.sessionId || !shot.shotAt) continue;
@@ -35,6 +43,8 @@ export function mobileClubEvidence<T extends ClubEvidenceShot>(
     else
       sessions.set(shot.sessionId, {
         id: shot.sessionId,
+        type: shot.sessionType ?? null,
+        href: companionReviewRoute({ id: shot.sessionId, type: shot.sessionType }),
         title: shot.sessionTitle ?? null,
         date: new Date(shot.shotAt).toISOString(),
         shots: 1,

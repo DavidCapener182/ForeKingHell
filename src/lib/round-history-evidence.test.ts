@@ -27,6 +27,7 @@ describe("round history evidence", () => {
     });
     expect(roundHistoryScore(holes(), "in_progress").complete).toBe(false);
     expect(roundHistoryScore([], "complete").complete).toBe(false);
+    expect(roundHistoryScore(holes(), "active").complete).toBe(false);
   });
   it("rejects invalid scores as incomplete evidence", () => {
     const invalid = holes();
@@ -38,6 +39,7 @@ describe("round history evidence", () => {
   it("compares only completed rounds with the same context and hole count", () => {
     const rounds = [
       round("active", "real_round", 9, "in_progress"),
+      round("legacy-active", "real_round", 9, "active"),
       round("latest"),
       round("sim", "simulator"),
       round("long", "real_round", 18),
@@ -61,6 +63,7 @@ describe("round history evidence", () => {
   it("describes saved scoring evidence without inventing pressure or causation", () => {
     expect(roundHistoryVerdict(holes(), "complete")).toBe("Finished at level par");
     expect(roundHistoryVerdict(holes(), "in_progress")).toBe("Continue round");
+    expect(roundHistoryVerdict(holes(), "active")).toBe("Continue round");
     expect(roundHistoryVerdict(holes(9, null), "complete")).toBe("Complete the scorecard");
     const scored = holes();
     scored[3].score = 7;

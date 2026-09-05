@@ -45,6 +45,17 @@ describe("mobile club evidence", () => {
     expect(e.verifiedAt).toBe("2026-01-12T00:00:00.000Z");
     expect(e.sessions.map((s) => s.id)).toEqual(["new", "old"]);
   });
+  it("routes round evidence to its scorecard and practice evidence to session review", () => {
+    for (const type of ["real_round", "round", "simulator", "simulated_course", "range"]) {
+      const e = mobileClubEvidence(
+        sample().map((s) => ({ ...s, sessionType: type })),
+        "7i",
+        false,
+      );
+      expect(e.sessions[0].type).toBe(type);
+      expect(e.sessions[0].href).toBe(`${type === "range" ? "/sessions" : "/rounds"}/new`);
+    }
+  });
   it("never calls missing lateral or speed evidence straight or zero", () => {
     const e = mobileClubEvidence(
       sample().map((s) => ({ ...s, sideCarryYd: null, ballSpeedMph: null, launchAngleDeg: null })),
