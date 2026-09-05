@@ -12,6 +12,16 @@ import {
 } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { recoverLoginConnection } from "./recover-connection";
+
+const passwordActionWithRecovery = recoverLoginConnection(
+  signInWithPasswordAction,
+  "The connection dropped before sign-in could be confirmed. Check your signal, then try again.",
+);
+const magicActionWithRecovery = recoverLoginConnection(
+  sendMagicLinkAction,
+  "The connection dropped before we could confirm your request. Check your inbox before trying again.",
+);
 
 const initialState: LoginActionState = {
   message: null,
@@ -22,10 +32,13 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const magicEmailInputRef = useRef<HTMLInputElement>(null);
   const [passwordState, passwordAction, passwordPending] = useActionState(
-    signInWithPasswordAction,
+    passwordActionWithRecovery,
     initialState,
   );
-  const [magicState, magicAction, magicPending] = useActionState(sendMagicLinkAction, initialState);
+  const [magicState, magicAction, magicPending] = useActionState(
+    magicActionWithRecovery,
+    initialState,
+  );
 
   const passwordMessage =
     passwordState.status === "idle" ? error : (passwordState.message ?? error);

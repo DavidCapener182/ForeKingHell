@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect } from "react";
 
 import { AppErrorState } from "@/components/app/app-error-state";
@@ -25,17 +24,28 @@ export function SegmentErrorState({
       <div data-route-error-state>
         <AppErrorState
           title={<h1>This view could not be loaded</h1>}
-          description="Try again to reload this screen, or return to your main view."
+          description="Try again. If that doesn’t work, reload the page."
           action={
             <div className="flex flex-wrap gap-3">
               <Button type="button" variant="outline" className="min-h-11" onClick={retry}>
                 Retry
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => window.location.reload()}
+              >
+                Reload page
+              </Button>
               <Button asChild variant="ghost" className="min-h-11 lg:hidden">
-                <Link href="/today">Back to Today</Link>
+                <a href="/today">Back to Today</a>
               </Button>
               <Button asChild variant="ghost" className="hidden min-h-11 lg:inline-flex">
-                <Link href="/dashboard">Back to dashboard</Link>
+                <a href="/dashboard">Back to dashboard</a>
+              </Button>
+              <Button asChild variant="ghost" className="min-h-11 lg:hidden">
+                <a href="/offline">Open saved golf</a>
               </Button>
             </div>
           }
