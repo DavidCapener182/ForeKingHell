@@ -1,12 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
-import { ArrowRight, RefreshCw, Target } from "lucide-react";
+import { ArrowRight, RefreshCw, Target, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import styles from "./mobile-companion.module.css";
 import { listOfflineActions, type OfflineActionRecord } from "@/lib/offline-queue";
 import { getTodaySyncOverride, type TodayPrimaryState } from "@/lib/today-sync-state";
+
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerClose,
+} from "@/components/ui/drawer";
 
 type TodayFact = { label: string; value: string };
 
@@ -14,13 +31,16 @@ export function TodayPrimaryAnswer({
   accountId,
   serverState,
   facts,
-  trainingLoadLabel,
+  evidenceDate,
+  evidenceContent,
 }: {
   accountId: string;
   serverState: TodayPrimaryState;
   facts: TodayFact[];
-  trainingLoadLabel?: string;
+  evidenceDate?: string;
+  evidenceContent: ReactNode;
 }) {
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const isOnline = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnlineSnapshot);
   const [actions, setActions] = useState<OfflineActionRecord[]>([]);
 
@@ -52,14 +72,20 @@ export function TodayPrimaryAnswer({
 
   const duration = facts.find((fact) => fact.label === "Session")?.value;
   const evidence = facts.find((fact) => fact.label === "Evidence")?.value;
-  const title = serverState.title
-    .replace(/^Practise /, "")
-    .replace(/^SW\b/, "Sand wedge")
-    .replace(/^PW\b/, "Pitching wedge")
-    .replace(/^GW\b/, "Gap wedge");
+  const club = facts.find((fact) => fact.label === "Club")?.value;
+  const title =
+    serverState.status === "Low"
+      ? club && club !== "Baseline"
+        ? `${club} baseline`
+        : "Build your baseline"
+      : serverState.title
+          .replace(/^Practise /, "")
+          .replace(/^SW\b/, "Sand wedge")
+          .replace(/^PW\b/, "Pitching wedge")
+          .replace(/^GW\b/, "Gap wedge");
   const reason =
     serverState.status === "Low"
-      ? `${evidence} support this focus. Start with calibration and build a repeatable sample before judging a change.`
+      ? "Establish your carry and usual miss with a measured calibration block."
       : serverState.reason;
   return (
     <div className="grid gap-3">
@@ -94,19 +120,47 @@ export function TodayPrimaryAnswer({
           <h2 className={styles.focusTitle}>{title}</h2>
           <p className={styles.focusReason}>{reason}</p>
         </div>
-        <div className={styles.focusFacts}>
-          <span>{duration}</span>
-          <span>{facts.find((fact) => fact.label === "Club")?.value}</span>
-          {trainingLoadLabel ? <span>{trainingLoadLabel} training load</span> : null}
-        </div>
         <Link href={serverState.href} className={styles.focusAction} data-today-primary-action>
           {duration ? `Build ${duration} practice` : serverState.action}
           <ArrowRight className="size-4" aria-hidden />
         </Link>
-        <p className={styles.focusEvidence}>
-          {evidence} · {serverState.status} confidence · <a href="#today-evidence">View evidence</a>
-        </p>
+        <button
+          id="today-evidence"
+          className={styles.focusEvidence}
+          onClick={() => setEvidenceOpen(true)}
+          aria-label="Why this recommendation?"
+        >
+          <span>
+            <strong>
+              {evidence} · {serverState.status} confidence
+            </strong>
+            {evidenceDate ? <span>Latest practice · {evidenceDate}</span> : null}
+          </span>
+          <ChevronRight className="size-5 shrink-0" aria-hidden />
+        </button>
       </section>
+      <Drawer open={evidenceOpen} onOpenChange={setEvidenceOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Why this recommendation?</DrawerTitle>
+            <DrawerDescription>
+              {serverState.status === "Low"
+                ? "The current sample is too small to call a reliable weakness. This focus helps build evidence."
+                : serverState.reason}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="min-h-0 overflow-y-auto px-4 pb-4">
+            {evidenceOpen ? evidenceContent : null}
+          </div>
+          <DrawerFooter>
+            <DrawerClose asChild>
+              <Button variant="outline" className="min-h-11">
+                Done
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

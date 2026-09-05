@@ -59,6 +59,36 @@ beforeEach(() => {
 });
 
 describe("explicit session evidence scope", () => {
+  it("exposes the exact earlier sample separately from current comparable shots", async () => {
+    const older = {
+      ...neighbouringShot,
+      id: "earlier-shot",
+      sessionId: "earlier-session",
+      carryYd: 150,
+      sessionDate: new Date("2026-08-20T12:00:00Z"),
+      shotAt: new Date("2026-08-20T12:00:00Z"),
+    };
+    const select = vi
+      .fn()
+      .mockReturnValueOnce(
+        query([neighbouringShot, { ...neighbouringShot, id: "chip", shotCategory: "chip" }]),
+      )
+      .mockReturnValueOnce(query([]))
+      .mockReturnValueOnce(
+        query([
+          older,
+          { ...older, id: "excluded", reviewStatus: "user_excluded" },
+          { ...older, id: "old-chip", shotCategory: "chip" },
+        ]),
+      );
+    vi.mocked(getDb).mockReturnValue({ select } as unknown as ReturnType<typeof getDb>);
+    const result = await getTodayPracticeData({ date: "2026-08-22", scope: "day" });
+    expect(result.shots.map((s) => s.id)).toEqual(["other-shot", "chip"]);
+    expect(result.comparisonShots.map((s) => s.id)).toEqual(["other-shot"]);
+    expect(result.previousComparisonShots?.map((s) => s.id)).toEqual(["earlier-shot"]);
+    expect(result.clubComparisons[0].today.carryAverageYd).toBe(140);
+    expect(result.clubComparisons[0].previous.carryAverageYd).toBe(150);
+  });
   it("keeps an empty saved session empty beside another measured upload", async () => {
     const result = await getTodayPracticeData({ sessionId: "empty-session" });
     expect(result.rawShots).toEqual([]);

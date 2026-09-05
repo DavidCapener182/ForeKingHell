@@ -1,10 +1,10 @@
 .focus {
   position: relative;
   display: grid;
-  gap: 1.125rem;
-  padding: 1.375rem;
+  gap: var(--mobile-space-standard);
+  padding: var(--mobile-space-large);
   overflow: hidden;
-  border-radius: 1.5rem;
+  border-radius: var(--mobile-radius-lg);
   background: #073e2d;
   color: #fff;
 }
@@ -42,19 +42,6 @@
   line-height: 1.5;
   color: #d5e7de;
 }
-.focusFacts {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  font-size: 0.9375rem;
-  color: #d5e7de;
-}
-.focusFacts span + span::before {
-  content: "·";
-  margin-right: 0.5rem;
-  color: #89ad9b;
-}
 .focusAction {
   display: flex;
   align-items: center;
@@ -74,16 +61,28 @@
   background: #b5e7c8;
 }
 .focusEvidence {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mobile-space-compact);
+  min-height: 44px;
+  text-align: left;
   font-size: 0.75rem;
   line-height: 1.4;
   color: #b5d2c2;
 }
-.focusEvidence a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.focusEvidence strong,
+.focusEvidence span > span {
+  display: block;
+}
+.focusEvidence strong {
+  color: #d5e7de;
+  font-weight: 500;
+}
+.focusEvidence:focus-visible,
+.change:focus-visible {
+  outline: 2px solid var(--ios-link);
+  outline-offset: 3px;
 }
 .sync {
   display: grid;
@@ -94,6 +93,8 @@
   color: var(--ios-label);
 }
 .change {
+  width: 100%;
+  text-align: left;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0.75rem;

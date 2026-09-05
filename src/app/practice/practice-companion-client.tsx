@@ -872,6 +872,12 @@ export function compactCompanionPlan(plan: PracticePlan): PracticePlan {
       ),
     ),
   );
+  // Keep the prescribed main club when reducing the plan for a phone screen.
+  const mainIndex = plan.blocks.findIndex((block) => block.title.startsWith("Main priority:"));
+  if (mainIndex > 0 && !selectedIndexes.includes(mainIndex)) {
+    selectedIndexes[1] = mainIndex;
+    selectedIndexes.sort((a, b) => a - b);
+  }
   const blocks = selectedIndexes.map((index, order) => ({
     ...plan.blocks[index],
     order: order + 1,
