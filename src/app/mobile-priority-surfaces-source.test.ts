@@ -14,10 +14,10 @@ const practiceWorkbenchSource = readFileSync(
   join(process.cwd(), "src/app/practice/practice-planner-client.tsx"),
   "utf8",
 );
-const practiceCompanionSource = readFileSync(
-  join(process.cwd(), "src/app/practice/practice-companion-client.tsx"),
-  "utf8",
-);
+const practiceCompanionSource =
+  readFileSync(join(process.cwd(), "src/app/practice/practice-companion-client.tsx"), "utf8") +
+  readFileSync(join(process.cwd(), "src/app/practice/active-range-mode.tsx"), "utf8") +
+  readFileSync(join(process.cwd(), "src/app/practice/measured-practice-result-card.tsx"), "utf8");
 const speedSource = readFileSync(join(process.cwd(), "src/app/(app)/speed/page.tsx"), "utf8");
 
 describe("priority authenticated responsive surfaces", () => {
@@ -46,7 +46,7 @@ describe("priority authenticated responsive surfaces", () => {
   });
 
   it("bounds the real companion practice carousel to the phone viewport", () => {
-    expect(practiceCompanionSource).toContain("<OperationStepper");
+    expect(practiceCompanionSource).toContain("<MobileLargeTitle");
     expect(practiceCompanionSource).toContain("<Carousel");
     expect(practiceCompanionSource).toContain('className="w-full min-w-0 max-w-full"');
     expect(practiceCompanionSource).toContain("basis-[calc(100%-2rem)]");

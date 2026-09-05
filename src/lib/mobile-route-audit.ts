@@ -21,6 +21,13 @@ export type MobileRouteAuditEntry = {
  */
 export const mobileRouteAudit = [
   {
+    file: "src/app/(app)/shots/review/page.tsx",
+    route: "/shots/review",
+    classification: 1,
+    resolution: "preserve",
+    note: "Mobile automatic evidence review uses conservative real-history suggestions and reversible golfer decisions.",
+  },
+  {
     file: "src/app/(app)/companion-runtime/import/csv/page.tsx",
     route: "/companion-runtime/import/csv",
     classification: 1,

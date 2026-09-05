@@ -1,3 +1,4 @@
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -11,8 +12,10 @@ import {
   Trophy,
 } from "lucide-react";
 
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
+import { MobileMetricStory } from "@/components/app/mobile-metric-story";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { MobileShotPatternCharts } from "@/components/app/mobile-shot-pattern-charts";
+import { LazyMobileShotPatternCharts as MobileShotPatternCharts } from "@/components/app/lazy-mobile-shot-pattern-charts";
 import { ResultHero } from "@/components/app/result-hero";
 import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
@@ -49,6 +52,7 @@ export default async function PracticeSessionReviewPage({
   params: Promise<{ sessionId: string }>;
 }) {
   const { sessionId } = await params;
+  const surface = await getRequestAppSurface();
   const userId = await requireCurrentUserId();
   const data = await getTodayPracticeData({ sessionId });
 
@@ -110,156 +114,211 @@ export default async function PracticeSessionReviewPage({
     },
   ];
 
+  const focusShots = shots.filter((shot) => !preferredClub || shot.clubType === preferredClub);
+  const averageMetric = (
+    key: "ballSpeedMph" | "clubSpeedMph" | "launchAngleDeg" | "smashFactor",
+  ) => {
+    const values = focusShots
+      .map((shot) => shot[key])
+      .filter((value): value is number => value != null && Number.isFinite(value));
+    return values.length
+      ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(
+          key === "smashFactor" ? 2 : 1,
+        )
+      : null;
+  };
+  const mobileMetrics = [
+    ...(patternSummary.medianCarryYd != null
+      ? [
+          {
+            label: "carry",
+            value: String(Math.round(patternSummary.medianCarryYd)),
+            unit: "yd",
+            detail: "Median trusted carry",
+          },
+        ]
+      : []),
+    ...(
+      [
+        ["Ball speed", "ballSpeedMph", "mph"],
+        ["Club speed", "clubSpeedMph", "mph"],
+        ["Launch", "launchAngleDeg", "°"],
+        ["Smash", "smashFactor", ""],
+      ] as const
+    ).flatMap(([label, key, unit]) => {
+      const value = averageMetric(key);
+      return value == null
+        ? []
+        : [{ label, value, unit, detail: "Average of available trusted readings" }];
+    }),
+  ];
   return (
     <PageShell>
-      <div className="hidden min-w-0 gap-6 lg:grid" data-session-performance-report>
-        <DesktopVerdictHeader
-          verdict={verdict}
-          title={data.overall.title}
-          summary={data.overall.summary}
-          confidence={`${sessionConfidence.label} confidence`}
-          date={data.dateLabel}
-          source={source}
-          clubs={clubList}
-          linkedPlan={linkedPlan}
-          nextAction={nextAction}
-        />
+      {surface === "workbench" ? (
+        <div className="hidden min-w-0 gap-6 lg:grid" data-session-performance-report>
+          <DesktopVerdictHeader
+            verdict={verdict}
+            title={data.overall.title}
+            summary={data.overall.summary}
+            confidence={`${sessionConfidence.label} confidence`}
+            date={data.dateLabel}
+            source={source}
+            clubs={clubList}
+            linkedPlan={linkedPlan}
+            nextAction={nextAction}
+          />
 
-        <Card
-          className="min-w-0 gap-0 overflow-hidden py-0 shadow-md"
-          data-primary-dispersion-stage
-        >
-          <CardHeader className="border-b bg-gradient-to-r from-slate-950 to-slate-800 px-6 py-5 text-white xl:px-8">
-            <div className="flex items-end justify-between gap-6">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
-                  Main visual
-                </p>
-                <CardTitle className="mt-1 text-2xl text-white">Dispersion report</CardTitle>
-                <CardDescription className="mt-1 text-slate-300">
-                  Landing pattern, trusted spread and measured ball flight for each club.
-                </CardDescription>
+          <Card
+            className="min-w-0 gap-0 overflow-hidden py-0 shadow-md"
+            data-primary-dispersion-stage
+          >
+            <CardHeader className="border-b bg-gradient-to-r from-slate-950 to-slate-800 px-6 py-5 text-white xl:px-8">
+              <div className="flex items-end justify-between gap-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                    Main visual
+                  </p>
+                  <CardTitle className="mt-1 text-2xl text-white">Dispersion report</CardTitle>
+                  <CardDescription className="mt-1 text-slate-300">
+                    Landing pattern, trusted spread and measured ball flight for each club.
+                  </CardDescription>
+                </div>
+                <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">
+                  {focusConfidence.sampleSize} trusted landing points
+                </Badge>
               </div>
-              <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">
-                {focusConfidence.sampleSize} trusted landing points
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 py-5 xl:px-8 xl:py-7">
-            <MobileShotPatternCharts
-              points={patternPoints}
-              preferredClub={preferredClub}
-              layout="desktop"
-            />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="px-5 py-5 xl:px-8 xl:py-7">
+              <MobileShotPatternCharts
+                points={patternPoints}
+                preferredClub={preferredClub}
+                layout="desktop"
+              />
+            </CardContent>
+          </Card>
 
-        <WhatHappened
-          improved={improved}
-          remaining={remaining}
-          bestClub={bestClub}
-          pattern={patternReadout(patternSummary, preferredClub)}
-        />
+          <WhatHappened
+            improved={improved}
+            remaining={remaining}
+            bestClub={bestClub}
+            pattern={patternReadout(patternSummary, preferredClub)}
+          />
 
-        <section className="grid gap-3" aria-labelledby="important-numbers-title">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              Performance snapshot
-            </p>
-            <h2 id="important-numbers-title" className="mt-1 text-2xl font-semibold tracking-tight">
-              Important numbers
-            </h2>
-          </div>
-          <ConnectedMetricBar metrics={importantMetrics} label="Four important session numbers" />
-        </section>
-
-        {plan ? <PlanVersusActual plan={plan} /> : null}
-
-        <ClubSummary comparisons={comparisons} />
-
-        <EvidenceDisclosure
-          source={source}
-          fileName={rawShots[0]?.fileName ?? null}
-          importedCount={rawShots.length}
-          trustedCount={shots.length}
-          excludedCount={Math.max(0, rawShots.length - shots.length)}
-          confidence={`${sessionConfidence.label} confidence`}
-        />
-      </div>
-
-      <MobileAppShell className="gap-4" data-practice-session-review>
-        <ResultHero
-          eyebrow="Session verdict"
-          title={verdict.label}
-          summary={
-            <div className="grid gap-2">
-              <p className="font-semibold text-foreground">{data.overall.title}</p>
-              <p>{data.overall.summary}</p>
-              <p className="text-xs">
-                {data.dateLabel} · {source} · {clubList} · {plan ? "Plan linked" : "No linked plan"}
+          <section className="grid gap-3" aria-labelledby="important-numbers-title">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                Performance snapshot
               </p>
+              <h2
+                id="important-numbers-title"
+                className="mt-1 text-2xl font-semibold tracking-tight"
+              >
+                Important numbers
+              </h2>
             </div>
-          }
-          confidence={{
-            label: `${sessionConfidence.label} confidence`,
-            tone: sessionConfidence.label === "Low" ? "outline" : "secondary",
-          }}
-          className={verdict.mobileClassName}
-        />
+            <ConnectedMetricBar metrics={importantMetrics} label="Four important session numbers" />
+          </section>
 
-        <Card className="gap-3 py-3" data-mobile-primary-chart>
-          <CardHeader className="px-3">
-            <CardTitle>Dispersion</CardTitle>
-            <CardDescription>
-              Tap a shot to inspect it. Switch to Flight for ball shape.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-3">
-            <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
-          </CardContent>
-        </Card>
+          {plan ? <PlanVersusActual plan={plan} /> : null}
 
-        <ConnectedMetricBar
-          label="Four important numbers"
-          className="grid-cols-2 [&>div:nth-child(2)]:border-l [&>div:nth-child(2)]:border-t-0"
-          metrics={importantMetrics.map(({ label, value }) => ({ label, value }))}
-        />
+          <ClubSummary comparisons={comparisons} />
 
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle>What changed</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-0 overflow-hidden rounded-xl border p-0">
-            <MobileFinding
-              icon={TrendingUp}
-              label="What improved"
-              title={improved?.clubLabel ?? "Baseline built"}
-              detail={
-                improved?.summary ??
-                "There is no prior like-for-like baseline strong enough for an improvement claim."
-              }
-              tone="positive"
-            />
-            <Separator />
-            <MobileFinding
-              icon={TrendingDown}
-              label="What needs work"
-              title={remaining?.clubLabel ?? "Retest"}
-              detail={remaining?.summary ?? "Repeat the same measured block before changing focus."}
-              tone="negative"
-            />
-          </CardContent>
-        </Card>
+          <EvidenceDisclosure
+            source={source}
+            fileName={rawShots[0]?.fileName ?? null}
+            importedCount={rawShots.length}
+            trustedCount={shots.length}
+            excludedCount={Math.max(0, rawShots.length - shots.length)}
+            confidence={`${sessionConfidence.label} confidence`}
+          />
+        </div>
+      ) : null}
 
-        <ButtonGroup className="w-full">
-          <Button asChild className="min-h-12 flex-1 rounded-xl text-base">
-            <Link href="/practice?intent=latest_weakness">
-              Build next plan
-              <ArrowRight className="ml-2 size-4" aria-hidden />
-            </Link>
+      {surface === "companion" ? (
+        <MobileAppShell className="gap-6" data-practice-session-review>
+          <MobileLargeTitle
+            title="Session review"
+            eyebrow={data.dateLabel}
+            detail={`${rawShots.length} shots · ${clubList} · ${source}`}
+          />
+          <ResultHero
+            eyebrow="Session verdict"
+            title={verdict.label}
+            summary={
+              <div className="grid gap-2">
+                <p className="font-semibold text-foreground">{data.overall.title}</p>
+                <p>{data.overall.summary}</p>
+                <p className="text-xs">
+                  {data.dateLabel} · {source} · {clubList} ·{" "}
+                  {plan ? "Plan linked" : "No linked plan"}
+                </p>
+              </div>
+            }
+            confidence={{
+              label: `${sessionConfidence.label} confidence`,
+              tone: sessionConfidence.label === "Low" ? "outline" : "secondary",
+            }}
+            className={verdict.mobileClassName}
+          />
+
+          <Card className="gap-3 py-3" data-mobile-primary-chart>
+            <CardHeader className="px-3">
+              <CardTitle>Dispersion</CardTitle>
+              <CardDescription>
+                Tap a shot to inspect it. Switch to Flight for ball shape.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-3">
+              <MobileShotPatternCharts points={patternPoints} preferredClub={preferredClub} />
+            </CardContent>
+          </Card>
+
+          <MobileMetricStory
+            metrics={mobileMetrics}
+            context={`${preferredClub ? clubLabel(preferredClub) : "Selected club"} · ${focusShots.length} trusted shots`}
+          />
+          <Button asChild variant="outline" className="min-h-12">
+            <Link href={`/shots?sessionId=${sessionId}`}>View shots</Link>
           </Button>
-        </ButtonGroup>
-      </MobileAppShell>
+
+          <Card size="sm">
+            <CardHeader>
+              <CardTitle>What changed</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-0 overflow-hidden rounded-xl border p-0">
+              <MobileFinding
+                icon={TrendingUp}
+                label="What improved"
+                title={improved?.clubLabel ?? "Baseline built"}
+                detail={
+                  improved?.summary ??
+                  "There is no prior like-for-like baseline strong enough for an improvement claim."
+                }
+                tone="positive"
+              />
+              <Separator />
+              <MobileFinding
+                icon={TrendingDown}
+                label="What needs work"
+                title={remaining?.clubLabel ?? "Retest"}
+                detail={
+                  remaining?.summary ?? "Repeat the same measured block before changing focus."
+                }
+                tone="negative"
+              />
+            </CardContent>
+          </Card>
+
+          <ButtonGroup className="w-full">
+            <Button asChild className="min-h-12 flex-1 rounded-xl text-base">
+              <Link href="/practice?intent=latest_weakness">
+                Build next plan
+                <ArrowRight className="ml-2 size-4" aria-hidden />
+              </Link>
+            </Button>
+          </ButtonGroup>
+        </MobileAppShell>
+      ) : null}
     </PageShell>
   );
 }

@@ -33,15 +33,17 @@ describe("companion identity and navigation feedback", () => {
   it("prefetches companion tabs and shared mobile links", () => {
     const shell = read("src/components/app/companion-app-shell.tsx");
     expect(shell).toContain("router.prefetch(href)");
-    expect(shell).toContain('"/today", "/practice", "/courses/strategy", "/sessions", "/bag"');
-    expect(read("src/components/app/ios-mobile.tsx")).toContain(
+    expect(shell).toContain('"/today", "/practice", "/play", "/progress", "/bag"');
+    expect(read("src/components/app/mobile-primitives.tsx")).toContain(
       "<Link href={href} prefetch aria-label={ariaLabel}",
     );
     expect(read("src/components/mobile-tab-bar.tsx")).toContain("prefetch");
   });
 
-  it("keeps restrained golf imagery inside the primary answer cards", () => {
-    expect(read("src/components/app/today-primary-answer.tsx")).toContain("lmwt-range-hero.png");
-    expect(read("src/app/practice/practice-companion-client.tsx")).toContain("practice-hero.avif");
+  it("keeps the primary recommendation focused on the action and evidence", () => {
+    expect(read("src/components/app/today-primary-answer.tsx")).toContain("styles.focus");
+    expect(read("src/app/practice/practice-companion-client.tsx")).toContain(
+      "data-current-practice-plan",
+    );
   });
 });

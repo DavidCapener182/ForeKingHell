@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
+import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
 import { type ReactNode, useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -109,6 +111,7 @@ type MonthChange = {
 export function ClubDetailClient({
   club,
   children,
+  companion = false,
 }: {
   club: {
     id: string;
@@ -118,12 +121,13 @@ export function ClubDetailClient({
     shots: AnalysisShot[];
   };
   children?: ReactNode;
+  companion?: boolean;
 }) {
   const accent = clubAccent(club.type);
   const clubModelName = formatClubModelName(club);
   const clubTypeLabel = formatClubType(club.type);
   const clubIdentityName = formatClubIdentityName(club.type);
-  const [shotRange, setShotRange] = useState<ShotRange>("thisMonth");
+  const [shotRange, setShotRange] = useState<ShotRange>(companion ? "all" : "thisMonth");
   const selectedRange =
     RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
   const orderedShots = useMemo(
@@ -174,6 +178,104 @@ export function ClubDetailClient({
     () => buildMonthChange(orderedShots, club.type),
     [club.type, orderedShots],
   );
+
+  if (companion) {
+    const carry = isShortGameTouch ? touch.carryMedianYd : stock.latestReliableCarryYd;
+    const low = isShortGameTouch ? touch.carryP25Yd : stock.latestReliableCarryP25Yd;
+    const high = isShortGameTouch ? touch.carryP75Yd : stock.latestReliableCarryP75Yd;
+    const value = (number: number | null) => (number == null ? "—" : String(Math.round(number)));
+    return (
+      <div className="grid gap-6" data-mobile-club-detail>
+        <MobileLargeTitle
+          title={clubIdentityName}
+          detail={clubModelName === clubTypeLabel ? undefined : clubModelName}
+        />
+        <MobileMetric
+          value={value(carry)}
+          unit="yd"
+          label={isShortGameTouch ? "touch carry" : "carry"}
+          detail={
+            low != null && high != null
+              ? `${Math.round(low)}–${Math.round(high)} yd usual range`
+              : "More measured shots needed"
+          }
+        />
+        <MobileStatus
+          label={stock.label}
+          tone={stock.confidenceScore >= 75 ? "positive" : "attention"}
+        />
+        <Button asChild className="min-h-14 rounded-2xl text-base">
+          <Link
+            href={`/practice/quick-range?club=${club.type}&focus=${encodeURIComponent(`${clubIdentityName} control`)}`}
+          >
+            Practise this club
+          </Link>
+        </Button>
+        <MobileSection title="Your numbers">
+          <MobileGroupedList>
+            <MobileListRow label="Total distance" value={`${value(stock.totalMedianYd)} yd`} />
+            <MobileListRow label="Ball speed" value={`${value(stock.averageBallSpeedMph)} mph`} />
+            <MobileListRow
+              label="Launch"
+              value={
+                stock.averageLaunchAngleDeg == null
+                  ? "—"
+                  : `${stock.averageLaunchAngleDeg.toFixed(1)}°`
+              }
+            />
+            <MobileListRow
+              label="Usual miss"
+              value={typicalMiss.label}
+              detail={typicalMiss.detail}
+            />
+            <MobileListRow
+              label="Sample"
+              value={`${stock.latestReliableSampleSize} trusted shots`}
+              detail={`Latest evidence · ${latestShotDate}`}
+            />
+          </MobileGroupedList>
+        </MobileSection>
+        <MobileSection title="Current trend">
+          <MobileGroupedList>
+            <MobileListRow
+              label={
+                monthChange.carryDeltaYd == null
+                  ? "Building a comparison"
+                  : `${monthChange.carryDeltaYd > 0 ? "+" : ""}${Math.round(monthChange.carryDeltaYd)} yd best stock carry`
+              }
+              detail={
+                monthChange.previousLabel
+                  ? `${monthChange.currentLabel} compared with ${monthChange.previousLabel}. Best-stock samples; this is not a single-shot gain.`
+                  : "Repeat comparable measured sessions to see a trend."
+              }
+            />
+          </MobileGroupedList>
+        </MobileSection>
+        <MobileGroupedList label="Club evidence">
+          <MobileListRow
+            label="Gapping neighbours"
+            detail="Compare this club with the rest of your bag"
+            href="/bag"
+          />
+          <MobileListRow label="Recent shots and sessions" href={`/shots?club=${club.type}`} />
+        </MobileGroupedList>
+        <details>
+          <summary className="flex min-h-12 items-center text-primary font-semibold">
+            View analytics
+          </summary>
+          <div className="grid gap-4 pt-3">
+            <RangeToggle value={shotRange} onChange={setShotRange} />
+            <ClubAnalysisTabs
+              clubType={club.type}
+              clubModelName={clubModelName}
+              clubTypeLabel={clubTypeLabel}
+              shots={selectedShots}
+            />
+          </div>
+        </details>
+      </div>
+    );
+  }
 
   return (
     <>

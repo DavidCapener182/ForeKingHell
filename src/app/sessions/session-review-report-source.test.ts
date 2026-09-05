@@ -32,7 +32,7 @@ describe("session performance report hierarchy", () => {
     const mobile = source.match(/<MobileAppShell[\s\S]*?<\/MobileAppShell>/)?.[0] ?? "";
     expect(mobile).toContain("<ResultHero");
     expect(mobile).toContain("data-mobile-primary-chart");
-    expect(mobile).toContain("<ConnectedMetricBar");
+    expect(mobile).toContain("<MobileMetricStory");
     expect(mobile).toContain('label="What improved"');
     expect(mobile).toContain('label="What needs work"');
     expect(mobile).toContain("Build next plan");

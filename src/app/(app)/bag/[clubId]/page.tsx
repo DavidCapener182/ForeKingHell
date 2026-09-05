@@ -1,3 +1,4 @@
+import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Upload } from "lucide-react";
@@ -25,7 +26,11 @@ type PageProps = {
 
 export default async function ClubDetailPage({ params }: PageProps) {
   const { clubId } = await params;
-  const [club, featureData] = await Promise.all([getClubDetail(clubId), getFeatureIdeasData()]);
+  const surface = await getRequestAppSurface();
+  const [club, featureData] = await Promise.all([
+    getClubDetail(clubId),
+    surface === "workbench" ? getFeatureIdeasData() : Promise.resolve(null),
+  ]);
 
   if (!club) {
     notFound();
@@ -49,8 +54,8 @@ export default async function ClubDetailPage({ params }: PageProps) {
           </Button>
         </div>
 
-        <ClubDetailClient club={club}>
-          <BagFeaturePanel data={featureData} />
+        <ClubDetailClient club={club} companion={surface === "companion"}>
+          {featureData ? <BagFeaturePanel data={featureData} /> : null}
         </ClubDetailClient>
       </DesktopWorkbenchLayout>
     </PageShell>

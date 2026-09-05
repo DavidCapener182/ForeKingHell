@@ -17,8 +17,8 @@ describe("functional appearance modes", () => {
 
     expect(mobile).not.toContain("data-theme");
     expect(mobile).not.toContain("clubhouse");
-    expect(mobile).toContain("--ios-tint: #007aff");
-    expect(mobile).toContain("--ios-tint: #0a84ff");
+    expect(mobile).toContain("--ios-tint: #087443");
+    expect(mobile).toContain("--ios-tint: #63d99b");
 
     expect(globals).toContain("--background: #fffdf4");
     expect(globals).toContain("--ring: #ff5a1f");

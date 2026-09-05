@@ -1,17 +1,23 @@
 "use client";
 
+import { activityHaptic } from "@/components/app/use-mobile-activity";
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
+
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import { clubLabel, clubSummary, blockVolume } from "./practice-mobile-format";
+const ActiveRangeMode = dynamic(
+  () => import("./active-range-mode").then((module) => module.ActiveRangeMode),
+  {
+    loading: () => (
+      <p role="status" className="py-6">
+        Opening Range Mode…
+      </p>
+    ),
+  },
+);
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Pause,
-  Play,
-  Save,
-  Upload,
-} from "lucide-react";
+import { CheckCircle2, ChevronRight, Save } from "lucide-react";
 
 import {
   completePracticeActivityAction,
@@ -23,24 +29,15 @@ import {
 import {
   IOSDisclosureGroup,
   IOSGroupedList,
-  IOSInlineStatus,
   IOSListRow,
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
-import { MobileCarouselPagination, MobileFilterChipGroup } from "@/components/app/mobile-controls";
-import { OperationStatus } from "@/components/app/operation-status";
-import { OperationStepper, type OperationStep } from "@/components/app/operation-stepper";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  MobileCarouselPagination,
+  MobileFilterChipGroup,
+  MobileSegmentedControl,
+} from "@/components/app/mobile-controls";
+import { OperationStatus } from "@/components/app/operation-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -69,9 +66,8 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import type {
   GeneratePracticePlanOptions,
   PracticeBlock,
@@ -83,13 +79,11 @@ import type {
   SavedPracticePlan,
 } from "@/lib/practice-planner";
 import { formatClubType } from "@/lib/club-format";
-import {
-  practiceDecisionResultLabel,
-  practiceDecisionResultTone,
-  practiceScoredBlockIds,
-  summarizePracticeOutcome,
-} from "@/lib/practice-planner-view";
 import { cn } from "@/lib/utils";
+
+const MeasuredPracticeResultCard = dynamic(() =>
+  import("./measured-practice-result-card").then((module) => module.MeasuredPracticeResultCard),
+);
 
 type MeasuredResult = SavedPracticePlan["result"];
 
@@ -138,8 +132,9 @@ export function PracticeCompanionClient({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [completedBlockIds, setCompletedBlockIds] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [remainingBalls, setRemainingBalls] = useState<Record<string, number>>({});
   const [rangeMode, setRangeMode] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [, setPaused] = useState(false);
   const [finished, setFinished] = useState(false);
   const [routeDirection, setRouteDirection] = useState<"forward" | "back" | null>(null);
   const [blockDirection, setBlockDirection] = useState<"forward" | "back" | null>(null);
@@ -167,8 +162,10 @@ export function PracticeCompanionClient({
     const timer = window.setTimeout(() => {
       setCompletedBlockIds(activeCachedPlan.completedBlockIds);
       setNote(activeCachedPlan.note);
+      setRemainingBalls(activeCachedPlan.remainingBalls ?? {});
       setSelectedIndex(Math.min(activeCachedPlan.blockIndex, Math.max(0, plan.blocks.length - 1)));
-      setRangeMode(true);
+      setFinished(activeCachedPlan.finished ?? false);
+      setRangeMode(!activeCachedPlan.finished);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [accountId, activeCachedPlan, plan.blocks.length, plan.status, savedPlanId]);
@@ -188,6 +185,14 @@ export function PracticeCompanionClient({
     if (!blockCarouselApi || blockCarouselApi.selectedScrollSnap() === selectedIndex) return;
     blockCarouselApi.scrollTo(selectedIndex);
   }, [blockCarouselApi, selectedIndex]);
+
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>("[data-app-surface='companion']");
+    if (shell) shell.dataset.mobileFlow = rangeMode ? "immersive" : "standard";
+    return () => {
+      if (shell) delete shell.dataset.mobileFlow;
+    };
+  }, [rangeMode]);
 
   useEffect(() => {
     if (!rangeMode || !("wakeLock" in navigator)) return;
@@ -221,56 +226,147 @@ export function PracticeCompanionClient({
     };
   }, [rangeMode]);
 
+  const syncSnapshot = useRef({
+    savedPlanId,
+    selectedIndex,
+    completedBlockIds,
+    note,
+    plan,
+    finished,
+  });
+  const syncing = useRef(false);
+  const lastSynced = useRef("");
   useEffect(() => {
-    if (!rangeMode || !savedPlanId || !navigator.onLine) return;
-    const timer = window.setTimeout(() => {
-      void savePracticeActivityProgressAction(savedPlanId, {
-        blockIndex: selectedIndex,
-        completedBlockIds,
-        note,
-      }).catch(() => undefined);
-    }, 650);
-    return () => window.clearTimeout(timer);
-  }, [completedBlockIds, note, rangeMode, savedPlanId, selectedIndex]);
+    syncSnapshot.current = { savedPlanId, selectedIndex, completedBlockIds, note, plan, finished };
+  }, [savedPlanId, selectedIndex, completedBlockIds, note, plan, finished]);
+
+  useEffect(() => {
+    if (!hydrated || !savedPlanId || plan.status === "analysed") return;
+    cacheActivePractice(
+      accountId,
+      savedPlanId,
+      completedBlockIds,
+      note,
+      selectedIndex,
+      plan,
+      finished,
+      remainingBalls,
+    );
+    let cancelled = false;
+    async function sync() {
+      if (syncing.current || !navigator.onLine) return;
+      const current = syncSnapshot.current;
+      if (!current.savedPlanId) return;
+      const signature = JSON.stringify([
+        current.savedPlanId,
+        current.selectedIndex,
+        current.completedBlockIds,
+        current.note,
+        current.finished,
+      ]);
+      if (signature === lastSynced.current) return;
+      syncing.current = true;
+      try {
+        await savePracticeActivityProgressAction(current.savedPlanId, {
+          blockIndex: current.selectedIndex,
+          completedBlockIds: current.completedBlockIds,
+          note: current.note,
+        });
+        if (current.finished) await completePracticeActivityAction(current.savedPlanId);
+        lastSynced.current = signature;
+        if (!cancelled)
+          setMessage(
+            current.finished ? "Activity saved. Import shots to measure the result." : null,
+          );
+      } catch {
+        if (!cancelled) setMessage("Saved on this iPhone. Reconnect to sync practice.");
+      } finally {
+        syncing.current = false;
+      }
+    }
+    const timer = window.setTimeout(() => void sync(), 650);
+    const retry = window.setInterval(() => void sync(), 15000);
+    const online = () => void sync();
+    window.addEventListener("online", online);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.clearInterval(retry);
+      window.removeEventListener("online", online);
+    };
+  }, [
+    accountId,
+    hydrated,
+    completedBlockIds,
+    note,
+    savedPlanId,
+    selectedIndex,
+    plan,
+    finished,
+    remainingBalls,
+  ]);
 
   function regenerate(nextOptions = options) {
     setMessage(null);
-    setPlan((current) => ({
-      ...current,
-      estimatedTimeMinutes: nextOptions.timeMinutes,
-    }));
     startTransition(async () => {
-      const generated = await generatePracticePlanAction(nextOptions);
-      setPlan(compactCompanionPlan(generated));
-      setSavedPlanId(null);
-      setSelectedIndex(0);
-      setCompletedBlockIds([]);
-      setFinished(false);
+      try {
+        const generated = await generatePracticePlanAction(nextOptions);
+        setOptions(nextOptions);
+        setPlan(compactCompanionPlan(generated));
+        setSavedPlanId(null);
+        setSelectedIndex(0);
+        setCompletedBlockIds([]);
+        setRemainingBalls({});
+        setFinished(false);
+      } catch {
+        setMessage("Could not update the plan. Your previous practice is still available.");
+      }
     });
   }
 
   function saveAndStart() {
     setMessage(null);
     startTransition(async () => {
-      const { planId } = await saveAndStartPracticePlanAction(plan);
-      setSavedPlanId(planId);
-      setPlan((current) => ({ ...current, id: planId, status: "awaiting_import" }));
-      setRouteDirection("forward");
-      setBlockDirection(null);
-      setRangeMode(true);
-      setPaused(false);
-      setFinished(false);
-      setCompletedBlockIds([]);
-      setSelectedIndex(0);
-      cacheActivePractice(accountId, planId, [], "", 0);
-      setMessage("Range Mode started. Manual completion is activity, not measured success.");
+      try {
+        const { planId } = await saveAndStartPracticePlanAction(plan);
+        setSavedPlanId(planId);
+        setPlan((current) => ({ ...current, id: planId, status: "awaiting_import" }));
+        setRouteDirection("forward");
+        setBlockDirection(null);
+        setRangeMode(true);
+        setPaused(false);
+        setFinished(false);
+        setCompletedBlockIds([]);
+        setSelectedIndex(0);
+        setRemainingBalls({});
+        setNote("");
+        cacheActivePractice(
+          accountId,
+          planId,
+          [],
+          "",
+          0,
+          { ...plan, id: planId, status: "awaiting_import" },
+          false,
+          {},
+        );
+        setMessage(null);
+      } catch {
+        setMessage("Connect to save this new plan, then try Start again.");
+      }
     });
   }
 
   function resume() {
     if (!savedPlanId) return;
     startTransition(async () => {
-      await startPracticePlanAction(savedPlanId);
+      if (navigator.onLine) {
+        try {
+          await startPracticePlanAction(savedPlanId);
+        } catch {
+          setMessage("Using your saved practice. Reconnect to sync.");
+        }
+      }
       setRouteDirection("forward");
       setBlockDirection(null);
       setRangeMode(true);
@@ -281,6 +377,7 @@ export function PracticeCompanionClient({
 
   function completeBlock() {
     if (!selectedBlock) return;
+    activityHaptic();
     const complete = completedBlockIds.includes(selectedBlock.id)
       ? completedBlockIds
       : [...completedBlockIds, selectedBlock.id];
@@ -293,16 +390,12 @@ export function PracticeCompanionClient({
 
   function finishWithoutUpload() {
     if (!savedPlanId) return;
-    startTransition(async () => {
-      await completePracticeActivityAction(savedPlanId);
-      clearActivePractice(accountId);
-      setRouteDirection("back");
-      setRangeMode(false);
-      setPaused(false);
-      setFinished(true);
-      setPlan((current) => ({ ...current, status: "completed" }));
-      setMessage("Activity complete. No block has been marked as measured success.");
-    });
+    setRouteDirection("back");
+    setRangeMode(false);
+    setPaused(false);
+    setFinished(true);
+    setPlan((current) => ({ ...current, status: "completed" }));
+    setMessage("Activity complete. Import shots to measure the result.");
   }
 
   if (rangeMode) {
@@ -312,6 +405,11 @@ export function PracticeCompanionClient({
         className={cn(routeDirection && "t-route-step")}
         data-direction={routeDirection ?? undefined}
       >
+        {message ? (
+          <p role="status" className="mb-3 text-sm text-muted-foreground">
+            {message}
+          </p>
+        ) : null}
         <ActiveRangeMode
           plan={plan}
           block={selectedBlock}
@@ -319,6 +417,13 @@ export function PracticeCompanionClient({
           blockDirection={blockDirection}
           completedBlockIds={completedBlockIds}
           note={note}
+          remainingBalls={
+            selectedBlock ? (remainingBalls[selectedBlock.id] ?? selectedBlock.ballCount ?? 0) : 0
+          }
+          onRemainingBalls={(count) => {
+            if (selectedBlock)
+              setRemainingBalls((current) => ({ ...current, [selectedBlock.id]: count }));
+          }}
           pending={isPending}
           onNote={(value) => {
             setNote(value);
@@ -352,16 +457,7 @@ export function PracticeCompanionClient({
       className={cn("grid gap-4", routeDirection && "t-route-step")}
       data-direction={routeDirection ?? undefined}
     >
-      <OperationStepper
-        compact
-        label="Practice workflow"
-        steps={practiceWorkflowSteps({
-          rangeMode: false,
-          saved: Boolean(savedPlanId),
-          finished,
-          hasEvidence: Boolean(activeMeasuredResult),
-        })}
-      />
+      <MobileLargeTitle title="Practice" detail="Make your next session count." />
       {activeMeasuredResult ? (
         <MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />
       ) : null}
@@ -369,27 +465,7 @@ export function PracticeCompanionClient({
         <SpeedDevelopmentCompanionReadout context={context} />
       ) : null}
       {finished ? <FinishedActions message={message} /> : null}
-      {paused ? (
-        <Button
-          type="button"
-          className="min-h-12 rounded-xl"
-          onClick={resume}
-          disabled={isPending || !hydrated}
-        >
-          <Play className="size-4" aria-hidden />
-          Resume Range Mode
-        </Button>
-      ) : null}
-
       <Card className="relative isolate gap-3 overflow-hidden py-3" data-current-practice-plan>
-        <div
-          className="pointer-events-none absolute inset-0 -z-20 bg-[url('/assets/companion/practice-hero.avif')] bg-cover bg-[68%_center] opacity-20"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-card via-card/90 to-card/60"
-          aria-hidden
-        />
         <CardHeader>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
@@ -446,12 +522,32 @@ export function PracticeCompanionClient({
               disabled={isPending || !hydrated}
             >
               <Save className="size-4" aria-hidden />
-              {savedPlanId ? "Start Practice" : "Save & Start Practice"}
+              {savedPlanId ? "Resume Range Mode" : "Start practice"}
             </Button>
           )}
         </CardFooter>
       </Card>
 
+      <MobileSegmentedControl
+        ariaLabel="Practice duration"
+        value={String(options.timeMinutes)}
+        onValueChange={(value) =>
+          regenerate({ ...options, timeMinutes: Number(value) as typeof options.timeMinutes })
+        }
+        options={[20, 30, 45, 60].map((value) => ({
+          value: String(value),
+          label: `${value} min`,
+          disabled: isPending,
+        }))}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <Button asChild variant="outline" className="min-h-12">
+          <Link href="/practice/quick-range">Quick Range</Link>
+        </Button>
+        <Button asChild variant="outline" className="min-h-12">
+          <Link href="/speed">Speed training</Link>
+        </Button>
+      </div>
       <section className="grid gap-2.5">
         <IOSSectionHeader
           title="Practice blocks"
@@ -550,95 +646,6 @@ export function PracticeCompanionClient({
         ]}
       />
     </div>
-  );
-}
-
-function MeasuredPracticeResultCard({
-  result,
-  blocks,
-}: {
-  result: NonNullable<MeasuredResult>;
-  blocks: PracticePlan["blocks"];
-}) {
-  const comparison = result.comparison;
-  const importedSession = comparison?.importedSession;
-  const actualShots = comparison?.planVsActual.actualShots ?? 0;
-  const plannedShots = comparison?.planVsActual.plannedBalls ?? null;
-  const sessionCount = importedSession?.sessionCount ?? (actualShots > 0 ? 1 : 0);
-  const rawShotCount = importedSession?.rawShotCount ?? actualShots;
-  const excludedShotCount = importedSession?.excludedShotCount ?? 0;
-  const scoredBlockIds = practiceScoredBlockIds(blocks);
-  const outcome = summarizePracticeOutcome(comparison, result.practiceScore, scoredBlockIds);
-  const OutcomeIcon = outcome.status === "passed" ? CheckCircle2 : AlertCircle;
-
-  return (
-    <Card
-      size="sm"
-      data-plan-versus-actual
-      data-practice-result={outcome.status}
-      aria-live="polite"
-      className={cn(
-        "border-2",
-        outcome.status === "passed" && "border-[var(--status-success-border)]",
-        outcome.status === "not_passed" && "border-[var(--status-warning-border)]",
-      )}
-    >
-      <CardHeader>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Practice result
-          </p>
-          <CardTitle className="mt-1 flex items-center gap-2 text-2xl" role="status">
-            <OutcomeIcon className="size-5 shrink-0" aria-hidden />
-            {outcome.label}
-          </CardTitle>
-          <p className="mt-1 text-sm font-medium leading-5">{outcome.detail}</p>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">{result.verdict}</p>
-        </div>
-        <CardAction>
-          <Badge variant="secondary">{result.practiceScore}/100</Badge>
-        </CardAction>
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        <Progress
-          value={result.practiceScore}
-          aria-label={`Practice result: ${outcome.label}. Score ${result.practiceScore} out of 100`}
-        />
-        <IOSGroupedList label="Measured practice result" className="bg-card">
-          <IOSListRow
-            label="Measured shots"
-            value={plannedShots === null ? actualShots : `${actualShots}/${plannedShots}`}
-            detail="Every eligible launch-monitor shot from the practice day"
-          />
-          {sessionCount > 0 ? (
-            <IOSListRow
-              label="Today's uploads"
-              value={sessionCount}
-              detail={`${rawShotCount} raw shots${
-                excludedShotCount > 0 ? ` · ${excludedShotCount} excluded` : ""
-              }`}
-            />
-          ) : null}
-          {comparison?.decisions
-            .filter((decision) => scoredBlockIds.has(decision.blockId))
-            .map((decision) => (
-              <IOSListRow
-                key={decision.blockId}
-                label={decision.title}
-                value={`${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`}
-                detail={decision.actual}
-                status={
-                  <IOSInlineStatus
-                    label={practiceDecisionResultLabel(decision)}
-                    tone={practiceDecisionResultTone(decision)}
-                  />
-                }
-              />
-            ))}
-          <IOSListRow label="Next action" detail={result.nextAction} />
-        </IOSGroupedList>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -867,327 +874,6 @@ function ChoiceGroup({
   );
 }
 
-function ActiveRangeMode({
-  plan,
-  block,
-  blockIndex,
-  blockDirection,
-  completedBlockIds,
-  note,
-  pending,
-  onNote,
-  onPrevious,
-  onNext,
-  onComplete,
-  onPause,
-  onFinish,
-  practicePlanId,
-}: {
-  plan: PracticePlan;
-  block: PracticeBlock | null;
-  blockIndex: number;
-  blockDirection: "forward" | "back" | null;
-  completedBlockIds: string[];
-  note: string;
-  pending: boolean;
-  onNote: (value: string) => void;
-  onPrevious: () => void;
-  onNext: () => void;
-  onComplete: () => void;
-  onPause: () => void;
-  onFinish: () => void;
-  practicePlanId: string | null;
-}) {
-  const allComplete = plan.blocks.length > 0 && completedBlockIds.length >= plan.blocks.length;
-  const [finishOpen, setFinishOpen] = useState(false);
-  const previousButtonRef = useRef<HTMLButtonElement>(null);
-  const completeButtonRef = useRef<HTMLButtonElement>(null);
-  const nextButtonRef = useRef<HTMLButtonElement>(null);
-  const navigationFocusRef = useRef<"previous" | "next" | null>(null);
-
-  useEffect(() => {
-    const navigatedButton =
-      navigationFocusRef.current === "previous"
-        ? previousButtonRef.current
-        : navigationFocusRef.current === "next"
-          ? nextButtonRef.current
-          : null;
-    navigationFocusRef.current = null;
-    if (navigatedButton?.disabled) {
-      completeButtonRef.current?.focus({ preventScroll: true });
-    }
-  }, [blockIndex]);
-
-  return (
-    <section
-      className="grid min-h-[calc(100dvh-9rem)] content-start gap-4"
-      data-active-range-mode
-      data-practice-plan-id={practicePlanId ?? undefined}
-    >
-      <OperationStepper
-        compact
-        label="Practice workflow"
-        steps={practiceWorkflowSteps({
-          rangeMode: true,
-          saved: true,
-          finished: false,
-          hasEvidence: false,
-        })}
-      />
-      <Card className="gap-3 py-3" data-current-range-block>
-        <div
-          key={block?.id ?? `range-block-${blockIndex}`}
-          className={cn("grid gap-3", blockDirection && "t-route-step")}
-          data-direction={blockDirection ?? undefined}
-          data-current-range-block-content
-        >
-          <CardHeader className="px-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                Range Mode · Block {blockIndex + 1} of {plan.blocks.length}
-              </p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight">
-                {block?.title ?? "Practice"}
-              </h1>
-              <p className="mt-1 text-sm font-medium text-muted-foreground">
-                {block ? `${clubLabel(block)} · ${blockVolume(block)}` : plan.summary}
-              </p>
-            </div>
-            <CardAction>
-              <Badge variant={allComplete ? "default" : "secondary"}>
-                {completedBlockIds.length}/{plan.blocks.length} complete
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="grid gap-3 px-3">
-            <Progress
-              value={plan.blocks.length ? (completedBlockIds.length / plan.blocks.length) * 100 : 0}
-              aria-label={`${completedBlockIds.length} of ${plan.blocks.length} practice blocks complete`}
-              className="h-2"
-            />
-            <div className="rounded-[var(--mobile-radius-md)] bg-secondary/60 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Task
-              </p>
-              <p className="mt-1 text-[15px] font-medium leading-6">
-                {block?.drill ?? plan.summary}
-              </p>
-              <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Success target
-              </p>
-              <p className="mt-1 text-lg font-semibold leading-6">
-                {block?.successTarget ?? "Choose a block"}
-              </p>
-              <p className="mt-4 border-t border-border/70 pt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Next action
-              </p>
-              <p className="mt-1 text-[15px] leading-6">
-                {block?.recordPrompt ?? "Complete the block, then move to the next task."}
-              </p>
-            </div>
-          </CardContent>
-        </div>
-        <CardContent className="grid gap-3 px-3">
-          <div className="grid w-full grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2">
-            <Button
-              ref={previousButtonRef}
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11 rounded-[var(--mobile-radius-md)]"
-              disabled={blockIndex <= 0}
-              onClick={() => {
-                navigationFocusRef.current = "previous";
-                onPrevious();
-              }}
-              aria-label="Previous practice block"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              ref={completeButtonRef}
-              type="button"
-              className="min-h-11 rounded-[var(--mobile-radius-md)] px-3"
-              disabled={!block}
-              onClick={onComplete}
-            >
-              <CheckCircle2 className="size-4" />
-              Complete Block
-            </Button>
-            <Button
-              ref={nextButtonRef}
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-11 rounded-[var(--mobile-radius-md)]"
-              disabled={blockIndex >= plan.blocks.length - 1}
-              onClick={() => {
-                navigationFocusRef.current = "next";
-                onNext();
-              }}
-              aria-label="Next practice block"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            Complete records activity only. Imported launch-monitor rows decide measured success.
-          </p>
-          {block?.ballCount !== null && block?.ballCount !== undefined ? (
-            <ManualBallCounter key={block.id} initialRemaining={block.ballCount} />
-          ) : null}
-        </CardContent>
-      </Card>
-      <Card size="sm">
-        <CardHeader>
-          <CardTitle>Short note</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={note}
-            onChange={(event) => onNote(event.target.value)}
-            rows={2}
-            maxLength={300}
-            placeholder="Feel, strike or context"
-            className="min-h-20 resize-none"
-          />
-        </CardContent>
-      </Card>
-      <ButtonGroup className="w-full">
-        <Button type="button" variant="outline" className="min-h-11 rounded-xl" onClick={onPause}>
-          <Pause className="size-4" />
-          Pause
-        </Button>
-        <Button
-          type="button"
-          className="min-h-11 rounded-xl"
-          onClick={() => setFinishOpen(true)}
-          disabled={pending}
-        >
-          Finish Practice
-        </Button>
-      </ButtonGroup>
-      <Drawer open={finishOpen} onOpenChange={setFinishOpen} repositionInputs={false}>
-        <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Add measured evidence?</DrawerTitle>
-            <DrawerDescription>
-              Choose the source you used. Manual activity will not be presented as measured success.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="mt-4 grid gap-2">
-            <Button asChild className="min-h-12 rounded-xl">
-              <Link
-                href={`/rapsodo${practicePlanId ? `?practicePlanId=${encodeURIComponent(practicePlanId)}` : ""}`}
-              >
-                Sync Rapsodo
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="min-h-12 rounded-xl">
-              <Link
-                href={`/import?source=csv${practicePlanId ? `&practicePlanId=${encodeURIComponent(practicePlanId)}` : ""}`}
-              >
-                <Upload className="size-4" /> Choose CSV
-              </Link>
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button type="button" variant="ghost" className="min-h-12" disabled={pending}>
-                  Finish without evidence
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Finish without measured evidence?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    The activity will be saved, but no block will count as measured success until a
-                    launch-monitor session is linked.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep practising</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      setFinishOpen(false);
-                      onFinish();
-                    }}
-                  >
-                    Finish activity only
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </DrawerContent>
-      </Drawer>
-    </section>
-  );
-}
-
-function ManualBallCounter({ initialRemaining }: { initialRemaining: number }) {
-  const [manualRemaining, setManualRemaining] = useState(initialRemaining);
-
-  return (
-    <div className="flex items-center justify-between gap-3 border-t border-border/70 pt-3">
-      <div>
-        <p className="text-sm font-semibold">{manualRemaining} balls remaining</p>
-        <p className="text-xs text-muted-foreground">Range counter only · not evidence</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-11"
-          onClick={() => setManualRemaining((value) => Math.max(0, value - 1))}
-          aria-label="Remove one ball"
-        >
-          −
-        </Button>
-        <span className="w-8 text-center text-lg font-bold">{manualRemaining}</span>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          className="size-11"
-          onClick={() => setManualRemaining((value) => value + 1)}
-          aria-label="Add one ball"
-        >
-          +
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function practiceWorkflowSteps({
-  rangeMode,
-  saved,
-  finished,
-  hasEvidence,
-}: {
-  rangeMode: boolean;
-  saved: boolean;
-  finished: boolean;
-  hasEvidence: boolean;
-}): OperationStep[] {
-  return [
-    { id: "brief", label: "Brief", status: "complete" },
-    { id: "plan", label: "Plan", status: "complete" },
-    {
-      id: "start",
-      label: "Start",
-      status: rangeMode ? "current" : saved || finished || hasEvidence ? "complete" : "current",
-    },
-    {
-      id: "evidence",
-      label: "Evidence",
-      status: hasEvidence ? "complete" : finished ? "current" : "upcoming",
-    },
-    { id: "review", label: "Review", status: hasEvidence ? "current" : "upcoming" },
-  ];
-}
-
 function FinishedActions({ message }: { message: string | null }) {
   return (
     <Card data-practice-finished>
@@ -1212,19 +898,6 @@ function FinishedActions({ message }: { message: string | null }) {
       </CardFooter>
     </Card>
   );
-}
-
-function clubLabel(block: PracticeBlock) {
-  return block.clubs.length > 0 ? block.clubs.map(formatClubType).join(" + ") : "Mixed clubs";
-}
-
-function clubSummary(plan: PracticePlan) {
-  if (plan.focusClubs.length === 0) return "Mixed clubs";
-  return plan.focusClubs.slice(0, 3).map(formatClubType).join(" + ");
-}
-
-function blockVolume(block: PracticeBlock) {
-  return block.ballCount === null ? `${block.timeMinutes} min` : `${block.ballCount} balls`;
 }
 
 export function compactCompanionPlan(plan: PracticePlan): PracticePlan {
@@ -1270,6 +943,9 @@ type CachedActivePractice = {
   completedBlockIds: string[];
   note: string;
   blockIndex: number;
+  plan?: PracticePlan;
+  finished?: boolean;
+  remainingBalls?: Record<string, number>;
 };
 
 function activePracticeStorageKey(accountId: string) {
@@ -1282,12 +958,18 @@ function cacheActivePractice(
   completedBlockIds: string[],
   note: string,
   blockIndex: number,
+  plan?: PracticePlan,
+  finished = false,
+  remainingBalls?: Record<string, number>,
 ) {
   try {
     window.localStorage.setItem(
       activePracticeStorageKey(accountId),
       JSON.stringify({
         planId,
+        plan: plan ?? readActivePractice(accountId)?.plan,
+        finished,
+        remainingBalls: remainingBalls ?? readActivePractice(accountId)?.remainingBalls,
         completedBlockIds,
         note,
         blockIndex,
@@ -1311,6 +993,17 @@ function readActivePractice(accountId: string): CachedActivePractice | null {
         : [],
       note: typeof parsed.note === "string" ? parsed.note : "",
       blockIndex: typeof parsed.blockIndex === "number" ? parsed.blockIndex : 0,
+      plan: parsed.plan,
+      finished: parsed.finished === true,
+      remainingBalls:
+        parsed.remainingBalls && typeof parsed.remainingBalls === "object"
+          ? Object.fromEntries(
+              Object.entries(parsed.remainingBalls).filter(
+                ([, value]) =>
+                  typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 999,
+              ),
+            )
+          : {},
     };
   } catch {
     return null;

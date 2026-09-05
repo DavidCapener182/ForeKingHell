@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import { hasLocalAuthBypass } from "./helpers";
 
 test.describe("clean-database companion smoke", () => {
+  test.use({ actionTimeout: 15_000 });
   test.skip(!hasLocalAuthBypass, "Enable the local Playwright auth bypass for the CI smoke.");
   test.setTimeout(240_000);
 
@@ -16,15 +17,19 @@ test.describe("clean-database companion smoke", () => {
 
     const primaryNavigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(primaryNavigation).toBeVisible();
+    await expect(primaryNavigation.getByRole("link")).toHaveText([
+      "Today",
+      "Practice",
+      "Play",
+      "Progress",
+      "Bag",
+    ]);
 
     for (const destination of [
-      { navigationLabel: "Practice", routeLabel: "Practice Planner", path: /\/practice(?:\?|$)/ },
-      {
-        navigationLabel: "Strategy",
-        routeLabel: "Course Strategy",
-        path: /\/courses\/strategy(?:\?|$)/,
-      },
-      { navigationLabel: "Review", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
+      { navigationLabel: "Practice", routeLabel: "Practice", path: /\/practice(?:\?|$)/ },
+      { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
+      { navigationLabel: "Progress", routeLabel: "Progress", path: /\/progress(?:\?|$)/ },
+      { navigationLabel: "Bag", routeLabel: "Bag", path: /\/bag(?:\?|$)/ },
     ]) {
       await primaryNavigation
         .getByRole("link", { name: destination.navigationLabel, exact: true })
@@ -32,15 +37,17 @@ test.describe("clean-database companion smoke", () => {
       await expectCompanionRoute(page, destination.routeLabel, destination.path);
     }
 
-    await page.goto("/bag", { waitUntil: "commit" });
-    await expectCompanionRoute(page, "Bag map", /\/bag(?:\?|$)/);
     await expect(
       page
         .getByText("No clubs imported yet", { exact: true })
         .or(page.getByRole("tablist", { name: "Bag views" })),
     ).toBeVisible();
 
-    await page.getByRole("link", { name: "Import launch-monitor data" }).click();
+    await page.getByRole("button", { name: /Open profile and navigation/ }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("link", { name: "Import & Sync", exact: true })
+      .click();
     await expectCompanionRoute(page, "Import data", /\/import(?:\?|$)/);
   });
 });
@@ -50,7 +57,8 @@ async function expectCompanionRoute(
   routeLabel: string,
   path: RegExp,
 ) {
-  await expect(page).toHaveURL(path);
+  // The CI dev server compiles each destination on its first visit.
+  await expect(page).toHaveURL(path, { timeout: 60_000 });
   await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
     timeout: 60_000,
   });

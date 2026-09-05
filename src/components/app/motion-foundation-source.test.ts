@@ -155,7 +155,7 @@ describe("shared motion foundation", () => {
 
   it("keeps tooltips delayed once, then immediate, and shares disclosure motion on iOS", () => {
     const tooltip = source("src/components/ui/tooltip.tsx");
-    const ios = source("src/components/app/ios-mobile.tsx");
+    const ios = source("src/components/app/mobile-primitives.tsx");
 
     expect(tooltip).toContain("delayDuration = 300");
     expect(tooltip).toContain("skipDelayDuration = 400");

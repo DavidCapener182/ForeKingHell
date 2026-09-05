@@ -10,8 +10,8 @@ describe("companion route capabilities", () => {
   it("keeps primary companion routes explicit", () => {
     expect(mobileCapabilities.today.mobileNav).toBe("primary");
     expect(mobileCapabilities.practice.mobileNav).toBe("primary");
-    expect(mobileCapabilities["course-strategy"].mobileNav).toBe("primary");
-    expect(mobileCapabilities.sessions.mobileNav).toBe("primary");
+    expect(mobileCapabilities["play-companion"].mobileNav).toBe("primary");
+    expect(mobileCapabilities.progress.mobileNav).toBe("primary");
     expect(mobileCapabilities.bag.mobileNav).toBe("primary");
   });
 

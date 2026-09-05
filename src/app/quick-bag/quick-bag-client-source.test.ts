@@ -61,6 +61,7 @@ describe("Quick Bag responsive route", () => {
     expect(page).toContain("data-quick-bag-desktop");
     expect(page).toContain('<section className="hidden gap-5 lg:grid"');
     expect(page).toContain("<PageHeader");
-    expect(page.match(/<QuickBagClient/g)).toHaveLength(2);
+    expect(page.match(/<QuickBagClient/g)).toHaveLength(1);
+    expect(page).toContain("<MobileQuickBag");
   });
 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, ComponentProps } from "react";
 import {
   ArrowRight,
   ChevronDown,
@@ -27,14 +27,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { appRouteMetadata } from "@/components/app/route-metadata";
 
-type MobileAppShellProps = {
-  children: ReactNode;
-  className?: string;
-};
+type MobileAppShellProps = ComponentProps<"section">;
 
-export function MobileAppShell({ children, className }: MobileAppShellProps) {
+export function MobileAppShell({ children, className, ...props }: MobileAppShellProps) {
   return (
     <section
+      {...props}
       className={cn(
         "ios-mobile-screen -mx-4 -mt-4 grid min-h-0 content-start overflow-x-clip px-4 pb-0 pt-3 text-foreground sm:-mx-6 sm:px-6 lg:hidden [&>*]:min-w-0",
         className,

@@ -11,7 +11,7 @@ export type MobileRouteCapability = {
 export const mobileCapabilities = {
   today: companionPrimary(),
   dashboard: desktopOnly("Today", "/today", "The dashboard is a full analytical command centre."),
-  sessions: companionPrimary(),
+  sessions: companionMore(),
   rounds: { mobileExperience: "summary" },
   import: companionMore(),
   courses: companionMore(),
@@ -28,18 +28,14 @@ export const mobileCapabilities = {
     "/sessions",
     "Session-impact comparison is available in the full workbench.",
   ),
-  shots: desktopOnly(
-    "Review latest session",
-    "/sessions",
-    "Raw shot exploration is available in the full workbench.",
-  ),
+  shots: companionMore(),
   bag: companionPrimary(),
   compare: desktopOnly(
     "Review sessions",
     "/sessions",
     "Multi-session comparison is available in the full workbench.",
   ),
-  progress: { mobileExperience: "summary" },
+  progress: companionPrimary(),
   "strokes-gained": desktopOnly(
     "Review latest round",
     "/sessions?type=rounds",
@@ -59,16 +55,8 @@ export const mobileCapabilities = {
   practice: companionPrimary(),
   "quick-bag": companionPrimary(),
   "quick-range": { mobileExperience: "companion" },
-  speed: desktopOnly(
-    "Build recommended practice",
-    "/practice?session=speed&intent=speed&time=20",
-    "Full speed history and programming are available in the workbench.",
-  ),
-  "training-load": desktopOnly(
-    "Plan practice",
-    "/practice",
-    "Full training-load history is available in the workbench.",
-  ),
+  speed: companionMore(),
+  "training-load": companionMore(),
   goals: summaryMore(),
   "data-chat": desktopOnly(
     "Build recommended practice",
@@ -161,12 +149,9 @@ const desktopOnlyPrefixes = [
   "/partners",
   "/dashboard",
   "/analyse",
-  "/shots",
   "/compare",
   "/strokes-gained",
   "/simulator-lab",
-  "/speed",
-  "/stats/training-over-time",
   "/data-chat",
   "/equipment",
   "/providers",
@@ -186,7 +171,6 @@ const companionExactRoutes = ["/courses"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",
-  "/progress",
   "/handicap",
   "/goals",
   "/leaderboard",

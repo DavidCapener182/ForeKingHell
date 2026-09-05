@@ -19,7 +19,10 @@ import {
 import { LazyPlaySetupDrawer } from "@/app/play/lazy-play-setup-drawer";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { IOSSectionHeader } from "@/components/app/ios-mobile";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
+import styles from "@/components/app/mobile-companion.module.css";
+import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -130,7 +133,6 @@ export default async function PlayCompanionPage({
     { label: "Strategy ready", ready: strategyReady },
     { label: "Course Twin mapped", ready: Boolean(twin) },
   ];
-  const readyCount = readiness.filter((item) => item.ready).length;
   const strategyHref = selected
     ? `/courses/strategy?courseId=${selected.id}${selectedTee ? `&teeSetId=${selectedTee.id}` : ""}`
     : "/courses/strategy";
@@ -156,7 +158,7 @@ export default async function PlayCompanionPage({
   return (
     <PageShell contentClassName="lg:gap-6">
       <MobileAppShell className="gap-4" data-play-companion-hub>
-        <MobileTopBar title="Play" />
+        <MobileLargeTitle title="Play" />
 
         {activeRound ? (
           <ActiveRoundMobile round={activeRound} />
@@ -170,24 +172,57 @@ export default async function PlayCompanionPage({
               twinGrade={twin?.grade ?? null}
               lastPlayed={lastPlayed}
               weatherLabel={weatherLabel}
-              readyCount={readyCount}
               strategyHref={strategyHref}
               twinHref={twinHref}
               startRoundHref={startRoundHref}
             />
 
             <section className="grid gap-2.5" data-course-prep>
-              <IOSSectionHeader
-                title="Course prep"
-                description="One briefing. Five checks. No surprises on the first tee."
-              />
-              <ReadinessPanel items={readiness} />
+              {!strategyReady ? (
+                <>
+                  <IOSSectionHeader title="Finish course setup" />
+                  <ReadinessPanel
+                    items={readiness.filter(
+                      (item) => !item.ready && item.label !== "Course Twin mapped",
+                    )}
+                  />
+                </>
+              ) : null}
               <LazyPlaySetupDrawer {...selectionProps} />
             </section>
           </>
         ) : (
           <PlayEmptyState />
         )}
+        <MobileSection
+          title="Rounds"
+          action={
+            <Link href="/rounds" className="flex min-h-11 items-center text-sm text-primary">
+              See all
+            </Link>
+          }
+        >
+          <MobileGroupedList label="Recent rounds">
+            {recentCourseRounds.slice(0, 3).map((round) => (
+              <MobileListRow
+                key={round.id}
+                href={`/rounds/${round.id}`}
+                label={selected?.name ?? "Round"}
+                detail={shortDateFormatter.format(round.date)}
+                value={summarizeScorecard(round.scorecardJson).scoreLabel}
+                icon={Flag}
+              />
+            ))}
+            {!recentCourseRounds.length ? (
+              <MobileListRow
+                href="/rounds"
+                label="Round history"
+                detail="Your scores and course reviews"
+                icon={Flag}
+              />
+            ) : null}
+          </MobileGroupedList>
+        </MobileSection>
       </MobileAppShell>
 
       <section className="hidden lg:grid" data-play-desktop-command-centre>
@@ -228,7 +263,6 @@ function SelectedCourseMobile({
   twinGrade,
   lastPlayed,
   weatherLabel,
-  readyCount,
   strategyHref,
   twinHref,
   startRoundHref,
@@ -240,41 +274,21 @@ function SelectedCourseMobile({
   twinGrade: string | null;
   lastPlayed: Date | null;
   weatherLabel: string | null;
-  readyCount: number;
   strategyHref: string;
   twinHref: string;
   startRoundHref: string;
 }) {
   return (
     <Card className="overflow-hidden pt-0" data-selected-course>
-      <div className="relative h-48 overflow-hidden bg-slate-950">
-        <Image
-          src="/assets/generated/course-twin-premium-desktop.webp"
-          alt="Aerial golf-hole planning view"
-          fill
-          priority
-          sizes="(max-width: 1023px) calc(100vw - 2rem), 1px"
-          className="object-cover opacity-85"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-black/20" />
-        <div className="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
-          <span className="rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-            Selected course
-          </span>
-          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-950">
-            {readyCount}/5 ready
-          </span>
-        </div>
-        <div className="absolute inset-x-4 bottom-4 text-white">
-          <h1 className="text-balance text-[1.85rem] font-bold leading-[1.05] tracking-tight">
-            {course.name}
-          </h1>
-          <p className="mt-2 text-sm font-medium text-white/80">
-            {tee ? `${teeIsDefault ? "Default · " : ""}${tee.name}` : "Tee not selected"}
-            {tee?.par ? ` · Par ${tee.par}` : ""}
-            {tee?.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
-          </p>
-        </div>
+      <div className={styles.courseHeading}>
+        <Flag className="size-7" aria-hidden />
+        <p>Selected course</p>
+        <h2>{course.name}</h2>
+        <span>
+          {tee ? `${teeIsDefault ? "Default · " : ""}${tee.name}` : "Tee not selected"}
+          {tee?.par ? ` · Par ${tee.par}` : ""}
+          {tee?.yards ? ` · ${tee.yards.toLocaleString("en-GB")} yd` : ""}
+        </span>
       </div>
 
       <CardContent className="grid gap-3">
@@ -310,7 +324,7 @@ function SelectedCourseMobile({
         <Button asChild className="min-h-12 w-full rounded-xl text-[15px]">
           <Link href={strategyHref}>
             <MapPinned aria-hidden />
-            Open Strategy
+            Prepare Course
           </Link>
         </Button>
         <div className="grid grid-cols-3 gap-2">

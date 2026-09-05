@@ -34,6 +34,20 @@ describe("offline round edit payloads", () => {
     expect(formData.get("roundStatus")).toBe("in_progress");
   });
 
+  it("round completion retains its version precondition and does not overwrite context", () => {
+    const payload = parseOfflineRoundEditPayload({
+      editKind: "round-complete",
+      fields: [
+        ["sessionId", "session-1"],
+        ["expectedUpdatedAt", "2026-09-05T00:00:00.000Z"],
+      ],
+    });
+    expect(payload?.editKind).toBe("round-complete");
+    const data = offlineRoundEditPayloadToFormData(payload!);
+    expect(data.get("expectedUpdatedAt")).toBe("2026-09-05T00:00:00.000Z");
+    expect(data.has("notes")).toBe(false);
+  });
+
   it("rejects unknown edit kinds", () => {
     expect(
       parseOfflineRoundEditPayload({ editKind: "delete-round", fields: [["id", "1"]] }),

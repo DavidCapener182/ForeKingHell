@@ -40,7 +40,7 @@ describe("companion visual hierarchy", () => {
   it("keeps the Play image restrained inside the selected-course card", () => {
     const playSource = pageSources[2] ?? "";
     expect(playSource).toContain("Selected course");
-    expect(playSource).toContain("relative h-48 overflow-hidden");
+    expect(playSource).toContain("styles.courseHeading");
     expect(playSource).toContain("data-primary-action");
     expect(playSource).not.toContain("unoptimized");
   });

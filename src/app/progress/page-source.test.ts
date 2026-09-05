@@ -93,11 +93,11 @@ describe("progress direction story source", () => {
     expect(source).toContain("goalPlanUpdatedAt");
   });
 
-  it("keeps the route full-width and uses the same four-tab composition on both app surfaces", () => {
+  it("keeps the route full-width and serves a dedicated companion story beside the workbench", () => {
     expect(source).toContain("data-progress-surface={surface}");
     expect(source).toContain("min-w-0");
     expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
-    expect(source).not.toContain('if (surface === "companion")');
+    expect(source).toContain('if (surface === "companion")');
     expect(source).not.toContain("IOSDisclosureGroup");
   });
 

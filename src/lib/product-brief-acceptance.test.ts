@@ -25,8 +25,8 @@ describe("product brief acceptance", () => {
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
       "Practice",
-      "Strategy",
-      "Review",
+      "Play",
+      "Progress",
       "Bag",
     ]);
   });

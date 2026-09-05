@@ -1,7 +1,9 @@
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import { MobileQuickBag } from "@/app/quick-bag/mobile-quick-bag";
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
+import { MobileAppShell } from "@/components/mobile-sports";
 import { PageHeader, PageShell } from "@/components/premium";
 import { getDb } from "@/db/client";
 import { clubs, shots, stockYardages } from "@/db/schema";
@@ -19,8 +21,8 @@ export default async function QuickBagPage() {
   return (
     <PageShell>
       <MobileAppShell className="gap-5" data-quick-bag>
-        <MobileTopBar title="Quick Bag" />
-        <QuickBagClient clubs={clubs} accountId={userId} />
+        <MobileLargeTitle title="Quick Bag" />
+        <MobileQuickBag clubs={clubs} accountId={userId} />
       </MobileAppShell>
 
       <section className="hidden gap-5 lg:grid" data-quick-bag-desktop>
@@ -47,6 +49,7 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
       brand: clubs.brand,
       model: clubs.model,
       carryMedianYd: stockYardages.carryMedianYd,
+      totalMedianYd: stockYardages.totalMedianYd,
       carryP25Yd: stockYardages.carryP25Yd,
       carryP75Yd: stockYardages.carryP75Yd,
       recommendedPlayNumberYd: stockYardages.recommendedPlayNumberYd,
@@ -121,6 +124,7 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
         label: formatClubType(row.type),
         model: [row.brand, row.model].filter(Boolean).join(" ") || "Current club",
         trustedCarryYd: row.carryMedianYd,
+        totalYd: row.totalMedianYd,
         playNumberYd: row.recommendedPlayNumberYd,
         lowYd: row.carryP25Yd,
         highYd: row.carryP75Yd,

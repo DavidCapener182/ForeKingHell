@@ -1,3 +1,4 @@
+import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getProductPreferences } from "@/lib/product-preferences";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function QuickRangePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ focus?: string }>;
+  searchParams?: Promise<{ focus?: string; club?: string }>;
 }) {
   const params = await searchParams;
   const [userId, surface] = await Promise.all([requireCurrentUserId(), getRequestAppSurface()]);
@@ -18,7 +19,15 @@ export default async function QuickRangePage({
   if (surface === "companion") {
     const { QuickRangeCompanionSession } =
       await import("@/app/practice/quick-range/quick-range-session");
-    return <QuickRangeCompanionSession focus={focus} />;
+    return (
+      <PageShell>
+        <QuickRangeCompanionSession
+          focus={focus}
+          accountId={userId}
+          initialClubType={params?.club}
+        />
+      </PageShell>
+    );
   }
 
   const { QuickRangeWorkbenchSession } =

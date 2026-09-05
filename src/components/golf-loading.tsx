@@ -1,4 +1,4 @@
-import { CompanionBrandLockup } from "@/components/app/companion-brand";
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
 import { AppLoadingSkeleton } from "@/components/app/app-loading-skeleton";
 import { PageShell } from "@/components/premium";
 
@@ -50,12 +50,22 @@ export function GolfRouteLoading({ title, subtitle, variant = "dashboard" }: Gol
   return (
     <PageShell>
       <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4 lg:gap-5">
-        <header className="ios-page-header lg:hidden">
-          <CompanionBrandLockup className="mb-4 justify-start" />
-          <p className="text-[13px] font-semibold text-primary">{variantLabel(variant)}</p>
-          <h1>{title}</h1>
-          <p className="mt-1 text-[15px] leading-5 text-muted-foreground">{subtitle}</p>
-        </header>
+        <div className="lg:hidden">
+          <MobileLargeTitle
+            title={
+              variant === "bag"
+                ? "Your bag"
+                : variant === "today"
+                  ? "Today"
+                  : variant === "practice"
+                    ? "Practice"
+                    : variant === "progress"
+                      ? "Progress"
+                      : title
+            }
+          />
+          <span className="sr-only">{subtitle}</span>
+        </div>
 
         <div className="grid gap-4 lg:hidden">
           <AppLoadingSkeleton variant="answer" />
