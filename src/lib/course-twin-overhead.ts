@@ -1,7 +1,11 @@
 import type { CourseTwinHole, CourseTwinPoint, CourseTwinReplayShot } from "./course-twin-contract";
 
 /** Keep metres isotropic, with the reference tee below the green. */
-export function overheadProjection(hole: CourseTwinHole, shots: CourseTwinReplayShot[]) {
+export function overheadProjection(
+  hole: CourseTwinHole,
+  shots: CourseTwinReplayShot[],
+  extraPoints: CourseTwinPoint[] = [],
+) {
   const dx = hole.green[0] - hole.tee[0];
   const dz = hole.green[2] - hole.tee[2];
   const length = Math.hypot(dx, dz) || 1;
@@ -13,6 +17,7 @@ export function overheadProjection(hole: CourseTwinHole, shots: CourseTwinReplay
     hole.tee,
     hole.green,
     ...hole.centerline,
+    ...extraPoints,
     ...shots.flatMap((s) => [s.start, s.carryEnd, s.totalEnd, ...s.trajectory]),
   ].map(rotate);
   const minX = Math.min(...points.map((p) => p[0])) - 25;

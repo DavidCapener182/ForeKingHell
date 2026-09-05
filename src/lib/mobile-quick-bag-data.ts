@@ -4,23 +4,29 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clubs, sessions, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { mobileCourseTwinBagProfile } from "@/lib/mobile-course-twin-evidence";
 import { mobileQuickBagClub } from "@/lib/mobile-quick-bag-evidence";
 
 export async function getMobileQuickBag() {
   const userId = await requireCurrentUserId();
-  return getCachedMobileQuickBag(userId);
+  return (await getCachedMobileBagEvidence(userId)).bag;
+}
+
+export async function getMobileCourseTwinBagProfiles() {
+  const userId = await requireCurrentUserId();
+  return (await getCachedMobileBagEvidence(userId)).courseTwinProfiles;
 }
 
 // Authentication stays outside the cache. Its argument keys the compact result by owner.
 // Existing shot mutations revalidate /quick-bag or the root layout; the TTL also
 // refreshes provider imports without retaining the full shot history in the cache.
-const getCachedMobileQuickBag = unstable_cache(
-  calculateMobileQuickBag,
-  ["mobile-quick-bag-evidence-v3"],
+const getCachedMobileBagEvidence = unstable_cache(
+  calculateMobileBagEvidence,
+  ["mobile-bag-model-evidence-v4"],
   { revalidate: 60 },
 );
 
-async function calculateMobileQuickBag(userId: string) {
+async function calculateMobileBagEvidence(userId: string) {
   const [equipment, measured] = await Promise.all([
     getDb()
       .select({ id: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
@@ -32,6 +38,10 @@ async function calculateMobileQuickBag(userId: string) {
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
         sideCarryYd: shots.sideCarryYd,
+        ballSpeedMph: shots.ballSpeedMph,
+        launchAngleDeg: shots.launchAngleDeg,
+        spinRate: shots.spinRate,
+        spinAxis: shots.spinAxis,
         shotAt: shots.shotAt,
         reviewStatus: shots.reviewStatus,
         qualityTag: shots.qualityTag,
@@ -51,5 +61,10 @@ async function calculateMobileQuickBag(userId: string) {
     group.push(shot);
     byClub.set(shot.clubId, group);
   }
-  return equipment.map((club) => mobileQuickBagClub(club, byClub.get(club.id) ?? []));
+  const bag = equipment.map((club) => mobileQuickBagClub(club, byClub.get(club.id) ?? []));
+  const courseTwinProfiles = bag.flatMap((club) => {
+    const profile = mobileCourseTwinBagProfile(club, byClub.get(club.id) ?? []);
+    return profile ? [profile] : [];
+  });
+  return { bag, courseTwinProfiles };
 }

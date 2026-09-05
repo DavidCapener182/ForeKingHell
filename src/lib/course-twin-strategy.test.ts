@@ -62,6 +62,30 @@ describe("Course Twin player-specific strategy", () => {
     expect(first.disclosure).toMatch(/measured carry/i);
   });
 
+  it("carries the mobile evidence window without changing simulation maths", () => {
+    const original = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag });
+    const evidenceWindow = {
+      basis: "latest-reliable" as const,
+      latestShotAt: "2026-09-01T12:00:00.000Z",
+      lateralSampleSize: 20,
+      lowCarryYd: 190,
+      highCarryYd: 200,
+    };
+    const mobile = buildCourseTwinStrategy({
+      manifest,
+      holeNumber: 1,
+      bag: bag.map((club) => ({ ...club, evidenceWindow })),
+    });
+    expect(mobile.disclosure).toContain("same latest reliable");
+    expect(original.disclosure).toContain("latest 30 days");
+    expect(
+      mobile.clubs.map(({ evidenceWindow: window, ...club }) => {
+        expect(window).toEqual(evidenceWindow);
+        return club;
+      }),
+    ).toEqual(original.clubs);
+  });
+
   it("fails honestly when the requested hole is absent", () => {
     expect(() => buildCourseTwinStrategy({ manifest, holeNumber: 18, bag })).toThrow(/unavailable/);
   });

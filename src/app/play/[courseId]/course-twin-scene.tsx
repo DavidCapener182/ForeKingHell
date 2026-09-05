@@ -146,6 +146,7 @@ import {
 } from "@/lib/course-twin-virtual-round";
 import { cn } from "@/lib/utils";
 import { courseTwin2dUrl, type CourseTwinRenderQuality } from "@/lib/course-twin-performance";
+import { mobilePlanHasMappedSurfaces } from "@/lib/course-twin-mobile-plan";
 import { courseTwinTerrainRenderGrid } from "@/lib/course-twin-terrain-lod";
 
 type RuntimeMode = "flyover" | "replay" | "strategy" | "play" | "live" | "explore";
@@ -385,6 +386,7 @@ export function CourseTwinScene({
 }) {
   const initialCompactViewport =
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
+  const [strategyEvidenceBasis] = useState(initialCompactViewport ? "latest-reliable" : "stock");
   useEffect(() => {
     if (renderQuality === "high")
       [...treeBillboards, ...bushBillboards].forEach(({ url }) => useTexture.preload(url));
@@ -1614,7 +1616,7 @@ export function CourseTwinScene({
         error: null,
       });
       void fetch(
-        `/api/course-twins/${encodeURIComponent(manifest.course.id)}/strategy?holeNumber=${nextHoleNumber}`,
+        `/api/course-twins/${encodeURIComponent(manifest.course.id)}/strategy?holeNumber=${nextHoleNumber}${strategyEvidenceBasis === "latest-reliable" ? "&evidenceBasis=latest-reliable" : ""}`,
         { cache: "no-store", signal: controller.signal },
       )
         .then(async (response) => {
@@ -1648,7 +1650,7 @@ export function CourseTwinScene({
           });
         });
     },
-    [manifest.course.id],
+    [manifest.course.id, strategyEvidenceBasis],
   );
 
   useEffect(() => {
@@ -2245,7 +2247,10 @@ export function CourseTwinScene({
       return `Shot ${virtualShotNumber} · ${virtualRemainingYd.toFixed(0)} yd · ${formatMobileAim(virtualAimDirectionDeg)} · Modelled`;
     }
     if (mode === "replay") return "Measured launch · reconstructed flight";
-    if (mode === "strategy") return "Modelled plan from measured shots";
+    if (mode === "strategy")
+      return isCompactViewport && !mobilePlanHasMappedSurfaces(manifest, selectedHole.holeNumber)
+        ? "Estimated outline · distance preview"
+        : "Modelled plan from measured shots";
     if (mode === "live") return "Measured launch · reconstructed placement";
     if (mode === "explore") return "Mapped terrain · touch controls";
     return "Mapped course view";
@@ -4089,47 +4094,49 @@ function MobileCourseTwinChrome({
             <ChevronRight className="size-4" aria-hidden="true" />
           </button>
         </div>
-        <div
-          className={mobileStyles.mobileActionSummary}
-          data-replay={mode === "replay" ? "true" : undefined}
-          aria-label={mode === "replay" ? "Current replay shot" : "Current shot plan"}
-        >
-          <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
-            <span>Club</span>
-            <strong>{formatClubType(clubLabel)}</strong>
-          </button>
-          <div className={mobileStyles.actionFact}>
-            <span>Carry</span>
-            <strong>{carryLabel}</strong>
-          </div>
-          {mode !== "replay" ? (
-            <>
-              <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
-                <span>Target</span>
-                <strong>{targetLabel}</strong>
-              </button>
-              <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
-                <span>Shape / miss</span>
-                <strong>{missLabel}</strong>
-              </button>
-            </>
-          ) : null}
-          <button
-            type="button"
-            className={cn(mobileStyles.actionFact, mobileStyles.nextHoleAction)}
-            disabled={roundLocksHole || selectedHoleIndex >= holeCount - 1}
-            onClick={onNextHole}
+        {mode !== "strategy" ? (
+          <div
+            className={mobileStyles.mobileActionSummary}
+            data-replay={mode === "replay" ? "true" : undefined}
+            aria-label={mode === "replay" ? "Current replay shot" : "Current shot plan"}
           >
-            <span>Next</span>
-            <strong>
-              Hole{" "}
-              {selectedHoleIndex >= holeCount - 1
-                ? selectedHole.holeNumber
-                : selectedHole.holeNumber + 1}
-            </strong>
-          </button>
-        </div>
-        {mode === "strategy" ? null : children}
+            <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+              <span>Club</span>
+              <strong>{formatClubType(clubLabel)}</strong>
+            </button>
+            <div className={mobileStyles.actionFact}>
+              <span>Carry</span>
+              <strong>{carryLabel}</strong>
+            </div>
+            {mode !== "replay" ? (
+              <>
+                <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+                  <span>Target</span>
+                  <strong>{targetLabel}</strong>
+                </button>
+                <button type="button" className={mobileStyles.actionFact} onClick={onOpenDetails}>
+                  <span>Shape / miss</span>
+                  <strong>{missLabel}</strong>
+                </button>
+              </>
+            ) : null}
+            <button
+              type="button"
+              className={cn(mobileStyles.actionFact, mobileStyles.nextHoleAction)}
+              disabled={roundLocksHole || selectedHoleIndex >= holeCount - 1}
+              onClick={onNextHole}
+            >
+              <span>Next</span>
+              <strong>
+                Hole{" "}
+                {selectedHoleIndex >= holeCount - 1
+                  ? selectedHole.holeNumber
+                  : selectedHole.holeNumber + 1}
+              </strong>
+            </button>
+          </div>
+        ) : null}
+        {children}
       </div>
 
       <ToggleGroup
@@ -4263,30 +4270,61 @@ function MobileStrategyControls({
   }
 
   return (
-    <div className={mobileStyles.playTray}>
-      <div className={mobileStyles.playMeta}>
-        <p className={mobileStyles.playMetaPrimary}>Modelled hole plan</p>
-        <p className={mobileStyles.playMetaSecondary}>
-          {selectedClub.carryMedianYd.toFixed(0)} yd carry
+    <div className={mobileStyles.strategyTray}>
+      <div className={mobileStyles.strategyDecision}>
+        <label className={mobileStyles.field}>
+          <span className={mobileStyles.fieldLabel}>
+            {state.document.recommended?.clubId === selectedClub.clubId
+              ? "Recommended club"
+              : "Compare club"}
+          </span>
+          <select
+            className={mobileStyles.select}
+            value={selectedClub.clubId}
+            onChange={(event) => onSelectClub(event.target.value)}
+          >
+            {state.document.clubs.map((club) => (
+              <option key={club.clubId} value={club.clubId}>
+                {formatClubType(club.clubType)} · {club.carryMedianYd.toFixed(0)} yd
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className={mobileStyles.strategyCarry}>
+          <strong>{selectedClub.carryMedianYd.toFixed(0)}</strong>
+          <span>yd carry</span>
         </p>
       </div>
-      <label className={mobileStyles.field}>
-        <span className={mobileStyles.fieldLabel}>Club plan</span>
-        <select
-          className={mobileStyles.select}
-          value={selectedClub.clubId}
-          onChange={(event) => onSelectClub(event.target.value)}
-        >
-          {state.document.clubs.map((club) => (
-            <option key={club.clubId} value={club.clubId}>
-              {club.clubType} · {club.carryMedianYd.toFixed(0)} yd
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className={mobileStyles.provenance}>
-        Modelled from measured shots · landing probabilities are not guarantees
+      <p className={mobileStyles.strategyTarget}>
+        Aim{" "}
+        {Math.abs(selectedClub.aimOffsetYd) < 1
+          ? "on the mapped centre line"
+          : `${Math.round(Math.abs(selectedClub.aimOffsetYd))} yd ${selectedClub.aimOffsetYd > 0 ? "right" : "left"} of the mapped centre line`}
       </p>
+      {selectedClub.evidenceWindow ? (
+        <details className={mobileStyles.strategyEvidence}>
+          <summary>{selectedClub.sampleSize} trusted shots · same carry as Bag</summary>
+          <p>
+            {selectedClub.evidenceWindow.lateralSampleSize} measured side readings · latest reliable
+            full swings
+          </p>
+          {selectedClub.evidenceWindow.latestShotAt ? (
+            <p>
+              Latest trusted shot ·{" "}
+              {new Date(selectedClub.evidenceWindow.latestShotAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          ) : null}
+          <p>{state.document.disclosure}</p>
+        </details>
+      ) : (
+        <p className={mobileStyles.provenance}>
+          Modelled from measured shots · landing probabilities are not guarantees
+        </p>
+      )}
     </div>
   );
 }
@@ -7657,8 +7695,9 @@ function StrategyControls({
           </p>
           <p className="mt-2 text-lg font-semibold">{selectedClub.clubType}</p>
           <p className="text-sm text-emerald-100/60">
-            {Math.round(selectedClub.carryMedianYd)} yd stock carry · {selectedClub.sampleSize}{" "}
-            shots
+            {Math.round(selectedClub.carryMedianYd)} yd{" "}
+            {selectedClub.evidenceWindow ? "latest reliable" : "stock"} carry ·{" "}
+            {selectedClub.sampleSize} shots
           </p>
         </div>
         {recommended ? (

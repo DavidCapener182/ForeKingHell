@@ -816,3 +816,90 @@
     display: none;
   }
 }
+
+@media (max-width: 1023px) {
+  .strategyEvidence {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: rgb(255 255 255 / 70%);
+  }
+  .strategyEvidence summary {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    cursor: pointer;
+    color: inherit;
+  }
+  .strategyEvidence summary::after {
+    content: "+";
+    margin-left: auto;
+    padding-left: 12px;
+  }
+  .strategyEvidence[open] summary::after {
+    content: "−";
+  }
+  .strategyEvidence summary:focus-visible {
+    outline: 2px solid #9be6bb;
+    outline-offset: 2px;
+  }
+  .strategyEvidence p {
+    margin: 0 0 8px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .strategyTray {
+    padding: 0.875rem 1rem 0.25rem;
+    max-height: 45dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .strategyDecision {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+  }
+  .strategyDecision .fieldLabel {
+    font-size: 0.75rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: none;
+  }
+  .strategyDecision .field {
+    position: relative;
+  }
+  .strategyDecision .field::after {
+    content: "⌄";
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.625rem;
+    pointer-events: none;
+  }
+  .strategyDecision .select {
+    appearance: none;
+    -webkit-appearance: none;
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
+  .strategyCarry {
+    margin: 0;
+    display: grid;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .strategyCarry strong {
+    font-size: 2rem;
+    line-height: 1.1;
+    font-weight: 650;
+  }
+  .strategyCarry span {
+    font-size: 0.75rem;
+    color: rgb(255 255 255 / 70%);
+  }
+  .strategyTarget {
+    margin: 0.625rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
