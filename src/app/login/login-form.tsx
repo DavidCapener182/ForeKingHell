@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useSyncExternalStore } from "react";
 import { KeyRound, Mail } from "lucide-react";
 
 import {
@@ -22,6 +22,9 @@ const magicActionWithRecovery = recoverLoginConnection(
   sendMagicLinkAction,
   "The connection dropped before we could confirm your request. Check your inbox before trying again.",
 );
+const subscribeHydration = () => () => {};
+const hydratedSnapshot = () => true;
+const serverSnapshot = () => false;
 
 const initialState: LoginActionState = {
   message: null,
@@ -29,14 +32,16 @@ const initialState: LoginActionState = {
 };
 
 export function LoginForm({ error, next }: { error?: string | null; next?: string | null }) {
+  // Keep native Server Function metadata in the HTML until hydration finishes.
+  const hydrated = useSyncExternalStore(subscribeHydration, hydratedSnapshot, serverSnapshot);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const magicEmailInputRef = useRef<HTMLInputElement>(null);
   const [passwordState, passwordAction, passwordPending] = useActionState(
-    passwordActionWithRecovery,
+    hydrated ? passwordActionWithRecovery : signInWithPasswordAction,
     initialState,
   );
   const [magicState, magicAction, magicPending] = useActionState(
-    magicActionWithRecovery,
+    hydrated ? magicActionWithRecovery : sendMagicLinkAction,
     initialState,
   );
 
