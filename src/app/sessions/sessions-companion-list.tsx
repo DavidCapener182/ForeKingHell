@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
+import Link from "next/link";
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
 
 import type { SessionTimelineItem } from "@/app/sessions/session-timeline";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
-import { StatusTimeline } from "@/components/app/status-timeline";
-import { Badge } from "@/components/ui/badge";
+import { ChevronRight, Flag, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SessionHistoryFilterSheet } from "@/app/sessions/session-history-filter-sheet";
 import { deriveSessionHistoryView } from "@/app/sessions/session-history-view";
@@ -95,26 +96,33 @@ export function SessionsCompanionHistory({
 
   return (
     <div className="grid gap-4">
-      <div>
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Your golf history
-          </h1>
-          <Badge variant="outline">
-            <span className="sr-only" aria-live="polite" aria-atomic="true">
-              {visible.length} of {sessions.length} sessions
-            </span>
-            <span aria-hidden="true">
-              <span key={visible.length} className="t-number-pop tabular-nums">
-                {visible.length}
-              </span>{" "}
-              of {sessions.length}
-            </span>
-          </Badge>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Practice, simulator sessions and rounds in one timeline.
+      <MobileLargeTitle
+        title="Sessions"
+        detail="Every practice. Every round. Your results."
+        action={
+          <Link
+            href="/import"
+            className="flex min-h-11 items-center text-sm font-semibold text-primary"
+          >
+            Add session
+          </Link>
+        }
+      />
+      <div className="flex items-center justify-between text-sm">
+        <p className="text-muted-foreground" aria-live="polite">
+          <span className="sr-only" aria-live="polite" aria-atomic="true">
+            {visible.length} of {sessions.length} sessions
+          </span>
+          <span aria-hidden="true">
+            <span key={visible.length} className="t-number-pop tabular-nums">
+              {visible.length}
+            </span>{" "}
+            of {sessions.length} sessions
+          </span>
         </p>
+        <Link href="/progress" className="flex min-h-11 items-center font-semibold text-primary">
+          Progress over time →
+        </Link>
       </div>
       <MobileSegmentedControl
         value={filters.type}
@@ -126,94 +134,129 @@ export function SessionsCompanionHistory({
           { value: "round", label: "Rounds" },
         ]}
       />
-      <div
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
-        role="group"
-        aria-label="Filter and focus session history"
-      >
-        <SessionHistoryFilterSheet
-          label="Source"
-          value={filters.source}
-          options={[
-            { value: "all", label: "All sources" },
-            ...sourceOptions.map((value) => ({ value, label: value })),
-          ]}
-          onChange={(source) => onFiltersChange({ source })}
-        />
-        <SessionHistoryFilterSheet
-          label="Club"
-          value={filters.club}
-          options={[{ value: "all", label: "All clubs" }, ...clubOptions]}
-          onChange={(club) => onFiltersChange({ club })}
-        />
-        <SessionHistoryFilterSheet
-          label="Date"
-          value={filters.date}
-          options={[
-            { value: "all", label: "Any date" },
-            { value: "today", label: "Today" },
-            { value: "week", label: "This week" },
-            { value: "earlier", label: "Earlier" },
-          ]}
-          onChange={(date) => onFiltersChange({ date: date as SessionDateFilter })}
-        />
-        <SessionHistoryFilterSheet
-          label="Focus"
-          value={filters.sessionId ?? "all"}
-          options={[
-            { value: "all", label: "Newest session" },
-            ...visible.map((session) => ({ value: session.id, label: session.title })),
-          ]}
-          title="Focus a session"
-          description="Highlight one session without hiding the rest of your history."
-          onChange={(sessionId) =>
-            onFiltersChange({ sessionId: sessionId === "all" ? null : sessionId })
-          }
-        />
-        {activeControlCount > 0 ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
-            Clear
-          </Button>
+      <details className="rounded-xl bg-card px-3">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
+          Filter sessions{activeControlCount ? ` · ${activeControlCount} active` : ""}
+        </summary>
+        <div
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
+          role="group"
+          aria-label="Filter and focus session history"
+        >
+          <SessionHistoryFilterSheet
+            label="Source"
+            value={filters.source}
+            options={[
+              { value: "all", label: "All sources" },
+              ...sourceOptions.map((value) => ({ value, label: value })),
+            ]}
+            onChange={(source) => onFiltersChange({ source })}
+          />
+          <SessionHistoryFilterSheet
+            label="Club"
+            value={filters.club}
+            options={[{ value: "all", label: "All clubs" }, ...clubOptions]}
+            onChange={(club) => onFiltersChange({ club })}
+          />
+          <SessionHistoryFilterSheet
+            label="Date"
+            value={filters.date}
+            options={[
+              { value: "all", label: "Any date" },
+              { value: "today", label: "Today" },
+              { value: "week", label: "This week" },
+              { value: "earlier", label: "Earlier" },
+            ]}
+            onChange={(date) => onFiltersChange({ date: date as SessionDateFilter })}
+          />
+          <SessionHistoryFilterSheet
+            label="Focus"
+            value={filters.sessionId ?? "all"}
+            options={[
+              { value: "all", label: "Newest session" },
+              ...visible.map((session) => ({ value: session.id, label: session.title })),
+            ]}
+            title="Focus a session"
+            description="Highlight one session without hiding the rest of your history."
+            onChange={(sessionId) =>
+              onFiltersChange({ sessionId: sessionId === "all" ? null : sessionId })
+            }
+          />
+          {activeControlCount > 0 ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
+              Clear
+            </Button>
+          ) : null}
+        </div>
+      </details>
+      <div className="grid gap-5" aria-label="Session history">
+        {visible.length === 0 ? (
+          <AppEmptyState
+            title="No sessions match these filters"
+            description="Clear the filters to restore your full golf history."
+            primaryAction={<Button onClick={onClearFilters}>Show all sessions</Button>}
+          />
         ) : null}
-      </div>
-      <div className="ios-grouped-list rounded-2xl border bg-card p-3" aria-label="Session history">
-        <StatusTimeline
-          label="Session timeline"
-          className="max-h-none"
-          empty={
-            <AppEmptyState
-              title="No sessions match these filters"
-              description="Clear the filters to restore your full golf history."
-              primaryAction={
-                <Button type="button" size="sm" onClick={onClearFilters}>
-                  Show all sessions
-                </Button>
-              }
-              className="border-0 bg-transparent p-4 shadow-none"
-            />
-          }
-          items={visible.map((session) => ({
-            id: session.id,
-            dateGroup: session.dateGroup,
-            timestamp: session.timeLabel,
-            title: session.title,
-            description: `${session.dateLabel} · ${session.typeLabel}${
-              session.contextLabel === session.title ? "" : ` · ${session.contextLabel}`
-            }`,
-            meta: (
-              <span className="line-clamp-1">
-                {session.verdict} · {session.evidenceConfidence} confidence
-                {session.planLinked ? " · Plan linked" : ""}
-              </span>
-            ),
-            status: `${
-              session.id === focused?.id ? (filters.sessionId ? "Focused · " : "Newest · ") : ""
-            }${session.resultLabel}`,
-            kind: session.isRound ? "round" : session.importedEvidence ? "import" : "practice",
-            href: session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`,
-            featured: session.id === focused?.id,
-          }))}
-        />
+        {(["Today", "This week", "Earlier"] as const).map((group) => {
+          const grouped = visible.filter((session) => session.dateGroup === group);
+          return grouped.length ? (
+            <section key={group} aria-label={group} className="grid gap-2">
+              <h2 className="text-lg font-semibold tracking-tight">
+                {group}{" "}
+                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                  {grouped.length}
+                </span>
+              </h2>
+              {grouped.map((session) => (
+                <Link
+                  key={session.id}
+                  data-session-focused={session.id === focused?.id ? "true" : undefined}
+                  href={session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`}
+                  className={`grid gap-3 rounded-2xl border bg-card p-4 active:bg-secondary ${session.id === focused?.id ? "border-primary/40" : "border-border"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                      {session.isRound ? (
+                        <Flag className="size-5" aria-hidden />
+                      ) : (
+                        <Activity className="size-5" aria-hidden />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block text-base font-semibold">{session.title}</strong>
+                      <span className="block text-xs text-muted-foreground">
+                        {session.dateLabel}
+                        {session.timeLabel ? ` · ${session.timeLabel}` : ""} · {session.sourceLabel}
+                      </span>
+                    </span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </div>
+                  {filters.sessionId && session.id === focused?.id ? (
+                    <p className="text-xs font-semibold text-primary">
+                      Focused · {session.shotCount} shots
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <strong className="text-xl font-semibold tabular-nums">
+                      {session.isRound
+                        ? (session.roundScoreLabel ?? session.resultLabel)
+                        : `${session.shotCount} shots`}
+                    </strong>
+                    <span className="text-xs text-muted-foreground">
+                      {session.clubs.length} clubs · {session.evidenceConfidence.toLowerCase()}{" "}
+                      confidence
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{session.clubsLabel}</p>
+                  <p className="border-t border-border pt-2 text-sm">
+                    {session.verdict}
+                    {session.planLinked ? " · Practice plan linked" : ""}
+                  </p>
+                </Link>
+              ))}
+            </section>
+          ) : null;
+        })}
       </div>
     </div>
   );

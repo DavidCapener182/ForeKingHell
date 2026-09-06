@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { offlineDestination } from "./offline-destination";
 it("preserves the failed destination and companion shortcut including drill-down state", () => {
-  for (const section of ["today", "practice", "play", "progress", "bag"])
+  for (const section of ["today", "sessions", "practice", "play", "bag"])
     for (const path of [
       `/${section}`,
       `/surface/companion?next=${encodeURIComponent(`/${section}`)}`,
@@ -10,6 +10,10 @@ it("preserves the failed destination and companion shortcut including drill-down
         section,
         target: `/${section}`,
       });
+  expect(offlineDestination(new URL("https://golf.example/progress"))).toEqual({
+    section: "sessions",
+    target: "/progress",
+  });
   expect(offlineDestination(new URL("https://golf.example/practice?planId=saved"))).toEqual({
     section: "practice",
     target: "/practice?planId=saved",

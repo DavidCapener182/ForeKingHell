@@ -286,13 +286,13 @@ describe("production readiness gate", () => {
 
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
       "Today",
+      "Sessions",
       "Practice",
       "Play",
-      "Progress",
       "Bag",
     ]);
     expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
-    expect(mobileNavSource).toContain("Search companion actions");
+    expect(mobileNavSource).toContain("Find a page or tool");
     expect(mobileNavSource).toContain("Open full desktop site");
     expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.href))).toEqual(
       expect.arrayContaining(["/settings", "/privacy", "/profile"]),

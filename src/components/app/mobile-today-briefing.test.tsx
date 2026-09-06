@@ -59,10 +59,11 @@ describe("Today companion briefing", () => {
     expect(html).not.toContain("Heavy chart evidence");
     expect(html).not.toContain('href="#today-evidence"');
   });
-  it("renders the date and greeting on the server without a late extra title row", () => {
+  it("renders the date and title without redundant greeting space", () => {
     const html = renderToStaticMarkup(<MobileTodayGreeting initialNow="2026-09-05T08:00:00Z" />);
     expect(html).toContain("Saturday 5 September");
-    expect(html).toContain("Good morning");
+    expect(html).toContain("Today");
+    expect(html).not.toContain("Good morning");
     expect(html).not.toContain("Your golf companion");
   });
 });

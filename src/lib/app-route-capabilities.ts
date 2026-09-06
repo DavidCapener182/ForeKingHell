@@ -11,7 +11,7 @@ export type MobileRouteCapability = {
 export const mobileCapabilities = {
   today: companionPrimary(),
   dashboard: desktopOnly("Today", "/today", "The dashboard is a full analytical command centre."),
-  sessions: companionMore(),
+  sessions: companionPrimary(),
   rounds: { mobileExperience: "summary" },
   import: companionMore(),
   courses: companionMore(),
@@ -35,7 +35,7 @@ export const mobileCapabilities = {
     "/sessions",
     "Multi-session comparison is available in the full workbench.",
   ),
-  progress: companionPrimary(),
+  progress: companionMore(),
   "strokes-gained": desktopOnly(
     "Review latest round",
     "/sessions?type=rounds",

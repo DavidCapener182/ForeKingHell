@@ -132,15 +132,27 @@ describe("mobile post-practice review", () => {
       practiceOnly: true,
     });
     expect(html).toContain("Practice complete · Today");
-    expect(html).toContain("3 sessions · 63 shots · 2 clubs");
-    expect(html).toContain('href="#today-practice-review"');
-    expect(html).toContain("61 trusted shots");
-    expect(html).toContain("2 excluded from analysis");
-    for (const n of [1, 2, 3]) expect(html).toContain(`href="/sessions/session-${n}"`);
-    expect(html).toContain("147.5 yd");
+    expect(html).toContain('aria-label="Practice totals"');
+    expect(html).toContain('aria-label="Today&#x27;s practice review sections"');
+    expect(html).toContain("Overview");
+    expect(html).toContain("Clubs");
+    expect(html).toContain("Sessions");
     expect(html).toContain("Interactive shot patterns");
-    expect(html.indexOf("Club-by-club review")).toBeLessThan(
+    expect(html).toContain("6.0 yd longer average carry.");
+    expect(html.indexOf("Interactive shot patterns")).toBeLessThan(
       html.indexOf("For your next practice"),
+    );
+    const review = buildMobileTodayReview(practice(), now)!;
+    expect(review.summary).toBe("3 sessions · 63 shots · 2 clubs");
+    expect(review.trustedCount).toBe(61);
+    expect(review.excludedCount).toBe(2);
+    expect(review.sessions.map((session) => session.href)).toEqual([
+      "/sessions/session-1",
+      "/sessions/session-2",
+      "/sessions/session-3",
+    ]);
+    expect(review.clubs.find((club) => club.type === "7i")?.comparison?.today.carryAverageYd).toBe(
+      147.5,
     );
     const hero = html.slice(0, html.indexOf('id="today-practice-review"'));
     expect(hero).not.toContain("Build 20 min practice");

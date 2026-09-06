@@ -118,6 +118,7 @@ export default async function TodayCompanionPage() {
           </Alert>
         ) : null}
         <TodayPrimaryAnswer
+          compact={Boolean(review)}
           accountId={userId}
           serverState={mainState}
           evidenceDate={
@@ -209,8 +210,18 @@ export default async function TodayCompanionPage() {
           }
           round={activeRound ? { id: activeRound.id, courseName: activeRound.courseName } : null}
         />
-        {change ? (
-          <MobileSection title="What changed">
+        {change && !review ? (
+          <MobileSection
+            title="What changed"
+            action={
+              <Link
+                href="/progress"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-primary"
+              >
+                All progress
+              </Link>
+            }
+          >
             <MobileTodayChangeDetail change={change} />
           </MobileSection>
         ) : null}

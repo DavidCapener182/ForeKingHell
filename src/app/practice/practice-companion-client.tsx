@@ -4,7 +4,6 @@ import { useMobileActivity } from "@/components/app/use-mobile-activity";
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
 
 import Link from "next/link";
-import Image from "next/image";
 import styles from "./practice-companion.module.css";
 import dynamic from "next/dynamic";
 import { clubLabel, clubSummary, blockVolume } from "./practice-mobile-format";
@@ -512,7 +511,7 @@ export function PracticeCompanionClient({
       className={cn("grid gap-4", routeDirection && "t-route-step")}
       data-direction={routeDirection ?? undefined}
     >
-      <MobileLargeTitle title="Practice" detail="Make your next session count." />
+      <MobileLargeTitle title="Practice" detail="Plan it. Practise it. See the result." />
       {activeMeasuredResult ? (
         <MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />
       ) : null}
@@ -520,26 +519,36 @@ export function PracticeCompanionClient({
         <SpeedDevelopmentCompanionReadout context={context} />
       ) : null}
       {finished ? <FinishedActions message={message} planId={savedPlanId} /> : null}
+      {!savedPlanId ? (
+        <div className="grid gap-2">
+          <p className="text-sm font-medium">Time for practice</p>{" "}
+          <MobileSegmentedControl
+            ariaLabel="Practice duration"
+            value={String(options.timeMinutes)}
+            onValueChange={(value) =>
+              regenerate({ ...options, timeMinutes: Number(value) as typeof options.timeMinutes })
+            }
+            options={[20, 30, 45, 60].map((value) => ({
+              value: String(value),
+              label: `${value} min`,
+              disabled: isPending,
+            }))}
+          />
+        </div>
+      ) : null}
       <section
         className={styles.recommendation}
         data-current-practice-plan
         aria-label="Your practice"
       >
-        {!activeMeasuredResult && !finished ? (
-          <div className={styles.artwork}>
-            <Image
-              src="/assets/companion/practice-focus-v2.avif"
-              loading="eager"
-              alt="Golfer addressing a ball on a practice tee"
-              fill
-              sizes="(max-width: 767px) calc(100vw - 32px), 720px"
-            />
-          </div>
-        ) : null}
         <div className={styles.summary}>
           <div className={styles.heading}>
             <p className="mobile-type-footnote font-semibold text-primary">
-              {activeMeasuredResult || finished ? "Completed practice" : "Recommended for you"}
+              {activeMeasuredResult || finished
+                ? "Completed practice"
+                : savedPlanId
+                  ? "Your saved practice"
+                  : "Recommended for you"}
             </p>
             <h2 className="mobile-type-title2">{plan.title}</h2>
             <p className="mobile-type-callout text-muted-foreground">
@@ -593,24 +602,12 @@ export function PracticeCompanionClient({
               disabled={isPending || !hydrated}
             >
               <Play className="size-4" aria-hidden />
-              {savedPlanId ? "Resume Range Mode" : "Start practice"}
+              {savedPlanId ? "Continue practice" : "Start practice"}
             </Button>
           )}
         </div>
       </section>
 
-      <MobileSegmentedControl
-        ariaLabel="Practice duration"
-        value={String(options.timeMinutes)}
-        onValueChange={(value) =>
-          regenerate({ ...options, timeMinutes: Number(value) as typeof options.timeMinutes })
-        }
-        options={[20, 30, 45, 60].map((value) => ({
-          value: String(value),
-          label: `${value} min`,
-          disabled: isPending,
-        }))}
-      />
       <div className="grid grid-cols-2 gap-2">
         <Button asChild variant="outline" className="min-h-12">
           <Link href="/practice/quick-range">Quick Range</Link>
@@ -683,15 +680,20 @@ export function PracticeCompanionClient({
 
       {selectedBlock ? <BlockCard block={selectedBlock} /> : null}
 
-      <QuickAdjustments
-        key={`${options.timeMinutes}-${options.ballCount ?? "time"}-${options.energy}-${options.intent}-${options.facility}`}
-        options={options}
-        pending={isPending || !hydrated}
-        onChange={(next) => {
-          setOptions(next);
-          regenerate(next);
-        }}
-      />
+      <details className="rounded-2xl bg-card px-4">
+        <summary className="min-h-12 cursor-pointer py-3 text-sm font-semibold">
+          Adjust or build a new plan
+        </summary>
+        <QuickAdjustments
+          key={`${options.timeMinutes}-${options.ballCount ?? "time"}-${options.energy}-${options.intent}-${options.facility}`}
+          options={options}
+          pending={isPending || !hydrated}
+          onChange={(next) => {
+            setOptions(next);
+            regenerate(next);
+          }}
+        />
+      </details>
 
       <IOSDisclosureGroup
         label="Practice support"
