@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { ArrowRight, RefreshCw, Target, ChevronRight } from "lucide-react";
+import { ArrowRight, RefreshCw, Target, ChevronRight, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import styles from "./mobile-companion.module.css";
 import { listOfflineActions, type OfflineActionRecord } from "@/lib/offline-queue";
@@ -73,6 +73,9 @@ export function TodayPrimaryAnswer({
   const duration = facts.find((fact) => fact.label === "Session")?.value;
   const evidence = facts.find((fact) => fact.label === "Evidence")?.value;
   const club = facts.find((fact) => fact.label === "Club")?.value;
+  const isReview = serverState.status === "Review ready";
+  const isRecommendation = ["Low", "Moderate", "High"].includes(serverState.status);
+  const evidenceTitle = isReview ? "Today’s review evidence" : "Why this recommendation?";
   const title =
     serverState.status === "Low"
       ? club && club !== "Baseline"
@@ -109,11 +112,21 @@ export function TodayPrimaryAnswer({
           </Link>
         </div>
       ) : null}
-      <section className={styles.focus} data-primary-recommendation aria-label="Today's focus">
+      <section
+        className={styles.focus}
+        data-primary-recommendation
+        aria-label={isReview ? "Today’s practice review" : "Today's focus"}
+      >
         <div className={styles.focusHeading}>
-          <p className={styles.focusEyebrow}>For your next session</p>
+          <p className={styles.focusEyebrow}>
+            {isRecommendation ? "For your next session" : serverState.eyebrow}
+          </p>
           <span className={styles.focusIcon}>
-            <Target className="size-5" aria-hidden />
+            {isReview ? (
+              <ClipboardCheck className="size-5" aria-hidden />
+            ) : (
+              <Target className="size-5" aria-hidden />
+            )}
           </span>
         </div>
         <div>
@@ -121,18 +134,19 @@ export function TodayPrimaryAnswer({
           <p className={styles.focusReason}>{reason}</p>
         </div>
         <Link href={serverState.href} className={styles.focusAction} data-today-primary-action>
-          {duration ? `Build ${duration} practice` : serverState.action}
+          {isRecommendation && duration ? `Build ${duration} practice` : serverState.action}
           <ArrowRight className="size-4" aria-hidden />
         </Link>
         <button
           id="today-evidence"
           className={styles.focusEvidence}
           onClick={() => setEvidenceOpen(true)}
-          aria-label="Why this recommendation?"
+          aria-label={evidenceTitle}
         >
           <span>
             <strong>
-              {evidence} · {serverState.status} confidence
+              {evidence}
+              {isRecommendation ? ` · ${serverState.status} confidence` : ""}
             </strong>
             {evidenceDate ? <span>Latest practice · {evidenceDate}</span> : null}
           </span>
@@ -142,7 +156,7 @@ export function TodayPrimaryAnswer({
       <Drawer open={evidenceOpen} onOpenChange={setEvidenceOpen}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>Why this recommendation?</DrawerTitle>
+            <DrawerTitle>{evidenceTitle}</DrawerTitle>
             <DrawerDescription>
               {serverState.status === "Low"
                 ? "The current sample is too small to call a reliable weakness. This focus helps build evidence."
