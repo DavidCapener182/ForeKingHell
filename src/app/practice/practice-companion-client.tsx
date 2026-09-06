@@ -167,8 +167,9 @@ export function PracticeCompanionClient({
         setRemainingBalls(cached.remainingBalls ?? {});
         setSelectedIndex(Math.min(cached.blockIndex, Math.max(0, initialPlan.blocks.length - 1)));
         setFinished(cached.finished ?? false);
-        setPaused(cached.paused ?? false);
-        setRangeMode(!cached.finished && !cached.paused);
+        // Visiting the Practice tab restores progress, but entering Range Mode needs Resume.
+        setPaused(!cached.finished);
+        setRangeMode(false);
         setActivityStarted(true);
         startRequired.current = initialPlan.status === "planned";
       } else if (initialPlan.activityProgress) {
@@ -208,7 +209,7 @@ export function PracticeCompanionClient({
     blockCarouselApi.scrollTo(selectedIndex);
   }, [blockCarouselApi, selectedIndex]);
 
-  useMobileActivity(rangeMode);
+  useMobileActivity(rangeMode, { keepNavigation: true });
 
   const syncSnapshot = useRef({
     savedPlanId,
