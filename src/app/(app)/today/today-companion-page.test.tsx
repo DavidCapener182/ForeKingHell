@@ -126,7 +126,11 @@ afterEach(() => {
 describe("mobile post-practice review", () => {
   it("renders the combined day before planning, without a low-confidence recommendation replacing the review", async () => {
     const html = renderToStaticMarkup(await TodayCompanionPage());
-    expect(getTodayPracticeData).toHaveBeenCalledWith({ date: "2026-09-06", scope: "day" });
+    expect(getTodayPracticeData).toHaveBeenCalledWith({
+      date: "2026-09-06",
+      scope: "day",
+      practiceOnly: true,
+    });
     expect(html).toContain("Practice complete · Today");
     expect(html).toContain("3 sessions · 63 shots · 2 clubs");
     expect(html).toContain('href="#today-practice-review"');

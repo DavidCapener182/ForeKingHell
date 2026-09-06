@@ -50,7 +50,9 @@ export default async function TodayCompanionPage() {
     getCurrentPracticePlanSummary(userId),
     getInProgressRound(userId),
     getTodayActivity(userId),
-    getTodayPracticeData({ date: practiceDateKey(now), scope: "day" }).catch(() => null),
+    getTodayPracticeData({ date: practiceDateKey(now), scope: "day", practiceOnly: true }).catch(
+      () => null,
+    ),
   ]);
   const recommendation = buildTodayRecommendation(context);
   const latestData = todayData?.rawShots.length

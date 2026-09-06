@@ -10,6 +10,7 @@ import {
 } from "@/lib/shot-data-integrity";
 import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
 import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
+import { isRoundSessionType } from "@/lib/round-sessions";
 
 const APP_TIME_ZONE = "Europe/London";
 const PREVIOUS_SHOT_LIMIT_PER_CLUB = 50;
@@ -20,6 +21,7 @@ export type TodayPracticeFilters = {
   date?: string;
   sessionId?: string;
   scope?: "session" | "day";
+  practiceOnly?: boolean;
   club?: string;
 };
 
@@ -251,7 +253,11 @@ export async function getTodayPracticeData(
   }
 
   const bounds = dayBounds(dateKey);
-  const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds));
+  // Filter before deriving sessions, counts, comparisons and charts so a round in progress
+  // cannot become part of a completed-practice review. Other review routes retain all types.
+  const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds)).filter(
+    (shot) => !filters.practiceOnly || !isRoundSessionType(shot.sessionType),
+  );
 
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
   const scopeToSession = filters.scope !== "day";
